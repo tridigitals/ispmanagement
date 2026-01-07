@@ -1,0 +1,134 @@
+<script lang="ts">
+    import { goto } from '$app/navigation';
+    let email = "";
+    let submitted = false;
+
+    function handleReset() {
+        if (!email) return;
+        // Mock submission
+        submitted = true;
+    }
+</script>
+
+<div class="auth-page">
+    <div class="auth-card fade-in">
+        {#if !submitted}
+            <div class="auth-header">
+                <div class="icon">🔑</div>
+                <h1>Reset Password</h1>
+                <p>Enter your email and we'll send you a link to reset your password.</p>
+            </div>
+
+            <form on:submit|preventDefault={handleReset}>
+                <div class="form-group">
+                    <label class="form-label" for="email">Email Address</label>
+                    <input
+                        type="email"
+                        id="email"
+                        class="form-input"
+                        bind:value={email}
+                        placeholder="you@example.com"
+                        required
+                    />
+                </div>
+
+                <button type="submit" class="btn btn-primary w-full">
+                    Send Reset Link
+                </button>
+            </form>
+        {:else}
+            <div class="success-state fade-in">
+                <div class="icon">📩</div>
+                <h1>Check your email</h1>
+                <p>We've sent a password reset link to <strong>{email}</strong>.</p>
+                <button class="btn btn-secondary w-full" on:click={() => goto('/login')}>
+                    Back to Login
+                </button>
+            </div>
+        {/if}
+
+        <div class="auth-footer">
+            <a href="/login" class="back-link">← Back to Login</a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .auth-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background: var(--bg-primary);
+    }
+
+    .auth-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 3rem;
+        width: 100%;
+        max-width: 420px;
+        backdrop-filter: blur(10px);
+    }
+
+    .icon {
+        font-size: 3rem;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    .auth-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .auth-header h1 {
+        font-size: 1.75rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .auth-header p {
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
+
+    .success-state {
+        text-align: center;
+    }
+
+    .success-state h1 {
+        margin-bottom: 1rem;
+    }
+
+    .success-state p {
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+    }
+
+    .auth-footer {
+        text-align: center;
+        margin-top: 2rem;
+    }
+
+    .back-link {
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: color 0.2s;
+    }
+
+    .back-link:hover {
+        color: var(--text-primary);
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in {
+        animation: fadeIn 0.4s ease-out;
+    }
+</style>
