@@ -1,12 +1,12 @@
 use axum::{
     extract::State,
-    http::StatusCode,
+    http::{StatusCode, HeaderMap},
     response::{IntoResponse, Response},
     Json,
 };
 use serde_json::json;
-use crate::models::{LoginDto, RegisterDto};
-use crate::services::AuthResponse;
+use crate::models::{LoginDto, RegisterDto, UserResponse};
+use crate::services::{AuthResponse, AuthSettings};
 use super::AppState;
 
 // Helper to map AppError to Axum Response
@@ -30,6 +30,28 @@ impl IntoResponse for crate::error::AppError {
 
         (status, body).into_response()
     }
+}
+
+pub async fn get_auth_settings(
+    State(state): State<AppState>,
+) -> Result<Json<AuthSettings>, crate::error::AppError> {
+    let settings = state.auth_service.get_auth_settings().await;
+    Ok(Json(settings))
+}
+
+pub async fn get_current_user(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<UserResponse>, crate::error::AppError> {
+    let auth_header = headers.get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+        .ok_or_else(|| crate::error::AppError::Unauthorized)?;
+
+    let claims = state.auth_service.validate_token(auth_header).await?;
+    let user = state.auth_service.get_user_by_id(&claims.sub).await?;
+    
+    Ok(Json(user.into()))
 }
 
 pub async fn login(
