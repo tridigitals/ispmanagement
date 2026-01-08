@@ -32,6 +32,22 @@
         { value: "r2", label: "Cloudflare R2" },
     ];
 
+    const emailProviderOptions = [
+        { value: "smtp", label: "SMTP (Direct)" },
+        { value: "resend", label: "Resend API" },
+        { value: "sendgrid", label: "SendGrid API" },
+        { value: "webhook", label: "Custom Webhook" },
+    ];
+
+    const smtpEncryptionOptions = [
+        { value: "starttls", label: "STARTTLS (Port 587)" },
+        { value: "tls", label: "TLS/SSL (Port 465)" },
+        { value: "none", label: "None (Not Secure)" },
+    ];
+
+    let testEmailAddress = "";
+    let sendingTestEmail = false;
+
     // Categories configuration
     const categories = {
         general: {
@@ -88,6 +104,22 @@
                 "auth_max_login_attempts",
                 "auth_lockout_duration_minutes",
                 "auth_logout_all_on_password_change",
+            ],
+        },
+        email: {
+            label: "Email",
+            icon: "mail",
+            keys: [
+                "email_provider",
+                "email_smtp_host",
+                "email_smtp_port",
+                "email_smtp_username",
+                "email_smtp_password",
+                "email_smtp_encryption",
+                "email_api_key",
+                "email_from_address",
+                "email_from_name",
+                "email_webhook_url",
             ],
         },
     };
@@ -250,12 +282,33 @@
         setTimeout(() => (message = { type: "", text: "" }), 3000);
     }
 
+    async function sendTestEmail() {
+        if (!testEmailAddress) {
+            showMessage("error", "Please enter an email address");
+            return;
+        }
+        sendingTestEmail = true;
+        try {
+            const result = await api.settings.sendTestEmail(testEmailAddress);
+            showMessage("success", result);
+        } catch (error) {
+            console.error(error);
+            showMessage("error", "Failed to send test email: " + String(error));
+        } finally {
+            sendingTestEmail = false;
+        }
+    }
+
     function getInputType(key: string) {
         if (key === "default_locale") return "select-locale";
         if (key === "storage_provider") return "select-storage";
+        if (key === "email_provider") return "select-email-provider";
+        if (key === "email_smtp_encryption") return "select-smtp-encryption";
         if (key === "app_logo_path") return "file";
+        if (key === "email_smtp_port") return "number";
         if (
             key.includes("secret") ||
+            key.includes("api_key") ||
             (key.includes("password") &&
                 !key.includes("min_length") &&
                 !key.includes("require") &&
@@ -283,14 +336,43 @@
     }
 
     function isFieldVisible(key: string) {
+        // Storage provider visibility
         if (key === "storage_provider") return true;
-
-        const provider = localSettings["storage_provider"] || "local";
-
-        if (key.startsWith("storage_local_") && provider !== "local")
+        const storageProvider = localSettings["storage_provider"] || "local";
+        if (key.startsWith("storage_local_") && storageProvider !== "local")
             return false;
-        if (key.startsWith("storage_s3_") && provider !== "s3") return false;
-        if (key.startsWith("storage_r2_") && provider !== "r2") return false;
+        if (key.startsWith("storage_s3_") && storageProvider !== "s3")
+            return false;
+        if (key.startsWith("storage_r2_") && storageProvider !== "r2")
+            return false;
+
+        // Email provider visibility
+        if (key === "email_provider") return true;
+        if (key === "email_from_address" || key === "email_from_name")
+            return true;
+
+        const emailProvider = localSettings["email_provider"] || "smtp";
+
+        // SMTP fields - only show for SMTP provider
+        const smtpFields = [
+            "email_smtp_host",
+            "email_smtp_port",
+            "email_smtp_username",
+            "email_smtp_password",
+            "email_smtp_encryption",
+        ];
+        if (smtpFields.includes(key) && emailProvider !== "smtp") return false;
+
+        // API key - show for resend and sendgrid
+        if (
+            key === "email_api_key" &&
+            !["resend", "sendgrid"].includes(emailProvider)
+        )
+            return false;
+
+        // Webhook URL - only for webhook
+        if (key === "email_webhook_url" && emailProvider !== "webhook")
+            return false;
 
         return true;
     }
@@ -430,6 +512,50 @@
                                                     {/each}
                                                 </select>
                                             </div>
+                                        {:else if getInputType(key) === "select-email-provider"}
+                                            <div class="select-wrapper">
+                                                <select
+                                                    id={key}
+                                                    class="form-input"
+                                                    value={localSettings[key]}
+                                                    on:change={(e) =>
+                                                        handleChange(
+                                                            key,
+                                                            e.currentTarget
+                                                                .value,
+                                                        )}
+                                                    disabled={saving}
+                                                >
+                                                    {#each emailProviderOptions as option}
+                                                        <option
+                                                            value={option.value}
+                                                            >{option.label}</option
+                                                        >
+                                                    {/each}
+                                                </select>
+                                            </div>
+                                        {:else if getInputType(key) === "select-smtp-encryption"}
+                                            <div class="select-wrapper">
+                                                <select
+                                                    id={key}
+                                                    class="form-input"
+                                                    value={localSettings[key]}
+                                                    on:change={(e) =>
+                                                        handleChange(
+                                                            key,
+                                                            e.currentTarget
+                                                                .value,
+                                                        )}
+                                                    disabled={saving}
+                                                >
+                                                    {#each smtpEncryptionOptions as option}
+                                                        <option
+                                                            value={option.value}
+                                                            >{option.label}</option
+                                                        >
+                                                    {/each}
+                                                </select>
+                                            </div>
                                         {:else if getInputType(key) === "number"}
                                             <input
                                                 type="number"
@@ -497,6 +623,34 @@
                         {/each}
                     </div>
 
+                    {#if activeTab === "email"}
+                        <div class="test-email-section">
+                            <h3>Test Email Configuration</h3>
+                            <p class="section-description">
+                                Save your changes first, then send a test email
+                                to verify your SMTP settings.
+                            </p>
+                            <div class="test-email-form">
+                                <input
+                                    type="email"
+                                    class="form-input"
+                                    placeholder="Enter email address"
+                                    bind:value={testEmailAddress}
+                                    disabled={sendingTestEmail}
+                                />
+                                <button
+                                    class="btn btn-primary"
+                                    on:click={sendTestEmail}
+                                    disabled={sendingTestEmail ||
+                                        !testEmailAddress}
+                                >
+                                    {#if sendingTestEmail}Sending...{:else}Send
+                                        Test Email{/if}
+                                </button>
+                            </div>
+                        </div>
+                    {/if}
+
                     <div class="card-footer">
                         <button
                             class="btn btn-secondary"
@@ -521,14 +675,10 @@
 
 <style>
     .page-container {
-        padding: 1.5rem;
-        max-width: 1400px;
+        padding: 2rem;
+        max-width: 1200px;
         margin: 0 auto;
     }
-    .header {
-        margin-bottom: 2rem;
-        display: none;
-    } /* Hidden as per request */
 
     .layout-grid {
         display: grid;
@@ -537,11 +687,21 @@
         align-items: start;
     }
 
+    @media (max-width: 900px) {
+        .layout-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
     .sidebar {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
         padding: 1rem;
         position: sticky;
         top: 2rem;
     }
+
     .nav-item {
         display: flex;
         align-items: center;
@@ -554,15 +714,17 @@
         font-size: 0.95rem;
         font-weight: 500;
         cursor: pointer;
-        border-radius: var(--border-radius-sm);
+        border-radius: var(--radius-md);
         transition: all 0.2s;
         text-align: left;
         margin-bottom: 0.25rem;
     }
+
     .nav-item:hover {
-        background: rgba(255, 255, 255, 0.05);
+        background: var(--bg-hover);
         color: var(--text-primary);
     }
+
     .nav-item.active {
         background: var(--color-primary);
         color: white;
@@ -574,24 +736,29 @@
         justify-content: center;
         opacity: 0.8;
     }
+
     .nav-item.active .icon {
         opacity: 1;
     }
 
     .card {
-        background: var(--bg-card);
+        background: var(--bg-surface);
         border: 1px solid var(--border-color);
-        border-radius: var(--border-radius);
+        border-radius: var(--radius-lg);
     }
+
     .card-header {
         padding: 1.5rem;
         border-bottom: 1px solid var(--border-color);
     }
+
     .card-title {
         font-size: 1.25rem;
         font-weight: 600;
         margin-bottom: 0.25rem;
+        color: var(--text-primary);
     }
+
     .card-subtitle {
         color: var(--text-secondary);
         font-size: 0.9rem;
@@ -600,6 +767,7 @@
     .settings-list {
         padding: 0 1.5rem;
     }
+
     .setting-item {
         display: flex;
         justify-content: space-between;
@@ -607,9 +775,11 @@
         padding: 1.5rem 0;
         border-bottom: 1px solid var(--border-color);
     }
+
     .setting-item:last-child {
         border-bottom: none;
     }
+
     .setting-info label {
         font-weight: 500;
         font-size: 1rem;
@@ -617,10 +787,12 @@
         display: block;
         margin-bottom: 0.25rem;
     }
+
     .description {
         font-size: 0.875rem;
         color: var(--text-secondary);
     }
+
     .setting-control {
         min-width: 120px;
         display: flex;
@@ -628,24 +800,32 @@
     }
 
     .form-input {
-        background: var(--bg-primary);
+        background: var(--bg-surface);
         border: 1px solid var(--border-color);
         color: var(--text-primary);
-        padding: 0.5rem 0.75rem;
-        border-radius: var(--border-radius-sm);
+        padding: 0.6rem 0.85rem;
+        border-radius: var(--radius-md);
         width: 100%;
         max-width: 280px;
-        font-size: 0.95rem;
-        transition: border-color 0.2s;
+        font-size: 0.9rem;
+        transition: all 0.2s;
     }
+
     .form-input:focus {
         border-color: var(--color-primary);
         outline: none;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
     }
+
+    .form-input:hover:not(:focus) {
+        border-color: var(--text-secondary);
+    }
+
     .select-wrapper {
         position: relative;
         min-width: 220px;
     }
+
     select.form-input {
         cursor: pointer;
         appearance: none;
@@ -689,10 +869,12 @@
         transition: 0.4s;
         border-radius: 50%;
     }
+
     input:checked + .slider {
         background-color: var(--color-primary);
         border-color: var(--color-primary);
     }
+
     input:checked + .slider:before {
         transform: translateX(24px);
         background-color: white;
@@ -705,54 +887,69 @@
         display: flex;
         justify-content: flex-end;
         gap: 1rem;
-        border-bottom-left-radius: var(--border-radius);
-        border-bottom-right-radius: var(--border-radius);
+        border-bottom-left-radius: var(--radius-lg);
+        border-bottom-right-radius: var(--radius-lg);
     }
+
     .btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
         padding: 0.6rem 1.2rem;
-        border-radius: var(--border-radius-sm);
-        font-weight: 500;
+        border-radius: var(--radius-md);
+        font-weight: 600;
         font-size: 0.9rem;
         cursor: pointer;
         border: none;
         transition: all 0.2s;
     }
+
     .btn-primary {
         background: var(--color-primary);
         color: white;
     }
+
     .btn-primary:hover:not(:disabled) {
-        background: var(--color-primary-hover);
+        filter: brightness(1.1);
     }
+
     .btn-primary:disabled {
         opacity: 0.5;
         cursor: not-allowed;
     }
+
     .btn-secondary {
-        background: transparent;
+        background: var(--bg-surface);
         border: 1px solid var(--border-color);
         color: var(--text-secondary);
     }
+
     .btn-secondary:hover:not(:disabled) {
-        background: var(--bg-primary);
+        background: var(--bg-hover);
         color: var(--text-primary);
+        border-color: var(--text-secondary);
     }
 
     .alert {
-        padding: 1rem;
+        padding: 1rem 1.25rem;
         margin-bottom: 1.5rem;
-        border-radius: var(--border-radius-sm);
+        border-radius: var(--radius-md);
         font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
     }
+
     .alert-success {
         background: rgba(34, 197, 94, 0.1);
         border: 1px solid rgba(34, 197, 94, 0.2);
-        color: #4ade80;
+        color: #22c55e;
     }
+
     .alert-error {
         background: rgba(239, 68, 68, 0.1);
         border: 1px solid rgba(239, 68, 68, 0.2);
-        color: #f87171;
+        color: #ef4444;
     }
 
     .logo-preview {
@@ -804,5 +1001,32 @@
     }
     .fade-in {
         animation: fadeIn 0.4s ease-out;
+    }
+
+    /* Test Email Section */
+    .test-email-section {
+        padding: 1.5rem;
+        border-top: 1px solid var(--border-color);
+        background: var(--bg-tertiary);
+    }
+    .test-email-section h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+    }
+    .section-description {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+    }
+    .test-email-form {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+    .test-email-form .form-input {
+        flex: 1;
+        max-width: 300px;
     }
 </style>

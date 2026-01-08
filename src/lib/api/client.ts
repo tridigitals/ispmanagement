@@ -15,7 +15,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             if (command === 'get_current_user') return null as any;
             if (command === 'get_all_settings') return [] as any;
             if (command === 'list_users') return { data: [], total: 0, page: 1, per_page: 10 } as any;
-            
+
             // Mock Auth
             if (command === 'login' || command === 'register') {
                 return {
@@ -172,6 +172,9 @@ export const settings = {
 
     delete: (key: string): Promise<void> =>
         safeInvoke('delete_setting', { token: getTokenOrThrow(), key }),
+
+    sendTestEmail: (toEmail: string): Promise<string> =>
+        safeInvoke('send_test_email', { token: getTokenOrThrow(), toEmail }),
 };
 
 // Install API

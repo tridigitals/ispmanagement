@@ -6,6 +6,7 @@ use chrono::Utc;
 use sqlx::{Pool, Sqlite};
 
 /// Settings service for key-value configuration
+#[derive(Clone)]
 pub struct SettingsService {
     pool: Pool<Sqlite>,
 }

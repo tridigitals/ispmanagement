@@ -107,6 +107,8 @@ pub fn run() {
             // Install commands
             is_installed,
             install_app,
+            // Email commands
+            send_test_email,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

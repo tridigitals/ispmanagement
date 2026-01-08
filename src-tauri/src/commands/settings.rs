@@ -142,3 +142,25 @@ pub async fn get_logo(
         Ok(None)
     }
 }
+
+/// Send test email to verify SMTP settings
+#[tauri::command]
+pub async fn send_test_email(
+    token: String,
+    to_email: String,
+    auth_service: State<'_, AuthService>,
+    settings_service: State<'_, SettingsService>,
+) -> Result<String, String> {
+    auth_service.check_admin(&token).await.map_err(|e| e.to_string())?;
+    
+    // Create email service with cloned settings service
+    let email_service = crate::services::EmailService::new((*settings_service).clone());
+    
+    email_service
+        .send_test_email(&to_email)
+        .await
+        .map_err(|e| e.to_string())?;
+    
+    Ok(format!("Test email sent successfully to {}", to_email))
+}
+
