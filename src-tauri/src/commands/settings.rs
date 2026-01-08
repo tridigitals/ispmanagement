@@ -2,9 +2,9 @@
 
 use crate::models::{Setting, UpsertSettingDto};
 use crate::services::{AuthService, SettingsService};
+use crate::services::auth_service::AuthSettings;
 use base64::{engine::general_purpose, Engine as _};
 use std::fs;
-use std::path::PathBuf;
 use tauri::{AppHandle, Manager, State};
 
 /// Get all settings
@@ -16,6 +16,14 @@ pub async fn get_all_settings(
 ) -> Result<Vec<Setting>, String> {
     auth_service.check_admin(&token).await.map_err(|e| e.to_string())?;
     settings_service.get_all().await.map_err(|e| e.to_string())
+}
+
+/// Get public auth settings (no token required)
+#[tauri::command]
+pub async fn get_auth_settings(
+    auth_service: State<'_, AuthService>,
+) -> Result<AuthSettings, String> {
+    Ok(auth_service.get_auth_settings().await)
 }
 
 /// Get setting by key

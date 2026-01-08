@@ -1,13 +1,13 @@
 <script lang="ts">
     import { page } from '$app/stores';
     import { user, isAdmin, logout } from '$lib/stores/auth';
-    import { appSettings } from '$lib/stores/settings';
+    import { appName } from '$lib/stores/settings';
     import { appLogo } from '$lib/stores/logo';
-    import { theme } from '$lib/stores/theme';
+    import { isSidebarCollapsed } from '$lib/stores/ui';
     import { goto } from '$app/navigation';
+    import { convertFileSrc } from '@tauri-apps/api/core';
     import Icon from './Icon.svelte';
 
-    // Navigation Structure
     const appMenu = [
         { label: 'Dashboard', icon: 'dashboard', href: '/dashboard' }
     ];
@@ -43,30 +43,28 @@
     }
 
     function isActive(item: { href: string }) {
-        const currentPath = $page.url.pathname;
-        return currentPath === item.href;
+        return $page.url.pathname === item.href;
     }
 </script>
 
 <svelte:window on:click={handleWindowClick} />
 
-<aside class="sidebar" class:admin-mode={isUrlAdmin}>
+<aside class="sidebar" class:collapsed={$isSidebarCollapsed}>
+    <!-- Header -->
     <div class="sidebar-header">
-        <div class="logo-container">
-            <div class="logo-icon">
-                {#if $appLogo}
-                    <img src={$appLogo} alt="Logo" class="custom-logo" />
-                {:else}
-                    <Icon name="app" size={24} strokeWidth={2.5} />
-                {/if}
-            </div>
-            <div class="logo-text-wrapper">
-                <h2 class="logo-text">{$appSettings.app_name || 'SaaS App'}</h2>
-            </div>
+        <div class="logo-wrapper">
+            {#if $appLogo}
+                <img src={$appLogo} alt="Logo" class="app-logo" />
+            {:else}
+                <div class="logo-placeholder">
+                    <Icon name="app" size={20} />
+                </div>
+            {/if}
+            <span class="app-name">{$appName}</span>
         </div>
     </div>
 
-    <!-- Main Navigation -->
+    <!-- Navigation -->
     <nav class="sidebar-nav">
         {#each currentMenu as item}
             <button
@@ -74,58 +72,47 @@
                 class:active={isActive(item)}
                 on:click={() => navigate(item.href)}
             >
-                <span class="icon">
-                    <Icon name={item.icon} size={18} />
-                </span>
+                <Icon name={item.icon} size={18} />
                 <span class="label">{item.label}</span>
             </button>
         {/each}
     </nav>
 
-    {#if $isAdmin}
-        <div class="context-switcher">
-            {#if isUrlAdmin}
-                <button class="switcher-btn" on:click={() => goto('/dashboard')}>
-                    <Icon name="arrow-left" size={16} />
-                    <span>User Dashboard</span>
-                </button>
-            {:else}
-                <button class="switcher-btn admin-link" on:click={() => goto('/admin')}>
-                    <Icon name="shield" size={16} />
-                    <span>Admin Panel</span>
-                </button>
-            {/if}
-        </div>
-    {/if}
-
+    <!-- Footer / Profile -->
     <div class="sidebar-footer">
-        <div class="user-menu-container">
+        {#if $isAdmin}
+            <button 
+                class="context-btn" 
+                on:click={() => goto(isUrlAdmin ? '/dashboard' : '/admin')}
+                title={isUrlAdmin ? "Switch to User Dashboard" : "Switch to Admin Panel"}
+            >
+                <Icon name={isUrlAdmin ? 'arrow-left' : 'shield'} size={16} />
+                <span class="label">{isUrlAdmin ? 'User View' : 'Admin Panel'}</span>
+            </button>
+        {/if}
+
+        <div class="profile-section">
             {#if isDropdownOpen}
-                <!-- svelte-ignore a11y-click-events-have-key-events -->
-                <div class="user-dropdown fade-in" on:click|stopPropagation>
-                    <button class="dropdown-item" on:click={() => navigate('/profile')}>
+                <div class="dropdown-menu" on:click|stopPropagation>
+                    <button class="menu-item" on:click={() => navigate('/profile')}>
                         <Icon name="profile" size={16} />
-                        My Profile
+                        Profile
                     </button>
                     <div class="divider"></div>
-                    <button class="dropdown-item danger" on:click={handleLogout}>
+                    <button class="menu-item danger" on:click={handleLogout}>
                         <Icon name="logout" size={16} />
                         Logout
                     </button>
                 </div>
             {/if}
 
-            <button class="user-profile-btn" class:active={isDropdownOpen} on:click={toggleDropdown}>
-                <div class="avatar">
-                    {$user?.name?.charAt(0).toUpperCase() || "?"}
-                </div>
-                <div class="user-info">
+            <button class="profile-btn" on:click={toggleDropdown}>
+                <div class="avatar">{$user?.name?.charAt(0).toUpperCase() || "?"}</div>
+                <div class="user-meta">
                     <span class="name">{$user?.name}</span>
                     <span class="role">{$user?.role}</span>
                 </div>
-                <div class="chevron">
-                    <Icon name={isDropdownOpen ? 'chevron-down' : 'chevron-up'} size={14} />
-                </div>
+                <Icon name="chevron-up" size={14} class="chevron" />
             </button>
         </div>
     </div>
@@ -133,247 +120,238 @@
 
 <style>
     .sidebar {
-        width: 260px;
-        height: 100vh;
-        background: var(--bg-secondary);
-        border-right: 1px solid var(--border-color);
+        width: 240px; /* Sedikit lebih ramping */
         display: flex;
         flex-direction: column;
-        flex-shrink: 0;
-        z-index: 50;
-        position: relative;
+        padding: 12px;
+        color: var(--text-secondary);
+        transition: width 0.3s ease;
     }
 
+    .sidebar.collapsed {
+        width: 72px;
+    }
+
+    /* Header */
     .sidebar-header {
-        padding: 1.5rem;
-        border-bottom: 1px solid rgba(255,255,255,0.03);
+        padding: 8px 12px;
+        margin-bottom: 24px;
+        white-space: nowrap;
+        overflow: hidden;
     }
 
-    .logo-container {
+    .logo-wrapper {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
+        gap: 10px;
+        font-weight: 600;
+        color: var(--text-primary);
+        transition: justify-content 0.3s;
     }
 
-    .logo-icon {
-        color: var(--color-primary);
-        display: flex;
-        align-items: center;
+    .sidebar.collapsed .logo-wrapper {
         justify-content: center;
     }
 
-    .custom-logo {
-        width: 32px;
-        height: 32px;
-        object-fit: contain;
+    .app-logo { width: 24px; height: 24px; object-fit: contain; }
+    
+    .logo-placeholder {
+        width: 24px; height: 24px;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--color-primary);
+        color: white;
+        border-radius: 6px;
+        flex-shrink: 0;
     }
 
-    .logo-text-wrapper {
-        display: flex;
-        flex-direction: column;
+    .app-name {
+        font-size: 0.95rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transition: opacity 0.2s, width 0.2s;
     }
 
-    .logo-text {
-        font-size: 1rem;
-        font-weight: 800;
-        letter-spacing: 1px;
-        color: var(--text-primary);
-        text-transform: uppercase;
+    .sidebar.collapsed .app-name {
+        display: none;
     }
 
+    /* Nav */
     .sidebar-nav {
-        padding: 1.5rem 1rem;
         flex: 1;
         display: flex;
         flex-direction: column;
-        gap: 0.25rem;
+        gap: 4px;
     }
 
     .nav-item {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        padding: 0.65rem 1rem;
-        background: transparent;
+        gap: 10px;
+        padding: 8px 12px;
+        border-radius: var(--radius-sm);
         border: none;
+        background: transparent;
         color: var(--text-secondary);
         font-size: 0.9rem;
         font-weight: 500;
         cursor: pointer;
-        border-radius: var(--border-radius-sm);
-        transition: all 0.2s ease;
+        transition: all 0.15s ease;
         text-align: left;
+        white-space: nowrap;
+    }
+
+    .sidebar.collapsed .nav-item {
+        justify-content: center;
+        padding: 8px;
+    }
+
+    .sidebar.collapsed .nav-item .label {
+        display: none;
     }
 
     .nav-item:hover {
-        background: rgba(255, 255, 255, 0.03);
+        background: var(--bg-hover);
         color: var(--text-primary);
     }
 
     .nav-item.active {
-        background: var(--bg-tertiary);
-        color: var(--color-primary-light);
-        border: 1px solid var(--border-color);
-    }
-
-    .icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0.7;
-    }
-
-    .nav-item.active .icon {
-        opacity: 1;
-        color: var(--color-primary);
-    }
-
-    .context-switcher {
-        padding: 1rem;
-        border-top: 1px solid rgba(255,255,255,0.03);
-    }
-
-    .switcher-btn {
-        width: 100%;
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        padding: 0.6rem 1rem;
-        background: rgba(255,255,255,0.03);
-        border: 1px solid var(--border-color);
-        border-radius: var(--border-radius-sm);
-        color: var(--text-secondary);
-        font-size: 0.8rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
-    .switcher-btn:hover {
-        background: rgba(255,255,255,0.05);
+        background: var(--bg-active);
         color: var(--text-primary);
     }
 
-    .switcher-btn.admin-link {
-        color: #fbbf24;
-        border-color: rgba(245, 158, 11, 0.2);
-    }
-
+    /* Footer */
     .sidebar-footer {
-        padding: 1rem;
-        position: relative;
-        z-index: 60;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: auto;
     }
 
-    .user-profile-btn {
-        width: 100%;
+    .context-btn {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        padding: 0.6rem;
+        gap: 10px;
+        padding: 8px 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--color-primary);
+        background: var(--color-primary-subtle);
+        border: 1px solid transparent;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .sidebar.collapsed .context-btn {
+        justify-content: center;
+        padding: 8px;
+    }
+
+    .sidebar.collapsed .context-btn .label {
+        display: none;
+    }
+    
+    .context-btn:hover {
+        border-color: var(--color-primary);
+    }
+
+    .profile-section {
+        position: relative;
+    }
+
+    .profile-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 8px;
         background: transparent;
         border: 1px solid transparent;
-        border-radius: var(--border-radius-sm);
+        border-radius: var(--radius-sm);
         cursor: pointer;
-        text-align: left;
-        color: var(--text-primary);
+        transition: all 0.2s;
     }
 
-    .user-profile-btn:hover, .user-profile-btn.active {
-        background: rgba(255,255,255,0.03);
+    .sidebar.collapsed .profile-btn {
+        justify-content: center;
+    }
+
+    .sidebar.collapsed .user-meta,
+    .sidebar.collapsed .chevron {
+        display: none;
+    }
+
+    .profile-btn:hover {
+        background: var(--bg-hover);
     }
 
     .avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        background: var(--bg-tertiary);
+        width: 28px; height: 28px;
+        border-radius: 6px;
+        background: var(--bg-active);
         color: var(--text-primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
         font-size: 0.8rem;
-        border: 1px solid var(--border-color);
+        font-weight: 700;
+        flex-shrink: 0;
     }
 
-    .user-info {
+    .user-meta {
         flex: 1;
         display: flex;
         flex-direction: column;
+        align-items: flex-start;
         overflow: hidden;
     }
 
-    .user-info .name {
-        font-size: 0.85rem;
-        font-weight: 600;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
+    .name { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); }
+    .role { font-size: 0.7rem; color: var(--text-secondary); text-transform: capitalize; }
 
-    .user-info .role {
-        font-size: 0.7rem;
-        color: var(--text-muted);
-        text-transform: capitalize;
-    }
-
-    .chevron {
-        color: var(--text-muted);
-    }
-
-    .user-dropdown {
+    /* Dropdown */
+    .dropdown-menu {
         position: absolute;
         bottom: 100%;
-        margin-bottom: 12px;
-        left: 0;
-        right: 0;
-        background: var(--bg-secondary);
+        left: 0; right: 0;
+        margin-bottom: 8px;
+        background: var(--bg-surface);
         border: 1px solid var(--border-color);
-        border-radius: var(--border-radius-sm);
-        padding: 0.4rem;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        border-radius: var(--radius-md);
+        padding: 4px;
+        box-shadow: var(--shadow-md);
         display: flex;
         flex-direction: column;
-        gap: 0.1rem;
-        z-index: 999;
+        z-index: 100;
+        animation: slideUp 0.2s ease-out;
+        width: max-content;
+        min-width: 100%;
     }
 
-    .dropdown-item {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        padding: 0.6rem 0.8rem;
-        width: 100%;
-        background: transparent;
-        border: none;
+    .sidebar.collapsed .dropdown-menu {
+        left: 100%;
+        bottom: 0;
+        margin-left: 8px;
+        margin-bottom: 0;
+    }
+
+    .menu-item {
+        display: flex; align-items: center; gap: 8px;
+        padding: 8px 12px;
+        border: none; background: transparent;
         color: var(--text-secondary);
-        font-size: 0.85rem;
-        font-weight: 500;
+        font-size: 0.9rem;
+        border-radius: var(--radius-sm);
         cursor: pointer;
-        border-radius: 4px;
         text-align: left;
     }
 
-    .dropdown-item:hover {
-        background: var(--bg-tertiary);
-        color: var(--text-primary);
-    }
+    .menu-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .menu-item.danger:hover { color: var(--color-danger); background: rgba(239, 68, 68, 0.1); }
+    .divider { height: 1px; background: var(--border-color); margin: 4px 0; }
 
-    .dropdown-item.danger:hover {
-        background: rgba(239, 68, 68, 0.05);
-        color: var(--color-danger);
-    }
-
-    .divider {
-        height: 1px;
-        background: var(--border-color);
-        margin: 0.2rem 0.4rem;
-    }
-
-    @keyframes fadeIn {
+    @keyframes slideUp {
         from { opacity: 0; transform: translateY(5px); }
         to { opacity: 1; transform: translateY(0); }
     }
-    .fade-in { animation: fadeIn 0.2s ease-out; }
 </style>

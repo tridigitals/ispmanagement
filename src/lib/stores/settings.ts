@@ -1,5 +1,5 @@
 import { writable, derived } from 'svelte/store';
-import { api } from '$lib/api/client';
+import { api, type AuthSettings } from '$lib/api/client';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
 // Tipe data setting
@@ -12,6 +12,7 @@ export interface AppSettings {
     maintenance_mode: boolean;
     default_locale: string;
     currency_symbol: string;
+    auth?: AuthSettings; // Dynamic auth settings
     [key: string]: any; // Allow indexing
 }
 
@@ -24,7 +25,8 @@ const defaults: AppSettings = {
     support_email: 'support@example.com',
     maintenance_mode: false,
     default_locale: 'en-US',
-    currency_symbol: '$'
+    currency_symbol: '$',
+    auth: undefined
 };
 
 function createSettingsStore() {
@@ -35,18 +37,31 @@ function createSettingsStore() {
         // Load initial settings from backend
         init: async () => {
             try {
-                const data = await api.settings.getAll();
-                const settingsMap: any = { ...defaults };
+                // Fetch public auth settings
+                const authSettings = await api.settings.getAuthSettings();
                 
-                data.forEach(item => {
-                    // Convert boolean strings to actual booleans
-                    if (item.value === 'true') settingsMap[item.key] = true;
-                    else if (item.value === 'false') settingsMap[item.key] = false;
-                    else settingsMap[item.key] = item.value;
-                });
+                // Fetch generic app settings (might fail if not logged in, which is fine)
+                let generalSettings: any = {};
+                try {
+                   const data = await api.settings.getAll();
+                   data.forEach(item => {
+                       if (item.value === 'true') generalSettings[item.key] = true;
+                       else if (item.value === 'false') generalSettings[item.key] = false;
+                       else generalSettings[item.key] = item.value;
+                   });
+                } catch (e) {
+                    // Ignore error if not logged in (api.settings.getAll requires token)
+                    console.debug("Could not load admin settings (likely not logged in)");
+                }
+
+                const finalSettings = { 
+                    ...defaults, 
+                    ...generalSettings,
+                    auth: authSettings 
+                };
                 
-                set(settingsMap);
-                updateWindowTitle(settingsMap.app_name);
+                set(finalSettings);
+                updateWindowTitle(finalSettings.app_name);
             } catch (err) {
                 console.error("Failed to load settings:", err);
             }

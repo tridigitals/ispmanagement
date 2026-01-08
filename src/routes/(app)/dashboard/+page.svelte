@@ -2,157 +2,264 @@
     import { user, isAuthenticated, isAdmin } from "$lib/stores/auth";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
+    import Icon from "$lib/components/Icon.svelte";
 
     onMount(() => {
         if (!$isAuthenticated) {
             goto("/login");
         }
     });
+
+    const greeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return "Good Morning";
+        if (hour < 17) return "Good Afternoon";
+        return "Good Evening";
+    };
 </script>
 
 <div class="dashboard-content fade-in">
-    <div class="page-header">
-        <div>
-            <h1>Hello, {$user?.name}!</h1>
-            <p>Welcome to your personal dashboard.</p>
+    <header class="welcome-header">
+        <div class="welcome-text">
+            <h1>{greeting()}, {$user?.name}!</h1>
+            <p>Here's what's happening with your account today.</p>
         </div>
-    </div>
+        <div class="header-actions">
+            <button class="btn btn-primary">
+                <Icon name="activity" size={16} />
+                Generate Report
+            </button>
+        </div>
+    </header>
 
     {#if $isAdmin}
         <div class="admin-banner" on:click={() => goto('/admin')}>
             <div class="banner-content">
-                <span class="icon">🛡️</span>
+                <div class="banner-icon">
+                    <Icon name="shield" size={24} />
+                </div>
                 <div>
-                    <h3>Admin Access Available</h3>
-                    <p>Click here to switch to the System Administration view.</p>
+                    <h3>Administrator Mode</h3>
+                    <p>You have system-wide permissions. Access management tools here.</p>
                 </div>
             </div>
-            <div class="arrow">→</div>
+            <Icon name="arrow-right" size={20} />
         </div>
     {/if}
 
     <div class="stats-grid">
         <div class="stat-card">
-            <div class="stat-icon">👤</div>
-            <div class="stat-content">
+            <div class="stat-header">
+                <div class="icon-wrapper primary">
+                    <Icon name="profile" size={20} />
+                </div>
+                <span class="trend positive">+2.4%</span>
+            </div>
+            <div class="stat-body">
                 <span class="stat-value">{$user?.role}</span>
-                <span class="stat-label">Current Role</span>
+                <span class="stat-label">Account Role</span>
             </div>
         </div>
+
         <div class="stat-card">
-            <div class="stat-icon">📅</div>
-            <div class="stat-content">
+            <div class="stat-header">
+                <div class="icon-wrapper success">
+                    <Icon name="calendar" size={20} />
+                </div>
+            </div>
+            <div class="stat-body">
                 <span class="stat-value">{new Date($user?.created_at || Date.now()).toLocaleDateString()}</span>
                 <span class="stat-label">Member Since</span>
             </div>
         </div>
+
         <div class="stat-card">
-            <div class="stat-icon">✅</div>
-            <div class="stat-content">
+            <div class="stat-header">
+                <div class="icon-wrapper info">
+                    <Icon name="check" size={20} />
+                </div>
+            </div>
+            <div class="stat-body">
                 <span class="stat-value">Active</span>
-                <span class="stat-label">Account Status</span>
+                <span class="stat-label">System Status</span>
             </div>
         </div>
     </div>
 
-    <!-- Placeholder for user activity -->
-    <div class="section-header">
-        <h2>My Recent Activity</h2>
-    </div>
-    
-    <div class="card empty-state">
-        <div class="empty-icon">📝</div>
-        <h3>No recent activity</h3>
-        <p>Your actions and logs will appear here.</p>
+    <div class="main-grid">
+        <section class="activity-section">
+            <div class="section-header">
+                <h2>Recent Activity</h2>
+                <button class="text-btn">View All</button>
+            </div>
+            
+            <div class="card activity-card">
+                <div class="empty-state">
+                    <div class="empty-icon-circle">
+                        <Icon name="activity" size={32} />
+                    </div>
+                    <h3>No activity yet</h3>
+                    <p>When you start using the app, your activity will appear here.</p>
+                    <button class="btn btn-secondary mt-4">Learn More</button>
+                </div>
+            </div>
+        </section>
+
+        <aside class="quick-actions">
+            <div class="section-header">
+                <h2>Quick Actions</h2>
+            </div>
+            <div class="actions-list">
+                <button class="action-item" on:click={() => goto('/profile')}>
+                    <Icon name="profile" size={18} />
+                    Update Profile
+                </button>
+                <button class="action-item">
+                    <Icon name="mail" size={18} />
+                    Check Messages
+                </button>
+                <button class="action-item">
+                    <Icon name="lock" size={18} />
+                    Security Settings
+                </button>
+                <button class="action-item">
+                    <Icon name="help-circle" size={18} />
+                    Contact Support
+                </button>
+            </div>
+        </aside>
     </div>
 </div>
 
 <style>
     .dashboard-content {
         padding: 2rem;
-        max-width: 1400px;
+        max-width: 1200px;
         margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
     }
 
-    .page-header {
-        margin-bottom: 2rem;
-    }
-
-    .page-header h1 {
-        font-size: 1.75rem;
+    /* Header */
+    .welcome-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
         margin-bottom: 0.5rem;
     }
 
-    .page-header p {
-        color: var(--text-secondary);
+    .welcome-text h1 {
+        font-size: 1.85rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0 0 0.5rem 0;
     }
 
+    .welcome-text p {
+        color: var(--text-secondary);
+        font-size: 1rem;
+        margin: 0;
+    }
+
+    /* Admin Banner */
     .admin-banner {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
-        border: 1px solid rgba(99, 102, 241, 0.2);
-        border-radius: var(--border-radius);
-        padding: 1.5rem;
-        margin-bottom: 2rem;
+        background: var(--color-primary);
+        color: white;
+        border-radius: var(--radius-lg);
+        padding: 1.25rem 1.5rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: transform 0.2s, box-shadow 0.2s;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
     }
 
     .admin-banner:hover {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15));
         transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
     }
 
     .banner-content {
         display: flex;
         align-items: center;
-        gap: 1rem;
+        gap: 1.25rem;
     }
 
-    .banner-content .icon {
-        font-size: 1.5rem;
+    .banner-icon {
+        background: rgba(255, 255, 255, 0.2);
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .banner-content h3 {
+        margin: 0 0 0.15rem 0;
         font-size: 1.1rem;
-        margin-bottom: 0.25rem;
-        color: var(--color-primary-light);
+        font-weight: 600;
     }
 
     .banner-content p {
+        margin: 0;
         font-size: 0.9rem;
-        color: var(--text-secondary);
+        opacity: 0.9;
     }
 
+    /* Stats Grid */
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: 1.5rem;
     }
 
     .stat-card {
-        background: var(--bg-card);
+        background: var(--bg-surface);
         border: 1px solid var(--border-color);
-        border-radius: var(--border-radius);
+        border-radius: var(--radius-lg);
         padding: 1.5rem;
         display: flex;
-        align-items: center;
+        flex-direction: column;
         gap: 1.25rem;
-        transition: transform 0.2s ease;
+        transition: border-color 0.2s;
     }
 
     .stat-card:hover {
-        transform: translateY(-2px);
+        border-color: var(--color-primary);
     }
 
-    .stat-icon {
-        font-size: 2rem;
-        opacity: 0.8;
+    .stat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
 
-    .stat-content {
+    .icon-wrapper {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .icon-wrapper.primary { background: rgba(99, 102, 241, 0.1); color: var(--color-primary); }
+    .icon-wrapper.success { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
+    .icon-wrapper.info { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+
+    .trend {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.25rem 0.5rem;
+        border-radius: 20px;
+    }
+
+    .trend.positive { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
+
+    .stat-body {
         display: flex;
         flex-direction: column;
     }
@@ -160,47 +267,153 @@
     .stat-value {
         font-size: 1.5rem;
         font-weight: 700;
+        color: var(--text-primary);
         text-transform: capitalize;
     }
 
     .stat-label {
         font-size: 0.875rem;
         color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    /* Main Grid */
+    .main-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 2rem;
+    }
+
+    @media (max-width: 900px) {
+        .main-grid { grid-template-columns: 1fr; }
     }
 
     .section-header {
-        margin-top: 3rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         margin-bottom: 1rem;
     }
 
-    .card {
-        background: var(--bg-card);
+    .section-header h2 {
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .text-btn {
+        background: transparent;
+        border: none;
+        color: var(--color-primary);
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    /* Activity Card */
+    .activity-card {
+        background: var(--bg-surface);
         border: 1px solid var(--border-color);
-        border-radius: var(--border-radius);
+        border-radius: var(--radius-lg);
+        min-height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .empty-state {
-        padding: 4rem;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
         text-align: center;
+        padding: 2rem;
+        max-width: 320px;
     }
 
-    .empty-icon {
-        font-size: 3rem;
-        margin-bottom: 1rem;
+    .empty-icon-circle {
+        width: 64px;
+        height: 64px;
+        background: var(--bg-tertiary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        color: var(--text-secondary);
         opacity: 0.5;
     }
 
     .empty-state h3 {
-        font-size: 1.25rem;
+        font-size: 1.1rem;
+        font-weight: 600;
         margin-bottom: 0.5rem;
     }
 
     .empty-state p {
         color: var(--text-secondary);
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    /* Quick Actions */
+    .actions-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .action-item {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: left;
+    }
+
+    .action-item:hover {
+        border-color: var(--color-primary);
+        background: var(--bg-hover);
+        transform: translateX(4px);
+    }
+
+    /* Buttons */
+    .btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 1.2rem;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+    }
+
+    .btn-primary {
+        background: var(--color-primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        filter: brightness(1.1);
+    }
+
+    .btn-secondary {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
+    .mt-4 { margin-top: 1rem; }
+
+    .fade-in {
+        animation: fadeIn 0.4s ease-out;
     }
 
     @keyframes fadeIn {

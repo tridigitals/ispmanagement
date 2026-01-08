@@ -1,6 +1,7 @@
 <script lang="ts">
     import { page } from '$app/stores';
     import { user } from '$lib/stores/auth';
+    import { isSidebarCollapsed } from '$lib/stores/ui';
     import Icon from './Icon.svelte';
 
     // Helper to get page title based on path
@@ -18,6 +19,9 @@
 
 <header class="topbar">
     <div class="left-section">
+        <button class="icon-btn toggle-btn" on:click={() => $isSidebarCollapsed = !$isSidebarCollapsed}>
+            <Icon name="sidebar-toggle" size={20} />
+        </button>
         <h2 class="page-title">{title}</h2>
     </div>
 
@@ -51,6 +55,12 @@
         padding: 0 2rem;
         flex-shrink: 0;
         z-index: 40;
+    }
+
+    .left-section {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
     }
 
     .page-title {

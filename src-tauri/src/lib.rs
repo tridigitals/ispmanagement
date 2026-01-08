@@ -97,6 +97,7 @@ pub fn run() {
             delete_user,
             // Settings commands
             get_all_settings,
+            get_auth_settings,
             get_setting,
             get_setting_value,
             upsert_setting,

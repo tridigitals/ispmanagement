@@ -14,7 +14,7 @@ function getStoredToken(): string | null {
     if (typeof window === 'undefined') return null;
     const local = localStorage.getItem(TOKEN_KEY);
     const session = sessionStorage.getItem(TOKEN_KEY);
-    console.log('[Auth] Reading token:', { local: !!local, session: !!session });
+    // console.log('[Auth] Reading token:', { local: !!local, session: !!session });
     return local || session;
 }
 
@@ -79,7 +79,7 @@ function setAuth(newToken: string, newUser: User, remember: boolean) {
 
     const storage = remember ? localStorage : sessionStorage;
     console.log('[Auth] Using storage:', remember ? 'localStorage' : 'sessionStorage');
-    
+
     storage.setItem(TOKEN_KEY, newToken);
     storage.setItem(USER_KEY, JSON.stringify(newUser));
 }
@@ -87,7 +87,7 @@ function setAuth(newToken: string, newUser: User, remember: boolean) {
 export function logout(): void {
     token.set(null);
     user.set(null);
-    
+
     if (typeof window === 'undefined') return;
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);

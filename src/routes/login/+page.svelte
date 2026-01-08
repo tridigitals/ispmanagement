@@ -12,6 +12,8 @@
     let error = "";
     let loading = false;
     let activeField = "";
+    
+    let showPassword = false;
 
     onMount(() => {
         if ($isAuthenticated) {
@@ -89,14 +91,23 @@
                     <div class="field">
                         <span class="icon"><Icon name="lock" size={18} /></span>
                         <input
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             id="password"
                             bind:value={password}
                             on:focus={() => activeField = 'password'}
                             on:blur={() => activeField = ''}
                             placeholder="••••••••"
                             required
+                            class="password-input"
                         />
+                        <button 
+                            type="button" 
+                            class="toggle-password" 
+                            on:click={() => showPassword = !showPassword}
+                            tabindex="-1"
+                        >
+                            <Icon name={showPassword ? 'eye-off' : 'eye'} size={18} />
+                        </button>
                     </div>
                 </div>
 
@@ -226,6 +237,28 @@
         color: var(--text-primary);
         font-size: 1rem;
         transition: all 0.2s;
+    }
+
+    .field input.password-input {
+        padding-right: 40px;
+    }
+
+    .toggle-password {
+        position: absolute;
+        right: 10px;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        transition: color 0.2s;
+        z-index: 2;
+    }
+
+    .toggle-password:hover {
+        color: var(--color-primary);
     }
 
     .input-group.focus .field input {

@@ -17,32 +17,50 @@
     });
 </script>
 
-<div class="app-layout">
+<div class="app-shell">
+    <!-- Sidebar sits on the base layer -->
     <Sidebar />
-    <main class="main-area">
-        <Topbar />
-        <div class="content-wrapper">
-            <slot />
+    
+    <!-- Main Area is a floating card -->
+    <div class="main-viewport">
+        <div class="content-surface">
+            <Topbar />
+            <div class="scroll-area">
+                <slot />
+            </div>
         </div>
-    </main>
+    </div>
 </div>
 
 <style>
-    .app-layout {
+    .app-shell {
         display: flex;
         height: 100vh;
+        width: 100vw;
+        background: var(--bg-app); /* Background dasar aplikasi */
         overflow: hidden;
-        background: var(--bg-primary);
     }
 
-    .main-area {
+    .main-viewport {
         flex: 1;
         display: flex;
         flex-direction: column;
-        overflow: hidden;
+        padding: 8px 8px 8px 0; /* Padding untuk efek floating, kecuali kiri (nempel sidebar) */
     }
 
-    .content-wrapper {
+    .content-surface {
+        flex: 1;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg); /* Sudut membulat modern */
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        position: relative;
+    }
+
+    .scroll-area {
         flex: 1;
         overflow-y: auto;
         position: relative;

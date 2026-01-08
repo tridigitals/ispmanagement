@@ -15,6 +15,26 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             if (command === 'get_current_user') return null as any;
             if (command === 'get_all_settings') return [] as any;
             if (command === 'list_users') return { data: [], total: 0, page: 1, per_page: 10 } as any;
+            
+            // Mock Auth
+            if (command === 'login' || command === 'register') {
+                return {
+                    user: {
+                        id: 'mock-user-id',
+                        email: args.email || 'user@example.com',
+                        name: args.name || 'Mock User',
+                        role: 'admin',
+                        avatar_url: null,
+                        is_active: true,
+                        created_at: new Date().toISOString()
+                    },
+                    token: 'mock-jwt-token',
+                    expires_at: new Date(Date.now() + 86400000).toISOString()
+                } as any;
+            }
+            if (command === 'validate_token') return true as any;
+            if (command === 'is_installed') return true as any;
+
             throw new Error(`Tauri API not available (Browser Environment). Mocking ${command}.`);
         }
         return await invoke(command, args);
@@ -63,6 +83,17 @@ export interface Setting {
     description: string | null;
     created_at: string;
     updated_at: string;
+}
+
+export interface AuthSettings {
+    jwt_expiry_hours: number;
+    password_min_length: number;
+    password_require_uppercase: boolean;
+    password_require_number: boolean;
+    password_require_special: boolean;
+    max_login_attempts: number;
+    lockout_duration_minutes: number;
+    allow_registration: boolean;
 }
 
 // Auth API
@@ -120,6 +151,9 @@ export const users = {
 export const settings = {
     getAll: (): Promise<Setting[]> =>
         safeInvoke('get_all_settings', { token: getTokenOrThrow() }),
+
+    getAuthSettings: (): Promise<AuthSettings> =>
+        safeInvoke('get_auth_settings'),
 
     get: (key: string): Promise<Setting | null> =>
         safeInvoke('get_setting', { token: getTokenOrThrow(), key }),

@@ -30,11 +30,7 @@
 </script>
 
 <div class="page-content fade-in">
-    <div class="page-header">
-        <div>
-            <h1>User Management</h1>
-            <p>View and manage registered users.</p>
-        </div>
+    <div class="actions-header">
         <button class="btn btn-primary">Add New User</button>
     </div>
 
@@ -85,31 +81,21 @@
 
 <style>
     .page-content {
-        padding: 2rem;
+        padding: 1.5rem;
         max-width: 1400px;
         margin: 0 auto;
     }
 
-    .page-header {
-        margin-bottom: 2rem;
+    .actions-header {
+        margin-bottom: 1.5rem;
         display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-    }
-
-    .page-header h1 {
-        font-size: 1.75rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .page-header p {
-        color: var(--text-secondary);
+        justify-content: flex-end;
     }
 
     .card {
-        background: var(--bg-card);
+        background: var(--bg-surface);
         border: 1px solid var(--border-color);
-        border-radius: var(--border-radius);
+        border-radius: var(--radius-md);
         overflow-x: auto;
     }
 
@@ -147,7 +133,7 @@
     .avatar-sm {
         width: 32px;
         height: 32px;
-        background: var(--bg-tertiary);
+        background: var(--bg-hover);
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -165,12 +151,12 @@
         text-transform: capitalize;
     }
 
-    .badge-admin { background: rgba(99, 102, 241, 0.2); color: var(--color-primary-light); }
-    .badge-user { background: rgba(16, 185, 129, 0.2); color: var(--color-secondary); }
+    .badge-admin { background: rgba(99, 102, 241, 0.2); color: var(--color-primary); }
+    .badge-user { background: rgba(16, 185, 129, 0.2); color: var(--color-success); }
     .badge-active { background: rgba(34, 197, 94, 0.2); color: var(--color-success); }
     .badge-inactive { background: rgba(239, 68, 68, 0.2); color: var(--color-danger); }
 
-    .text-muted { color: var(--text-muted); font-size: 0.9rem; }
+    .text-muted { color: var(--text-secondary); font-size: 0.9rem; }
 
     .btn-icon {
         background: transparent;
@@ -182,6 +168,19 @@
     }
 
     .btn-icon:hover { opacity: 1; }
+
+    .btn-primary {
+        background: var(--color-primary);
+        color: white;
+        border: none;
+        padding: 0.6rem 1.2rem;
+        border-radius: var(--radius-sm);
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.2s;
+    }
+    
+    .btn-primary:hover { opacity: 0.9; }
 
     .loading {
         display: flex;

@@ -39,13 +39,6 @@
 </script>
 
 <div class="admin-content fade-in">
-    <div class="page-header">
-        <div>
-            <h1>Admin Overview</h1>
-            <p>System status and quick access.</p>
-        </div>
-    </div>
-
     {#if loading}
         <div class="loading">Loading system data...</div>
     {:else}
@@ -95,27 +88,20 @@
 
 <style>
     .admin-content {
-        padding: 2rem;
+        padding: 1.5rem;
         max-width: 1400px;
         margin: 0 auto;
-    }
-
-    .page-header {
-        margin-bottom: 2rem;
-    }
-
-    .page-header h1 {
-        font-size: 1.75rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .page-header p {
-        color: var(--text-secondary);
     }
 
     .section-header {
         margin-top: 3rem;
         margin-bottom: 1.5rem;
+    }
+
+    .section-header h2 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-primary);
     }
 
     .stats-grid {
@@ -125,9 +111,9 @@
     }
 
     .stat-card {
-        background: var(--bg-card);
+        background: var(--bg-surface);
         border: 1px solid var(--border-color);
-        border-radius: var(--border-radius);
+        border-radius: var(--radius-md);
         padding: 1.5rem;
         display: flex;
         align-items: center;
@@ -163,9 +149,9 @@
     }
 
     .action-card {
-        background: var(--bg-card);
+        background: var(--bg-surface);
         border: 1px solid var(--border-color);
-        border-radius: var(--border-radius);
+        border-radius: var(--radius-md);
         padding: 2rem;
         text-align: left;
         cursor: pointer;
@@ -178,7 +164,7 @@
     .action-card:hover {
         border-color: var(--color-primary);
         transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
+        box-shadow: var(--shadow-sm);
     }
 
     .action-icon {
@@ -187,13 +173,14 @@
     }
 
     .action-card h3 {
-        font-size: 1.25rem;
+        font-size: 1.1rem;
+        font-weight: 600;
         color: var(--text-primary);
     }
 
     .action-card p {
         color: var(--text-secondary);
-        font-size: 0.95rem;
+        font-size: 0.9rem;
     }
 
     .loading {

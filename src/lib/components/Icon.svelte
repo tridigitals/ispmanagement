@@ -15,8 +15,18 @@
         Database,
         Rocket,
         Mail,
-        Lock,
-        Globe
+        Lock as LockIcon,
+        Globe,
+        Menu,
+        PanelLeft,
+        Activity,
+        Calendar,
+        CheckCircle,
+        AlertCircle,
+        ArrowRight,
+        Camera,
+        Eye,
+        EyeOff
     } from 'lucide-svelte';
 
     export let name: string;
@@ -41,8 +51,18 @@
         'database': Database,
         'app': Rocket,
         'mail': Mail,
-        'lock': Lock,
-        'global': Globe
+        'lock': LockIcon,
+        'global': Globe,
+        'menu': Menu,
+        'sidebar-toggle': PanelLeft,
+        'activity': Activity,
+        'calendar': Calendar,
+        'check': CheckCircle,
+        'alert': AlertCircle,
+        'arrow-right': ArrowRight,
+        'camera': Camera,
+        'eye': Eye,
+        'eye-off': EyeOff
     };
 
     $: IconComponent = icons[name] || HelpCircle; // Fallback to HelpCircle if not found

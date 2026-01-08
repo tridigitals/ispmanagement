@@ -41,7 +41,7 @@ pub struct PasswordValidationResult {
 }
 
 /// Auth settings from database
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct AuthSettings {
     pub jwt_expiry_hours: i64,
     pub password_min_length: usize,
@@ -51,6 +51,7 @@ pub struct AuthSettings {
     pub max_login_attempts: i32,
     pub lockout_duration_minutes: i64,
     pub allow_registration: bool,
+    pub logout_all_on_password_change: bool,
 }
 
 impl Default for AuthSettings {
@@ -64,6 +65,7 @@ impl Default for AuthSettings {
             max_login_attempts: 5,
             lockout_duration_minutes: 15,
             allow_registration: true,
+            logout_all_on_password_change: true,
         }
     }
 }
@@ -119,6 +121,9 @@ impl AuthService {
         }
         if let Some(val) = get_setting(&self.pool, "auth_allow_registration").await {
             settings.allow_registration = val == "true";
+        }
+        if let Some(val) = get_setting(&self.pool, "auth_logout_all_on_password_change").await {
+            settings.logout_all_on_password_change = val == "true";
         }
 
         settings
@@ -476,6 +481,11 @@ impl AuthService {
             .bind(user_id)
             .execute(&self.pool)
             .await?;
+
+        // Logout all sessions if setting is enabled
+        if settings.logout_all_on_password_change {
+            self.logout_all(user_id).await?;
+        }
 
         Ok(())
     }
