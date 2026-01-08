@@ -3805,6 +3805,7 @@ dependencies = [
  "axum",
  "base64 0.21.7",
  "chrono",
+ "dotenvy",
  "jsonwebtoken",
  "lettre",
  "once_cell",

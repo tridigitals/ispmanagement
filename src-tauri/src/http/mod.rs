@@ -7,7 +7,8 @@ use tower_http::cors::{Any, CorsLayer};
 use crate::services::{AuthService, UserService, SettingsService, EmailService};
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tracing::info;
+use tracing::{info, warn};
+use std::env;
 
 pub mod auth;
 
@@ -25,8 +26,13 @@ pub async fn start_server(
     user_service: UserService,
     settings_service: SettingsService,
     email_service: EmailService,
-    port: u16,
+    default_port: u16,
 ) {
+    // Load .env file
+    if let Err(e) = dotenvy::dotenv() {
+        warn!("Could not load .env file: {}", e);
+    }
+
     let state = AppState {
         auth_service: Arc::new(auth_service),
         user_service: Arc::new(user_service),
@@ -34,9 +40,25 @@ pub async fn start_server(
         email_service: Arc::new(email_service),
     };
 
-    // CORS configuration (allow all for dev simplicity, restrict in prod)
+    // Dynamic CORS Configuration
+    let origins_str = env::var("CORS_ALLOWED_ORIGINS").unwrap_or_else(|_| {
+        "http://localhost:5173,http://localhost:3000,tauri://localhost,https://tauri.localhost".to_string()
+    });
+
+    let origins: Vec<axum::http::HeaderValue> = origins_str
+        .split(',')
+        .map(|s| s.trim())
+        .filter_map(|s| {
+            s.parse::<axum::http::HeaderValue>()
+                .map_err(|e| warn!("Invalid CORS origin '{}': {}", s, e))
+                .ok()
+        })
+        .collect();
+
+    info!("Allowed CORS Origins: {:?}", origins);
+
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin(origins)
         .allow_methods(Any)
         .allow_headers(Any);
 
@@ -52,6 +74,12 @@ pub async fn start_server(
         // Add more routes here (e.g., users, settings)
         .layer(cors)
         .with_state(state);
+
+    // Determine port
+    let port = env::var("PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(default_port);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     info!("HTTP API listening on {}", addr);
