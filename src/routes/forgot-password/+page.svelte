@@ -1,12 +1,25 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
+    import { auth } from '$lib/api/client';
+    
     let email = "";
     let submitted = false;
+    let loading = false;
+    let error = "";
 
-    function handleReset() {
+    async function handleReset() {
         if (!email) return;
-        // Mock submission
-        submitted = true;
+        loading = true;
+        error = "";
+        
+        try {
+            await auth.forgotPassword(email);
+            submitted = true;
+        } catch (err) {
+            error = err instanceof Error ? err.message : String(err);
+        } finally {
+            loading = false;
+        }
     }
 </script>
 
@@ -18,6 +31,12 @@
                 <h1>Reset Password</h1>
                 <p>Enter your email and we'll send you a link to reset your password.</p>
             </div>
+            
+            {#if error}
+                <div class="alert alert-error" style="color: #ef4444; background: rgba(239, 68, 68, 0.1); padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1.5rem; text-align: center;">
+                    {error}
+                </div>
+            {/if}
 
             <form on:submit|preventDefault={handleReset}>
                 <div class="form-group">
@@ -29,11 +48,12 @@
                         bind:value={email}
                         placeholder="you@example.com"
                         required
+                        disabled={loading}
                     />
                 </div>
 
-                <button type="submit" class="btn btn-primary w-full">
-                    Send Reset Link
+                <button type="submit" class="btn btn-primary w-full" disabled={loading}>
+                    {#if loading}Sending...{:else}Send Reset Link{/if}
                 </button>
             </form>
         {:else}

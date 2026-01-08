@@ -81,3 +81,31 @@ pub async fn change_password(
     let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
     auth_service.change_password(&claims.sub, &old_password, &new_password).await.map_err(|e| e.to_string())
 }
+
+/// Verify email
+#[tauri::command]
+pub async fn verify_email(
+    token: String,
+    auth_service: State<'_, AuthService>,
+) -> Result<AuthResponse, String> {
+    auth_service.verify_email(&token).await.map_err(|e| e.to_string())
+}
+
+/// Request password reset (Forgot Password)
+#[tauri::command]
+pub async fn forgot_password(
+    email: String,
+    auth_service: State<'_, AuthService>,
+) -> Result<(), String> {
+    auth_service.forgot_password(&email).await.map_err(|e| e.to_string())
+}
+
+/// Reset password
+#[tauri::command]
+pub async fn reset_password(
+    token: String,
+    password: String,
+    auth_service: State<'_, AuthService>,
+) -> Result<(), String> {
+    auth_service.reset_password(&token, &password).await.map_err(|e| e.to_string())
+}

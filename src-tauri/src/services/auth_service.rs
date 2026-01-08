@@ -9,6 +9,7 @@ use argon2::{
 use rand::rngs::OsRng;
 use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use crate::services::EmailService;
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Sqlite};
 use std::sync::Arc;
@@ -29,8 +30,9 @@ pub struct Claims {
 #[derive(Debug, Serialize)]
 pub struct AuthResponse {
     pub user: UserResponse,
-    pub token: String,
-    pub expires_at: String,
+    pub token: Option<String>,
+    pub expires_at: Option<String>,
+    pub message: Option<String>,
 }
 
 /// Password validation result
@@ -52,6 +54,7 @@ pub struct AuthSettings {
     pub lockout_duration_minutes: i64,
     pub allow_registration: bool,
     pub logout_all_on_password_change: bool,
+    pub require_email_verification: bool,
 }
 
 impl Default for AuthSettings {
@@ -66,6 +69,7 @@ impl Default for AuthSettings {
             lockout_duration_minutes: 15,
             allow_registration: true,
             logout_all_on_password_change: true,
+            require_email_verification: false,
         }
     }
 }
@@ -74,13 +78,15 @@ impl Default for AuthSettings {
 pub struct AuthService {
     pool: Pool<Sqlite>,
     jwt_secret: Arc<RwLock<String>>,
+    email_service: EmailService,
 }
 
 impl AuthService {
-    pub fn new(pool: Pool<Sqlite>, jwt_secret: String) -> Self {
+    pub fn new(pool: Pool<Sqlite>, jwt_secret: String, email_service: EmailService) -> Self {
         Self {
             pool,
             jwt_secret: Arc::new(RwLock::new(jwt_secret)),
+            email_service,
         }
     }
 
@@ -124,6 +130,9 @@ impl AuthService {
         }
         if let Some(val) = get_setting(&self.pool, "auth_logout_all_on_password_change").await {
             settings.logout_all_on_password_change = val == "true";
+        }
+        if let Some(val) = get_setting(&self.pool, "auth_require_email_verification").await {
+            settings.require_email_verification = val == "true";
         }
 
         settings
@@ -350,12 +359,24 @@ impl AuthService {
         let password_hash = Self::hash_password(&dto.password)?;
 
         // Create user
-        let user = User::new(dto.email, password_hash, dto.name);
+        let mut user = User::new(dto.email, password_hash, dto.name);
+        
+        // Handle email verification
+        if settings.require_email_verification {
+            let token = uuid::Uuid::new_v4().to_string();
+            user.verification_token = Some(token.clone());
+            // is_active could be false until verified, but usually we let them login with restrictions or block login
+            // For now, let's keep is_active=true but check email_verified_at on login if strict mode
+            // Actually, best practice is prevent login if not verified.
+            // Let's set is_active = true, but use email_verified_at as gate.
+        } else {
+             user.email_verified_at = Some(Utc::now());
+        }
 
         sqlx::query(
             r#"
-            INSERT INTO users (id, email, password_hash, name, role, is_active, failed_login_attempts, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
+            INSERT INTO users (id, email, password_hash, name, role, is_active, failed_login_attempts, created_at, updated_at, verification_token, email_verified_at)
+            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
             "#,
         )
         .bind(&user.id)
@@ -366,19 +387,173 @@ impl AuthService {
         .bind(user.is_active)
         .bind(user.created_at.to_rfc3339())
         .bind(user.updated_at.to_rfc3339())
+        .bind(&user.verification_token)
+        .bind(user.email_verified_at.map(|t| t.to_rfc3339()))
         .execute(&self.pool)
         .await?;
 
         info!("New user registered: {}", user.email);
 
-        // Generate token
-        let (token, expires_at) = self.generate_token(&user).await?;
+        if settings.require_email_verification {
+            // Send verification email
+            if let Some(token) = &user.verification_token {
+                // Link: /auth/verify?token=...
+                // Assuming client runs on localhost or deployed domain.
+                // Since this is a Tauri app, we might need a deep link or a frontend route.
+                // We'll use a relative path for the frontend to handle.
+                // Or better, just send the token code.
+                let link = format!("/auth/verify-email?token={}", token);
+                // In a real app, verify_url should be from settings
+                
+                let body = format!(
+                    "Welcome, {}!\n\nPlease verify your email by clicking the link below:\n{}\n\nIf you cannot click the link, use this code: {}",
+                    user.name, link, token
+                );
+                
+                // Fire and forget email to not block registration? Or await?
+                // Await for now to ensure it works.
+                if let Err(e) = self.email_service.send_email(&user.email, "Verify your email", &body).await {
+                    warn!("Failed to send verification email: {}", e);
+                }
+            }
+
+            Ok(AuthResponse {
+                user: user.into(),
+                token: None,
+                expires_at: None,
+                message: Some("Registration successful. Please check your email to verify your account.".to_string()),
+            })
+        } else {
+            // Generate token
+            let (token, expires_at) = self.generate_token(&user).await?;
+
+            Ok(AuthResponse {
+                user: user.into(),
+                token: Some(token),
+                expires_at: Some(expires_at),
+                message: None,
+            })
+        }
+    }
+
+    /// Verify email with token
+    pub async fn verify_email(&self, token: &str) -> AppResult<AuthResponse> {
+        // Find user by verification token
+        let user: Option<User> = sqlx::query_as("SELECT * FROM users WHERE verification_token = ?")
+            .bind(token)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        let user = match user {
+            Some(u) => u,
+            None => return Err(AppError::Validation("Invalid verification token".to_string())),
+        };
+
+        if user.email_verified_at.is_some() {
+             return Err(AppError::Validation("Email already verified".to_string()));
+        }
+
+        // Update user
+        sqlx::query("UPDATE users SET email_verified_at = datetime('now'), verification_token = NULL, updated_at = datetime('now') WHERE id = ?")
+            .bind(&user.id)
+            .execute(&self.pool)
+            .await?;
+
+        // Login user
+        let (jwt, expires_at) = self.generate_token(&user).await?;
+        
+        // Refresh user data
+        let updated_user = self.get_user_by_id(&user.id).await?;
 
         Ok(AuthResponse {
-            user: user.into(),
-            token,
-            expires_at,
+            user: updated_user.into(),
+            token: Some(jwt),
+            expires_at: Some(expires_at),
+            message: Some("Email verified successfully".to_string()),
         })
+    }
+
+    /// Request password reset
+    pub async fn forgot_password(&self, email: &str) -> AppResult<()> {
+        let user: Option<User> = sqlx::query_as("SELECT * FROM users WHERE email = ?")
+            .bind(email)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        if let Some(user) = user {
+            // Generate reset token
+            let token = uuid::Uuid::new_v4().to_string();
+            let expires_at = Utc::now() + Duration::hours(1);
+
+            sqlx::query("UPDATE users SET reset_token = ?, reset_token_expires = ?, updated_at = datetime('now') WHERE id = ?")
+                .bind(&token)
+                .bind(expires_at.to_rfc3339())
+                .bind(&user.id)
+                .execute(&self.pool)
+                .await?;
+
+            // Send email
+            let link = format!("/forgot-password/reset?token={}", token);
+            let body = format!(
+                "Hello {},\n\nYou requested a password reset. Click the link below to reset your password:\n{}\n\nThis link expires in 1 hour.\n\nIf you did not request this, please ignore this email.",
+                user.name, link
+            );
+
+            if let Err(e) = self.email_service.send_email(&user.email, "Reset your password", &body).await {
+                warn!("Failed to send reset email: {}", e);
+                // Don't fail the request to prevent enumeration? 
+                // Actually returning error is helpful for legitimate users. 
+                // Security-wise, generic message is better.
+            }
+        }
+
+        // Always return OK to prevent email enumeration
+        Ok(())
+    }
+
+    /// Reset password with token
+    pub async fn reset_password(&self, token: &str, new_password: &str) -> AppResult<()> {
+        let user: Option<User> = sqlx::query_as("SELECT * FROM users WHERE reset_token = ?")
+            .bind(token)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        let user = match user {
+            Some(u) => u,
+            None => return Err(AppError::Validation("Invalid or expired reset token".to_string())),
+        };
+
+        // Check expiration
+        if let Some(expires) = user.reset_token_expires {
+            if Utc::now() > expires {
+                return Err(AppError::Validation("Reset token has expired".to_string()));
+            }
+        } else {
+            return Err(AppError::Validation("Invalid token state".to_string()));
+        }
+
+        // Validate password
+        let settings = self.get_auth_settings().await;
+        let validation = self.validate_password(new_password, &settings);
+        if !validation.valid {
+            return Err(AppError::Validation(validation.errors.join(", ")));
+        }
+
+        // Update password and clear token
+        let new_hash = Self::hash_password(new_password)?;
+        
+        sqlx::query("UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL, updated_at = datetime('now') WHERE id = ?")
+            .bind(new_hash)
+            .bind(&user.id)
+            .execute(&self.pool)
+            .await?;
+            
+        // Optional: Logout all sessions
+        if settings.logout_all_on_password_change {
+            self.logout_all(&user.id).await?;
+        }
+
+        Ok(())
     }
 
     /// Login user
@@ -413,6 +588,11 @@ impl AuthService {
             return Err(AppError::Validation("Account is deactivated".to_string()));
         }
 
+        // Check email verification
+        if settings.require_email_verification && user.email_verified_at.is_none() {
+             return Err(AppError::Validation("Please verify your email address before logging in.".to_string()));
+        }
+
         // Verify password
         if !Self::verify_password(&dto.password, &user.password_hash)? {
             // Increment failed attempts
@@ -440,8 +620,9 @@ impl AuthService {
 
         Ok(AuthResponse {
             user: user.into(),
-            token,
-            expires_at,
+            token: Some(token),
+            expires_at: Some(expires_at),
+            message: None,
         })
     }
 

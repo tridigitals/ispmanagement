@@ -65,8 +65,9 @@ export interface User {
 
 export interface AuthResponse {
     user: User;
-    token: string;
-    expires_at: string;
+    token?: string;
+    expires_at?: string;
+    message?: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -115,6 +116,15 @@ export const auth = {
 
     validateToken: (token: string): Promise<boolean> =>
         safeInvoke('validate_token', { token }),
+
+    verifyEmail: (token: string): Promise<AuthResponse> =>
+        safeInvoke('verify_email', { token }),
+
+    forgotPassword: (email: string): Promise<void> =>
+        safeInvoke('forgot_password', { email }),
+
+    resetPassword: (token: string, password: string): Promise<void> =>
+        safeInvoke('reset_password', { token, password }),
 };
 
 // Users API

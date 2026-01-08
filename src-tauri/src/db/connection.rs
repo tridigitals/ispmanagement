@@ -72,6 +72,48 @@ async fn run_migrations(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
             .await?;
     }
 
+    // Migration: Add verification_token if missing
+    let has_verification_token: bool = sqlx::query_scalar::<_, i32>(
+        "SELECT count(*) FROM pragma_table_info('users') WHERE name='verification_token'"
+    )
+    .fetch_one(pool)
+    .await? > 0;
+
+    if !has_verification_token {
+        info!("Migrating: Adding verification_token column to users table");
+        sqlx::query("ALTER TABLE users ADD COLUMN verification_token TEXT")
+            .execute(pool)
+            .await?;
+    }
+
+    // Migration: Add reset_token if missing
+    let has_reset_token: bool = sqlx::query_scalar::<_, i32>(
+        "SELECT count(*) FROM pragma_table_info('users') WHERE name='reset_token'"
+    )
+    .fetch_one(pool)
+    .await? > 0;
+
+    if !has_reset_token {
+        info!("Migrating: Adding reset_token column to users table");
+        sqlx::query("ALTER TABLE users ADD COLUMN reset_token TEXT")
+            .execute(pool)
+            .await?;
+    }
+
+    // Migration: Add reset_token_expires if missing
+    let has_reset_token_expires: bool = sqlx::query_scalar::<_, i32>(
+        "SELECT count(*) FROM pragma_table_info('users') WHERE name='reset_token_expires'"
+    )
+    .fetch_one(pool)
+    .await? > 0;
+
+    if !has_reset_token_expires {
+        info!("Migrating: Adding reset_token_expires column to users table");
+        sqlx::query("ALTER TABLE users ADD COLUMN reset_token_expires TEXT")
+            .execute(pool)
+            .await?;
+    }
+
     // Create settings table
     sqlx::query(
         r#"

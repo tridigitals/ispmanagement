@@ -53,14 +53,18 @@ user.subscribe(value => {
 export async function login(email: string, password: string, remember: boolean = true): Promise<AuthResponse> {
     console.log('[Auth] Login called. Remember:', remember);
     const response = await auth.login(email, password);
-    setAuth(response.token, response.user, remember);
+    if (response.token) {
+        setAuth(response.token, response.user, remember);
+    }
     return response;
 }
 
 export async function register(email: string, password: string, name: string): Promise<AuthResponse> {
     const response = await auth.register(email, password, name);
     // Default to remember=true for registration, or could be passed
-    setAuth(response.token, response.user, true);
+    if (response.token) {
+        setAuth(response.token, response.user, true);
+    }
     return response;
 }
 

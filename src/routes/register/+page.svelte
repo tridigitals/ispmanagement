@@ -70,8 +70,16 @@
         loading = true;
 
         try {
-            await registerUser(email, password, name);
-            goto("/dashboard");
+            const response = await registerUser(email, password, name);
+            if (response.token) {
+                goto("/dashboard");
+            } else if (response.message) {
+                // Show success message and maybe redirect to login
+                error = ""; // Clear error
+                // We can use a success state variable or alert
+                alert(response.message); // Simple for now
+                goto("/login");
+            }
         } catch (err) {
             error = err instanceof Error ? err.message : String(err);
         } finally {
