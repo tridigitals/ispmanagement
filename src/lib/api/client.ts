@@ -10,32 +10,56 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         // Check if running in Tauri
         // @ts-ignore
         if (typeof window !== 'undefined' && !window.__TAURI_INTERNALS__) {
+            const API_BASE = 'http://localhost:3000/api';
+            
+            // Map commands to API endpoints
+            const commandMap: Record<string, { method: string, path: string }> = {
+                // Auth
+                'login': { method: 'POST', path: '/auth/login' },
+                'register': { method: 'POST', path: '/auth/register' },
+                'verify_email': { method: 'POST', path: '/auth/verify-email' },
+                'forgot_password': { method: 'POST', path: '/auth/forgot-password' },
+                'reset_password': { method: 'POST', path: '/auth/reset-password' },
+                // Add others as they are implemented in Rust Axum
+            };
+
+            const route = commandMap[command];
+            if (route) {
+                const response = await fetch(`${API_BASE}${route.path}`, {
+                    method: route.method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(args || {}),
+                });
+
+                if (!response.ok) {
+                    const errorBody = await response.json().catch(() => ({}));
+                    throw new Error(errorBody.error || `HTTP Error ${response.status}`);
+                }
+                
+                return await response.json();
+            }
+
             console.warn(`[Mock] Calling ${command} with`, args);
-            // Return mock data or throw error depending on need
+            // Return mock data for unimplemented endpoints
             if (command === 'get_current_user') return null as any;
             if (command === 'get_all_settings') return [] as any;
             if (command === 'list_users') return { data: [], total: 0, page: 1, per_page: 10 } as any;
-
-            // Mock Auth
-            if (command === 'login' || command === 'register') {
-                return {
-                    user: {
-                        id: 'mock-user-id',
-                        email: args.email || 'user@example.com',
-                        name: args.name || 'Mock User',
-                        role: 'admin',
-                        avatar_url: null,
-                        is_active: true,
-                        created_at: new Date().toISOString()
-                    },
-                    token: 'mock-jwt-token',
-                    expires_at: new Date(Date.now() + 86400000).toISOString()
-                } as any;
-            }
             if (command === 'validate_token') return true as any;
             if (command === 'is_installed') return true as any;
+            if (command === 'get_auth_settings') return {
+                jwt_expiry_hours: 24,
+                password_min_length: 8,
+                password_require_uppercase: true,
+                password_require_number: true,
+                password_require_special: false,
+                max_login_attempts: 5,
+                lockout_duration_minutes: 15,
+                allow_registration: true
+            } as any;
 
-            throw new Error(`Tauri API not available (Browser Environment). Mocking ${command}.`);
+            throw new Error(`Command '${command}' not implemented in HTTP API yet.`);
         }
         return await invoke(command, args);
     } catch (error) {

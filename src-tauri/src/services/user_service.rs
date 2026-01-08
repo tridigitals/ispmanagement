@@ -7,6 +7,7 @@ use sqlx::{Pool, Sqlite};
 use chrono::Utc;
 
 /// User service for managing users
+#[derive(Clone)]
 pub struct UserService {
     pool: Pool<Sqlite>,
 }

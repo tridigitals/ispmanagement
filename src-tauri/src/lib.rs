@@ -8,6 +8,7 @@ mod db;
 mod error;
 mod models;
 mod services;
+mod http;
 
 use commands::*;
 use db::connection::{init_db, seed_defaults};
@@ -26,10 +27,20 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
                 let user_service = UserService::new(pool.clone());
 
                 // Manage state
-                app_handle.manage(auth_service);
-                app_handle.manage(user_service);
-                app_handle.manage(settings_service);
-                app_handle.manage(email_service); // Also manage email service for direct use
+                app_handle.manage(auth_service.clone());
+                app_handle.manage(user_service.clone());
+                app_handle.manage(settings_service.clone());
+                app_handle.manage(email_service.clone());
+
+                // Start HTTP Server
+                let auth_svc = auth_service.clone();
+                let user_svc = user_service.clone();
+                let settings_svc = settings_service.clone();
+                let email_svc = email_service.clone();
+
+                tauri::async_runtime::spawn(async move {
+                     http::start_server(auth_svc, user_svc, settings_svc, email_svc, 3000).await;
+                });
 
                 info!("Services initialized successfully");
             });

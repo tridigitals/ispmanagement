@@ -13,6 +13,7 @@ use lettre::transport::smtp::client::Tls;
 use lettre::transport::smtp::client::TlsParameters;
 
 /// Email service for sending emails
+#[derive(Clone)]
 pub struct EmailService {
     settings_service: SettingsService,
 }

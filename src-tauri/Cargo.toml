@@ -61,6 +61,9 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 
 # SMTP Email - UNCOMMENT AFTER WINDOWS RESTART
 lettre = { version = "0.11", default-features = false, features = ["tokio1", "tokio1-rustls-tls", "smtp-transport", "builder"] }
+axum = "0.8.8"
+tower = "0.5.2"
+tower-http = { version = "0.6.8", features = ["cors", "fs", "trace"] }
 
 [profile.dev]
 incremental = false

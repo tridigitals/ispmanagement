@@ -75,6 +75,7 @@ impl Default for AuthSettings {
 }
 
 /// Auth service for handling authentication
+#[derive(Clone)]
 pub struct AuthService {
     pool: Pool<Sqlite>,
     jwt_secret: Arc<RwLock<String>>,
