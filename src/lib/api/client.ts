@@ -237,7 +237,7 @@ export const settings = {
     getAll: (): Promise<Setting[]> =>
         safeInvoke('get_all_settings', { token: getTokenOrThrow() }),
 
-    getPublicSettings: (): Promise<{ app_name?: string, app_description?: string }> =>
+    getPublicSettings: (): Promise<{ app_name?: string, app_description?: string, default_locale?: string }> =>
         safeInvoke('get_public_settings'),
 
     getAuthSettings: (): Promise<AuthSettings> =>

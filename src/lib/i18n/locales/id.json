@@ -1,0 +1,204 @@
+{
+    "auth": {
+        "login": {
+            "title": "Masuk",
+            "subtitle": "Akses dasbor Anda",
+            "email_label": "Email",
+            "email_placeholder": "nama@perusahaan.com",
+            "password_label": "Kata Sandi",
+            "password_placeholder": "••••••••",
+            "remember_me": "Tetap masuk",
+            "forgot_password": "Lupa kata sandi",
+            "submit_button": "Lanjutkan",
+            "loading_button": "Sedang masuk...",
+            "footer_text": "Belum punya akun?",
+            "register_link": "Daftar di sini"
+        },
+        "register": {
+            "title": "Buat Akun",
+            "subtitle": "Mulai perjalanan Anda bersama kami",
+            "name_label": "Nama Lengkap",
+            "name_placeholder": "Budi Santoso",
+            "email_label": "Email",
+            "email_placeholder": "nama@perusahaan.com",
+            "password_label": "Kata Sandi",
+            "password_placeholder": "••••••••",
+            "confirm_password_label": "Konfirmasi Kata Sandi",
+            "submit_button": "Buat Akun",
+            "loading_button": "Membuat akun...",
+            "footer_text": "Sudah punya akun?",
+            "login_link": "Masuk"
+        },
+        "validation": {
+            "passwords_do_not_match": "Kata sandi tidak cocok",
+            "min_length": "Min {length} karakter",
+            "require_uppercase": "1 huruf besar",
+            "require_number": "1 angka",
+            "require_special": "1 karakter spesial"
+        }
+    },
+    "sidebar": {
+        "dashboard": "Dasbor",
+        "overview": "Ringkasan",
+        "users": "Pengguna",
+        "settings": "Pengaturan",
+        "user_view": "Tampilan Pengguna",
+        "admin_panel": "Panel Admin",
+        "profile": "Profil",
+        "logout": "Keluar"
+    },
+    "topbar": {
+        "search_placeholder": "Cari...",
+        "notifications": "Notifikasi",
+        "help": "Bantuan",
+        "titles": {
+            "dashboard": "Dasbor",
+            "profile": "Profil Saya",
+            "admin_overview": "Ringkasan Admin",
+            "user_management": "Manajemen Pengguna",
+            "global_settings": "Pengaturan Global"
+        }
+    },
+    "dashboard": {
+        "greeting": {
+            "morning": "Selamat Pagi",
+            "afternoon": "Selamat Siang",
+            "evening": "Selamat Malam",
+            "welcome_message": "Berikut aktivitas akun Anda hari ini."
+        },
+        "generate_report": "Buat Laporan",
+        "admin_mode": {
+            "title": "Mode Administrator",
+            "description": "Anda memiliki izin sistem penuh. Akses alat manajemen di sini."
+        },
+        "stats": {
+            "account_role": "Peran Akun",
+            "member_since": "Anggota Sejak",
+            "system_status": "Status Sistem",
+            "active": "Aktif"
+        },
+        "recent_activity": {
+            "title": "Aktivitas Terbaru",
+            "view_all": "Lihat Semua",
+            "empty": {
+                "title": "Belum ada aktivitas",
+                "description": "Saat Anda menggunakan aplikasi, aktivitas akan muncul di sini.",
+                "learn_more": "Pelajari Lebih Lanjut"
+            }
+        },
+        "quick_actions": {
+            "title": "Aksi Cepat",
+            "update_profile": "Perbarui Profil",
+            "check_messages": "Cek Pesan",
+            "security_settings": "Pengaturan Keamanan",
+            "contact_support": "Hubungi Dukungan"
+        }
+    },
+    "profile": {
+        "title": "Pengaturan",
+        "subtitle": "Kelola pengaturan dan preferensi akun Anda.",
+        "tabs": {
+            "general": "Umum",
+            "security": "Keamanan",
+            "preferences": "Preferensi"
+        },
+        "general": {
+            "title": "Informasi Profil",
+            "subtitle": "Perbarui detail akun dan profil publik Anda.",
+            "display_name": "Nama Tampilan",
+            "display_name_placeholder": "Masukkan nama lengkap",
+            "email_address": "Alamat Email",
+            "email_placeholder": "nama@contoh.com",
+            "save_button": "Simpan Perubahan",
+            "saving": "Menyimpan..."
+        },
+        "security": {
+            "title": "Kata Sandi & Keamanan",
+            "subtitle": "Kelola kata sandi dan pengaturan keamanan.",
+            "current_password": "Kata Sandi Saat Ini",
+            "new_password": "Kata Sandi Baru",
+            "confirm_password": "Konfirmasi Kata Sandi",
+            "password_placeholder": "••••••••",
+            "requirements_title": "Syarat kata sandi:",
+            "req_length": "Minimal {length} karakter",
+            "req_uppercase": "Satu huruf besar",
+            "req_number": "Satu angka",
+            "req_special": "Satu karakter spesial",
+            "update_button": "Perbarui Kata Sandi",
+            "updating": "Memperbarui..."
+        },
+        "preferences": {
+            "title": "Tampilan",
+            "subtitle": "Sesuaikan tampilan dan nuansa aplikasi.",
+            "dark_mode": "Mode Gelap",
+            "dark_mode_desc": "Beralih antara tema gelap dan terang."
+        },
+        "messages": {
+            "profile_updated": "Profil berhasil diperbarui!",
+            "password_changed": "Kata sandi berhasil diubah!",
+            "password_mismatch": "Kata sandi baru tidak cocok",
+            "update_failed": "Gagal memperbarui profil",
+            "change_password_failed": "Gagal mengubah kata sandi"
+        }
+    },
+    "admin": {
+        "settings": {
+            "title": "Pengaturan Global",
+            "subtitle": "Kelola konfigurasi aplikasi, keamanan, dan integrasi.",
+            "save_success": "Perubahan berhasil disimpan",
+            "save_error": "Gagal menyimpan pengaturan",
+            "load_error": "Gagal memuat pengaturan",
+            "reset_button": "Atur Ulang",
+            "save_button": "Simpan Perubahan",
+            "saving": "Menyimpan...",
+            "categories": {
+                "general": "Umum",
+                "storage": "Penyimpanan",
+                "auth": "Autentikasi",
+                "security": "Keamanan",
+                "email": "Email"
+            },
+            "keys": {
+                "app_name": "Nama Aplikasi",
+                "app_description": "Deskripsi Aplikasi",
+                "app_version": "Versi Aplikasi",
+                "organization_name": "Nama Organisasi",
+                "support_email": "Email Dukungan",
+                "default_locale": "Bahasa Default",
+                "currency_symbol": "Simbol Mata Uang",
+                "maintenance_mode": "Mode Pemeliharaan",
+                "app_logo_path": "Logo Aplikasi",
+                "storage_provider": "Penyedia Penyimpanan",
+                "storage_local_path": "Path Lokal",
+                "storage_s3_bucket": "Nama Bucket",
+                "storage_s3_region": "Wilayah (Region)",
+                "auth_allow_registration": "Izinkan Pendaftaran",
+                "auth_require_email_verification": "Wajib Verifikasi Email",
+                "auth_jwt_expiry_hours": "Kedaluwarsa JWT (Jam)",
+                "auth_session_timeout_minutes": "Batas Waktu Sesi (Menit)",
+                "auth_password_min_length": "Min Panjang Sandi",
+                "auth_password_require_uppercase": "Wajib Huruf Besar",
+                "auth_password_require_number": "Wajib Angka",
+                "auth_password_require_special": "Wajib Karakter Spesial",
+                "auth_max_login_attempts": "Max Percobaan Login",
+                "auth_lockout_duration_minutes": "Durasi Kunci Akun (Menit)",
+                "auth_logout_all_on_password_change": "Keluar Semua Perangkat saat Ganti Sandi",
+                "email_provider": "Penyedia Email",
+                "email_smtp_host": "Host SMTP",
+                "email_smtp_port": "Port SMTP",
+                "email_smtp_username": "Username SMTP",
+                "email_smtp_password": "Password SMTP",
+                "email_smtp_encryption": "Enkripsi",
+                "email_from_address": "Alamat Pengirim",
+                "email_from_name": "Nama Pengirim"
+            },
+            "test_email": {
+                "title": "Tes Konfigurasi Email",
+                "description": "Simpan perubahan terlebih dahulu, lalu kirim email tes untuk memverifikasi pengaturan SMTP.",
+                "placeholder": "Masukkan alamat email",
+                "button": "Kirim Email Tes",
+                "sending": "Mengirim..."
+            }
+        }
+    }
+}

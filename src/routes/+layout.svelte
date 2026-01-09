@@ -1,5 +1,7 @@
 <script lang="ts">
     import "$lib/styles/global.css";
+    import "../lib/i18n"; // Init i18n
+    import { waitLocale } from "svelte-i18n";
     import { checkAuth } from "$lib/stores/auth";
     import { appSettings } from "$lib/stores/settings";
     import { appLogo } from "$lib/stores/logo";
@@ -21,6 +23,9 @@
                 appSettings.init(),
                 appLogo.init()
             ]);
+            
+            // Wait for i18n to be ready (locale set in appSettings.init)
+            await waitLocale();
 
             // Check if app is installed
             const isInstalled = await install.checkIsInstalled();

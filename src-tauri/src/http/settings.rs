@@ -22,6 +22,7 @@ fn get_token(headers: &HeaderMap) -> Result<String, crate::error::AppError> {
 pub struct PublicSettings {
     pub app_name: Option<String>,
     pub app_description: Option<String>,
+    pub default_locale: Option<String>,
 }
 
 pub async fn get_public_settings(
@@ -29,10 +30,12 @@ pub async fn get_public_settings(
 ) -> Result<Json<PublicSettings>, crate::error::AppError> {
     let app_name = state.settings_service.get_value("app_name").await?;
     let app_description = state.settings_service.get_value("app_description").await?;
+    let default_locale = state.settings_service.get_value("default_locale").await?;
     
     Ok(Json(PublicSettings {
         app_name,
         app_description,
+        default_locale,
     }))
 }
 

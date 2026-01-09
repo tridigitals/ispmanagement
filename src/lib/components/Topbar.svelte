@@ -2,15 +2,16 @@
     import { page } from '$app/stores';
     import { user } from '$lib/stores/auth';
     import { isSidebarCollapsed } from '$lib/stores/ui';
+    import { t } from 'svelte-i18n';
     import Icon from './Icon.svelte';
 
     // Helper to get page title based on path
     function getPageTitle(path: string) {
-        if (path === '/dashboard') return 'Dashboard';
-        if (path === '/profile') return 'My Profile';
-        if (path === '/admin') return 'Admin Overview';
-        if (path === '/admin/users') return 'User Management';
-        if (path === '/admin/settings') return 'Global Settings';
+        if (path === '/dashboard') return $t('topbar.titles.dashboard');
+        if (path === '/profile') return $t('topbar.titles.profile');
+        if (path === '/admin') return $t('topbar.titles.admin_overview');
+        if (path === '/admin/users') return $t('topbar.titles.user_management');
+        if (path === '/admin/settings') return $t('topbar.titles.global_settings');
         return 'SaaS App';
     }
 
@@ -29,16 +30,16 @@
         <!-- Optional: Search Bar -->
         <div class="search-bar">
             <Icon name="search" size={16} />
-            <input type="text" placeholder="Search..." />
+            <input type="text" placeholder={$t('topbar.search_placeholder')} />
         </div>
 
         <!-- Actions -->
-        <button class="icon-btn" title="Notifications">
+        <button class="icon-btn" title={$t('topbar.notifications')}>
             <Icon name="bell" size={18} />
             <span class="badge-dot"></span>
         </button>
         
-        <button class="icon-btn" title="Help">
+        <button class="icon-btn" title={$t('topbar.help')}>
             <Icon name="help-circle" size={18} />
         </button>
     </div>

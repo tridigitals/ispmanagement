@@ -1,6 +1,8 @@
 import { writable, derived } from 'svelte/store';
 import { api, type AuthSettings } from '$lib/api/client';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { locale } from 'svelte-i18n';
+import '../i18n'; // Initialize i18n
 
 // Tipe data setting
 export interface AppSettings {
@@ -71,6 +73,15 @@ function createSettingsStore() {
                 };
                 
                 set(finalSettings);
+                
+                // Set locale from settings with logging
+                if (finalSettings.default_locale) {
+                    console.log(`[Settings] Setting locale to: ${finalSettings.default_locale}`);
+                    locale.set(finalSettings.default_locale);
+                } else {
+                    console.log('[Settings] No default_locale found, using browser default');
+                }
+                
                 updateWindowTitle(finalSettings.app_name);
             } catch (err) {
                 console.error("Failed to load settings:", err);

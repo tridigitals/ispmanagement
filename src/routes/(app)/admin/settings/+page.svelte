@@ -5,6 +5,7 @@
     import { appSettings } from "$lib/stores/settings";
     import { appLogo } from "$lib/stores/logo";
     import { goto } from "$app/navigation";
+    import { locale, t } from "svelte-i18n";
     import Icon from "$lib/components/Icon.svelte";
     import type { Setting } from "$lib/api/client";
 
@@ -19,11 +20,13 @@
 
     // Options
     const localeOptions = [
-        { value: "id-ID", label: "Bahasa Indonesia (ID)" },
-        { value: "en-US", label: "English (US)" },
-        { value: "en-GB", label: "English (UK)" },
-        { value: "es-ES", label: "Español" },
-        { value: "ja-JP", label: "日本語 (Japanese)" },
+        { value: "en", label: "English (US)" },
+        { value: "id", label: "Bahasa Indonesia (ID)" },
+    ];
+
+    const currencyOptions = [
+        { value: "Rp", label: "IDR (Rp)" },
+        { value: "$", label: "USD ($)" },
     ];
 
     const storageOptions = [
@@ -255,6 +258,12 @@
                     const val = localSettings[key];
                     if (val !== undefined) {
                         appSettings.updateSetting(key, val);
+                        
+                        // If locale changed, update immediately
+                        if (key === "default_locale") {
+                            locale.set(val);
+                        }
+                        
                         return api.settings.upsert(key, val);
                     }
                 }),
@@ -301,6 +310,7 @@
 
     function getInputType(key: string) {
         if (key === "default_locale") return "select-locale";
+        if (key === "currency_symbol") return "select-currency";
         if (key === "storage_provider") return "select-storage";
         if (key === "email_provider") return "select-email-provider";
         if (key === "email_smtp_encryption") return "select-smtp-encryption";
@@ -378,16 +388,8 @@
     }
 
     function getLabel(key: string) {
-        return key
-            .replace("auth_", "")
-            .replace("app_", "")
-            .replace("storage_", "")
-            .replace("s3_", "S3 ")
-            .replace("r2_", "R2 ")
-            .replace("local_", "Local ")
-            .split("_")
-            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(" ");
+        // Try to translate key
+        return $t(`admin.settings.keys.${key}`);
     }
 </script>
 
@@ -412,7 +414,7 @@
                         <span class="icon">
                             <Icon name={cat.icon} size={18} />
                         </span>
-                        {cat.label}
+                        {$t(`admin.settings.categories.${id}`)}
                     </button>
                 {/each}
             </nav>
@@ -426,12 +428,10 @@
                     <div class="card-header">
                         <div class="header-text">
                             <h2 class="card-title">
-                                {categories[activeTab].label}
+                                {$t(`admin.settings.categories.${activeTab}`)}
                             </h2>
                             <p class="card-subtitle">
-                                Manage settings for {categories[
-                                    activeTab
-                                ].label.toLowerCase()}.
+                                {$t('admin.settings.subtitle')}
                             </p>
                         </div>
                     </div>
@@ -483,6 +483,28 @@
                                                     disabled={saving}
                                                 >
                                                     {#each localeOptions as option}
+                                                        <option
+                                                            value={option.value}
+                                                            >{option.label}</option
+                                                        >
+                                                    {/each}
+                                                </select>
+                                            </div>
+                                        {:else if getInputType(key) === "select-currency"}
+                                            <div class="select-wrapper">
+                                                <select
+                                                    id={key}
+                                                    class="form-input"
+                                                    value={localSettings[key]}
+                                                    on:change={(e) =>
+                                                        handleChange(
+                                                            key,
+                                                            e.currentTarget
+                                                                .value,
+                                                        )}
+                                                    disabled={saving}
+                                                >
+                                                    {#each currencyOptions as option}
                                                         <option
                                                             value={option.value}
                                                             >{option.label}</option
@@ -625,16 +647,15 @@
 
                     {#if activeTab === "email"}
                         <div class="test-email-section">
-                            <h3>Test Email Configuration</h3>
+                            <h3>{$t('admin.settings.test_email.title')}</h3>
                             <p class="section-description">
-                                Save your changes first, then send a test email
-                                to verify your SMTP settings.
+                                {$t('admin.settings.test_email.description')}
                             </p>
                             <div class="test-email-form">
                                 <input
                                     type="email"
                                     class="form-input"
-                                    placeholder="Enter email address"
+                                    placeholder={$t('admin.settings.test_email.placeholder')}
                                     bind:value={testEmailAddress}
                                     disabled={sendingTestEmail}
                                 />
@@ -644,8 +665,7 @@
                                     disabled={sendingTestEmail ||
                                         !testEmailAddress}
                                 >
-                                    {#if sendingTestEmail}Sending...{:else}Send
-                                        Test Email{/if}
+                                    {#if sendingTestEmail}{$t('admin.settings.test_email.sending')}{:else}{$t('admin.settings.test_email.button')}{/if}
                                 </button>
                             </div>
                         </div>
@@ -657,14 +677,14 @@
                             disabled={!hasChanges || saving}
                             on:click={discardChanges}
                         >
-                            Reset
+                            {$t('admin.settings.reset_button')}
                         </button>
                         <button
                             class="btn btn-primary"
                             disabled={!hasChanges || saving}
                             on:click={saveChanges}
                         >
-                            {#if saving}Saving...{:else}Save Changes{/if}
+                            {#if saving}{$t('admin.settings.saving')}{:else}{$t('admin.settings.save_button')}{/if}
                         </button>
                     </div>
                 </div>

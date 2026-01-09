@@ -2,6 +2,7 @@
     import { user, isAuthenticated, isAdmin } from "$lib/stores/auth";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
+    import { t } from "svelte-i18n";
     import Icon from "$lib/components/Icon.svelte";
 
     onMount(() => {
@@ -12,9 +13,9 @@
 
     const greeting = () => {
         const hour = new Date().getHours();
-        if (hour < 12) return "Good Morning";
-        if (hour < 17) return "Good Afternoon";
-        return "Good Evening";
+        if (hour < 12) return $t('dashboard.greeting.morning');
+        if (hour < 17) return $t('dashboard.greeting.afternoon');
+        return $t('dashboard.greeting.evening');
     };
 </script>
 
@@ -22,12 +23,12 @@
     <header class="welcome-header">
         <div class="welcome-text">
             <h1>{greeting()}, {$user?.name}!</h1>
-            <p>Here's what's happening with your account today.</p>
+            <p>{$t('dashboard.greeting.welcome_message')}</p>
         </div>
         <div class="header-actions">
             <button class="btn btn-primary">
                 <Icon name="activity" size={16} />
-                Generate Report
+                {$t('dashboard.generate_report')}
             </button>
         </div>
     </header>
@@ -39,8 +40,8 @@
                     <Icon name="shield" size={24} />
                 </div>
                 <div>
-                    <h3>Administrator Mode</h3>
-                    <p>You have system-wide permissions. Access management tools here.</p>
+                    <h3>{$t('dashboard.admin_mode.title')}</h3>
+                    <p>{$t('dashboard.admin_mode.description')}</p>
                 </div>
             </div>
             <Icon name="arrow-right" size={20} />
@@ -57,7 +58,7 @@
             </div>
             <div class="stat-body">
                 <span class="stat-value">{$user?.role}</span>
-                <span class="stat-label">Account Role</span>
+                <span class="stat-label">{$t('dashboard.stats.account_role')}</span>
             </div>
         </div>
 
@@ -69,7 +70,7 @@
             </div>
             <div class="stat-body">
                 <span class="stat-value">{new Date($user?.created_at || Date.now()).toLocaleDateString()}</span>
-                <span class="stat-label">Member Since</span>
+                <span class="stat-label">{$t('dashboard.stats.member_since')}</span>
             </div>
         </div>
 
@@ -80,8 +81,8 @@
                 </div>
             </div>
             <div class="stat-body">
-                <span class="stat-value">Active</span>
-                <span class="stat-label">System Status</span>
+                <span class="stat-value">{$t('dashboard.stats.active')}</span>
+                <span class="stat-label">{$t('dashboard.stats.system_status')}</span>
             </div>
         </div>
     </div>
@@ -89,8 +90,8 @@
     <div class="main-grid">
         <section class="activity-section">
             <div class="section-header">
-                <h2>Recent Activity</h2>
-                <button class="text-btn">View All</button>
+                <h2>{$t('dashboard.recent_activity.title')}</h2>
+                <button class="text-btn">{$t('dashboard.recent_activity.view_all')}</button>
             </div>
             
             <div class="card activity-card">
@@ -98,33 +99,33 @@
                     <div class="empty-icon-circle">
                         <Icon name="activity" size={32} />
                     </div>
-                    <h3>No activity yet</h3>
-                    <p>When you start using the app, your activity will appear here.</p>
-                    <button class="btn btn-secondary mt-4">Learn More</button>
+                    <h3>{$t('dashboard.recent_activity.empty.title')}</h3>
+                    <p>{$t('dashboard.recent_activity.empty.description')}</p>
+                    <button class="btn btn-secondary mt-4">{$t('dashboard.recent_activity.empty.learn_more')}</button>
                 </div>
             </div>
         </section>
 
         <aside class="quick-actions">
             <div class="section-header">
-                <h2>Quick Actions</h2>
+                <h2>{$t('dashboard.quick_actions.title')}</h2>
             </div>
             <div class="actions-list">
                 <button class="action-item" on:click={() => goto('/profile')}>
                     <Icon name="profile" size={18} />
-                    Update Profile
+                    {$t('dashboard.quick_actions.update_profile')}
                 </button>
                 <button class="action-item">
                     <Icon name="mail" size={18} />
-                    Check Messages
+                    {$t('dashboard.quick_actions.check_messages')}
                 </button>
                 <button class="action-item">
                     <Icon name="lock" size={18} />
-                    Security Settings
+                    {$t('dashboard.quick_actions.security_settings')}
                 </button>
                 <button class="action-item">
                     <Icon name="help-circle" size={18} />
-                    Contact Support
+                    {$t('dashboard.quick_actions.contact_support')}
                 </button>
             </div>
         </aside>

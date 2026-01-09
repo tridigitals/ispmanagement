@@ -5,6 +5,7 @@
     import { theme } from '$lib/stores/theme';
     import { appSettings } from '$lib/stores/settings';
     import { goto } from '$app/navigation';
+    import { t } from 'svelte-i18n';
     import Icon from '$lib/components/Icon.svelte';
 
     let activeTab = 'general';
@@ -76,10 +77,10 @@
             });
             
             user.update(u => u ? { ...u, name: profileData.name, email: profileData.email } : null);
-            showMessage('success', 'Profile updated successfully!');
+            showMessage('success', $t('profile.messages.profile_updated'));
         } catch (error: any) {
             console.error(error);
-            showMessage('error', error.toString() || 'Failed to update profile');
+            showMessage('error', error.toString() || $t('profile.messages.update_failed'));
         } finally {
             loading = false;
         }
@@ -87,16 +88,16 @@
 
     function validatePassword(pwd: string): string | null {
         if (pwd.length < policy.password_min_length) {
-            return `Password must be at least ${policy.password_min_length} characters`;
+            return $t('auth.validation.min_length', { values: { length: policy.password_min_length } });
         }
         if (policy.password_require_uppercase && !/[A-Z]/.test(pwd)) {
-            return "Password must contain at least one uppercase letter";
+            return $t('auth.validation.require_uppercase');
         }
         if (policy.password_require_number && !/[0-9]/.test(pwd)) {
-            return "Password must contain at least one number";
+            return $t('auth.validation.require_number');
         }
         if (policy.password_require_special && !/[!@#$%^&*()_+\-=[\]{}|;:',.<>?/`~]/.test(pwd)) {
-            return "Password must contain at least one special character";
+            return $t('auth.validation.require_special');
         }
         return null;
     }
@@ -106,7 +107,7 @@
         if (!$token) return;
         
         if (passwordData.new !== passwordData.confirm) {
-            showMessage('error', 'New passwords do not match');
+            showMessage('error', $t('profile.messages.password_mismatch'));
             return;
         }
 
@@ -124,11 +125,11 @@
                 passwordData.new
             );
             
-            showMessage('success', 'Password changed successfully!');
+            showMessage('success', $t('profile.messages.password_changed'));
             passwordData = { current: '', new: '', confirm: '' }; 
         } catch (error: any) {
             console.error(error);
-            showMessage('error', error.toString() || 'Failed to change password');
+            showMessage('error', error.toString() || $t('profile.messages.change_password_failed'));
         } finally {
             loading = false;
         }
@@ -144,17 +145,17 @@
             .toUpperCase()
         : 'U';
 
-    const tabs = [
-        { id: 'general', label: 'General', icon: 'profile' },
-        { id: 'security', label: 'Security', icon: 'lock' },
-        { id: 'preferences', label: 'Preferences', icon: 'settings' }
+    $: tabs = [
+        { id: 'general', label: $t('profile.tabs.general'), icon: 'profile' },
+        { id: 'security', label: $t('profile.tabs.security'), icon: 'lock' },
+        { id: 'preferences', label: $t('profile.tabs.preferences'), icon: 'settings' }
     ];
 </script>
 
 <div class="page-container fade-in">
     <div class="header-section">
-        <h1 class="page-title">Settings</h1>
-        <p class="page-subtitle">Manage your account settings and preferences.</p>
+        <h1 class="page-title">{$t('profile.title')}</h1>
+        <p class="page-subtitle">{$t('profile.subtitle')}</p>
     </div>
 
     {#if message.text}
@@ -197,8 +198,8 @@
                 <div class="card section fade-in-up">
                     <div class="card-header">
                         <div>
-                            <h2 class="card-title">Profile Information</h2>
-                            <p class="card-subtitle">Update your account details and public profile.</p>
+                            <h2 class="card-title">{$t('profile.general.title')}</h2>
+                            <p class="card-subtitle">{$t('profile.general.subtitle')}</p>
                         </div>
                     </div>
                     
@@ -217,23 +218,23 @@
 
                     <form on:submit|preventDefault={saveProfile} class="settings-form">
                         <div class="form-group">
-                            <label class="form-label" for="full-name">Display Name</label>
+                            <label class="form-label" for="full-name">{$t('profile.general.display_name')}</label>
                             <input 
                                 type="text" 
                                 id="full-name" 
                                 class="form-input" 
-                                placeholder="Enter your full name"
+                                placeholder={$t('profile.general.display_name_placeholder')}
                                 bind:value={profileData.name} 
                             />
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="email">Email Address</label>
+                            <label class="form-label" for="email">{$t('profile.general.email_address')}</label>
                             <input 
                                 type="email" 
                                 id="email" 
                                 class="form-input" 
-                                placeholder="name@example.com"
+                                placeholder={$t('profile.general.email_placeholder')}
                                 bind:value={profileData.email} 
                             />
                         </div>
@@ -241,9 +242,9 @@
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary" disabled={loading}>
                                 {#if loading}
-                                    <span class="spinner"></span> Saving...
+                                    <span class="spinner"></span> {$t('profile.general.saving')}
                                 {:else}
-                                    Save Changes
+                                    {$t('profile.general.save_button')}
                                 {/if}
                             </button>
                         </div>
@@ -254,19 +255,19 @@
             {#if activeTab === 'security'}
                 <div class="card section fade-in-up">
                     <div class="card-header">
-                        <h2 class="card-title">Password & Security</h2>
-                        <p class="card-subtitle">Manage your password and security settings.</p>
+                        <h2 class="card-title">{$t('profile.security.title')}</h2>
+                        <p class="card-subtitle">{$t('profile.security.subtitle')}</p>
                     </div>
 
                     <form on:submit|preventDefault={changePassword} class="settings-form">
                         <div class="form-group">
-                            <label class="form-label" for="current-pass">Current Password</label>
+                            <label class="form-label" for="current-pass">{$t('profile.security.current_password')}</label>
                             <div class="input-wrapper">
                                 <input 
                                     type={showCurrentPassword ? "text" : "password"} 
                                     id="current-pass" 
                                     class="form-input" 
-                                    placeholder="••••••••"
+                                    placeholder={$t('profile.security.password_placeholder')}
                                     bind:value={passwordData.current} 
                                 />
                                 <button 
@@ -282,13 +283,13 @@
                         
                         <div class="grid-2">
                             <div class="form-group">
-                                <label class="form-label" for="new-pass">New Password</label>
+                                <label class="form-label" for="new-pass">{$t('profile.security.new_password')}</label>
                                 <div class="input-wrapper">
                                     <input 
                                         type={showNewPassword ? "text" : "password"} 
                                         id="new-pass" 
                                         class="form-input" 
-                                        placeholder="••••••••"
+                                        placeholder={$t('profile.security.password_placeholder')}
                                         bind:value={passwordData.new} 
                                     />
                                     <button 
@@ -302,13 +303,13 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="confirm-pass">Confirm Password</label>
+                                <label class="form-label" for="confirm-pass">{$t('profile.security.confirm_password')}</label>
                                 <div class="input-wrapper">
                                     <input 
                                         type={showConfirmPassword ? "text" : "password"} 
                                         id="confirm-pass" 
                                         class="form-input" 
-                                        placeholder="••••••••"
+                                        placeholder={$t('profile.security.password_placeholder')}
                                         bind:value={passwordData.confirm} 
                                     />
                                     <button 
@@ -324,24 +325,24 @@
                         </div>
 
                         <div class="password-requirements">
-                            <p>Password requirements:</p>
+                            <p>{$t('profile.security.requirements_title')}</p>
                             <ul>
                                 <li class={passwordData.new.length >= policy.password_min_length ? 'valid' : ''}>
-                                    At least {policy.password_min_length} characters long
+                                    {$t('profile.security.req_length', { values: { length: policy.password_min_length } })}
                                 </li>
                                 {#if policy.password_require_uppercase}
                                     <li class={/[A-Z]/.test(passwordData.new) ? 'valid' : ''}>
-                                        One uppercase letter
+                                        {$t('profile.security.req_uppercase')}
                                     </li>
                                 {/if}
                                 {#if policy.password_require_number}
                                     <li class={/[0-9]/.test(passwordData.new) ? 'valid' : ''}>
-                                        One number
+                                        {$t('profile.security.req_number')}
                                     </li>
                                 {/if}
                                 {#if policy.password_require_special}
                                     <li class={/[!@#$%^&*()_+\-=[\]{}|;:',.<>?/`~]/.test(passwordData.new) ? 'valid' : ''}>
-                                        One special character
+                                        {$t('profile.security.req_special')}
                                     </li>
                                 {/if}
                             </ul>
@@ -349,7 +350,7 @@
 
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary" disabled={loading}>
-                                {loading ? 'Updating...' : 'Update Password'}
+                                {loading ? $t('profile.security.updating') : $t('profile.security.update_button')}
                             </button>
                         </div>
                     </form>
@@ -359,14 +360,14 @@
             {#if activeTab === 'preferences'}
                 <div class="card section fade-in-up">
                     <div class="card-header">
-                        <h2 class="card-title">Appearance</h2>
-                        <p class="card-subtitle">Customize the look and feel of the application.</p>
+                        <h2 class="card-title">{$t('profile.preferences.title')}</h2>
+                        <p class="card-subtitle">{$t('profile.preferences.subtitle')}</p>
                     </div>
 
                     <div class="setting-item">
                         <div class="setting-info">
-                            <h3>Dark Mode</h3>
-                            <p>Toggle between dark and light themes.</p>
+                            <h3>{$t('profile.preferences.dark_mode')}</h3>
+                            <p>{$t('profile.preferences.dark_mode_desc')}</p>
                         </div>
                         <label class="toggle">
                             <input 

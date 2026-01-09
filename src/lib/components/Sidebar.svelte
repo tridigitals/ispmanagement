@@ -5,17 +5,18 @@
     import { appLogo } from '$lib/stores/logo';
     import { isSidebarCollapsed } from '$lib/stores/ui';
     import { goto } from '$app/navigation';
+    import { t } from 'svelte-i18n';
     import { convertFileSrc } from '@tauri-apps/api/core';
     import Icon from './Icon.svelte';
 
-    const appMenu = [
-        { label: 'Dashboard', icon: 'dashboard', href: '/dashboard' }
+    $: appMenu = [
+        { label: $t('sidebar.dashboard'), icon: 'dashboard', href: '/dashboard' }
     ];
 
-    const adminMenu = [
-        { label: 'Overview', icon: 'shield', href: '/admin' },
-        { label: 'Users', icon: 'users', href: '/admin/users' },
-        { label: 'Settings', icon: 'settings', href: '/admin/settings' }
+    $: adminMenu = [
+        { label: $t('sidebar.overview'), icon: 'shield', href: '/admin' },
+        { label: $t('sidebar.users'), icon: 'users', href: '/admin/users' },
+        { label: $t('sidebar.settings'), icon: 'settings', href: '/admin/settings' }
     ];
 
     let isDropdownOpen = false;
@@ -87,7 +88,7 @@
                 title={isUrlAdmin ? "Switch to User Dashboard" : "Switch to Admin Panel"}
             >
                 <Icon name={isUrlAdmin ? 'arrow-left' : 'shield'} size={16} />
-                <span class="label">{isUrlAdmin ? 'User View' : 'Admin Panel'}</span>
+                <span class="label">{isUrlAdmin ? $t('sidebar.user_view') : $t('sidebar.admin_panel')}</span>
             </button>
         {/if}
 
@@ -96,12 +97,12 @@
                 <div class="dropdown-menu" on:click|stopPropagation>
                     <button class="menu-item" on:click={() => navigate('/profile')}>
                         <Icon name="profile" size={16} />
-                        Profile
+                        {$t('sidebar.profile')}
                     </button>
                     <div class="divider"></div>
                     <button class="menu-item danger" on:click={handleLogout}>
                         <Icon name="logout" size={16} />
-                        Logout
+                        {$t('sidebar.logout')}
                     </button>
                 </div>
             {/if}

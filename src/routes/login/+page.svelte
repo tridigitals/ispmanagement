@@ -6,6 +6,7 @@
     import { onMount } from "svelte";
     import { fade, fly } from "svelte/transition";
     import { get } from "svelte/store";
+    import { t } from "svelte-i18n";
     import Icon from "$lib/components/Icon.svelte";
 
     let email = "";
@@ -73,8 +74,8 @@
     <div class="form-section">
         <div class="form-wrapper">
             <div class="form-header">
-                <h2>Sign In</h2>
-                <p>Access your dashboard</p>
+                <h2>{$t('auth.login.title')}</h2>
+                <p>{$t('auth.login.subtitle')}</p>
             </div>
 
             {#if error}
@@ -85,7 +86,7 @@
 
             <form on:submit={handleSubmit}>
                 <div class="input-group" class:focus={activeField === 'email'}>
-                    <label for="email">Email</label>
+                    <label for="email">{$t('auth.login.email_label')}</label>
                     <div class="field">
                         <span class="icon"><Icon name="mail" size={18} /></span>
                         <input
@@ -94,14 +95,14 @@
                             bind:value={email}
                             on:focus={() => activeField = 'email'}
                             on:blur={() => activeField = ''}
-                            placeholder="name@company.com"
+                            placeholder={$t('auth.login.email_placeholder')}
                             required
                         />
                     </div>
                 </div>
 
                 <div class="input-group" class:focus={activeField === 'password'}>
-                    <label for="password">Password</label>
+                    <label for="password">{$t('auth.login.password_label')}</label>
                     <div class="field">
                         <span class="icon"><Icon name="lock" size={18} /></span>
                         <input
@@ -110,7 +111,7 @@
                             bind:value={password}
                             on:focus={() => activeField = 'password'}
                             on:blur={() => activeField = ''}
-                            placeholder="••••••••"
+                            placeholder={$t('auth.login.password_placeholder')}
                             required
                             class="password-input"
                         />
@@ -129,22 +130,22 @@
                     <label class="checkbox">
                         <input type="checkbox" bind:checked={rememberMe} />
                         <span class="checkmark"></span>
-                        <span>Stay signed in</span>
+                        <span>{$t('auth.login.remember_me')}</span>
                     </label>
-                    <a href="/forgot-password">Reset password</a>
+                    <a href="/forgot-password">{$t('auth.login.forgot_password')}</a>
                 </div>
 
                 <button type="submit" class="btn-primary" disabled={loading}>
                     {#if loading}
                         <div class="spinner"></div>
                     {:else}
-                        Continue
+                        {$t('auth.login.submit_button')}
                     {/if}
                 </button>
             </form>
 
             <p class="footer-text">
-                Need an account? <a href="/register">Register here</a>
+                {$t('auth.login.footer_text')} <a href="/register">{$t('auth.login.register_link')}</a>
             </p>
         </div>
     </div>

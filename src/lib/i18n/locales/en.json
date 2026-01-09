@@ -1,0 +1,204 @@
+{
+    "auth": {
+        "login": {
+            "title": "Sign In",
+            "subtitle": "Access your dashboard",
+            "email_label": "Email",
+            "email_placeholder": "name@company.com",
+            "password_label": "Password",
+            "password_placeholder": "••••••••",
+            "remember_me": "Stay signed in",
+            "forgot_password": "Reset password",
+            "submit_button": "Continue",
+            "loading_button": "Signing in...",
+            "footer_text": "Need an account?",
+            "register_link": "Register here"
+        },
+        "register": {
+            "title": "Create Account",
+            "subtitle": "Start your journey with us",
+            "name_label": "Full Name",
+            "name_placeholder": "John Doe",
+            "email_label": "Email",
+            "email_placeholder": "name@company.com",
+            "password_label": "Password",
+            "password_placeholder": "••••••••",
+            "confirm_password_label": "Confirm Password",
+            "submit_button": "Create Account",
+            "loading_button": "Creating...",
+            "footer_text": "Already have an account?",
+            "login_link": "Sign in"
+        },
+        "validation": {
+            "passwords_do_not_match": "Passwords do not match",
+            "min_length": "Min {length} chars",
+            "require_uppercase": "1 uppercase",
+            "require_number": "1 number",
+            "require_special": "1 special char"
+        }
+    },
+    "sidebar": {
+        "dashboard": "Dashboard",
+        "overview": "Overview",
+        "users": "Users",
+        "settings": "Settings",
+        "user_view": "User View",
+        "admin_panel": "Admin Panel",
+        "profile": "Profile",
+        "logout": "Logout"
+    },
+    "topbar": {
+        "search_placeholder": "Search...",
+        "notifications": "Notifications",
+        "help": "Help",
+        "titles": {
+            "dashboard": "Dashboard",
+            "profile": "My Profile",
+            "admin_overview": "Admin Overview",
+            "user_management": "User Management",
+            "global_settings": "Global Settings"
+        }
+    },
+    "dashboard": {
+        "greeting": {
+            "morning": "Good Morning",
+            "afternoon": "Good Afternoon",
+            "evening": "Good Evening",
+            "welcome_message": "Here's what's happening with your account today."
+        },
+        "generate_report": "Generate Report",
+        "admin_mode": {
+            "title": "Administrator Mode",
+            "description": "You have system-wide permissions. Access management tools here."
+        },
+        "stats": {
+            "account_role": "Account Role",
+            "member_since": "Member Since",
+            "system_status": "System Status",
+            "active": "Active"
+        },
+        "recent_activity": {
+            "title": "Recent Activity",
+            "view_all": "View All",
+            "empty": {
+                "title": "No activity yet",
+                "description": "When you start using the app, your activity will appear here.",
+                "learn_more": "Learn More"
+            }
+        },
+        "quick_actions": {
+            "title": "Quick Actions",
+            "update_profile": "Update Profile",
+            "check_messages": "Check Messages",
+            "security_settings": "Security Settings",
+            "contact_support": "Contact Support"
+        }
+    },
+    "profile": {
+        "title": "Settings",
+        "subtitle": "Manage your account settings and preferences.",
+        "tabs": {
+            "general": "General",
+            "security": "Security",
+            "preferences": "Preferences"
+        },
+        "general": {
+            "title": "Profile Information",
+            "subtitle": "Update your account details and public profile.",
+            "display_name": "Display Name",
+            "display_name_placeholder": "Enter your full name",
+            "email_address": "Email Address",
+            "email_placeholder": "name@example.com",
+            "save_button": "Save Changes",
+            "saving": "Saving..."
+        },
+        "security": {
+            "title": "Password & Security",
+            "subtitle": "Manage your password and security settings.",
+            "current_password": "Current Password",
+            "new_password": "New Password",
+            "confirm_password": "Confirm Password",
+            "password_placeholder": "••••••••",
+            "requirements_title": "Password requirements:",
+            "req_length": "At least {length} characters long",
+            "req_uppercase": "One uppercase letter",
+            "req_number": "One number",
+            "req_special": "One special character",
+            "update_button": "Update Password",
+            "updating": "Updating..."
+        },
+        "preferences": {
+            "title": "Appearance",
+            "subtitle": "Customize the look and feel of the application.",
+            "dark_mode": "Dark Mode",
+            "dark_mode_desc": "Toggle between dark and light themes."
+        },
+        "messages": {
+            "profile_updated": "Profile updated successfully!",
+            "password_changed": "Password changed successfully!",
+            "password_mismatch": "New passwords do not match",
+            "update_failed": "Failed to update profile",
+            "change_password_failed": "Failed to change password"
+        }
+    },
+    "admin": {
+        "settings": {
+            "title": "Global Settings",
+            "subtitle": "Manage application configuration, security, and integrations.",
+            "save_success": "Changes saved successfully",
+            "save_error": "Failed to save settings",
+            "load_error": "Failed to load settings",
+            "reset_button": "Reset",
+            "save_button": "Save Changes",
+            "saving": "Saving...",
+            "categories": {
+                "general": "General",
+                "storage": "Storage",
+                "auth": "Authentication",
+                "security": "Security",
+                "email": "Email"
+            },
+            "keys": {
+                "app_name": "App Name",
+                "app_description": "App Description",
+                "app_version": "App Version",
+                "organization_name": "Organization Name",
+                "support_email": "Support Email",
+                "default_locale": "Default Language",
+                "currency_symbol": "Currency Symbol",
+                "maintenance_mode": "Maintenance Mode",
+                "app_logo_path": "App Logo",
+                "storage_provider": "Storage Provider",
+                "storage_local_path": "Local Path",
+                "storage_s3_bucket": "Bucket Name",
+                "storage_s3_region": "Region",
+                "auth_allow_registration": "Allow Registration",
+                "auth_require_email_verification": "Require Email Verification",
+                "auth_jwt_expiry_hours": "JWT Expiry (Hours)",
+                "auth_session_timeout_minutes": "Session Timeout (Minutes)",
+                "auth_password_min_length": "Min Password Length",
+                "auth_password_require_uppercase": "Require Uppercase",
+                "auth_password_require_number": "Require Number",
+                "auth_password_require_special": "Require Special Char",
+                "auth_max_login_attempts": "Max Login Attempts",
+                "auth_lockout_duration_minutes": "Lockout Duration (Minutes)",
+                "auth_logout_all_on_password_change": "Logout All on Password Change",
+                "email_provider": "Email Provider",
+                "email_smtp_host": "SMTP Host",
+                "email_smtp_port": "SMTP Port",
+                "email_smtp_username": "SMTP Username",
+                "email_smtp_password": "SMTP Password",
+                "email_smtp_encryption": "Encryption",
+                "email_from_address": "From Address",
+                "email_from_name": "From Name"
+            },
+            "test_email": {
+                "title": "Test Email Configuration",
+                "description": "Save your changes first, then send a test email to verify your SMTP settings.",
+                "placeholder": "Enter email address",
+                "button": "Send Test Email",
+                "sending": "Sending..."
+            }
+        }
+    }
+}

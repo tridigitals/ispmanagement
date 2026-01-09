@@ -8,6 +8,7 @@
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
     import { fade, fly } from "svelte/transition";
+    import { t } from "svelte-i18n";
     import Icon from "$lib/components/Icon.svelte";
 
     let name = "";
@@ -116,8 +117,8 @@
     <div class="form-section">
         <div class="form-wrapper">
             <div class="form-header">
-                <h2>Create Account</h2>
-                <p>Start your journey with us</p>
+                <h2>{$t('auth.register.title')}</h2>
+                <p>{$t('auth.register.subtitle')}</p>
             </div>
 
             {#if error}
@@ -129,7 +130,7 @@
             <form on:submit={handleSubmit}>
                 <!-- Full Name -->
                 <div class="input-group" class:focus={activeField === 'name'}>
-                    <label for="name">Full Name</label>
+                    <label for="name">{$t('auth.register.name_label')}</label>
                     <div class="field">
                         <span class="icon"><Icon name="user" size={18} /></span>
                         <input
@@ -138,7 +139,7 @@
                             bind:value={name}
                             on:focus={() => activeField = 'name'}
                             on:blur={() => activeField = ''}
-                            placeholder="John Doe"
+                            placeholder={$t('auth.register.name_placeholder')}
                             required
                             disabled={loading}
                         />
@@ -147,7 +148,7 @@
 
                 <!-- Email -->
                 <div class="input-group" class:focus={activeField === 'email'}>
-                    <label for="email">Email</label>
+                    <label for="email">{$t('auth.register.email_label')}</label>
                     <div class="field">
                         <span class="icon"><Icon name="mail" size={18} /></span>
                         <input
@@ -156,7 +157,7 @@
                             bind:value={email}
                             on:focus={() => activeField = 'email'}
                             on:blur={() => activeField = ''}
-                            placeholder="name@company.com"
+                            placeholder={$t('auth.register.email_placeholder')}
                             required
                             disabled={loading}
                         />
@@ -165,7 +166,7 @@
 
                 <!-- Password -->
                 <div class="input-group" class:focus={activeField === 'password'}>
-                    <label for="password">Password</label>
+                    <label for="password">{$t('auth.register.password_label')}</label>
                     <div class="field">
                         <span class="icon"><Icon name="lock" size={18} /></span>
                         <input
@@ -174,7 +175,7 @@
                             bind:value={password}
                             on:focus={() => activeField = 'password'}
                             on:blur={() => activeField = ''}
-                            placeholder="••••••••"
+                            placeholder={$t('auth.register.password_placeholder')}
                             required
                             class="password-input"
                             disabled={loading}
@@ -189,16 +190,16 @@
                         </button>
                     </div>
                     <div class="password-hint">
-                        Min {policy.password_min_length} chars
-                        {#if policy.password_require_uppercase}, 1 uppercase{/if}
-                        {#if policy.password_require_number}, 1 number{/if}
-                        {#if policy.password_require_special}, 1 special char{/if}
+                        {$t('auth.validation.min_length', { values: { length: policy.password_min_length } })}
+                        {#if policy.password_require_uppercase}, {$t('auth.validation.require_uppercase')}{/if}
+                        {#if policy.password_require_number}, {$t('auth.validation.require_number')}{/if}
+                        {#if policy.password_require_special}, {$t('auth.validation.require_special')}{/if}
                     </div>
                 </div>
 
                 <!-- Confirm Password -->
                 <div class="input-group" class:focus={activeField === 'confirmPassword'}>
-                    <label for="confirmPassword">Confirm Password</label>
+                    <label for="confirmPassword">{$t('auth.register.confirm_password_label')}</label>
                     <div class="field">
                         <span class="icon"><Icon name="lock" size={18} /></span>
                         <input
@@ -207,7 +208,7 @@
                             bind:value={confirmPassword}
                             on:focus={() => activeField = 'confirmPassword'}
                             on:blur={() => activeField = ''}
-                            placeholder="••••••••"
+                            placeholder={$t('auth.register.password_placeholder')}
                             required
                             class="password-input"
                             disabled={loading}
@@ -227,13 +228,13 @@
                     {#if loading}
                         <div class="spinner"></div>
                     {:else}
-                        Create Account
+                        {$t('auth.register.submit_button')}
                     {/if}
                 </button>
             </form>
 
             <p class="footer-text">
-                Already have an account? <a href="/login">Sign in</a>
+                {$t('auth.register.footer_text')} <a href="/login">{$t('auth.register.login_link')}</a>
             </p>
         </div>
     </div>
