@@ -21,13 +21,11 @@
 
             // Apply saved theme
             theme.init();
-            
-            // Load global settings & logo immediately
-            await Promise.all([
-                appSettings.init(),
-                appLogo.refresh()
-            ]);
-            
+
+            // Load global settings & logo from cache immediately
+            // Logo is only refreshed from backend when user logs in (handled by auth store)
+            await Promise.all([appSettings.init(), appLogo.init()]);
+
             // Wait for i18n to be ready (locale set in appSettings.init)
             await waitLocale();
 
@@ -42,13 +40,18 @@
                 }
             } else {
                 if (currentPath === "/install") {
-                    console.log("App installed, leaving /install page for /login");
+                    console.log(
+                        "App installed, leaving /install page for /login",
+                    );
                     goto("/login");
                 }
                 await checkAuth();
             }
         } catch (e) {
-            console.error("Critical Error during app initialization in +layout.svelte:", e);
+            console.error(
+                "Critical Error during app initialization in +layout.svelte:",
+                e,
+            );
             // We stop here to prevent loops. The user will see a loading screen,
             // and the real error will be in the console.
         } finally {

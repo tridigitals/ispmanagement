@@ -36,15 +36,15 @@ export const isSuperAdmin = derived(user, $user => ($user as any)?.is_super_admi
 // Reactively update logo and settings when token changes
 token.subscribe(value => {
     if (typeof window !== 'undefined') {
-        // // // console.log(`[AuthStore] Token changed, triggering logo refresh. Token available: ${!!value}`);
-        // We pass the token explicitly to ensure the logo store uses the latest value
-        appLogo.refresh(value || undefined);
-        
-        // Also refresh settings if we have a token (to get tenant settings)
+        // Only refresh logo and settings when logging IN (token exists)
+        // On logout (value is null), we keep the cached logo in localStorage
         if (value) {
-            // console.log(`[AuthStore] Token exists, refreshing appSettings...`);
+            // console.log(`[AuthStore] Token exists, refreshing logo and settings...`);
+            appLogo.refresh(value);
             appSettings.refresh();
         }
+        // When logging out, we intentionally do NOT refresh logo/settings
+        // This keeps the last tenant's branding visible on login page
     }
 });
 
