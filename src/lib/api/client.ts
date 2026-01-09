@@ -39,6 +39,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             // Settings
             'get_logo': { method: 'GET', path: '/settings/logo' },
             'get_all_settings': { method: 'GET', path: '/settings' },
+            'get_public_settings': { method: 'GET', path: '/settings/public' },
             'upsert_setting': { method: 'POST', path: '/settings' },
             'get_setting': { method: 'GET', path: '/settings/:key' },
             'get_setting_value': { method: 'GET', path: '/settings/:key/value' },
@@ -235,6 +236,9 @@ export const users = {
 export const settings = {
     getAll: (): Promise<Setting[]> =>
         safeInvoke('get_all_settings', { token: getTokenOrThrow() }),
+
+    getPublicSettings: (): Promise<{ app_name?: string, app_description?: string }> =>
+        safeInvoke('get_public_settings'),
 
     getAuthSettings: (): Promise<AuthSettings> =>
         safeInvoke('get_auth_settings'),

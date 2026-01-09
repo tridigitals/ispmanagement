@@ -18,6 +18,24 @@ fn get_token(headers: &HeaderMap) -> Result<String, crate::error::AppError> {
         .ok_or(crate::error::AppError::Unauthorized)
 }
 
+#[derive(serde::Serialize)]
+pub struct PublicSettings {
+    pub app_name: Option<String>,
+    pub app_description: Option<String>,
+}
+
+pub async fn get_public_settings(
+    State(state): State<AppState>,
+) -> Result<Json<PublicSettings>, crate::error::AppError> {
+    let app_name = state.settings_service.get_value("app_name").await?;
+    let app_description = state.settings_service.get_value("app_description").await?;
+    
+    Ok(Json(PublicSettings {
+        app_name,
+        app_description,
+    }))
+}
+
 pub async fn get_logo(
     State(state): State<AppState>,
 ) -> Json<Option<String>> {

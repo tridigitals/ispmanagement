@@ -1,5 +1,7 @@
 <script lang="ts">
     import { login, isAuthenticated, isAdmin } from "$lib/stores/auth";
+    import { appSettings } from "$lib/stores/settings";
+    import { appLogo } from "$lib/stores/logo";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
     import { fade, fly } from "svelte/transition";
@@ -15,7 +17,15 @@
     
     let showPassword = false;
 
-    onMount(() => {
+    $: appName = $appSettings.app_name || "Platform Core";
+    $: appDescription = $appSettings.app_description || "Enterprise-grade boilerplate built with Rust and SvelteKit. Secure, scalable, and lightweight.";
+
+    onMount(async () => {
+        await Promise.all([
+            appSettings.init(),
+            appLogo.init()
+        ]);
+
         if ($isAuthenticated) {
             if (get(isAdmin)) {
                 goto("/admin");
@@ -49,10 +59,14 @@
     <div class="brand-section">
         <div class="brand-content" in:fade={{ duration: 1000 }}>
             <div class="logo-area">
-                <Icon name="app" size={48} strokeWidth={1.5} />
-                <h1>Platform Core</h1>
+                {#if $appLogo}
+                    <img src={$appLogo} alt="App Logo" class="app-logo" />
+                {:else}
+                    <Icon name="app" size={48} strokeWidth={1.5} />
+                {/if}
+                <h1>{appName}</h1>
             </div>
-            <p>Enterprise-grade boilerplate built with Rust and SvelteKit. Secure, scalable, and lightweight.</p>
+            <p>{appDescription}</p>
         </div>
     </div>
 
@@ -160,6 +174,16 @@
     .logo-area {
         color: var(--color-primary);
         margin-bottom: 2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center; /* Center content */
+    }
+
+    .app-logo {
+        max-width: 120px;
+        max-height: 120px;
+        margin-bottom: 1rem;
+        object-fit: contain;
     }
 
     .logo-area h1 {

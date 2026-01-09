@@ -86,10 +86,12 @@ pub async fn start_server(
         // User Routes
         .route("/api/users", get(users::list_users).post(users::create_user))
         .route("/api/users/{id}", get(users::get_user).put(users::update_user).delete(users::delete_user))
-        // Settings Routes
-        .route("/api/settings", get(settings::get_all_settings).post(settings::upsert_setting))
-        .route("/api/settings/logo", get(settings::get_logo).post(settings::upload_logo))
-        .route("/api/settings/test-email", post(settings::send_test_email))
+                // Settings Routes
+                .route("/api/settings", get(settings::get_all_settings).post(settings::upsert_setting))
+                .route("/api/settings/public", get(settings::get_public_settings))
+                .route("/api/settings/logo", get(settings::get_logo).post(settings::upload_logo))    
+                .route("/api/settings/test-email", post(settings::send_test_email))
+        
         .route("/api/settings/{key}", get(settings::get_setting).delete(settings::delete_setting))
         .route("/api/settings/{key}/value", get(settings::get_setting_value))
         .layer(cors)

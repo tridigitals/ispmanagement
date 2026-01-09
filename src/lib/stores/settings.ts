@@ -40,14 +40,23 @@ function createSettingsStore() {
                 // Fetch public auth settings
                 const authSettings = await api.settings.getAuthSettings();
                 
-                // Fetch generic app settings (might fail if not logged in, which is fine)
-                let generalSettings: any = {};
+                // Fetch public general settings (name, description)
+                let publicSettings = {};
+                try {
+                    const ps = await api.settings.getPublicSettings();
+                    if (ps) publicSettings = ps;
+                } catch (e) {
+                    console.debug("Could not load public settings", e);
+                }
+
+                // Fetch admin settings (might fail if not logged in, which is fine)
+                let adminSettings: any = {};
                 try {
                    const data = await api.settings.getAll();
                    data.forEach(item => {
-                       if (item.value === 'true') generalSettings[item.key] = true;
-                       else if (item.value === 'false') generalSettings[item.key] = false;
-                       else generalSettings[item.key] = item.value;
+                       if (item.value === 'true') adminSettings[item.key] = true;
+                       else if (item.value === 'false') adminSettings[item.key] = false;
+                       else adminSettings[item.key] = item.value;
                    });
                 } catch (e) {
                     // Ignore error if not logged in (api.settings.getAll requires token)
@@ -56,7 +65,8 @@ function createSettingsStore() {
 
                 const finalSettings = { 
                     ...defaults, 
-                    ...generalSettings,
+                    ...publicSettings,
+                    ...adminSettings,
                     auth: authSettings 
                 };
                 

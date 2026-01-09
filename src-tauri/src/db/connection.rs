@@ -182,6 +182,7 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
 
     let defaults = vec![
         ("app_name", "SaaS App", "Application name"),
+        ("app_description", "Enterprise-grade boilerplate built with Rust and SvelteKit. Secure, scalable, and lightweight.", "Application description"),
         ("app_version", "1.0.0", "Application version"),
         ("jwt_secret", jwt_secret.as_str(), "JWT signing secret"),
         ("auth_jwt_expiry_hours", "24", "JWT token expiry in hours"),
