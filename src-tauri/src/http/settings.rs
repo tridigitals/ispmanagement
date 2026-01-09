@@ -28,9 +28,10 @@ pub struct PublicSettings {
 pub async fn get_public_settings(
     State(state): State<AppState>,
 ) -> Result<Json<PublicSettings>, crate::error::AppError> {
-    let app_name = state.settings_service.get_value("app_name").await?;
-    let app_description = state.settings_service.get_value("app_description").await?;
-    let default_locale = state.settings_service.get_value("default_locale").await?;
+    // Public settings are always global (None tenant_id)
+    let app_name = state.settings_service.get_value(None, "app_name").await?;
+    let app_description = state.settings_service.get_value(None, "app_description").await?;
+    let default_locale = state.settings_service.get_value(None, "default_locale").await?;
     
     Ok(Json(PublicSettings {
         app_name,
@@ -58,8 +59,12 @@ pub async fn get_all_settings(
     headers: HeaderMap,
 ) -> Result<Json<Vec<Setting>>, crate::error::AppError> {
     let token = get_token(&headers)?;
-    state.auth_service.check_admin(&token).await?;
-    let settings = state.settings_service.get_all().await?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    if claims.role != "admin" {
+        return Err(crate::error::AppError::Unauthorized);
+    }
+    
+    let settings = state.settings_service.get_all(claims.tenant_id.as_deref()).await?;
     Ok(Json(settings))
 }
 
@@ -69,8 +74,12 @@ pub async fn get_setting(
     Path(key): Path<String>,
 ) -> Result<Json<Option<Setting>>, crate::error::AppError> {
     let token = get_token(&headers)?;
-    state.auth_service.check_admin(&token).await?;
-    let setting = state.settings_service.get_by_key(&key).await?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    if claims.role != "admin" {
+        return Err(crate::error::AppError::Unauthorized);
+    }
+
+    let setting = state.settings_service.get_by_key(claims.tenant_id.as_deref(), &key).await?;
     Ok(Json(setting))
 }
 
@@ -80,8 +89,12 @@ pub async fn get_setting_value(
     Path(key): Path<String>,
 ) -> Result<Json<Option<String>>, crate::error::AppError> {
     let token = get_token(&headers)?;
-    state.auth_service.check_admin(&token).await?;
-    let value = state.settings_service.get_value(&key).await?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    if claims.role != "admin" {
+        return Err(crate::error::AppError::Unauthorized);
+    }
+
+    let value = state.settings_service.get_value(claims.tenant_id.as_deref(), &key).await?;
     Ok(Json(value))
 }
 
@@ -98,7 +111,10 @@ pub async fn upsert_setting(
     Json(payload): Json<UpsertSettingRequest>,
 ) -> Result<Json<Setting>, crate::error::AppError> {
     let token = get_token(&headers)?;
-    state.auth_service.check_admin(&token).await?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    if claims.role != "admin" {
+        return Err(crate::error::AppError::Unauthorized);
+    }
     
     let dto = UpsertSettingDto {
         key: payload.key,
@@ -106,7 +122,7 @@ pub async fn upsert_setting(
         description: payload.description,
     };
     
-    let setting = state.settings_service.upsert(dto).await?;
+    let setting = state.settings_service.upsert(claims.tenant_id, dto).await?;
     Ok(Json(setting))
 }
 
@@ -116,8 +132,12 @@ pub async fn delete_setting(
     Path(key): Path<String>,
 ) -> Result<Json<serde_json::Value>, crate::error::AppError> {
     let token = get_token(&headers)?;
-    state.auth_service.check_admin(&token).await?;
-    state.settings_service.delete(&key).await?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    if claims.role != "admin" {
+        return Err(crate::error::AppError::Unauthorized);
+    }
+
+    state.settings_service.delete(claims.tenant_id.as_deref(), &key).await?;
     Ok(Json(json!({"message": "Setting deleted"})))
 }
 
@@ -132,7 +152,10 @@ pub async fn upload_logo(
     Json(payload): Json<UploadLogoRequest>,
 ) -> Result<Json<String>, crate::error::AppError> {
     let token = get_token(&headers)?;
-    state.auth_service.check_admin(&token).await?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    if claims.role != "admin" {
+        return Err(crate::error::AppError::Unauthorized);
+    }
 
     let bytes = general_purpose::STANDARD
         .decode(&payload.content)
@@ -152,7 +175,7 @@ pub async fn upload_logo(
         value: path_str.clone(), 
         description: Some("Path to application logo".to_string()) 
     };
-    state.settings_service.upsert(dto).await?;
+    state.settings_service.upsert(claims.tenant_id, dto).await?;
 
     Ok(Json(path_str))
 }

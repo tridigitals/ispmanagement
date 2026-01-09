@@ -102,7 +102,7 @@ pub async fn update_user(
          return Err("Unauthorized: Cannot change role or status".to_string());
     }
 
-    let dto = UpdateUserDto { email, name, role, is_active };
+    let dto = UpdateUserDto { email, name, role, is_active, is_super_admin: None };
 
     if let Err(e) = dto.validate() {
         return Err(format!("Validation error: {}", e));

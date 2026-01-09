@@ -22,6 +22,8 @@ pub struct Claims {
     pub sub: String,     // user_id
     pub email: String,
     pub role: String,
+    pub tenant_id: Option<String>,
+    pub is_super_admin: bool,
     pub exp: usize,      // expiration timestamp
     pub iat: usize,      // issued at
 }
@@ -30,6 +32,7 @@ pub struct Claims {
 #[derive(Debug, Serialize)]
 pub struct AuthResponse {
     pub user: UserResponse,
+    pub tenant: Option<crate::models::tenant::Tenant>,
     pub token: Option<String>,
     pub expires_at: Option<String>,
     pub message: Option<String>,
@@ -77,7 +80,7 @@ impl Default for AuthSettings {
 /// Auth service for handling authentication
 #[derive(Clone)]
 pub struct AuthService {
-    pool: DbPool,
+    pub pool: DbPool,
     jwt_secret: Arc<RwLock<String>>,
     email_service: EmailService,
 }
@@ -190,7 +193,7 @@ impl AuthService {
     }
 
     /// Generate JWT token
-    async fn generate_token(&self, user: &User) -> AppResult<(String, String)> {
+    async fn generate_token(&self, user: &User, tenant_id: Option<String>) -> AppResult<(String, String)> {
         let secret = self.jwt_secret.read().await;
         let settings = self.get_auth_settings().await;
         let expires_at = Utc::now() + Duration::hours(settings.jwt_expiry_hours);
@@ -199,6 +202,8 @@ impl AuthService {
             sub: user.id.clone(),
             email: user.email.clone(),
             role: user.role.clone(),
+            tenant_id: tenant_id.clone(),
+            is_super_admin: user.is_super_admin,
             exp: expires_at.timestamp() as usize,
             iat: Utc::now().timestamp() as usize,
         };
@@ -213,10 +218,11 @@ impl AuthService {
         // Store session in database
         let session_id = uuid::Uuid::new_v4().to_string();
         let query = sqlx::query(
-            "INSERT INTO sessions (id, user_id, token, expires_at, created_at) VALUES ($1, $2, $3, $4, $5)"
+            "INSERT INTO sessions (id, user_id, tenant_id, token, expires_at, created_at) VALUES ($1, $2, $3, $4, $5, $6)"
         )
         .bind(&session_id)
         .bind(&user.id)
+        .bind(&tenant_id)
         .bind(&token);
 
         #[cfg(feature = "postgres")]
@@ -450,16 +456,18 @@ impl AuthService {
 
             Ok(AuthResponse {
                 user: user.into(),
+                tenant: None,
                 token: None,
                 expires_at: None,
                 message: Some("Registration successful. Please check your email to verify your account.".to_string()),
             })
         } else {
-            // Generate token
-            let (token, expires_at) = self.generate_token(&user).await?;
+            // Generate token (no tenant for now on direct registration)
+            let (token, expires_at) = self.generate_token(&user, None).await?;
 
             Ok(AuthResponse {
                 user: user.into(),
+                tenant: None,
                 token: Some(token),
                 expires_at: Some(expires_at),
                 message: None,
@@ -502,14 +510,30 @@ impl AuthService {
             .execute(&self.pool)
             .await?;
 
+        // Get user's primary tenant
+        let tenant: Option<crate::models::tenant::Tenant> = sqlx::query_as(
+            r#"
+            SELECT t.* FROM tenants t
+            JOIN tenant_members tm ON t.id = tm.tenant_id
+            WHERE tm.user_id = $1
+            LIMIT 1
+            "#
+        )
+        .bind(&user.id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let tenant_id = tenant.as_ref().map(|t| t.id.clone());
+
         // Login user
-        let (jwt, expires_at) = self.generate_token(&user).await?;
+        let (jwt, expires_at) = self.generate_token(&user, tenant_id).await?;
         
         // Refresh user data
         let updated_user = self.get_user_by_id(&user.id).await?;
 
         Ok(AuthResponse {
             user: updated_user.into(),
+            tenant,
             token: Some(jwt),
             expires_at: Some(expires_at),
             message: Some("Email verified successfully".to_string()),
@@ -672,11 +696,27 @@ impl AuthService {
 
         info!("User logged in: {}", user.email);
 
+        // Get user's primary tenant
+        let tenant: Option<crate::models::tenant::Tenant> = sqlx::query_as(
+            r#"
+            SELECT t.* FROM tenants t
+            JOIN tenant_members tm ON t.id = tm.tenant_id
+            WHERE tm.user_id = $1
+            LIMIT 1
+            "#
+        )
+        .bind(&user.id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let tenant_id = tenant.as_ref().map(|t| t.id.clone());
+
         // Generate token
-        let (token, expires_at) = self.generate_token(&user).await?;
+        let (token, expires_at) = self.generate_token(&user, tenant_id).await?;
 
         Ok(AuthResponse {
             user: user.into(),
+            tenant,
             token: Some(token),
             expires_at: Some(expires_at),
             message: None,

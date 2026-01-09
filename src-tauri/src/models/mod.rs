@@ -1,7 +1,9 @@
 //! Models module
 
-pub mod user;
 pub mod settings;
+pub mod user;
+pub mod tenant;
 
-pub use user::*;
 pub use settings::*;
+pub use user::*;
+pub use tenant::*;

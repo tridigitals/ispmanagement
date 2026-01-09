@@ -128,6 +128,7 @@ pub async fn update_user(
         name: payload.name,
         role: payload.role,
         is_active: payload.is_active,
+        is_super_admin: None,
     };
 
     if let Err(e) = dto.validate() {

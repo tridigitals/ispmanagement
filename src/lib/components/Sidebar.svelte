@@ -1,6 +1,6 @@
 <script lang="ts">
     import { page } from '$app/stores';
-    import { user, isAdmin, logout } from '$lib/stores/auth';
+    import { user, isAdmin, isSuperAdmin, logout } from '$lib/stores/auth';
     import { appName } from '$lib/stores/settings';
     import { appLogo } from '$lib/stores/logo';
     import { isSidebarCollapsed } from '$lib/stores/ui';
@@ -81,6 +81,17 @@
 
     <!-- Footer / Profile -->
     <div class="sidebar-footer">
+        {#if $isSuperAdmin}
+            <button 
+                class="context-btn super-admin" 
+                on:click={() => goto('/superadmin')}
+                title="Super Admin Dashboard"
+            >
+                <Icon name="server" size={16} />
+                <span class="label">Super Admin</span>
+            </button>
+        {/if}
+
         {#if $isAdmin}
             <button 
                 class="context-btn" 
@@ -256,6 +267,18 @@
     
     .context-btn:hover {
         border-color: var(--color-primary);
+    }
+
+    .context-btn.super-admin {
+        color: white;
+        background: linear-gradient(135deg, #4f46e5, #ec4899); /* Indigo to Pink */
+        border: none;
+    }
+
+    .context-btn.super-admin:hover {
+        filter: brightness(1.1);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
 
     .profile-section {

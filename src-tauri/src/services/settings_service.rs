@@ -16,41 +16,52 @@ impl SettingsService {
         Self { pool }
     }
 
-    /// Get all settings
-    pub async fn get_all(&self) -> AppResult<Vec<Setting>> {
-        let settings = sqlx::query_as("SELECT * FROM settings ORDER BY key")
-            .fetch_all(&self.pool)
-            .await?;
+    /// Get all settings for a tenant (or global if tenant_id is None)
+    pub async fn get_all(&self, tenant_id: Option<&str>) -> AppResult<Vec<Setting>> {
+        let settings = if let Some(tid) = tenant_id {
+            sqlx::query_as("SELECT * FROM settings WHERE tenant_id = $1 ORDER BY key")
+                .bind(tid)
+                .fetch_all(&self.pool)
+                .await?
+        } else {
+            sqlx::query_as("SELECT * FROM settings WHERE tenant_id IS NULL ORDER BY key")
+                .fetch_all(&self.pool)
+                .await?
+        };
 
         Ok(settings)
     }
 
-    /// Get setting by key
-    pub async fn get_by_key(&self, key: &str) -> AppResult<Option<Setting>> {
-        let setting = sqlx::query_as("SELECT * FROM settings WHERE key = $1")
-            .bind(key)
-            .fetch_optional(&self.pool)
-            .await?;
+    /// Get setting by key and tenant
+    pub async fn get_by_key(&self, tenant_id: Option<&str>, key: &str) -> AppResult<Option<Setting>> {
+        let setting = if let Some(tid) = tenant_id {
+            sqlx::query_as("SELECT * FROM settings WHERE tenant_id = $1 AND key = $2")
+                .bind(tid)
+                .bind(key)
+                .fetch_optional(&self.pool)
+                .await?
+        } else {
+            sqlx::query_as("SELECT * FROM settings WHERE tenant_id IS NULL AND key = $1")
+                .bind(key)
+                .fetch_optional(&self.pool)
+                .await?
+        };
 
         Ok(setting)
     }
 
-    /// Get setting value by key
-    pub async fn get_value(&self, key: &str) -> AppResult<Option<String>> {
-        let setting: Option<Setting> = sqlx::query_as("SELECT * FROM settings WHERE key = $1")
-            .bind(key)
-            .fetch_optional(&self.pool)
-            .await?;
-
+    /// Get setting value by key and tenant
+    pub async fn get_value(&self, tenant_id: Option<&str>, key: &str) -> AppResult<Option<String>> {
+        let setting = self.get_by_key(tenant_id, key).await?;
         Ok(setting.map(|s| s.value))
     }
 
-    /// Upsert (insert or update) setting
-    pub async fn upsert(&self, dto: UpsertSettingDto) -> AppResult<Setting> {
+    /// Upsert (insert or update) setting for a tenant
+    pub async fn upsert(&self, tenant_id: Option<String>, dto: UpsertSettingDto) -> AppResult<Setting> {
         let now = Utc::now();
 
         // Check if setting exists
-        let existing = self.get_by_key(&dto.key).await?;
+        let existing = self.get_by_key(tenant_id.as_deref(), &dto.key).await?;
 
         if let Some(mut setting) = existing {
             // Update existing
@@ -58,34 +69,47 @@ impl SettingsService {
             setting.description = dto.description;
             setting.updated_at = now;
 
-            let query = sqlx::query(
-                "UPDATE settings SET value = $1, description = $2, updated_at = $3 WHERE key = $4"
-            )
-            .bind(&setting.value)
-            .bind(&setting.description);
+            if let Some(tid) = &tenant_id {
+                let query = sqlx::query(
+                    "UPDATE settings SET value = $1, description = $2, updated_at = $3 WHERE tenant_id = $4 AND key = $5"
+                )
+                .bind(&setting.value)
+                .bind(&setting.description);
 
-            #[cfg(feature = "postgres")]
-            let query = query.bind(setting.updated_at);
+                #[cfg(feature = "postgres")]
+                let query = query.bind(setting.updated_at);
+                #[cfg(not(feature = "postgres"))]
+                let query = query.bind(setting.updated_at.to_rfc3339());
 
-            #[cfg(not(feature = "postgres"))]
-            let query = query.bind(setting.updated_at.to_rfc3339());
+                query.bind(tid).bind(&setting.key).execute(&self.pool).await?;
+            } else {
+                let query = sqlx::query(
+                    "UPDATE settings SET value = $1, description = $2, updated_at = $3 WHERE tenant_id IS NULL AND key = $4"
+                )
+                .bind(&setting.value)
+                .bind(&setting.description);
 
-            query.bind(&setting.key)
-            .execute(&self.pool)
-            .await?;
+                #[cfg(feature = "postgres")]
+                let query = query.bind(setting.updated_at);
+                #[cfg(not(feature = "postgres"))]
+                let query = query.bind(setting.updated_at.to_rfc3339());
+
+                query.bind(&setting.key).execute(&self.pool).await?;
+            }
 
             Ok(setting)
         } else {
             // Insert new
-            let setting = Setting::new(dto.key, dto.value, dto.description);
+            let setting = Setting::new(tenant_id.clone(), dto.key, dto.value, dto.description);
 
             let query = sqlx::query(
                 r#"
-                INSERT INTO settings (id, key, value, description, created_at, updated_at)
-                VALUES ($1, $2, $3, $4, $5, $6)
+                INSERT INTO settings (id, tenant_id, key, value, description, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
                 "#,
             )
             .bind(&setting.id)
+            .bind(&setting.tenant_id)
             .bind(&setting.key)
             .bind(&setting.value)
             .bind(&setting.description);
@@ -106,12 +130,20 @@ impl SettingsService {
         }
     }
 
-    /// Delete setting by key
-    pub async fn delete(&self, key: &str) -> AppResult<()> {
-        let result = sqlx::query("DELETE FROM settings WHERE key = $1")
-            .bind(key)
-            .execute(&self.pool)
-            .await?;
+    /// Delete setting by key and tenant
+    pub async fn delete(&self, tenant_id: Option<&str>, key: &str) -> AppResult<()> {
+        let result = if let Some(tid) = tenant_id {
+            sqlx::query("DELETE FROM settings WHERE tenant_id = $1 AND key = $2")
+                .bind(tid)
+                .bind(key)
+                .execute(&self.pool)
+                .await?
+        } else {
+            sqlx::query("DELETE FROM settings WHERE tenant_id IS NULL AND key = $1")
+                .bind(key)
+                .execute(&self.pool)
+                .await?
+        };
 
         if result.rows_affected() == 0 {
             return Err(AppError::Validation(format!("Setting '{}' not found", key)));

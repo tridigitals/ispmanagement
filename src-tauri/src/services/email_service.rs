@@ -88,18 +88,18 @@ impl EmailService {
 
     /// Get email configuration from settings
     async fn get_config(&self) -> AppResult<EmailConfig> {
-        let provider = self.settings_service.get_value("email_provider").await.ok().flatten().unwrap_or_else(|| "resend".to_string());
-        let from_email = self.settings_service.get_value("email_from_address").await.ok().flatten().unwrap_or_else(|| "noreply@example.com".to_string());
-        let from_name = self.settings_service.get_value("email_from_name").await.ok().flatten().unwrap_or_else(|| "System".to_string());
-        let api_key = self.settings_service.get_value("email_api_key").await.ok().flatten().unwrap_or_default();
-        let webhook_url = self.settings_service.get_value("email_webhook_url").await.ok().flatten().unwrap_or_default();
+        let provider = self.settings_service.get_value(None, "email_provider").await.ok().flatten().unwrap_or_else(|| "resend".to_string());
+        let from_email = self.settings_service.get_value(None, "email_from_address").await.ok().flatten().unwrap_or_else(|| "noreply@example.com".to_string());
+        let from_name = self.settings_service.get_value(None, "email_from_name").await.ok().flatten().unwrap_or_else(|| "System".to_string());
+        let api_key = self.settings_service.get_value(None, "email_api_key").await.ok().flatten().unwrap_or_default();
+        let webhook_url = self.settings_service.get_value(None, "email_webhook_url").await.ok().flatten().unwrap_or_default();
         
         // SMTP fields (stored for future use)
-        let smtp_host = self.settings_service.get_value("email_smtp_host").await.ok().flatten().unwrap_or_default();
-        let smtp_port_str = self.settings_service.get_value("email_smtp_port").await.ok().flatten().unwrap_or_else(|| "587".to_string());
-        let smtp_username = self.settings_service.get_value("email_smtp_username").await.ok().flatten().unwrap_or_default();
-        let smtp_password = self.settings_service.get_value("email_smtp_password").await.ok().flatten().unwrap_or_default();
-        let smtp_encryption = self.settings_service.get_value("email_smtp_encryption").await.ok().flatten().unwrap_or_else(|| "starttls".to_string());
+        let smtp_host = self.settings_service.get_value(None, "email_smtp_host").await.ok().flatten().unwrap_or_default();
+        let smtp_port_str = self.settings_service.get_value(None, "email_smtp_port").await.ok().flatten().unwrap_or_else(|| "587".to_string());
+        let smtp_username = self.settings_service.get_value(None, "email_smtp_username").await.ok().flatten().unwrap_or_default();
+        let smtp_password = self.settings_service.get_value(None, "email_smtp_password").await.ok().flatten().unwrap_or_default();
+        let smtp_encryption = self.settings_service.get_value(None, "email_smtp_encryption").await.ok().flatten().unwrap_or_else(|| "starttls".to_string());
 
         Ok(EmailConfig {
             provider,

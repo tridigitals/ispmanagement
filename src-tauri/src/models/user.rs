@@ -15,6 +15,7 @@ pub struct User {
     pub password_hash: String,
     pub name: String,
     pub role: String,
+    pub is_super_admin: bool,
     pub avatar_url: Option<String>,
     pub is_active: bool,
     pub email_verified_at: Option<DateTime<Utc>>,
@@ -39,6 +40,7 @@ impl User {
             password_hash,
             name,
             role: "user".to_string(),
+            is_super_admin: false,
             avatar_url: None,
             is_active: true,
             email_verified_at: None,
@@ -69,6 +71,7 @@ pub struct UserResponse {
     pub email: String,
     pub name: String,
     pub role: String,
+    pub is_super_admin: bool,
     pub avatar_url: Option<String>,
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
@@ -81,6 +84,7 @@ impl From<User> for UserResponse {
             email: user.email,
             name: user.name,
             role: user.role,
+            is_super_admin: user.is_super_admin,
             avatar_url: user.avatar_url,
             is_active: user.is_active,
             created_at: user.created_at,
@@ -107,6 +111,7 @@ pub struct UpdateUserDto {
     #[validate(length(min = 2, message = "Name must be at least 2 characters"))]
     pub name: Option<String>,
     pub role: Option<String>,
+    pub is_super_admin: Option<bool>,
     pub is_active: Option<bool>,
 }
 

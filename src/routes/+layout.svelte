@@ -33,16 +33,20 @@
 
             if (!isInstalled) {
                 if (currentPath !== "/install") {
+                    console.log("App not installed, redirecting to /install");
                     goto("/install");
                 }
             } else {
                 if (currentPath === "/install") {
+                    console.log("App installed, leaving /install page for /login");
                     goto("/login");
                 }
                 await checkAuth();
             }
         } catch (e) {
-            console.error("Failed to check installation status:", e);
+            console.error("Critical Error during app initialization in +layout.svelte:", e);
+            // We stop here to prevent loops. The user will see a loading screen,
+            // and the real error will be in the console.
         } finally {
             loading = false;
         }

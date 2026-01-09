@@ -36,6 +36,10 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             'create_user': { method: 'POST', path: '/users' },
             'update_user': { method: 'PUT', path: '/users/:id' },
             'delete_user': { method: 'DELETE', path: '/users/:id' },
+            // Super Admin
+            'list_tenants': { method: 'GET', path: '/superadmin/tenants' },
+            'create_tenant': { method: 'POST', path: '/superadmin/tenants' },
+            'delete_tenant': { method: 'DELETE', path: '/superadmin/tenants/:id' },
             // Settings
             'get_logo': { method: 'GET', path: '/settings/logo' },
             'get_all_settings': { method: 'GET', path: '/settings' },
@@ -113,8 +117,17 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         } as any;
 
         throw new Error(`Command '${command}' not implemented in HTTP API yet.`);
-    } catch (error) {
-        console.error(`API Error (${command}):`, error);
+    } catch (error: any) {
+        // Downgrade 401/Invalid token errors to warnings as they are handled by the app (logout)
+        const isAuthError = error.message?.includes('401') ||
+            error.message?.includes('Invalid token') ||
+            error.message?.includes('Unauthorized');
+
+        if (isAuthError) {
+            console.warn(`API Warning (${command}):`, error.message);
+        } else {
+            console.error(`API Error (${command}):`, error);
+        }
         throw error;
     }
 }
@@ -232,6 +245,18 @@ export const users = {
         safeInvoke('delete_user', { token: getTokenOrThrow(), id }),
 };
 
+// Super Admin API
+export const superadmin = {
+    listTenants: (): Promise<{ data: any[], total: number }> =>
+        safeInvoke('list_tenants', { token: getTokenOrThrow() }),
+
+    createTenant: (name: string, slug: string, ownerEmail: string, ownerPassword: string): Promise<any> =>
+        safeInvoke('create_tenant', { token: getTokenOrThrow(), name, slug, owner_email: ownerEmail, owner_password: ownerPassword }),
+        
+    deleteTenant: (id: string): Promise<void> =>
+        safeInvoke('delete_tenant', { token: getTokenOrThrow(), id }),
+};
+
 // Settings API
 export const settings = {
     getAll: (): Promise<Setting[]> =>
@@ -303,6 +328,7 @@ export const install = {
 export const api = {
     auth,
     users,
+    superadmin,
     settings,
     install,
 };

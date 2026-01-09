@@ -7,6 +7,28 @@ use base64::{engine::general_purpose, Engine as _};
 use std::fs;
 use tauri::{AppHandle, Manager, State};
 
+#[derive(serde::Serialize)]
+pub struct PublicSettings {
+    pub app_name: Option<String>,
+    pub app_description: Option<String>,
+    pub default_locale: Option<String>,
+}
+
+#[tauri::command]
+pub async fn get_public_settings(
+    settings_service: State<'_, SettingsService>,
+) -> Result<PublicSettings, String> {
+    let app_name = settings_service.get_value(None, "app_name").await.map_err(|e| e.to_string())?;
+    let app_description = settings_service.get_value(None, "app_description").await.map_err(|e| e.to_string())?;
+    let default_locale = settings_service.get_value(None, "default_locale").await.map_err(|e| e.to_string())?;
+    
+    Ok(PublicSettings {
+        app_name,
+        app_description,
+        default_locale,
+    })
+}
+
 /// Get all settings
 #[tauri::command]
 pub async fn get_all_settings(
@@ -14,8 +36,11 @@ pub async fn get_all_settings(
     settings_service: State<'_, SettingsService>,
     auth_service: State<'_, AuthService>,
 ) -> Result<Vec<Setting>, String> {
-    auth_service.check_admin(&token).await.map_err(|e| e.to_string())?;
-    settings_service.get_all().await.map_err(|e| e.to_string())
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    if claims.role != "admin" {
+        return Err("Unauthorized".to_string());
+    }
+    settings_service.get_all(claims.tenant_id.as_deref()).await.map_err(|e| e.to_string())
 }
 
 /// Get public auth settings (no token required)
@@ -34,8 +59,11 @@ pub async fn get_setting(
     settings_service: State<'_, SettingsService>,
     auth_service: State<'_, AuthService>,
 ) -> Result<Option<Setting>, String> {
-    auth_service.check_admin(&token).await.map_err(|e| e.to_string())?;
-    settings_service.get_by_key(&key).await.map_err(|e| e.to_string())
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    if claims.role != "admin" {
+        return Err("Unauthorized".to_string());
+    }
+    settings_service.get_by_key(claims.tenant_id.as_deref(), &key).await.map_err(|e| e.to_string())
 }
 
 /// Get setting value by key
@@ -46,8 +74,11 @@ pub async fn get_setting_value(
     settings_service: State<'_, SettingsService>,
     auth_service: State<'_, AuthService>,
 ) -> Result<Option<String>, String> {
-    auth_service.check_admin(&token).await.map_err(|e| e.to_string())?;
-    settings_service.get_value(&key).await.map_err(|e| e.to_string())
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    if claims.role != "admin" {
+        return Err("Unauthorized".to_string());
+    }
+    settings_service.get_value(claims.tenant_id.as_deref(), &key).await.map_err(|e| e.to_string())
 }
 
 /// Upsert (create or update) setting
@@ -60,9 +91,12 @@ pub async fn upsert_setting(
     settings_service: State<'_, SettingsService>,
     auth_service: State<'_, AuthService>,
 ) -> Result<Setting, String> {
-    auth_service.check_admin(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    if claims.role != "admin" {
+        return Err("Unauthorized".to_string());
+    }
     let dto = UpsertSettingDto { key, value, description };
-    settings_service.upsert(dto).await.map_err(|e| e.to_string())
+    settings_service.upsert(claims.tenant_id, dto).await.map_err(|e| e.to_string())
 }
 
 /// Delete setting
@@ -73,8 +107,11 @@ pub async fn delete_setting(
     settings_service: State<'_, SettingsService>,
     auth_service: State<'_, AuthService>,
 ) -> Result<(), String> {
-    auth_service.check_admin(&token).await.map_err(|e| e.to_string())?;
-    settings_service.delete(&key).await.map_err(|e| e.to_string())
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    if claims.role != "admin" {
+        return Err("Unauthorized".to_string());
+    }
+    settings_service.delete(claims.tenant_id.as_deref(), &key).await.map_err(|e| e.to_string())
 }
 
 /// Upload Logo
@@ -86,7 +123,10 @@ pub async fn upload_logo(
     settings_service: State<'_, SettingsService>,
     app_handle: AppHandle,
 ) -> Result<String, String> {
-    auth_service.check_admin(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    if claims.role != "admin" {
+        return Err("Unauthorized".to_string());
+    }
 
     // Decode Base64
     let bytes = general_purpose::STANDARD
@@ -116,7 +156,7 @@ pub async fn upload_logo(
         value: path_str.clone(), 
         description: Some("Path to application logo".to_string()) 
     };
-    settings_service.upsert(dto).await.map_err(|e| e.to_string())?;
+    settings_service.upsert(claims.tenant_id, dto).await.map_err(|e| e.to_string())?;
 
     Ok(path_str)
 }

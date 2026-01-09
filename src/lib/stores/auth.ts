@@ -29,6 +29,7 @@ export const token = writable<string | null>(getStoredToken());
 export const user = writable<User | null>(getStoredUser());
 export const isAuthenticated = derived(token, $token => !!$token);
 export const isAdmin = derived(user, $user => $user?.role === 'admin');
+export const isSuperAdmin = derived(user, $user => ($user as any)?.is_super_admin === true);
 
 // Helper to determine active storage
 function getActiveStorage(): Storage | null {
@@ -116,7 +117,7 @@ export async function checkAuth(): Promise<boolean> {
         user.set(currentUser);
         return true;
     } catch (e) {
-        console.error('[Auth] checkAuth error:', e);
+        console.warn('[Auth] checkAuth failed (user likely session expired):', e);
         logout();
         return false;
     }

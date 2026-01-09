@@ -64,8 +64,8 @@ impl UserService {
 
         let query = sqlx::query(
             r#"
-            INSERT INTO users (id, email, password_hash, name, role, is_active, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            INSERT INTO users (id, email, password_hash, name, role, is_super_admin, is_active, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             "#,
         )
         .bind(&user.id)
@@ -73,6 +73,7 @@ impl UserService {
         .bind(&user.password_hash)
         .bind(&user.name)
         .bind(&user.role)
+        .bind(user.is_super_admin)
         .bind(user.is_active);
 
         #[cfg(feature = "postgres")]
@@ -120,6 +121,9 @@ impl UserService {
         if let Some(role) = dto.role {
             user.role = role;
         }
+        if let Some(is_super_admin) = dto.is_super_admin {
+            user.is_super_admin = is_super_admin;
+        }
         if let Some(is_active) = dto.is_active {
             user.is_active = is_active;
         }
@@ -128,13 +132,14 @@ impl UserService {
 
         let query = sqlx::query(
             r#"
-            UPDATE users SET email = $1, name = $2, role = $3, is_active = $4, updated_at = $5
-            WHERE id = $6
+            UPDATE users SET email = $1, name = $2, role = $3, is_super_admin = $4, is_active = $5, updated_at = $6
+            WHERE id = $7
             "#,
         )
         .bind(&user.email)
         .bind(&user.name)
         .bind(&user.role)
+        .bind(user.is_super_admin)
         .bind(user.is_active);
 
         #[cfg(feature = "postgres")]

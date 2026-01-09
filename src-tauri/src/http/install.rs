@@ -61,7 +61,7 @@ pub async fn install_app(
 
     // 1. Save App Settings
     if let Some(app_name) = payload.app_name {
-        let _ = state.settings_service.upsert(UpsertSettingDto {
+        let _ = state.settings_service.upsert(None, UpsertSettingDto {
             key: "app_name".to_string(),
             value: app_name,
             description: Some("Application name".to_string()),
@@ -69,7 +69,7 @@ pub async fn install_app(
     }
 
     if let Some(app_url) = payload.app_url {
-        let _ = state.settings_service.upsert(UpsertSettingDto {
+        let _ = state.settings_service.upsert(None, UpsertSettingDto {
             key: "app_url".to_string(),
             value: app_url,
             description: Some("Application Base URL".to_string()),
@@ -87,11 +87,12 @@ pub async fn install_app(
         (StatusCode::BAD_REQUEST, e.to_string())
     })?;
 
-    // 3. Update role to admin
+    // 3. Update role to admin and set as super admin
     let update_dto = UpdateUserDto {
         email: None,
         name: None,
         role: Some("admin".to_string()),
+        is_super_admin: Some(true),
         is_active: Some(true),
     };
 

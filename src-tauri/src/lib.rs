@@ -72,50 +72,58 @@ pub fn run() {
             info!("App data directory: {:?}", app_data_dir);
 
             // Initialize database and services in async context
-            tauri::async_runtime::block_on(async move {
-                // Initialize database
-                let pool = init_db(app_data_dir.clone())
+            tauri::async_runtime::spawn(async move {
+                let init_result: Result<(), String> = (async {
+                    // Initialize database
+                    info!("Attempting to initialize database...");
+                    let pool = init_db(app_data_dir.clone())
+                        .await
+                        .map_err(|e| format!("Failed to initialize database: {}", e))?;
+                    info!("Database initialized.");
+
+                    // Seed default settings
+                    seed_defaults(&pool)
+                        .await
+                        .map_err(|e| format!("Failed to seed default settings: {}", e))?;
+                    info!("Default settings seeded.");
+
+                    // Get JWT secret from settings
+                    let jwt_secret = sqlx::query_scalar::<_, String>(
+                        "SELECT value FROM settings WHERE key = 'jwt_secret' AND tenant_id IS NULL"
+                    )
+                    .fetch_one(&pool)
                     .await
-                    .expect("Failed to initialize database");
+                    .unwrap_or_else(|_| uuid::Uuid::new_v4().to_string());
+                    info!("JWT Secret loaded.");
 
-                // Seed default settings
-                seed_defaults(&pool)
-                    .await
-                    .expect("Failed to seed default settings");
+                    // Create services
+                    let settings_service = SettingsService::new(pool.clone());
+                    let email_service = EmailService::new(settings_service.clone());
+                    let auth_service = AuthService::new(pool.clone(), jwt_secret, email_service.clone());
+                    let user_service = UserService::new(pool.clone());
 
-                // Get JWT secret from settings
-                let jwt_secret = sqlx::query_scalar::<_, String>(
-                    "SELECT value FROM settings WHERE key = $1"
-                )
-                .bind("jwt_secret")
-                .fetch_one(&pool)
-                .await
-                .unwrap_or_else(|_| uuid::Uuid::new_v4().to_string());
+                    // Manage state
+                    app_handle.manage(auth_service.clone());
+                    app_handle.manage(user_service.clone());
+                    app_handle.manage(settings_service.clone());
+                    app_handle.manage(email_service.clone());
+                    info!("Services added to Tauri state.");
 
-                // Create services
-                let settings_service = SettingsService::new(pool.clone());
-                let email_service = EmailService::new(settings_service.clone());
-                let auth_service = AuthService::new(pool.clone(), jwt_secret, email_service.clone());
-                let user_service = UserService::new(pool.clone());
+                    // Start HTTP Server
+                    let app_dir = app_data_dir.clone();
+                    tauri::async_runtime::spawn(async move {
+                        http::start_server(auth_service, user_service, settings_service, email_service, app_dir, 3000).await;
+                    });
 
-                // Manage state
-                app_handle.manage(auth_service.clone());
-                app_handle.manage(user_service.clone());
-                app_handle.manage(settings_service.clone());
-                app_handle.manage(email_service.clone());
+                    info!("Services initialized successfully");
+                    Ok(())
+                }).await;
 
-                // Start HTTP Server
-                let auth_svc = auth_service.clone();
-                let user_svc = user_service.clone();
-                let settings_svc = settings_service.clone();
-                let email_svc = email_service.clone();
-                let app_dir = app_data_dir.clone();
-
-                tauri::async_runtime::spawn(async move {
-                     http::start_server(auth_svc, user_svc, settings_svc, email_svc, app_dir, 3000).await;
-                });
-
-                info!("Services initialized successfully");
+                if let Err(e) = init_result {
+                    tracing::error!("!!! FAILED TO INITIALIZE BACKEND: {} !!!", e);
+                    // Optionally, you could emit an event to the frontend to show a fatal error screen
+                    // app_handle.emit_all("backend-init-error", &e).unwrap();
+                }
             });
 
             Ok(())
@@ -137,21 +145,27 @@ pub fn run() {
             create_user,
             update_user,
             delete_user,
-            // Settings commands
-            get_all_settings,
-            get_auth_settings,
-            get_setting,
-            get_setting_value,
-            upsert_setting,
-            delete_setting,
-            upload_logo,
-            get_logo,
-            // Install commands
-            is_installed,
-            install_app,
-            // Email commands
-            send_test_email,
-        ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
-}
+                        // Settings commands
+                        get_all_settings,
+                        get_auth_settings,
+                        get_public_settings,
+                        get_setting,
+                        get_setting_value,
+                        upsert_setting,
+                        delete_setting,
+                        upload_logo,
+                        get_logo,
+                        // Install commands
+                        is_installed,
+                        install_app,
+                        // Email commands
+                        send_test_email,
+                                    // Super Admin commands
+                                    list_tenants,
+                                    delete_tenant,
+                                    create_tenant,
+                                ])
+                                .run(tauri::generate_context!())
+                                .expect("error while running tauri application");
+                        }
+                        

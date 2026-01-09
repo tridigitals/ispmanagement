@@ -52,6 +52,22 @@ pub async fn init_db(app_data_dir: PathBuf) -> Result<DbPool, sqlx::Error> {
 
 #[cfg(feature = "postgres")]
 async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
+    // Create tenants table
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS tenants (
+            id TEXT PRIMARY KEY NOT NULL,
+            name TEXT NOT NULL,
+            slug TEXT UNIQUE NOT NULL,
+            custom_domain TEXT UNIQUE,
+            logo_url TEXT,
+            is_active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
     // Create users table
     sqlx::query(r#"
         CREATE TABLE IF NOT EXISTS users (
@@ -60,6 +76,7 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
             password_hash TEXT NOT NULL,
             name TEXT NOT NULL,
             role TEXT NOT NULL DEFAULT 'user',
+            is_super_admin BOOLEAN NOT NULL DEFAULT false,
             avatar_url TEXT,
             is_active BOOLEAN NOT NULL DEFAULT true,
             email_verified_at TIMESTAMPTZ,
@@ -75,11 +92,26 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
+    // Create tenant_members table
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS tenant_members (
+            id TEXT PRIMARY KEY NOT NULL,
+            tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            role TEXT NOT NULL DEFAULT 'member',
+            created_at TIMESTAMPTZ NOT NULL,
+            UNIQUE(tenant_id, user_id)
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
     // Create settings table
     sqlx::query(r#"
         CREATE TABLE IF NOT EXISTS settings (
             id TEXT PRIMARY KEY NOT NULL,
-            key TEXT NOT NULL UNIQUE,
+            tenant_id TEXT REFERENCES tenants(id) ON DELETE CASCADE,
+            key TEXT NOT NULL,
             value TEXT NOT NULL,
             description TEXT,
             created_at TIMESTAMPTZ NOT NULL,
@@ -94,6 +126,7 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
         CREATE TABLE IF NOT EXISTS sessions (
             id TEXT PRIMARY KEY NOT NULL,
             user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            tenant_id TEXT REFERENCES tenants(id) ON DELETE CASCADE,
             token TEXT NOT NULL UNIQUE,
             expires_at TIMESTAMPTZ NOT NULL,
             created_at TIMESTAMPTZ NOT NULL
@@ -104,9 +137,14 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
 
     // Create indexes
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)").execute(pool).await.ok();
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(key)").execute(pool).await.ok();
+    // Unique index for Global Settings (where tenant_id is NULL)
+    sqlx::query("CREATE UNIQUE INDEX IF NOT EXISTS idx_settings_global_key ON settings(key) WHERE tenant_id IS NULL").execute(pool).await.ok();
+    // Unique index for Tenant Settings (where tenant_id is NOT NULL)
+    sqlx::query("CREATE UNIQUE INDEX IF NOT EXISTS idx_settings_tenant_key ON settings(tenant_id, key) WHERE tenant_id IS NOT NULL").execute(pool).await.ok();
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_settings_tenant ON settings(tenant_id)").execute(pool).await.ok();
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)").execute(pool).await.ok();
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)").execute(pool).await.ok();
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_tenants_slug ON tenants(slug)").execute(pool).await.ok();
 
     info!("PostgreSQL migrations completed");
     Ok(())
@@ -114,6 +152,22 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
 
 #[cfg(feature = "sqlite")]
 async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    // Create tenants table
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS tenants (
+            id TEXT PRIMARY KEY NOT NULL,
+            name TEXT NOT NULL,
+            slug TEXT UNIQUE NOT NULL,
+            custom_domain TEXT UNIQUE,
+            logo_url TEXT,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
     // Create users table
     sqlx::query(r#"
         CREATE TABLE IF NOT EXISTS users (
@@ -122,6 +176,7 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
             password_hash TEXT NOT NULL,
             name TEXT NOT NULL,
             role TEXT NOT NULL DEFAULT 'user',
+            is_super_admin INTEGER NOT NULL DEFAULT 0,
             avatar_url TEXT,
             is_active INTEGER NOT NULL DEFAULT 1,
             email_verified_at TEXT,
@@ -137,15 +192,33 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
+    // Create tenant_members table
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS tenant_members (
+            id TEXT PRIMARY KEY NOT NULL,
+            tenant_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'member',
+            created_at TEXT NOT NULL,
+            UNIQUE(tenant_id, user_id),
+            FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
     // Create settings table
     sqlx::query(r#"
         CREATE TABLE IF NOT EXISTS settings (
             id TEXT PRIMARY KEY NOT NULL,
-            key TEXT NOT NULL UNIQUE,
+            tenant_id TEXT,
+            key TEXT NOT NULL,
             value TEXT NOT NULL,
             description TEXT,
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
         )
     "#)
     .execute(pool)
@@ -156,10 +229,12 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
         CREATE TABLE IF NOT EXISTS sessions (
             id TEXT PRIMARY KEY NOT NULL,
             user_id TEXT NOT NULL,
+            tenant_id TEXT,
             token TEXT NOT NULL UNIQUE,
             expires_at TEXT NOT NULL,
             created_at TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
         )
     "#)
     .execute(pool)
@@ -167,9 +242,12 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
 
     // Create indexes
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)").execute(pool).await.ok();
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(key)").execute(pool).await.ok();
+    // Unique partial indexes for SQLite
+    sqlx::query("CREATE UNIQUE INDEX IF NOT EXISTS idx_settings_global_key ON settings(key) WHERE tenant_id IS NULL").execute(pool).await.ok();
+    sqlx::query("CREATE UNIQUE INDEX IF NOT EXISTS idx_settings_tenant_key ON settings(tenant_id, key) WHERE tenant_id IS NOT NULL").execute(pool).await.ok();
+    
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)").execute(pool).await.ok();
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)").execute(pool).await.ok();
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_tenants_slug ON tenants(slug)").execute(pool).await.ok();
 
     info!("SQLite migrations completed");
     Ok(())
@@ -201,9 +279,9 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
         #[cfg(feature = "postgres")]
         {
             sqlx::query(r#"
-                INSERT INTO settings (id, key, value, description, created_at, updated_at)
-                VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT (key) DO NOTHING
+                INSERT INTO settings (id, tenant_id, key, value, description, created_at, updated_at)
+                VALUES ($1, NULL, $2, $3, $4, $5, $6)
+                ON CONFLICT (key) WHERE tenant_id IS NULL DO NOTHING
             "#)
             .bind(uuid::Uuid::new_v4().to_string())
             .bind(key)
@@ -219,8 +297,8 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
         {
             let now_str = now.to_rfc3339();
             sqlx::query(r#"
-                INSERT OR IGNORE INTO settings (id, key, value, description, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT OR IGNORE INTO settings (id, tenant_id, key, value, description, created_at, updated_at)
+                VALUES (?, NULL, ?, ?, ?, ?, ?)
             "#)
             .bind(uuid::Uuid::new_v4().to_string())
             .bind(key)
