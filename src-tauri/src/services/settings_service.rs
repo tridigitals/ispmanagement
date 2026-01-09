@@ -1,18 +1,18 @@
 //! Settings Service
 
+use crate::db::connection::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{Setting, UpsertSettingDto};
 use chrono::Utc;
-use sqlx::{Pool, Sqlite};
 
 /// Settings service for key-value configuration
 #[derive(Clone)]
 pub struct SettingsService {
-    pool: Pool<Sqlite>,
+    pool: DbPool,
 }
 
 impl SettingsService {
-    pub fn new(pool: Pool<Sqlite>) -> Self {
+    pub fn new(pool: DbPool) -> Self {
         Self { pool }
     }
 
@@ -27,7 +27,7 @@ impl SettingsService {
 
     /// Get setting by key
     pub async fn get_by_key(&self, key: &str) -> AppResult<Option<Setting>> {
-        let setting = sqlx::query_as("SELECT * FROM settings WHERE key = ?")
+        let setting = sqlx::query_as("SELECT * FROM settings WHERE key = $1")
             .bind(key)
             .fetch_optional(&self.pool)
             .await?;
@@ -37,7 +37,7 @@ impl SettingsService {
 
     /// Get setting value by key
     pub async fn get_value(&self, key: &str) -> AppResult<Option<String>> {
-        let setting: Option<Setting> = sqlx::query_as("SELECT * FROM settings WHERE key = ?")
+        let setting: Option<Setting> = sqlx::query_as("SELECT * FROM settings WHERE key = $1")
             .bind(key)
             .fetch_optional(&self.pool)
             .await?;
@@ -58,13 +58,19 @@ impl SettingsService {
             setting.description = dto.description;
             setting.updated_at = now;
 
-            sqlx::query(
-                "UPDATE settings SET value = ?, description = ?, updated_at = ? WHERE key = ?"
+            let query = sqlx::query(
+                "UPDATE settings SET value = $1, description = $2, updated_at = $3 WHERE key = $4"
             )
             .bind(&setting.value)
-            .bind(&setting.description)
-            .bind(setting.updated_at.to_rfc3339())
-            .bind(&setting.key)
+            .bind(&setting.description);
+
+            #[cfg(feature = "postgres")]
+            let query = query.bind(setting.updated_at);
+
+            #[cfg(not(feature = "postgres"))]
+            let query = query.bind(setting.updated_at.to_rfc3339());
+
+            query.bind(&setting.key)
             .execute(&self.pool)
             .await?;
 
@@ -73,20 +79,28 @@ impl SettingsService {
             // Insert new
             let setting = Setting::new(dto.key, dto.value, dto.description);
 
-            sqlx::query(
+            let query = sqlx::query(
                 r#"
                 INSERT INTO settings (id, key, value, description, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES ($1, $2, $3, $4, $5, $6)
                 "#,
             )
             .bind(&setting.id)
             .bind(&setting.key)
             .bind(&setting.value)
-            .bind(&setting.description)
-            .bind(setting.created_at.to_rfc3339())
-            .bind(setting.updated_at.to_rfc3339())
-            .execute(&self.pool)
-            .await?;
+            .bind(&setting.description);
+
+            #[cfg(feature = "postgres")]
+            let query = query
+                .bind(setting.created_at)
+                .bind(setting.updated_at);
+
+            #[cfg(not(feature = "postgres"))]
+            let query = query
+                .bind(setting.created_at.to_rfc3339())
+                .bind(setting.updated_at.to_rfc3339());
+
+            query.execute(&self.pool).await?;
 
             Ok(setting)
         }
@@ -94,7 +108,7 @@ impl SettingsService {
 
     /// Delete setting by key
     pub async fn delete(&self, key: &str) -> AppResult<()> {
-        let result = sqlx::query("DELETE FROM settings WHERE key = ?")
+        let result = sqlx::query("DELETE FROM settings WHERE key = $1")
             .bind(key)
             .execute(&self.pool)
             .await?;

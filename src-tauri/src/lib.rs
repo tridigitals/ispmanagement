@@ -28,6 +28,30 @@ fn init_logging() {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Load .env file - try multiple locations
+    // Priority: parent dir (root) > current dir (src-tauri) > src-tauri subfolder
+    let env_paths = [
+        std::path::PathBuf::from("../.env"),        // Parent directory (root, for cargo run from src-tauri)
+        std::path::PathBuf::from(".env"),           // Current directory
+        std::path::PathBuf::from("src-tauri/.env"), // From root when running binary
+    ];
+    
+    let mut loaded = false;
+    for path in &env_paths {
+        eprintln!("Checking .env at: {:?} (exists: {})", path, path.exists());
+        if path.exists() {
+            if let Ok(_) = dotenvy::from_path(path) {
+                eprintln!("✓ Loaded .env from: {:?}", path);
+                loaded = true;
+                break;
+            }
+        }
+    }
+    
+    if !loaded {
+        eprintln!("⚠ Could not load .env file from any location");
+    }
+
     init_logging();
     info!("Starting SaaS Boilerplate Application");
 
@@ -50,7 +74,7 @@ pub fn run() {
             // Initialize database and services in async context
             tauri::async_runtime::block_on(async move {
                 // Initialize database
-                let pool = init_db(app_data_dir)
+                let pool = init_db(app_data_dir.clone())
                     .await
                     .expect("Failed to initialize database");
 
@@ -61,8 +85,9 @@ pub fn run() {
 
                 // Get JWT secret from settings
                 let jwt_secret = sqlx::query_scalar::<_, String>(
-                    "SELECT value FROM settings WHERE key = 'jwt_secret'"
+                    "SELECT value FROM settings WHERE key = $1"
                 )
+                .bind("jwt_secret")
                 .fetch_one(&pool)
                 .await
                 .unwrap_or_else(|_| uuid::Uuid::new_v4().to_string());
@@ -84,9 +109,10 @@ pub fn run() {
                 let user_svc = user_service.clone();
                 let settings_svc = settings_service.clone();
                 let email_svc = email_service.clone();
+                let app_dir = app_data_dir.clone();
 
                 tauri::async_runtime::spawn(async move {
-                     http::start_server(auth_svc, user_svc, settings_svc, email_svc, 3000).await;
+                     http::start_server(auth_svc, user_svc, settings_svc, email_svc, app_dir, 3000).await;
                 });
 
                 info!("Services initialized successfully");

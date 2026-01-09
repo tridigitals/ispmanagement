@@ -3,24 +3,40 @@
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
 
+    let appName = "SaaS App";
+    let appUrl = "";
     let name = "";
     let email = "";
     let password = "";
     let confirmPassword = "";
     let error = "";
     let loading = false;
-    let step = 1; // 1: Welcome, 2: Account Setup, 3: Success
+    let step = 1; // 1: Welcome, 2: General Settings, 3: Account Setup, 4: Success
+    let showPassword = false;
+    let showConfirmPassword = false;
 
     onMount(async () => {
-        // Double check not already installed
-        try {
-            const isInstalled = await install.checkIsInstalled();
-            if (isInstalled) {
-                goto("/login");
+        appUrl = window.location.origin;
+
+        // Check Status Function
+        const checkStatus = async () => {
+            try {
+                const isInstalled = await install.checkIsInstalled();
+                if (isInstalled) {
+                    goto("/login");
+                }
+            } catch (e) {
+                console.error(e);
             }
-        } catch (e) {
-            console.error(e);
-        }
+        };
+
+        // Initial check
+        await checkStatus();
+
+        // Poll every 2 seconds
+        const interval = setInterval(checkStatus, 2000);
+
+        return () => clearInterval(interval);
     });
 
     async function handleSubmit() {
@@ -42,8 +58,8 @@
 
         loading = true;
         try {
-            await install.installApp(name, email, password);
-            step = 3;
+            await install.installApp(name, email, password, appName, appUrl);
+            step = 4;
             // Delay redirect slightly to show success
             setTimeout(() => {
                 goto("/login");
@@ -78,14 +94,54 @@
                 </div>
                 <h1>Welcome to SaaS App</h1>
                 <p>
-                    Let's get your application set up. We'll start by creating
-                    your administrator account.
+                    Let's get your application set up. We'll start by
+                    configuring the basics.
                 </p>
                 <button class="btn-primary" on:click={() => (step = 2)}>
                     Get Started
                 </button>
             </div>
         {:else if step === 2}
+            <div class="step-content">
+                <h2>General Settings</h2>
+                <p class="subtitle">Configure your application details.</p>
+
+                <form on:submit|preventDefault={() => (step = 3)}>
+                    <div class="form-group">
+                        <label for="appName">Application Name</label>
+                        <input
+                            type="text"
+                            id="appName"
+                            bind:value={appName}
+                            placeholder="My SaaS App"
+                            required
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="appUrl">Application URL</label>
+                        <input
+                            type="text"
+                            id="appUrl"
+                            bind:value={appUrl}
+                            placeholder="http://localhost:3000"
+                            required
+                        />
+                    </div>
+
+                    <div class="actions">
+                        <button
+                            type="button"
+                            class="btn-secondary"
+                            on:click={() => (step = 1)}>Back</button
+                        >
+                        <button type="submit" class="btn-primary">
+                            Next
+                        </button>
+                    </div>
+                </form>
+            </div>
+        {:else if step === 3}
             <div class="step-content">
                 <h2>Create Admin Account</h2>
                 <p class="subtitle">
@@ -123,31 +179,123 @@
 
                     <div class="form-group">
                         <label for="password">Password</label>
-                        <input
-                            type="password"
-                            id="password"
-                            bind:value={password}
-                            placeholder="••••••••"
-                            disabled={loading}
-                        />
+                        <div class="password-wrapper">
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                id="password"
+                                bind:value={password}
+                                placeholder="••••••••"
+                                disabled={loading}
+                            />
+                            <button
+                                type="button"
+                                class="eye-btn"
+                                on:click={() => (showPassword = !showPassword)}
+                                tabindex="-1"
+                            >
+                                {#if showPassword}
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        ><path
+                                            d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                                        /><line
+                                            x1="1"
+                                            y1="1"
+                                            x2="23"
+                                            y2="23"
+                                        /></svg
+                                    >
+                                {:else}
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        ><path
+                                            d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+                                        /><circle cx="12" cy="12" r="3" /></svg
+                                    >
+                                {/if}
+                            </button>
+                        </div>
                     </div>
 
                     <div class="form-group">
                         <label for="confirmPassword">Confirm Password</label>
-                        <input
-                            type="password"
-                            id="confirmPassword"
-                            bind:value={confirmPassword}
-                            placeholder="••••••••"
-                            disabled={loading}
-                        />
+                        <div class="password-wrapper">
+                            <input
+                                type={showConfirmPassword ? "text" : "password"}
+                                id="confirmPassword"
+                                bind:value={confirmPassword}
+                                placeholder="••••••••"
+                                disabled={loading}
+                            />
+                            <button
+                                type="button"
+                                class="eye-btn"
+                                on:click={() =>
+                                    (showConfirmPassword =
+                                        !showConfirmPassword)}
+                                tabindex="-1"
+                            >
+                                {#if showConfirmPassword}
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        ><path
+                                            d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                                        /><line
+                                            x1="1"
+                                            y1="1"
+                                            x2="23"
+                                            y2="23"
+                                        /></svg
+                                    >
+                                {:else}
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        ><path
+                                            d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+                                        /><circle cx="12" cy="12" r="3" /></svg
+                                    >
+                                {/if}
+                            </button>
+                        </div>
                     </div>
 
                     <div class="actions">
                         <button
                             type="button"
                             class="btn-secondary"
-                            on:click={() => (step = 1)}
+                            on:click={() => (step = 2)}
                             disabled={loading}>Back</button
                         >
                         <button
@@ -164,7 +312,7 @@
                     </div>
                 </form>
             </div>
-        {:else if step === 3}
+        {:else if step === 4}
             <div class="step-content success">
                 <div class="success-icon">
                     <svg
@@ -342,5 +490,36 @@
     .success-icon {
         color: #10b981;
         margin-bottom: 1rem;
+    }
+
+    .password-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        width: 100%;
+    }
+
+    .password-wrapper input {
+        width: 100%;
+        padding-right: 2.5rem;
+    }
+
+    .eye-btn {
+        position: absolute;
+        right: 0.5rem;
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 0.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.2s;
+        z-index: 10;
+    }
+
+    .eye-btn:hover {
+        color: var(--text-primary);
     }
 </style>

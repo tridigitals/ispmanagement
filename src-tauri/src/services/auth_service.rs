@@ -1,5 +1,6 @@
 //! Authentication Service
 
+use crate::db::connection::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{LoginDto, RegisterDto, User, UserResponse};
 use argon2::{
@@ -11,7 +12,6 @@ use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use crate::services::EmailService;
 use serde::{Deserialize, Serialize};
-use sqlx::{Pool, Sqlite};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
@@ -77,13 +77,13 @@ impl Default for AuthSettings {
 /// Auth service for handling authentication
 #[derive(Clone)]
 pub struct AuthService {
-    pool: Pool<Sqlite>,
+    pool: DbPool,
     jwt_secret: Arc<RwLock<String>>,
     email_service: EmailService,
 }
 
 impl AuthService {
-    pub fn new(pool: Pool<Sqlite>, jwt_secret: String, email_service: EmailService) -> Self {
+    pub fn new(pool: DbPool, jwt_secret: String, email_service: EmailService) -> Self {
         Self {
             pool,
             jwt_secret: Arc::new(RwLock::new(jwt_secret)),
@@ -96,8 +96,8 @@ impl AuthService {
         let mut settings = AuthSettings::default();
         
         // Helper to get setting value
-        async fn get_setting(pool: &Pool<Sqlite>, key: &str) -> Option<String> {
-            sqlx::query_scalar::<_, String>("SELECT value FROM settings WHERE key = ?")
+        async fn get_setting(pool: &DbPool, key: &str) -> Option<String> {
+            sqlx::query_scalar::<_, String>("SELECT value FROM settings WHERE key = $1")
                 .bind(key)
                 .fetch_optional(pool)
                 .await
@@ -212,16 +212,24 @@ impl AuthService {
 
         // Store session in database
         let session_id = uuid::Uuid::new_v4().to_string();
-        sqlx::query(
-            "INSERT INTO sessions (id, user_id, token, expires_at, created_at) VALUES (?, ?, ?, ?, ?)"
+        let query = sqlx::query(
+            "INSERT INTO sessions (id, user_id, token, expires_at, created_at) VALUES ($1, $2, $3, $4, $5)"
         )
         .bind(&session_id)
         .bind(&user.id)
-        .bind(&token)
-        .bind(expires_at.to_rfc3339())
-        .bind(Utc::now().to_rfc3339())
-        .execute(&self.pool)
-        .await?;
+        .bind(&token);
+
+        #[cfg(feature = "postgres")]
+        let query = query
+            .bind(expires_at)
+            .bind(Utc::now());
+
+        #[cfg(not(feature = "postgres"))]
+        let query = query
+            .bind(expires_at.to_rfc3339())
+            .bind(Utc::now().to_rfc3339());
+
+        query.execute(&self.pool).await?;
 
         Ok((token, expires_at.to_rfc3339()))
     }
@@ -229,11 +237,11 @@ impl AuthService {
     /// Validate JWT token and return claims
     pub async fn validate_token(&self, token: &str) -> AppResult<Claims> {
         // Check if session exists and is valid in database
-        let session_exists: bool = sqlx::query_scalar("SELECT count(*) FROM sessions WHERE token = ?")
+        let session_exists: bool = sqlx::query_scalar::<_, i64>("SELECT count(*) FROM sessions WHERE token = $1")
             .bind(token)
             .fetch_one(&self.pool)
             .await
-            .map(|count: i64| count > 0)
+            .map(|count| count > 0)
             .unwrap_or(false);
 
         if !session_exists {
@@ -265,7 +273,7 @@ impl AuthService {
 
     /// Logout (revoke current session)
     pub async fn logout(&self, token: &str) -> AppResult<()> {
-        sqlx::query("DELETE FROM sessions WHERE token = ?")
+        sqlx::query("DELETE FROM sessions WHERE token = $1")
             .bind(token)
             .execute(&self.pool)
             .await?;
@@ -274,7 +282,7 @@ impl AuthService {
 
     /// Logout from all devices (revoke all sessions for user)
     pub async fn logout_all(&self, user_id: &str) -> AppResult<()> {
-        sqlx::query("DELETE FROM sessions WHERE user_id = ?")
+        sqlx::query("DELETE FROM sessions WHERE user_id = $1")
             .bind(user_id)
             .execute(&self.pool)
             .await?;
@@ -284,7 +292,7 @@ impl AuthService {
     /// Increment failed login attempts
     async fn increment_failed_attempts(&self, user_id: &str, settings: &AuthSettings) -> AppResult<()> {
         // Get current attempts
-        let current: (i32,) = sqlx::query_as("SELECT failed_login_attempts FROM users WHERE id = ?")
+        let current: (i32,) = sqlx::query_as("SELECT failed_login_attempts FROM users WHERE id = $1")
             .bind(user_id)
             .fetch_one(&self.pool)
             .await?;
@@ -296,20 +304,37 @@ impl AuthService {
             let locked_until = Utc::now() + Duration::minutes(settings.lockout_duration_minutes);
             warn!("Account {} locked until {} after {} failed attempts", user_id, locked_until, new_attempts);
             
-            sqlx::query(
-                "UPDATE users SET failed_login_attempts = ?, locked_until = ?, updated_at = datetime('now') WHERE id = ?"
+            let query = sqlx::query(
+                "UPDATE users SET failed_login_attempts = $1, locked_until = $2, updated_at = $3 WHERE id = $4"
             )
-            .bind(new_attempts)
-            .bind(locked_until.to_rfc3339())
-            .bind(user_id)
+            .bind(new_attempts);
+
+            #[cfg(feature = "postgres")]
+            let query = query
+                .bind(locked_until)
+                .bind(Utc::now());
+
+            #[cfg(not(feature = "postgres"))]
+            let query = query
+                .bind(locked_until.to_rfc3339())
+                .bind(Utc::now().to_rfc3339());
+
+            query.bind(user_id)
             .execute(&self.pool)
             .await?;
         } else {
-            sqlx::query(
-                "UPDATE users SET failed_login_attempts = ?, updated_at = datetime('now') WHERE id = ?"
+            let query = sqlx::query(
+                "UPDATE users SET failed_login_attempts = $1, updated_at = $2 WHERE id = $3"
             )
-            .bind(new_attempts)
-            .bind(user_id)
+            .bind(new_attempts);
+
+            #[cfg(feature = "postgres")]
+            let query = query.bind(Utc::now());
+
+            #[cfg(not(feature = "postgres"))]
+            let query = query.bind(Utc::now().to_rfc3339());
+
+            query.bind(user_id)
             .execute(&self.pool)
             .await?;
         }
@@ -319,10 +344,17 @@ impl AuthService {
 
     /// Reset failed login attempts on successful login
     async fn reset_failed_attempts(&self, user_id: &str) -> AppResult<()> {
-        sqlx::query(
-            "UPDATE users SET failed_login_attempts = 0, locked_until = NULL, updated_at = datetime('now') WHERE id = ?"
-        )
-        .bind(user_id)
+        let query = sqlx::query(
+            "UPDATE users SET failed_login_attempts = 0, locked_until = NULL, updated_at = $1 WHERE id = $2"
+        );
+
+        #[cfg(feature = "postgres")]
+        let query = query.bind(Utc::now());
+
+        #[cfg(not(feature = "postgres"))]
+        let query = query.bind(Utc::now().to_rfc3339());
+
+        query.bind(user_id)
         .execute(&self.pool)
         .await?;
         
@@ -346,7 +378,7 @@ impl AuthService {
 
         // Check if user exists
         let existing: Option<User> = sqlx::query_as(
-            "SELECT * FROM users WHERE email = ?"
+            "SELECT * FROM users WHERE email = $1"
         )
         .bind(&dto.email)
         .fetch_optional(&self.pool)
@@ -366,18 +398,14 @@ impl AuthService {
         if settings.require_email_verification {
             let token = uuid::Uuid::new_v4().to_string();
             user.verification_token = Some(token.clone());
-            // is_active could be false until verified, but usually we let them login with restrictions or block login
-            // For now, let's keep is_active=true but check email_verified_at on login if strict mode
-            // Actually, best practice is prevent login if not verified.
-            // Let's set is_active = true, but use email_verified_at as gate.
         } else {
              user.email_verified_at = Some(Utc::now());
         }
 
-        sqlx::query(
+        let query = sqlx::query(
             r#"
             INSERT INTO users (id, email, password_hash, name, role, is_active, failed_login_attempts, created_at, updated_at, verification_token, email_verified_at)
-            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
+            VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8, $9, $10)
             "#,
         )
         .bind(&user.id)
@@ -385,34 +413,36 @@ impl AuthService {
         .bind(&user.password_hash)
         .bind(&user.name)
         .bind(&user.role)
-        .bind(user.is_active)
-        .bind(user.created_at.to_rfc3339())
-        .bind(user.updated_at.to_rfc3339())
-        .bind(&user.verification_token)
-        .bind(user.email_verified_at.map(|t| t.to_rfc3339()))
-        .execute(&self.pool)
-        .await?;
+        .bind(user.is_active);
+
+        #[cfg(feature = "postgres")]
+        let query = query
+            .bind(user.created_at)
+            .bind(user.updated_at)
+            .bind(&user.verification_token)
+            .bind(user.email_verified_at);
+
+        #[cfg(not(feature = "postgres"))]
+        let query = query
+            .bind(user.created_at.to_rfc3339())
+            .bind(user.updated_at.to_rfc3339())
+            .bind(&user.verification_token)
+            .bind(user.email_verified_at.map(|t| t.to_rfc3339()));
+
+        query.execute(&self.pool).await?;
 
         info!("New user registered: {}", user.email);
 
         if settings.require_email_verification {
             // Send verification email
             if let Some(token) = &user.verification_token {
-                // Link: /auth/verify?token=...
-                // Assuming client runs on localhost or deployed domain.
-                // Since this is a Tauri app, we might need a deep link or a frontend route.
-                // We'll use a relative path for the frontend to handle.
-                // Or better, just send the token code.
                 let link = format!("/auth/verify-email?token={}", token);
-                // In a real app, verify_url should be from settings
                 
                 let body = format!(
                     "Welcome, {}!\n\nPlease verify your email by clicking the link below:\n{}\n\nIf you cannot click the link, use this code: {}",
                     user.name, link, token
                 );
                 
-                // Fire and forget email to not block registration? Or await?
-                // Await for now to ensure it works.
                 if let Err(e) = self.email_service.send_email(&user.email, "Verify your email", &body).await {
                     warn!("Failed to send verification email: {}", e);
                 }
@@ -440,7 +470,7 @@ impl AuthService {
     /// Verify email with token
     pub async fn verify_email(&self, token: &str) -> AppResult<AuthResponse> {
         // Find user by verification token
-        let user: Option<User> = sqlx::query_as("SELECT * FROM users WHERE verification_token = ?")
+        let user: Option<User> = sqlx::query_as("SELECT * FROM users WHERE verification_token = $1")
             .bind(token)
             .fetch_optional(&self.pool)
             .await?;
@@ -455,8 +485,20 @@ impl AuthService {
         }
 
         // Update user
-        sqlx::query("UPDATE users SET email_verified_at = datetime('now'), verification_token = NULL, updated_at = datetime('now') WHERE id = ?")
-            .bind(&user.id)
+        let now = Utc::now();
+        let query = sqlx::query("UPDATE users SET email_verified_at = $1, verification_token = NULL, updated_at = $2 WHERE id = $3");
+
+        #[cfg(feature = "postgres")]
+        let query = query
+            .bind(now)
+            .bind(now);
+
+        #[cfg(not(feature = "postgres"))]
+        let query = query
+            .bind(now.to_rfc3339())
+            .bind(now.to_rfc3339());
+
+        query.bind(&user.id)
             .execute(&self.pool)
             .await?;
 
@@ -476,7 +518,7 @@ impl AuthService {
 
     /// Request password reset
     pub async fn forgot_password(&self, email: &str) -> AppResult<()> {
-        let user: Option<User> = sqlx::query_as("SELECT * FROM users WHERE email = ?")
+        let user: Option<User> = sqlx::query_as("SELECT * FROM users WHERE email = $1")
             .bind(email)
             .fetch_optional(&self.pool)
             .await?;
@@ -486,10 +528,20 @@ impl AuthService {
             let token = uuid::Uuid::new_v4().to_string();
             let expires_at = Utc::now() + Duration::hours(1);
 
-            sqlx::query("UPDATE users SET reset_token = ?, reset_token_expires = ?, updated_at = datetime('now') WHERE id = ?")
-                .bind(&token)
+            let query = sqlx::query("UPDATE users SET reset_token = $1, reset_token_expires = $2, updated_at = $3 WHERE id = $4")
+                .bind(&token);
+
+            #[cfg(feature = "postgres")]
+            let query = query
+                .bind(expires_at)
+                .bind(Utc::now());
+
+            #[cfg(not(feature = "postgres"))]
+            let query = query
                 .bind(expires_at.to_rfc3339())
-                .bind(&user.id)
+                .bind(Utc::now().to_rfc3339());
+
+            query.bind(&user.id)
                 .execute(&self.pool)
                 .await?;
 
@@ -502,9 +554,6 @@ impl AuthService {
 
             if let Err(e) = self.email_service.send_email(&user.email, "Reset your password", &body).await {
                 warn!("Failed to send reset email: {}", e);
-                // Don't fail the request to prevent enumeration? 
-                // Actually returning error is helpful for legitimate users. 
-                // Security-wise, generic message is better.
             }
         }
 
@@ -514,7 +563,7 @@ impl AuthService {
 
     /// Reset password with token
     pub async fn reset_password(&self, token: &str, new_password: &str) -> AppResult<()> {
-        let user: Option<User> = sqlx::query_as("SELECT * FROM users WHERE reset_token = ?")
+        let user: Option<User> = sqlx::query_as("SELECT * FROM users WHERE reset_token = $1")
             .bind(token)
             .fetch_optional(&self.pool)
             .await?;
@@ -543,9 +592,16 @@ impl AuthService {
         // Update password and clear token
         let new_hash = Self::hash_password(new_password)?;
         
-        sqlx::query("UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL, updated_at = datetime('now') WHERE id = ?")
-            .bind(new_hash)
-            .bind(&user.id)
+        let query = sqlx::query("UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL, updated_at = $2 WHERE id = $3")
+            .bind(new_hash);
+
+        #[cfg(feature = "postgres")]
+        let query = query.bind(Utc::now());
+
+        #[cfg(not(feature = "postgres"))]
+        let query = query.bind(Utc::now().to_rfc3339());
+
+        query.bind(&user.id)
             .execute(&self.pool)
             .await?;
             
@@ -561,9 +617,9 @@ impl AuthService {
     pub async fn login(&self, dto: LoginDto) -> AppResult<AuthResponse> {
         let settings = self.get_auth_settings().await;
         
-        // Find user by email (get all users including inactive for proper error handling)
+        // Find user by email
         let user: Option<User> = sqlx::query_as(
-            "SELECT * FROM users WHERE email = ?"
+            "SELECT * FROM users WHERE email = $1"
         )
         .bind(&dto.email)
         .fetch_optional(&self.pool)
@@ -629,7 +685,7 @@ impl AuthService {
 
     /// Get user by ID
     pub async fn get_user_by_id(&self, user_id: &str) -> AppResult<User> {
-        sqlx::query_as("SELECT * FROM users WHERE id = ?")
+        sqlx::query_as("SELECT * FROM users WHERE id = $1")
             .bind(user_id)
             .fetch_optional(&self.pool)
             .await?
@@ -658,9 +714,17 @@ impl AuthService {
         let new_hash = Self::hash_password(new_password)?;
 
         // Update password
-        sqlx::query("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?")
-            .bind(new_hash)
-            .bind(user_id)
+        // Update password
+        let query = sqlx::query("UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3")
+            .bind(new_hash);
+
+        #[cfg(feature = "postgres")]
+        let query = query.bind(Utc::now());
+
+        #[cfg(not(feature = "postgres"))]
+        let query = query.bind(Utc::now().to_rfc3339());
+
+        query.bind(user_id)
             .execute(&self.pool)
             .await?;
 

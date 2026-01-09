@@ -120,3 +120,16 @@ pub async fn reset_password(
     state.auth_service.reset_password(&payload.token, &payload.password).await?;
     Ok(Json(json!({"message": "Password reset successfully"})))
 }
+
+#[derive(serde::Deserialize)]
+pub struct ValidateTokenDto {
+    token: String,
+}
+
+pub async fn validate_token(
+    State(state): State<AppState>,
+    Json(payload): Json<ValidateTokenDto>,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    state.auth_service.validate_token(&payload.token).await?;
+    Ok(Json(json!({"valid": true})))
+}

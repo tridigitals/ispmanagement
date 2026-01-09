@@ -79,6 +79,14 @@ function createSettingsStore() {
 
 async function updateWindowTitle(title: string) {
     if (typeof window === 'undefined') return;
+    
+    // Skip if not running in Tauri
+    // @ts-ignore
+    if (!window.__TAURI_INTERNALS__) {
+        document.title = title;
+        return;
+    }
+
     try {
         await getCurrentWindow().setTitle(title);
     } catch (e) {

@@ -9,6 +9,10 @@ function createLogoStore() {
     const updateWindowIcon = async (base64String: string) => {
         if (typeof window === 'undefined') return;
         
+        // Skip if not running in Tauri
+        // @ts-ignore
+        if (!window.__TAURI_INTERNALS__) return;
+        
         try {
             // Strip prefix if present
             const base64 = base64String.split(',')[1] || base64String;
