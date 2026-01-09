@@ -15,13 +15,17 @@
 
     onMount(async () => {
         try {
+            // 1. Validate Auth & Session first
+            // This ensures we have the correct tenant context before fetching data
+            await checkAuth();
+
             // Apply saved theme
             theme.init();
             
             // Load global settings & logo immediately
             await Promise.all([
                 appSettings.init(),
-                appLogo.init()
+                appLogo.refresh()
             ]);
             
             // Wait for i18n to be ready (locale set in appSettings.init)
@@ -52,6 +56,12 @@
         }
     });
 </script>
+
+<svelte:head>
+    {#if $appLogo}
+        <link rel="icon" type="image/png" href={$appLogo} />
+    {/if}
+</svelte:head>
 
 {#if loading}
     <div class="loading-container">

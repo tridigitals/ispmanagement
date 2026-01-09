@@ -42,8 +42,27 @@ pub async fn get_public_settings(
 
 pub async fn get_logo(
     State(state): State<AppState>,
+    headers: HeaderMap,
 ) -> Json<Option<String>> {
-    let logo_path = state.app_data_dir.join("uploads").join("logo.png");
+    let mut tenant_id: Option<String> = None;
+    
+    // Try to extract tenant_id from token if available
+    if let Some(auth_header) = headers.get("Authorization") {
+        if let Ok(auth_str) = auth_header.to_str() {
+            if let Some(token) = auth_str.strip_prefix("Bearer ") {
+                if let Ok(claims) = state.auth_service.validate_token(token).await {
+                    tenant_id = claims.tenant_id;
+                }
+            }
+        }
+    }
+    
+    let mut logo_path = state.app_data_dir.join("uploads");
+    if let Some(tid) = tenant_id {
+        logo_path = logo_path.join(tid);
+    }
+    
+    logo_path = logo_path.join("logo.png");
     
     if logo_path.exists() {
         if let Ok(bytes) = fs::read(&logo_path) {
@@ -51,6 +70,16 @@ pub async fn get_logo(
             return Json(Some(format!("data:image/png;base64,{}", base64_str)));
         }
     }
+    // Fallback to global logo if tenant logo missing? Or just return None?
+    // Let's fallback to global if specific tenant logo not found
+    let global_path = state.app_data_dir.join("uploads").join("logo.png");
+    if global_path.exists() {
+        if let Ok(bytes) = fs::read(&global_path) {
+            let base64_str = general_purpose::STANDARD.encode(&bytes);
+            return Json(Some(format!("data:image/png;base64,{}", base64_str)));
+        }
+    }
+
     Json(None)
 }
 
@@ -153,6 +182,7 @@ pub async fn upload_logo(
 ) -> Result<Json<String>, crate::error::AppError> {
     let token = get_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
+    
     if claims.role != "admin" {
         return Err(crate::error::AppError::Unauthorized);
     }
@@ -161,7 +191,13 @@ pub async fn upload_logo(
         .decode(&payload.content)
         .map_err(|e| crate::error::AppError::Validation(format!("Invalid base64: {}", e)))?;
 
-    let uploads_dir = state.app_data_dir.join("uploads");
+    let mut uploads_dir = state.app_data_dir.join("uploads");
+    
+    // If tenant, create subdirectory
+    if let Some(tid) = &claims.tenant_id {
+        uploads_dir = uploads_dir.join(tid);
+    }
+
     if !uploads_dir.exists() {
         fs::create_dir_all(&uploads_dir).map_err(|e| crate::error::AppError::Internal(e.to_string()))?;
     }

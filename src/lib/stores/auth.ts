@@ -4,6 +4,8 @@
  */
 import { writable, derived, get } from 'svelte/store';
 import { auth, type User, type AuthResponse } from '$lib/api/client';
+import { appSettings } from './settings';
+import { appLogo } from './logo';
 
 // Token storage key
 const TOKEN_KEY = 'auth_token';
@@ -30,6 +32,21 @@ export const user = writable<User | null>(getStoredUser());
 export const isAuthenticated = derived(token, $token => !!$token);
 export const isAdmin = derived(user, $user => $user?.role === 'admin');
 export const isSuperAdmin = derived(user, $user => ($user as any)?.is_super_admin === true);
+
+// Reactively update logo and settings when token changes
+token.subscribe(value => {
+    if (typeof window !== 'undefined') {
+        // // // console.log(`[AuthStore] Token changed, triggering logo refresh. Token available: ${!!value}`);
+        // We pass the token explicitly to ensure the logo store uses the latest value
+        appLogo.refresh(value || undefined);
+        
+        // Also refresh settings if we have a token (to get tenant settings)
+        if (value) {
+            // console.log(`[AuthStore] Token exists, refreshing appSettings...`);
+            appSettings.refresh();
+        }
+    }
+});
 
 // Helper to determine active storage
 function getActiveStorage(): Storage | null {

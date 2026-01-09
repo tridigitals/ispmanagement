@@ -139,13 +139,16 @@ pub async fn upload_logo(
         .app_data_dir()
         .map_err(|e| e.to_string())?;
     
-    let uploads_dir = app_dir.join("uploads");
+    let mut uploads_dir = app_dir.join("uploads");
+    if let Some(tid) = &claims.tenant_id {
+        uploads_dir = uploads_dir.join(tid);
+    }
+
     if !uploads_dir.exists() {
         fs::create_dir_all(&uploads_dir).map_err(|e| e.to_string())?;
     }
 
-    // Save file (always as logo.png for simplicity, or handle extensions if needed)
-    // For now we enforce PNG or handle client side conversion
+    // Save file
     let file_path = uploads_dir.join("logo.png");
     fs::write(&file_path, bytes).map_err(|e| e.to_string())?;
 
@@ -164,22 +167,43 @@ pub async fn upload_logo(
 /// Get Logo as Base64
 #[tauri::command]
 pub async fn get_logo(
+    token: Option<String>,
     app_handle: AppHandle,
+    auth_service: State<'_, AuthService>,
 ) -> Result<Option<String>, String> {
+    let mut tenant_id = None;
+
+    if let Some(t) = token {
+        if let Ok(claims) = auth_service.validate_token(&t).await {
+            tenant_id = claims.tenant_id;
+        }
+    }
+
     let app_dir = app_handle
         .path()
         .app_data_dir()
         .map_err(|e| e.to_string())?;
     
-    let logo_path = app_dir.join("uploads").join("logo.png");
+    let mut logo_path = app_dir.join("uploads");
+    if let Some(tid) = tenant_id {
+        logo_path = logo_path.join(tid);
+    }
+    logo_path = logo_path.join("logo.png");
     
     if logo_path.exists() {
         let bytes = fs::read(&logo_path).map_err(|e| e.to_string())?;
         let base64_str = general_purpose::STANDARD.encode(&bytes);
-        // Assuming PNG for now, but could detect magic bytes
         Ok(Some(format!("data:image/png;base64,{}", base64_str)))
     } else {
-        Ok(None)
+        // Fallback to global if tenant logo not found
+        let global_path = app_dir.join("uploads").join("logo.png");
+        if global_path.exists() {
+            let bytes = fs::read(&global_path).map_err(|e| e.to_string())?;
+            let base64_str = general_purpose::STANDARD.encode(&bytes);
+            Ok(Some(format!("data:image/png;base64,{}", base64_str)))
+        } else {
+            Ok(None)
+        }
     }
 }
 

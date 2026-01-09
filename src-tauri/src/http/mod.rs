@@ -69,39 +69,69 @@ pub async fn start_server(
         .allow_methods(Any)
         .allow_headers(Any);
 
-    // Build router
-    let app = Router::new()
-        .route("/", get(root_handler))
-        // Install Routes
-        .route("/api/install/check", get(install::check_installed))
-        .route("/api/install", post(install::install_app))
-        // Auth Routes
-        .route("/api/auth/settings", get(auth::get_auth_settings))
-        .route("/api/auth/me", get(auth::get_current_user))
-        .route("/api/auth/login", post(auth::login))
-        .route("/api/auth/register", post(auth::register))
-        .route("/api/auth/verify-email", post(auth::verify_email))
-        .route("/api/auth/forgot-password", post(auth::forgot_password))
-        .route("/api/auth/reset-password", post(auth::reset_password))
-        .route("/api/auth/validate", post(auth::validate_token))
+            // Build router
+
+            let app = Router::new()
+
+                .route("/", get(root_handler))
+
+                // Install Routes
+
+                .route("/api/install/check", get(install::check_installed))
+
+                .route("/api/install", post(install::install_app))
+
+                // Auth Routes
+
+                .route("/api/auth/settings", get(auth::get_auth_settings))
+
+                .route("/api/auth/me", get(auth::get_current_user))
+
+                .route("/api/auth/login", post(auth::login))
+
+                .route("/api/auth/register", post(auth::register))
+
+                .route("/api/auth/verify-email", post(auth::verify_email))
+
+                .route("/api/auth/forgot-password", post(auth::forgot_password))
+
+                .route("/api/auth/reset-password", post(auth::reset_password))
+
+                .route("/api/auth/validate", post(auth::validate_token))
+
                 // User Routes
+
                 .route("/api/users", get(users::list_users).post(users::create_user))
+
                 .route("/api/users/{id}", get(users::get_user).put(users::update_user).delete(users::delete_user))
-                        // Super Admin Routes
-                        .route("/api/superadmin/tenants", get(superadmin::list_tenants).post(superadmin::create_tenant))
-                        .route("/api/superadmin/tenants/{id}", delete(superadmin::delete_tenant))
-                
+
+                // Super Admin Routes
+
+                .route("/api/superadmin/tenants", get(superadmin::list_tenants).post(superadmin::create_tenant))
+
+                .route("/api/superadmin/tenants/{id}", delete(superadmin::delete_tenant))
+
                 // Settings Routes
+
                 .route("/api/settings", get(settings::get_all_settings).post(settings::upsert_setting))
-        
+
                 .route("/api/settings/public", get(settings::get_public_settings))
-                .route("/api/settings/logo", get(settings::get_logo).post(settings::upload_logo))    
+
+                .route("/api/settings/logo", get(settings::get_logo).post(settings::upload_logo))
+
                 .route("/api/settings/test-email", post(settings::send_test_email))
+
+                .route("/api/settings/{key}", get(settings::get_setting).delete(settings::delete_setting))
+
+                .route("/api/settings/{key}/value", get(settings::get_setting_value))
+
+                .layer(cors)
+
+                .with_state(state);
+
         
-        .route("/api/settings/{key}", get(settings::get_setting).delete(settings::delete_setting))
-        .route("/api/settings/{key}/value", get(settings::get_setting_value))
-        .layer(cors)
-        .with_state(state);
+
+    
 
     // Determine port
     let port = env::var("PORT")

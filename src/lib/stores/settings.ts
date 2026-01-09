@@ -34,60 +34,66 @@ const defaults: AppSettings = {
 function createSettingsStore() {
     const { subscribe, set, update } = writable<AppSettings>(defaults);
 
+    const loadSettings = async () => {
+        try {
+            // Fetch public auth settings
+            const authSettings = await api.settings.getAuthSettings();
+            
+            // Fetch public general settings (name, description)
+            let publicSettings = {};
+            try {
+                const ps = await api.settings.getPublicSettings();
+                if (ps) publicSettings = ps;
+            } catch (e) {
+                console.debug("Could not load public settings", e);
+            }
+
+            // Fetch admin/tenant settings (might fail if not logged in, which is fine)
+            // If logged in, getAll() will now return tenant-specific settings because backend extracts tenant_id from token
+            let tenantSettings: any = {};
+            try {
+               const data = await api.settings.getAll();
+               data.forEach(item => {
+                   if (item.value === 'true') tenantSettings[item.key] = true;
+                   else if (item.value === 'false') tenantSettings[item.key] = false;     
+                   else tenantSettings[item.key] = item.value;
+               });
+            } catch (e) {
+                // Ignore error if not logged in
+                console.debug("Could not load tenant settings (likely not logged in)");
+            }
+
+            const finalSettings = {
+                ...defaults,
+                ...publicSettings,
+                ...tenantSettings,
+                auth: authSettings
+            };
+
+            set(finalSettings);
+            
+            // Set locale from settings with logging
+            if (finalSettings.default_locale) {
+                console.log(`[Settings] Setting locale to: ${finalSettings.default_locale}`);
+                locale.set(finalSettings.default_locale);
+            } else {
+                console.log('[Settings] No default_locale found, using browser default');
+            }
+            
+            updateWindowTitle(finalSettings.app_name);
+        } catch (err) {
+            console.error("Failed to load settings:", err);
+        }
+    };
+
     return {
         subscribe,
-        // Load initial settings from backend
         init: async () => {
-            try {
-                // Fetch public auth settings
-                const authSettings = await api.settings.getAuthSettings();
-                
-                // Fetch public general settings (name, description)
-                let publicSettings = {};
-                try {
-                    const ps = await api.settings.getPublicSettings();
-                    if (ps) publicSettings = ps;
-                } catch (e) {
-                    console.debug("Could not load public settings", e);
-                }
-
-                // Fetch admin settings (might fail if not logged in, which is fine)
-                let adminSettings: any = {};
-                try {
-                   const data = await api.settings.getAll();
-                   data.forEach(item => {
-                       if (item.value === 'true') adminSettings[item.key] = true;
-                       else if (item.value === 'false') adminSettings[item.key] = false;
-                       else adminSettings[item.key] = item.value;
-                   });
-                } catch (e) {
-                    // Ignore error if not logged in (api.settings.getAll requires token)
-                    console.debug("Could not load admin settings (likely not logged in)");
-                }
-
-                const finalSettings = { 
-                    ...defaults, 
-                    ...publicSettings,
-                    ...adminSettings,
-                    auth: authSettings 
-                };
-                
-                set(finalSettings);
-                
-                // Set locale from settings with logging
-                if (finalSettings.default_locale) {
-                    console.log(`[Settings] Setting locale to: ${finalSettings.default_locale}`);
-                    locale.set(finalSettings.default_locale);
-                } else {
-                    console.log('[Settings] No default_locale found, using browser default');
-                }
-                
-                updateWindowTitle(finalSettings.app_name);
-            } catch (err) {
-                console.error("Failed to load settings:", err);
-            }
+            await loadSettings();
         },
-        // Update a specific setting immediately (Optimistic UI)
+        refresh: async () => {
+            await loadSettings();
+        },
         updateSetting: (key: string, value: any) => {
             update(s => {
                 const newState = { ...s, [key]: value };

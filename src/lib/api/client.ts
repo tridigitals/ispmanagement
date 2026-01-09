@@ -10,6 +10,10 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         // Check if running in Tauri
         // @ts-ignore
         if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
+            // console.log(`[Tauri] Invoking ${command}`, args); 
+            if (command === 'get_logo') {
+                console.log(`[Tauri] get_logo called with token:`, args?.token ? 'YES (Hidden)' : 'NO');
+            }
             return await invoke(command, args);
         }
 
@@ -280,8 +284,8 @@ export const settings = {
     uploadLogo: (fileBase64: string): Promise<string> =>
         safeInvoke('upload_logo', { token: getTokenOrThrow(), content: fileBase64 }),
 
-    getLogo: (): Promise<string | null> =>
-        safeInvoke('get_logo'),
+    getLogo: (token?: string): Promise<string | null> =>
+        safeInvoke('get_logo', { token }),
 
     delete: (key: string): Promise<void> =>
         safeInvoke('delete_setting', { token: getTokenOrThrow(), key }),

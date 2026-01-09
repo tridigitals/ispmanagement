@@ -136,15 +136,27 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     .await?;
 
     // Create indexes
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)").execute(pool).await.ok();
+    if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)").execute(pool).await {
+        tracing::error!("Failed to create idx_users_email: {}", e);
+    }
     // Unique index for Global Settings (where tenant_id is NULL)
-    sqlx::query("CREATE UNIQUE INDEX IF NOT EXISTS idx_settings_global_key ON settings(key) WHERE tenant_id IS NULL").execute(pool).await.ok();
+    if let Err(e) = sqlx::query("CREATE UNIQUE INDEX IF NOT EXISTS idx_settings_global_key ON settings(key) WHERE tenant_id IS NULL").execute(pool).await {
+        tracing::error!("Failed to create idx_settings_global_key: {}", e);
+    }
     // Unique index for Tenant Settings (where tenant_id is NOT NULL)
-    sqlx::query("CREATE UNIQUE INDEX IF NOT EXISTS idx_settings_tenant_key ON settings(tenant_id, key) WHERE tenant_id IS NOT NULL").execute(pool).await.ok();
+    if let Err(e) = sqlx::query("CREATE UNIQUE INDEX IF NOT EXISTS idx_settings_tenant_key ON settings(tenant_id, key) WHERE tenant_id IS NOT NULL").execute(pool).await {
+        tracing::error!("Failed to create idx_settings_tenant_key: {}", e);
+    }
     
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_settings_tenant ON settings(tenant_id)").execute(pool).await.ok();
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)").execute(pool).await.ok();
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_tenants_slug ON tenants(slug)").execute(pool).await.ok();
+    if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_settings_tenant ON settings(tenant_id)").execute(pool).await {
+        tracing::error!("Failed to create idx_settings_tenant: {}", e);
+    }
+    if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)").execute(pool).await {
+        tracing::error!("Failed to create idx_sessions_token: {}", e);
+    }
+    if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_tenants_slug ON tenants(slug)").execute(pool).await {
+        tracing::error!("Failed to create idx_tenants_slug: {}", e);
+    }
 
     info!("PostgreSQL migrations completed");
     Ok(())

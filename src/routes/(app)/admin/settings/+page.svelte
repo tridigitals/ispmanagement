@@ -137,11 +137,13 @@
 
     async function loadSettings() {
         try {
-            const [data, logo] = await Promise.all([
-                api.settings.getAll(),
-                api.settings.getLogo(),
-            ]);
-            logoBase64 = logo;
+            // Fetch settings. Logo is already in $appLogo store.
+            const data = await api.settings.getAll();
+            
+            // Use current logo from store
+            let logoStoreValue;
+            appLogo.subscribe(v => logoStoreValue = v)();
+            logoBase64 = logoStoreValue;
 
             settings = data.reduce(
                 (acc, curr) => {
@@ -283,6 +285,12 @@
         Object.keys(localSettings).forEach((k) => {
             localSettings[k] = settings[k]?.value || "";
         });
+        
+        // Reset logo preview to current actual logo
+        let logoStoreValue;
+        appLogo.subscribe(v => logoStoreValue = v)();
+        logoBase64 = logoStoreValue;
+        
         hasChanges = false;
     }
 
