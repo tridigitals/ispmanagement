@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { api } from "$lib/api/client";
-    import { user, isAdmin } from "$lib/stores/auth";
+    import { user, isAdmin, getToken } from "$lib/stores/auth";
     import { appSettings } from "$lib/stores/settings";
     import { appLogo } from "$lib/stores/logo";
     import { goto } from "$app/navigation";
@@ -137,12 +137,15 @@
 
     async function loadSettings() {
         try {
-            // Fetch settings. Logo is already in $appLogo store.
+            // Refresh logo from backend to sync between browser/desktop
+            await appLogo.refresh(getToken() || undefined);
+
+            // Fetch settings
             const data = await api.settings.getAll();
-            
-            // Use current logo from store
+
+            // Use current logo from store (now refreshed)
             let logoStoreValue;
-            appLogo.subscribe(v => logoStoreValue = v)();
+            appLogo.subscribe((v) => (logoStoreValue = v))();
             logoBase64 = logoStoreValue;
 
             settings = data.reduce(
@@ -260,12 +263,12 @@
                     const val = localSettings[key];
                     if (val !== undefined) {
                         appSettings.updateSetting(key, val);
-                        
+
                         // If locale changed, update immediately
                         if (key === "default_locale") {
                             locale.set(val);
                         }
-                        
+
                         return api.settings.upsert(key, val);
                     }
                 }),
@@ -285,12 +288,12 @@
         Object.keys(localSettings).forEach((k) => {
             localSettings[k] = settings[k]?.value || "";
         });
-        
+
         // Reset logo preview to current actual logo
         let logoStoreValue;
-        appLogo.subscribe(v => logoStoreValue = v)();
+        appLogo.subscribe((v) => (logoStoreValue = v))();
         logoBase64 = logoStoreValue;
-        
+
         hasChanges = false;
     }
 
@@ -439,7 +442,7 @@
                                 {$t(`admin.settings.categories.${activeTab}`)}
                             </h2>
                             <p class="card-subtitle">
-                                {$t('admin.settings.subtitle')}
+                                {$t("admin.settings.subtitle")}
                             </p>
                         </div>
                     </div>
@@ -655,15 +658,17 @@
 
                     {#if activeTab === "email"}
                         <div class="test-email-section">
-                            <h3>{$t('admin.settings.test_email.title')}</h3>
+                            <h3>{$t("admin.settings.test_email.title")}</h3>
                             <p class="section-description">
-                                {$t('admin.settings.test_email.description')}
+                                {$t("admin.settings.test_email.description")}
                             </p>
                             <div class="test-email-form">
                                 <input
                                     type="email"
                                     class="form-input"
-                                    placeholder={$t('admin.settings.test_email.placeholder')}
+                                    placeholder={$t(
+                                        "admin.settings.test_email.placeholder",
+                                    )}
                                     bind:value={testEmailAddress}
                                     disabled={sendingTestEmail}
                                 />
@@ -673,7 +678,11 @@
                                     disabled={sendingTestEmail ||
                                         !testEmailAddress}
                                 >
-                                    {#if sendingTestEmail}{$t('admin.settings.test_email.sending')}{:else}{$t('admin.settings.test_email.button')}{/if}
+                                    {#if sendingTestEmail}{$t(
+                                            "admin.settings.test_email.sending",
+                                        )}{:else}{$t(
+                                            "admin.settings.test_email.button",
+                                        )}{/if}
                                 </button>
                             </div>
                         </div>
@@ -685,14 +694,16 @@
                             disabled={!hasChanges || saving}
                             on:click={discardChanges}
                         >
-                            {$t('admin.settings.reset_button')}
+                            {$t("admin.settings.reset_button")}
                         </button>
                         <button
                             class="btn btn-primary"
                             disabled={!hasChanges || saving}
                             on:click={saveChanges}
                         >
-                            {#if saving}{$t('admin.settings.saving')}{:else}{$t('admin.settings.save_button')}{/if}
+                            {#if saving}{$t("admin.settings.saving")}{:else}{$t(
+                                    "admin.settings.save_button",
+                                )}{/if}
                         </button>
                     </div>
                 </div>
