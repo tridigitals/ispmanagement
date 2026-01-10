@@ -12,7 +12,8 @@
             "submit_button": "Lanjutkan",
             "loading_button": "Sedang masuk...",
             "footer_text": "Belum punya akun?",
-            "register_link": "Daftar di sini"
+            "register_link": "Daftar di sini",
+            "error_wrong_tenant": "Anda tidak memiliki akses ke ruang kerja ini. Silakan masuk melalui URL ruang kerja Anda sendiri."
         },
         "register": {
             "title": "Buat Akun",

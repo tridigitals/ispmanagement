@@ -12,7 +12,8 @@
             "submit_button": "Continue",
             "loading_button": "Signing in...",
             "footer_text": "Need an account?",
-            "register_link": "Register here"
+            "register_link": "Register here",
+            "error_wrong_tenant": "You do not have access to this workspace. Please login at your own workspace URL."
         },
         "register": {
             "title": "Create Account",

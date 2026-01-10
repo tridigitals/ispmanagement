@@ -30,6 +30,17 @@
         if ($isAuthenticated) {
             const u = get(user);
             const slug = u?.tenant_slug;
+            const urlTenant = $page.params.tenant;
+
+            // Tenant Isolation Check
+            if (urlTenant && slug && slug !== urlTenant) {
+                // Logged in user is in the wrong tenant workspace -> Logout
+                await import("$lib/stores/auth").then((m) => m.logout());
+                error =
+                    $t("auth.login.error_wrong_tenant") ||
+                    "You do not have access to this workspace.";
+                return;
+            }
 
             if (slug) {
                 if (get(isAdmin)) {
@@ -50,7 +61,21 @@
 
         try {
             const response = await login(email, password, rememberMe);
-            const slug = response.user?.tenant_slug;
+            const userSlug = response.user?.tenant_slug;
+            const urlTenant = $page.params.tenant;
+
+            // Tenant Isolation Check
+            // If we are on a tenant-specific route, ensure the user belongs to this tenant
+            if (urlTenant && userSlug !== urlTenant) {
+                // Logout immediately if mismatch
+                await import("$lib/stores/auth").then((m) => m.logout());
+                throw new Error(
+                    $t("auth.login.error_wrong_tenant") ||
+                        "You do not have access to this workspace. Please login at your own workspace URL.",
+                );
+            }
+
+            const slug = userSlug;
 
             if (slug) {
                 // If the current domain already matches the user's tenant slug, avoid adding it to the path
@@ -75,8 +100,9 @@
             }
         } catch (err) {
             error = err instanceof Error ? err.message : String(err);
-        } finally {
             loading = false;
+        } finally {
+            // loading = false; // handled in catch or goto
         }
     }
 </script>
