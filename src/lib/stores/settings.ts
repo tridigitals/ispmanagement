@@ -45,7 +45,7 @@ function createSettingsStore() {
                 const ps = await api.settings.getPublicSettings();
                 if (ps) publicSettings = ps;
             } catch (e) {
-                console.debug("Could not load public settings", e);
+                // console.debug("Could not load public settings", e);
             }
 
             // Fetch admin/tenant settings (might fail if not logged in, which is fine)
@@ -60,7 +60,7 @@ function createSettingsStore() {
                 });
             } catch (e) {
                 // Ignore error if not logged in
-                console.debug("Could not load tenant settings (likely not logged in)");
+                // console.debug("Could not load tenant settings (likely not logged in)");
             }
 
             const finalSettings = {

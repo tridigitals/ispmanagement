@@ -257,6 +257,9 @@
                     console.log(
                         `[Compress] Original: ${file.size} bytes, Resized to: ${width}x${height}`,
                     );
+                    // console.log(
+                    //     `[Compress] Original: ${file.size} bytes, Resized to: ${width}x${height}`,
+                    // );
 
                     resolve(compressedBase64);
                 };
@@ -292,10 +295,9 @@
             // Extract base64 data (remove data:image/png;base64, prefix)
             const base64Data = compressedBase64.split(",")[1];
 
-            console.log(`[Upload] Sending compressed image to backend...`);
-
-            const path = await api.settings.uploadLogo(base64Data);
-            console.log(`[Upload] Success! Path: ${path}`);
+            // console.log(`[Upload] Sending compressed image to backend...`);
+            const path = await api.settings.uploadLogo(compressedBase64);
+            // console.log(`[Upload] Success! Path: ${path}`);
 
             localSettings["app_logo_path"] = path;
             localSettings = { ...localSettings };
@@ -307,7 +309,7 @@
 
             showMessage("success", "Logo uploaded and optimized");
         } catch (error) {
-            console.error("[Upload] Error:", error);
+            // console.error("[Upload] Error:", error);
             showMessage("error", "Failed to upload logo: " + String(error));
         }
     }

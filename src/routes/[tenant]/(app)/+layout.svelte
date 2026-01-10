@@ -10,7 +10,7 @@
     import { user } from "$lib/stores/auth";
 
     // Reactive Auth Guard & Tenant Scoping
-    $: {
+    $effect(() => {
         if (!$isAuthenticated) {
             goto("/");
         } else {
@@ -18,21 +18,23 @@
             const currentSlug = $page.params.tenant;
             const userSlug = $user?.tenant_slug;
 
-            console.log("[Layout] Debug:", {
+            /* console.log("[Layout] Debug:", {
                 currentSlug,
                 userSlug,
                 user: $user,
-            });
+            }); */
 
             if (currentSlug && userSlug && currentSlug !== userSlug) {
                 console.warn(
-                    `[Layout] Mismatch! Redirecting from ${currentSlug} to ${userSlug}`,
+                    `[Layout] Tenant Mismatch! User ${userSlug} tried to access ${currentSlug}`,
                 );
-                // Redirect to their correct dashboard
-                goto(`/${userSlug}/dashboard`);
+                // Strict Isolation: Logout user if they try to access a different tenant's area
+                // This prevents cross-contamination and forces re-login at the correct scope
+                import("$lib/stores/auth").then((m) => m.logout());
+                goto(`/${currentSlug}`); // Go to login page of the intended tenant
             }
         }
-    }
+    });
 
     onMount(() => {
         if (!$isAuthenticated) {

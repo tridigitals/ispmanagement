@@ -97,7 +97,7 @@ user.subscribe(value => {
 
 // Auth actions
 export async function login(email: string, password: string, remember: boolean = true): Promise<AuthResponse> {
-    console.log('[Auth] Login called. Remember:', remember);
+    // console.log('[Auth] Login called. Remember:', remember);
     const response = await auth.login(email, password);
     if (response.token) {
         setAuth(response.token, response.user, remember);
@@ -115,7 +115,7 @@ export async function register(email: string, password: string, name: string): P
 }
 
 function setAuth(newToken: string, newUser: User, remember: boolean) {
-    console.log('[Auth] Setting auth data. Remember:', remember);
+    // console.log('[Auth] Setting auth data. Remember:', remember);
     token.set(newToken);
     user.set(newUser);
 
@@ -128,7 +128,7 @@ function setAuth(newToken: string, newUser: User, remember: boolean) {
     sessionStorage.removeItem(USER_KEY);
 
     const storage = remember ? localStorage : sessionStorage;
-    console.log('[Auth] Using storage:', remember ? 'localStorage' : 'sessionStorage');
+    // console.log('[Auth] Using storage:', remember ? 'localStorage' : 'sessionStorage');
 
     storage.setItem(TOKEN_KEY, newToken);
     storage.setItem(USER_KEY, JSON.stringify(newUser));

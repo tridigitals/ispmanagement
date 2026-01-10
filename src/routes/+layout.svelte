@@ -39,7 +39,7 @@
 
             if (!isInstalled) {
                 if (currentPath !== "/install") {
-                    console.log("App not installed, redirecting to /install");
+                    // console.log("App not installed, redirecting to /install");
                     goto("/install");
                 }
             } else {

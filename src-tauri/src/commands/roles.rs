@@ -72,7 +72,14 @@ pub async fn create_new_role(
     
     let tenant_id = claims.tenant_id.as_deref();
     
-    // TODO: Implement permission check
+    // Permission Check
+    if let Some(tid) = tenant_id {
+        auth.check_permission(&claims.sub, tid, "roles", "create")
+            .await
+            .map_err(|e| e.to_string())?;
+    } else if !claims.is_super_admin {
+        return Err("Unauthorized: Only Super Admin can create global roles".to_string());
+    }
     
     let dto = CreateRoleDto {
         name,
@@ -103,11 +110,20 @@ pub async fn update_existing_role(
     auth: State<'_, AuthService>,
     ws_hub: State<'_, Arc<WsHub>>,
 ) -> Result<RoleWithPermissions, String> {
-    auth.validate_token(&token)
+    let claims = auth.validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
-    
-    // TODO: Implement permission check
+
+    let tenant_id = claims.tenant_id.as_deref();
+
+    // Permission Check
+    if let Some(tid) = tenant_id {
+        auth.check_permission(&claims.sub, tid, "roles", "update")
+            .await
+            .map_err(|e| e.to_string())?;
+    } else if !claims.is_super_admin {
+        return Err("Unauthorized: Only Super Admin can update global roles".to_string());
+    }
     
     let dto = UpdateRoleDto {
         name,
@@ -134,11 +150,20 @@ pub async fn delete_existing_role(
     auth: State<'_, AuthService>,
     ws_hub: State<'_, Arc<WsHub>>,
 ) -> Result<bool, String> {
-    auth.validate_token(&token)
+    let claims = auth.validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
     
-    // TODO: Implement permission check
+    let tenant_id = claims.tenant_id.as_deref();
+
+    // Permission Check
+    if let Some(tid) = tenant_id {
+        auth.check_permission(&claims.sub, tid, "roles", "delete")
+            .await
+            .map_err(|e| e.to_string())?;
+    } else if !claims.is_super_admin {
+        return Err("Unauthorized: Only Super Admin can delete global roles".to_string());
+    }
     
     let deleted = delete_role(&auth.pool, &role_id)
         .await
