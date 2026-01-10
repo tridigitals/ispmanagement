@@ -13,9 +13,9 @@
 
     const greeting = () => {
         const hour = new Date().getHours();
-        if (hour < 12) return $t('dashboard.greeting.morning');
-        if (hour < 17) return $t('dashboard.greeting.afternoon');
-        return $t('dashboard.greeting.evening');
+        if (hour < 12) return $t("dashboard.greeting.morning");
+        if (hour < 17) return $t("dashboard.greeting.afternoon");
+        return $t("dashboard.greeting.evening");
     };
 </script>
 
@@ -23,25 +23,25 @@
     <header class="welcome-header">
         <div class="welcome-text">
             <h1>{greeting()}, {$user?.name}!</h1>
-            <p>{$t('dashboard.greeting.welcome_message')}</p>
+            <p>{$t("dashboard.greeting.welcome_message")}</p>
         </div>
         <div class="header-actions">
             <button class="btn btn-primary">
                 <Icon name="activity" size={16} />
-                {$t('dashboard.generate_report')}
+                {$t("dashboard.generate_report")}
             </button>
         </div>
     </header>
 
     {#if $isAdmin}
-        <div class="admin-banner" on:click={() => goto('/admin')}>
+        <div class="admin-banner" on:click={() => goto("/admin")}>
             <div class="banner-content">
                 <div class="banner-icon">
                     <Icon name="shield" size={24} />
                 </div>
                 <div>
-                    <h3>{$t('dashboard.admin_mode.title')}</h3>
-                    <p>{$t('dashboard.admin_mode.description')}</p>
+                    <h3>{$t("dashboard.admin_mode.title")}</h3>
+                    <p>{$t("dashboard.admin_mode.description")}</p>
                 </div>
             </div>
             <Icon name="arrow-right" size={20} />
@@ -58,7 +58,9 @@
             </div>
             <div class="stat-body">
                 <span class="stat-value">{$user?.role}</span>
-                <span class="stat-label">{$t('dashboard.stats.account_role')}</span>
+                <span class="stat-label"
+                    >{$t("dashboard.stats.account_role")}</span
+                >
             </div>
         </div>
 
@@ -69,8 +71,14 @@
                 </div>
             </div>
             <div class="stat-body">
-                <span class="stat-value">{new Date($user?.created_at || Date.now()).toLocaleDateString()}</span>
-                <span class="stat-label">{$t('dashboard.stats.member_since')}</span>
+                <span class="stat-value"
+                    >{new Date(
+                        $user?.created_at || Date.now(),
+                    ).toLocaleDateString()}</span
+                >
+                <span class="stat-label"
+                    >{$t("dashboard.stats.member_since")}</span
+                >
             </div>
         </div>
 
@@ -81,8 +89,10 @@
                 </div>
             </div>
             <div class="stat-body">
-                <span class="stat-value">{$t('dashboard.stats.active')}</span>
-                <span class="stat-label">{$t('dashboard.stats.system_status')}</span>
+                <span class="stat-value">{$t("dashboard.stats.active")}</span>
+                <span class="stat-label"
+                    >{$t("dashboard.stats.system_status")}</span
+                >
             </div>
         </div>
     </div>
@@ -90,42 +100,48 @@
     <div class="main-grid">
         <section class="activity-section">
             <div class="section-header">
-                <h2>{$t('dashboard.recent_activity.title')}</h2>
-                <button class="text-btn">{$t('dashboard.recent_activity.view_all')}</button>
+                <h2>{$t("dashboard.recent_activity.title")}</h2>
+                <button class="text-btn"
+                    >{$t("dashboard.recent_activity.view_all")}</button
+                >
             </div>
-            
+
             <div class="card activity-card">
                 <div class="empty-state">
                     <div class="empty-icon-circle">
                         <Icon name="activity" size={32} />
                     </div>
-                    <h3>{$t('dashboard.recent_activity.empty.title')}</h3>
-                    <p>{$t('dashboard.recent_activity.empty.description')}</p>
-                    <button class="btn btn-secondary mt-4">{$t('dashboard.recent_activity.empty.learn_more')}</button>
+                    <h3>{$t("dashboard.recent_activity.empty.title")}</h3>
+                    <p>{$t("dashboard.recent_activity.empty.description")}</p>
+                    <button class="btn btn-secondary mt-4"
+                        >{$t(
+                            "dashboard.recent_activity.empty.learn_more",
+                        )}</button
+                    >
                 </div>
             </div>
         </section>
 
         <aside class="quick-actions">
             <div class="section-header">
-                <h2>{$t('dashboard.quick_actions.title')}</h2>
+                <h2>{$t("dashboard.quick_actions.title")}</h2>
             </div>
             <div class="actions-list">
-                <button class="action-item" on:click={() => goto('/profile')}>
+                <button class="action-item" on:click={() => goto("/profile")}>
                     <Icon name="profile" size={18} />
-                    {$t('dashboard.quick_actions.update_profile')}
+                    {$t("dashboard.quick_actions.update_profile")}
                 </button>
                 <button class="action-item">
                     <Icon name="mail" size={18} />
-                    {$t('dashboard.quick_actions.check_messages')}
+                    {$t("dashboard.quick_actions.check_messages")}
                 </button>
                 <button class="action-item">
                     <Icon name="lock" size={18} />
-                    {$t('dashboard.quick_actions.security_settings')}
+                    {$t("dashboard.quick_actions.security_settings")}
                 </button>
                 <button class="action-item">
                     <Icon name="help-circle" size={18} />
-                    {$t('dashboard.quick_actions.contact_support')}
+                    {$t("dashboard.quick_actions.contact_support")}
                 </button>
             </div>
         </aside>
@@ -140,6 +156,28 @@
         display: flex;
         flex-direction: column;
         gap: 2rem;
+    }
+
+    @media (max-width: 640px) {
+        .dashboard-content {
+            padding: 1rem;
+            gap: 1.5rem;
+        }
+
+        .welcome-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .header-actions {
+            width: 100%;
+        }
+
+        .header-actions .btn {
+            width: 100%;
+            justify-content: center;
+        }
     }
 
     /* Header */
@@ -173,7 +211,9 @@
         justify-content: space-between;
         align-items: center;
         cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s;
+        transition:
+            transform 0.2s,
+            box-shadow 0.2s;
         box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
     }
 
@@ -217,6 +257,13 @@
         gap: 1.5rem;
     }
 
+    @media (max-width: 640px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+    }
+
     .stat-card {
         background: var(--bg-surface);
         border: 1px solid var(--border-color);
@@ -247,9 +294,18 @@
         justify-content: center;
     }
 
-    .icon-wrapper.primary { background: rgba(99, 102, 241, 0.1); color: var(--color-primary); }
-    .icon-wrapper.success { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
-    .icon-wrapper.info { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+    .icon-wrapper.primary {
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--color-primary);
+    }
+    .icon-wrapper.success {
+        background: rgba(34, 197, 94, 0.1);
+        color: #22c55e;
+    }
+    .icon-wrapper.info {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+    }
 
     .trend {
         font-size: 0.75rem;
@@ -258,7 +314,10 @@
         border-radius: 20px;
     }
 
-    .trend.positive { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
+    .trend.positive {
+        background: rgba(34, 197, 94, 0.1);
+        color: #22c55e;
+    }
 
     .stat-body {
         display: flex;
@@ -286,7 +345,9 @@
     }
 
     @media (max-width: 900px) {
-        .main-grid { grid-template-columns: 1fr; }
+        .main-grid {
+            grid-template-columns: 1fr;
+        }
     }
 
     .section-header {
@@ -411,14 +472,22 @@
         color: var(--text-primary);
     }
 
-    .mt-4 { margin-top: 1rem; }
+    .mt-4 {
+        margin-top: 1rem;
+    }
 
     .fade-in {
         animation: fadeIn 0.4s ease-out;
     }
 
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 </style>

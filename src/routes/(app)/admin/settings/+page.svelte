@@ -17,6 +17,7 @@
     let activeTab = "general";
     let message = { type: "", text: "" };
     let hasChanges = false;
+    let showMobileMenu = false;
 
     // Options
     const localeOptions = [
@@ -129,7 +130,7 @@
 
     onMount(async () => {
         if (!$isAdmin) {
-            goto("/dashboard");
+            goto("/unauthorized");
             return;
         }
         await loadSettings();
@@ -467,7 +468,8 @@
     {/if}
 
     <div class="layout-grid">
-        <aside class="sidebar card">
+        <!-- Desktop Sidebar -->
+        <aside class="sidebar card desktop-sidebar">
             <nav>
                 {#each Object.entries(categories) as [id, cat]}
                     <button
@@ -485,6 +487,53 @@
                 {/each}
             </nav>
         </aside>
+
+        <!-- Mobile FAB & Menu -->
+        <button
+            class="mobile-fab"
+            on:click={() => (showMobileMenu = !showMobileMenu)}
+            aria-label="Settings Menu"
+        >
+            <Icon name={showMobileMenu ? "x" : "settings"} size={24} />
+        </button>
+
+        {#if showMobileMenu}
+            <div
+                class="mobile-menu-overlay"
+                on:click={() => (showMobileMenu = false)}
+            >
+                <div class="mobile-menu card slide-up" on:click|stopPropagation>
+                    <div class="mobile-menu-header">
+                        <h3>Settings</h3>
+                        <button
+                            class="close-btn"
+                            on:click={() => (showMobileMenu = false)}
+                        >
+                            <Icon name="x" size={20} />
+                        </button>
+                    </div>
+                    <nav>
+                        {#each Object.entries(categories) as [id, cat]}
+                            <button
+                                class="nav-item {activeTab === id
+                                    ? 'active'
+                                    : ''}"
+                                on:click={() => {
+                                    activeTab = id;
+                                    showMobileMenu = false;
+                                    discardChanges();
+                                }}
+                            >
+                                <span class="icon">
+                                    <Icon name={cat.icon} size={18} />
+                                </span>
+                                {$t(`admin.settings.categories.${id}`)}
+                            </button>
+                        {/each}
+                    </nav>
+                </div>
+            </div>
+        {/if}
 
         <main class="content">
             {#if loading}
@@ -781,12 +830,6 @@
         align-items: start;
     }
 
-    @media (max-width: 900px) {
-        .layout-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-
     .sidebar {
         background: var(--bg-surface);
         border: 1px solid var(--border-color);
@@ -794,6 +837,100 @@
         padding: 1rem;
         position: sticky;
         top: 2rem;
+        z-index: 10;
+    }
+
+    /* Media query moved to bottom */
+
+    /* Mobile FAB Styles */
+    .mobile-fab {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        width: 3.5rem;
+        height: 3.5rem;
+        border-radius: 50%;
+        background: var(--color-primary);
+        color: white;
+        border: none;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        display: none; /* Hidden by default on desktop */
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 100;
+        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .mobile-fab:active {
+        transform: scale(0.9);
+    }
+
+    /* Mobile Menu Overlay Styles */
+    .mobile-menu-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 90;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .mobile-menu {
+        width: 100%;
+        max-width: 500px;
+        background: var(--bg-surface);
+        border-radius: 1rem 1rem 0 0; /* Bottom sheet style */
+        padding: 1.5rem;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    .slide-up {
+        animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes slideUp {
+        from {
+            transform: translateY(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .mobile-menu-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .mobile-menu-header h3 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0;
+        color: var(--text-primary);
+    }
+
+    .close-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        padding: 0.5rem;
+        cursor: pointer;
+        border-radius: 50%;
+    }
+
+    .close-btn:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
     }
 
     .nav-item {
@@ -868,10 +1005,53 @@
         align-items: center;
         padding: 1.5rem 0;
         border-bottom: 1px solid var(--border-color);
+        gap: 1rem;
     }
 
     .setting-item:last-child {
         border-bottom: none;
+    }
+
+    @media (max-width: 640px) {
+        .setting-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .setting-info {
+            width: 100%;
+        }
+
+        .setting-control {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        .form-input,
+        .select-wrapper {
+            max-width: 100%;
+            width: 100%;
+        }
+
+        /* Adjust Test Email Form for mobile */
+        .test-email-form {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .test-email-form .form-input {
+            max-width: 100%;
+        }
+
+        .card-footer {
+            flex-direction: column-reverse;
+        }
+
+        .card-footer .btn {
+            width: 100%;
+            justify-content: center;
+        }
     }
 
     .setting-info label {
@@ -1122,5 +1302,20 @@
     .test-email-form .form-input {
         flex: 1;
         max-width: 300px;
+    }
+
+    @media (max-width: 900px) {
+        .layout-grid {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .desktop-sidebar {
+            display: none;
+        }
+
+        .mobile-fab {
+            display: flex;
+        }
     }
 </style>

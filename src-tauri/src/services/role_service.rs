@@ -298,13 +298,14 @@ pub async fn create_role(
     #[cfg(feature = "postgres")]
     {
         sqlx::query(r#"
-            INSERT INTO roles (id, tenant_id, name, description, is_system, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, false, $5, $6)
+            INSERT INTO roles (id, tenant_id, name, description, is_system, level, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, false, $5, $6, $7)
         "#)
         .bind(&role_id)
         .bind(tenant_id)
         .bind(&dto.name)
         .bind(&dto.description)
+        .bind(dto.level.unwrap_or(0))
         .bind(now)
         .bind(now)
         .execute(pool)
@@ -315,13 +316,14 @@ pub async fn create_role(
     {
         let now_str = now.to_rfc3339();
         sqlx::query(r#"
-            INSERT INTO roles (id, tenant_id, name, description, is_system, created_at, updated_at)
-            VALUES (?, ?, ?, ?, 0, ?, ?)
+            INSERT INTO roles (id, tenant_id, name, description, is_system, level, created_at, updated_at)
+            VALUES (?, ?, ?, ?, 0, ?, ?, ?)
         "#)
         .bind(&role_id)
         .bind(tenant_id)
         .bind(&dto.name)
         .bind(&dto.description)
+        .bind(dto.level.unwrap_or(0))
         .bind(&now_str)
         .bind(&now_str)
         .execute(pool)
@@ -418,22 +420,60 @@ pub async fn update_role(
     
     if role.is_system {
         // Cannot modify system role name/description, only permissions
-    } else if let Some(name) = &dto.name {
-        #[cfg(feature = "postgres")]
-        sqlx::query("UPDATE roles SET name = $1, updated_at = $2 WHERE id = $3")
-            .bind(name)
-            .bind(now)
-            .bind(role_id)
-            .execute(pool)
-            .await?;
-        
-        #[cfg(feature = "sqlite")]
-        sqlx::query("UPDATE roles SET name = ?, updated_at = ? WHERE id = ?")
-            .bind(name)
-            .bind(now.to_rfc3339())
-            .bind(role_id)
-            .execute(pool)
-            .await?;
+    } else {
+        if let Some(name) = &dto.name {
+            #[cfg(feature = "postgres")]
+            sqlx::query("UPDATE roles SET name = $1, updated_at = $2 WHERE id = $3")
+                .bind(name)
+                .bind(now)
+                .bind(role_id)
+                .execute(pool)
+                .await?;
+            
+            #[cfg(feature = "sqlite")]
+            sqlx::query("UPDATE roles SET name = ?, updated_at = ? WHERE id = ?")
+                .bind(name)
+                .bind(now.to_rfc3339())
+                .bind(role_id)
+                .execute(pool)
+                .await?;
+        }
+
+        if let Some(level) = dto.level {
+            #[cfg(feature = "postgres")]
+            sqlx::query("UPDATE roles SET level = $1, updated_at = $2 WHERE id = $3")
+                .bind(level)
+                .bind(now)
+                .bind(role_id)
+                .execute(pool)
+                .await?;
+            
+            #[cfg(feature = "sqlite")]
+            sqlx::query("UPDATE roles SET level = ?, updated_at = ? WHERE id = ?")
+                .bind(level)
+                .bind(now.to_rfc3339())
+                .bind(role_id)
+                .execute(pool)
+                .await?;
+        }
+
+        if let Some(description) = &dto.description {
+             #[cfg(feature = "postgres")]
+            sqlx::query("UPDATE roles SET description = $1, updated_at = $2 WHERE id = $3")
+                .bind(description)
+                .bind(now)
+                .bind(role_id)
+                .execute(pool)
+                .await?;
+            
+            #[cfg(feature = "sqlite")]
+            sqlx::query("UPDATE roles SET description = ?, updated_at = ? WHERE id = ?")
+                .bind(description)
+                .bind(now.to_rfc3339())
+                .bind(role_id)
+                .execute(pool)
+                .await?;
+        }
     }
     
     // Update permissions if provided

@@ -160,6 +160,7 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
             name TEXT NOT NULL,
             description TEXT,
             is_system BOOLEAN NOT NULL DEFAULT false,
+            level INTEGER NOT NULL DEFAULT 0,
             created_at TIMESTAMPTZ NOT NULL,
             updated_at TIMESTAMPTZ NOT NULL
         )
@@ -185,6 +186,19 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
             IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                           WHERE table_name='tenant_members' AND column_name='role_id') THEN
                 ALTER TABLE tenant_members ADD COLUMN role_id TEXT REFERENCES roles(id);
+            END IF;
+        END $$;
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Migration: Add level column to roles if not exists
+    sqlx::query(r#"
+        DO $$ 
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='roles' AND column_name='level') THEN
+                ALTER TABLE roles ADD COLUMN level INTEGER NOT NULL DEFAULT 0;
             END IF;
         END $$;
     "#)
@@ -336,6 +350,7 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
             name TEXT NOT NULL,
             description TEXT,
             is_system INTEGER NOT NULL DEFAULT 0,
+            level INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
@@ -356,6 +371,11 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     "#)
     .execute(pool)
     .await?;
+
+    // Migration: Add level column to roles if not exists for SQLite
+    // SQLite doesn't support IF NOT EXISTS in ADD COLUMN directly in all versions or easy check, 
+    // but newer versions do. Or we can just try/catch.
+    let _ = sqlx::query("ALTER TABLE roles ADD COLUMN level INTEGER NOT NULL DEFAULT 0").execute(pool).await;
 
     // Create indexes
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)").execute(pool).await.ok();
@@ -440,26 +460,27 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
 pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
     let now = chrono::Utc::now();
     let roles = vec![
-        ("Owner", "Full access to all resources", true),
-        ("Admin", "Access to settings and team management", true),
-        ("Member", "Can view dashboard and read team", true),
-        ("Viewer", "Read-only access", true),
+        ("Owner", "Full access to all resources", true, 100),
+        ("Admin", "Access to settings and team management", true, 50),
+        ("Member", "Can view dashboard and read team", true, 10),
+        ("Viewer", "Read-only access", true, 0),
     ];
 
-    for (name, description, is_system) in roles {
+    for (name, description, is_system, level) in roles {
         let role_id = uuid::Uuid::new_v4().to_string();
         
         #[cfg(feature = "postgres")]
         {
             sqlx::query(r#"
-                INSERT INTO roles (id, tenant_id, name, description, is_system, created_at, updated_at)
-                VALUES ($1, NULL, $2, $3, $4, $5, $6)
+                INSERT INTO roles (id, tenant_id, name, description, is_system, level, created_at, updated_at)
+                VALUES ($1, NULL, $2, $3, $4, $5, $6, $7)
                 ON CONFLICT (name) WHERE tenant_id IS NULL DO NOTHING
             "#)
             .bind(&role_id)
             .bind(name)
             .bind(description)
             .bind(is_system)
+            .bind(level)
             .bind(now)
             .bind(now)
             .execute(pool)
@@ -481,13 +502,14 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
 
             if !exists {
                 sqlx::query(r#"
-                    INSERT INTO roles (id, tenant_id, name, description, is_system, created_at, updated_at)
-                    VALUES (?, NULL, ?, ?, ?, ?, ?)
+                    INSERT INTO roles (id, tenant_id, name, description, is_system, level, created_at, updated_at)
+                    VALUES (?, NULL, ?, ?, ?, ?, ?, ?)
                 "#)
                 .bind(&role_id)
                 .bind(name)
                 .bind(description)
                 .bind(is_system)
+                .bind(level)
                 .bind(&now_str)
                 .bind(&now_str)
                 .execute(pool)
@@ -514,6 +536,21 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
     "#)
     .execute(pool)
     .await?;
+
+    // Fix levels for existing roles
+    #[cfg(feature = "postgres")]
+    {
+        sqlx::query("UPDATE roles SET level = 100 WHERE name = 'Owner' AND level = 0").execute(pool).await?;
+        sqlx::query("UPDATE roles SET level = 50 WHERE name = 'Admin' AND level = 0").execute(pool).await?;
+        sqlx::query("UPDATE roles SET level = 10 WHERE name = 'Member' AND level = 0").execute(pool).await?;
+    }
+
+    #[cfg(feature = "sqlite")]
+    {
+        sqlx::query("UPDATE roles SET level = 100 WHERE name = 'Owner' AND level = 0").execute(pool).await?;
+        sqlx::query("UPDATE roles SET level = 50 WHERE name = 'Admin' AND level = 0").execute(pool).await?;
+        sqlx::query("UPDATE roles SET level = 10 WHERE name = 'Member' AND level = 0").execute(pool).await?;
+    }
 
     // --- Seed Permissions ---
     let permissions = vec![

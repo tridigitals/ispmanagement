@@ -63,6 +63,65 @@ impl TeamService {
             .await
     }
 
+    /// Get user role level
+    pub async fn get_user_role_level(&self, user_id: &str, tenant_id: &str) -> Result<i32, String> {
+        #[cfg(feature = "postgres")]
+        let level: Option<i32> = sqlx::query_scalar("SELECT r.level FROM tenant_members tm JOIN roles r ON tm.role_id = r.id WHERE tm.user_id = $1 AND tm.tenant_id = $2")
+            .bind(user_id)
+            .bind(tenant_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        #[cfg(feature = "sqlite")]
+        let level: Option<i32> = sqlx::query_scalar("SELECT r.level FROM tenant_members tm JOIN roles r ON tm.role_id = r.id WHERE tm.user_id = ? AND tm.tenant_id = ?")
+            .bind(user_id)
+            .bind(tenant_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        Ok(level.unwrap_or(0))
+    }
+
+    /// Get member role level
+    pub async fn get_member_role_level(&self, member_id: &str) -> Result<i32, String> {
+        #[cfg(feature = "postgres")]
+        let level: Option<i32> = sqlx::query_scalar("SELECT r.level FROM tenant_members tm JOIN roles r ON tm.role_id = r.id WHERE tm.id = $1")
+            .bind(member_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        #[cfg(feature = "sqlite")]
+        let level: Option<i32> = sqlx::query_scalar("SELECT r.level FROM tenant_members tm JOIN roles r ON tm.role_id = r.id WHERE tm.id = ?")
+            .bind(member_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        Ok(level.unwrap_or(0))
+    }
+
+    /// Get role level by ID
+    pub async fn get_role_level_by_id(&self, role_id: &str) -> Result<i32, String> {
+         #[cfg(feature = "postgres")]
+        let level: Option<i32> = sqlx::query_scalar("SELECT level FROM roles WHERE id = $1")
+            .bind(role_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        #[cfg(feature = "sqlite")]
+        let level: Option<i32> = sqlx::query_scalar("SELECT level FROM roles WHERE id = ?")
+            .bind(role_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        Ok(level.unwrap_or(0))
+    }
+
     /// Add a new member (create user if needed, or link existing)
     pub async fn add_member(
         &self, 

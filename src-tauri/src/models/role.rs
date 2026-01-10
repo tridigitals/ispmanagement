@@ -13,12 +13,13 @@ pub struct Role {
     pub name: String,
     pub description: Option<String>,
     pub is_system: bool,
+    pub level: i32,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
 impl Role {
-    pub fn new(tenant_id: Option<String>, name: String, description: Option<String>, is_system: bool) -> Self {
+    pub fn new(tenant_id: Option<String>, name: String, description: Option<String>, is_system: bool, level: i32) -> Self {
         let now = Utc::now();
         Self {
             id: Uuid::new_v4().to_string(),
@@ -26,6 +27,7 @@ impl Role {
             name,
             description,
             is_system,
+            level,
             created_at: now,
             updated_at: now,
         }
@@ -72,6 +74,7 @@ pub struct RoleWithPermissions {
     pub name: String,
     pub description: Option<String>,
     pub is_system: bool,
+    pub level: i32,
     pub permissions: Vec<String>, // List of permission keys like ["team:create", "team:read"]
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -85,6 +88,7 @@ impl RoleWithPermissions {
             name: role.name,
             description: role.description,
             is_system: role.is_system,
+            level: role.level,
             permissions,
             created_at: role.created_at,
             updated_at: role.updated_at,
@@ -97,6 +101,7 @@ impl RoleWithPermissions {
 pub struct CreateRoleDto {
     pub name: String,
     pub description: Option<String>,
+    pub level: Option<i32>,
     pub permissions: Vec<String>, // List of permission keys
 }
 
@@ -105,5 +110,6 @@ pub struct CreateRoleDto {
 pub struct UpdateRoleDto {
     pub name: Option<String>,
     pub description: Option<String>,
+    pub level: Option<i32>,
     pub permissions: Option<Vec<String>>,
 }

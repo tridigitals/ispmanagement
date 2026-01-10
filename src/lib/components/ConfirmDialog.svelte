@@ -18,6 +18,7 @@
     }
 
     function onCancel() {
+        show = false;
         dispatch("cancel");
     }
 </script>

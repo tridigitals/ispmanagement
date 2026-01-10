@@ -16,17 +16,19 @@
             goto("/login");
         }
     });
+
+    let mobileOpen = false;
 </script>
 
 <div class="app-shell">
     <Toast />
     <!-- Sidebar sits on the base layer -->
-    <Sidebar />
+    <Sidebar bind:isMobileOpen={mobileOpen} />
 
     <!-- Main Area is a floating card -->
     <div class="main-viewport">
         <div class="content-surface">
-            <Topbar />
+            <Topbar onMobileMenuClick={() => (mobileOpen = !mobileOpen)} />
             <div class="scroll-area">
                 <slot />
             </div>
@@ -38,6 +40,7 @@
     .app-shell {
         display: flex;
         height: 100vh;
+        height: 100dvh; /* Fallback & Modern unit */
         width: 100vw;
         background: var(--bg-app); /* Background dasar aplikasi */
         overflow: hidden;

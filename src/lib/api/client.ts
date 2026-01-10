@@ -208,6 +208,7 @@ export interface Role {
     name: string;
     description: string | null;
     is_system: boolean;
+    level: number;
     permissions?: string[]; // Simplified list of "resource:action" strings
 }
 
@@ -301,11 +302,11 @@ export const roles = {
     get: (id: string): Promise<Role | null> =>
         safeInvoke('get_role', { token: getTokenOrThrow(), id, roleId: id }),
 
-    create: (name: string, description: string | undefined, permissions: string[]): Promise<Role> =>
-        safeInvoke('create_new_role', { token: getTokenOrThrow(), name, description, permissions }),
+    create: (name: string, description: string | undefined, level: number, permissions: string[]): Promise<Role> =>
+        safeInvoke('create_new_role', { token: getTokenOrThrow(), name, description, level, permissions }),
 
-    update: (id: string, name?: string, description?: string, permissions?: string[]): Promise<Role> =>
-        safeInvoke('update_existing_role', { token: getTokenOrThrow(), id, roleId: id, name, description, permissions }),
+    update: (id: string, name?: string, description?: string, level?: number, permissions?: string[]): Promise<Role> =>
+        safeInvoke('update_existing_role', { token: getTokenOrThrow(), id, roleId: id, name, description, level, permissions }),
 
     delete: (id: string): Promise<boolean> =>
         safeInvoke('delete_existing_role', { token: getTokenOrThrow(), id, roleId: id }),

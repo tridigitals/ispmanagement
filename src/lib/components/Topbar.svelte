@@ -1,18 +1,21 @@
 <script lang="ts">
-    import { page } from '$app/stores';
-    import { user } from '$lib/stores/auth';
-    import { isSidebarCollapsed } from '$lib/stores/ui';
-    import { t } from 'svelte-i18n';
-    import Icon from './Icon.svelte';
+    import { page } from "$app/stores";
+    import { user } from "$lib/stores/auth";
+    import { isSidebarCollapsed } from "$lib/stores/ui";
+    import { t } from "svelte-i18n";
+    import Icon from "./Icon.svelte";
+
+    export let onMobileMenuClick: () => void;
 
     // Helper to get page title based on path
     function getPageTitle(path: string) {
-        if (path === '/dashboard') return $t('topbar.titles.dashboard');
-        if (path === '/profile') return $t('topbar.titles.profile');
-        if (path === '/admin') return $t('topbar.titles.admin_overview');
-        if (path === '/admin/users') return $t('topbar.titles.user_management');
-        if (path === '/admin/settings') return $t('topbar.titles.global_settings');
-        return 'SaaS App';
+        if (path === "/dashboard") return $t("topbar.titles.dashboard");
+        if (path === "/profile") return $t("topbar.titles.profile");
+        if (path === "/admin") return $t("topbar.titles.admin_overview");
+        if (path === "/admin/users") return $t("topbar.titles.user_management");
+        if (path === "/admin/settings")
+            return $t("topbar.titles.global_settings");
+        return "SaaS App";
     }
 
     $: title = getPageTitle($page.url.pathname);
@@ -20,26 +23,37 @@
 
 <header class="topbar">
     <div class="left-section">
-        <button class="icon-btn toggle-btn" on:click={() => $isSidebarCollapsed = !$isSidebarCollapsed}>
+        <!-- Desktop Sidebar Toggle -->
+        <button
+            class="icon-btn toggle-btn hide-mobile"
+            on:click={() => ($isSidebarCollapsed = !$isSidebarCollapsed)}
+        >
             <Icon name="sidebar-toggle" size={20} />
+        </button>
+        <!-- Mobile Menu Toggle -->
+        <button
+            class="icon-btn toggle-btn hide-desktop"
+            on:click={onMobileMenuClick}
+        >
+            <Icon name="menu" size={20} />
         </button>
         <h2 class="page-title">{title}</h2>
     </div>
 
     <div class="right-section">
         <!-- Optional: Search Bar -->
-        <div class="search-bar">
+        <div class="search-bar hide-mobile">
             <Icon name="search" size={16} />
-            <input type="text" placeholder={$t('topbar.search_placeholder')} />
+            <input type="text" placeholder={$t("topbar.search_placeholder")} />
         </div>
 
         <!-- Actions -->
-        <button class="icon-btn" title={$t('topbar.notifications')}>
+        <button class="icon-btn" title={$t("topbar.notifications")}>
             <Icon name="bell" size={18} />
             <span class="badge-dot"></span>
         </button>
-        
-        <button class="icon-btn" title={$t('topbar.help')}>
+
+        <button class="icon-btn" title={$t("topbar.help")}>
             <Icon name="help-circle" size={18} />
         </button>
     </div>

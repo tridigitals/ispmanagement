@@ -61,6 +61,7 @@ pub async fn create_new_role(
     token: String,
     name: String,
     description: Option<String>,
+    level: i32,
     permissions: Vec<String>,
     auth: State<'_, AuthService>,
     ws_hub: State<'_, Arc<WsHub>>,
@@ -76,6 +77,7 @@ pub async fn create_new_role(
     let dto = CreateRoleDto {
         name,
         description,
+        level: Some(level),
         permissions,
     };
     
@@ -96,6 +98,7 @@ pub async fn update_existing_role(
     role_id: String,
     name: Option<String>,
     description: Option<String>,
+    level: Option<i32>,
     permissions: Option<Vec<String>>,
     auth: State<'_, AuthService>,
     ws_hub: State<'_, Arc<WsHub>>,
@@ -109,6 +112,7 @@ pub async fn update_existing_role(
     let dto = UpdateRoleDto {
         name,
         description,
+        level,
         permissions,
     };
     

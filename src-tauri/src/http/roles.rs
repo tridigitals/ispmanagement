@@ -9,7 +9,6 @@ use serde::Deserialize;
 use crate::models::{RoleWithPermissions, Permission, CreateRoleDto, UpdateRoleDto};
 use crate::services::{list_roles, list_permissions, create_role, update_role, delete_role, get_role_by_id};
 use super::{AppState, websocket::WsEvent};
-use tracing::info;
 
 // Helper to extract token from headers
 fn extract_token(headers: &HeaderMap) -> Result<String, crate::error::AppError> {
@@ -63,6 +62,7 @@ pub async fn get_role(
 pub struct CreateRolePayload {
     name: String,
     description: Option<String>,
+    level: Option<i32>,
     permissions: Vec<String>,
 }
 
@@ -85,6 +85,7 @@ pub async fn create_new_role(
     let dto = CreateRoleDto {
         name: payload.name,
         description: payload.description,
+        level: payload.level,
         permissions: payload.permissions,
     };
     
@@ -100,6 +101,7 @@ pub async fn create_new_role(
 pub struct UpdateRolePayload {
     name: Option<String>,
     description: Option<String>,
+    level: Option<i32>,
     permissions: Option<Vec<String>>,
 }
 
@@ -121,6 +123,7 @@ pub async fn update_existing_role(
     let dto = UpdateRoleDto {
         name: payload.name,
         description: payload.description,
+        level: payload.level,
         permissions: payload.permissions,
     };
     

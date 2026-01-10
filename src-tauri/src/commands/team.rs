@@ -69,6 +69,21 @@ pub async fn update_team_member_role(
         .await
         .map_err(|e| e.to_string())?;
 
+    let requester_level = team_service.get_user_role_level(&claims.sub, &tenant_id).await?;
+    let target_level = team_service.get_member_role_level(&member_id).await?;
+    
+    // Check 1: Cannot edit someone with higher or equal role
+    if requester_level <= target_level {
+        return Err("Insufficient permissions: Cannot edit member with equal or higher role".to_string());
+    }
+
+    let new_role_level = team_service.get_role_level_by_id(&role_id).await?;
+    
+    // Check 2: Cannot promote to higher than own role
+    if requester_level < new_role_level {
+         return Err("Insufficient permissions: Cannot assign role higher than your own".to_string());
+    }
+
     team_service.update_member(&member_id, &role_id)
         .await
         .map_err(|e| e.to_string())
@@ -92,6 +107,14 @@ pub async fn remove_team_member(
      auth.check_permission(&claims.sub, &tenant_id, "team", "delete")
         .await
         .map_err(|e| e.to_string())?;
+
+    let requester_level = team_service.get_user_role_level(&claims.sub, &tenant_id).await?;
+    let target_level = team_service.get_member_role_level(&member_id).await?;
+    
+    // Check: Cannot remove someone with higher or equal role
+    if requester_level <= target_level {
+        return Err("Insufficient permissions: Cannot remove member with equal or higher role".to_string());
+    }
 
     team_service.remove_member(&member_id)
         .await

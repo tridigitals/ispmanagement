@@ -117,4 +117,21 @@
         background: rgba(255, 255, 255, 0.1);
         color: var(--text-primary, #fff);
     }
+
+    @media (max-width: 640px) {
+        .toast-container {
+            right: 0;
+            left: 0;
+            bottom: 0;
+            padding: 1rem;
+            align-items: stretch; /* Full width */
+        }
+
+        .toast {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            border-radius: 8px;
+        }
+    }
 </style>

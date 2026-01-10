@@ -116,4 +116,22 @@
         gap: 1rem;
         border-top: 1px solid rgba(255, 255, 255, 0.05);
     }
+
+    @media (max-width: 640px) {
+        .modal-card {
+            max-width: 100% !important;
+            margin-bottom: 0;
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+        .modal-backdrop {
+            align-items: flex-end; /* Bottom sheet effect on mobile */
+            padding: 0;
+        }
+
+        .modal-body {
+            max-height: 60vh;
+        }
+    }
 </style>

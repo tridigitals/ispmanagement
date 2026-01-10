@@ -16,7 +16,7 @@
             return;
         }
         if (!$isAdmin) {
-            goto("/dashboard");
+            goto("/unauthorized");
             return;
         }
 
@@ -112,6 +112,12 @@
         margin: 0 auto;
     }
 
+    @media (max-width: 640px) {
+        .admin-content {
+            padding: 1rem;
+        }
+    }
+
     .section-header {
         margin-top: 3rem;
         margin-bottom: 1.5rem;
@@ -127,6 +133,13 @@
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
         gap: 1.5rem;
+    }
+
+    @media (max-width: 640px) {
+        .stats-grid {
+            gap: 1rem;
+            grid-template-columns: 1fr; /* Force 1 column on very small screens */
+        }
     }
 
     .stat-card {

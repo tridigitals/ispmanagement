@@ -16,6 +16,15 @@
     import { convertFileSrc } from "@tauri-apps/api/core";
     import Icon from "./Icon.svelte";
 
+    // Mobile menu state
+    export let isMobileOpen = false;
+    export function openMobileMenu() {
+        isMobileOpen = true;
+    }
+    export function closeMobileMenu() {
+        isMobileOpen = false;
+    }
+
     $: appMenu = [
         {
             label: $t("sidebar.dashboard"),
@@ -69,6 +78,7 @@
     function navigate(href: string) {
         goto(href);
         isDropdownOpen = false;
+        isMobileOpen = false; // Close mobile menu on navigate
     }
 
     function toggleDropdown(event: MouseEvent) {
@@ -87,7 +97,23 @@
 
 <svelte:window on:click={handleWindowClick} />
 
-<aside class="sidebar" class:collapsed={$isSidebarCollapsed}>
+<!-- Mobile Overlay Backdrop -->
+{#if isMobileOpen}
+    <div
+        class="sidebar-overlay"
+        on:click={closeMobileMenu}
+        on:keydown={(e) => e.key === "Escape" && closeMobileMenu()}
+        role="button"
+        tabindex="0"
+        aria-label="Close menu"
+    ></div>
+{/if}
+
+<aside
+    class="sidebar"
+    class:collapsed={$isSidebarCollapsed}
+    class:mobile-open={isMobileOpen}
+>
     <!-- Header -->
     <div class="sidebar-header">
         <div class="logo-wrapper">
@@ -187,11 +213,56 @@
         flex-direction: column;
         padding: 12px;
         color: var(--text-secondary);
-        transition: width 0.3s ease;
+        transition:
+            transform 0.3s ease,
+            width 0.3s ease;
+        background: var(--bg-app); /* Ensure background is solid for overlay */
+        border-right: 1px solid var(--border-color);
+        height: 100vh;
+
+        /* Mobile defaults */
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 50;
+        transform: translateX(-100%);
+    }
+
+    /* Desktop styles */
+    @media (min-width: 768px) {
+        .sidebar {
+            position: sticky;
+            transform: none;
+            height: 100vh;
+        }
+    }
+
+    .sidebar.mobile-open {
+        transform: translateX(0);
+        box-shadow: var(--shadow-md);
     }
 
     .sidebar.collapsed {
         width: 72px;
+    }
+
+    /* Mobile Overlay */
+    .sidebar-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 40;
+        backdrop-filter: blur(2px);
+        animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
     }
 
     /* Header */
