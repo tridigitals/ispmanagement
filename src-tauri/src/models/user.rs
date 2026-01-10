@@ -77,6 +77,7 @@ pub struct UserResponse {
     pub created_at: DateTime<Utc>,
     pub permissions: Vec<String>,
     pub tenant_slug: Option<String>,
+    pub tenant_role: Option<String>,
 }
 
 impl From<User> for UserResponse {
@@ -92,6 +93,7 @@ impl From<User> for UserResponse {
             created_at: user.created_at,
             permissions: vec![], // Populated by service
             tenant_slug: None,   // Populated by service
+            tenant_role: None,   // Populated by service
         }
     }
 }

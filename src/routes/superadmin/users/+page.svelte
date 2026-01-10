@@ -85,11 +85,29 @@
                             </td>
                             <td>{u.email}</td>
                             <td>
-                                <span class="role-pill {u.role}">{u.role}</span>
+                                {#if u.is_super_admin}
+                                    <span class="role-pill superadmin"
+                                        >Super Admin</span
+                                    >
+                                {:else if u.tenant_role}
+                                    <span
+                                        class="role-pill {u.tenant_role.toLowerCase()}"
+                                        >{u.tenant_role}</span
+                                    >
+                                    {#if u.role !== "user" && u.role !== "admin" && u.role !== u.tenant_role.toLowerCase()}
+                                        <span class="text-xs text-muted"
+                                            >({u.role})</span
+                                        >
+                                    {/if}
+                                {:else}
+                                    <span class="role-pill {u.role}"
+                                        >{u.role}</span
+                                    >
+                                {/if}
                             </td>
                             <td class="text-mono">
-                                {#if u.tenant_id}
-                                    {u.tenant_id.substring(0, 8)}...
+                                {#if u.tenant_slug}
+                                    {u.tenant_slug}
                                 {:else}
                                     <span class="text-muted">—</span>
                                 {/if}
@@ -282,6 +300,12 @@
     .role-pill.admin {
         background: rgba(99, 102, 241, 0.2);
         color: #818cf8;
+    }
+
+    .role-pill.superadmin {
+        background: rgba(139, 92, 246, 0.2);
+        color: #a78bfa;
+        border: 1px solid rgba(139, 92, 246, 0.3);
     }
 
     .role-pill.user {

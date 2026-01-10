@@ -102,6 +102,7 @@ pub async fn create_tenant(
     // Start Transaction
     let mut tx = auth_service.pool.begin().await.map_err(|e| e.to_string())?;
 
+    // 1. Create Tenant
     #[cfg(feature = "postgres")]
     let sql_t = "INSERT INTO tenants (id, name, slug, custom_domain, logo_url, is_active, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)";
     #[cfg(feature = "sqlite")]
@@ -121,6 +122,7 @@ pub async fn create_tenant(
 
     q_t.execute(&mut *tx).await.map_err(|e| e.to_string())?;
 
+    // 2. Create User
     #[cfg(feature = "postgres")]
     let sql_u = "INSERT INTO users (id, email, password_hash, name, role, is_super_admin, is_active, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)";
     #[cfg(feature = "sqlite")]
@@ -131,7 +133,7 @@ pub async fn create_tenant(
         .bind(&user.email)
         .bind(&user.password_hash)
         .bind(&user.name)
-        .bind("admin")
+        .bind("admin") // Global role (legacy)
         .bind(false)
         .bind(true);
 
@@ -142,22 +144,47 @@ pub async fn create_tenant(
 
     q_u.execute(&mut *tx).await.map_err(|e| e.to_string())?;
 
+    // 3. Create 'Owner' Role for this Tenant
+    let role_id = uuid::Uuid::new_v4().to_string();
+    let now = chrono::Utc::now();
+    
+    #[cfg(feature = "postgres")]
+    let sql_r = "INSERT INTO roles (id, tenant_id, name, description, is_system, level, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)";
+    #[cfg(feature = "sqlite")]
+    let sql_r = "INSERT INTO roles (id, tenant_id, name, description, is_system, level, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+
+    let q_r = sqlx::query(sql_r)
+        .bind(&role_id)
+        .bind(&tenant.id)
+        .bind("Owner") // Role Name MUST be "Owner" for default logic in auth_service
+        .bind("Tenant Owner with full access")
+        .bind(true)
+        .bind(100); // High level
+
+    #[cfg(feature = "postgres")]
+    let q_r = q_r.bind(now).bind(now);
+    #[cfg(feature = "sqlite")]
+    let q_r = q_r.bind(now.to_rfc3339()).bind(now.to_rfc3339());
+
+    q_r.execute(&mut *tx).await.map_err(|e| e.to_string())?;
+
+    // 4. Assign 'Owner' Role to User (Tenant Membership)
     let membership_id = uuid::Uuid::new_v4().to_string();
     #[cfg(feature = "postgres")]
-    let sql_m = "INSERT INTO tenant_members (id, tenant_id, user_id, role, created_at) VALUES ($1, $2, $3, $4, $5)";
+    let sql_m = "INSERT INTO tenant_members (id, tenant_id, user_id, role_id, created_at) VALUES ($1, $2, $3, $4, $5)";
     #[cfg(feature = "sqlite")]
-    let sql_m = "INSERT INTO tenant_members (id, tenant_id, user_id, role, created_at) VALUES (?, ?, ?, ?, ?)";
+    let sql_m = "INSERT INTO tenant_members (id, tenant_id, user_id, role_id, created_at) VALUES (?, ?, ?, ?, ?)";
 
     let q_m = sqlx::query(sql_m)
         .bind(membership_id)
         .bind(&tenant.id)
         .bind(&user.id)
-        .bind("owner");
+        .bind(&role_id); // Use the Role ID we just created
 
     #[cfg(feature = "postgres")]
-    let q_m = q_m.bind(chrono::Utc::now());
+    let q_m = q_m.bind(now);
     #[cfg(feature = "sqlite")]
-    let q_m = q_m.bind(chrono::Utc::now().to_rfc3339());
+    let q_m = q_m.bind(now.to_rfc3339());
 
     q_m.execute(&mut *tx).await.map_err(|e| e.to_string())?;
 

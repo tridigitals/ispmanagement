@@ -21,19 +21,63 @@ impl UserService {
     pub async fn list(&self, page: u32, per_page: u32) -> AppResult<(Vec<UserResponse>, i64)> {
         let offset = (page.saturating_sub(1)) * per_page;
 
-        let users: Vec<User> = sqlx::query_as(
-            "SELECT * FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2"
-        )
-        .bind(per_page as i32)
-        .bind(offset as i32)
-        .fetch_all(&self.pool)
-        .await?;
+        // Query to fetch users enriched with tenant info (if any)
+        // We assume 1 user -> 1 tenant for simplicity in this view, or take the first one found.
+        #[cfg(feature = "postgres")]
+        let query = r#"
+            SELECT 
+                u.*, 
+                t.slug as tenant_slug,
+                r.name as tenant_role_name
+            FROM users u
+            LEFT JOIN tenant_members tm ON u.id = tm.user_id
+            LEFT JOIN tenants t ON tm.tenant_id = t.id
+            LEFT JOIN roles r ON tm.role_id = r.id
+            ORDER BY u.created_at DESC 
+            LIMIT $1 OFFSET $2
+        "#;
+
+        #[cfg(feature = "sqlite")]
+        let query = r#"
+            SELECT 
+                u.*, 
+                t.slug as tenant_slug,
+                r.name as tenant_role_name
+            FROM users u
+            LEFT JOIN tenant_members tm ON u.id = tm.user_id
+            LEFT JOIN tenants t ON tm.tenant_id = t.id
+            LEFT JOIN roles r ON tm.role_id = r.id
+            ORDER BY u.created_at DESC 
+            LIMIT ? OFFSET ?
+        "#;
+
+        // We need a custom struct to handle the projection
+        #[derive(sqlx::FromRow)]
+        struct UserRow {
+            #[sqlx(flatten)]
+            user: User,
+            tenant_slug: Option<String>,
+            tenant_role_name: Option<String>,
+        }
+
+        let rows: Vec<UserRow> = sqlx::query_as(query)
+            .bind(per_page as i32)
+            .bind(offset as i32)
+            .fetch_all(&self.pool)
+            .await?;
 
         let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users")
             .fetch_one(&self.pool)
             .await?;
 
-        Ok((users.into_iter().map(UserResponse::from).collect(), count.0))
+        let response = rows.into_iter().map(|row| {
+            let mut res: UserResponse = row.user.into();
+            res.tenant_slug = row.tenant_slug;
+            res.tenant_role = row.tenant_role_name;
+            res
+        }).collect();
+
+        Ok((response, count.0))
     }
 
     /// Get user by ID
