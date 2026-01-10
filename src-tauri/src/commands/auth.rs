@@ -45,8 +45,9 @@ pub async fn get_current_user(
     auth_service: State<'_, AuthService>,
 ) -> Result<UserResponse, String> {
     let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
-    let user = auth_service.get_user_by_id(&claims.sub).await.map_err(|e| e.to_string())?;
-    Ok(user.into())
+    // Pass tenant_id from claims to get enriched data (role, permissions)
+    let user_response = auth_service.get_enriched_user(&claims.sub, claims.tenant_id).await.map_err(|e| e.to_string())?;
+    Ok(user_response)
 }
 
 /// Validate token (check if still valid)

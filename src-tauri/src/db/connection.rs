@@ -30,6 +30,10 @@ pub async fn init_db(_app_data_dir: PathBuf) -> Result<DbPool, sqlx::Error> {
         run_migrations_pg(&pool).await?;
         
         info!("PostgreSQL database initialized successfully");
+        
+        seed_defaults(&pool).await?;
+        seed_roles(&pool).await?;
+
         Ok(pool)
     }
     
@@ -211,6 +215,10 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     }
     if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_roles_tenant ON roles(tenant_id)").execute(pool).await {
         tracing::error!("Failed to create idx_roles_tenant: {}", e);
+    }
+    // Unique index for Global Roles
+    if let Err(e) = sqlx::query("CREATE UNIQUE INDEX IF NOT EXISTS idx_roles_name_global ON roles(name) WHERE tenant_id IS NULL").execute(pool).await {
+        tracing::error!("Failed to create idx_roles_name_global: {}", e);
     }
 
     info!("PostgreSQL migrations completed");
@@ -489,13 +497,11 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
     }
 
     // Fix missing role_ids for existing Owners
-    // This updates any tenant_member who has role='Owner' (string) but role_id IS NULL
-    // setting their role_id to the global 'Owner' role id.
     #[cfg(feature = "postgres")]
     sqlx::query(r#"
         UPDATE tenant_members 
         SET role_id = (SELECT id FROM roles WHERE name = 'Owner' AND tenant_id IS NULL LIMIT 1)
-        WHERE role = 'Owner' AND role_id IS NULL
+        WHERE role IN ('Owner', 'owner') AND role_id IS NULL
     "#)
     .execute(pool)
     .await?;
@@ -504,10 +510,131 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
     sqlx::query(r#"
         UPDATE tenant_members 
         SET role_id = (SELECT id FROM roles WHERE name = 'Owner' AND tenant_id IS NULL LIMIT 1)
-        WHERE role = 'Owner' AND role_id IS NULL
+        WHERE role IN ('Owner', 'owner') AND role_id IS NULL
     "#)
     .execute(pool)
     .await?;
+
+    // --- Seed Permissions ---
+    let permissions = vec![
+        // Admin Panel Access (gate for admin UI)
+        ("admin", "access", "Access to admin panel"),
+        // Dashboard Access (default for all roles)
+        ("dashboard", "read", "Access to user dashboard"),
+        // Team Management
+        ("team", "read", "View team members"),
+        ("team", "create", "Invite new members"),
+        ("team", "update", "Update member roles"),
+        ("team", "delete", "Remove members"),
+        // Role Management
+        ("roles", "read", "View roles"),
+        ("roles", "create", "Create new roles"),
+        ("roles", "update", "Update roles"),
+        ("roles", "delete", "Delete roles"),
+        // Settings Management
+        ("settings", "read", "View settings"),
+        ("settings", "update", "Update settings"),
+    ];
+
+    // Cleanup: Remove permissions with non-standard IDs (e.g. random UUIDs)
+    // This resolves "duplicate key value" conflict when we try to insert standardized "res:act" IDs
+    #[cfg(feature = "postgres")]
+    sqlx::query("DELETE FROM permissions WHERE id != resource || ':' || action")
+        .execute(pool)
+        .await?;
+
+    #[cfg(feature = "sqlite")]
+    sqlx::query("DELETE FROM permissions WHERE id != resource || ':' || action")
+        .execute(pool)
+        .await?;
+
+    for (resource, action, description) in permissions {
+        let perm_id = format!("{}:{}", resource, action); // Use deterministic ID for permissions
+        
+        // Upsert permission
+        #[cfg(feature = "postgres")]
+        sqlx::query(r#"
+            INSERT INTO permissions (id, resource, action, description)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (id) DO NOTHING
+        "#)
+        .bind(&perm_id)
+        .bind(resource)
+        .bind(action)
+        .bind(description)
+        .execute(pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query(r#"
+            INSERT OR IGNORE INTO permissions (id, resource, action, description)
+            VALUES (?, ?, ?, ?)
+        "#)
+        .bind(&perm_id)
+        .bind(resource)
+        .bind(action)
+        .bind(description)
+        .execute(pool)
+        .await?;
+    }
+
+    // --- Assign Permissions to Roles ---
+    // Helper to assign permission to role name
+    async fn assign_perm(pool: &DbPool, role_name: &str, perm_id: &str) -> Result<(), sqlx::Error> {
+        let role_query = "SELECT id FROM roles WHERE name = $1 AND tenant_id IS NULL";
+        #[cfg(feature = "sqlite")]
+        let role_query = "SELECT id FROM roles WHERE name = ? AND tenant_id IS NULL";
+
+        let role_id: Option<(String,)> = sqlx::query_as(role_query)
+            .bind(role_name)
+            .fetch_optional(pool)
+            .await?;
+
+        if let Some((rid,)) = role_id {
+            #[cfg(feature = "postgres")]
+            sqlx::query("INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2) ON CONFLICT DO NOTHING")
+                .bind(&rid)
+                .bind(perm_id)
+                .execute(pool)
+                .await?;
+
+            #[cfg(feature = "sqlite")]
+            sqlx::query("INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)")
+                .bind(&rid)
+                .bind(perm_id)
+                .execute(pool)
+                .await?;
+        }
+        Ok(())
+    }
+
+    // Owner gets everything (handled via logic usually, but let's be explicit for now)
+    // Actually, usually Owner bypasses checks, but for RBAC purity we can assign all.
+    // For now, let's assign Admin specific permissions.
+    let admin_perms = vec![
+        "admin:access", // Access to admin panel
+        "team:read", "team:create", "team:update", "team:delete",
+        "roles:read", "roles:create", "roles:update", "roles:delete",
+        "settings:read", "settings:update"
+    ];
+    for p in admin_perms {
+        assign_perm(pool, "Admin", p).await?;
+        assign_perm(pool, "Owner", p).await?; // Owner gets all admin perms too
+    }
+
+    let member_perms = vec!["dashboard:read", "team:read"];
+    for p in member_perms {
+        assign_perm(pool, "Member", p).await?;
+    }
+
+    // All roles get dashboard access by default
+    let all_roles_perms = vec!["dashboard:read"];
+    for p in all_roles_perms {
+        assign_perm(pool, "Owner", p).await?;
+        assign_perm(pool, "Admin", p).await?;
+        assign_perm(pool, "Member", p).await?;
+        assign_perm(pool, "Viewer", p).await?;
+    }
 
     Ok(())
 }

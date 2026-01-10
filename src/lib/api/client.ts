@@ -150,9 +150,11 @@ export interface User {
     email: string;
     name: string;
     role: string;
+    is_super_admin: boolean;
     avatar_url: string | null;
     is_active: boolean;
     created_at: string;
+    permissions: string[];
 }
 
 export interface AuthResponse {

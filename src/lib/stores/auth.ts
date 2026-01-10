@@ -30,8 +30,33 @@ function getStoredUser(): User | null {
 export const token = writable<string | null>(getStoredToken());
 export const user = writable<User | null>(getStoredUser());
 export const isAuthenticated = derived(token, $token => !!$token);
-export const isAdmin = derived(user, $user => $user?.role === 'admin');
+
+// isAdmin is now permission-based: checks for 'admin:access' permission OR wildcard '*'
+export const isAdmin = derived(user, $user => {
+    if (!$user) return false;
+    if ($user.is_super_admin) return true;
+    // Check for admin access permission or wildcard
+    return $user.permissions?.includes('admin:access') || $user.permissions?.includes('*');
+});
+
 export const isSuperAdmin = derived(user, $user => ($user as any)?.is_super_admin === true);
+
+// Permission helper
+export const can = derived(user, $user => {
+    return (action: string, resource: string) => {
+        if (!$user) return false;
+        // Super admins or Owners typically bypass, but let's stick to permission list
+        if ($user.is_super_admin) return true;
+
+        // Explicitly allow Owner role to bypass permission checks
+        if ($user.role === 'Owner' || $user.role === 'owner') return true;
+
+        // Check for specific permission "resource:action" or wildcard "resource:*"
+        const perm = `${resource}:${action}`;
+        const wildcard = `${resource}:*`;
+        return $user.permissions?.includes(perm) || $user.permissions?.includes(wildcard) || $user.permissions?.includes('*');
+    };
+});
 
 // Reactively update logo and settings when token changes
 token.subscribe(value => {

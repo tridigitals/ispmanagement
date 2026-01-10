@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { isAdmin, user } from "$lib/stores/auth";
+    import { isAdmin, user, can } from "$lib/stores/auth";
     import { api } from "$lib/api/client";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
@@ -49,7 +49,7 @@
     };
 
     onMount(async () => {
-        if (!$isAdmin) {
+        if (!$can("read", "team")) {
             goto("/dashboard");
             return;
         }
@@ -178,7 +178,7 @@
             <div class="header-left">
                 <h2>{$t("admin.team.title") || "Team Members"}</h2>
                 <div class="search-bar">
-                    <Icon name="search" size={16} />
+                    <Icon name="search" size={16} class="icon" />
                     <input
                         type="text"
                         bind:value={searchQuery}
@@ -194,13 +194,15 @@
                     </select>
                 </div>
             </div>
-            <button
-                class="btn btn-primary"
-                on:click={() => (showInviteModal = true)}
-            >
-                <Icon name="plus" size={18} />
-                {$t("admin.team.invite_button") || "Add Member"}
-            </button>
+            {#if $can("create", "team")}
+                <button
+                    class="btn btn-primary"
+                    on:click={() => (showInviteModal = true)}
+                >
+                    <Icon name="plus" size={18} />
+                    {$t("admin.team.invite_button") || "Add Member"}
+                </button>
+            {/if}
         </div>
 
         {#if loading}
@@ -286,7 +288,7 @@
                                     ).toLocaleDateString()}
                                 </td>
                                 <td class="text-right">
-                                    {#if member.email !== $user?.email}
+                                    {#if member.email !== $user?.email && $can("delete", "team")}
                                         <button
                                             class="action-btn danger"
                                             title="Remove Member"
@@ -418,7 +420,7 @@
     .header-left {
         display: flex;
         align-items: center;
-        gap: 1.5rem;
+        gap: 2rem;
         flex: 1;
     }
 
@@ -433,7 +435,7 @@
     .search-bar {
         position: relative;
         width: 100%;
-        max-width: 300px;
+        max-width: 320px;
     }
 
     .search-bar :global(.icon) {

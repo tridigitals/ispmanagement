@@ -35,6 +35,9 @@ pub enum AppError {
 
     #[error("Internal error: {0}")]
     Internal(String),
+
+    #[error("Permission denied: {0}")]
+    Forbidden(String),
 }
 
 impl serde::Serialize for AppError {

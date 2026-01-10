@@ -783,16 +783,123 @@ impl AuthService {
 
         let tenant_id = tenant.as_ref().map(|t| t.id.clone());
 
+        // Get permissions if tenant exists
+        let permissions = if let Some(tid) = &tenant_id {
+            self.get_user_permissions(&user.id, tid).await?
+        } else {
+            vec![]
+        };
+
         // Generate token
-        let (token, expires_at) = self.generate_token(&user, tenant_id).await?;
+        let (token, expires_at) = self.generate_token(&user, tenant_id.clone()).await?;
+
+        let mut user_response: crate::models::user::UserResponse = user.into();
+        user_response.permissions = permissions;
+
+        // Override role with tenant role if available
+        if let Some(tid) = &tenant_id {
+            if let Ok(Some(tenant_role)) = self.get_tenant_role_name(&user_response.id, tid).await {
+                user_response.role = tenant_role;
+            }
+        }
 
         Ok(AuthResponse {
-            user: user.into(),
+            user: user_response,
             tenant,
             token: Some(token),
             expires_at: Some(expires_at),
             message: None,
         })
+    }
+
+    /// Get user's role name in a tenant
+    pub async fn get_tenant_role_name(&self, user_id: &str, tenant_id: &str) -> AppResult<Option<String>> {
+        #[cfg(feature = "postgres")]
+        let query = r#"
+            SELECT r.name 
+            FROM tenant_members tm
+            JOIN roles r ON tm.role_id = r.id
+            WHERE tm.user_id = $1 AND tm.tenant_id = $2
+        "#;
+
+        #[cfg(feature = "sqlite")]
+        let query = r#"
+            SELECT r.name 
+            FROM tenant_members tm
+            JOIN roles r ON tm.role_id = r.id
+            WHERE tm.user_id = ? AND tm.tenant_id = ?
+        "#;
+
+        let role_name: Option<String> = sqlx::query_scalar(query)
+            .bind(user_id)
+            .bind(tenant_id)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(role_name)
+    }
+
+    /// Get all permissions for a user in a tenant
+    pub async fn get_user_permissions(&self, user_id: &str, tenant_id: &str) -> AppResult<Vec<String>> {
+        // If owner, get all permissions? Or just rely on seeded.
+        // Let's simplified: get all distinct permissions assigned to user's role.
+        // Also check if user is Owner via role name, if so, maybe grant *all* or specific set.
+        // For now, we rely on the seeded permissions which gave Owner all perms.
+        
+        // Check if user is Owner
+        #[cfg(feature = "postgres")]
+        let is_owner: bool = sqlx::query_scalar(r#"
+            SELECT COUNT(*) > 0 FROM tenant_members tm
+            JOIN roles r ON tm.role_id = r.id
+            WHERE tm.user_id = $1 AND tm.tenant_id = $2 AND r.name = 'Owner'
+        "#)
+        .bind(user_id)
+        .bind(tenant_id)
+        .fetch_one(&self.pool)
+        .await
+        .unwrap_or(false);
+
+        #[cfg(feature = "sqlite")]
+        let is_owner: bool = sqlx::query_scalar(r#"
+            SELECT COUNT(*) > 0 FROM tenant_members tm
+            JOIN roles r ON tm.role_id = r.id
+            WHERE tm.user_id = ? AND tm.tenant_id = ? AND r.name = 'Owner'
+        "#)
+        .bind(user_id)
+        .bind(tenant_id)
+        .fetch_one(&self.pool)
+        .await
+        .unwrap_or(false);
+
+        if is_owner {
+            return Ok(vec!["*".to_string()]);
+        }
+
+        #[cfg(feature = "postgres")]
+        let query = r#"
+            SELECT DISTINCT rp.permission_id
+            FROM tenant_members tm
+            JOIN roles r ON tm.role_id = r.id
+            JOIN role_permissions rp ON r.id = rp.role_id
+            WHERE tm.user_id = $1 AND tm.tenant_id = $2
+        "#;
+
+        #[cfg(feature = "sqlite")]
+        let query = r#"
+            SELECT DISTINCT rp.permission_id
+            FROM tenant_members tm
+            JOIN roles r ON tm.role_id = r.id
+            JOIN role_permissions rp ON r.id = rp.role_id
+            WHERE tm.user_id = ? AND tm.tenant_id = ?
+        "#;
+
+        let permissions: Vec<String> = sqlx::query_scalar(query)
+            .bind(user_id)
+            .bind(tenant_id)
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(permissions)
     }
 
     /// Get user by ID
@@ -802,6 +909,25 @@ impl AuthService {
             .fetch_optional(&self.pool)
             .await?
             .ok_or(AppError::UserNotFound)
+    }
+
+    /// Get enriched user response (with tenant role and permissions)
+    pub async fn get_enriched_user(&self, user_id: &str, tenant_id: Option<String>) -> AppResult<crate::models::UserResponse> {
+        let user = self.get_user_by_id(user_id).await?;
+        let mut user_response: crate::models::UserResponse = user.into();
+
+        if let Some(tid) = tenant_id {
+            // Get permissions
+            let permissions = self.get_user_permissions(user_id, &tid).await?;
+            user_response.permissions = permissions;
+
+            // Get tenant role
+            if let Ok(Some(tenant_role)) = self.get_tenant_role_name(user_id, &tid).await {
+                user_response.role = tenant_role;
+            }
+        }
+
+        Ok(user_response)
     }
 
     /// Change password
@@ -846,5 +972,56 @@ impl AuthService {
         }
 
         Ok(())
+    }
+
+
+    /// Check if a user has a specific permission
+    pub async fn has_permission(&self, user_id: &str, tenant_id: &str, resource: &str, action: &str) -> AppResult<bool> {
+        let perm_id = format!("{}:{}", resource, action);
+
+        // Check 1: Is user Owner? Owners generally bypass or have all permissions.
+        // We can check if they have the 'Owner' role name directly for speed/fallback,
+        // or rely on the seeded permissions. Let's rely on seeded permissions + explicit role check for safety.
+        #[cfg(feature = "postgres")]
+        let query = r#"
+            SELECT COUNT(*) FROM tenant_members tm
+            JOIN roles r ON tm.role_id = r.id
+            LEFT JOIN role_permissions rp ON r.id = rp.role_id
+            WHERE tm.user_id = $1 AND tm.tenant_id = $2
+            AND (
+                r.name = 'Owner' 
+                OR rp.permission_id = $3
+            )
+        "#;
+
+        #[cfg(feature = "sqlite")]
+        let query = r#"
+            SELECT COUNT(*) FROM tenant_members tm
+            JOIN roles r ON tm.role_id = r.id
+            LEFT JOIN role_permissions rp ON r.id = rp.role_id
+            WHERE tm.user_id = ? AND tm.tenant_id = ?
+            AND (
+                r.name = 'Owner' 
+                OR rp.permission_id = ?
+            )
+        "#;
+
+        let count: i64 = sqlx::query_scalar(query)
+            .bind(user_id)
+            .bind(tenant_id)
+            .bind(&perm_id)
+            .fetch_one(&self.pool)
+            .await?;
+
+        Ok(count > 0)
+    }
+
+    /// Enforce permission check (returns Error if denied)
+    pub async fn check_permission(&self, user_id: &str, tenant_id: &str, resource: &str, action: &str) -> AppResult<()> {
+        if self.has_permission(user_id, tenant_id, resource, action).await? {
+            Ok(())
+        } else {
+            Err(AppError::Forbidden(format!("Permission denied: {}:{}", resource, action)))
+        }
     }
 }

@@ -49,9 +49,10 @@ pub async fn get_current_user(
         .ok_or_else(|| crate::error::AppError::Unauthorized)?;
 
     let claims = state.auth_service.validate_token(auth_header).await?;
-    let user = state.auth_service.get_user_by_id(&claims.sub).await?;
+    // Pass tenant_id from claims to get enriched data (role, permissions)
+    let user_response = state.auth_service.get_enriched_user(&claims.sub, claims.tenant_id).await?;
     
-    Ok(Json(user.into()))
+    Ok(Json(user_response))
 }
 
 pub async fn login(

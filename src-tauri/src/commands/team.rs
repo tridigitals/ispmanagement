@@ -41,7 +41,9 @@ pub async fn add_team_member(
     let tenant_id = claims.tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
         
-    // TODO: proper permission check
+    auth.check_permission(&claims.sub, &tenant_id, "team", "create")
+        .await
+        .map_err(|e| e.to_string())?;
     
     team_service.add_member(&tenant_id, &email, &name, &role_id, password)
         .await
@@ -56,14 +58,20 @@ pub async fn update_team_member_role(
     auth: State<'_, AuthService>,
     team_service: State<'_, TeamService>,
 ) -> Result<(), String> {
-    auth.validate_token(&token)
+    let claims = auth.validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
-        
-    // TODO: proper permission check
     
+    let tenant_id = claims.tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "roles", "update")
+        .await
+        .map_err(|e| e.to_string())?;
+
     team_service.update_member(&member_id, &role_id)
         .await
+        .map_err(|e| e.to_string())
 }
 
 /// Remove a team member
@@ -74,12 +82,18 @@ pub async fn remove_team_member(
     auth: State<'_, AuthService>,
     team_service: State<'_, TeamService>,
 ) -> Result<(), String> {
-    auth.validate_token(&token)
+    let claims = auth.validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
-        
-    // TODO: proper permission check
     
+    let tenant_id = claims.tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+     auth.check_permission(&claims.sub, &tenant_id, "team", "delete")
+        .await
+        .map_err(|e| e.to_string())?;
+
     team_service.remove_member(&member_id)
         .await
+        .map_err(|e| e.to_string())
 }

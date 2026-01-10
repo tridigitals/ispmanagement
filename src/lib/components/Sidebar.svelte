@@ -1,6 +1,6 @@
 <script lang="ts">
     import { page } from "$app/stores";
-    import { user, isAdmin, isSuperAdmin, logout } from "$lib/stores/auth";
+    import { user, isAdmin, isSuperAdmin, logout, can } from "$lib/stores/auth";
     import { appName } from "$lib/stores/settings";
     import { appLogo } from "$lib/stores/logo";
     import { isSidebarCollapsed } from "$lib/stores/ui";
@@ -18,15 +18,31 @@
     ];
 
     $: adminMenu = [
-        { label: $t("sidebar.overview"), icon: "shield", href: "/admin" },
-        { label: $t("sidebar.team"), icon: "users", href: "/admin/team" },
-        { label: $t("sidebar.roles"), icon: "lock", href: "/admin/roles" },
+        {
+            label: $t("sidebar.overview"),
+            icon: "shield",
+            href: "/admin",
+            show: true,
+        },
+        {
+            label: $t("sidebar.team"),
+            icon: "users",
+            href: "/admin/team",
+            show: $can("read", "team"),
+        },
+        {
+            label: $t("sidebar.roles"),
+            icon: "lock",
+            href: "/admin/roles",
+            show: $can("read", "roles"),
+        },
         {
             label: $t("sidebar.settings"),
             icon: "settings",
             href: "/admin/settings",
+            show: $can("read", "settings"),
         },
-    ];
+    ].filter((i) => i.show);
 
     let isDropdownOpen = false;
 
