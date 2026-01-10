@@ -110,6 +110,7 @@
         padding: 1.5rem;
         max-width: 1400px;
         margin: 0 auto;
+        /* Layout Update: Fixed 3-column grid */
     }
 
     @media (max-width: 640px) {
@@ -131,14 +132,20 @@
 
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        grid-template-columns: repeat(3, 1fr);
         gap: 1.5rem;
+    }
+
+    @media (max-width: 1024px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
     }
 
     @media (max-width: 640px) {
         .stats-grid {
-            gap: 1rem;
-            grid-template-columns: 1fr; /* Force 1 column on very small screens */
+            gap: 0.75rem;
+            grid-template-columns: repeat(2, 1fr);
         }
     }
 
@@ -150,6 +157,15 @@
         display: flex;
         align-items: center;
         gap: 1.25rem;
+    }
+
+    @media (max-width: 640px) {
+        .stat-card {
+            padding: 1rem;
+            flex-direction: column;
+            text-align: center;
+            gap: 0.5rem;
+        }
     }
 
     .stat-icon {
@@ -176,8 +192,21 @@
     /* Actions Grid */
     .actions-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        grid-template-columns: repeat(3, 1fr);
         gap: 1.5rem;
+    }
+
+    @media (max-width: 1024px) {
+        .actions-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 640px) {
+        .actions-grid {
+            gap: 0.75rem;
+            grid-template-columns: repeat(2, 1fr);
+        }
     }
 
     .action-card {
@@ -191,6 +220,14 @@
         display: flex;
         flex-direction: column;
         gap: 0.5rem;
+    }
+
+    @media (max-width: 640px) {
+        .action-card {
+            padding: 1rem;
+            align-items: center;
+            text-align: center;
+        }
     }
 
     .action-card:hover {

@@ -620,10 +620,6 @@
         .search-bar {
             max-width: none;
         }
-
-        .filter-dropdown select {
-            width: 100%;
-        }
     }
 
     .action-btn {

@@ -1,30 +1,31 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
-    import { api } from '$lib/api/client';
-    import { token, user } from '$lib/stores/auth';
-    import { theme } from '$lib/stores/theme';
-    import { appSettings } from '$lib/stores/settings';
-    import { goto } from '$app/navigation';
-    import { t } from 'svelte-i18n';
-    import Icon from '$lib/components/Icon.svelte';
+    import { onMount } from "svelte";
+    import { api } from "$lib/api/client";
+    import { token, user } from "$lib/stores/auth";
+    import { theme } from "$lib/stores/theme";
+    import { appSettings } from "$lib/stores/settings";
+    import { goto } from "$app/navigation";
+    import { t } from "svelte-i18n";
+    import Icon from "$lib/components/Icon.svelte";
+    import MobileFabMenu from "$lib/components/MobileFabMenu.svelte";
 
-    let activeTab = 'general';
+    let activeTab = "general";
     let loading = false;
-    let message = { type: '', text: '' };
+    let message = { type: "", text: "" };
 
     // User Data State (for editing)
     let profileData = {
-        id: '',
-        name: '',
-        email: '',
-        role: ''
+        id: "",
+        name: "",
+        email: "",
+        role: "",
     };
 
     // Password State
     let passwordData = {
-        current: '',
-        new: '',
-        confirm: ''
+        current: "",
+        new: "",
+        confirm: "",
     };
 
     // Visibility States
@@ -37,13 +38,13 @@
         password_min_length: 8,
         password_require_uppercase: true,
         password_require_number: true,
-        password_require_special: false
+        password_require_special: false,
     };
 
     // Load initial data
     onMount(async () => {
         if (!$token) {
-            goto('/login');
+            goto("/login");
             return;
         }
 
@@ -55,15 +56,15 @@
                 id: $user.id,
                 name: $user.name,
                 email: $user.email,
-                role: $user.role
+                role: $user.role,
             };
         }
     });
 
     // Helper to show messages
-    function showMessage(type: 'success' | 'error', text: string) {
+    function showMessage(type: "success" | "error", text: string) {
         message = { type, text };
-        setTimeout(() => message = { type: '', text: '' }, 4000);
+        setTimeout(() => (message = { type: "", text: "" }), 4000);
     }
 
     // Save Profile
@@ -73,14 +74,21 @@
         try {
             await api.users.update(profileData.id, {
                 name: profileData.name,
-                email: profileData.email
+                email: profileData.email,
             });
-            
-            user.update(u => u ? { ...u, name: profileData.name, email: profileData.email } : null);
-            showMessage('success', $t('profile.messages.profile_updated'));
+
+            user.update((u) =>
+                u
+                    ? { ...u, name: profileData.name, email: profileData.email }
+                    : null,
+            );
+            showMessage("success", $t("profile.messages.profile_updated"));
         } catch (error: any) {
             console.error(error);
-            showMessage('error', error.toString() || $t('profile.messages.update_failed'));
+            showMessage(
+                "error",
+                error.toString() || $t("profile.messages.update_failed"),
+            );
         } finally {
             loading = false;
         }
@@ -88,16 +96,21 @@
 
     function validatePassword(pwd: string): string | null {
         if (pwd.length < policy.password_min_length) {
-            return $t('auth.validation.min_length', { values: { length: policy.password_min_length } });
+            return $t("auth.validation.min_length", {
+                values: { length: policy.password_min_length },
+            });
         }
         if (policy.password_require_uppercase && !/[A-Z]/.test(pwd)) {
-            return $t('auth.validation.require_uppercase');
+            return $t("auth.validation.require_uppercase");
         }
         if (policy.password_require_number && !/[0-9]/.test(pwd)) {
-            return $t('auth.validation.require_number');
+            return $t("auth.validation.require_number");
         }
-        if (policy.password_require_special && !/[!@#$%^&*()_+\-=[\]{}|;:',.<>?/`~]/.test(pwd)) {
-            return $t('auth.validation.require_special');
+        if (
+            policy.password_require_special &&
+            !/[!@#$%^&*()_+\-=[\]{}|;:',.<>?/`~]/.test(pwd)
+        ) {
+            return $t("auth.validation.require_special");
         }
         return null;
     }
@@ -105,16 +118,16 @@
     // Change Password
     async function changePassword() {
         if (!$token) return;
-        
+
         if (passwordData.new !== passwordData.confirm) {
-            showMessage('error', $t('profile.messages.password_mismatch'));
+            showMessage("error", $t("profile.messages.password_mismatch"));
             return;
         }
 
         const policyError = validatePassword(passwordData.new);
         if (policyError) {
-             showMessage('error', policyError);
-             return;
+            showMessage("error", policyError);
+            return;
         }
 
         loading = true;
@@ -122,14 +135,18 @@
             await api.auth.changePassword(
                 $token,
                 passwordData.current,
-                passwordData.new
+                passwordData.new,
             );
-            
-            showMessage('success', $t('profile.messages.password_changed'));
-            passwordData = { current: '', new: '', confirm: '' }; 
+
+            showMessage("success", $t("profile.messages.password_changed"));
+            passwordData = { current: "", new: "", confirm: "" };
         } catch (error: any) {
             console.error(error);
-            showMessage('error', error.toString() || $t('profile.messages.change_password_failed'));
+            showMessage(
+                "error",
+                error.toString() ||
+                    $t("profile.messages.change_password_failed"),
+            );
         } finally {
             loading = false;
         }
@@ -138,29 +155,36 @@
     // Get initials for avatar
     $: initials = profileData.name
         ? profileData.name
-            .split(' ')
-            .map(n => n[0])
-            .slice(0, 2)
-            .join('')
-            .toUpperCase()
-        : 'U';
+              .split(" ")
+              .map((n) => n[0])
+              .slice(0, 2)
+              .join("")
+              .toUpperCase()
+        : "U";
 
     $: tabs = [
-        { id: 'general', label: $t('profile.tabs.general'), icon: 'profile' },
-        { id: 'security', label: $t('profile.tabs.security'), icon: 'lock' },
-        { id: 'preferences', label: $t('profile.tabs.preferences'), icon: 'settings' }
+        { id: "general", label: $t("profile.tabs.general"), icon: "profile" },
+        { id: "security", label: $t("profile.tabs.security"), icon: "lock" },
+        {
+            id: "preferences",
+            label: $t("profile.tabs.preferences"),
+            icon: "settings",
+        },
     ];
 </script>
 
 <div class="page-container fade-in">
     <div class="header-section">
-        <h1 class="page-title">{$t('profile.title')}</h1>
-        <p class="page-subtitle">{$t('profile.subtitle')}</p>
+        <h1 class="page-title">{$t("profile.title")}</h1>
+        <p class="page-subtitle">{$t("profile.subtitle")}</p>
     </div>
 
     {#if message.text}
         <div class="alert alert-{message.type} slide-in">
-            <Icon name={message.type === 'success' ? 'check' : 'alert'} size={20} />
+            <Icon
+                name={message.type === "success" ? "check" : "alert"}
+                size={20}
+            />
             <span>{message.text}</span>
         </div>
     {/if}
@@ -171,80 +195,110 @@
             <div class="user-mini-profile">
                 <div class="avatar-circle">{initials}</div>
                 <div class="user-info">
-                    <span class="name">{profileData.name || 'User'}</span>
-                    <span class="role">{profileData.role || 'Member'}</span>
+                    <span class="name">{profileData.name || "User"}</span>
+                    <span class="role">{profileData.role || "Member"}</span>
                 </div>
             </div>
-            
+
             <nav class="nav-menu">
                 {#each tabs as tab}
-                    <button 
-                        class="nav-item {activeTab === tab.id ? 'active' : ''}" 
-                        on:click={() => activeTab = tab.id}
+                    <button
+                        class="nav-item {activeTab === tab.id ? 'active' : ''}"
+                        on:click={() => (activeTab = tab.id)}
                     >
                         <Icon name={tab.icon} size={18} />
                         <span>{tab.label}</span>
                         {#if activeTab === tab.id}
-                            <div class="active-indicator" />
+                            <div class="active-indicator"></div>
                         {/if}
                     </button>
                 {/each}
             </nav>
         </aside>
 
+        <!-- Mobile FAB & Menu -->
+        <MobileFabMenu
+            items={tabs}
+            bind:activeTab
+            title={$t("profile.title")}
+        />
+
         <!-- Main Content Area -->
         <main class="content-area">
-            {#if activeTab === 'general'}
+            {#if activeTab === "general"}
                 <div class="card section fade-in-up">
                     <div class="card-header">
                         <div>
-                            <h2 class="card-title">{$t('profile.general.title')}</h2>
-                            <p class="card-subtitle">{$t('profile.general.subtitle')}</p>
+                            <h2 class="card-title">
+                                {$t("profile.general.title")}
+                            </h2>
+                            <p class="card-subtitle">
+                                {$t("profile.general.subtitle")}
+                            </p>
                         </div>
                     </div>
-                    
+
                     <div class="profile-header-edit">
                         <div class="avatar-large-wrapper">
                             <div class="avatar-large">{initials}</div>
-                            <button class="avatar-edit-btn" title="Change Avatar">
+                            <button
+                                class="avatar-edit-btn"
+                                title="Change Avatar"
+                            >
                                 <Icon name="camera" size={16} />
                             </button>
                         </div>
                         <div class="profile-header-text">
-                            <h3>{profileData.name || 'Your Name'}</h3>
-                            <p>{profileData.role || 'Role'}</p>
+                            <h3>{profileData.name || "Your Name"}</h3>
+                            <p>{profileData.role || "Role"}</p>
                         </div>
                     </div>
 
-                    <form on:submit|preventDefault={saveProfile} class="settings-form">
+                    <form
+                        on:submit|preventDefault={saveProfile}
+                        class="settings-form"
+                    >
                         <div class="form-group">
-                            <label class="form-label" for="full-name">{$t('profile.general.display_name')}</label>
-                            <input 
-                                type="text" 
-                                id="full-name" 
-                                class="form-input" 
-                                placeholder={$t('profile.general.display_name_placeholder')}
-                                bind:value={profileData.name} 
+                            <label class="form-label" for="full-name"
+                                >{$t("profile.general.display_name")}</label
+                            >
+                            <input
+                                type="text"
+                                id="full-name"
+                                class="form-input"
+                                placeholder={$t(
+                                    "profile.general.display_name_placeholder",
+                                )}
+                                bind:value={profileData.name}
                             />
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="email">{$t('profile.general.email_address')}</label>
-                            <input 
-                                type="email" 
-                                id="email" 
-                                class="form-input" 
-                                placeholder={$t('profile.general.email_placeholder')}
-                                bind:value={profileData.email} 
+                            <label class="form-label" for="email"
+                                >{$t("profile.general.email_address")}</label
+                            >
+                            <input
+                                type="email"
+                                id="email"
+                                class="form-input"
+                                placeholder={$t(
+                                    "profile.general.email_placeholder",
+                                )}
+                                bind:value={profileData.email}
                             />
                         </div>
 
                         <div class="form-actions">
-                            <button type="submit" class="btn btn-primary" disabled={loading}>
+                            <button
+                                type="submit"
+                                class="btn btn-primary"
+                                disabled={loading}
+                            >
                                 {#if loading}
-                                    <span class="spinner"></span> {$t('profile.general.saving')}
+                                    <span class="spinner"></span>
+                                    {$t("profile.general.saving")}
                                 {:else}
-                                    {$t('profile.general.save_button')}
+                                    {$t("profile.general.save_button")}
                                 {/if}
                             </button>
                         </div>
@@ -252,129 +306,214 @@
                 </div>
             {/if}
 
-            {#if activeTab === 'security'}
+            {#if activeTab === "security"}
                 <div class="card section fade-in-up">
                     <div class="card-header">
-                        <h2 class="card-title">{$t('profile.security.title')}</h2>
-                        <p class="card-subtitle">{$t('profile.security.subtitle')}</p>
+                        <h2 class="card-title">
+                            {$t("profile.security.title")}
+                        </h2>
+                        <p class="card-subtitle">
+                            {$t("profile.security.subtitle")}
+                        </p>
                     </div>
 
-                    <form on:submit|preventDefault={changePassword} class="settings-form">
+                    <form
+                        on:submit|preventDefault={changePassword}
+                        class="settings-form"
+                    >
                         <div class="form-group">
-                            <label class="form-label" for="current-pass">{$t('profile.security.current_password')}</label>
+                            <label class="form-label" for="current-pass"
+                                >{$t(
+                                    "profile.security.current_password",
+                                )}</label
+                            >
                             <div class="input-wrapper">
-                                <input 
-                                    type={showCurrentPassword ? "text" : "password"} 
-                                    id="current-pass" 
-                                    class="form-input" 
-                                    placeholder={$t('profile.security.password_placeholder')}
-                                    bind:value={passwordData.current} 
+                                <input
+                                    type={showCurrentPassword
+                                        ? "text"
+                                        : "password"}
+                                    id="current-pass"
+                                    class="form-input"
+                                    placeholder={$t(
+                                        "profile.security.password_placeholder",
+                                    )}
+                                    bind:value={passwordData.current}
                                 />
-                                <button 
-                                    type="button" 
-                                    class="toggle-password" 
-                                    on:click={() => showCurrentPassword = !showCurrentPassword}
+                                <button
+                                    type="button"
+                                    class="toggle-password"
+                                    on:click={() =>
+                                        (showCurrentPassword =
+                                            !showCurrentPassword)}
                                     tabindex="-1"
                                 >
-                                    <Icon name={showCurrentPassword ? 'eye-off' : 'eye'} size={18} />
+                                    <Icon
+                                        name={showCurrentPassword
+                                            ? "eye-off"
+                                            : "eye"}
+                                        size={18}
+                                    />
                                 </button>
                             </div>
                         </div>
-                        
+
                         <div class="grid-2">
                             <div class="form-group">
-                                <label class="form-label" for="new-pass">{$t('profile.security.new_password')}</label>
+                                <label class="form-label" for="new-pass"
+                                    >{$t(
+                                        "profile.security.new_password",
+                                    )}</label
+                                >
                                 <div class="input-wrapper">
-                                    <input 
-                                        type={showNewPassword ? "text" : "password"} 
-                                        id="new-pass" 
-                                        class="form-input" 
-                                        placeholder={$t('profile.security.password_placeholder')}
-                                        bind:value={passwordData.new} 
+                                    <input
+                                        type={showNewPassword
+                                            ? "text"
+                                            : "password"}
+                                        id="new-pass"
+                                        class="form-input"
+                                        placeholder={$t(
+                                            "profile.security.password_placeholder",
+                                        )}
+                                        bind:value={passwordData.new}
                                     />
-                                    <button 
-                                        type="button" 
-                                        class="toggle-password" 
-                                        on:click={() => showNewPassword = !showNewPassword}
+                                    <button
+                                        type="button"
+                                        class="toggle-password"
+                                        on:click={() =>
+                                            (showNewPassword =
+                                                !showNewPassword)}
                                         tabindex="-1"
                                     >
-                                        <Icon name={showNewPassword ? 'eye-off' : 'eye'} size={18} />
+                                        <Icon
+                                            name={showNewPassword
+                                                ? "eye-off"
+                                                : "eye"}
+                                            size={18}
+                                        />
                                     </button>
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="confirm-pass">{$t('profile.security.confirm_password')}</label>
+                                <label class="form-label" for="confirm-pass"
+                                    >{$t(
+                                        "profile.security.confirm_password",
+                                    )}</label
+                                >
                                 <div class="input-wrapper">
-                                    <input 
-                                        type={showConfirmPassword ? "text" : "password"} 
-                                        id="confirm-pass" 
-                                        class="form-input" 
-                                        placeholder={$t('profile.security.password_placeholder')}
-                                        bind:value={passwordData.confirm} 
+                                    <input
+                                        type={showConfirmPassword
+                                            ? "text"
+                                            : "password"}
+                                        id="confirm-pass"
+                                        class="form-input"
+                                        placeholder={$t(
+                                            "profile.security.password_placeholder",
+                                        )}
+                                        bind:value={passwordData.confirm}
                                     />
-                                    <button 
-                                        type="button" 
-                                        class="toggle-password" 
-                                        on:click={() => showConfirmPassword = !showConfirmPassword}
+                                    <button
+                                        type="button"
+                                        class="toggle-password"
+                                        on:click={() =>
+                                            (showConfirmPassword =
+                                                !showConfirmPassword)}
                                         tabindex="-1"
                                     >
-                                        <Icon name={showConfirmPassword ? 'eye-off' : 'eye'} size={18} />
+                                        <Icon
+                                            name={showConfirmPassword
+                                                ? "eye-off"
+                                                : "eye"}
+                                            size={18}
+                                        />
                                     </button>
                                 </div>
                             </div>
                         </div>
 
                         <div class="password-requirements">
-                            <p>{$t('profile.security.requirements_title')}</p>
+                            <p>{$t("profile.security.requirements_title")}</p>
                             <ul>
-                                <li class={passwordData.new.length >= policy.password_min_length ? 'valid' : ''}>
-                                    {$t('profile.security.req_length', { values: { length: policy.password_min_length } })}
+                                <li
+                                    class={passwordData.new.length >=
+                                    policy.password_min_length
+                                        ? "valid"
+                                        : ""}
+                                >
+                                    {$t("profile.security.req_length", {
+                                        values: {
+                                            length: policy.password_min_length,
+                                        },
+                                    })}
                                 </li>
                                 {#if policy.password_require_uppercase}
-                                    <li class={/[A-Z]/.test(passwordData.new) ? 'valid' : ''}>
-                                        {$t('profile.security.req_uppercase')}
+                                    <li
+                                        class={/[A-Z]/.test(passwordData.new)
+                                            ? "valid"
+                                            : ""}
+                                    >
+                                        {$t("profile.security.req_uppercase")}
                                     </li>
                                 {/if}
                                 {#if policy.password_require_number}
-                                    <li class={/[0-9]/.test(passwordData.new) ? 'valid' : ''}>
-                                        {$t('profile.security.req_number')}
+                                    <li
+                                        class={/[0-9]/.test(passwordData.new)
+                                            ? "valid"
+                                            : ""}
+                                    >
+                                        {$t("profile.security.req_number")}
                                     </li>
                                 {/if}
                                 {#if policy.password_require_special}
-                                    <li class={/[!@#$%^&*()_+\-=[\]{}|;:',.<>?/`~]/.test(passwordData.new) ? 'valid' : ''}>
-                                        {$t('profile.security.req_special')}
+                                    <li
+                                        class={/[!@#$%^&*()_+\-=[\]{}|;:',.<>?/`~]/.test(
+                                            passwordData.new,
+                                        )
+                                            ? "valid"
+                                            : ""}
+                                    >
+                                        {$t("profile.security.req_special")}
                                     </li>
                                 {/if}
                             </ul>
                         </div>
 
                         <div class="form-actions">
-                            <button type="submit" class="btn btn-primary" disabled={loading}>
-                                {loading ? $t('profile.security.updating') : $t('profile.security.update_button')}
+                            <button
+                                type="submit"
+                                class="btn btn-primary"
+                                disabled={loading}
+                            >
+                                {loading
+                                    ? $t("profile.security.updating")
+                                    : $t("profile.security.update_button")}
                             </button>
                         </div>
                     </form>
                 </div>
             {/if}
 
-            {#if activeTab === 'preferences'}
+            {#if activeTab === "preferences"}
                 <div class="card section fade-in-up">
                     <div class="card-header">
-                        <h2 class="card-title">{$t('profile.preferences.title')}</h2>
-                        <p class="card-subtitle">{$t('profile.preferences.subtitle')}</p>
+                        <h2 class="card-title">
+                            {$t("profile.preferences.title")}
+                        </h2>
+                        <p class="card-subtitle">
+                            {$t("profile.preferences.subtitle")}
+                        </p>
                     </div>
 
                     <div class="setting-item">
                         <div class="setting-info">
-                            <h3>{$t('profile.preferences.dark_mode')}</h3>
-                            <p>{$t('profile.preferences.dark_mode_desc')}</p>
+                            <h3>{$t("profile.preferences.dark_mode")}</h3>
+                            <p>{$t("profile.preferences.dark_mode_desc")}</p>
                         </div>
                         <label class="toggle">
-                            <input 
-                                type="checkbox" 
-                                checked={$theme === 'dark'} 
+                            <input
+                                type="checkbox"
+                                checked={$theme === "dark"}
                                 on:change={() => theme.toggle()}
-                            >
+                            />
                             <span class="slider"></span>
                         </label>
                     </div>
@@ -417,6 +556,17 @@
         align-items: start;
     }
 
+    @media (max-width: 900px) {
+        .layout-grid {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .sidebar {
+            display: none;
+        }
+    }
+
     /* Sidebar */
     .sidebar {
         position: sticky;
@@ -438,14 +588,18 @@
         width: 40px;
         height: 40px;
         border-radius: 50%;
-        background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+        background: linear-gradient(
+            135deg,
+            var(--color-primary),
+            var(--color-primary-hover)
+        );
         color: white;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 600;
         font-size: 1rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .user-info {
@@ -561,7 +715,11 @@
         width: 80px;
         height: 80px;
         border-radius: 50%;
-        background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+        background: linear-gradient(
+            135deg,
+            var(--color-primary),
+            var(--color-primary-hover)
+        );
         color: white;
         display: flex;
         align-items: center;
@@ -615,7 +773,9 @@
     .form-input {
         width: 100%;
         padding: 0.75rem 1rem;
-        background: var(--bg-app); /* Slightly darker/lighter than surface to look indented */
+        background: var(
+            --bg-app
+        ); /* Slightly darker/lighter than surface to look indented */
         border: 1px solid var(--border-color);
         border-radius: var(--radius-md);
         color: var(--text-primary);
@@ -667,7 +827,7 @@
         background: var(--color-primary-hover);
         transform: translateY(-1px);
     }
-    
+
     .btn-primary:disabled {
         opacity: 0.7;
         cursor: not-allowed;
@@ -681,7 +841,7 @@
         padding: 1.5rem 0;
         border-bottom: 1px solid var(--border-subtle);
     }
-    
+
     .setting-item:last-child {
         border-bottom: none;
     }
@@ -706,14 +866,21 @@
         height: 24px;
     }
 
-    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
 
     .slider {
         position: absolute;
         cursor: pointer;
-        top: 0; left: 0; right: 0; bottom: 0;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
         background-color: var(--bg-active);
-        transition: .3s;
+        transition: 0.3s;
         border-radius: 24px;
     }
 
@@ -725,9 +892,9 @@
         left: 3px;
         bottom: 3px;
         background-color: white;
-        transition: .3s;
+        transition: 0.3s;
         border-radius: 50%;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     }
 
     input:checked + .slider {
@@ -770,7 +937,7 @@
         font-size: 0.85rem;
         color: var(--text-secondary);
     }
-    
+
     .password-requirements ul {
         margin-top: 0.5rem;
         padding-left: 1.25rem;
@@ -808,8 +975,12 @@
         padding-right: 40px;
     }
 
-    .fade-in { animation: fadeIn 0.4s ease-out; }
-    .fade-in-up { animation: fadeInUp 0.4s ease-out; }
+    .fade-in {
+        animation: fadeIn 0.4s ease-out;
+    }
+    .fade-in-up {
+        animation: fadeInUp 0.4s ease-out;
+    }
 
     /* Spinner */
     .spinner {
@@ -822,32 +993,45 @@
         display: inline-block;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
 
     /* Responsive */
-    @media (max-width: 768px) {
+    /* Responsive */
+    @media (max-width: 900px) {
         .layout-grid {
             grid-template-columns: 1fr;
             gap: 1.5rem;
         }
-        
-        .sidebar {
-            position: static;
-        }
 
-        .nav-menu {
-            flex-direction: row;
-            overflow-x: auto;
-            padding-bottom: 0.5rem;
-        }
-        
-        .nav-item {
-            width: auto;
-            white-space: nowrap;
+        .sidebar {
+            display: none;
         }
 
         .grid-2 {
             grid-template-columns: 1fr;
+        }
+
+        .avatar-large {
+            width: 60px;
+            height: 60px;
+            font-size: 1.5rem;
+        }
+
+        .card {
+            padding: 1.5rem;
+        }
+
+        .form-actions {
+            flex-direction: column-reverse;
+            gap: 1rem;
+        }
+
+        .btn {
+            width: 100%;
         }
     }
 </style>

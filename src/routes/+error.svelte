@@ -1,6 +1,6 @@
 <script lang="ts">
-    import { page } from '$app/stores';
-    import { goto } from '$app/navigation';
+    import { page } from "$app/stores";
+    import { goto } from "$app/navigation";
 </script>
 
 <div class="error-page fade-in">
@@ -17,12 +17,13 @@
             {#if $page.status === 404}
                 The page you are looking for doesn't exist or has been moved.
             {:else}
-                {$page.error?.message || 'An unexpected error occurred. Please try again later.'}
+                {$page.error?.message ||
+                    "An unexpected error occurred. Please try again later."}
             {/if}
         </p>
-        
+
         <div class="actions">
-            <button class="btn btn-primary" on:click={() => goto('/dashboard')}>
+            <button class="btn btn-primary" on:click={() => goto("/dashboard")}>
                 Back to Dashboard
             </button>
             <button class="btn btn-secondary" on:click={() => history.back()}>
@@ -51,7 +52,12 @@
         font-size: 8rem;
         font-weight: 900;
         line-height: 1;
-        background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+        background: linear-gradient(
+            135deg,
+            var(--color-primary),
+            var(--color-primary-light)
+        );
+        background-clip: text;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 1rem;
@@ -77,8 +83,14 @@
     }
 
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     .fade-in {

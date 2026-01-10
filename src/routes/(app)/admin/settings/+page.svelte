@@ -7,6 +7,9 @@
     import { goto } from "$app/navigation";
     import { locale, t } from "svelte-i18n";
     import Icon from "$lib/components/Icon.svelte";
+    import MobileFabMenu from "$lib/components/MobileFabMenu.svelte";
+    import Input from "$lib/components/Input.svelte";
+    import Select from "$lib/components/Select.svelte";
     import type { Setting } from "$lib/api/client";
 
     let loading = true;
@@ -17,7 +20,7 @@
     let activeTab = "general";
     let message = { type: "", text: "" };
     let hasChanges = false;
-    let showMobileMenu = false;
+    // showMobileMenu removed as it's handled inside component now
 
     // Options
     const localeOptions = [
@@ -136,6 +139,8 @@
         await loadSettings();
     });
 
+    $: activeCategory = categories[activeTab as keyof typeof categories];
+
     async function loadSettings() {
         try {
             // Refresh logo from backend to sync between browser/desktop
@@ -147,7 +152,7 @@
             // Use current logo from store (now refreshed)
             let logoStoreValue;
             appLogo.subscribe((v) => (logoStoreValue = v))();
-            logoBase64 = logoStoreValue;
+            logoBase64 = logoStoreValue || null;
 
             settings = data.reduce(
                 (acc, curr) => {
@@ -310,10 +315,11 @@
     async function saveChanges() {
         saving = true;
         try {
-            const keysToSave = categories[activeTab].keys;
+            const keysToSave =
+                categories[activeTab as keyof typeof categories].keys;
 
             await Promise.all(
-                keysToSave.map((key) => {
+                keysToSave.map((key: string) => {
                     if (key === "app_logo_path") return Promise.resolve();
 
                     const val = localSettings[key];
@@ -348,7 +354,7 @@
         // Reset logo preview to current actual logo
         let logoStoreValue;
         appLogo.subscribe((v) => (logoStoreValue = v))();
-        logoBase64 = logoStoreValue;
+        logoBase64 = logoStoreValue || null;
 
         hasChanges = false;
     }
@@ -489,51 +495,16 @@
         </aside>
 
         <!-- Mobile FAB & Menu -->
-        <button
-            class="mobile-fab"
-            on:click={() => (showMobileMenu = !showMobileMenu)}
-            aria-label="Settings Menu"
-        >
-            <Icon name={showMobileMenu ? "x" : "settings"} size={24} />
-        </button>
-
-        {#if showMobileMenu}
-            <div
-                class="mobile-menu-overlay"
-                on:click={() => (showMobileMenu = false)}
-            >
-                <div class="mobile-menu card slide-up" on:click|stopPropagation>
-                    <div class="mobile-menu-header">
-                        <h3>Settings</h3>
-                        <button
-                            class="close-btn"
-                            on:click={() => (showMobileMenu = false)}
-                        >
-                            <Icon name="x" size={20} />
-                        </button>
-                    </div>
-                    <nav>
-                        {#each Object.entries(categories) as [id, cat]}
-                            <button
-                                class="nav-item {activeTab === id
-                                    ? 'active'
-                                    : ''}"
-                                on:click={() => {
-                                    activeTab = id;
-                                    showMobileMenu = false;
-                                    discardChanges();
-                                }}
-                            >
-                                <span class="icon">
-                                    <Icon name={cat.icon} size={18} />
-                                </span>
-                                {$t(`admin.settings.categories.${id}`)}
-                            </button>
-                        {/each}
-                    </nav>
-                </div>
-            </div>
-        {/if}
+        <MobileFabMenu
+            items={Object.entries(categories).map(([id, cat]) => ({
+                id,
+                label: $t(`admin.settings.categories.${id}`),
+                icon: cat.icon,
+            }))}
+            bind:activeTab
+            title={$t("admin.settings.title") || "Settings"}
+            on:change={discardChanges}
+        />
 
         <main class="content">
             {#if loading}
@@ -552,7 +523,7 @@
                     </div>
 
                     <div class="settings-list">
-                        {#each categories[activeTab].keys as key}
+                        {#each activeCategory.keys as key}
                             {#if isFieldVisible(key)}
                                 <div class="setting-item">
                                     <div class="setting-info">
@@ -584,141 +555,80 @@
                                                 <span class="slider"></span>
                                             </label>
                                         {:else if getInputType(key) === "select-locale"}
-                                            <div class="select-wrapper">
-                                                <select
-                                                    id={key}
-                                                    class="form-input"
-                                                    value={localSettings[key]}
-                                                    on:change={(e) =>
-                                                        handleChange(
-                                                            key,
-                                                            e.currentTarget
-                                                                .value,
-                                                        )}
-                                                    disabled={saving}
-                                                >
-                                                    {#each localeOptions as option}
-                                                        <option
-                                                            value={option.value}
-                                                            >{option.label}</option
-                                                        >
-                                                    {/each}
-                                                </select>
-                                            </div>
+                                            <Select
+                                                value={localSettings[key]}
+                                                options={localeOptions}
+                                                on:change={(e) =>
+                                                    handleChange(key, e.detail)}
+                                                disabled={saving}
+                                                width="100%"
+                                                label=""
+                                            />
                                         {:else if getInputType(key) === "select-currency"}
-                                            <div class="select-wrapper">
-                                                <select
-                                                    id={key}
-                                                    class="form-input"
-                                                    value={localSettings[key]}
-                                                    on:change={(e) =>
-                                                        handleChange(
-                                                            key,
-                                                            e.currentTarget
-                                                                .value,
-                                                        )}
-                                                    disabled={saving}
-                                                >
-                                                    {#each currencyOptions as option}
-                                                        <option
-                                                            value={option.value}
-                                                            >{option.label}</option
-                                                        >
-                                                    {/each}
-                                                </select>
-                                            </div>
+                                            <Select
+                                                value={localSettings[key]}
+                                                options={currencyOptions}
+                                                on:change={(e) =>
+                                                    handleChange(key, e.detail)}
+                                                disabled={saving}
+                                                width="100%"
+                                                label=""
+                                            />
                                         {:else if getInputType(key) === "select-storage"}
-                                            <div class="select-wrapper">
-                                                <select
-                                                    id={key}
-                                                    class="form-input"
-                                                    value={localSettings[key]}
-                                                    on:change={(e) =>
-                                                        handleChange(
-                                                            key,
-                                                            e.currentTarget
-                                                                .value,
-                                                        )}
-                                                    disabled={saving}
-                                                >
-                                                    {#each storageOptions as option}
-                                                        <option
-                                                            value={option.value}
-                                                            >{option.label}</option
-                                                        >
-                                                    {/each}
-                                                </select>
-                                            </div>
+                                            <Select
+                                                value={localSettings[key]}
+                                                options={storageOptions}
+                                                on:change={(e) =>
+                                                    handleChange(key, e.detail)}
+                                                disabled={saving}
+                                                width="100%"
+                                                label=""
+                                            />
                                         {:else if getInputType(key) === "select-email-provider"}
-                                            <div class="select-wrapper">
-                                                <select
-                                                    id={key}
-                                                    class="form-input"
-                                                    value={localSettings[key]}
-                                                    on:change={(e) =>
-                                                        handleChange(
-                                                            key,
-                                                            e.currentTarget
-                                                                .value,
-                                                        )}
-                                                    disabled={saving}
-                                                >
-                                                    {#each emailProviderOptions as option}
-                                                        <option
-                                                            value={option.value}
-                                                            >{option.label}</option
-                                                        >
-                                                    {/each}
-                                                </select>
-                                            </div>
+                                            <Select
+                                                value={localSettings[key]}
+                                                options={emailProviderOptions}
+                                                on:change={(e) =>
+                                                    handleChange(key, e.detail)}
+                                                disabled={saving}
+                                                width="100%"
+                                                label=""
+                                            />
                                         {:else if getInputType(key) === "select-smtp-encryption"}
-                                            <div class="select-wrapper">
-                                                <select
-                                                    id={key}
-                                                    class="form-input"
-                                                    value={localSettings[key]}
-                                                    on:change={(e) =>
-                                                        handleChange(
-                                                            key,
-                                                            e.currentTarget
-                                                                .value,
-                                                        )}
-                                                    disabled={saving}
-                                                >
-                                                    {#each smtpEncryptionOptions as option}
-                                                        <option
-                                                            value={option.value}
-                                                            >{option.label}</option
-                                                        >
-                                                    {/each}
-                                                </select>
-                                            </div>
+                                            <Select
+                                                value={localSettings[key]}
+                                                options={smtpEncryptionOptions}
+                                                on:change={(e) =>
+                                                    handleChange(key, e.detail)}
+                                                disabled={saving}
+                                                width="100%"
+                                                label=""
+                                            />
                                         {:else if getInputType(key) === "number"}
-                                            <input
+                                            <Input
                                                 type="number"
                                                 id={key}
-                                                class="form-input number-input"
                                                 value={localSettings[key]}
                                                 on:input={(e) =>
                                                     handleChange(
                                                         key,
-                                                        e.currentTarget.value,
+                                                        e.detail.target.value,
                                                     )}
                                                 disabled={saving}
                                             />
                                         {:else if getInputType(key) === "password"}
-                                            <input
+                                            <Input
                                                 type="password"
                                                 id={key}
-                                                class="form-input"
                                                 value={localSettings[key]}
                                                 on:input={(e) =>
                                                     handleChange(
                                                         key,
-                                                        e.currentTarget.value,
+                                                        e.detail.target.value,
                                                     )}
                                                 disabled={saving}
                                                 placeholder="••••••••••••••"
+                                                showPasswordToggle={true}
                                             />
                                         {:else if getInputType(key) === "file"}
                                             <div class="file-upload-wrapper">
@@ -739,15 +649,14 @@
                                                 />
                                             </div>
                                         {:else}
-                                            <input
+                                            <Input
                                                 type="text"
                                                 id={key}
-                                                class="form-input"
                                                 value={localSettings[key]}
                                                 on:input={(e) =>
                                                     handleChange(
                                                         key,
-                                                        e.currentTarget.value,
+                                                        e.detail.target.value,
                                                     )}
                                                 disabled={saving ||
                                                     key === "app_version"}
@@ -767,9 +676,8 @@
                                 {$t("admin.settings.test_email.description")}
                             </p>
                             <div class="test-email-form">
-                                <input
+                                <Input
                                     type="email"
-                                    class="form-input"
                                     placeholder={$t(
                                         "admin.settings.test_email.placeholder",
                                     )}
@@ -840,107 +748,20 @@
         z-index: 10;
     }
 
-    /* Media query moved to bottom */
-
-    /* Mobile FAB Styles */
-    .mobile-fab {
-        position: fixed;
-        bottom: 2rem;
-        right: 2rem;
-        width: 3.5rem;
-        height: 3.5rem;
-        border-radius: 50%;
-        background: var(--color-primary);
-        color: white;
-        border: none;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
-        display: none; /* Hidden by default on desktop */
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        z-index: 100;
-        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-
-    .mobile-fab:active {
-        transform: scale(0.9);
-    }
-
-    /* Mobile Menu Overlay Styles */
-    .mobile-menu-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(4px);
-        z-index: 90;
+    .sidebar nav {
         display: flex;
-        align-items: flex-end;
-        justify-content: center;
-        padding: 1rem;
-    }
-
-    .mobile-menu {
-        width: 100%;
-        max-width: 500px;
-        background: var(--bg-surface);
-        border-radius: 1rem 1rem 0 0; /* Bottom sheet style */
-        padding: 1.5rem;
-        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
-        max-height: 80vh;
-        overflow-y: auto;
-    }
-
-    .slide-up {
-        animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    @keyframes slideUp {
-        from {
-            transform: translateY(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateY(0);
-            opacity: 1;
-        }
-    }
-
-    .mobile-menu-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.5rem;
-    }
-
-    .mobile-menu-header h3 {
-        font-size: 1.1rem;
-        font-weight: 600;
-        margin: 0;
-        color: var(--text-primary);
-    }
-
-    .close-btn {
-        background: transparent;
-        border: none;
-        color: var(--text-secondary);
-        padding: 0.5rem;
-        cursor: pointer;
-        border-radius: 50%;
-    }
-
-    .close-btn:hover {
-        background: var(--bg-hover);
-        color: var(--text-primary);
+        flex-direction: column;
+        gap: 0.5rem;
     }
 
     .nav-item {
         display: flex;
         align-items: center;
         gap: 0.75rem;
+        padding: 0.75rem 1rem;
         width: 100%;
-        padding: 0.875rem 1rem;
-        background: transparent;
         border: none;
+        background: transparent;
         color: var(--text-secondary);
         font-size: 0.95rem;
         font-weight: 500;
@@ -948,7 +769,6 @@
         border-radius: var(--radius-md);
         transition: all 0.2s;
         text-align: left;
-        margin-bottom: 0.25rem;
     }
 
     .nav-item:hover {
@@ -957,11 +777,12 @@
     }
 
     .nav-item.active {
-        background: var(--color-primary);
-        color: white;
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--color-primary);
+        font-weight: 600;
     }
 
-    .icon {
+    .nav-item .icon {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -972,46 +793,16 @@
         opacity: 1;
     }
 
-    .card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
-    }
+    @media (max-width: 900px) {
+        .layout-grid {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
 
-    .card-header {
-        padding: 1.5rem;
-        border-bottom: 1px solid var(--border-color);
+        .desktop-sidebar {
+            display: none;
+        }
     }
-
-    .card-title {
-        font-size: 1.25rem;
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-        color: var(--text-primary);
-    }
-
-    .card-subtitle {
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-    }
-
-    .settings-list {
-        padding: 0 1.5rem;
-    }
-
-    .setting-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1.5rem 0;
-        border-bottom: 1px solid var(--border-color);
-        gap: 1rem;
-    }
-
-    .setting-item:last-child {
-        border-bottom: none;
-    }
-
     @media (max-width: 640px) {
         .setting-item {
             flex-direction: column;
@@ -1040,10 +831,6 @@
             align-items: stretch;
         }
 
-        .test-email-form .form-input {
-            max-width: 100%;
-        }
-
         .card-footer {
             flex-direction: column-reverse;
         }
@@ -1065,48 +852,14 @@
     .description {
         font-size: 0.875rem;
         color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+        line-height: 1.4;
     }
 
     .setting-control {
         min-width: 120px;
         display: flex;
         justify-content: flex-end;
-    }
-
-    .form-input {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        color: var(--text-primary);
-        padding: 0.6rem 0.85rem;
-        border-radius: var(--radius-md);
-        width: 100%;
-        max-width: 280px;
-        font-size: 0.9rem;
-        transition: all 0.2s;
-    }
-
-    .form-input:focus {
-        border-color: var(--color-primary);
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-    }
-
-    .form-input:hover:not(:focus) {
-        border-color: var(--text-secondary);
-    }
-
-    .select-wrapper {
-        position: relative;
-        min-width: 220px;
-    }
-
-    select.form-input {
-        cursor: pointer;
-        appearance: none;
-        padding-right: 2rem;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 0.75rem center;
     }
 
     .toggle {
@@ -1226,41 +979,70 @@
         color: #ef4444;
     }
 
-    .logo-preview {
-        height: 40px;
-        width: auto;
-        object-fit: contain;
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        padding: 2px;
-        background: var(--bg-tertiary);
-        margin-right: 1rem;
-    }
-    .file-upload-wrapper {
+    .logo-upload-container {
         display: flex;
         align-items: center;
     }
-    .file-input {
-        font-size: 0.85rem;
-        color: var(--text-secondary);
-        border: none;
-        background: transparent;
-        padding: 0;
-        width: auto;
+
+    .hidden-file-input {
+        display: none;
     }
-    .file-input::file-selector-button {
-        margin-right: 1rem;
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
-        border: 1px solid var(--border-color);
+
+    .logo-preview-btn {
+        position: relative;
+        width: 120px;
+        height: 120px;
+        border: 2px dashed var(--border-color);
+        border-radius: var(--radius-md);
         background: var(--bg-tertiary);
-        color: var(--text-primary);
         cursor: pointer;
+        overflow: hidden;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         transition: all 0.2s;
-        font-family: var(--font-family);
     }
-    .file-input::file-selector-button:hover {
-        background: var(--bg-secondary);
+
+    .logo-preview-btn:hover {
+        border-color: var(--color-primary);
+        background: var(--bg-hover);
+    }
+
+    .logo-img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        padding: 0.5rem;
+    }
+
+    .placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+    }
+
+    .overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+        opacity: 0;
+        transition: opacity 0.2s;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .logo-preview-btn:hover .overlay {
+        opacity: 1;
     }
 
     @keyframes fadeIn {
@@ -1299,9 +1081,14 @@
         gap: 1rem;
         align-items: center;
     }
-    .test-email-form .form-input {
-        flex: 1;
-        max-width: 300px;
+
+    .settings-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2.5rem;
+        align-items: start;
+        padding-bottom: 2rem;
+        margin-top: 2rem;
     }
 
     @media (max-width: 900px) {
@@ -1314,8 +1101,27 @@
             display: none;
         }
 
-        .mobile-fab {
-            display: flex;
+        /* Revert grid on tablet/mobile */
+        .settings-list {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+    }
+
+    .setting-item.full-width {
+        grid-column: 1 / -1;
+    }
+
+    @media (max-width: 640px) {
+        .logo-upload-container {
+            justify-content: center;
+            width: 100%;
+        }
+
+        .logo-preview-btn {
+            width: 100px;
+            height: 100px;
         }
     }
 </style>
