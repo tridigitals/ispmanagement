@@ -167,6 +167,7 @@ export interface User {
     is_active: boolean;
     created_at: string;
     permissions: string[];
+    tenant_id?: string;
 }
 
 export interface AuthResponse {

@@ -34,7 +34,13 @@
     </header>
 
     {#if $isAdmin}
-        <div class="admin-banner" on:click={() => goto("/admin")}>
+        <div
+            class="admin-banner"
+            on:click={() => goto("/admin")}
+            on:keydown={(e) => e.key === "Enter" && goto("/admin")}
+            role="button"
+            tabindex="0"
+        >
             <div class="banner-content">
                 <div class="banner-icon">
                     <Icon name="shield" size={24} />

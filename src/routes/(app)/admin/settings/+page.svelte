@@ -988,63 +988,6 @@
         display: none;
     }
 
-    .logo-preview-btn {
-        position: relative;
-        width: 120px;
-        height: 120px;
-        border: 2px dashed var(--border-color);
-        border-radius: var(--radius-md);
-        background: var(--bg-tertiary);
-        cursor: pointer;
-        overflow: hidden;
-        padding: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-    }
-
-    .logo-preview-btn:hover {
-        border-color: var(--color-primary);
-        background: var(--bg-hover);
-    }
-
-    .logo-img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-        padding: 0.5rem;
-    }
-
-    .placeholder {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.5rem;
-        color: var(--text-secondary);
-        font-size: 0.85rem;
-    }
-
-    .overlay {
-        position: absolute;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.6);
-        color: white;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 0.25rem;
-        opacity: 0;
-        transition: opacity 0.2s;
-        font-size: 0.85rem;
-        font-weight: 500;
-    }
-
-    .logo-preview-btn:hover .overlay {
-        opacity: 1;
-    }
-
     @keyframes fadeIn {
         from {
             opacity: 0;

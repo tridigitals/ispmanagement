@@ -176,7 +176,13 @@
 
         <div class="profile-section">
             {#if isDropdownOpen}
-                <div class="dropdown-menu" on:click|stopPropagation>
+                <div
+                    class="dropdown-menu"
+                    on:click|stopPropagation
+                    on:keydown|stopPropagation
+                    role="menu"
+                    tabindex="-1"
+                >
                     <button
                         class="menu-item"
                         on:click={() => navigate("/profile")}
@@ -436,8 +442,7 @@
         justify-content: center;
     }
 
-    .sidebar.collapsed .user-meta,
-    .sidebar.collapsed .chevron {
+    .sidebar.collapsed .user-meta {
         display: none;
     }
 

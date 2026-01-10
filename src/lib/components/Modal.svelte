@@ -18,12 +18,19 @@
     <div
         class="modal-backdrop"
         on:click={close}
+        on:keydown={(e) => e.key === "Escape" && close()}
+        role="button"
+        tabindex="0"
         transition:fade={{ duration: 200 }}
     >
         <div
             class="modal-card"
             style="max-width: {width}"
             on:click|stopPropagation
+            on:keydown|stopPropagation
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
             transition:fly={{ y: 20, duration: 300 }}
         >
             <div class="modal-header">

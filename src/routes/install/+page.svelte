@@ -15,7 +15,7 @@
     let showPassword = false;
     let showConfirmPassword = false;
 
-    onMount(async () => {
+    onMount(() => {
         appUrl = window.location.origin;
 
         // Check Status Function
@@ -31,7 +31,7 @@
         };
 
         // Initial check
-        await checkStatus();
+        checkStatus();
 
         // Poll every 2 seconds
         const interval = setInterval(checkStatus, 2000);
