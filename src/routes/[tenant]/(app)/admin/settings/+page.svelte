@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { api } from "$lib/api/client";
-    import { user, isAdmin, getToken } from "$lib/stores/auth";
+    import { user, isAdmin, can, getToken } from "$lib/stores/auth";
     import { appSettings } from "$lib/stores/settings";
     import { appLogo } from "$lib/stores/logo";
     import { goto } from "$app/navigation";
@@ -132,7 +132,7 @@
     };
 
     onMount(async () => {
-        if (!$isAdmin) {
+        if (!$isAdmin || !$can("read", "settings")) {
             goto("/unauthorized");
             return;
         }
@@ -710,7 +710,9 @@
                         </button>
                         <button
                             class="btn btn-primary"
-                            disabled={!hasChanges || saving}
+                            disabled={!hasChanges ||
+                                saving ||
+                                !$can("update", "settings")}
                             on:click={saveChanges}
                         >
                             {#if saving}{$t("admin.settings.saving")}{:else}{$t(

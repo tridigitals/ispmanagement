@@ -1,6 +1,7 @@
 <script lang="ts">
     import { page } from "$app/stores";
     import { goto } from "$app/navigation";
+    import { isAuthenticated } from "$lib/stores/auth";
 </script>
 
 <div class="error-page fade-in">
@@ -23,9 +24,18 @@
         </p>
 
         <div class="actions">
-            <button class="btn btn-primary" on:click={() => goto("/dashboard")}>
-                Back to Dashboard
-            </button>
+            {#if $isAuthenticated}
+                <button
+                    class="btn btn-primary"
+                    on:click={() => goto("/dashboard")}
+                >
+                    Back to Dashboard
+                </button>
+            {:else}
+                <button class="btn btn-primary" on:click={() => goto("/")}>
+                    Back to Home
+                </button>
+            {/if}
             <button class="btn btn-secondary" on:click={() => history.back()}>
                 Go Back
             </button>

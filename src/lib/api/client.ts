@@ -18,7 +18,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         }
 
         // Web Environment (HTTP)
-        const API_BASE = 'http://localhost:3000/api';
+        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
         // Map commands to API endpoints
         const commandMap: Record<string, { method: string, path: string }> = {
@@ -66,6 +66,9 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             'update_existing_role': { method: 'PUT', path: '/roles/:id' },
             'delete_existing_role': { method: 'DELETE', path: '/roles/:id' },
             'get_permissions': { method: 'GET', path: '/permissions' },
+            // Public
+            'get_tenant_by_slug': { method: 'GET', path: '/public/tenants/:slug' },
+            'get_tenant_by_domain': { method: 'GET', path: '/public/domains/:domain' },
         };
 
         let route = commandMap[command];
@@ -167,6 +170,7 @@ export interface User {
     is_active: boolean;
     created_at: string;
     permissions: string[];
+    tenant_slug?: string;
     tenant_id?: string;
 }
 
@@ -333,11 +337,22 @@ export const superadmin = {
     listTenants: (): Promise<{ data: any[], total: number }> =>
         safeInvoke('list_tenants', { token: getTokenOrThrow() }),
 
-    createTenant: (name: string, slug: string, ownerEmail: string, ownerPassword: string): Promise<any> =>
-        safeInvoke('create_tenant', { token: getTokenOrThrow(), name, slug, owner_email: ownerEmail, owner_password: ownerPassword }),
+    createTenant: (name: string, slug: string, customDomain: string | null, ownerEmail: string, ownerPassword: string): Promise<any> =>
+        safeInvoke('create_tenant', { token: getTokenOrThrow(), name, slug, customDomain, ownerEmail, ownerPassword }),
 
     deleteTenant: (id: string): Promise<void> =>
         safeInvoke('delete_tenant', { token: getTokenOrThrow(), id }),
+
+    updateTenant: (id: string, name: string, slug: string, customDomain: string | null, isActive: boolean): Promise<any> =>
+        safeInvoke('update_tenant', { token: getTokenOrThrow(), id, name, slug, customDomain, isActive }),
+};
+
+// Public API (No Auth)
+export const publicApi = {
+    getTenant: (slug: string): Promise<any> =>
+        safeInvoke('get_tenant_by_slug', { slug }),
+    getTenantByDomain: (domain: string): Promise<any> =>
+        safeInvoke('get_tenant_by_domain', { domain }),
 };
 
 // Settings API

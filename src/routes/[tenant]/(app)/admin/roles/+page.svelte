@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { isAdmin, checkAuth } from "$lib/stores/auth";
+    import { isAdmin, checkAuth, can } from "$lib/stores/auth";
     import { api } from "$lib/api/client";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
@@ -69,7 +69,7 @@
     }
 
     onMount(async () => {
-        if (!$isAdmin) {
+        if (!$isAdmin || !$can("read", "roles")) {
             goto("/unauthorized");
             return;
         }
@@ -204,10 +204,15 @@
         <div class="toolbar-wrapper">
             <TableToolbar bind:searchQuery placeholder="Search roles...">
                 <div slot="actions">
-                    <button class="btn btn-primary" on:click={openCreateModal}>
-                        <Icon name="plus" size={18} />
-                        Create Role
-                    </button>
+                    {#if $can("create", "roles")}
+                        <button
+                            class="btn btn-primary"
+                            on:click={openCreateModal}
+                        >
+                            <Icon name="plus" size={18} />
+                            Create Role
+                        </button>
+                    {/if}
                 </div>
             </TableToolbar>
         </div>
@@ -244,7 +249,7 @@
                         </span>
                     {:else if key === "actions"}
                         <div class="action-buttons-cell">
-                            {#if !item.is_system}
+                            {#if !item.is_system && $can("delete", "roles")}
                                 <button
                                     class="btn-icon danger"
                                     title="Delete Role"
@@ -254,14 +259,16 @@
                                     <span class="btn-text">Delete</span>
                                 </button>
                             {/if}
-                            <button
-                                class="btn-icon primary"
-                                title="Edit Role"
-                                on:click={() => openEditModal(item)}
-                            >
-                                <Icon name="edit" size={18} />
-                                <span class="btn-text">Edit Role</span>
-                            </button>
+                            {#if $can("update", "roles")}
+                                <button
+                                    class="btn-icon primary"
+                                    title="Edit Role"
+                                    on:click={() => openEditModal(item)}
+                                >
+                                    <Icon name="edit" size={18} />
+                                    <span class="btn-text">Edit Role</span>
+                                </button>
+                            {/if}
                         </div>
                     {/if}
                 </svelte:fragment>

@@ -21,6 +21,7 @@ impl IntoResponse for crate::error::AppError {
             crate::error::AppError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid token".to_string()),
             crate::error::AppError::TokenExpired => (StatusCode::UNAUTHORIZED, "Token expired".to_string()),
             crate::error::AppError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            crate::error::AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, "Unknown error".to_string()),
         };
 

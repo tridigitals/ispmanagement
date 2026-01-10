@@ -1,6 +1,7 @@
 <script lang="ts">
     import { user, isSuperAdmin, token } from "$lib/stores/auth";
     import { goto } from "$app/navigation";
+    import { page } from "$app/stores";
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";
     import Icon from "$lib/components/Icon.svelte";
@@ -10,9 +11,14 @@
 
     // Strict auth check
     onMount(() => {
+        // Auto-collapse on mobile
+        if (window.innerWidth < 768) {
+            isCollapsed = true;
+        }
+
         // 1. Check if logged in at all
         if (!$token) {
-            goto('/login');
+            goto("/login");
             return;
         }
 
@@ -25,15 +31,15 @@
                     authorized = true;
                 } else {
                     // Logged in but not super admin
-                    goto('/dashboard');
+                    goto("/dashboard");
                 }
             }
         }, 50);
-        
+
         // Timeout backup (if user store never populates)
         setTimeout(() => {
             clearInterval(check);
-            if (!authorized) goto('/login');
+            if (!authorized) goto("/login");
         }, 3000);
 
         return () => clearInterval(check);
@@ -42,31 +48,50 @@
 
 {#if authorized}
     <div class="sa-layout">
-        <!-- Super Admin Sidebar (Mini) -->
+        <!-- Mobile Overlay -->
+        {#if !isCollapsed}
+            <div
+                class="mobile-overlay"
+                on:click={() => (isCollapsed = true)}
+                in:fade={{ duration: 200 }}
+            ></div>
+        {/if}
+
+        <!-- Super Admin Sidebar -->
         <aside class="sa-sidebar" class:collapsed={isCollapsed}>
             <div class="logo-area">
-                <Icon name="server" size={24} />
+                <div class="logo-icon">
+                    <Icon name="server" size={24} />
+                </div>
                 {#if !isCollapsed}
-                    <span class="logo-text">SuperAdmin</span>
+                    <span class="logo-text" in:fade>SuperAdmin</span>
                 {/if}
             </div>
             <nav>
-                <a href="/superadmin" class="nav-item active" title="Dashboard">
+                <a
+                    href="/superadmin"
+                    class="nav-item"
+                    class:active={$page.url.pathname === "/superadmin"}
+                    title="Dashboard"
+                >
                     <Icon name="grid" size={20} />
-                    {#if !isCollapsed}<span>Dashboard</span>{/if}
+                    {#if !isCollapsed}<span in:fade>Dashboard</span>{/if}
                 </a>
-                <a href="/superadmin/logs" class="nav-item" title="System Logs">
-                    <Icon name="activity" size={20} />
-                    {#if !isCollapsed}<span>Logs</span>{/if}
-                </a>
-                <a href="/superadmin/users" class="nav-item" title="Global Users">
+                <a
+                    href="/superadmin/users"
+                    class="nav-item"
+                    class:active={$page.url.pathname.startsWith(
+                        "/superadmin/users",
+                    )}
+                    title="Global Users"
+                >
                     <Icon name="users" size={20} />
-                    {#if !isCollapsed}<span>Users</span>{/if}
+                    {#if !isCollapsed}<span in:fade>Users</span>{/if}
                 </a>
                 <div class="spacer"></div>
                 <a href="/dashboard" class="nav-item back" title="Back to App">
                     <Icon name="arrow-left" size={20} />
-                    {#if !isCollapsed}<span>Exit</span>{/if}
+                    {#if !isCollapsed}<span in:fade>Exit</span>{/if}
                 </a>
             </nav>
         </aside>
@@ -75,25 +100,38 @@
             <!-- Topbar -->
             <header class="sa-topbar">
                 <div class="topbar-left">
-                    <button class="hamburger-btn" on:click={() => isCollapsed = !isCollapsed}>
+                    <button
+                        class="hamburger-btn"
+                        on:click={() => (isCollapsed = !isCollapsed)}
+                    >
                         <Icon name="sidebar-toggle" size={20} />
                     </button>
                     <div class="breadcrumb">
                         <span class="root">Super Admin</span>
                         <span class="sep">/</span>
-                        <span class="current">Dashboard</span>
+                        <span class="current">
+                            {#if $page.url.pathname === "/superadmin"}
+                                Dashboard
+                            {:else if $page.url.pathname.includes("/users")}
+                                Users
+                            {:else}
+                                {$page.url.pathname.split("/").pop()}
+                            {/if}
+                        </span>
                     </div>
                 </div>
 
                 <div class="actions">
-                    <div class="search-box">
+                    <div class="search-box hide-mobile">
                         <Icon name="search" size={16} />
-                        <input type="text" placeholder="Search tenants or users..." />
+                        <input type="text" placeholder="Search..." />
                     </div>
-                    
+
                     <div class="profile-pill">
-                        <div class="avatar">{$user?.name?.charAt(0) || 'A'}</div>
-                        <span class="role">ROOT</span>
+                        <div class="avatar">
+                            {$user?.name?.charAt(0) || "A"}
+                        </div>
+                        <span class="role hide-mobile">ROOT</span>
                     </div>
                 </div>
             </header>
@@ -118,37 +156,54 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #0f172a;
+        background: var(--bg-app);
     }
     .spinner {
         width: 40px;
         height: 40px;
-        border: 3px solid rgba(255,255,255,0.1);
-        border-top-color: #6366f1;
+        border: 3px solid var(--border-color);
+        border-top-color: var(--color-primary);
         border-radius: 50%;
         animation: spin 1s linear infinite;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
 
     .sa-layout {
         display: flex;
         min-height: 100vh;
-        background: #0f172a;
-        color: #f1f5f9;
-        font-family: 'Inter', sans-serif;
+        background: var(--bg-app);
+        color: var(--text-primary);
+        font-family: var(--font-family);
+    }
+
+    /* Mobile Overlay */
+    .mobile-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(2px);
+        z-index: 45;
+        display: none;
     }
 
     /* Sidebar */
     .sa-sidebar {
-        width: 240px;
-        background: #1e293b;
-        border-right: 1px solid rgba(255,255,255,0.05);
+        width: var(--sidebar-width);
+        background: var(--bg-surface);
+        border-right: 1px solid var(--border-color);
         display: flex;
         flex-direction: column;
-        align-items: center; /* Center items when collapsed, but specific alignment handled below */
+        align-items: center;
         padding: 1.5rem 0;
         z-index: 50;
-        transition: width 0.3s ease;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        height: 100vh;
+        position: sticky;
+        top: 0;
     }
 
     .sa-sidebar.collapsed {
@@ -156,16 +211,23 @@
     }
 
     .logo-area {
-        color: #6366f1;
         margin-bottom: 2rem;
         display: flex;
         align-items: center;
         gap: 0.75rem;
         padding: 0 1.5rem;
         width: 100%;
-        justify-content: flex-start;
         overflow: hidden;
         white-space: nowrap;
+        height: 40px;
+    }
+
+    .logo-icon {
+        color: var(--color-primary);
+        min-width: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .sa-sidebar.collapsed .logo-area {
@@ -176,7 +238,7 @@
     .logo-text {
         font-weight: 700;
         font-size: 1.1rem;
-        color: white;
+        color: var(--text-primary);
     }
 
     .sa-sidebar nav {
@@ -196,8 +258,8 @@
         align-items: center;
         padding: 0 0.75rem;
         gap: 0.75rem;
-        border-radius: 10px;
-        color: #94a3b8;
+        border-radius: var(--radius-md);
+        color: var(--text-secondary);
         transition: all 0.2s;
         text-decoration: none;
         border: none;
@@ -216,43 +278,42 @@
     }
 
     .nav-item:hover {
-        background: rgba(255,255,255,0.05);
-        color: white;
+        background: var(--bg-hover);
+        color: var(--text-primary);
     }
 
     .nav-item.active {
-        background: #6366f1;
+        background: var(--color-primary);
         color: white;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        box-shadow: 0 4px 12px var(--color-primary-subtle);
     }
 
     .nav-item.back {
-        color: #ef4444;
+        color: var(--color-danger);
         margin-top: auto;
     }
     .nav-item.back:hover {
         background: rgba(239, 68, 68, 0.1);
     }
-    
-    .nav-item.toggle-btn {
-        margin-top: auto;
-    }
 
-    .spacer { flex: 1; }
+    .spacer {
+        flex: 1;
+    }
 
     /* Main Wrapper */
     .main-wrapper {
         flex: 1;
         display: flex;
         flex-direction: column;
+        min-width: 0; /* Prevent flex blowout */
     }
 
     /* Topbar */
     .sa-topbar {
         height: 64px;
-        background: rgba(15, 23, 42, 0.8);
+        background: rgba(var(--bg-app), 0.8);
         backdrop-filter: blur(10px);
-        border-bottom: 1px solid rgba(255,255,255,0.05);
+        border-bottom: 1px solid var(--border-color);
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -271,10 +332,10 @@
     .hamburger-btn {
         background: transparent;
         border: none;
-        color: #94a3b8;
+        color: var(--text-secondary);
         cursor: pointer;
         padding: 0.5rem;
-        border-radius: 8px;
+        border-radius: var(--radius-md);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -282,21 +343,29 @@
     }
 
     .hamburger-btn:hover {
-        background: rgba(255,255,255,0.05);
-        color: white;
+        background: var(--bg-hover);
+        color: var(--text-primary);
     }
 
     .breadcrumb {
         font-size: 0.9rem;
         font-weight: 500;
-        color: #94a3b8;
+        color: var(--text-secondary);
         display: flex;
         align-items: center;
         gap: 0.5rem;
     }
 
-    .breadcrumb .current { color: white; }
-    .breadcrumb .root { font-weight: 700; letter-spacing: 0.05em; color: #6366f1; text-transform: uppercase; font-size: 0.8rem; }
+    .breadcrumb .current {
+        color: var(--text-primary);
+    }
+    .breadcrumb .root {
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        color: var(--color-primary);
+        text-transform: uppercase;
+        font-size: 0.8rem;
+    }
 
     .actions {
         display: flex;
@@ -305,21 +374,21 @@
     }
 
     .search-box {
-        background: #1e293b;
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 8px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
         padding: 0.4rem 0.8rem;
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        color: #94a3b8;
+        color: var(--text-secondary);
     }
 
     .search-box input {
         background: transparent;
         border: none;
         outline: none;
-        color: white;
+        color: var(--text-primary);
         font-size: 0.9rem;
         width: 200px;
     }
@@ -330,15 +399,15 @@
         gap: 0.75rem;
         padding: 0.25rem;
         padding-right: 0.75rem;
-        background: #1e293b;
+        background: var(--bg-surface);
         border-radius: 30px;
-        border: 1px solid rgba(255,255,255,0.05);
+        border: 1px solid var(--border-color);
     }
 
     .profile-pill .avatar {
         width: 28px;
         height: 28px;
-        background: linear-gradient(135deg, #6366f1, #ec4899);
+        background: linear-gradient(135deg, var(--color-primary), #ec4899);
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -351,7 +420,7 @@
     .profile-pill .role {
         font-size: 0.7rem;
         font-weight: 800;
-        color: #94a3b8;
+        color: var(--text-secondary);
         letter-spacing: 0.05em;
     }
 
@@ -359,6 +428,48 @@
     .sa-content {
         flex: 1;
         overflow-y: auto;
-        padding: 2.5rem; /* Added significant padding */
+        padding: 2.5rem;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .sa-sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            transform: translateX(-100%);
+            width: var(
+                --sidebar-width
+            ) !important; /* Full width menu on mobile or standard width */
+        }
+
+        .sa-sidebar:not(.collapsed) {
+            transform: translateX(0);
+        }
+
+        .sa-sidebar.collapsed {
+            width: var(
+                --sidebar-width
+            ); /* Override the 72px collapsed width on mobile */
+        }
+
+        .mobile-overlay {
+            display: block;
+        }
+
+        .sa-topbar {
+            padding: 0 1rem;
+        }
+
+        .sa-content {
+            padding: 1rem;
+        }
+
+        /* Adjust internal sidebar elements for mobile when "not collapsed" (which means open) */
+        .sa-sidebar .logo-area,
+        .sa-sidebar .nav-item span {
+            display: flex; /* Ensure these are visible when menu is open */
+        }
     }
 </style>

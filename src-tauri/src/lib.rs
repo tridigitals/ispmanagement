@@ -179,6 +179,7 @@ pub fn run() {
                                     list_tenants,
                                     delete_tenant,
                                     create_tenant,
+                                    update_tenant,
                                     // Roles commands
                                     get_roles,
                                     get_permissions,

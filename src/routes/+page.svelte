@@ -1,250 +1,392 @@
 <script lang="ts">
-  import { isAuthenticated, user } from "$lib/stores/auth";
+  import { login, isAuthenticated, isAdmin, user } from "$lib/stores/auth";
+  import { appSettings } from "$lib/stores/settings";
+  import { appLogo } from "$lib/stores/logo";
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
   import { onMount } from "svelte";
+  import { fade, fly } from "svelte/transition";
+  import { get } from "svelte/store";
+  import { t } from "svelte-i18n";
+  import Icon from "$lib/components/Icon.svelte";
 
-  onMount(() => {
-    // Redirect based on auth state
+  let email = "";
+  let password = "";
+  let rememberMe = true;
+  let error = "";
+  let loading = false;
+  let activeField = "";
+
+  let showPassword = false;
+
+  $: appName = $appSettings.app_name || "Platform Core";
+  $: appDescription =
+    $appSettings.app_description ||
+    "Enterprise-grade boilerplate built with Rust and SvelteKit. Secure, scalable, and lightweight.";
+
+  onMount(async () => {
+    await Promise.all([appSettings.init(), appLogo.init()]);
+
     if ($isAuthenticated) {
-      goto("/dashboard");
+      const u = get(user);
+      const slug = u?.tenant_slug;
+
+      if (slug) {
+        if (get(isAdmin)) {
+          goto(`/${slug}/admin`);
+        } else {
+          goto(`/${slug}/dashboard`);
+        }
+      } else {
+        goto("/dashboard");
+      }
     }
   });
+
+  async function handleSubmit(e: Event) {
+    e.preventDefault();
+    error = "";
+    loading = true;
+
+    try {
+      const response = await login(email, password, rememberMe);
+      const slug = response.user?.tenant_slug;
+
+      if (slug) {
+        // If the current domain already matches the user's tenant slug, avoid adding it to the path
+        const currentSlug = $page.url.pathname.split("/")[1] || "";
+        // OR better yet, check against domain map if we had one client side
+        // For now, simpler check:
+        if ($page.url.hostname.includes(slug)) {
+          // Check if we are ALREADY on the tenant domain
+          if (response.user.role === "admin") {
+            goto(`/admin`);
+          } else {
+            goto(`/dashboard`);
+          }
+        } else {
+          if (response.user.role === "admin") {
+            goto(`/${slug}/admin`);
+          } else {
+            goto(`/${slug}/dashboard`);
+          }
+        }
+      } else {
+        goto("/dashboard"); // Fallback
+      }
+    } catch (err) {
+      error = err instanceof Error ? err.message : String(err);
+    } finally {
+      loading = false;
+    }
+  }
 </script>
 
-<div class="landing">
-  <div class="hero">
-    <div class="hero-content">
-      <h1 class="hero-title">
-        <span class="gradient-text">SaaS Boilerplate</span>
-      </h1>
-      <p class="hero-subtitle">Built with Rust + Tauri + Svelte</p>
-      <p class="hero-description">
-        A modern, secure, and performant foundation for your next application.
-        Authentication, user management, and settings - all ready to go.
+<div class="login-container">
+  <div class="form-section">
+    <div class="form-wrapper">
+      <div class="form-header">
+        <h2>{$t("auth.login.title")}</h2>
+        <p>{$t("auth.login.subtitle")}</p>
+      </div>
+
+      {#if error}
+        <div class="alert error" in:fly={{ y: -10 }}>
+          {error}
+        </div>
+      {/if}
+
+      <form on:submit={handleSubmit}>
+        <div class="input-group" class:focus={activeField === "email"}>
+          <label for="email">{$t("auth.login.email_label")}</label>
+          <div class="field">
+            <span class="icon"><Icon name="mail" size={18} /></span>
+            <input
+              type="email"
+              id="email"
+              bind:value={email}
+              on:focus={() => (activeField = "email")}
+              on:blur={() => (activeField = "")}
+              placeholder={$t("auth.login.email_placeholder")}
+              required
+            />
+          </div>
+        </div>
+
+        <div class="input-group" class:focus={activeField === "password"}>
+          <label for="password">{$t("auth.login.password_label")}</label>
+          <div class="field">
+            <span class="icon"><Icon name="lock" size={18} /></span>
+            <input
+              type={showPassword ? "text" : "password"}
+              id="password"
+              bind:value={password}
+              on:focus={() => (activeField = "password")}
+              on:blur={() => (activeField = "")}
+              placeholder={$t("auth.login.password_placeholder")}
+              required
+              class="password-input"
+            />
+            <button
+              type="button"
+              class="toggle-password"
+              on:click={() => (showPassword = !showPassword)}
+              tabindex="-1"
+            >
+              <Icon name={showPassword ? "eye-off" : "eye"} size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div class="form-utils">
+          <label class="checkbox">
+            <input type="checkbox" bind:checked={rememberMe} />
+            <span class="checkmark"></span>
+            <span>{$t("auth.login.remember_me")}</span>
+          </label>
+          <a href="/forgot-password">{$t("auth.login.forgot_password")}</a>
+        </div>
+
+        <button type="submit" class="btn-primary" disabled={loading}>
+          {#if loading}
+            <div class="spinner"></div>
+          {:else}
+            {$t("auth.login.submit_button")}
+          {/if}
+        </button>
+      </form>
+
+      <p class="footer-text">
+        {$t("auth.login.footer_text")}
+        <a href="/register">{$t("auth.login.register_link")}</a>
       </p>
-
-      <div class="hero-actions">
-        <a href="/login" class="btn btn-primary btn-lg"> Get Started </a>
-        <a href="/register" class="btn btn-secondary btn-lg">
-          Create Account
-        </a>
-      </div>
-
-      <div class="features">
-        <div class="feature">
-          <div class="feature-icon">🔐</div>
-          <div class="feature-text">
-            <strong>Secure Auth</strong>
-            <span>JWT + Argon2</span>
-          </div>
-        </div>
-        <div class="feature">
-          <div class="feature-icon">⚡</div>
-          <div class="feature-text">
-            <strong>Blazing Fast</strong>
-            <span>Rust Backend</span>
-          </div>
-        </div>
-        <div class="feature">
-          <div class="feature-icon">🎨</div>
-          <div class="feature-text">
-            <strong>Modern UI</strong>
-            <span>Svelte + CSS</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="hero-visual">
-      <div class="glow-orb orb-1"></div>
-      <div class="glow-orb orb-2"></div>
-      <div class="code-block">
-        <pre><code
-            ><span class="keyword">const</span> app = <span class="keyword"
-              >await</span
-            > <span class="function">invoke</span>(<span class="string"
-              >'login'</span
-            >, &#123;
-    email: <span class="string">'user@example.com'</span>,
-    password: <span class="string">'secure123'</span>
-&#125;);</code
-          ></pre>
-      </div>
     </div>
   </div>
 </div>
 
 <style>
-  .landing {
+  .login-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     min-height: 100vh;
+    background: var(--bg-primary);
+  }
+
+  .form-section {
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 2rem;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .hero {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4rem;
-    max-width: 1200px;
     width: 100%;
   }
 
-  .hero-content {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-
-  .hero-title {
-    font-size: 3.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-  }
-
-  .gradient-text {
-    background: linear-gradient(
-      135deg,
-      var(--color-primary),
-      var(--color-secondary)
-    );
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .hero-subtitle {
-    font-size: 1.25rem;
-    color: var(--text-secondary);
-    margin-bottom: 1rem;
-  }
-
-  .hero-description {
-    color: var(--text-muted);
-    font-size: 1rem;
-    max-width: 500px;
-    margin-bottom: 2rem;
-  }
-
-  .hero-actions {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 3rem;
-  }
-
-  .btn-lg {
-    padding: 1rem 2rem;
-    font-size: 1rem;
-  }
-
-  .features {
-    display: flex;
-    gap: 2rem;
-  }
-
-  .feature {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .feature-icon {
-    font-size: 1.5rem;
-  }
-
-  .feature-text {
-    display: flex;
-    flex-direction: column;
-    font-size: 0.875rem;
-  }
-
-  .feature-text strong {
-    color: var(--text-primary);
-  }
-
-  .feature-text span {
-    color: var(--text-muted);
-  }
-
-  .hero-visual {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .glow-orb {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(60px);
-    opacity: 0.5;
-  }
-
-  .orb-1 {
-    width: 300px;
-    height: 300px;
-    background: var(--color-primary);
-    top: -50px;
-    right: -50px;
-  }
-
-  .orb-2 {
-    width: 200px;
-    height: 200px;
-    background: var(--color-secondary);
-    bottom: -30px;
-    left: -30px;
-  }
-
-  .code-block {
-    background: var(--bg-secondary);
+  .form-wrapper {
+    width: 100%;
+    max-width: 400px;
+    background: var(--bg-surface);
+    padding: 2.5rem;
+    border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 2rem;
-    position: relative;
-    z-index: 1;
-    font-family: "Fira Code", monospace;
-    font-size: 0.9rem;
+    box-shadow: var(--shadow-md);
   }
 
-  .code-block code {
+  .form-header {
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+
+  .form-header h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
     color: var(--text-primary);
   }
 
-  .keyword {
-    color: #c678dd;
-  }
-  .function {
-    color: #61afef;
-  }
-  .string {
-    color: #98c379;
+  .form-header p {
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
   }
 
-  @media (max-width: 900px) {
-    .hero {
-      grid-template-columns: 1fr;
-      text-align: center;
-    }
+  .input-group {
+    margin-bottom: 1.5rem;
+  }
 
-    .hero-content {
-      align-items: center;
-    }
+  .input-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+  }
 
-    .hero-actions {
-      justify-content: center;
-    }
+  .field {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
 
-    .features {
-      justify-content: center;
-      flex-wrap: wrap;
-    }
+  .field .icon {
+    position: absolute;
+    left: 1rem;
+    color: var(--text-muted);
+    transition: color 0.2s;
+  }
 
-    .hero-visual {
-      order: -1;
+  .field input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 3rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: all 0.2s;
+  }
+
+  .field input.password-input {
+    padding-right: 40px;
+  }
+
+  .toggle-password {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s;
+    z-index: 2;
+  }
+
+  .toggle-password:hover {
+    color: var(--color-primary);
+  }
+
+  .input-group.focus .field input {
+    border-color: var(--color-primary);
+    background: var(--bg-primary);
+  }
+
+  .input-group.focus .field .icon {
+    color: var(--color-primary);
+  }
+
+  .form-utils {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    font-size: 0.85rem;
+  }
+
+  .checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+  }
+
+  .checkbox input {
+    display: none;
+  }
+
+  .checkmark {
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    position: relative;
+  }
+
+  .checkbox input:checked + .checkmark {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+  }
+
+  .checkbox input:checked + .checkmark::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 2px;
+    width: 3px;
+    height: 7px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  .form-utils a {
+    color: var(--color-primary-light);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    display: flex;
+    justify-content: center;
+  }
+
+  .btn-primary:hover {
+    opacity: 0.9;
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .footer-text {
+    text-align: center;
+    margin-top: 2rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+
+  .footer-text a {
+    color: var(--text-primary);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .alert {
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    font-size: 0.85rem;
+    text-align: center;
+  }
+
+  .alert.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
     }
   }
 </style>

@@ -128,18 +128,41 @@
 
 <style>
     .content-card {
-        background: #1e293b;
-        border-radius: 16px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+        background: var(--bg-surface);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
     }
 
     .card-header {
         padding: 1.5rem 2rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid var(--border-color);
         display: flex;
         justify-content: space-between;
         align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    @media (max-width: 640px) {
+        .card-header {
+            padding: 1rem;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .header-left {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .search-box {
+            width: 100%;
+        }
+
+        .search-box input {
+            width: 100%;
+        }
     }
 
     .header-left {
@@ -152,12 +175,12 @@
         font-size: 1.25rem;
         font-weight: 700;
         margin: 0;
-        color: #fff;
+        color: var(--text-primary);
     }
 
     .count-badge {
-        background: rgba(255, 255, 255, 0.1);
-        color: #94a3b8;
+        background: var(--bg-active);
+        color: var(--text-secondary);
         padding: 0.2rem 0.6rem;
         border-radius: 12px;
         font-size: 0.8rem;
@@ -168,17 +191,23 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        background: #0f172a;
+        background: var(--bg-app);
         padding: 0.6rem 1rem;
         border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        color: #64748b;
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        transition: border-color 0.2s;
+    }
+
+    .search-box:focus-within {
+        border-color: var(--color-primary);
+        color: var(--text-primary);
     }
 
     .search-box input {
         background: transparent;
         border: none;
-        color: #fff;
+        color: var(--text-primary);
         outline: none;
         width: 200px;
     }
@@ -191,6 +220,7 @@
     .data-table {
         width: 100%;
         border-collapse: collapse;
+        min-width: 900px; /* Ensure scroll on mobile */
     }
 
     .data-table th {
@@ -199,22 +229,22 @@
         font-size: 0.8rem;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        color: #64748b;
+        color: var(--text-secondary);
         font-weight: 600;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        background: rgba(0, 0, 0, 0.1);
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-hover);
     }
 
     .data-table td {
         padding: 1.25rem 2rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        border-bottom: 1px solid var(--border-subtle);
         vertical-align: middle;
-        color: #e2e8f0;
+        color: var(--text-primary);
         font-size: 0.95rem;
     }
 
     .data-table tr:hover {
-        background: rgba(255, 255, 255, 0.02);
+        background: var(--bg-hover);
     }
 
     .user-info {
@@ -238,7 +268,7 @@
 
     .user-name {
         font-weight: 600;
-        color: #fff;
+        color: var(--text-primary);
     }
 
     .role-pill {
@@ -271,13 +301,13 @@
 
     .status-pill.active {
         background: rgba(16, 185, 129, 0.15);
-        color: #34d399;
+        color: var(--color-success);
         border: 1px solid rgba(16, 185, 129, 0.2);
     }
 
     .status-pill.inactive {
         background: rgba(239, 68, 68, 0.15);
-        color: #f87171;
+        color: var(--color-danger);
         border: 1px solid rgba(239, 68, 68, 0.2);
     }
 
@@ -289,25 +319,25 @@
     }
 
     .text-muted {
-        color: #64748b;
+        color: var(--text-muted);
     }
     .text-mono {
         font-family: monospace;
         font-size: 0.85rem;
-        color: #94a3b8;
+        color: var(--text-secondary);
     }
 
     .loading-state {
         padding: 4rem;
         text-align: center;
-        color: #94a3b8;
+        color: var(--text-secondary);
     }
 
     .spinner {
         width: 24px;
         height: 24px;
-        border: 3px solid rgba(255, 255, 255, 0.1);
-        border-top-color: #6366f1;
+        border: 3px solid var(--border-color);
+        border-top-color: var(--color-primary);
         border-radius: 50%;
         margin: 0 auto 1rem auto;
         animation: spin 1s linear infinite;
@@ -322,11 +352,11 @@
     .empty-state {
         text-align: center;
         padding: 4rem;
-        color: #64748b;
+        color: var(--text-secondary);
     }
 
     .empty-state h3 {
-        color: #fff;
+        color: var(--text-primary);
         margin: 1rem 0 0.5rem 0;
     }
 </style>

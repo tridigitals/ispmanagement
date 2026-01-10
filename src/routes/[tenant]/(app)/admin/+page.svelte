@@ -10,11 +10,18 @@
     };
     let loading = true;
 
+    // Dynamic Link Logic
+    import { page } from "$app/stores";
+    import { user } from "$lib/stores/auth";
+    import { getSlugFromDomain } from "$lib/utils/domain";
+
+    $: domainSlug = getSlugFromDomain($page.url.hostname);
+    $: isCustomDomain = domainSlug && domainSlug === $user?.tenant_slug;
+    $: tenantPrefix =
+        $user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : "";
+
     onMount(async () => {
-        if (!$isAuthenticated) {
-            goto("/login");
-            return;
-        }
+        // Auth handled by layout
         if (!$isAdmin) {
             goto("/unauthorized");
             return;
@@ -72,7 +79,7 @@
             {#if $can("read", "team")}
                 <button
                     class="action-card"
-                    on:click={() => goto("/admin/team")}
+                    on:click={() => goto(`${tenantPrefix}/admin/team`)}
                 >
                     <div class="action-icon">👥</div>
                     <h3>Manage Team</h3>
@@ -83,7 +90,7 @@
             {#if $can("read", "roles")}
                 <button
                     class="action-card"
-                    on:click={() => goto("/admin/roles")}
+                    on:click={() => goto(`${tenantPrefix}/admin/roles`)}
                 >
                     <div class="action-icon">🔐</div>
                     <h3>Roles & Permissions</h3>
@@ -94,7 +101,7 @@
             {#if $can("read", "settings")}
                 <button
                     class="action-card"
-                    on:click={() => goto("/admin/settings")}
+                    on:click={() => goto(`${tenantPrefix}/admin/settings`)}
                 >
                     <div class="action-icon">⚙️</div>
                     <h3>Global Settings</h3>

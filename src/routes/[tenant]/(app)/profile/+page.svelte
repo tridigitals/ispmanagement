@@ -43,10 +43,7 @@
 
     // Load initial data
     onMount(async () => {
-        if (!$token) {
-            goto("/login");
-            return;
-        }
+        // Auth handled by layout
 
         await appSettings.init();
 

@@ -1,0 +1,527 @@
+<script lang="ts">
+    import { onMount } from "svelte";
+    import { page } from "$app/stores";
+    import { publicApi } from "$lib/api/client";
+    import { login } from "$lib/stores/auth";
+    import { goto } from "$app/navigation";
+    import { fade } from "svelte/transition";
+    import Icon from "$lib/components/Icon.svelte";
+
+    let slug = "";
+    let tenant: any = null;
+    let pageLoading = true;
+    let pageError = "";
+
+    // Login Form State
+    let email = "";
+    let password = "";
+    let rememberMe = true;
+    let loginLoading = false;
+    let loginError = "";
+    let showPassword = false;
+
+    onMount(async () => {
+        console.log("DEBUG: Slug page mounted");
+        slug = $page.params.slug;
+        console.log("DEBUG: Slug from params:", slug);
+        if (!slug) {
+            pageError = "No slug found";
+            pageLoading = false;
+            return;
+        }
+        await loadTenant();
+    });
+
+    async function loadTenant() {
+        pageLoading = true;
+        try {
+            tenant = await publicApi.getTenant(slug);
+        } catch (e: any) {
+            pageError = "Tenant not found or inactive.";
+            console.error(e);
+        } finally {
+            pageLoading = false;
+        }
+    }
+
+    async function handleLogin(e: Event) {
+        e.preventDefault();
+        loginError = "";
+        loginLoading = true;
+
+        try {
+            await login(email, password, rememberMe);
+            // Successful login -> Redirect to dashboard
+
+            // If we are on the custom domain for this tenant, don't prepend slug
+            if ($page.url.hostname.includes(tenant.slug)) {
+                goto(`/dashboard`);
+            } else {
+                goto(`/${tenant.slug}/dashboard`);
+            }
+        } catch (err: any) {
+            loginError = err.message || "Login failed";
+        } finally {
+            loginLoading = false;
+        }
+    }
+</script>
+
+<div class="landing">
+    {#if pageLoading}
+        <div class="loading-state" in:fade>
+            <div class="spinner"></div>
+        </div>
+    {:else if pageError}
+        <div class="error-state" in:fade>
+            <h1>404</h1>
+            <p>{pageError}</p>
+            <a href="/" class="btn btn-secondary">Go Home</a>
+        </div>
+    {:else}
+        <div class="split-layout">
+            <!-- Left Side: Visual/Branding -->
+            <div class="visual-section">
+                <div class="visual-content">
+                    <div class="visual-text">
+                        <h2>Powered by SaaS Boilerplate</h2>
+                        <p>Secure, scalable, and enterprise-ready.</p>
+                    </div>
+                    <div class="glow-orb orb-1"></div>
+                    <div class="glow-orb orb-2"></div>
+                </div>
+            </div>
+
+            <!-- Right Side: Login Form -->
+            <div class="login-section">
+                <div class="login-container">
+                    <div class="tenant-brand">
+                        {#if tenant.logo_url}
+                            <img
+                                src={tenant.logo_url}
+                                alt={tenant.name}
+                                class="tenant-logo-img"
+                            />
+                        {:else}
+                            <div class="tenant-logo-placeholder">
+                                {tenant.name.substring(0, 2).toUpperCase()}
+                            </div>
+                        {/if}
+                        <h1>{tenant.name}</h1>
+                        <p>Sign in to your account</p>
+                    </div>
+
+                    {#if loginError}
+                        <div class="alert error">
+                            {loginError}
+                        </div>
+                    {/if}
+
+                    <form on:submit={handleLogin} class="login-form">
+                        <div class="input-group">
+                            <label for="email">Email Address</label>
+                            <div class="field">
+                                <span class="icon"
+                                    ><Icon name="mail" size={18} /></span
+                                >
+                                <input
+                                    type="email"
+                                    id="email"
+                                    bind:value={email}
+                                    placeholder="name@company.com"
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="password">Password</label>
+                            <div class="field">
+                                <span class="icon"
+                                    ><Icon name="lock" size={18} /></span
+                                >
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    id="password"
+                                    bind:value={password}
+                                    placeholder="Enter your password"
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    class="toggle-password"
+                                    on:click={() =>
+                                        (showPassword = !showPassword)}
+                                    tabindex="-1"
+                                >
+                                    <Icon
+                                        name={showPassword ? "eye-off" : "eye"}
+                                        size={18}
+                                    />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-utils">
+                            <label class="checkbox">
+                                <input
+                                    type="checkbox"
+                                    bind:checked={rememberMe}
+                                />
+                                <span class="checkmark"></span>
+                                <span>Remember me</span>
+                            </label>
+                            <a href="/forgot-password" class="forgot-link"
+                                >Forgot password?</a
+                            >
+                        </div>
+
+                        <button
+                            type="submit"
+                            class="btn-primary"
+                            disabled={loginLoading}
+                        >
+                            {#if loginLoading}
+                                <div class="spinner-small"></div>
+                            {:else}
+                                Sign In
+                            {/if}
+                        </button>
+                    </form>
+
+                    <div class="footer-links">
+                        <a href="/">← Back to Platform</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {/if}
+</div>
+
+<style>
+    .landing {
+        min-height: 100vh;
+        background: var(--bg-primary);
+    }
+
+    .loading-state,
+    .error-state {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+    }
+
+    .split-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        min-height: 100vh;
+    }
+
+    /* Login Section */
+    .login-section {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background: var(--bg-primary);
+    }
+
+    .login-container {
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .tenant-brand {
+        text-align: center;
+        margin-bottom: 2.5rem;
+    }
+
+    .tenant-logo-img {
+        height: 64px;
+        width: auto;
+        margin-bottom: 1rem;
+    }
+
+    .tenant-logo-placeholder {
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(
+            135deg,
+            var(--color-primary),
+            var(--color-secondary)
+        );
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: white;
+        margin: 0 auto 1.5rem;
+    }
+
+    .tenant-brand h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+    }
+
+    .tenant-brand p {
+        color: var(--text-secondary);
+    }
+
+    /* Form Styles */
+    .login-form {
+        margin-bottom: 2rem;
+    }
+
+    .input-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .input-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+
+    .field {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .field .icon {
+        position: absolute;
+        left: 1rem;
+        color: var(--text-muted);
+    }
+
+    .field input {
+        width: 100%;
+        padding: 0.75rem 1rem 0.75rem 3rem; /* Left padding for icon */
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 1rem;
+        color: var(--text-primary);
+        transition: border-color 0.2s;
+    }
+
+    .field input:focus {
+        outline: none;
+        border-color: var(--color-primary);
+        background: var(--bg-primary);
+    }
+
+    .toggle-password {
+        position: absolute;
+        right: 10px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        padding: 4px;
+    }
+
+    .toggle-password:hover {
+        color: var(--text-primary);
+    }
+
+    .form-utils {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        font-size: 0.9rem;
+    }
+
+    .checkbox {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        color: var(--text-secondary);
+    }
+
+    .checkbox input {
+        display: none;
+    }
+
+    .checkmark {
+        width: 16px;
+        height: 16px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        position: relative;
+    }
+
+    .checkbox input:checked + .checkmark {
+        background: var(--color-primary);
+        border-color: var(--color-primary);
+    }
+
+    .checkbox input:checked + .checkmark::after {
+        content: "";
+        position: absolute;
+        left: 5px;
+        top: 1px;
+        width: 4px;
+        height: 8px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+    }
+
+    .forgot-link {
+        color: var(--color-primary);
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .btn-primary {
+        width: 100%;
+        padding: 0.8rem;
+        background: var(--color-primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.2s;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .btn-primary:hover {
+        opacity: 0.9;
+    }
+    .btn-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .footer-links {
+        text-align: center;
+    }
+
+    .footer-links a {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: color 0.2s;
+    }
+
+    .footer-links a:hover {
+        color: var(--text-primary);
+    }
+
+    .alert {
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+        font-size: 0.9rem;
+        text-align: center;
+    }
+
+    .alert.error {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    /* Visual Section */
+    .visual-section {
+        background: var(--bg-secondary);
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-left: 1px solid var(--border-color);
+    }
+
+    .visual-content {
+        position: relative;
+        z-index: 10;
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .visual-content h2 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .visual-content p {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+    }
+
+    .glow-orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(100px);
+        opacity: 0.4;
+    }
+
+    .orb-1 {
+        width: 400px;
+        height: 400px;
+        background: var(--color-primary);
+        top: -100px;
+        right: -100px;
+    }
+
+    .orb-2 {
+        width: 300px;
+        height: 300px;
+        background: var(--color-secondary);
+        bottom: -50px;
+        left: -50px;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid var(--border-color);
+        border-top-color: var(--color-primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    .spinner-small {
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    @media (max-width: 900px) {
+        .split-layout {
+            grid-template-columns: 1fr;
+        }
+        .visual-section {
+            display: none;
+        }
+    }
+</style>

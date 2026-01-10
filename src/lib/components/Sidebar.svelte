@@ -14,6 +14,7 @@
     import { goto } from "$app/navigation";
     import { t } from "svelte-i18n";
     import { convertFileSrc } from "@tauri-apps/api/core";
+    import { getSlugFromDomain } from "$lib/utils/domain";
     import Icon from "./Icon.svelte";
 
     // Mobile menu state
@@ -25,11 +26,21 @@
         isMobileOpen = false;
     }
 
+    $: String($user?.tenant_slug); // Reactivity trigger
+
+    // Determine if we are on a custom domain that matches the current tenant
+    $: domainSlug = getSlugFromDomain($page.url.hostname);
+    $: isCustomDomain = domainSlug && domainSlug === $user?.tenant_slug;
+
+    // If on custom domain, prefix is empty. Otherwise, use slug.
+    $: tenantPrefix =
+        $user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : "";
+
     $: appMenu = [
         {
             label: $t("sidebar.dashboard"),
             icon: "dashboard",
-            href: "/dashboard",
+            href: `${tenantPrefix}/dashboard`,
         },
     ];
 
@@ -41,25 +52,25 @@
             {
                 label: $t("sidebar.overview"),
                 icon: "shield",
-                href: "/admin",
+                href: `${tenantPrefix}/admin`,
                 show: true,
             },
             {
                 label: $t("sidebar.team"),
                 icon: "users",
-                href: "/admin/team",
+                href: `${tenantPrefix}/admin/team`,
                 show: $can("read", "team"),
             },
             {
                 label: $t("sidebar.roles"),
                 icon: "lock",
-                href: "/admin/roles",
+                href: `${tenantPrefix}/admin/roles`,
                 show: $can("read", "roles"),
             },
             {
                 label: $t("sidebar.settings"),
                 icon: "settings",
-                href: "/admin/settings",
+                href: `${tenantPrefix}/admin/settings`,
                 show: $can("read", "settings"),
             },
         ].filter((i) => i.show);
@@ -67,12 +78,12 @@
 
     let isDropdownOpen = false;
 
-    $: isUrlAdmin = $page.url.pathname.startsWith("/admin");
+    $: isUrlAdmin = $page.url.pathname.includes("/admin");
     $: currentMenu = isUrlAdmin ? adminMenu : appMenu;
 
     function handleLogout() {
         logout();
-        goto("/login");
+        goto("/");
     }
 
     function navigate(href: string) {
@@ -160,7 +171,12 @@
         {#if $isAdmin}
             <button
                 class="context-btn"
-                on:click={() => goto(isUrlAdmin ? "/dashboard" : "/admin")}
+                on:click={() =>
+                    goto(
+                        isUrlAdmin
+                            ? `${tenantPrefix}/dashboard`
+                            : `${tenantPrefix}/admin`,
+                    )}
                 title={isUrlAdmin
                     ? "Switch to User Dashboard"
                     : "Switch to Admin Panel"}
@@ -185,7 +201,7 @@
                 >
                     <button
                         class="menu-item"
-                        on:click={() => navigate("/profile")}
+                        on:click={() => navigate(`${tenantPrefix}/profile`)}
                     >
                         <Icon name="profile" size={16} />
                         {$t("sidebar.profile")}

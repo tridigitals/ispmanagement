@@ -18,9 +18,12 @@ pub struct TenantListResponse {
 pub struct CreateTenantRequest {
     pub name: String,
     pub slug: String,
+    pub custom_domain: Option<String>,
     pub owner_email: String,
     pub owner_password: String,
 }
+
+// ...
 
 // Helper to check super admin permission
 async fn check_super_admin(state: &AppState, headers: &HeaderMap) -> Result<(), crate::error::AppError> {
@@ -44,9 +47,8 @@ pub async fn list_tenants(
 ) -> Result<Json<TenantListResponse>, crate::error::AppError> {
     check_super_admin(&state, &headers).await?;
 
-    // In a real app, implement pagination
     let tenants: Vec<Tenant> = sqlx::query_as("SELECT * FROM tenants ORDER BY created_at DESC")
-        .fetch_all(&state.auth_service.pool) // Accessing pool via auth_service for simplicity, ideally should be exposed or via tenant_service
+        .fetch_all(&state.auth_service.pool)
         .await?;
 
     let total = tenants.len() as i64;
@@ -80,7 +82,8 @@ pub async fn create_tenant(
     check_super_admin(&state, &headers).await?;
 
     // 1. Create Tenant object
-    let tenant = Tenant::new(payload.name, payload.slug);
+    let mut tenant = Tenant::new(payload.name, payload.slug);
+    tenant.custom_domain = payload.custom_domain;
     
     // Check if slug exists
     let exists: bool = sqlx::query_scalar("SELECT count(*) > 0 FROM tenants WHERE slug = $1")
@@ -151,6 +154,64 @@ pub async fn create_tenant(
     .bind("owner")
     .bind(chrono::Utc::now())
     .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    Ok(Json(tenant))
+}
+
+#[derive(Deserialize)]
+pub struct UpdateTenantRequest {
+    pub name: String,
+    pub slug: String,
+    pub custom_domain: Option<String>,
+    pub is_active: bool,
+}
+
+pub async fn update_tenant(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(payload): Json<UpdateTenantRequest>,
+) -> Result<Json<Tenant>, crate::error::AppError> {
+    check_super_admin(&state, &headers).await?;
+
+    // Check if tenant exists
+    let existing: bool = sqlx::query_scalar("SELECT count(*) > 0 FROM tenants WHERE id = $1")
+        .bind(&id)
+        .fetch_one(&state.auth_service.pool)
+        .await?;
+
+    if !existing {
+        return Err(crate::error::AppError::NotFound("Tenant not found".to_string()));
+    }
+
+    // Check if slug exists (if changed)
+    let slug_owner: Option<String> = sqlx::query_scalar("SELECT id FROM tenants WHERE slug = $1")
+        .bind(&payload.slug)
+        .fetch_optional(&state.auth_service.pool)
+        .await?;
+
+    if let Some(slug_owner_id) = slug_owner {
+        if slug_owner_id != id {
+            return Err(crate::error::AppError::Validation("Slug already taken".to_string()));
+        }
+    }
+
+    // Update
+    let mut tx = state.auth_service.pool.begin().await?;
+
+    let tenant: Tenant = sqlx::query_as(
+        "UPDATE tenants SET name = $1, slug = $2, custom_domain = $3, is_active = $4, updated_at = $5 WHERE id = $6 RETURNING *"
+    )
+    .bind(&payload.name)
+    .bind(&payload.slug)
+    .bind(&payload.custom_domain)
+    .bind(payload.is_active)
+    .bind(chrono::Utc::now())
+    .bind(&id)
+    .fetch_one(&mut *tx)
     .await?;
 
     tx.commit().await?;

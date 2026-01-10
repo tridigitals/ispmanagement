@@ -38,6 +38,9 @@ pub enum AppError {
 
     #[error("Permission denied: {0}")]
     Forbidden(String),
+
+    #[error("Not found: {0}")]
+    NotFound(String),
 }
 
 impl serde::Serialize for AppError {

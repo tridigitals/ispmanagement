@@ -59,6 +59,7 @@ pub async fn create_tenant(
     token: String,
     name: String,
     slug: String,
+    custom_domain: Option<String>,
     owner_email: String,
     owner_password: String,
     auth_service: State<'_, AuthService>,
@@ -69,7 +70,8 @@ pub async fn create_tenant(
         return Err("Unauthorized".to_string());
     }
 
-    let tenant = Tenant::new(name, slug);
+    let mut tenant = Tenant::new(name, slug);
+    tenant.custom_domain = custom_domain;
 
     // Check if slug exists
     let exists: bool = sqlx::query_scalar("SELECT count(*) > 0 FROM tenants WHERE slug = $1")
@@ -160,6 +162,70 @@ pub async fn create_tenant(
     q_m.execute(&mut *tx).await.map_err(|e| e.to_string())?;
 
     tx.commit().await.map_err(|e| e.to_string())?;
+
+    Ok(tenant)
+}
+
+#[tauri::command]
+pub async fn update_tenant(
+    token: String,
+    id: String,
+    name: String,
+    slug: String,
+    custom_domain: Option<String>,
+    is_active: bool,
+    auth_service: State<'_, AuthService>,
+) -> Result<Tenant, String> {
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    
+    if !claims.is_super_admin {
+        return Err("Unauthorized".to_string());
+    }
+
+    // Check if tenant exists
+    let existing: bool = sqlx::query_scalar("SELECT count(*) > 0 FROM tenants WHERE id = $1")
+        .bind(&id)
+        .fetch_one(&auth_service.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !existing {
+        return Err("Tenant not found".to_string());
+    }
+
+    // Check if slug exists (if changed)
+    let slug_owner: Option<String> = sqlx::query_scalar("SELECT id FROM tenants WHERE slug = $1")
+        .bind(&slug)
+        .fetch_optional(&auth_service.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if let Some(slug_owner_id) = slug_owner {
+        if slug_owner_id != id {
+            return Err("Slug already taken".to_string());
+        }
+    }
+
+    #[cfg(feature = "postgres")]
+    let sql = "UPDATE tenants SET name = $1, slug = $2, custom_domain = $3, is_active = $4, updated_at = $5 WHERE id = $6 RETURNING *";
+    #[cfg(feature = "sqlite")]
+    let sql = "UPDATE tenants SET name = ?, slug = ?, custom_domain = ?, is_active = ?, updated_at = ? WHERE id = ? RETURNING *";
+
+    let q = sqlx::query_as::<_, Tenant>(sql)
+        .bind(&name)
+        .bind(&slug)
+        .bind(&custom_domain);
+
+    #[cfg(feature = "postgres")]
+    let q = q.bind(is_active).bind(chrono::Utc::now());
+    #[cfg(feature = "sqlite")]
+    let q = q.bind(if is_active { 1 } else { 0 }).bind(chrono::Utc::now().to_rfc3339());
+
+    let tenant = q
+        .bind(&id)
+        .fetch_one(&auth_service.pool)
+        .await
+        .map_err(|e| e.to_string())?;
 
     Ok(tenant)
 }

@@ -55,8 +55,7 @@
             if (slug) {
                 // If the current domain already matches the user's tenant slug, avoid adding it to the path
                 const currentSlug = $page.url.pathname.split("/")[1] || "";
-                // OR better yet, check against domain map if we had one client side
-                // For now, simpler check:
+
                 if ($page.url.hostname.includes(slug)) {
                     // Check if we are ALREADY on the tenant domain
                     if (response.user.role === "admin") {

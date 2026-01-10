@@ -6,9 +6,7 @@
     import Icon from "$lib/components/Icon.svelte";
 
     onMount(() => {
-        if (!$isAuthenticated) {
-            goto("/login");
-        }
+        // Auth handled by layout
     });
 
     const greeting = () => {

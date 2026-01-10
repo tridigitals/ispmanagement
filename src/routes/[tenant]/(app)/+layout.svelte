@@ -6,14 +6,37 @@
     import { onMount } from "svelte";
     import Toast from "$lib/components/Toast.svelte";
 
-    // Reactive Auth Guard
-    $: if (!$isAuthenticated) {
-        goto("/login");
+    import { page } from "$app/stores";
+    import { user } from "$lib/stores/auth";
+
+    // Reactive Auth Guard & Tenant Scoping
+    $: {
+        if (!$isAuthenticated) {
+            goto("/");
+        } else {
+            // Check if current URL slug matches user's assigned tenant slug
+            const currentSlug = $page.params.tenant;
+            const userSlug = $user?.tenant_slug;
+
+            console.log("[Layout] Debug:", {
+                currentSlug,
+                userSlug,
+                user: $user,
+            });
+
+            if (currentSlug && userSlug && currentSlug !== userSlug) {
+                console.warn(
+                    `[Layout] Mismatch! Redirecting from ${currentSlug} to ${userSlug}`,
+                );
+                // Redirect to their correct dashboard
+                goto(`/${userSlug}/dashboard`);
+            }
+        }
     }
 
     onMount(() => {
         if (!$isAuthenticated) {
-            goto("/login");
+            goto("/");
         }
     });
 

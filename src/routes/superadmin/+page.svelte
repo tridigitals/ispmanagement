@@ -9,10 +9,19 @@
     let tenants: any[] = [];
     let loading = true;
     let error = "";
-    
+
     // Modal state
+    let isEditing = false;
+    let editingId = "";
     let showCreateModal = false;
-    let newTenant = { name: "", slug: "", ownerEmail: "", ownerPassword: "" };
+    let newTenant = {
+        name: "",
+        slug: "",
+        customDomain: "",
+        ownerEmail: "",
+        ownerPassword: "",
+        isActive: true,
+    };
     let creating = false;
     let showPassword = false;
 
@@ -35,24 +44,86 @@
         }
     }
 
+    function openCreateModal() {
+        isEditing = false;
+        editingId = "";
+        newTenant = {
+            name: "",
+            slug: "",
+            customDomain: "",
+            ownerEmail: "",
+            ownerPassword: "",
+            isActive: true,
+        };
+        showCreateModal = true;
+    }
+
+    function openEditModal(tenant: any) {
+        isEditing = true;
+        editingId = tenant.id;
+        newTenant = {
+            name: tenant.name,
+            slug: tenant.slug,
+            customDomain: tenant.custom_domain || "",
+            ownerEmail: "---", // Email cannot be changed here easily in this view, strictly for tenant props
+            ownerPassword: "", // Password not needed for update
+            isActive: tenant.is_active,
+        };
+        showCreateModal = true;
+    }
+
+    async function handleSubmit() {
+        if (isEditing) {
+            await updateTenant();
+        } else {
+            await createTenant();
+        }
+    }
+
+    async function updateTenant() {
+        if (!newTenant.name || !newTenant.slug) return;
+        creating = true;
+        try {
+            await api.superadmin.updateTenant(
+                editingId,
+                newTenant.name,
+                newTenant.slug,
+                newTenant.customDomain || null,
+                newTenant.isActive,
+            );
+            showCreateModal = false;
+            await loadTenants();
+        } catch (e: any) {
+            alert("Failed to update tenant: " + e);
+        } finally {
+            creating = false;
+        }
+    }
+
     async function createTenant() {
-        if (!newTenant.name || !newTenant.slug || !newTenant.ownerEmail || !newTenant.ownerPassword) return;
+        if (
+            !newTenant.name ||
+            !newTenant.slug ||
+            !newTenant.ownerEmail ||
+            !newTenant.ownerPassword
+        )
+            return;
         creating = true;
         try {
             await api.superadmin.createTenant(
-                newTenant.name, 
-                newTenant.slug, 
-                newTenant.ownerEmail, 
-                newTenant.ownerPassword
+                newTenant.name,
+                newTenant.slug,
+                newTenant.customDomain || null,
+                newTenant.ownerEmail,
+                newTenant.ownerPassword,
             );
-            
+
             // Success! Close modal and refresh list
             showCreateModal = false;
-            newTenant = { name: "", slug: "", ownerEmail: "", ownerPassword: "" };
-            
+            // newTenant reset handled in openCreateModal
+
             // Reload data immediately
             await loadTenants();
-            
         } catch (e: any) {
             alert("Failed to create tenant: " + e);
         } finally {
@@ -64,13 +135,18 @@
         if (!newTenant.name) return;
         newTenant.slug = newTenant.name
             .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/(^-|-$)/g, '');
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/(^-|-$)/g, "");
     }
 
     async function deleteTenant(id: string) {
-        if (!confirm("Are you sure? This will delete the tenant and ALL its data permanently.")) return;
-        
+        if (
+            !confirm(
+                "Are you sure? This will delete the tenant and ALL its data permanently.",
+            )
+        )
+            return;
+
         try {
             await api.superadmin.deleteTenant(id);
             await loadTenants();
@@ -85,188 +161,305 @@
 
 <div class="stats-overview">
     <div class="stat-card gradient-1" in:fly={{ y: 20, delay: 100 }}>
-            <div class="stat-icon"><Icon name="users" size={24} /></div>
-            <div class="stat-info">
-                <h3>Total Tenants</h3>
-                <div class="value">{tenants.length}</div>
-            </div>
-        </div>
-        <div class="stat-card gradient-2" in:fly={{ y: 20, delay: 200 }}>
-            <div class="stat-icon"><Icon name="activity" size={24} /></div>
-            <div class="stat-info">
-                <h3>Active Revenue</h3>
-                <div class="value">$0.00</div>
-            </div>
-        </div>
-        <div class="stat-card gradient-3" in:fly={{ y: 20, delay: 300 }}>
-            <div class="stat-icon"><Icon name="server" size={24} /></div>
-            <div class="stat-info">
-                <h3>System Health</h3>
-                <div class="value status-ok">Operational</div>
-            </div>
+        <div class="stat-icon"><Icon name="users" size={24} /></div>
+        <div class="stat-info">
+            <h3>Total Tenants</h3>
+            <div class="value">{tenants.length}</div>
         </div>
     </div>
-
-    <div class="content-card" in:fly={{ y: 20, delay: 400 }}>
-        <div class="card-header">
-            <div class="header-left">
-                <h2>Tenant Directory</h2>
-                <span class="count-badge">{tenants.length} Organizations</span>
-            </div>
-            <button class="btn btn-primary glow-effect" on:click={() => showCreateModal = true}>
-                <Icon name="plus" size={18} />
-                Deploy New Tenant
-            </button>
+    <div class="stat-card gradient-2" in:fly={{ y: 20, delay: 200 }}>
+        <div class="stat-icon"><Icon name="activity" size={24} /></div>
+        <div class="stat-info">
+            <h3>Active Revenue</h3>
+            <div class="value">$0.00</div>
         </div>
+    </div>
+    <div class="stat-card gradient-3" in:fly={{ y: 20, delay: 300 }}>
+        <div class="stat-icon"><Icon name="server" size={24} /></div>
+        <div class="stat-info">
+            <h3>System Health</h3>
+            <div class="value status-ok">Operational</div>
+        </div>
+    </div>
+</div>
 
-        {#if showCreateModal}
-            <div class="modal-backdrop" on:click={() => showCreateModal = false} transition:fade={{ duration: 200 }}>
-                <div class="modal-card" on:click|stopPropagation transition:fly={{ y: 20, duration: 300 }}>
-                    <h3>Deploy New Organization</h3>
-                    <form on:submit|preventDefault={createTenant}>
-                        <div class="form-group">
-                            <label>Organization Name</label>
-                            <input 
-                                type="text" 
-                                bind:value={newTenant.name} 
-                                on:input={generateSlug}
-                                placeholder="e.g. Acme Corp" 
-                                required 
-                                autoFocus
+<div class="content-card" in:fly={{ y: 20, delay: 400 }}>
+    <div class="card-header">
+        <div class="header-left">
+            <h2>Tenant Directory</h2>
+            <span class="count-badge">{tenants.length} Organizations</span>
+        </div>
+        <button class="btn btn-primary glow-effect" on:click={openCreateModal}>
+            <Icon name="plus" size={18} />
+            Deploy New Tenant
+        </button>
+    </div>
+
+    {#if showCreateModal}
+        <div
+            class="modal-backdrop"
+            on:click={() => (showCreateModal = false)}
+            on:keydown={(e) => e.key === "Escape" && (showCreateModal = false)}
+            role="button"
+            tabindex="0"
+            transition:fade={{ duration: 200 }}
+        >
+            <div
+                class="modal-card"
+                on:click|stopPropagation
+                on:keydown|stopPropagation
+                role="dialog"
+                aria-modal="true"
+                transition:fly={{ y: 20, duration: 300 }}
+            >
+                <h3>
+                    {isEditing
+                        ? "Edit Organization"
+                        : "Deploy New Organization"}
+                </h3>
+                <form on:submit|preventDefault={handleSubmit}>
+                    <div class="form-group">
+                        <label>Organization Name</label>
+                        <input
+                            type="text"
+                            bind:value={newTenant.name}
+                            on:input={!isEditing ? generateSlug : null}
+                            placeholder="e.g. Acme Corp"
+                            required
+                            autoFocus
+                        />
+                    </div>
+                    <div class="form-group">
+                        <label>URL Slug</label>
+                        <div class="slug-input">
+                            <span class="prefix">/</span>
+                            <input
+                                type="text"
+                                bind:value={newTenant.slug}
+                                placeholder="acme-corp"
+                                required
                             />
                         </div>
-                        <div class="form-group">
-                            <label>URL Slug</label>
-                            <div class="slug-input">
-                                <span class="prefix">/</span>
-                                <input type="text" bind:value={newTenant.slug} placeholder="acme-corp" required />
-                            </div>
-                        </div>
+                    </div>
 
+                    <div class="form-group">
+                        <label class="optional-label">
+                            Custom Domain <span class="badge-optional"
+                                >Optional</span
+                            >
+                        </label>
+                        <div class="slug-input">
+                            <span class="prefix"
+                                ><Icon name="globe" size={14} /></span
+                            >
+                            <input
+                                type="text"
+                                bind:value={newTenant.customDomain}
+                                placeholder="app.acme.com"
+                            />
+                        </div>
+                    </div>
+
+                    {#if isEditing}
+                        <div class="form-group">
+                            <label>Status</label>
+                            <label class="toggle-switch">
+                                <input
+                                    type="checkbox"
+                                    bind:checked={newTenant.isActive}
+                                />
+                                <span class="slider"></span>
+                                <span class="label-text"
+                                    >{newTenant.isActive
+                                        ? "Active"
+                                        : "Inactive"}</span
+                                >
+                            </label>
+                        </div>
+                    {:else}
                         <div class="divider">Admin Account</div>
 
                         <div class="form-group">
                             <label>Owner Email</label>
-                            <input type="email" bind:value={newTenant.ownerEmail} placeholder="admin@acme.com" required />
+                            <input
+                                type="email"
+                                bind:value={newTenant.ownerEmail}
+                                placeholder="admin@acme.com"
+                                required
+                            />
                         </div>
 
                         <div class="form-group">
                             <label>Owner Password</label>
                             <div class="password-input-wrapper">
-                                <input 
-                                    type={showPassword ? "text" : "password"} 
-                                    bind:value={newTenant.ownerPassword} 
-                                    placeholder="••••••••" 
-                                    required 
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    bind:value={newTenant.ownerPassword}
+                                    placeholder="••••••••"
+                                    required
                                 />
-                                <button type="button" class="eye-btn" on:click={() => showPassword = !showPassword}>
-                                    <Icon name={showPassword ? 'eye-off' : 'eye'} size={16} />
+                                <button
+                                    type="button"
+                                    class="eye-btn"
+                                    on:click={() =>
+                                        (showPassword = !showPassword)}
+                                >
+                                    <Icon
+                                        name={showPassword ? "eye-off" : "eye"}
+                                        size={16}
+                                    />
                                 </button>
                             </div>
                         </div>
+                    {/if}
 
-                        <div class="modal-actions">
-                            <button type="button" class="btn btn-glass" on:click={() => showCreateModal = false}>Cancel</button>
-                            <button type="submit" class="btn btn-primary" disabled={creating}>
-                                {creating ? 'Deploying...' : 'Deploy Tenant'}
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                    <div class="modal-actions">
+                        <button
+                            type="button"
+                            class="btn btn-glass"
+                            on:click={() => (showCreateModal = false)}
+                            >Cancel</button
+                        >
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                            disabled={creating}
+                        >
+                            {creating
+                                ? "Saving..."
+                                : isEditing
+                                  ? "Save Changes"
+                                  : "Deploy Tenant"}
+                        </button>
+                    </div>
+                </form>
             </div>
-        {/if}
+        </div>
+    {/if}
 
-        {#if loading}
-            <div class="loading-state">
-                <div class="spinner"></div>
-                <p>Syncing data...</p>
-            </div>
-        {:else if error}
-            <div class="error-state">
-                <Icon name="alert-triangle" size={32} />
-                <p>{error}</p>
-            </div>
-        {:else}
-            <div class="table-responsive">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Organization</th>
-                            <th>Domain / Slug</th>
-                            <th>Status</th>
-                            <th>Created At</th>
-                            <th class="text-right">Actions</th>
+    {#if loading}
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Syncing data...</p>
+        </div>
+    {:else if error}
+        <div class="error-state">
+            <Icon name="alert-triangle" size={32} />
+            <p>{error}</p>
+        </div>
+    {:else}
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Organization</th>
+                        <th>Domain / Slug</th>
+                        <th>Status</th>
+                        <th>Created At</th>
+                        <th class="text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {#each tenants as tenant}
+                        <tr class="fade-in-row">
+                            <td>
+                                <div class="tenant-info">
+                                    <div class="avatar">
+                                        {getInitials(tenant.name)}
+                                    </div>
+                                    <div>
+                                        <div class="tenant-name">
+                                            {tenant.name}
+                                        </div>
+                                        <div class="tenant-id">
+                                            ID: {tenant.id.substring(0, 8)}...
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="slug-pill">
+                                    <span class="prefix">/</span>{tenant.slug}
+                                </div>
+                                {#if tenant.custom_domain}
+                                    <div class="domain-link">
+                                        <Icon name="link" size={12} />
+                                        {tenant.custom_domain}
+                                    </div>
+                                {/if}
+                            </td>
+                            <td>
+                                {#if tenant.is_active}
+                                    <span class="status-pill active">
+                                        <span class="dot"></span> Active
+                                    </span>
+                                {:else}
+                                    <span class="status-pill inactive">
+                                        <span class="dot"></span> Inactive
+                                    </span>
+                                {/if}
+                            </td>
+                            <td class="text-muted"
+                                >{new Date(
+                                    tenant.created_at,
+                                ).toLocaleDateString()}</td
+                            >
+                            <td class="text-right">
+                                <button
+                                    class="action-btn"
+                                    on:click={() => openEditModal(tenant)}
+                                    title="Edit Organization"
+                                >
+                                    <Icon name="edit" size={18} />
+                                </button>
+                                <button
+                                    class="action-btn danger"
+                                    on:click={() => deleteTenant(tenant.id)}
+                                    title="Delete Organization"
+                                >
+                                    <Icon name="trash" size={18} />
+                                </button>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        {#each tenants as tenant}
-                            <tr class="fade-in-row">
-                                <td>
-                                    <div class="tenant-info">
-                                        <div class="avatar">{getInitials(tenant.name)}</div>
-                                        <div>
-                                            <div class="tenant-name">{tenant.name}</div>
-                                            <div class="tenant-id">ID: {tenant.id.substring(0, 8)}...</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="slug-pill">
-                                        <span class="prefix">/</span>{tenant.slug}
-                                    </div>
-                                    {#if tenant.custom_domain}
-                                        <div class="domain-link">
-                                            <Icon name="link" size={12} /> {tenant.custom_domain}
-                                        </div>
-                                    {/if}
-                                </td>
-                                <td>
-                                    {#if tenant.is_active}
-                                        <span class="status-pill active">
-                                            <span class="dot"></span> Active
-                                        </span>
-                                    {:else}
-                                        <span class="status-pill inactive">
-                                            <span class="dot"></span> Inactive
-                                        </span>
-                                    {/if}
-                                </td>
-                                <td class="text-muted">{new Date(tenant.created_at).toLocaleDateString()}</td>
-                                <td class="text-right">
-                                    <button class="action-btn danger" on:click={() => deleteTenant(tenant.id)} title="Delete Organization">
-                                        <Icon name="trash" size={18} />
-                                    </button>
-                                </td>
-                            </tr>
-                        {:else}
-                            <tr>
-                                <td colspan="5" class="empty-state">
-                                    <Icon name="search" size={48} />
-                                    <h3>No Tenants Found</h3>
-                                    <p>Get started by deploying your first organization.</p>
-                                </td>
-                            </tr>
-                        {/each}
-                    </tbody>
-                </table>
-            </div>
-        {/if}
-    </div>
+                    {:else}
+                        <tr>
+                            <td colspan="5" class="empty-state">
+                                <Icon name="search" size={48} />
+                                <h3>No Tenants Found</h3>
+                                <p>
+                                    Get started by deploying your first
+                                    organization.
+                                </p>
+                            </td>
+                        </tr>
+                    {/each}
+                </tbody>
+            </table>
+        </div>
+    {/if}
+</div>
 
 <style>
     /* Stats Grid */
     .stats-overview {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: 1.5rem;
         margin-bottom: 2.5rem;
     }
 
+    @media (max-width: 640px) {
+        .stats-overview {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+    }
+
     .stat-card {
-        background: #1e293b;
+        background: var(--bg-surface);
         padding: 1.75rem;
-        border-radius: 16px;
-        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-color);
         display: flex;
         align-items: center;
         gap: 1.5rem;
@@ -275,10 +468,17 @@
     }
 
     .stat-card::before {
-        content: '';
+        content: "";
         position: absolute;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: linear-gradient(135deg, rgba(255,255,255,0.03), transparent);
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.03),
+            transparent
+        );
         pointer-events: none;
     }
 
@@ -290,17 +490,29 @@
         align-items: center;
         justify-content: center;
         font-size: 1.5rem;
-        background: rgba(255,255,255,0.05);
-        color: #fff;
+        background: var(--bg-hover);
+        color: var(--text-primary);
     }
 
-    .gradient-1 .stat-icon { background: linear-gradient(135deg, #3b82f6, #2563eb); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
-    .gradient-2 .stat-icon { background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
-    .gradient-3 .stat-icon { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); }
+    .gradient-1 .stat-icon {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        color: white;
+    }
+    .gradient-2 .stat-icon {
+        background: linear-gradient(135deg, #10b981, #059669);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        color: white;
+    }
+    .gradient-3 .stat-icon {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        color: white;
+    }
 
     .stat-info h3 {
         font-size: 0.9rem;
-        color: #94a3b8;
+        color: var(--text-secondary);
         margin: 0 0 0.25rem 0;
         font-weight: 500;
         text-transform: uppercase;
@@ -310,23 +522,44 @@
     .stat-info .value {
         font-size: 1.75rem;
         font-weight: 700;
-        color: #fff;
+        color: var(--text-primary);
     }
 
     /* Content Card */
     .content-card {
-        background: #1e293b;
-        border-radius: 16px;
-        border: 1px solid rgba(255,255,255,0.05);
-        box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+        background: var(--bg-surface);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
     }
 
+    /* Responsive Header */
     .card-header {
         padding: 1.5rem 2rem;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
+        border-bottom: 1px solid var(--border-color);
         display: flex;
         justify-content: space-between;
         align-items: center;
+        flex-wrap: wrap; /* Wraps on mobile */
+        gap: 1rem;
+    }
+
+    @media (max-width: 640px) {
+        .card-header {
+            padding: 1rem;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .header-left {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
     }
 
     .header-left {
@@ -339,12 +572,12 @@
         font-size: 1.25rem;
         font-weight: 700;
         margin: 0;
-        color: #fff;
+        color: var(--text-primary);
     }
 
     .count-badge {
-        background: rgba(255,255,255,0.1);
-        color: #94a3b8;
+        background: var(--bg-active);
+        color: var(--text-secondary);
         padding: 0.2rem 0.6rem;
         border-radius: 12px;
         font-size: 0.8rem;
@@ -360,6 +593,7 @@
     .data-table {
         width: 100%;
         border-collapse: collapse;
+        min-width: 800px; /* Force scroll on small screens */
     }
 
     .data-table th {
@@ -368,22 +602,22 @@
         font-size: 0.8rem;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        color: #64748b;
+        color: var(--text-secondary);
         font-weight: 600;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
-        background: rgba(0,0,0,0.1);
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-hover);
     }
 
     .data-table td {
         padding: 1.25rem 2rem;
-        border-bottom: 1px solid rgba(255,255,255,0.03);
+        border-bottom: 1px solid var(--border-subtle);
         vertical-align: middle;
-        color: #e2e8f0;
+        color: var(--text-primary);
         font-size: 0.95rem;
     }
 
     .data-table tr:hover {
-        background: rgba(255,255,255,0.02);
+        background: var(--bg-hover);
     }
 
     /* Tenant Info */
@@ -404,37 +638,40 @@
         font-weight: 700;
         color: white;
         font-size: 1rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        box-shadow: var(--shadow-sm);
     }
 
     .tenant-name {
         font-weight: 600;
-        color: #fff;
+        color: var(--text-primary);
     }
 
     .tenant-id {
         font-size: 0.75rem;
-        color: #64748b;
+        color: var(--text-secondary);
         font-family: monospace;
     }
 
     /* Slug */
     .slug-pill {
-        background: rgba(15, 23, 42, 0.5);
-        border: 1px solid rgba(255,255,255,0.1);
+        background: var(--bg-app);
+        border: 1px solid var(--border-color);
         padding: 0.3rem 0.6rem;
         border-radius: 6px;
         display: inline-block;
         font-family: monospace;
         font-size: 0.85rem;
-        color: #cbd5e1;
+        color: var(--text-secondary);
     }
 
-    .prefix { color: #64748b; margin-right: 2px; }
+    .prefix {
+        color: var(--text-muted);
+        margin-right: 2px;
+    }
 
     .domain-link {
         font-size: 0.8rem;
-        color: #3b82f6;
+        color: var(--color-primary);
         margin-top: 0.25rem;
         display: flex;
         align-items: center;
@@ -454,13 +691,13 @@
 
     .status-pill.active {
         background: rgba(16, 185, 129, 0.15);
-        color: #34d399;
+        color: var(--color-success);
         border: 1px solid rgba(16, 185, 129, 0.2);
     }
 
     .status-pill.inactive {
         background: rgba(239, 68, 68, 0.15);
-        color: #f87171;
+        color: var(--color-danger);
         border: 1px solid rgba(239, 68, 68, 0.2);
     }
 
@@ -473,103 +710,136 @@
 
     /* Buttons */
     .btn {
-        display: flex; align-items: center; gap: 0.6rem;
-        padding: 0.75rem 1.25rem;
-        border-radius: 10px;
-        font-weight: 600; cursor: pointer; border: none; font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.6rem 1.2rem;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        font-size: 0.95rem;
         transition: all 0.2s;
     }
 
     .btn-glass {
-        background: rgba(255,255,255,0.05);
-        color: #cbd5e1;
-        border: 1px solid rgba(255,255,255,0.1);
+        background: transparent;
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
     }
 
     .btn-glass:hover {
-        background: rgba(255,255,255,0.1);
-        color: #fff;
+        background: var(--bg-hover);
+        color: var(--text-primary);
     }
 
     .btn-primary {
-        background: #6366f1;
+        background: var(--color-primary);
         color: white;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        box-shadow: 0 4px 12px var(--color-primary-subtle);
     }
 
     .btn-primary:hover {
-        background: #4f46e5;
+        filter: brightness(1.1);
         transform: translateY(-1px);
-        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.5);
     }
 
     .action-btn {
-        width: 36px; height: 36px;
+        width: 36px;
+        height: 36px;
         border-radius: 8px;
-        display: inline-flex; align-items: center; justify-content: center;
-        border: none; background: transparent;
-        color: #64748b; cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
         transition: all 0.2s;
     }
 
-    .action-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
-    .action-btn.danger:hover { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+    .action-btn:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+    }
+    .action-btn.danger:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--color-danger);
+    }
 
-    .text-right { text-align: right; }
-    .text-muted { color: #64748b; font-size: 0.9rem; }
+    .text-right {
+        text-align: right;
+    }
+    .text-muted {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
 
     /* States */
     .empty-state {
         text-align: center;
         padding: 4rem;
-        color: #64748b;
+        color: var(--text-secondary);
     }
-    
-    .empty-state h3 { color: #fff; margin: 1rem 0 0.5rem 0; }
 
-    .loading-state, .error-state {
+    .empty-state h3 {
+        color: var(--text-primary);
+        margin: 1rem 0 0.5rem 0;
+    }
+
+    .loading-state,
+    .error-state {
         padding: 4rem;
         text-align: center;
-        color: #94a3b8;
+        color: var(--text-secondary);
     }
 
     .spinner {
-        width: 24px; height: 24px;
-        border: 3px solid rgba(255,255,255,0.1);
-        border-top-color: #6366f1;
+        width: 24px;
+        height: 24px;
+        border: 3px solid var(--border-color);
+        border-top-color: var(--color-primary);
         border-radius: 50%;
         margin: 0 auto 1rem auto;
         animation: spin 1s linear infinite;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
 
     /* Modal */
     .modal-backdrop {
         position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.7);
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
         backdrop-filter: blur(4px);
         display: flex;
         align-items: center;
         justify-content: center;
         z-index: 100;
+        padding: 1rem;
     }
 
     .modal-card {
-        background: #1e293b;
+        background: var(--bg-surface);
         padding: 2rem;
         border-radius: 16px;
-        border: 1px solid rgba(255,255,255,0.1);
+        border: 1px solid var(--border-color);
         width: 100%;
         max-width: 480px;
-        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
     }
 
     .modal-card h3 {
         margin: 0 0 1.5rem 0;
         font-size: 1.25rem;
-        color: white;
+        color: var(--text-primary);
     }
 
     .form-group {
@@ -580,23 +850,24 @@
         display: block;
         margin-bottom: 0.5rem;
         font-size: 0.9rem;
-        color: #94a3b8;
+        color: var(--text-secondary);
     }
 
     .form-group input {
         width: 100%;
-        background: #0f172a;
-        border: 1px solid rgba(255,255,255,0.1);
+        background: var(--bg-app);
+        border: 1px solid var(--border-color);
         padding: 0.75rem 1rem;
         border-radius: 8px;
-        color: white;
+        color: var(--text-primary);
         font-size: 1rem;
+        transition: border-color 0.2s;
     }
 
     .form-group input:focus {
         outline: none;
-        border-color: #6366f1;
-        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 2px var(--color-primary-subtle);
     }
 
     .slug-input {
@@ -612,7 +883,7 @@
         left: 1rem;
         top: 50%;
         transform: translateY(-50%);
-        color: #64748b;
+        color: var(--text-muted);
     }
 
     .divider {
@@ -622,15 +893,15 @@
         text-transform: uppercase;
         font-size: 0.75rem;
         font-weight: 700;
-        color: #64748b;
+        color: var(--text-secondary);
         letter-spacing: 0.05em;
     }
 
     .divider::after {
-        content: '';
+        content: "";
         flex: 1;
         height: 1px;
-        background: rgba(255,255,255,0.05);
+        background: var(--border-color);
         margin-left: 1rem;
     }
 
@@ -645,13 +916,80 @@
         transform: translateY(-50%);
         background: none;
         border: none;
-        color: #64748b;
+        color: var(--text-secondary);
         cursor: pointer;
         display: flex;
         align-items: center;
     }
 
-    .eye-btn:hover { color: white; }
+    .eye-btn:hover {
+        color: var(--text-primary);
+    }
+
+    .toggle-switch {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        cursor: pointer;
+    }
+
+    .toggle-switch input {
+        display: none;
+    }
+
+    .slider {
+        width: 44px;
+        height: 24px;
+        background: var(--bg-hover);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        position: relative;
+        transition: 0.2s;
+    }
+
+    .slider::before {
+        content: "";
+        position: absolute;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--text-secondary);
+        top: 2px;
+        left: 2px;
+        transition: 0.2s;
+    }
+
+    .toggle-switch input:checked + .slider {
+        background: rgba(16, 185, 129, 0.2);
+        border-color: rgba(16, 185, 129, 0.5);
+    }
+
+    .toggle-switch input:checked + .slider::before {
+        transform: translateX(20px);
+        background: var(--color-success);
+    }
+
+    .label-text {
+        color: var(--text-primary);
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+
+    .optional-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .badge-optional {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        background: var(--bg-hover);
+        padding: 2px 6px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
 
     .modal-actions {
         display: flex;

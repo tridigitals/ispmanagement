@@ -39,10 +39,23 @@ export function connectWebSocket() {
         return;
     }
 
-    // Determine WebSocket URL based on environment
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = 'localhost:3000'; // Backend HTTP server
-    const wsUrl = `${protocol}//${host}/api/ws`;
+    // Determine WebSocket URL based on API_BASE
+    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    let wsUrl = apiBase;
+
+    // Replace protocol
+    if (wsUrl.startsWith('https://')) {
+        wsUrl = wsUrl.replace('https://', 'wss://');
+    } else if (wsUrl.startsWith('http://')) {
+        wsUrl = wsUrl.replace('http://', 'ws://');
+    }
+
+    // Append /ws endpoint
+    if (wsUrl.endsWith('/')) {
+        wsUrl += 'ws';
+    } else {
+        wsUrl += '/ws';
+    }
 
     wsError.set(null);
 

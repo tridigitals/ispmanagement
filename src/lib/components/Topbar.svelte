@@ -9,12 +9,13 @@
 
     // Helper to get page title based on path
     function getPageTitle(path: string) {
-        if (path === "/dashboard") return $t("topbar.titles.dashboard");
-        if (path === "/profile") return $t("topbar.titles.profile");
-        if (path === "/admin") return $t("topbar.titles.admin_overview");
-        if (path === "/admin/users") return $t("topbar.titles.user_management");
-        if (path === "/admin/settings")
+        if (path.includes("/dashboard")) return $t("topbar.titles.dashboard");
+        if (path.includes("/profile")) return $t("topbar.titles.profile");
+        if (path.includes("/admin/users"))
+            return $t("topbar.titles.user_management");
+        if (path.includes("/admin/settings"))
             return $t("topbar.titles.global_settings");
+        if (path.includes("/admin")) return $t("topbar.titles.admin_overview");
         return "SaaS App";
     }
 

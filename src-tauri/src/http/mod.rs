@@ -20,6 +20,7 @@ pub mod superadmin;
 pub mod team;
 pub mod roles;
 pub mod websocket;
+pub mod public;
 
 pub use websocket::WsHub;
 
@@ -117,7 +118,7 @@ pub async fn start_server(
 
                 .route("/api/superadmin/tenants", get(superadmin::list_tenants).post(superadmin::create_tenant))
 
-                .route("/api/superadmin/tenants/{id}", delete(superadmin::delete_tenant))
+                .route("/api/superadmin/tenants/{id}", delete(superadmin::delete_tenant).put(superadmin::update_tenant))
 
                 // Settings Routes
 
@@ -144,6 +145,10 @@ pub async fn start_server(
 
                 // WebSocket Route
                 .route("/api/ws", get(websocket::ws_handler))
+
+                // Public Routes
+                .route("/api/public/tenants/{slug}", get(public::get_tenant_by_slug))
+                .route("/api/public/domains/{domain}", get(public::get_tenant_by_domain))
 
                 .layer(cors)
 

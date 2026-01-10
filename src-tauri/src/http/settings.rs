@@ -159,6 +159,8 @@ pub async fn upsert_setting(
         description: payload.description,
     };
     
+    println!("DEBUG: [HTTP] Upserting setting '{}' for Tenant ID: {:?}", dto.key, claims.tenant_id);
+
     let setting = state.settings_service.upsert(claims.tenant_id, dto).await?;
     Ok(Json(setting))
 }

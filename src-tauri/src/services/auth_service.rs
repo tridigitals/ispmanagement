@@ -795,6 +795,7 @@ impl AuthService {
 
         let mut user_response: crate::models::user::UserResponse = user.into();
         user_response.permissions = permissions;
+        user_response.tenant_slug = tenant.as_ref().map(|t| t.slug.clone());
 
         // Override role with tenant role if available
         if let Some(tid) = &tenant_id {
@@ -925,6 +926,20 @@ impl AuthService {
             if let Ok(Some(tenant_role)) = self.get_tenant_role_name(user_id, &tid).await {
                 user_response.role = tenant_role;
             }
+
+            // Get tenant slug
+            #[cfg(feature = "postgres")]
+            let slug_query = "SELECT slug FROM tenants WHERE id = $1";
+            #[cfg(feature = "sqlite")]
+            let slug_query = "SELECT slug FROM tenants WHERE id = ?";
+
+            let slug: Option<String> = sqlx::query_scalar(slug_query)
+                .bind(&tid)
+                .fetch_optional(&self.pool)
+                .await
+                .unwrap_or(None);
+            
+            user_response.tenant_slug = slug;
         }
 
         Ok(user_response)
