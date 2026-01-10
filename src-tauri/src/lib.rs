@@ -12,7 +12,7 @@ mod http;
 
 use commands::*;
 use db::connection::{init_db, seed_defaults};
-use services::{AuthService, EmailService, SettingsService, UserService};
+use services::{AuthService, EmailService, SettingsService, UserService, TeamService};
 use tauri::Manager;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -87,6 +87,15 @@ pub fn run() {
                         .map_err(|e| format!("Failed to seed default settings: {}", e))?;
                     info!("Default settings seeded.");
 
+                    // Seed RBAC permissions and roles
+                    services::seed_permissions(&pool)
+                        .await
+                        .map_err(|e| format!("Failed to seed permissions: {}", e))?;
+                    services::seed_roles(&pool)
+                        .await
+                        .map_err(|e| format!("Failed to seed roles: {}", e))?;
+                    info!("RBAC permissions and roles seeded.");
+
                     // Get JWT secret from settings
                     let jwt_secret = sqlx::query_scalar::<_, String>(
                         "SELECT value FROM settings WHERE key = 'jwt_secret' AND tenant_id IS NULL"
@@ -101,12 +110,14 @@ pub fn run() {
                     let email_service = EmailService::new(settings_service.clone());
                     let auth_service = AuthService::new(pool.clone(), jwt_secret, email_service.clone());
                     let user_service = UserService::new(pool.clone());
+                    let team_service = TeamService::new(pool.clone(), auth_service.clone());
 
                     // Manage state
                     app_handle.manage(auth_service.clone());
                     app_handle.manage(user_service.clone());
                     app_handle.manage(settings_service.clone());
                     app_handle.manage(email_service.clone());
+                    app_handle.manage(team_service.clone());
                     info!("Services added to Tauri state.");
 
                     // Start HTTP Server
@@ -164,6 +175,18 @@ pub fn run() {
                                     list_tenants,
                                     delete_tenant,
                                     create_tenant,
+                                    // Roles commands
+                                    get_roles,
+                                    get_permissions,
+                                    get_role,
+                                    create_new_role,
+                                    update_existing_role,
+                                    delete_existing_role,
+                                    // Team commands
+                                    list_team_members,
+                                    add_team_member,
+                                    update_team_member_role,
+                                    remove_team_member,
                                 ])
                                 .run(tauri::generate_context!())
                                 .expect("error while running tauri application");

@@ -1,10 +1,9 @@
 use axum::{
-    routing::{get, post, delete, put},
+    routing::{get, post, delete},
     Router,
 };
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
-use tower_http::trace::TraceLayer;
 use crate::services::{AuthService, UserService, SettingsService, EmailService};
 use std::sync::Arc;
 use tokio::net::TcpListener;

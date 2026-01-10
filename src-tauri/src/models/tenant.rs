@@ -36,18 +36,34 @@ pub struct TenantMember {
     pub id: String,
     pub tenant_id: String,
     pub user_id: String,
-    pub role: String,
+    pub role: String, // String representation for backward compatibility
+    pub role_id: Option<String>, // New RBAC role ID
     pub created_at: DateTime<Utc>,
 }
 
 impl TenantMember {
-    pub fn new(tenant_id: String, user_id: String, role: String) -> Self {
+    pub fn new(tenant_id: String, user_id: String, role: String, role_id: Option<String>) -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
             tenant_id,
             user_id,
             role,
+            role_id,
             created_at: Utc::now(),
         }
     }
+}
+
+/// Helper struct for team member details with user info
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct TeamMemberWithUser {
+    pub id: String, // tenant_member id
+    pub user_id: String,
+    pub name: String,
+    pub email: String,
+    pub role: String,
+    pub role_id: Option<String>,
+    pub role_name: Option<String>,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
 }

@@ -41,6 +41,8 @@
         "dashboard": "Dashboard",
         "overview": "Overview",
         "users": "Users",
+        "team": "Team",
+        "roles": "Roles",
         "settings": "Settings",
         "user_view": "User View",
         "admin_panel": "Admin Panel",
@@ -198,6 +200,21 @@
                 "placeholder": "Enter email address",
                 "button": "Send Test Email",
                 "sending": "Sending..."
+            }
+        },
+        "team": {
+            "title": "Team Members",
+            "invite_button": "Add Member",
+            "add_member_modal_title": "Add Team Member",
+            "name_label": "Name",
+            "email_label": "Email",
+            "password_label": "Password (Optional)",
+            "role_label": "Role",
+            "cancel": "Cancel",
+            "submit": "Add Member",
+            "empty": {
+                "title": "No Team Members Yet",
+                "description": "Add your colleagues to collaborate on this workspace."
             }
         }
     }

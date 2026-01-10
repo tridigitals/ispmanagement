@@ -18,7 +18,7 @@ pub type DbPool = Pool<Postgres>;
 pub type DbPool = Pool<Sqlite>;
 
 /// Initialize database connection
-pub async fn init_db(app_data_dir: PathBuf) -> Result<DbPool, sqlx::Error> {
+pub async fn init_db(_app_data_dir: PathBuf) -> Result<DbPool, sqlx::Error> {
     #[cfg(feature = "postgres")]
     {
         let database_url = env::var("DATABASE_URL")
@@ -135,6 +135,58 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
+    // Create permissions table (RBAC)
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS permissions (
+            id TEXT PRIMARY KEY NOT NULL,
+            resource TEXT NOT NULL,
+            action TEXT NOT NULL,
+            description TEXT,
+            UNIQUE(resource, action)
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Create roles table (RBAC)
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS roles (
+            id TEXT PRIMARY KEY NOT NULL,
+            tenant_id TEXT REFERENCES tenants(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            description TEXT,
+            is_system BOOLEAN NOT NULL DEFAULT false,
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Create role_permissions pivot table (RBAC)
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS role_permissions (
+            role_id TEXT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+            permission_id TEXT NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+            PRIMARY KEY (role_id, permission_id)
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Add role_id to tenant_members if not exists
+    sqlx::query(r#"
+        DO $$ 
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='tenant_members' AND column_name='role_id') THEN
+                ALTER TABLE tenant_members ADD COLUMN role_id TEXT REFERENCES roles(id);
+            END IF;
+        END $$;
+    "#)
+    .execute(pool)
+    .await?;
+
     // Create indexes
     if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)").execute(pool).await {
         tracing::error!("Failed to create idx_users_email: {}", e);
@@ -156,6 +208,9 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     }
     if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_tenants_slug ON tenants(slug)").execute(pool).await {
         tracing::error!("Failed to create idx_tenants_slug: {}", e);
+    }
+    if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_roles_tenant ON roles(tenant_id)").execute(pool).await {
+        tracing::error!("Failed to create idx_roles_tenant: {}", e);
     }
 
     info!("PostgreSQL migrations completed");
@@ -252,6 +307,48 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
+    // Create permissions table (RBAC)
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS permissions (
+            id TEXT PRIMARY KEY NOT NULL,
+            resource TEXT NOT NULL,
+            action TEXT NOT NULL,
+            description TEXT,
+            UNIQUE(resource, action)
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Create roles table (RBAC)
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS roles (
+            id TEXT PRIMARY KEY NOT NULL,
+            tenant_id TEXT,
+            name TEXT NOT NULL,
+            description TEXT,
+            is_system INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Create role_permissions pivot table (RBAC)
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS role_permissions (
+            role_id TEXT NOT NULL,
+            permission_id TEXT NOT NULL,
+            PRIMARY KEY (role_id, permission_id),
+            FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+            FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
     // Create indexes
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)").execute(pool).await.ok();
     // Unique partial indexes for SQLite
@@ -260,8 +357,13 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)").execute(pool).await.ok();
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_tenants_slug ON tenants(slug)").execute(pool).await.ok();
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_roles_tenant ON roles(tenant_id)").execute(pool).await.ok();
 
     info!("SQLite migrations completed");
+    
+    seed_defaults(pool).await?;
+    seed_roles(pool).await?;
+
     Ok(())
 }
 
@@ -299,12 +401,12 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
             .bind(key)
             .bind(value)
             .bind(description)
-            .bind(now)  // DateTime directly for PostgreSQL
+            .bind(now)
             .bind(now)
             .execute(pool)
             .await?;
         }
-        
+
         #[cfg(feature = "sqlite")]
         {
             let now_str = now.to_rfc3339();
@@ -316,12 +418,96 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
             .bind(key)
             .bind(value)
             .bind(description)
-            .bind(&now_str)  // RFC3339 string for SQLite
+            .bind(&now_str)
             .bind(&now_str)
             .execute(pool)
             .await?;
         }
     }
+
+    Ok(())
+}
+
+/// Seed default roles and permissions
+pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
+    let now = chrono::Utc::now();
+    let roles = vec![
+        ("Owner", "Full access to all resources", true),
+        ("Admin", "Access to settings and team management", true),
+        ("Member", "Can view dashboard and read team", true),
+        ("Viewer", "Read-only access", true),
+    ];
+
+    for (name, description, is_system) in roles {
+        let role_id = uuid::Uuid::new_v4().to_string();
+        
+        #[cfg(feature = "postgres")]
+        {
+            sqlx::query(r#"
+                INSERT INTO roles (id, tenant_id, name, description, is_system, created_at, updated_at)
+                VALUES ($1, NULL, $2, $3, $4, $5, $6)
+                ON CONFLICT (name) WHERE tenant_id IS NULL DO NOTHING
+            "#)
+            .bind(&role_id)
+            .bind(name)
+            .bind(description)
+            .bind(is_system)
+            .bind(now)
+            .bind(now)
+            .execute(pool)
+            .await?;
+        }
+
+        #[cfg(feature = "sqlite")]
+        {
+            let now_str = now.to_rfc3339();
+            // Check if exists first for SQLite to simulate filtered unique index behavior if needed, 
+            // but since name isn't unique globally (only per tenant or null), we need careful insertion.
+            // Simplified: Insert if not exists where tenant_id is null.
+            let exists: bool = sqlx::query_scalar("SELECT COUNT(*) FROM roles WHERE name = ? AND tenant_id IS NULL")
+                .bind(name)
+                .fetch_one(pool)
+                .await
+                .map(|c: i64| c > 0)
+                .unwrap_or(false);
+
+            if !exists {
+                sqlx::query(r#"
+                    INSERT INTO roles (id, tenant_id, name, description, is_system, created_at, updated_at)
+                    VALUES (?, NULL, ?, ?, ?, ?, ?)
+                "#)
+                .bind(&role_id)
+                .bind(name)
+                .bind(description)
+                .bind(is_system)
+                .bind(&now_str)
+                .bind(&now_str)
+                .execute(pool)
+                .await?;
+            }
+        }
+    }
+
+    // Fix missing role_ids for existing Owners
+    // This updates any tenant_member who has role='Owner' (string) but role_id IS NULL
+    // setting their role_id to the global 'Owner' role id.
+    #[cfg(feature = "postgres")]
+    sqlx::query(r#"
+        UPDATE tenant_members 
+        SET role_id = (SELECT id FROM roles WHERE name = 'Owner' AND tenant_id IS NULL LIMIT 1)
+        WHERE role = 'Owner' AND role_id IS NULL
+    "#)
+    .execute(pool)
+    .await?;
+
+    #[cfg(feature = "sqlite")]
+    sqlx::query(r#"
+        UPDATE tenant_members 
+        SET role_id = (SELECT id FROM roles WHERE name = 'Owner' AND tenant_id IS NULL LIMIT 1)
+        WHERE role = 'Owner' AND role_id IS NULL
+    "#)
+    .execute(pool)
+    .await?;
 
     Ok(())
 }

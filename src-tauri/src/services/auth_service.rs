@@ -2,7 +2,7 @@
 
 use crate::db::connection::DbPool;
 use crate::error::{AppError, AppResult};
-use crate::models::{LoginDto, RegisterDto, User, UserResponse};
+use crate::models::{LoginDto, RegisterDto, User, UserResponse, Tenant, TenantMember};
 use argon2::{
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
@@ -708,6 +708,78 @@ impl AuthService {
         .bind(&user.id)
         .fetch_optional(&self.pool)
         .await?;
+
+        // Self-healing: Create default tenant if none exists
+        let mut tenant = tenant;
+        if tenant.is_none() {
+            info!("User {} has no tenant. Creating default tenant.", user.id);
+            let tenant_name = format!("{}'s Team", user.name);
+            let slug = uuid::Uuid::new_v4().to_string(); // Simple slug
+            let new_tenant = Tenant::new(tenant_name, slug);
+            
+            // Insert Tenant
+            #[cfg(feature = "postgres")]
+            sqlx::query("INSERT INTO tenants (id, name, slug, is_active, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)")
+                .bind(&new_tenant.id)
+                .bind(&new_tenant.name)
+                .bind(&new_tenant.slug)
+                .bind(new_tenant.is_active)
+                .bind(new_tenant.created_at)
+                .bind(new_tenant.updated_at)
+                .execute(&self.pool)
+                .await?;
+
+            #[cfg(feature = "sqlite")]
+            sqlx::query("INSERT INTO tenants (id, name, slug, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
+                .bind(&new_tenant.id)
+                .bind(&new_tenant.name)
+                .bind(&new_tenant.slug)
+                .bind(new_tenant.is_active)
+                .bind(new_tenant.created_at.to_rfc3339())
+                .bind(new_tenant.updated_at.to_rfc3339())
+                .execute(&self.pool)
+                .await?;
+
+            // Get Owner Role ID
+            #[cfg(feature = "postgres")]
+            let owner_role: Option<(String,)> = sqlx::query_as("SELECT id FROM roles WHERE name = 'Owner' AND tenant_id IS NULL")
+                .fetch_optional(&self.pool)
+                .await?;
+            
+            #[cfg(feature = "sqlite")]
+            let owner_role: Option<(String,)> = sqlx::query_as("SELECT id FROM roles WHERE name = 'Owner' AND tenant_id IS NULL")
+                .fetch_optional(&self.pool)
+                .await?;
+
+            let role_id = owner_role.map(|r| r.0);
+            
+            // Create Member
+            let member = TenantMember::new(new_tenant.id.clone(), user.id.clone(), "Owner".to_string(), role_id);
+            
+            #[cfg(feature = "postgres")]
+            sqlx::query("INSERT INTO tenant_members (id, tenant_id, user_id, role, role_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)")
+                .bind(&member.id)
+                .bind(&member.tenant_id)
+                .bind(&member.user_id)
+                .bind(&member.role)
+                .bind(&member.role_id)
+                .bind(member.created_at)
+                .execute(&self.pool)
+                .await?;
+
+            #[cfg(feature = "sqlite")]
+            sqlx::query("INSERT INTO tenant_members (id, tenant_id, user_id, role, role_id, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+                .bind(&member.id)
+                .bind(&member.tenant_id)
+                .bind(&member.user_id)
+                .bind(&member.role)
+                .bind(&member.role_id)
+                .bind(member.created_at.to_rfc3339())
+                .execute(&self.pool)
+                .await?;
+
+            tenant = Some(new_tenant);
+        }
 
         let tenant_id = tenant.as_ref().map(|t| t.id.clone());
 

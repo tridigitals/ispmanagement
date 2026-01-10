@@ -38,7 +38,7 @@ function createSettingsStore() {
         try {
             // Fetch public auth settings
             const authSettings = await api.settings.getAuthSettings();
-            
+
             // Fetch public general settings (name, description)
             let publicSettings = {};
             try {
@@ -52,12 +52,12 @@ function createSettingsStore() {
             // If logged in, getAll() will now return tenant-specific settings because backend extracts tenant_id from token
             let tenantSettings: any = {};
             try {
-               const data = await api.settings.getAll();
-               data.forEach(item => {
-                   if (item.value === 'true') tenantSettings[item.key] = true;
-                   else if (item.value === 'false') tenantSettings[item.key] = false;     
-                   else tenantSettings[item.key] = item.value;
-               });
+                const data = await api.settings.getAll();
+                data.forEach(item => {
+                    if (item.value === 'true') tenantSettings[item.key] = true;
+                    else if (item.value === 'false') tenantSettings[item.key] = false;
+                    else tenantSettings[item.key] = item.value;
+                });
             } catch (e) {
                 // Ignore error if not logged in
                 console.debug("Could not load tenant settings (likely not logged in)");
@@ -71,15 +71,15 @@ function createSettingsStore() {
             };
 
             set(finalSettings);
-            
+
             // Set locale from settings with logging
             if (finalSettings.default_locale) {
-                console.log(`[Settings] Setting locale to: ${finalSettings.default_locale}`);
+
                 locale.set(finalSettings.default_locale);
             } else {
-                console.log('[Settings] No default_locale found, using browser default');
+
             }
-            
+
             updateWindowTitle(finalSettings.app_name);
         } catch (err) {
             console.error("Failed to load settings:", err);
@@ -106,7 +106,7 @@ function createSettingsStore() {
 
 async function updateWindowTitle(title: string) {
     if (typeof window === 'undefined') return;
-    
+
     // Skip if not running in Tauri
     // @ts-ignore
     if (!window.__TAURI_INTERNALS__) {

@@ -11,9 +11,9 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         // @ts-ignore
         if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
             // console.log(`[Tauri] Invoking ${command}`, args); 
-            if (command === 'get_logo') {
-                console.log(`[Tauri] get_logo called with token:`, args?.token ? 'YES (Hidden)' : 'NO');
-            }
+            // if (command === 'get_logo') {
+            //    console.log(`[Tauri] get_logo called with token:`, args?.token ? 'YES (Hidden)' : 'NO');
+            // }
             return await invoke(command, args);
         }
 
@@ -189,6 +189,33 @@ export interface AuthSettings {
     allow_registration: boolean;
 }
 
+export interface Role {
+    id: string;
+    name: string;
+    description: string | null;
+    is_system: boolean;
+    permissions?: string[]; // Simplified list of "resource:action" strings
+}
+
+export interface Permission {
+    id: string;
+    resource: string;
+    action: string;
+    description: string | null;
+}
+
+export interface TeamMember {
+    id: string;
+    user_id: string;
+    name: string;
+    email: string;
+    role: string;
+    role_id: string | null;
+    role_name: string | null;
+    is_active: boolean;
+    created_at: string;
+}
+
 // Auth API
 export const auth = {
     register: (email: string, password: string, name: string): Promise<AuthResponse> =>
@@ -249,6 +276,42 @@ export const users = {
         safeInvoke('delete_user', { token: getTokenOrThrow(), id }),
 };
 
+// Roles API
+export const roles = {
+    list: (): Promise<Role[]> =>
+        safeInvoke('get_roles', { token: getTokenOrThrow() }),
+
+    getPermissions: (): Promise<Permission[]> =>
+        safeInvoke('get_permissions', { token: getTokenOrThrow() }),
+
+    get: (id: string): Promise<Role | null> =>
+        safeInvoke('get_role', { token: getTokenOrThrow(), roleId: id }),
+
+    create: (name: string, description: string | undefined, permissions: string[]): Promise<Role> =>
+        safeInvoke('create_new_role', { token: getTokenOrThrow(), name, description, permissions }),
+
+    update: (id: string, name?: string, description?: string, permissions?: string[]): Promise<Role> =>
+        safeInvoke('update_existing_role', { token: getTokenOrThrow(), roleId: id, name, description, permissions }),
+
+    delete: (id: string): Promise<boolean> =>
+        safeInvoke('delete_existing_role', { token: getTokenOrThrow(), roleId: id }),
+};
+
+// Team API
+export const team = {
+    list: (): Promise<TeamMember[]> =>
+        safeInvoke('list_team_members', { token: getTokenOrThrow() }),
+
+    add: (email: string, name: string, roleId: string, password?: string): Promise<TeamMember> =>
+        safeInvoke('add_team_member', { token: getTokenOrThrow(), email, name, roleId, password }),
+
+    updateRole: (memberId: string, roleId: string): Promise<void> =>
+        safeInvoke('update_team_member_role', { token: getTokenOrThrow(), memberId, roleId }),
+
+    remove: (memberId: string): Promise<void> =>
+        safeInvoke('remove_team_member', { token: getTokenOrThrow(), memberId }),
+};
+
 // Super Admin API
 export const superadmin = {
     listTenants: (): Promise<{ data: any[], total: number }> =>
@@ -256,7 +319,7 @@ export const superadmin = {
 
     createTenant: (name: string, slug: string, ownerEmail: string, ownerPassword: string): Promise<any> =>
         safeInvoke('create_tenant', { token: getTokenOrThrow(), name, slug, owner_email: ownerEmail, owner_password: ownerPassword }),
-        
+
     deleteTenant: (id: string): Promise<void> =>
         safeInvoke('delete_tenant', { token: getTokenOrThrow(), id }),
 };
@@ -332,6 +395,8 @@ export const install = {
 export const api = {
     auth,
     users,
+    roles,
+    team,
     superadmin,
     settings,
     install,

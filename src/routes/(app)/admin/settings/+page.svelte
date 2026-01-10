@@ -200,6 +200,70 @@
         localSettings = { ...localSettings };
     }
 
+    // Compress and resize image to optimize for logo usage
+    async function compressImage(
+        file: File,
+        maxWidth: number = 256,
+        maxHeight: number = 256,
+        quality: number = 0.9,
+    ): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const img = new window.Image();
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                img.onload = () => {
+                    // Calculate new dimensions while preserving aspect ratio
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxWidth) {
+                        height = (height * maxWidth) / width;
+                        width = maxWidth;
+                    }
+                    if (height > maxHeight) {
+                        width = (width * maxHeight) / height;
+                        height = maxHeight;
+                    }
+
+                    // Create canvas and draw resized image
+                    const canvas = document.createElement("canvas");
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+
+                    if (!ctx) {
+                        reject(new Error("Failed to get canvas context"));
+                        return;
+                    }
+
+                    // Use high quality rendering
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = "high";
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Export as PNG (or JPEG for photos)
+                    const compressedBase64 = canvas.toDataURL(
+                        "image/png",
+                        quality,
+                    );
+
+                    console.log(
+                        `[Compress] Original: ${file.size} bytes, Resized to: ${width}x${height}`,
+                    );
+
+                    resolve(compressedBase64);
+                };
+
+                img.onerror = () => reject(new Error("Failed to load image"));
+                img.src = e.target?.result as string;
+            };
+
+            reader.onerror = () => reject(new Error("Failed to read file"));
+            reader.readAsDataURL(file);
+        });
+    }
+
     async function handleFileUpload(e: Event) {
         const input = e.target as HTMLInputElement;
         if (!input.files || input.files.length === 0) return;
@@ -209,46 +273,37 @@
             `[Upload] File selected: ${file.name}, Size: ${file.size} bytes`,
         );
 
-        if (file.size > 2 * 1024 * 1024) {
-            showMessage("error", "File size too large (Max 2MB)");
+        if (file.size > 5 * 1024 * 1024) {
+            showMessage("error", "File size too large (Max 5MB)");
             return;
         }
 
-        const reader = new FileReader();
+        try {
+            // Compress and resize image before upload
+            const compressedBase64 = await compressImage(file, 256, 256);
+            logoBase64 = compressedBase64;
 
-        reader.onload = async () => {
-            try {
-                const result = reader.result as string;
-                logoBase64 = result;
+            // Extract base64 data (remove data:image/png;base64, prefix)
+            const base64Data = compressedBase64.split(",")[1];
 
-                const base64 = result.split(",")[1];
+            console.log(`[Upload] Sending compressed image to backend...`);
 
-                console.log(`[Upload] Sending to backend...`);
+            const path = await api.settings.uploadLogo(base64Data);
+            console.log(`[Upload] Success! Path: ${path}`);
 
-                const path = await api.settings.uploadLogo(base64);
-                console.log(`[Upload] Success! Path: ${path}`);
+            localSettings["app_logo_path"] = path;
+            localSettings = { ...localSettings };
 
-                localSettings["app_logo_path"] = path;
-                localSettings = { ...localSettings };
+            hasChanges = true;
 
-                hasChanges = true;
+            appSettings.updateSetting("app_logo_path", path);
+            appLogo.set(compressedBase64); // Update global logo store
 
-                appSettings.updateSetting("app_logo_path", path);
-                appLogo.set(result); // Update global logo store (Base64)
-
-                showMessage("success", "Logo uploaded");
-            } catch (error) {
-                console.error("[Upload] Error:", error);
-                showMessage("error", "Failed to upload logo: " + String(error));
-            }
-        };
-
-        reader.onerror = (err) => {
-            console.error("[Upload] Reader error:", err);
-            showMessage("error", "Failed to read file");
-        };
-
-        reader.readAsDataURL(file);
+            showMessage("success", "Logo uploaded and optimized");
+        } catch (error) {
+            console.error("[Upload] Error:", error);
+            showMessage("error", "Failed to upload logo: " + String(error));
+        }
     }
 
     async function saveChanges() {

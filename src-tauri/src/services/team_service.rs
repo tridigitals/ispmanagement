@@ -1,0 +1,207 @@
+//! Team Service for managing tenant members
+
+use crate::db::DbPool;
+use crate::models::{TeamMemberWithUser, User};
+use crate::services::AuthService;
+use chrono::Utc;
+use uuid::Uuid;
+
+#[derive(Clone)]
+pub struct TeamService {
+    pool: DbPool,
+    auth_service: AuthService,
+}
+
+impl TeamService {
+    pub fn new(pool: DbPool, auth_service: AuthService) -> Self {
+        Self { pool, auth_service }
+    }
+
+    /// List all members of a team
+    pub async fn list_members(&self, tenant_id: &str) -> Result<Vec<TeamMemberWithUser>, sqlx::Error> {
+        #[cfg(feature = "postgres")]
+        let query = r#"
+            SELECT 
+                tm.id, 
+                tm.user_id, 
+                u.name, 
+                u.email, 
+                tm.role,
+                tm.role_id,
+                r.name as role_name,
+                u.is_active, 
+                tm.created_at
+            FROM tenant_members tm
+            JOIN users u ON tm.user_id = u.id
+            LEFT JOIN roles r ON tm.role_id = r.id
+            WHERE tm.tenant_id = $1
+            ORDER BY u.name
+        "#;
+        
+        #[cfg(feature = "sqlite")]
+        let query = r#"
+            SELECT 
+                tm.id, 
+                tm.user_id, 
+                u.name, 
+                u.email, 
+                tm.role,
+                tm.role_id,
+                r.name as role_name,
+                u.is_active, 
+                tm.created_at
+            FROM tenant_members tm
+            JOIN users u ON tm.user_id = u.id
+            LEFT JOIN roles r ON tm.role_id = r.id
+            WHERE tm.tenant_id = ?
+            ORDER BY u.name
+        "#;
+
+        sqlx::query_as::<_, TeamMemberWithUser>(query)
+            .bind(tenant_id)
+            .fetch_all(&self.pool)
+            .await
+    }
+
+    /// Add a new member (create user if needed, or link existing)
+    pub async fn add_member(
+        &self, 
+        tenant_id: &str, 
+        email: &str, 
+        name: &str, 
+        role_id: &str,
+        password: Option<String>
+    ) -> Result<TeamMemberWithUser, String> {
+        // 1. Check if user exists
+        let existing_user: Option<User> = sqlx::query_as("SELECT * FROM users WHERE email = $1")
+            .bind(email)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let user_id = if let Some(user) = existing_user {
+            // User exists, just link them
+            user.id
+        } else {
+            // User doesn't exist, create them
+            let password_str = password.unwrap_or_else(|| Uuid::new_v4().to_string());
+            let hash = AuthService::hash_password(&password_str).map_err(|e| e.to_string())?;
+            let now = Utc::now();
+            let new_id = Uuid::new_v4().to_string();
+            
+            let query = "INSERT INTO users (id, email, name, password_hash, role, is_active, failed_login_attempts, created_at, updated_at) VALUES ($1, $2, $3, $4, 'user', true, 0, $5, $6)";
+            
+            #[cfg(feature = "postgres")]
+            sqlx::query(query)
+                .bind(&new_id)
+                .bind(email)
+                .bind(name)
+                .bind(hash)
+                .bind(now)
+                .bind(now)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| e.to_string())?;
+                
+            #[cfg(feature = "sqlite")]
+            sqlx::query(query)
+                .bind(&new_id)
+                .bind(email)
+                .bind(name)
+                .bind(hash)
+                .bind(now.to_rfc3339())
+                .bind(now.to_rfc3339())
+                .execute(&self.pool)
+                .await
+                .map_err(|e| e.to_string())?;
+
+            // TODO: Send welcome email with password reset link
+            
+            new_id
+        };
+
+        // 2. Get role details
+        let role_name: String = sqlx::query_scalar("SELECT name FROM roles WHERE id = $1")
+            .bind(role_id)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|_| "Role not found".to_string())?;
+
+        // 3. Add to tenant_members
+        let member_id = Uuid::new_v4().to_string();
+        let now = Utc::now();
+        
+        let query = "INSERT INTO tenant_members (id, tenant_id, user_id, role, role_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)";
+        
+        #[cfg(feature = "postgres")]
+        sqlx::query(query)
+            .bind(&member_id)
+            .bind(tenant_id)
+            .bind(&user_id)
+            .bind(&role_name) // Fallback string role
+            .bind(role_id)
+            .bind(now)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+            
+        #[cfg(feature = "sqlite")]
+        sqlx::query(query)
+            .bind(&member_id)
+            .bind(tenant_id)
+            .bind(&user_id)
+            .bind(&role_name)
+            .bind(role_id)
+            .bind(now.to_rfc3339())
+            .execute(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        // Return the created member
+        Ok(TeamMemberWithUser {
+            id: member_id,
+            user_id,
+            name: name.to_string(),
+            email: email.to_string(),
+            role: role_name.clone(),
+            role_id: Some(role_id.to_string()),
+            role_name: Some(role_name),
+            is_active: true,
+            created_at: now,
+        })
+    }
+
+    /// Update member role
+    pub async fn update_member(&self, member_id: &str, role_id: &str) -> Result<(), String> {
+        let role_name: String = sqlx::query_scalar("SELECT name FROM roles WHERE id = $1")
+            .bind(role_id)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|_| "Role not found".to_string())?;
+
+        let query = "UPDATE tenant_members SET role = $1, role_id = $2 WHERE id = $3";
+        
+        sqlx::query(query)
+            .bind(role_name)
+            .bind(role_id)
+            .bind(member_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+            
+        Ok(())
+    }
+
+    /// Remove member
+    pub async fn remove_member(&self, member_id: &str) -> Result<(), String> {
+        let query = "DELETE FROM tenant_members WHERE id = $1";
+        
+        sqlx::query(query)
+            .bind(member_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+            
+        Ok(())
+    }
+}

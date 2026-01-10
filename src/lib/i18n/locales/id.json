@@ -41,6 +41,8 @@
         "dashboard": "Dasbor",
         "overview": "Ringkasan",
         "users": "Pengguna",
+        "team": "Tim",
+        "roles": "Peran",
         "settings": "Pengaturan",
         "user_view": "Tampilan Pengguna",
         "admin_panel": "Panel Admin",
@@ -198,6 +200,21 @@
                 "placeholder": "Masukkan alamat email",
                 "button": "Kirim Email Tes",
                 "sending": "Mengirim..."
+            }
+        },
+        "team": {
+            "title": "Anggota Tim",
+            "invite_button": "Tambah Anggota",
+            "add_member_modal_title": "Tambah Anggota Tim",
+            "name_label": "Nama",
+            "email_label": "Email",
+            "password_label": "Kata Sandi (Opsional)",
+            "role_label": "Peran",
+            "cancel": "Batal",
+            "submit": "Tambah Anggota",
+            "empty": {
+                "title": "Belum Ada Anggota Tim",
+                "description": "Tambahkan rekan kerja Anda untuk berkolaborasi di ruang kerja ini."
             }
         }
     }

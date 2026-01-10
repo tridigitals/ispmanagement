@@ -1,26 +1,28 @@
 <script>
-    import Sidebar from '$lib/components/Sidebar.svelte';
-    import Topbar from '$lib/components/Topbar.svelte';
-    import { isAuthenticated } from '$lib/stores/auth';
-    import { goto } from '$app/navigation';
-    import { onMount } from 'svelte';
+    import Sidebar from "$lib/components/Sidebar.svelte";
+    import Topbar from "$lib/components/Topbar.svelte";
+    import { isAuthenticated } from "$lib/stores/auth";
+    import { goto } from "$app/navigation";
+    import { onMount } from "svelte";
+    import Toast from "$lib/components/Toast.svelte";
 
     // Reactive Auth Guard
     $: if (!$isAuthenticated) {
-        goto('/login');
+        goto("/login");
     }
 
     onMount(() => {
         if (!$isAuthenticated) {
-            goto('/login');
+            goto("/login");
         }
     });
 </script>
 
 <div class="app-shell">
+    <Toast />
     <!-- Sidebar sits on the base layer -->
     <Sidebar />
-    
+
     <!-- Main Area is a floating card -->
     <div class="main-viewport">
         <div class="content-surface">

@@ -25,7 +25,7 @@ function createLogoStore() {
     const { subscribe, set } = writable<string | null>(getStoredLogo());
 
     const updateWindowIcon = async (base64String: string) => {
-        console.log(`[LogoStore] updateWindowIcon called. Data length: ${base64String.length}`);
+
 
         if (typeof window === 'undefined') return;
 
@@ -75,16 +75,16 @@ function createLogoStore() {
             }
         },
         refresh: async (token?: string) => {
-            console.log(`[LogoStore] Refreshing logo. Token provided: ${!!token}`);
+
             try {
                 const logo = await api.settings.getLogo(token);
                 if (logo) {
-                    console.log(`[LogoStore] Logo received from backend. Data prefix: ${logo.substring(0, 30)}...`);
+
                     set(logo);
                     saveLogoToStorage(logo);
                     updateWindowIcon(logo);
                 } else {
-                    console.log(`[LogoStore] No logo returned from backend (null response)`);
+
                 }
             } catch (err) {
                 console.error("[LogoStore] Failed to load logo:", err);

@@ -1,32 +1,41 @@
 <script lang="ts">
-    import { page } from '$app/stores';
-    import { user, isAdmin, isSuperAdmin, logout } from '$lib/stores/auth';
-    import { appName } from '$lib/stores/settings';
-    import { appLogo } from '$lib/stores/logo';
-    import { isSidebarCollapsed } from '$lib/stores/ui';
-    import { goto } from '$app/navigation';
-    import { t } from 'svelte-i18n';
-    import { convertFileSrc } from '@tauri-apps/api/core';
-    import Icon from './Icon.svelte';
+    import { page } from "$app/stores";
+    import { user, isAdmin, isSuperAdmin, logout } from "$lib/stores/auth";
+    import { appName } from "$lib/stores/settings";
+    import { appLogo } from "$lib/stores/logo";
+    import { isSidebarCollapsed } from "$lib/stores/ui";
+    import { goto } from "$app/navigation";
+    import { t } from "svelte-i18n";
+    import { convertFileSrc } from "@tauri-apps/api/core";
+    import Icon from "./Icon.svelte";
 
     $: appMenu = [
-        { label: $t('sidebar.dashboard'), icon: 'dashboard', href: '/dashboard' }
+        {
+            label: $t("sidebar.dashboard"),
+            icon: "dashboard",
+            href: "/dashboard",
+        },
     ];
 
     $: adminMenu = [
-        { label: $t('sidebar.overview'), icon: 'shield', href: '/admin' },
-        { label: $t('sidebar.users'), icon: 'users', href: '/admin/users' },
-        { label: $t('sidebar.settings'), icon: 'settings', href: '/admin/settings' }
+        { label: $t("sidebar.overview"), icon: "shield", href: "/admin" },
+        { label: $t("sidebar.team"), icon: "users", href: "/admin/team" },
+        { label: $t("sidebar.roles"), icon: "lock", href: "/admin/roles" },
+        {
+            label: $t("sidebar.settings"),
+            icon: "settings",
+            href: "/admin/settings",
+        },
     ];
 
     let isDropdownOpen = false;
 
-    $: isUrlAdmin = $page.url.pathname.startsWith('/admin');
+    $: isUrlAdmin = $page.url.pathname.startsWith("/admin");
     $: currentMenu = isUrlAdmin ? adminMenu : appMenu;
 
     function handleLogout() {
         logout();
-        goto('/login');
+        goto("/login");
     }
 
     function navigate(href: string) {
@@ -82,9 +91,9 @@
     <!-- Footer / Profile -->
     <div class="sidebar-footer">
         {#if $isSuperAdmin}
-            <button 
-                class="context-btn super-admin" 
-                on:click={() => goto('/superadmin')}
+            <button
+                class="context-btn super-admin"
+                on:click={() => goto("/superadmin")}
                 title="Super Admin Dashboard"
             >
                 <Icon name="server" size={16} />
@@ -93,33 +102,44 @@
         {/if}
 
         {#if $isAdmin}
-            <button 
-                class="context-btn" 
-                on:click={() => goto(isUrlAdmin ? '/dashboard' : '/admin')}
-                title={isUrlAdmin ? "Switch to User Dashboard" : "Switch to Admin Panel"}
+            <button
+                class="context-btn"
+                on:click={() => goto(isUrlAdmin ? "/dashboard" : "/admin")}
+                title={isUrlAdmin
+                    ? "Switch to User Dashboard"
+                    : "Switch to Admin Panel"}
             >
-                <Icon name={isUrlAdmin ? 'arrow-left' : 'shield'} size={16} />
-                <span class="label">{isUrlAdmin ? $t('sidebar.user_view') : $t('sidebar.admin_panel')}</span>
+                <Icon name={isUrlAdmin ? "arrow-left" : "shield"} size={16} />
+                <span class="label"
+                    >{isUrlAdmin
+                        ? $t("sidebar.user_view")
+                        : $t("sidebar.admin_panel")}</span
+                >
             </button>
         {/if}
 
         <div class="profile-section">
             {#if isDropdownOpen}
                 <div class="dropdown-menu" on:click|stopPropagation>
-                    <button class="menu-item" on:click={() => navigate('/profile')}>
+                    <button
+                        class="menu-item"
+                        on:click={() => navigate("/profile")}
+                    >
                         <Icon name="profile" size={16} />
-                        {$t('sidebar.profile')}
+                        {$t("sidebar.profile")}
                     </button>
                     <div class="divider"></div>
                     <button class="menu-item danger" on:click={handleLogout}>
                         <Icon name="logout" size={16} />
-                        {$t('sidebar.logout')}
+                        {$t("sidebar.logout")}
                     </button>
                 </div>
             {/if}
 
             <button class="profile-btn" on:click={toggleDropdown}>
-                <div class="avatar">{$user?.name?.charAt(0).toUpperCase() || "?"}</div>
+                <div class="avatar">
+                    {$user?.name?.charAt(0).toUpperCase() || "?"}
+                </div>
                 <div class="user-meta">
                     <span class="name">{$user?.name}</span>
                     <span class="role">{$user?.role}</span>
@@ -165,11 +185,18 @@
         justify-content: center;
     }
 
-    .app-logo { width: 24px; height: 24px; object-fit: contain; }
-    
+    .app-logo {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+    }
+
     .logo-placeholder {
-        width: 24px; height: 24px;
-        display: flex; align-items: center; justify-content: center;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         background: var(--color-primary);
         color: white;
         border-radius: 6px;
@@ -181,7 +208,9 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        transition: opacity 0.2s, width 0.2s;
+        transition:
+            opacity 0.2s,
+            width 0.2s;
     }
 
     .sidebar.collapsed .app-name {
@@ -264,21 +293,25 @@
     .sidebar.collapsed .context-btn .label {
         display: none;
     }
-    
+
     .context-btn:hover {
         border-color: var(--color-primary);
     }
 
     .context-btn.super-admin {
         color: white;
-        background: linear-gradient(135deg, #4f46e5, #ec4899); /* Indigo to Pink */
+        background: linear-gradient(
+            135deg,
+            #4f46e5,
+            #ec4899
+        ); /* Indigo to Pink */
         border: none;
     }
 
     .context-btn.super-admin:hover {
         filter: brightness(1.1);
         transform: translateY(-1px);
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     }
 
     .profile-section {
@@ -312,11 +345,14 @@
     }
 
     .avatar {
-        width: 28px; height: 28px;
+        width: 28px;
+        height: 28px;
         border-radius: 6px;
         background: var(--bg-active);
         color: var(--text-primary);
-        display: flex; align-items: center; justify-content: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         font-size: 0.8rem;
         font-weight: 700;
         flex-shrink: 0;
@@ -330,14 +366,23 @@
         overflow: hidden;
     }
 
-    .name { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); }
-    .role { font-size: 0.7rem; color: var(--text-secondary); text-transform: capitalize; }
+    .name {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    .role {
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+        text-transform: capitalize;
+    }
 
     /* Dropdown */
     .dropdown-menu {
         position: absolute;
         bottom: 100%;
-        left: 0; right: 0;
+        left: 0;
+        right: 0;
         margin-bottom: 8px;
         background: var(--bg-surface);
         border: 1px solid var(--border-color);
@@ -360,9 +405,12 @@
     }
 
     .menu-item {
-        display: flex; align-items: center; gap: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
         padding: 8px 12px;
-        border: none; background: transparent;
+        border: none;
+        background: transparent;
         color: var(--text-secondary);
         font-size: 0.9rem;
         border-radius: var(--radius-sm);
@@ -370,12 +418,28 @@
         text-align: left;
     }
 
-    .menu-item:hover { background: var(--bg-hover); color: var(--text-primary); }
-    .menu-item.danger:hover { color: var(--color-danger); background: rgba(239, 68, 68, 0.1); }
-    .divider { height: 1px; background: var(--border-color); margin: 4px 0; }
+    .menu-item:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+    }
+    .menu-item.danger:hover {
+        color: var(--color-danger);
+        background: rgba(239, 68, 68, 0.1);
+    }
+    .divider {
+        height: 1px;
+        background: var(--border-color);
+        margin: 4px 0;
+    }
 
     @keyframes slideUp {
-        from { opacity: 0; transform: translateY(5px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(5px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 </style>

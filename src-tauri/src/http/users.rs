@@ -1,6 +1,6 @@
 use axum::{
     extract::{Path, Query, State},
-    http::{StatusCode, HeaderMap},
+    http::HeaderMap,
     Json,
 };
 use serde::{Deserialize, Serialize};
