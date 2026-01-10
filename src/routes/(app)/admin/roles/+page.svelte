@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { isAdmin } from "$lib/stores/auth";
+    import { isAdmin, checkAuth } from "$lib/stores/auth";
     import { api } from "$lib/api/client";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
@@ -113,6 +113,8 @@
             }
 
             await loadData();
+            // Refresh current user's permissions in case their role was modified
+            await checkAuth();
             showModal = false;
         } catch (e: any) {
             alert("Failed to save role: " + e.message);
@@ -131,6 +133,8 @@
         try {
             await api.roles.delete(role.id);
             roles = roles.filter((r) => r.id !== role.id);
+            // Refresh current user's permissions
+            await checkAuth();
         } catch (e: any) {
             alert("Failed to delete role: " + e.message);
         }

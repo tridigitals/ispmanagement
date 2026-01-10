@@ -2,14 +2,18 @@
     import "$lib/styles/global.css";
     import "../lib/i18n"; // Init i18n
     import { waitLocale } from "svelte-i18n";
-    import { checkAuth } from "$lib/stores/auth";
+    import { checkAuth, isAuthenticated } from "$lib/stores/auth";
     import { appSettings } from "$lib/stores/settings";
     import { appLogo } from "$lib/stores/logo";
     import { theme } from "$lib/stores/theme";
     import { install } from "$lib/api/client";
-    import { onMount } from "svelte";
+    import { onMount, onDestroy } from "svelte";
     import { goto } from "$app/navigation";
     import { page } from "$app/stores";
+    import {
+        connectWebSocket,
+        disconnectWebSocket,
+    } from "$lib/stores/websocket";
 
     let loading = true;
 
@@ -46,6 +50,11 @@
                     goto("/login");
                 }
                 await checkAuth();
+
+                // Connect to WebSocket for real-time updates (only if authenticated)
+                if ($isAuthenticated) {
+                    connectWebSocket();
+                }
             }
         } catch (e) {
             console.error(
@@ -57,6 +66,11 @@
         } finally {
             loading = false;
         }
+    });
+
+    // Disconnect WebSocket when app unloads
+    onDestroy(() => {
+        disconnectWebSocket();
     });
 </script>
 

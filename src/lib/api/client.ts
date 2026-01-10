@@ -54,6 +54,18 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             'delete_setting': { method: 'DELETE', path: '/settings/:key' },
             'upload_logo': { method: 'POST', path: '/settings/logo' },
             'send_test_email': { method: 'POST', path: '/settings/test-email' },
+            // Team
+            'list_team_members': { method: 'GET', path: '/team' },
+            'add_team_member': { method: 'POST', path: '/team' },
+            'update_team_member_role': { method: 'PUT', path: '/team/:id' },
+            'remove_team_member': { method: 'DELETE', path: '/team/:id' },
+            // Roles
+            'get_roles': { method: 'GET', path: '/roles' },
+            'get_role': { method: 'GET', path: '/roles/:id' },
+            'create_new_role': { method: 'POST', path: '/roles' },
+            'update_existing_role': { method: 'PUT', path: '/roles/:id' },
+            'delete_existing_role': { method: 'DELETE', path: '/roles/:id' },
+            'get_permissions': { method: 'GET', path: '/permissions' },
         };
 
         let route = commandMap[command];
@@ -287,16 +299,16 @@ export const roles = {
         safeInvoke('get_permissions', { token: getTokenOrThrow() }),
 
     get: (id: string): Promise<Role | null> =>
-        safeInvoke('get_role', { token: getTokenOrThrow(), roleId: id }),
+        safeInvoke('get_role', { token: getTokenOrThrow(), id, roleId: id }),
 
     create: (name: string, description: string | undefined, permissions: string[]): Promise<Role> =>
         safeInvoke('create_new_role', { token: getTokenOrThrow(), name, description, permissions }),
 
     update: (id: string, name?: string, description?: string, permissions?: string[]): Promise<Role> =>
-        safeInvoke('update_existing_role', { token: getTokenOrThrow(), roleId: id, name, description, permissions }),
+        safeInvoke('update_existing_role', { token: getTokenOrThrow(), id, roleId: id, name, description, permissions }),
 
     delete: (id: string): Promise<boolean> =>
-        safeInvoke('delete_existing_role', { token: getTokenOrThrow(), roleId: id }),
+        safeInvoke('delete_existing_role', { token: getTokenOrThrow(), id, roleId: id }),
 };
 
 // Team API

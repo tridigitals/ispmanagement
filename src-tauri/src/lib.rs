@@ -111,6 +111,9 @@ pub fn run() {
                     let auth_service = AuthService::new(pool.clone(), jwt_secret, email_service.clone());
                     let user_service = UserService::new(pool.clone());
                     let team_service = TeamService::new(pool.clone(), auth_service.clone());
+                    
+                    // Create WebSocket hub for real-time sync (shared between HTTP and Tauri)
+                    let ws_hub = std::sync::Arc::new(http::WsHub::new());
 
                     // Manage state
                     app_handle.manage(auth_service.clone());
@@ -118,12 +121,13 @@ pub fn run() {
                     app_handle.manage(settings_service.clone());
                     app_handle.manage(email_service.clone());
                     app_handle.manage(team_service.clone());
+                    app_handle.manage(ws_hub.clone());
                     info!("Services added to Tauri state.");
 
                     // Start HTTP Server
                     let app_dir = app_data_dir.clone();
                     tauri::async_runtime::spawn(async move {
-                        http::start_server(auth_service, user_service, settings_service, email_service, app_dir, 3000).await;
+                        http::start_server(auth_service, user_service, settings_service, email_service, team_service, ws_hub, app_dir, 3000).await;
                     });
 
                     info!("Services initialized successfully");

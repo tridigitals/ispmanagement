@@ -1,8 +1,10 @@
 //! RBAC (Roles and Permissions) commands
 
 use tauri::State;
+use std::sync::Arc;
 use crate::services::{AuthService, list_roles, list_permissions, create_role, update_role, delete_role, get_role_by_id};
 use crate::models::{RoleWithPermissions, Permission, CreateRoleDto, UpdateRoleDto};
+use crate::http::{WsHub, websocket::WsEvent};
 
 /// List all roles (global + tenant-specific)
 #[tauri::command]
@@ -28,7 +30,6 @@ pub async fn get_permissions(
     token: String,
     auth: State<'_, AuthService>,
 ) -> Result<Vec<Permission>, String> {
-    // Validate token
     auth.validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
@@ -62,15 +63,15 @@ pub async fn create_new_role(
     description: Option<String>,
     permissions: Vec<String>,
     auth: State<'_, AuthService>,
+    ws_hub: State<'_, Arc<WsHub>>,
 ) -> Result<RoleWithPermissions, String> {
     let claims = auth.validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
     
-    // Check if user has permission to create roles
-    // TODO: Implement permission check
-    
     let tenant_id = claims.tenant_id.as_deref();
+    
+    // TODO: Implement permission check
     
     let dto = CreateRoleDto {
         name,
@@ -78,9 +79,14 @@ pub async fn create_new_role(
         permissions,
     };
     
-    create_role(&auth.pool, tenant_id, dto)
+    let role = create_role(&auth.pool, tenant_id, dto)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    
+    // Broadcast role created event
+    ws_hub.broadcast(WsEvent::RoleCreated { role_id: role.id.clone() });
+    
+    Ok(role)
 }
 
 /// Update an existing role
@@ -92,6 +98,7 @@ pub async fn update_existing_role(
     description: Option<String>,
     permissions: Option<Vec<String>>,
     auth: State<'_, AuthService>,
+    ws_hub: State<'_, Arc<WsHub>>,
 ) -> Result<RoleWithPermissions, String> {
     auth.validate_token(&token)
         .await
@@ -105,9 +112,14 @@ pub async fn update_existing_role(
         permissions,
     };
     
-    update_role(&auth.pool, &role_id, dto)
+    let role = update_role(&auth.pool, &role_id, dto)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    
+    // Broadcast role updated event
+    ws_hub.broadcast(WsEvent::RoleUpdated { role_id: role.id.clone() });
+    
+    Ok(role)
 }
 
 /// Delete a role
@@ -116,6 +128,7 @@ pub async fn delete_existing_role(
     token: String,
     role_id: String,
     auth: State<'_, AuthService>,
+    ws_hub: State<'_, Arc<WsHub>>,
 ) -> Result<bool, String> {
     auth.validate_token(&token)
         .await
@@ -123,7 +136,14 @@ pub async fn delete_existing_role(
     
     // TODO: Implement permission check
     
-    delete_role(&auth.pool, &role_id)
+    let deleted = delete_role(&auth.pool, &role_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    
+    // Broadcast role deleted event
+    if deleted {
+        ws_hub.broadcast(WsEvent::RoleDeleted { role_id });
+    }
+    
+    Ok(deleted)
 }

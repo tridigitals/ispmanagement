@@ -1,10 +1,10 @@
 use axum::{
-    routing::{get, post, delete},
+    routing::{get, post, delete, put},
     Router,
 };
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
-use crate::services::{AuthService, UserService, SettingsService, EmailService};
+use crate::services::{AuthService, UserService, SettingsService, EmailService, TeamService};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::{info, warn};
@@ -17,6 +17,11 @@ pub mod install;
 pub mod settings;
 pub mod users;
 pub mod superadmin;
+pub mod team;
+pub mod roles;
+pub mod websocket;
+
+pub use websocket::WsHub;
 
 // App State to share services with Axum handlers
 #[derive(Clone)]
@@ -25,6 +30,8 @@ pub struct AppState {
     pub user_service: Arc<UserService>,
     pub settings_service: Arc<SettingsService>,
     pub email_service: Arc<EmailService>,
+    pub team_service: Arc<TeamService>,
+    pub ws_hub: Arc<WsHub>,
     pub app_data_dir: PathBuf,
 }
 
@@ -33,16 +40,18 @@ pub async fn start_server(
     user_service: UserService,
     settings_service: SettingsService,
     email_service: EmailService,
+    team_service: TeamService,
+    ws_hub: Arc<WsHub>,
     app_data_dir: PathBuf,
     default_port: u16,
 ) {
-    // .env is already loaded in lib.rs from root folder
-
     let state = AppState {
         auth_service: Arc::new(auth_service),
         user_service: Arc::new(user_service),
         settings_service: Arc::new(settings_service),
         email_service: Arc::new(email_service),
+        team_service: Arc::new(team_service),
+        ws_hub,
         app_data_dir,
     };
 
@@ -123,6 +132,18 @@ pub async fn start_server(
                 .route("/api/settings/{key}", get(settings::get_setting).delete(settings::delete_setting))
 
                 .route("/api/settings/{key}/value", get(settings::get_setting_value))
+
+                // Team Routes
+                .route("/api/team", get(team::list_team_members).post(team::add_team_member))
+                .route("/api/team/{id}", put(team::update_team_member).delete(team::remove_team_member))
+
+                // Roles Routes
+                .route("/api/roles", get(roles::get_roles).post(roles::create_new_role))
+                .route("/api/roles/{id}", get(roles::get_role).put(roles::update_existing_role).delete(roles::delete_existing_role))
+                .route("/api/permissions", get(roles::get_permissions))
+
+                // WebSocket Route
+                .route("/api/ws", get(websocket::ws_handler))
 
                 .layer(cors)
 

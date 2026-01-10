@@ -11,6 +11,9 @@ import { appLogo } from './logo';
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';
 
+// Auth version counter - increments on each refresh to force reactivity
+export const authVersion = writable(0);
+
 // Get stored values (check local then session)
 function getStoredToken(): string | null {
     if (typeof window === 'undefined') return null;
@@ -154,9 +157,19 @@ export async function checkAuth(): Promise<boolean> {
             return false;
         }
 
-        // Refresh user data
+        // Refresh user data from backend
         const currentUser = await auth.getCurrentUser(currentToken);
         user.set(currentUser);
+
+        // Increment auth version to force reactive components to re-render
+        authVersion.update(v => v + 1);
+
+        // Also update storage so Sidebar gets fresh data
+        const storage = localStorage.getItem(TOKEN_KEY) ? localStorage : sessionStorage;
+        if (currentUser) {
+            storage.setItem(USER_KEY, JSON.stringify(currentUser));
+        }
+
         return true;
     } catch (e) {
         console.warn('[Auth] checkAuth failed (user likely session expired):', e);
