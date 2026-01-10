@@ -1,13 +1,12 @@
 <script lang="ts">
-    import { isAuthenticated, isAdmin } from "$lib/stores/auth";
-    import { users, settings } from "$lib/api/client";
+    import { isAuthenticated, isAdmin, can } from "$lib/stores/auth";
+    import { team, settings } from "$lib/api/client";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
 
     let stats = {
-        users: 0,
+        members: 0,
         settings: 0,
-        active: 0
     };
     let loading = true;
 
@@ -22,14 +21,13 @@
         }
 
         try {
-            const [usersRes, settingsRes] = await Promise.all([
-                users.list(1, 1), // Minimal fetch for count
+            const [membersRes, settingsRes] = await Promise.all([
+                team.list(),
                 settings.getAll(),
             ]);
-            
-            stats.users = usersRes.total;
+
+            stats.members = membersRes.length;
             stats.settings = settingsRes.length;
-            stats.active = usersRes.total; // Rough approx for now
         } catch (err) {
             console.error("Failed to load admin stats:", err);
         } finally {
@@ -46,8 +44,8 @@
             <div class="stat-card">
                 <div class="stat-icon">👥</div>
                 <div class="stat-content">
-                    <span class="stat-value">{stats.users}</span>
-                    <span class="stat-label">Total Users</span>
+                    <span class="stat-value">{stats.members}</span>
+                    <span class="stat-label">Team Members</span>
                 </div>
             </div>
             <div class="stat-card">
@@ -71,17 +69,38 @@
         </div>
 
         <div class="actions-grid">
-            <button class="action-card" on:click={() => goto('/admin/users')}>
-                <div class="action-icon">👥</div>
-                <h3>Manage Users</h3>
-                <p>View, edit, and create system users.</p>
-            </button>
+            {#if $can("read", "team")}
+                <button
+                    class="action-card"
+                    on:click={() => goto("/admin/team")}
+                >
+                    <div class="action-icon">👥</div>
+                    <h3>Manage Team</h3>
+                    <p>View, edit, and invite team members.</p>
+                </button>
+            {/if}
 
-            <button class="action-card" on:click={() => goto('/admin/settings')}>
-                <div class="action-icon">⚙️</div>
-                <h3>Global Settings</h3>
-                <p>Configure application policies and defaults.</p>
-            </button>
+            {#if $can("read", "roles")}
+                <button
+                    class="action-card"
+                    on:click={() => goto("/admin/roles")}
+                >
+                    <div class="action-icon">🔐</div>
+                    <h3>Roles & Permissions</h3>
+                    <p>Manage roles and access control.</p>
+                </button>
+            {/if}
+
+            {#if $can("read", "settings")}
+                <button
+                    class="action-card"
+                    on:click={() => goto("/admin/settings")}
+                >
+                    <div class="action-icon">⚙️</div>
+                    <h3>Global Settings</h3>
+                    <p>Configure application policies and defaults.</p>
+                </button>
+            {/if}
         </div>
     {/if}
 </div>
@@ -192,7 +211,13 @@
     }
 
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 </style>

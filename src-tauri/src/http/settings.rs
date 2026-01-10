@@ -89,8 +89,10 @@ pub async fn get_all_settings(
 ) -> Result<Json<Vec<Setting>>, crate::error::AppError> {
     let token = get_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
-    if claims.role != "admin" {
-        return Err(crate::error::AppError::Unauthorized);
+    
+    // Check permission using RBAC
+    if let Some(ref tenant_id) = claims.tenant_id {
+        state.auth_service.check_permission(&claims.sub, tenant_id, "settings", "read").await?;
     }
     
     let settings = state.settings_service.get_all(claims.tenant_id.as_deref()).await?;
@@ -104,8 +106,10 @@ pub async fn get_setting(
 ) -> Result<Json<Option<Setting>>, crate::error::AppError> {
     let token = get_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
-    if claims.role != "admin" {
-        return Err(crate::error::AppError::Unauthorized);
+    
+    // Check permission using RBAC
+    if let Some(ref tenant_id) = claims.tenant_id {
+        state.auth_service.check_permission(&claims.sub, tenant_id, "settings", "read").await?;
     }
 
     let setting = state.settings_service.get_by_key(claims.tenant_id.as_deref(), &key).await?;
@@ -119,8 +123,10 @@ pub async fn get_setting_value(
 ) -> Result<Json<Option<String>>, crate::error::AppError> {
     let token = get_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
-    if claims.role != "admin" {
-        return Err(crate::error::AppError::Unauthorized);
+    
+    // Check permission using RBAC
+    if let Some(ref tenant_id) = claims.tenant_id {
+        state.auth_service.check_permission(&claims.sub, tenant_id, "settings", "read").await?;
     }
 
     let value = state.settings_service.get_value(claims.tenant_id.as_deref(), &key).await?;
@@ -141,8 +147,10 @@ pub async fn upsert_setting(
 ) -> Result<Json<Setting>, crate::error::AppError> {
     let token = get_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
-    if claims.role != "admin" {
-        return Err(crate::error::AppError::Unauthorized);
+    
+    // Check permission using RBAC
+    if let Some(ref tenant_id) = claims.tenant_id {
+        state.auth_service.check_permission(&claims.sub, tenant_id, "settings", "update").await?;
     }
     
     let dto = UpsertSettingDto {
@@ -162,8 +170,10 @@ pub async fn delete_setting(
 ) -> Result<Json<serde_json::Value>, crate::error::AppError> {
     let token = get_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
-    if claims.role != "admin" {
-        return Err(crate::error::AppError::Unauthorized);
+    
+    // Check permission using RBAC
+    if let Some(ref tenant_id) = claims.tenant_id {
+        state.auth_service.check_permission(&claims.sub, tenant_id, "settings", "delete").await?;
     }
 
     state.settings_service.delete(claims.tenant_id.as_deref(), &key).await?;
@@ -183,8 +193,9 @@ pub async fn upload_logo(
     let token = get_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
     
-    if claims.role != "admin" {
-        return Err(crate::error::AppError::Unauthorized);
+    // Check permission using RBAC
+    if let Some(ref tenant_id) = claims.tenant_id {
+        state.auth_service.check_permission(&claims.sub, tenant_id, "settings", "update").await?;
     }
 
     let bytes = general_purpose::STANDARD
