@@ -1,20 +1,14 @@
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Path, Query, State, ConnectInfo},
     http::HeaderMap,
     Json,
 };
+use std::net::SocketAddr;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use crate::models::{CreateUserDto, UpdateUserDto, UserResponse};
+use crate::models::{CreateUserDto, UpdateUserDto, UserResponse, PaginatedResponse};
 use super::AppState;
-
-#[derive(Serialize)]
-pub struct PaginatedResponse<T> {
-    pub data: Vec<T>,
-    pub total: i64,
-    pub page: u32,
-    pub per_page: u32,
-}
+use crate::http::auth::extract_ip;
 
 #[derive(Deserialize)]
 pub struct ListUsersQuery {
@@ -74,10 +68,12 @@ pub struct CreateUserDto2 {
 pub async fn create_user(
     State(state): State<AppState>,
     headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(payload): Json<CreateUserDto2>,
 ) -> Result<Json<UserResponse>, crate::error::AppError> {
     let token = extract_token(&headers)?;
-    state.auth_service.check_admin(&token).await?;
+    let claims = state.auth_service.check_admin(&token).await?;
+    let ip = extract_ip(&headers, addr);
 
     use validator::Validate;
     let dto = CreateUserDto {
@@ -90,7 +86,7 @@ pub async fn create_user(
         return Err(crate::error::AppError::Validation(format!("Validation error: {}", e)));
     }
 
-    let user = state.user_service.create(dto).await?;
+    let user = state.user_service.create(dto, Some(&claims.sub), Some(&ip)).await?;
     Ok(Json(user))
 }
 
@@ -106,11 +102,13 @@ pub struct UpdateUserDto2 {
 pub async fn update_user(
     State(state): State<AppState>,
     headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(id): Path<String>,
     Json(payload): Json<UpdateUserDto2>,
 ) -> Result<Json<UserResponse>, crate::error::AppError> {
     let token = extract_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
+    let ip = extract_ip(&headers, addr);
 
     // Check if admin OR if updating self
     if claims.role != "admin" && claims.sub != id {
@@ -135,18 +133,20 @@ pub async fn update_user(
         return Err(crate::error::AppError::Validation(format!("Validation error: {}", e)));
     }
 
-    let user = state.user_service.update(&id, dto).await?;
+    let user = state.user_service.update(&id, dto, Some(&claims.sub), Some(&ip)).await?;
     Ok(Json(user))
 }
 
 pub async fn delete_user(
     State(state): State<AppState>,
     headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, crate::error::AppError> {
     let token = extract_token(&headers)?;
-    state.auth_service.check_admin(&token).await?;
+    let claims = state.auth_service.check_admin(&token).await?;
+    let ip = extract_ip(&headers, addr);
     
-    state.user_service.delete(&id).await?;
+    state.user_service.delete(&id, Some(&claims.sub), Some(&ip)).await?;
     Ok(Json(json!({"message": "User deleted"})))
 }

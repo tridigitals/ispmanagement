@@ -2,7 +2,7 @@
 
 use crate::db::DbPool;
 use crate::models::{TeamMemberWithUser, User};
-use crate::services::AuthService;
+use crate::services::{AuthService, AuditService};
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -10,11 +10,12 @@ use uuid::Uuid;
 pub struct TeamService {
     pool: DbPool,
     auth_service: AuthService,
+    audit_service: AuditService,
 }
 
 impl TeamService {
-    pub fn new(pool: DbPool, auth_service: AuthService) -> Self {
-        Self { pool, auth_service }
+    pub fn new(pool: DbPool, auth_service: AuthService, audit_service: AuditService) -> Self {
+        Self { pool, auth_service, audit_service }
     }
 
     /// List all members of a team
@@ -129,7 +130,9 @@ impl TeamService {
         email: &str, 
         name: &str, 
         role_id: &str,
-        password: Option<String>
+        password: Option<String>,
+        actor_id: Option<&str>,
+        ip_address: Option<&str>
     ) -> Result<TeamMemberWithUser, String> {
         // 1. Check if user exists
         let existing_user: Option<User> = sqlx::query_as("SELECT * FROM users WHERE email = $1")
@@ -216,6 +219,17 @@ impl TeamService {
             .await
             .map_err(|e| e.to_string())?;
 
+        // Audit Log
+        self.audit_service.log(
+            actor_id,
+            Some(tenant_id),
+            "TEAM_MEMBER_ADD",
+            "team",
+            Some(&user_id),
+            Some(&format!("Added user {} to team as {}", email, role_name)),
+            ip_address,
+        ).await;
+
         // Return the created member
         Ok(TeamMemberWithUser {
             id: member_id,
@@ -231,7 +245,7 @@ impl TeamService {
     }
 
     /// Update member role
-    pub async fn update_member(&self, member_id: &str, role_id: &str) -> Result<(), String> {
+    pub async fn update_member(&self, tenant_id: &str, member_id: &str, role_id: &str, actor_id: Option<&str>, ip_address: Option<&str>) -> Result<(), String> {
         let role_name: String = sqlx::query_scalar("SELECT name FROM roles WHERE id = $1")
             .bind(role_id)
             .fetch_one(&self.pool)
@@ -241,18 +255,29 @@ impl TeamService {
         let query = "UPDATE tenant_members SET role = $1, role_id = $2 WHERE id = $3";
         
         sqlx::query(query)
-            .bind(role_name)
+            .bind(&role_name)
             .bind(role_id)
             .bind(member_id)
             .execute(&self.pool)
             .await
             .map_err(|e| e.to_string())?;
-            
+        
+        // Audit Log
+        self.audit_service.log(
+            actor_id,
+            Some(tenant_id),
+            "TEAM_MEMBER_UPDATE",
+            "team",
+            Some(member_id),
+            Some(&format!("Updated member role to {}", role_name)),
+            ip_address,
+        ).await;
+
         Ok(())
     }
 
     /// Remove member
-    pub async fn remove_member(&self, member_id: &str) -> Result<(), String> {
+    pub async fn remove_member(&self, tenant_id: &str, member_id: &str, actor_id: Option<&str>, ip_address: Option<&str>) -> Result<(), String> {
         let query = "DELETE FROM tenant_members WHERE id = $1";
         
         sqlx::query(query)
@@ -260,7 +285,18 @@ impl TeamService {
             .execute(&self.pool)
             .await
             .map_err(|e| e.to_string())?;
-            
+        
+        // Audit Log
+        self.audit_service.log(
+            actor_id,
+            Some(tenant_id),
+            "TEAM_MEMBER_REMOVE",
+            "team",
+            Some(member_id),
+            Some("Removed member from team"),
+            ip_address,
+        ).await;
+
         Ok(())
     }
 }

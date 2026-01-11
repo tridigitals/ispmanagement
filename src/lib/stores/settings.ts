@@ -1,7 +1,8 @@
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import { api, type AuthSettings } from '$lib/api/client';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { locale } from 'svelte-i18n';
+import { can } from '$lib/stores/auth';
 import '../i18n'; // Initialize i18n
 
 // Tipe data setting
@@ -12,6 +13,7 @@ export interface AppSettings {
     organization_name: string;
     support_email: string;
     maintenance_mode: boolean;
+    maintenance_message?: string;
     default_locale: string;
     currency_symbol: string;
     auth?: AuthSettings; // Dynamic auth settings
@@ -51,23 +53,39 @@ function createSettingsStore() {
             // Fetch admin/tenant settings (might fail if not logged in, which is fine)
             // If logged in, getAll() will now return tenant-specific settings because backend extracts tenant_id from token
             let tenantSettings: any = {};
+
+            // Only fetch if has permission
+            if (get(can)("read", "settings")) {
+                try {
+                    const data = await api.settings.getAll();
+                    data.forEach(item => {
+                        if (item.value === 'true') tenantSettings[item.key] = true;
+                        else if (item.value === 'false') tenantSettings[item.key] = false;
+                        else tenantSettings[item.key] = item.value;
+                    });
+                } catch (e) {
+                    // Ignore error if not logged in or unauthorized
+                    // console.debug("Could not load tenant settings (likely not logged in)");
+                }
+            }
+
+            // Fetch app version from backend (from Cargo.toml)
+            let appVersion = defaults.app_version;
             try {
-                const data = await api.settings.getAll();
-                data.forEach(item => {
-                    if (item.value === 'true') tenantSettings[item.key] = true;
-                    else if (item.value === 'false') tenantSettings[item.key] = false;
-                    else tenantSettings[item.key] = item.value;
-                });
+                appVersion = await api.settings.getAppVersion();
             } catch (e) {
-                // Ignore error if not logged in
-                // console.debug("Could not load tenant settings (likely not logged in)");
+                // Use default if fails
             }
 
             const finalSettings = {
                 ...defaults,
                 ...publicSettings,
                 ...tenantSettings,
-                auth: authSettings
+                app_version: appVersion,
+                auth: authSettings,
+                // Ensure global maintenance settings from publicSettings are not overwritten by tenantSettings
+                maintenance_mode: (publicSettings as any).maintenance_mode ?? defaults.maintenance_mode,
+                maintenance_message: (publicSettings as any).maintenance_message,
             };
 
             set(finalSettings);

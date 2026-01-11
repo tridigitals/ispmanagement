@@ -45,7 +45,7 @@ pub async fn add_team_member(
         .await
         .map_err(|e| e.to_string())?;
     
-    team_service.add_member(&tenant_id, &email, &name, &role_id, password)
+    team_service.add_member(&tenant_id, &email, &name, &role_id, password, Some(&claims.sub), Some("127.0.0.1"))
         .await
 }
 
@@ -84,7 +84,7 @@ pub async fn update_team_member_role(
          return Err("Insufficient permissions: Cannot assign role higher than your own".to_string());
     }
 
-    team_service.update_member(&member_id, &role_id)
+    team_service.update_member(&tenant_id, &member_id, &role_id, Some(&claims.sub), None)
         .await
         .map_err(|e| e.to_string())
 }
@@ -116,7 +116,7 @@ pub async fn remove_team_member(
         return Err("Insufficient permissions: Cannot remove member with equal or higher role".to_string());
     }
 
-    team_service.remove_member(&member_id)
+    team_service.remove_member(&tenant_id, &member_id, Some(&claims.sub), None)
         .await
         .map_err(|e| e.to_string())
 }

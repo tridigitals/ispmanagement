@@ -3,6 +3,7 @@
 use crate::db::connection::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{CreateUserDto, UpdateUserDto, User, UserResponse};
+use crate::services::audit_service::AuditService;
 use crate::services::auth_service::AuthService;
 use chrono::Utc;
 
@@ -10,11 +11,12 @@ use chrono::Utc;
 #[derive(Clone)]
 pub struct UserService {
     pool: DbPool,
+    audit_service: AuditService,
 }
 
 impl UserService {
-    pub fn new(pool: DbPool) -> Self {
-        Self { pool }
+    pub fn new(pool: DbPool, audit_service: AuditService) -> Self {
+        Self { pool, audit_service }
     }
 
     /// List all users with pagination
@@ -92,7 +94,7 @@ impl UserService {
     }
 
     /// Create new user
-    pub async fn create(&self, dto: CreateUserDto) -> AppResult<UserResponse> {
+    pub async fn create(&self, dto: CreateUserDto, actor_id: Option<&str>, ip_address: Option<&str>) -> AppResult<UserResponse> {
         // Check if email already exists
         let existing: Option<User> = sqlx::query_as("SELECT * FROM users WHERE email = $1")
             .bind(&dto.email)
@@ -132,11 +134,22 @@ impl UserService {
 
         query.execute(&self.pool).await?;
 
+        // Audit Log
+        self.audit_service.log(
+            actor_id,
+            None,
+            "USER_CREATE",
+            "user",
+            Some(&user.id),
+            Some(&format!("Created user {}", user.email)),
+            ip_address,
+        ).await;
+
         Ok(user.into())
     }
 
     /// Update user
-    pub async fn update(&self, id: &str, dto: UpdateUserDto) -> AppResult<UserResponse> {
+    pub async fn update(&self, id: &str, dto: UpdateUserDto, actor_id: Option<&str>, ip_address: Option<&str>) -> AppResult<UserResponse> {
         let mut user: User = sqlx::query_as("SELECT * FROM users WHERE id = $1")
             .bind(id)
             .fetch_optional(&self.pool)
@@ -198,11 +211,23 @@ impl UserService {
             .await?;
 
         user.updated_at = updated_at;
+
+        // Audit Log
+        self.audit_service.log(
+            actor_id,
+            None,
+            "USER_UPDATE",
+            "user",
+            Some(id),
+            Some("Updated user details"),
+            ip_address,
+        ).await;
+
         Ok(user.into())
     }
 
     /// Delete user
-    pub async fn delete(&self, id: &str) -> AppResult<()> {
+    pub async fn delete(&self, id: &str, actor_id: Option<&str>, ip_address: Option<&str>) -> AppResult<()> {
         let result = sqlx::query("DELETE FROM users WHERE id = $1")
             .bind(id)
             .execute(&self.pool)
@@ -211,6 +236,17 @@ impl UserService {
         if result.rows_affected() == 0 {
             return Err(AppError::UserNotFound);
         }
+
+        // Audit Log
+        self.audit_service.log(
+            actor_id,
+            None,
+            "USER_DELETE",
+            "user",
+            Some(id),
+            Some("Deleted user"),
+            ip_address,
+        ).await;
 
         Ok(())
     }

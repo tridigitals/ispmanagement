@@ -44,6 +44,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             'list_tenants': { method: 'GET', path: '/superadmin/tenants' },
             'create_tenant': { method: 'POST', path: '/superadmin/tenants' },
             'delete_tenant': { method: 'DELETE', path: '/superadmin/tenants/:id' },
+            'list_audit_logs': { method: 'GET', path: '/superadmin/audit-logs' },
             // Settings
             'get_logo': { method: 'GET', path: '/settings/logo' },
             'get_all_settings': { method: 'GET', path: '/settings' },
@@ -69,6 +70,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             // Public
             'get_tenant_by_slug': { method: 'GET', path: '/public/tenants/:slug' },
             'get_tenant_by_domain': { method: 'GET', path: '/public/domains/:domain' },
+            'get_app_version': { method: 'GET', path: '/version' },
         };
 
         let route = commandMap[command];
@@ -236,6 +238,22 @@ export interface TeamMember {
     created_at: string;
 }
 
+export interface AuditLog {
+    id: string;
+    user_id: string | null;
+    tenant_id: string | null;
+    action: string;
+    resource: string;
+    resource_id: string | null;
+    resource_name?: string;
+    details: string | null;
+    ip_address: string | null;
+    created_at: string;
+    user_name?: string;
+    user_email?: string;
+    tenant_name?: string;
+}
+
 // Auth API
 export const auth = {
     register: (email: string, password: string, name: string): Promise<AuthResponse> =>
@@ -345,6 +363,9 @@ export const superadmin = {
 
     updateTenant: (id: string, name: string, slug: string, customDomain: string | null, isActive: boolean): Promise<any> =>
         safeInvoke('update_tenant', { token: getTokenOrThrow(), id, name, slug, customDomain, isActive }),
+
+    listAuditLogs: (page?: number, perPage?: number, filters?: { user_id?: string, tenant_id?: string, action?: string, date_from?: string, date_to?: string, search?: string }): Promise<PaginatedResponse<AuditLog>> =>
+        safeInvoke('list_audit_logs', { token: getTokenOrThrow(), page, perPage, ...filters }),
 };
 
 // Public API (No Auth)
@@ -360,7 +381,7 @@ export const settings = {
     getAll: (): Promise<Setting[]> =>
         safeInvoke('get_all_settings', { token: getTokenOrThrow() }),
 
-    getPublicSettings: (): Promise<{ app_name?: string, app_description?: string, default_locale?: string }> =>
+    getPublicSettings: (): Promise<{ app_name?: string, app_description?: string, default_locale?: string, maintenance_mode?: boolean, maintenance_message?: string }> =>
         safeInvoke('get_public_settings'),
 
     getAuthSettings: (): Promise<AuthSettings> =>
@@ -386,6 +407,14 @@ export const settings = {
 
     sendTestEmail: (toEmail: string): Promise<string> =>
         safeInvoke('send_test_email', { token: getTokenOrThrow(), toEmail }),
+
+    getAppVersion: async (): Promise<string> => {
+        const res = await safeInvoke('get_app_version');
+        if (typeof res === 'object' && res !== null && 'version' in res) {
+            return (res as any).version;
+        }
+        return res as string || '0.0.0';
+    },
 };
 
 // Install API

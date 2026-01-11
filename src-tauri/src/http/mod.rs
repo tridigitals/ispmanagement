@@ -4,7 +4,7 @@ use axum::{
 };
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
-use crate::services::{AuthService, UserService, SettingsService, EmailService, TeamService};
+use crate::services::{AuthService, UserService, SettingsService, EmailService, TeamService, AuditService, RoleService};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::{info, warn};
@@ -21,6 +21,7 @@ pub mod team;
 pub mod roles;
 pub mod websocket;
 pub mod public;
+pub mod audit;
 
 pub use websocket::WsHub;
 
@@ -32,6 +33,8 @@ pub struct AppState {
     pub settings_service: Arc<SettingsService>,
     pub email_service: Arc<EmailService>,
     pub team_service: Arc<TeamService>,
+    pub audit_service: Arc<AuditService>,
+    pub role_service: Arc<RoleService>,
     pub ws_hub: Arc<WsHub>,
     pub app_data_dir: PathBuf,
 }
@@ -42,6 +45,8 @@ pub async fn start_server(
     settings_service: SettingsService,
     email_service: EmailService,
     team_service: TeamService,
+    role_service: RoleService,
+    audit_service: AuditService,
     ws_hub: Arc<WsHub>,
     app_data_dir: PathBuf,
     default_port: u16,
@@ -52,6 +57,8 @@ pub async fn start_server(
         settings_service: Arc::new(settings_service),
         email_service: Arc::new(email_service),
         team_service: Arc::new(team_service),
+        audit_service: Arc::new(audit_service),
+        role_service: Arc::new(role_service),
         ws_hub,
         app_data_dir,
     };
@@ -119,6 +126,7 @@ pub async fn start_server(
                 .route("/api/superadmin/tenants", get(superadmin::list_tenants).post(superadmin::create_tenant))
 
                 .route("/api/superadmin/tenants/{id}", delete(superadmin::delete_tenant).put(superadmin::update_tenant))
+                .route("/api/superadmin/audit-logs", get(audit::list_audit_logs))
 
                 // Settings Routes
 
@@ -150,6 +158,9 @@ pub async fn start_server(
                 .route("/api/public/tenants/{slug}", get(public::get_tenant_by_slug))
                 .route("/api/public/domains/{domain}", get(public::get_tenant_by_domain))
 
+                // Version Route
+                .route("/api/version", get(get_app_version))
+
                 .layer(cors)
 
                 .with_state(state);
@@ -168,9 +179,18 @@ pub async fn start_server(
     info!("HTTP API listening on {}", addr);
 
     let listener = TcpListener::bind(addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(
+        listener, 
+        app.into_make_service_with_connect_info::<SocketAddr>()
+    ).await.unwrap();
 }
 
 async fn root_handler() -> &'static str {
     "SaaS Boilerplate API is running. Use the frontend to interact."
+}
+
+async fn get_app_version() -> axum::Json<serde_json::Value> {
+    axum::Json(serde_json::json!({
+        "version": env!("CARGO_PKG_VERSION")
+    }))
 }

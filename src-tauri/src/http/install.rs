@@ -65,7 +65,7 @@ pub async fn install_app(
             key: "app_name".to_string(),
             value: app_name,
             description: Some("Application name".to_string()),
-        }).await;
+        }, None, None).await;
     }
 
     if let Some(app_url) = payload.app_url {
@@ -73,7 +73,7 @@ pub async fn install_app(
             key: "app_url".to_string(),
             value: app_url,
             description: Some("Application Base URL".to_string()),
-        }).await;
+        }, None, None).await;
     }
 
     // 2. Create admin user
@@ -83,7 +83,7 @@ pub async fn install_app(
         name: payload.admin_name,
     };
 
-    let user_res = state.user_service.create(dto).await.map_err(|e| {
+    let user_res = state.user_service.create(dto, None, None).await.map_err(|e| {
         (StatusCode::BAD_REQUEST, e.to_string())
     })?;
 
@@ -96,7 +96,7 @@ pub async fn install_app(
         is_active: Some(true),
     };
 
-    let admin_user = state.user_service.update(&user_res.id, update_dto).await.map_err(|e| {
+    let admin_user = state.user_service.update(&user_res.id, update_dto, None, None).await.map_err(|e| {
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })?;
 

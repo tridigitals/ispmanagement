@@ -10,7 +10,7 @@ use argon2::{
 use rand::rngs::OsRng;
 use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
-use crate::services::EmailService;
+use crate::services::{EmailService, AuditService};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -83,14 +83,16 @@ pub struct AuthService {
     pub pool: DbPool,
     jwt_secret: Arc<RwLock<String>>,
     email_service: EmailService,
+    audit_service: AuditService,
 }
 
 impl AuthService {
-    pub fn new(pool: DbPool, jwt_secret: String, email_service: EmailService) -> Self {
+    pub fn new(pool: DbPool, jwt_secret: String, email_service: EmailService, audit_service: AuditService) -> Self {
         Self {
             pool,
             jwt_secret: Arc::new(RwLock::new(jwt_secret)),
             email_service,
+            audit_service,
         }
     }
 
@@ -269,16 +271,30 @@ impl AuthService {
     }
 
     /// Check if user has admin role
-    pub async fn check_admin(&self, token: &str) -> AppResult<()> {
+    /// Check if user has admin role
+    pub async fn check_admin(&self, token: &str) -> AppResult<Claims> {
         let claims = self.validate_token(token).await?;
         if claims.role != "admin" {
             return Err(AppError::Unauthorized);
         }
-        Ok(())
+        Ok(claims)
     }
 
     /// Logout (revoke current session)
-    pub async fn logout(&self, token: &str) -> AppResult<()> {
+    pub async fn logout(&self, token: &str, ip_address: Option<String>) -> AppResult<()> {
+        // Try to decode token to get user_id before it's deleted
+        if let Ok(claims) = self.validate_token(token).await {
+            self.audit_service.log(
+                Some(&claims.sub),
+                claims.tenant_id.as_deref(),
+                "USER_LOGOUT",
+                "auth",
+                None,
+                None,
+                ip_address.as_deref()
+            ).await;
+        }
+
         sqlx::query("DELETE FROM sessions WHERE token = $1")
             .bind(token)
             .execute(&self.pool)
@@ -368,7 +384,7 @@ impl AuthService {
     }
 
     /// Register a new user
-    pub async fn register(&self, dto: RegisterDto) -> AppResult<AuthResponse> {
+    pub async fn register(&self, dto: RegisterDto, ip_address: Option<String>) -> AppResult<AuthResponse> {
         let settings = self.get_auth_settings().await;
         
         // Check if registration is allowed
@@ -440,6 +456,7 @@ impl AuthService {
         info!("New user registered: {}", user.email);
 
         if settings.require_email_verification {
+            // ... existing email code ...
             // Send verification email
             if let Some(token) = &user.verification_token {
                 let link = format!("/auth/verify-email?token={}", token);
@@ -453,6 +470,16 @@ impl AuthService {
                     warn!("Failed to send verification email: {}", e);
                 }
             }
+            
+            self.audit_service.log(
+                Some(&user.id),
+                None,
+                "USER_REGISTER",
+                "auth",
+                Some(&user.id),
+                Some(&format!("Registered via email {}", user.email)),
+                ip_address.as_deref()
+            ).await;
 
             Ok(AuthResponse {
                 user: user.into(),
@@ -465,12 +492,23 @@ impl AuthService {
             // Generate token (no tenant for now on direct registration)
             let (token, expires_at) = self.generate_token(&user, None).await?;
 
+            self.audit_service.log(
+                Some(&user.id),
+                None,
+                "USER_REGISTER",
+                "auth",
+                Some(&user.id),
+                Some(&format!("Registered via email {}", user.email)),
+                ip_address.as_deref()
+            ).await;
+
             Ok(AuthResponse {
                 user: user.into(),
                 tenant: None,
                 token: Some(token),
                 expires_at: Some(expires_at),
                 message: None,
+                
             })
         }
     }
@@ -638,7 +676,7 @@ impl AuthService {
     }
 
     /// Login user
-    pub async fn login(&self, dto: LoginDto) -> AppResult<AuthResponse> {
+    pub async fn login(&self, dto: LoginDto, ip_address: Option<String>) -> AppResult<AuthResponse> {
         let settings = self.get_auth_settings().await;
         
         // Find user by email
@@ -651,11 +689,25 @@ impl AuthService {
 
         let user = match user {
             Some(u) => u,
-            None => return Err(AppError::InvalidCredentials),
+            None => {
+                // Log failed (user not found - privacy concern? generic message)
+                self.audit_service.log(
+                    None, None, "USER_LOGIN_FAILED", "auth", None, 
+                    Some(&format!("Failed login for {}: User not found", dto.email)), 
+                    ip_address.as_deref()
+                ).await;
+                return Err(AppError::InvalidCredentials)
+            },
         };
 
         // Check if account is locked
         if user.is_locked() {
+             self.audit_service.log(
+                Some(&user.id), None, "USER_LOGIN_LOCKED", "auth", None, 
+                Some("Attempted login on locked account"), 
+                ip_address.as_deref()
+            ).await;
+
             let remaining = user.locked_until
                 .map(|t| (t - Utc::now()).num_minutes())
                 .unwrap_or(0);
@@ -679,6 +731,12 @@ impl AuthService {
             // Increment failed attempts
             self.increment_failed_attempts(&user.id, &settings).await?;
             
+            self.audit_service.log(
+                Some(&user.id), None, "USER_LOGIN_FAILED", "auth", None, 
+                Some("Invalid password"), 
+                ip_address.as_deref()
+            ).await;
+
             let remaining = settings.max_login_attempts - user.failed_login_attempts - 1;
             if remaining > 0 {
                 return Err(AppError::Validation(
@@ -693,6 +751,17 @@ impl AuthService {
 
         // Reset failed attempts on successful login
         self.reset_failed_attempts(&user.id).await?;
+        
+        // Log Success
+        self.audit_service.log(
+            Some(&user.id),
+            None, 
+            "USER_LOGIN",
+            "auth",
+            None,
+            Some("Login successful"),
+            ip_address.as_deref()
+        ).await;
 
         info!("User logged in: {}", user.email);
 

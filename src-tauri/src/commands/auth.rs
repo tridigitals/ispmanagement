@@ -1,7 +1,7 @@
 //! Authentication Commands
 
 use crate::models::{LoginDto, RegisterDto, UserResponse};
-use crate::services::{AuthResponse, AuthService};
+use crate::services::{AuthResponse, AuthService, AuditService};
 use tauri::State;
 use validator::Validate;
 
@@ -19,7 +19,8 @@ pub async fn register(
         return Err(format!("Validation error: {}", e));
     }
 
-    auth_service.register(dto).await.map_err(|e| e.to_string())
+    // IP is None for Desktop
+    auth_service.register(dto, None).await.map_err(|e| e.to_string())
 }
 
 /// Login user
@@ -29,13 +30,14 @@ pub async fn login(
     password: String,
     auth_service: State<'_, AuthService>,
 ) -> Result<AuthResponse, String> {
-    let dto = LoginDto { email, password };
+    let dto = LoginDto { email: email.clone(), password };
 
     if let Err(e) = dto.validate() {
         return Err(format!("Validation error: {}", e));
     }
 
-    auth_service.login(dto).await.map_err(|e| e.to_string())
+    // IP is None for Desktop
+    auth_service.login(dto, None).await.map_err(|e| e.to_string())
 }
 
 /// Get current user from token
@@ -68,7 +70,7 @@ pub async fn logout(
     token: String,
     auth_service: State<'_, AuthService>,
 ) -> Result<(), String> {
-    auth_service.logout(&token).await.map_err(|e| e.to_string())
+    auth_service.logout(&token, None).await.map_err(|e| e.to_string())
 }
 
 /// Change password

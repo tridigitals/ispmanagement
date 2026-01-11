@@ -2,7 +2,7 @@
 
 use tauri::State;
 use std::sync::Arc;
-use crate::services::{AuthService, list_roles, list_permissions, create_role, update_role, delete_role, get_role_by_id};
+use crate::services::{AuthService, RoleService};
 use crate::models::{RoleWithPermissions, Permission, CreateRoleDto, UpdateRoleDto};
 use crate::http::{WsHub, websocket::WsEvent};
 
@@ -11,6 +11,7 @@ use crate::http::{WsHub, websocket::WsEvent};
 pub async fn get_roles(
     token: String,
     auth: State<'_, AuthService>,
+    role_service: State<'_, RoleService>,
 ) -> Result<Vec<RoleWithPermissions>, String> {
     // Validate token and get tenant_id
     let claims = auth.validate_token(&token)
@@ -19,7 +20,7 @@ pub async fn get_roles(
     
     let tenant_id = claims.tenant_id.as_deref();
     
-    list_roles(&auth.pool, tenant_id)
+    role_service.list_roles(tenant_id)
         .await
         .map_err(|e| e.to_string())
 }
@@ -29,12 +30,13 @@ pub async fn get_roles(
 pub async fn get_permissions(
     token: String,
     auth: State<'_, AuthService>,
+    role_service: State<'_, RoleService>,
 ) -> Result<Vec<Permission>, String> {
     auth.validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
     
-    list_permissions(&auth.pool)
+    role_service.list_permissions()
         .await
         .map_err(|e| e.to_string())
 }
@@ -45,12 +47,13 @@ pub async fn get_role(
     token: String,
     role_id: String,
     auth: State<'_, AuthService>,
+    role_service: State<'_, RoleService>,
 ) -> Result<Option<RoleWithPermissions>, String> {
     auth.validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
     
-    get_role_by_id(&auth.pool, &role_id)
+    role_service.get_role_by_id(&role_id)
         .await
         .map_err(|e| e.to_string())
 }
@@ -64,6 +67,7 @@ pub async fn create_new_role(
     level: i32,
     permissions: Vec<String>,
     auth: State<'_, AuthService>,
+    role_service: State<'_, RoleService>,
     ws_hub: State<'_, Arc<WsHub>>,
 ) -> Result<RoleWithPermissions, String> {
     let claims = auth.validate_token(&token)
@@ -88,7 +92,7 @@ pub async fn create_new_role(
         permissions,
     };
     
-    let role = create_role(&auth.pool, tenant_id, dto)
+    let role = role_service.create_role(tenant_id, dto, Some(&claims.sub), Some("127.0.0.1"))
         .await
         .map_err(|e| e.to_string())?;
     
@@ -108,6 +112,7 @@ pub async fn update_existing_role(
     level: Option<i32>,
     permissions: Option<Vec<String>>,
     auth: State<'_, AuthService>,
+    role_service: State<'_, RoleService>,
     ws_hub: State<'_, Arc<WsHub>>,
 ) -> Result<RoleWithPermissions, String> {
     let claims = auth.validate_token(&token)
@@ -132,7 +137,7 @@ pub async fn update_existing_role(
         permissions,
     };
     
-    let role = update_role(&auth.pool, &role_id, dto)
+    let role = role_service.update_role(&role_id, dto, claims.is_super_admin, Some(&claims.sub), Some("127.0.0.1"))
         .await
         .map_err(|e| e.to_string())?;
     
@@ -148,6 +153,7 @@ pub async fn delete_existing_role(
     token: String,
     role_id: String,
     auth: State<'_, AuthService>,
+    role_service: State<'_, RoleService>,
     ws_hub: State<'_, Arc<WsHub>>,
 ) -> Result<bool, String> {
     let claims = auth.validate_token(&token)
@@ -165,7 +171,7 @@ pub async fn delete_existing_role(
         return Err("Unauthorized: Only Super Admin can delete global roles".to_string());
     }
     
-    let deleted = delete_role(&auth.pool, &role_id)
+    let deleted = role_service.delete_role(&role_id, claims.is_super_admin, Some(&claims.sub), Some("127.0.0.1"))
         .await
         .map_err(|e| e.to_string())?;
     

@@ -3,17 +3,19 @@
 use crate::db::connection::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{Setting, UpsertSettingDto};
+use crate::services::audit_service::AuditService;
 use chrono::Utc;
 
 /// Settings service for key-value configuration
 #[derive(Clone)]
 pub struct SettingsService {
     pool: DbPool,
+    audit_service: AuditService,
 }
 
 impl SettingsService {
-    pub fn new(pool: DbPool) -> Self {
-        Self { pool }
+    pub fn new(pool: DbPool, audit_service: AuditService) -> Self {
+        Self { pool, audit_service }
     }
 
     /// Get all settings for a tenant (or global if tenant_id is None)
@@ -57,16 +59,19 @@ impl SettingsService {
     }
 
     /// Upsert (insert or update) setting for a tenant
-    pub async fn upsert(&self, tenant_id: Option<String>, dto: UpsertSettingDto) -> AppResult<Setting> {
+    pub async fn upsert(&self, tenant_id: Option<String>, dto: UpsertSettingDto, actor_id: Option<&str>, ip_address: Option<&str>) -> AppResult<Setting> {
         let now = Utc::now();
+
+        // Check if verify setting exists
+        // (logic omitted for brevity but conceptually similar)
 
         // Check if setting exists
         let existing = self.get_by_key(tenant_id.as_deref(), &dto.key).await?;
 
         if let Some(mut setting) = existing {
             // Update existing
-            setting.value = dto.value;
-            setting.description = dto.description;
+            setting.value = dto.value.clone();
+            setting.description = dto.description.clone();
             setting.updated_at = now;
 
             if let Some(tid) = &tenant_id {
@@ -97,10 +102,21 @@ impl SettingsService {
                 query.bind(&setting.key).execute(&self.pool).await?;
             }
 
+            // Audit
+            self.audit_service.log(
+                actor_id,
+                tenant_id.as_deref(),
+                "SETTING_UPDATE",
+                "settings",
+                Some(&setting.key),
+                Some(&format!("Updated setting {} = {}", setting.key, setting.value)),
+                ip_address
+            ).await;
+
             Ok(setting)
         } else {
             // Insert new
-            let setting = Setting::new(tenant_id.clone(), dto.key, dto.value, dto.description);
+            let setting = Setting::new(tenant_id.clone(), dto.key.clone(), dto.value.clone(), dto.description.clone());
 
             let query = sqlx::query(
                 r#"
@@ -126,12 +142,23 @@ impl SettingsService {
 
             query.execute(&self.pool).await?;
 
+            // Audit
+            self.audit_service.log(
+                actor_id,
+                tenant_id.as_deref(),
+                "SETTING_CREATE",
+                "settings",
+                Some(&setting.key),
+                Some(&format!("Created setting {} = {}", setting.key, setting.value)),
+                ip_address
+            ).await;
+
             Ok(setting)
         }
     }
 
     /// Delete setting by key and tenant
-    pub async fn delete(&self, tenant_id: Option<&str>, key: &str) -> AppResult<()> {
+    pub async fn delete(&self, tenant_id: Option<&str>, key: &str, actor_id: Option<&str>, ip_address: Option<&str>) -> AppResult<()> {
         let result = if let Some(tid) = tenant_id {
             sqlx::query("DELETE FROM settings WHERE tenant_id = $1 AND key = $2")
                 .bind(tid)
@@ -148,6 +175,17 @@ impl SettingsService {
         if result.rows_affected() == 0 {
             return Err(AppError::Validation(format!("Setting '{}' not found", key)));
         }
+
+        // Audit
+        self.audit_service.log(
+            actor_id,
+            tenant_id,
+            "SETTING_DELETE",
+            "settings",
+            Some(key),
+            Some(&format!("Deleted setting {}", key)),
+            ip_address
+        ).await;
 
         Ok(())
     }

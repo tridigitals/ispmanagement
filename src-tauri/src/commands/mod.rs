@@ -7,6 +7,7 @@ pub mod install;
 pub mod superadmin;
 pub mod roles;
 pub mod team;
+pub mod audit;
 
 pub use auth::*;
 pub use users::*;

@@ -1,5 +1,5 @@
 use crate::models::Tenant;
-use crate::services::AuthService;
+use crate::services::{AuthService, AuditService};
 use tauri::State;
 
 #[derive(serde::Serialize)]
@@ -38,6 +38,7 @@ pub async fn delete_tenant(
     token: String,
     id: String,
     auth_service: State<'_, AuthService>,
+    audit_service: State<'_, AuditService>,
 ) -> Result<(), String> {
     let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
     
@@ -46,10 +47,20 @@ pub async fn delete_tenant(
     }
 
     sqlx::query("DELETE FROM tenants WHERE id = $1")
-        .bind(id)
+        .bind(&id)
         .execute(&auth_service.pool)
         .await
         .map_err(|e| e.to_string())?;
+
+    audit_service.log(
+        Some(&claims.sub),
+        None,
+        "TENANT_DELETED",
+        "tenant",
+        Some(&id),
+        Some("Tenant deleted by Superadmin"),
+        None
+    ).await;
 
     Ok(())
 }
@@ -63,7 +74,9 @@ pub async fn create_tenant(
     owner_email: String,
     owner_password: String,
     auth_service: State<'_, AuthService>,
+    audit_service: State<'_, AuditService>,
 ) -> Result<Tenant, String> {
+
     let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
     
     if !claims.is_super_admin {
@@ -86,7 +99,7 @@ pub async fn create_tenant(
 
     // Hash owner password
     let password_hash = crate::services::AuthService::hash_password(&owner_password).map_err(|e| e.to_string())?;
-    let user = crate::models::User::new(owner_email, password_hash, "Admin".to_string());
+    let user = crate::models::User::new(owner_email.clone(), password_hash, "Admin".to_string());
 
     // Check if email exists
     let user_exists: bool = sqlx::query_scalar("SELECT count(*) > 0 FROM users WHERE email = $1")
@@ -190,6 +203,16 @@ pub async fn create_tenant(
 
     tx.commit().await.map_err(|e| e.to_string())?;
 
+    audit_service.log(
+        Some(&claims.sub),
+        None,
+        "TENANT_CREATED",
+        "tenant",
+        Some(&tenant.id),
+        Some(&format!("Created tenant {} with owner {}", tenant.name, owner_email)),
+        None
+    ).await;
+
     Ok(tenant)
 }
 
@@ -202,6 +225,7 @@ pub async fn update_tenant(
     custom_domain: Option<String>,
     is_active: bool,
     auth_service: State<'_, AuthService>,
+    audit_service: State<'_, AuditService>,
 ) -> Result<Tenant, String> {
     let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
     
@@ -253,6 +277,16 @@ pub async fn update_tenant(
         .fetch_one(&auth_service.pool)
         .await
         .map_err(|e| e.to_string())?;
+
+    audit_service.log(
+        Some(&claims.sub),
+        None,
+        "TENANT_UPDATED",
+        "tenant",
+        Some(&id),
+        Some(&format!("Updated tenant {}, active: {}", name, is_active)),
+        None
+    ).await;
 
     Ok(tenant)
 }

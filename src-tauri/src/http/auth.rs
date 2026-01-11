@@ -3,11 +3,23 @@ use axum::{
     http::{StatusCode, HeaderMap},
     response::{IntoResponse, Response},
     Json,
+    extract::{ConnectInfo, FromRequestParts},
 };
+use std::net::SocketAddr;
 use serde_json::json;
 use crate::models::{LoginDto, RegisterDto, UserResponse};
 use crate::services::{AuthResponse, AuthSettings};
 use super::AppState;
+
+// Helper to extract IP
+pub fn extract_ip(headers: &HeaderMap, addr: SocketAddr) -> String {
+    if let Some(forwarded) = headers.get("X-Forwarded-For") {
+        if let Ok(s) = forwarded.to_str() {
+            return s.split(',').next().unwrap_or(s).trim().to_string();
+        }
+    }
+    addr.ip().to_string()
+}
 
 // Helper to map AppError to Axum Response
 impl IntoResponse for crate::error::AppError {
@@ -22,6 +34,7 @@ impl IntoResponse for crate::error::AppError {
             crate::error::AppError::TokenExpired => (StatusCode::UNAUTHORIZED, "Token expired".to_string()),
             crate::error::AppError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
             crate::error::AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
+            crate::error::AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, "Unknown error".to_string()),
         };
 
@@ -58,6 +71,8 @@ pub async fn get_current_user(
 
 pub async fn login(
     State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(payload): Json<LoginDto>,
 ) -> Result<Json<AuthResponse>, crate::error::AppError> {
     // Validate payload (validator crate usage)
@@ -66,12 +81,15 @@ pub async fn login(
         return Err(crate::error::AppError::Validation(format!("Validation error: {}", e)));
     }
 
-    let response = state.auth_service.login(payload).await?;
+    let ip = extract_ip(&headers, addr);
+    let response = state.auth_service.login(payload, Some(ip)).await?;
     Ok(Json(response))
 }
 
 pub async fn register(
     State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(payload): Json<RegisterDto>,
 ) -> Result<Json<AuthResponse>, crate::error::AppError> {
     use validator::Validate;
@@ -79,7 +97,8 @@ pub async fn register(
         return Err(crate::error::AppError::Validation(format!("Validation error: {}", e)));
     }
 
-    let response = state.auth_service.register(payload).await?;
+    let ip = extract_ip(&headers, addr);
+    let response = state.auth_service.register(payload, Some(ip)).await?;
     Ok(Json(response))
 }
 

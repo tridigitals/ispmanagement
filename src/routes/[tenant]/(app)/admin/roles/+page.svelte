@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { isAdmin, checkAuth, can } from "$lib/stores/auth";
+    import { isAdmin, checkAuth, can, isSuperAdmin } from "$lib/stores/auth";
     import { api } from "$lib/api/client";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
@@ -249,7 +249,7 @@
                         </span>
                     {:else if key === "actions"}
                         <div class="action-buttons-cell">
-                            {#if !item.is_system && $can("delete", "roles")}
+                            {#if (!item.is_system || $isSuperAdmin) && $can("delete", "roles")}
                                 <button
                                     class="btn-icon danger"
                                     title="Delete Role"
@@ -259,7 +259,7 @@
                                     <span class="btn-text">Delete</span>
                                 </button>
                             {/if}
-                            {#if $can("update", "roles")}
+                            {#if (!item.is_system || $isSuperAdmin) && $can("update", "roles")}
                                 <button
                                     class="btn-icon primary"
                                     title="Edit Role"

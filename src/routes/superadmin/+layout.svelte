@@ -88,6 +88,28 @@
                     <Icon name="users" size={20} />
                     {#if !isCollapsed}<span in:fade>Users</span>{/if}
                 </a>
+                <a
+                    href="/superadmin/audit-logs"
+                    class="nav-item"
+                    class:active={$page.url.pathname.startsWith(
+                        "/superadmin/audit-logs",
+                    )}
+                    title="Audit Logs"
+                >
+                    <Icon name="activity" size={20} />
+                    {#if !isCollapsed}<span in:fade>Audit Logs</span>{/if}
+                </a>
+                <a
+                    href="/superadmin/settings"
+                    class="nav-item"
+                    class:active={$page.url.pathname.startsWith(
+                        "/superadmin/settings",
+                    )}
+                    title="Platform Settings"
+                >
+                    <Icon name="settings" size={20} />
+                    {#if !isCollapsed}<span in:fade>Settings</span>{/if}
+                </a>
                 <div class="spacer"></div>
                 <a href="/dashboard" class="nav-item back" title="Back to App">
                     <Icon name="arrow-left" size={20} />
@@ -114,6 +136,10 @@
                                 Dashboard
                             {:else if $page.url.pathname.includes("/users")}
                                 Users
+                            {:else if $page.url.pathname.includes("/audit-logs")}
+                                Audit Logs
+                            {:else if $page.url.pathname.includes("/settings")}
+                                Settings
                             {:else}
                                 {$page.url.pathname.split("/").pop()}
                             {/if}

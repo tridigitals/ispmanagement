@@ -1,18 +1,16 @@
 //! User Management Commands
 
-use crate::models::{CreateUserDto, UpdateUserDto, UserResponse};
-use crate::services::{AuthService, UserService};
+use crate::models::{CreateUserDto, PaginatedResponse, UpdateUserDto, UserResponse};
+use crate::services::{AuthService, UserService, AuditService};
 use serde::Serialize;
 use tauri::State;
 use validator::Validate;
 
 /// Paginated response wrapper
 #[derive(Serialize)]
-pub struct PaginatedResponse<T> {
-    pub data: Vec<T>,
+pub struct UserListResponse {
+    pub users: Vec<UserResponse>,
     pub total: i64,
-    pub page: u32,
-    pub per_page: u32,
 }
 
 
@@ -64,6 +62,7 @@ pub async fn get_user(
 }
 
 /// Create new user (Super Admin Only)
+/// Create new user (Super Admin Only)
 #[tauri::command]
 pub async fn create_user(
     token: String,
@@ -86,7 +85,7 @@ pub async fn create_user(
         return Err(format!("Validation error: {}", e));
     }
 
-    user_service.create(dto).await.map_err(|e| e.to_string())
+    user_service.create(dto, Some(&claims.sub), Some("127.0.0.1")).await.map_err(|e| e.to_string())
 }
 
 /// Update user (Super Admin OR Self)
@@ -124,7 +123,7 @@ pub async fn update_user(
         return Err(format!("Validation error: {}", e));
     }
 
-    user_service.update(&id, dto).await.map_err(|e| e.to_string())
+    user_service.update(&id, dto, Some(&claims.sub), Some("127.0.0.1")).await.map_err(|e| e.to_string())
 }
 
 /// Delete user (Super Admin Only)
@@ -142,5 +141,5 @@ pub async fn delete_user(
         return Err("Unauthorized".to_string());
     }
 
-    user_service.delete(&id).await.map_err(|e| e.to_string())
+    user_service.delete(&id, Some(&claims.sub), Some("127.0.0.1")).await.map_err(|e| e.to_string())
 }

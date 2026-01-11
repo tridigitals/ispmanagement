@@ -13,3 +13,5 @@ pub use settings_service::*;
 pub use email_service::*;
 pub use role_service::*;
 pub use team_service::*;
+pub mod audit_service;
+pub use audit_service::*;

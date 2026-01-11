@@ -11,8 +11,9 @@ mod services;
 mod http;
 
 use commands::*;
+use commands::audit::list_audit_logs;
 use db::connection::{init_db, seed_defaults};
-use services::{AuthService, EmailService, SettingsService, UserService, TeamService};
+use services::{AuthService, EmailService, SettingsService, UserService, TeamService, AuditService, RoleService};
 use tauri::Manager;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -27,6 +28,8 @@ fn init_logging() {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+#[allow(unknown_lints)]
+#[allow(clippy::all)] 
 pub fn run() {
     // Load .env file - try multiple locations
     // Priority: parent dir (root) > current dir (src-tauri) > src-tauri subfolder
@@ -87,11 +90,16 @@ pub fn run() {
                         .map_err(|e| format!("Failed to seed default settings: {}", e))?;
                     info!("Default settings seeded.");
 
-                    // Seed RBAC permissions and roles
-                    services::seed_permissions(&pool)
+                    // Create services - AuditService must be first
+                    let audit_service = AuditService::new(pool.clone());
+                    // RoleService needs AuditService
+                    let role_service = RoleService::new(pool.clone(), audit_service.clone());
+
+                    // Seed RBAC permissions and roles using RoleService instance
+                    role_service.seed_permissions()
                         .await
                         .map_err(|e| format!("Failed to seed permissions: {}", e))?;
-                    services::seed_roles(&pool)
+                    role_service.seed_roles()
                         .await
                         .map_err(|e| format!("Failed to seed roles: {}", e))?;
                     info!("RBAC permissions and roles seeded.");
@@ -105,12 +113,11 @@ pub fn run() {
                     .unwrap_or_else(|_| uuid::Uuid::new_v4().to_string());
                     info!("JWT Secret loaded.");
 
-                    // Create services
-                    let settings_service = SettingsService::new(pool.clone());
+                    let settings_service = SettingsService::new(pool.clone(), audit_service.clone());
                     let email_service = EmailService::new(settings_service.clone());
-                    let auth_service = AuthService::new(pool.clone(), jwt_secret, email_service.clone());
-                    let user_service = UserService::new(pool.clone());
-                    let team_service = TeamService::new(pool.clone(), auth_service.clone());
+                    let auth_service = AuthService::new(pool.clone(), jwt_secret, email_service.clone(), audit_service.clone());
+                    let user_service = UserService::new(pool.clone(), audit_service.clone());
+                    let team_service = TeamService::new(pool.clone(), auth_service.clone(), audit_service.clone());
                     
                     // Create WebSocket hub for real-time sync (shared between HTTP and Tauri)
                     let ws_hub = std::sync::Arc::new(http::WsHub::new());
@@ -121,13 +128,15 @@ pub fn run() {
                     app_handle.manage(settings_service.clone());
                     app_handle.manage(email_service.clone());
                     app_handle.manage(team_service.clone());
+                    app_handle.manage(audit_service.clone());
+                    app_handle.manage(role_service.clone());
                     app_handle.manage(ws_hub.clone());
                     info!("Services added to Tauri state.");
 
                     // Start HTTP Server
                     let app_dir = app_data_dir.clone();
                     tauri::async_runtime::spawn(async move {
-                        http::start_server(auth_service, user_service, settings_service, email_service, team_service, ws_hub, app_dir, 3000).await;
+                        http::start_server(auth_service, user_service, settings_service, email_service, team_service, role_service, audit_service, ws_hub, app_dir, 3000).await;
                     });
 
                     info!("Services initialized successfully");
@@ -192,6 +201,8 @@ pub fn run() {
                                     add_team_member,
                                     update_team_member_role,
                                     remove_team_member,
+                                    // Audit commands
+                                    list_audit_logs,
                                 ])
                                 .run(tauri::generate_context!())
                                 .expect("error while running tauri application");

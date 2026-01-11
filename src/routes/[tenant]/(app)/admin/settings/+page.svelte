@@ -67,7 +67,6 @@
                 "support_email",
                 "default_locale",
                 "currency_symbol",
-                "maintenance_mode",
                 "app_version",
                 "app_logo_path",
             ],
@@ -149,6 +148,14 @@
             // Fetch settings
             const data = await api.settings.getAll();
 
+            // Fetch app version from Cargo.toml via backend API
+            let appVersion = "1.0.0";
+            try {
+                appVersion = await api.settings.getAppVersion();
+            } catch (e) {
+                // Use default if fails
+            }
+
             // Use current logo from store (now refreshed)
             let logoStoreValue;
             appLogo.subscribe((v) => (logoStoreValue = v))();
@@ -161,6 +168,15 @@
                 },
                 {} as Record<string, Setting>,
             );
+
+            // Inject app_version from Cargo.toml (read-only)
+            settings["app_version"] = {
+                key: "app_version",
+                value: appVersion,
+                id: "",
+                created_at: "",
+                updated_at: "",
+            };
 
             localSettings = {};
             Object.values(categories).forEach((cat) => {
@@ -296,7 +312,7 @@
             const base64Data = compressedBase64.split(",")[1];
 
             // console.log(`[Upload] Sending compressed image to backend...`);
-            const path = await api.settings.uploadLogo(compressedBase64);
+            const path = await api.settings.uploadLogo(base64Data);
             // console.log(`[Upload] Success! Path: ${path}`);
 
             localSettings["app_logo_path"] = path;

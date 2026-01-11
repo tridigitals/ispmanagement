@@ -1,13 +1,15 @@
 //! Team management HTTP handlers
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, State, ConnectInfo},
     http::HeaderMap,
     Json,
 };
+use std::net::SocketAddr;
 use serde::Deserialize;
 use crate::models::TeamMemberWithUser;
 use super::{AppState, websocket::WsEvent};
+use crate::http::auth::extract_ip;
 
 // Helper to extract token from headers
 fn extract_token(headers: &HeaderMap) -> Result<String, crate::error::AppError> {
@@ -45,10 +47,12 @@ pub struct AddMemberDto {
 pub async fn add_team_member(
     State(state): State<AppState>,
     headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(payload): Json<AddMemberDto>,
 ) -> Result<Json<TeamMemberWithUser>, crate::error::AppError> {
     let token = extract_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
+    let ip = extract_ip(&headers, addr);
     
     let tenant_id = claims.tenant_id
         .ok_or_else(|| crate::error::AppError::Validation("No tenant ID in token".to_string()))?;
@@ -56,7 +60,7 @@ pub async fn add_team_member(
     state.auth_service.check_permission(&claims.sub, &tenant_id, "team", "create").await?;
     
     let member = state.team_service
-        .add_member(&tenant_id, &payload.email, &payload.name, &payload.role_id, payload.password)
+        .add_member(&tenant_id, &payload.email, &payload.name, &payload.role_id, payload.password, Some(&claims.sub), Some(&ip))
         .await
         .map_err(|e| crate::error::AppError::Internal(e))?;
     
@@ -75,11 +79,13 @@ pub struct UpdateMemberDto {
 pub async fn update_team_member(
     State(state): State<AppState>,
     headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(id): Path<String>,
     Json(payload): Json<UpdateMemberDto>,
 ) -> Result<Json<serde_json::Value>, crate::error::AppError> {
     let token = extract_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
+    let ip = extract_ip(&headers, addr);
     
     let tenant_id = claims.tenant_id
         .ok_or_else(|| crate::error::AppError::Validation("No tenant ID in token".to_string()))?;
@@ -87,7 +93,7 @@ pub async fn update_team_member(
     state.auth_service.check_permission(&claims.sub, &tenant_id, "team", "update").await?;
     
     state.team_service
-        .update_member(&id, &payload.role_id)
+        .update_member(&tenant_id, &id, &payload.role_id, Some(&claims.sub), Some(&ip))
         .await
         .map_err(|e| crate::error::AppError::Internal(e))?;
     
@@ -101,17 +107,19 @@ pub async fn update_team_member(
 pub async fn remove_team_member(
     State(state): State<AppState>,
     headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, crate::error::AppError> {
     let token = extract_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
+    let ip = extract_ip(&headers, addr);
     
     let tenant_id = claims.tenant_id
         .ok_or_else(|| crate::error::AppError::Validation("No tenant ID in token".to_string()))?;
     
     state.auth_service.check_permission(&claims.sub, &tenant_id, "team", "delete").await?;
     
-    state.team_service.remove_member(&id).await
+    state.team_service.remove_member(&tenant_id, &id, Some(&claims.sub), Some(&ip)).await
         .map_err(|e| crate::error::AppError::Internal(e))?;
     
     // Broadcast member removed event

@@ -2,7 +2,7 @@
     import "$lib/styles/global.css";
     import "../lib/i18n"; // Init i18n
     import { waitLocale } from "svelte-i18n";
-    import { checkAuth, isAuthenticated } from "$lib/stores/auth";
+    import { checkAuth, isAuthenticated, isSuperAdmin } from "$lib/stores/auth";
     import { appSettings } from "$lib/stores/settings";
     import { appLogo } from "$lib/stores/logo";
     import { theme } from "$lib/stores/theme";
@@ -50,6 +50,26 @@
                     goto("/login");
                 }
                 await checkAuth();
+
+                // Check maintenance mode - redirect non-superadmin users
+                const settings = $appSettings as any;
+                const isMaintenanceMode =
+                    settings.maintenance_mode === true ||
+                    settings.maintenance_mode === "true";
+                const allowedPaths = [
+                    "/login",
+                    "/maintenance",
+                    "/install",
+                    "/superadmin",
+                ];
+                const isAllowedPath = allowedPaths.some((p) =>
+                    currentPath.startsWith(p),
+                );
+
+                if (isMaintenanceMode && !$isSuperAdmin && !isAllowedPath) {
+                    goto("/maintenance");
+                    return;
+                }
 
                 // Connect to WebSocket for real-time updates (only if authenticated)
                 if ($isAuthenticated) {

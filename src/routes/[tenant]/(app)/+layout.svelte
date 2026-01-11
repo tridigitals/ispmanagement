@@ -1,7 +1,8 @@
 <script>
     import Sidebar from "$lib/components/Sidebar.svelte";
     import Topbar from "$lib/components/Topbar.svelte";
-    import { isAuthenticated } from "$lib/stores/auth";
+    import { isAuthenticated, isSuperAdmin } from "$lib/stores/auth";
+    import { appSettings } from "$lib/stores/settings";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
     import Toast from "$lib/components/Toast.svelte";
@@ -14,6 +15,25 @@
         if (!$isAuthenticated) {
             goto("/");
         } else {
+            // Check maintenance mode - redirect non-superadmin users
+            const settings = $appSettings;
+            const isMaintenanceMode =
+                settings.maintenance_mode === true ||
+                settings.maintenance_mode === "true";
+
+            console.log("[Maintenance Check - $effect]", {
+                maintenance_mode: settings.maintenance_mode,
+                isMaintenanceMode,
+                isSuperAdmin: $isSuperAdmin,
+                shouldRedirect: isMaintenanceMode && !$isSuperAdmin,
+            });
+
+            if (isMaintenanceMode && !$isSuperAdmin) {
+                console.log("[Maintenance] Redirecting to /maintenance...");
+                goto("/maintenance");
+                return;
+            }
+
             // Check if current URL slug matches user's assigned tenant slug
             const currentSlug = $page.params.tenant;
             const userSlug = $user?.tenant_slug;
@@ -39,6 +59,26 @@
     onMount(() => {
         if (!$isAuthenticated) {
             goto("/");
+        }
+
+        // Check maintenance mode on mount
+        const settings = $appSettings;
+        const isMaintenanceMode =
+            settings.maintenance_mode === true ||
+            settings.maintenance_mode === "true";
+
+        console.log("[Maintenance Check - onMount]", {
+            maintenance_mode: settings.maintenance_mode,
+            isMaintenanceMode,
+            isSuperAdmin: $isSuperAdmin,
+            shouldRedirect: isMaintenanceMode && !$isSuperAdmin,
+        });
+
+        if (isMaintenanceMode && !$isSuperAdmin) {
+            console.log(
+                "[Maintenance - onMount] Redirecting to /maintenance...",
+            );
+            goto("/maintenance");
         }
     });
 

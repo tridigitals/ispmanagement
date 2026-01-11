@@ -12,6 +12,8 @@ pub struct PublicSettings {
     pub app_name: Option<String>,
     pub app_description: Option<String>,
     pub default_locale: Option<String>,
+    pub maintenance_mode: bool,
+    pub maintenance_message: Option<String>,
 }
 
 #[tauri::command]
@@ -21,11 +23,17 @@ pub async fn get_public_settings(
     let app_name = settings_service.get_value(None, "app_name").await.map_err(|e| e.to_string())?;
     let app_description = settings_service.get_value(None, "app_description").await.map_err(|e| e.to_string())?;
     let default_locale = settings_service.get_value(None, "default_locale").await.map_err(|e| e.to_string())?;
+    let maintenance_mode_str = settings_service.get_value(None, "maintenance_mode").await.map_err(|e| e.to_string())?;
+    let maintenance_message = settings_service.get_value(None, "maintenance_message").await.map_err(|e| e.to_string())?;
+    
+    let maintenance_mode = maintenance_mode_str.as_deref() == Some("true");
     
     Ok(PublicSettings {
         app_name,
         app_description,
         default_locale,
+        maintenance_mode,
+        maintenance_message,
     })
 }
 
@@ -96,7 +104,7 @@ pub async fn upsert_setting(
         return Err("Unauthorized".to_string());
     }
     let dto = UpsertSettingDto { key, value, description };
-    settings_service.upsert(claims.tenant_id, dto).await.map_err(|e| e.to_string())
+    settings_service.upsert(claims.tenant_id, dto, Some(&claims.sub), Some("127.0.0.1")).await.map_err(|e| e.to_string())
 }
 
 /// Delete setting
@@ -111,7 +119,7 @@ pub async fn delete_setting(
     if claims.role != "admin" {
         return Err("Unauthorized".to_string());
     }
-    settings_service.delete(claims.tenant_id.as_deref(), &key).await.map_err(|e| e.to_string())
+    settings_service.delete(claims.tenant_id.as_deref(), &key, Some(&claims.sub), Some("127.0.0.1")).await.map_err(|e| e.to_string())
 }
 
 /// Upload Logo
@@ -159,7 +167,7 @@ pub async fn upload_logo(
         value: path_str.clone(), 
         description: Some("Path to application logo".to_string()) 
     };
-    settings_service.upsert(claims.tenant_id, dto).await.map_err(|e| e.to_string())?;
+    settings_service.upsert(claims.tenant_id, dto, Some(&claims.sub), Some("127.0.0.1")).await.map_err(|e| e.to_string())?;
 
     Ok(path_str)
 }

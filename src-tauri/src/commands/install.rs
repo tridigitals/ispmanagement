@@ -29,7 +29,7 @@ pub async fn install_app(
     };
 
     // Create the user (defaults to role="user")
-    let user_res = user_service.create(dto).await.map_err(|e| e.to_string())?;
+    let user_res = user_service.create(dto, None, Some("127.0.0.1")).await.map_err(|e| e.to_string())?;
     
     // Update role to admin
     let update_dto = UpdateUserDto {
@@ -40,5 +40,5 @@ pub async fn install_app(
         is_active: Some(true),
     };
     
-    user_service.update(&user_res.id, update_dto).await.map_err(|e| e.to_string())
+    user_service.update(&user_res.id, update_dto, None, Some("127.0.0.1")).await.map_err(|e| e.to_string())
 }

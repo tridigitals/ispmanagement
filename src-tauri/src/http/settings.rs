@@ -1,13 +1,15 @@
 use axum::{
-    extract::{State, Path},
+    extract::{State, Path, ConnectInfo},
     Json,
     http::HeaderMap,
 };
+use std::net::SocketAddr;
 use base64::{engine::general_purpose, Engine as _};
 use std::fs;
 use super::AppState;
 use crate::models::{Setting, UpsertSettingDto};
 use serde_json::json;
+use crate::http::auth::extract_ip;
 
 // Helper to get token from header
 fn get_token(headers: &HeaderMap) -> Result<String, crate::error::AppError> {
@@ -23,6 +25,8 @@ pub struct PublicSettings {
     pub app_name: Option<String>,
     pub app_description: Option<String>,
     pub default_locale: Option<String>,
+    pub maintenance_mode: bool,
+    pub maintenance_message: Option<String>,
 }
 
 pub async fn get_public_settings(
@@ -32,11 +36,17 @@ pub async fn get_public_settings(
     let app_name = state.settings_service.get_value(None, "app_name").await?;
     let app_description = state.settings_service.get_value(None, "app_description").await?;
     let default_locale = state.settings_service.get_value(None, "default_locale").await?;
+    let maintenance_mode_str = state.settings_service.get_value(None, "maintenance_mode").await?;
+    let maintenance_message = state.settings_service.get_value(None, "maintenance_message").await?;
+    
+    let maintenance_mode = maintenance_mode_str.as_deref() == Some("true");
     
     Ok(Json(PublicSettings {
         app_name,
         app_description,
         default_locale,
+        maintenance_mode,
+        maintenance_message,
     }))
 }
 
@@ -143,10 +153,12 @@ pub struct UpsertSettingRequest {
 pub async fn upsert_setting(
     State(state): State<AppState>,
     headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(payload): Json<UpsertSettingRequest>,
 ) -> Result<Json<Setting>, crate::error::AppError> {
     let token = get_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
+    let ip = extract_ip(&headers, addr);
     
     // Check permission using RBAC
     if let Some(ref tenant_id) = claims.tenant_id {
@@ -159,26 +171,36 @@ pub async fn upsert_setting(
         description: payload.description,
     };
     
-    println!("DEBUG: [HTTP] Upserting setting '{}' for Tenant ID: {:?}", dto.key, claims.tenant_id);
+    // For superadmin, save settings as GLOBAL (tenant_id = None)
+    // This is important for settings like maintenance_mode that need to be accessible via public endpoint
+    let tenant_id_for_save = if claims.is_super_admin {
+        None
+    } else {
+        claims.tenant_id
+    };
+    
+    println!("DEBUG: [HTTP] Upserting setting '{}' for Tenant ID: {:?} (is_super_admin: {})", dto.key, tenant_id_for_save, claims.is_super_admin);
 
-    let setting = state.settings_service.upsert(claims.tenant_id, dto).await?;
+    let setting = state.settings_service.upsert(tenant_id_for_save, dto, Some(&claims.sub), Some(&ip)).await?;
     Ok(Json(setting))
 }
 
 pub async fn delete_setting(
     State(state): State<AppState>,
     headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(key): Path<String>,
 ) -> Result<Json<serde_json::Value>, crate::error::AppError> {
     let token = get_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
+    let ip = extract_ip(&headers, addr);
     
     // Check permission using RBAC
     if let Some(ref tenant_id) = claims.tenant_id {
         state.auth_service.check_permission(&claims.sub, tenant_id, "settings", "delete").await?;
     }
 
-    state.settings_service.delete(claims.tenant_id.as_deref(), &key).await?;
+    state.settings_service.delete(claims.tenant_id.as_deref(), &key, Some(&claims.sub), Some(&ip)).await?;
     Ok(Json(json!({"message": "Setting deleted"})))
 }
 
@@ -190,10 +212,12 @@ pub struct UploadLogoRequest {
 pub async fn upload_logo(
     State(state): State<AppState>,
     headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(payload): Json<UploadLogoRequest>,
 ) -> Result<Json<String>, crate::error::AppError> {
     let token = get_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
+    let ip = extract_ip(&headers, addr);
     
     // Check permission using RBAC
     if let Some(ref tenant_id) = claims.tenant_id {
@@ -224,7 +248,7 @@ pub async fn upload_logo(
         value: path_str.clone(), 
         description: Some("Path to application logo".to_string()) 
     };
-    state.settings_service.upsert(claims.tenant_id, dto).await?;
+    state.settings_service.upsert(claims.tenant_id, dto, Some(&claims.sub), Some(&ip)).await?;
 
     Ok(Json(path_str))
 }
