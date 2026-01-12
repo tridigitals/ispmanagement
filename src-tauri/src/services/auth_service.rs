@@ -127,8 +127,14 @@ impl AuthService {
         }
         if let Some(val) = get_setting(&self.pool, "auth_max_login_attempts").await {
             settings.max_login_attempts = val.parse().unwrap_or(5);
+        } else if let Some(val) = get_setting(&self.pool, "max_login_attempts").await {
+            // Fallback to superadmin settings key (without auth_ prefix)
+            settings.max_login_attempts = val.parse().unwrap_or(5);
         }
         if let Some(val) = get_setting(&self.pool, "auth_lockout_duration_minutes").await {
+            settings.lockout_duration_minutes = val.parse().unwrap_or(15);
+        } else if let Some(val) = get_setting(&self.pool, "lockout_duration_minutes").await {
+            // Fallback to superadmin settings key (without auth_ prefix)
             settings.lockout_duration_minutes = val.parse().unwrap_or(15);
         }
         if let Some(val) = get_setting(&self.pool, "auth_allow_registration").await {

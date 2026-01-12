@@ -30,6 +30,8 @@ pub enum WsEvent {
     MemberUpdated { user_id: String },
     /// Generic permissions refresh signal
     PermissionsChanged,
+    /// Maintenance mode status changed
+    MaintenanceModeChanged { enabled: bool, message: Option<String> },
     /// Connection established acknowledgment
     Connected { message: String },
     /// Ping to keep connection alive

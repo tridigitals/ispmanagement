@@ -173,6 +173,7 @@
             settings["app_version"] = {
                 key: "app_version",
                 value: appVersion,
+                description: "Current application version",
                 id: "",
                 created_at: "",
                 updated_at: "",

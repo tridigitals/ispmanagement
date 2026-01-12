@@ -7,6 +7,7 @@ use std::net::SocketAddr;
 use base64::{engine::general_purpose, Engine as _};
 use std::fs;
 use super::AppState;
+use super::websocket::WsEvent;
 use crate::models::{Setting, UpsertSettingDto};
 use serde_json::json;
 use crate::http::auth::extract_ip;
@@ -181,7 +182,24 @@ pub async fn upsert_setting(
     
     println!("DEBUG: [HTTP] Upserting setting '{}' for Tenant ID: {:?} (is_super_admin: {})", dto.key, tenant_id_for_save, claims.is_super_admin);
 
+    // Check if this is a maintenance_mode change to broadcast via WebSocket
+    let is_maintenance_mode = dto.key == "maintenance_mode";
+    let maintenance_enabled = dto.value == "true";
+    
     let setting = state.settings_service.upsert(tenant_id_for_save, dto, Some(&claims.sub), Some(&ip)).await?;
+    
+    // Broadcast maintenance mode change to all connected clients
+    if is_maintenance_mode {
+        // Get maintenance message if exists
+        let maintenance_message = state.settings_service.get_value(None, "maintenance_message").await.ok().flatten();
+        
+        state.ws_hub.broadcast(WsEvent::MaintenanceModeChanged { 
+            enabled: maintenance_enabled,
+            message: maintenance_message,
+        });
+        println!("DEBUG: [HTTP] Broadcasted MaintenanceModeChanged event (enabled: {})", maintenance_enabled);
+    }
+    
     Ok(Json(setting))
 }
 

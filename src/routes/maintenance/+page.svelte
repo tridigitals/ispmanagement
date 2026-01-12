@@ -10,6 +10,18 @@
     let interval: any;
 
     onMount(async () => {
+        // Get maintenance settings
+        const settings = $appSettings as any;
+        const isMaintenanceEnabled =
+            settings.maintenance_mode === true ||
+            settings.maintenance_mode === "true";
+
+        // If maintenance mode is not enabled, redirect away from this page
+        if (!isMaintenanceEnabled) {
+            goto("/login");
+            return;
+        }
+
         // If superadmin, redirect to dashboard
         if ($isSuperAdmin) {
             goto("/dashboard");
@@ -17,7 +29,6 @@
         }
 
         // Get maintenance message from settings
-        const settings = $appSettings as any;
         if (settings.maintenance_message) {
             message = settings.maintenance_message;
         }

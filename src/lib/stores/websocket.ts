@@ -5,7 +5,8 @@
  * When permission-related events are received, triggers checkAuth to refresh user data.
  */
 import { writable, get } from 'svelte/store';
-import { checkAuth, authVersion, token } from './auth';
+import { checkAuth, authVersion, token, isSuperAdmin } from './auth';
+import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
 
 // WebSocket connection state
@@ -19,6 +20,7 @@ type WsEvent =
     | { type: 'role_deleted', role_id: string }
     | { type: 'member_updated', user_id: string }
     | { type: 'permissions_changed' }
+    | { type: 'maintenance_mode_changed', enabled: boolean, message?: string }
     | { type: 'connected', message: string }
     | { type: 'ping' };
 
@@ -50,7 +52,7 @@ export function connectWebSocket() {
         wsUrl = wsUrl.replace('http://', 'ws://');
     }
 
-    // Append /ws endpoint
+    // Append /ws endpoint (WebSocket is at /api/ws)
     if (wsUrl.endsWith('/')) {
         wsUrl += 'ws';
     } else {
@@ -115,6 +117,20 @@ async function handleWsEvent(event: WsEvent) {
             await checkAuth();
             // Also increment authVersion to force UI re-render
             authVersion.update(v => v + 1);
+            break;
+
+        case 'maintenance_mode_changed':
+            // Maintenance mode status changed - redirect non-superadmins to maintenance page
+            console.log('[WS] Maintenance mode changed:', event.enabled);
+            if (event.enabled && !get(isSuperAdmin)) {
+                console.log('[WS] Redirecting to maintenance page...');
+                goto('/maintenance');
+            } else if (!event.enabled) {
+                // If maintenance was disabled and user is on maintenance page, redirect to dashboard
+                if (typeof window !== 'undefined' && window.location.pathname === '/maintenance') {
+                    goto('/dashboard');
+                }
+            }
             break;
 
         case 'ping':

@@ -3,8 +3,10 @@
 use crate::models::{Setting, UpsertSettingDto};
 use crate::services::{AuthService, SettingsService};
 use crate::services::auth_service::AuthSettings;
+use crate::http::websocket::{WsHub, WsEvent};
 use base64::{engine::general_purpose, Engine as _};
 use std::fs;
+use std::sync::Arc;
 use tauri::{AppHandle, Manager, State};
 
 #[derive(serde::Serialize)]
@@ -98,13 +100,39 @@ pub async fn upsert_setting(
     description: Option<String>,
     settings_service: State<'_, SettingsService>,
     auth_service: State<'_, AuthService>,
+    ws_hub: State<'_, Arc<WsHub>>,
 ) -> Result<Setting, String> {
     let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
     if claims.role != "admin" {
         return Err("Unauthorized".to_string());
     }
+    
+    // For superadmin, save settings as GLOBAL (tenant_id = None)
+    let tenant_id_for_save = if claims.is_super_admin {
+        None
+    } else {
+        claims.tenant_id
+    };
+    
+    let is_maintenance_mode = key == "maintenance_mode";
+    let maintenance_enabled = value == "true";
+
     let dto = UpsertSettingDto { key, value, description };
-    settings_service.upsert(claims.tenant_id, dto, Some(&claims.sub), Some("127.0.0.1")).await.map_err(|e| e.to_string())
+    let setting = settings_service.upsert(tenant_id_for_save, dto, Some(&claims.sub), Some("127.0.0.1")).await.map_err(|e| e.to_string())?;
+
+    // Broadcast maintenance mode change to all connected clients
+    if is_maintenance_mode {
+        // Get maintenance message if exists
+        let maintenance_message = settings_service.get_value(None, "maintenance_message").await.ok().flatten();
+        
+        ws_hub.broadcast(WsEvent::MaintenanceModeChanged { 
+            enabled: maintenance_enabled,
+            message: maintenance_message,
+        });
+        println!("DEBUG: [Tauri] Broadcasted MaintenanceModeChanged event (enabled: {})", maintenance_enabled);
+    }
+
+    Ok(setting)
 }
 
 /// Delete setting
