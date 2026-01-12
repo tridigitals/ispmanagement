@@ -34,6 +34,20 @@
 
             // Tenant Isolation Check
             if (urlTenant && slug && slug !== urlTenant) {
+                // Check for Tauri environment to allow auto-redirection
+                // @ts-ignore
+                const isTauri =
+                    typeof window !== "undefined" && window.__TAURI_INTERNALS__;
+
+                if (isTauri) {
+                    if (get(isAdmin)) {
+                        goto(`/${slug}/admin`);
+                    } else {
+                        goto(`/${slug}/dashboard`);
+                    }
+                    return;
+                }
+
                 // Logged in user is in the wrong tenant workspace -> Logout
                 await import("$lib/stores/auth").then((m) => m.logout());
                 error =
@@ -67,12 +81,21 @@
             // Tenant Isolation Check
             // If we are on a tenant-specific route, ensure the user belongs to this tenant
             if (urlTenant && userSlug !== urlTenant) {
-                // Logout immediately if mismatch
-                await import("$lib/stores/auth").then((m) => m.logout());
-                throw new Error(
-                    $t("auth.login.error_wrong_tenant") ||
-                        "You do not have access to this workspace. Please login at your own workspace URL.",
-                );
+                // Check for Tauri environment to allow auto-redirection
+                // @ts-ignore
+                const isTauri =
+                    typeof window !== "undefined" && window.__TAURI_INTERNALS__;
+
+                if (isTauri) {
+                    // Allow redirection
+                } else {
+                    // Logout immediately if mismatch (WEB ONLY)
+                    await import("$lib/stores/auth").then((m) => m.logout());
+                    throw new Error(
+                        $t("auth.login.error_wrong_tenant") ||
+                            "You do not have access to this workspace. Please login at your own workspace URL.",
+                    );
+                }
             }
 
             const slug = userSlug;

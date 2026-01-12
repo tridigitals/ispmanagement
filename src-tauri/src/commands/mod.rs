@@ -9,6 +9,11 @@ pub mod roles;
 pub mod team;
 pub mod audit;
 
+#[tauri::command]
+pub fn get_app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
 pub use auth::*;
 pub use users::*;
 pub use settings::*;

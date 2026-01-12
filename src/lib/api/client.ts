@@ -7,9 +7,12 @@ import { invoke } from '@tauri-apps/api/core';
 // Safe invoke wrapper for browser environment
 async function safeInvoke<T>(command: string, args?: any): Promise<T> {
     try {
-        // Check if running in Tauri
+        // Check if we should force remote API usage (for secure client-server deployment)
+        const forceRemote = import.meta.env.VITE_USE_REMOTE_API === 'true';
+
+        // Check if running in Tauri AND not forced to use remote
         // @ts-ignore
-        if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
+        if (!forceRemote && typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
             // console.log(`[Tauri] Invoking ${command}`, args); 
             // if (command === 'get_logo') {
             //    console.log(`[Tauri] get_logo called with token:`, args?.token ? 'YES (Hidden)' : 'NO');

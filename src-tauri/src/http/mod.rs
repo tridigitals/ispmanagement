@@ -65,7 +65,7 @@ pub async fn start_server(
 
     // Dynamic CORS Configuration
     let origins_str = env::var("CORS_ALLOWED_ORIGINS").unwrap_or_else(|_| {
-        "http://localhost:5173,http://localhost:3000,tauri://localhost,https://tauri.localhost".to_string()
+        "http://localhost:5173,http://localhost:3000,tauri://localhost,https://tauri.localhost,https://saas.tridigitals.com".to_string()
     });
 
     let origins: Vec<axum::http::HeaderValue> = origins_str
@@ -178,15 +178,24 @@ pub async fn start_server(
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     info!("HTTP API listening on {}", addr);
 
-    let listener = TcpListener::bind(addr).await.unwrap();
-    axum::serve(
+    let listener = match TcpListener::bind(addr).await {
+        Ok(l) => l,
+        Err(e) => {
+            tracing::error!("Failed to bind to {}: {}. Is another instance running?", addr, e);
+            return;
+        }
+    };
+
+    if let Err(e) = axum::serve(
         listener, 
         app.into_make_service_with_connect_info::<SocketAddr>()
-    ).await.unwrap();
+    ).await {
+        tracing::error!("HTTP API server error: {}", e);
+    }
 }
 
 async fn root_handler() -> &'static str {
-    "SaaS Boilerplate API is running. Use the frontend to interact."
+    "SaaS API is running. Use the frontend to interact."
 }
 
 async fn get_app_version() -> axum::Json<serde_json::Value> {

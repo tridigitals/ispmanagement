@@ -22,7 +22,7 @@ pub async fn init_db(_app_data_dir: PathBuf) -> Result<DbPool, sqlx::Error> {
     #[cfg(feature = "postgres")]
     {
         let database_url = env::var("DATABASE_URL")
-            .expect("DATABASE_URL must be set for PostgreSQL mode");
+            .map_err(|_| sqlx::Error::Configuration("DATABASE_URL must be set for PostgreSQL mode. Please check your .env file.".into()))?;
         
         info!("Connecting to PostgreSQL database");
         
@@ -400,8 +400,10 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
     let jwt_secret = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now();
 
+    let app_name = env::var("APP_NAME").unwrap_or_else(|_| "SaaS Boilerplate".to_string());
+
     let defaults = vec![
-        ("app_name", "SaaS App", "Application name"),
+        ("app_name", app_name.as_str(), "Application name"),
         ("app_description", "Enterprise-grade boilerplate built with Rust and SvelteKit. Secure, scalable, and lightweight.", "Application description"),
         ("app_version", "1.0.0", "Application version"),
         ("jwt_secret", jwt_secret.as_str(), "JWT signing secret"),

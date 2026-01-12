@@ -22,7 +22,7 @@ export interface AppSettings {
 
 // Default values jika database kosong
 const defaults: AppSettings = {
-    app_name: 'SaaS Boilerplate',
+    app_name: import.meta.env.VITE_APP_NAME || 'SaaS Boilerplate',
     app_version: '1.0.0',
     app_description: 'The ultimate foundation for your next big idea.',
     organization_name: 'My Company Inc.',
