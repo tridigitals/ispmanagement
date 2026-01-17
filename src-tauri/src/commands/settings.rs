@@ -47,10 +47,23 @@ pub async fn get_all_settings(
     auth_service: State<'_, AuthService>,
 ) -> Result<Vec<Setting>, String> {
     let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
-    if claims.role != "admin" {
+    
+    // Security check: must be admin or superadmin
+    // (Actual role names might vary, usually 'admin' or 'owner')
+    // Ideally use permission check, but for now checking role or super_admin flag
+    if !claims.is_super_admin && claims.role != "admin" {
         return Err("Unauthorized".to_string());
     }
-    settings_service.get_all(claims.tenant_id.as_deref()).await.map_err(|e| e.to_string())
+
+    // If Super Admin, fetch GLOBAL settings (tenant_id = None)
+    // If Tenant Admin, fetch TENANT settings
+    let target_tenant_id = if claims.is_super_admin {
+        None
+    } else {
+        claims.tenant_id.as_deref()
+    };
+
+    settings_service.get_all(target_tenant_id).await.map_err(|e| e.to_string())
 }
 
 /// Get public auth settings (no token required)
@@ -70,10 +83,18 @@ pub async fn get_setting(
     auth_service: State<'_, AuthService>,
 ) -> Result<Option<Setting>, String> {
     let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
-    if claims.role != "admin" {
+    
+    if !claims.is_super_admin && claims.role != "admin" {
         return Err("Unauthorized".to_string());
     }
-    settings_service.get_by_key(claims.tenant_id.as_deref(), &key).await.map_err(|e| e.to_string())
+
+    let target_tenant_id = if claims.is_super_admin {
+        None
+    } else {
+        claims.tenant_id.as_deref()
+    };
+
+    settings_service.get_by_key(target_tenant_id, &key).await.map_err(|e| e.to_string())
 }
 
 /// Get setting value by key
@@ -85,10 +106,18 @@ pub async fn get_setting_value(
     auth_service: State<'_, AuthService>,
 ) -> Result<Option<String>, String> {
     let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
-    if claims.role != "admin" {
+    
+    if !claims.is_super_admin && claims.role != "admin" {
         return Err("Unauthorized".to_string());
     }
-    settings_service.get_value(claims.tenant_id.as_deref(), &key).await.map_err(|e| e.to_string())
+
+    let target_tenant_id = if claims.is_super_admin {
+        None
+    } else {
+        claims.tenant_id.as_deref()
+    };
+
+    settings_service.get_value(target_tenant_id, &key).await.map_err(|e| e.to_string())
 }
 
 /// Upsert (create or update) setting
@@ -144,10 +173,18 @@ pub async fn delete_setting(
     auth_service: State<'_, AuthService>,
 ) -> Result<(), String> {
     let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
-    if claims.role != "admin" {
+    
+    if !claims.is_super_admin && claims.role != "admin" {
         return Err("Unauthorized".to_string());
     }
-    settings_service.delete(claims.tenant_id.as_deref(), &key, Some(&claims.sub), Some("127.0.0.1")).await.map_err(|e| e.to_string())
+
+    let target_tenant_id = if claims.is_super_admin {
+        None
+    } else {
+        claims.tenant_id.as_deref()
+    };
+
+    settings_service.delete(target_tenant_id, &key, Some(&claims.sub), Some("127.0.0.1")).await.map_err(|e| e.to_string())
 }
 
 /// Upload Logo

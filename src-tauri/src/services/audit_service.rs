@@ -1,17 +1,36 @@
 use crate::db::connection::DbPool;
-use crate::error::AppResult;
-use crate::models::AuditLog;
+use crate::error::{AppError, AppResult};
+use crate::models::{AuditLogResponse, AuditLogFilter}; // audit_service.rs implies these might be needed if not fully qualified
 use tauri::State;
 use chrono::Utc;
+// We need to import PlanService but it might cause circular deps if not careful.
+// Actually PlanService depends on DbPool, not AuditService.
+// But UserService depends on AuditService.
+// If PlanService depends on nothing complex, it is fine.
+use crate::services::plan_service::PlanService;
 
 #[derive(Clone)]
 pub struct AuditService {
     pub pool: DbPool,
+    pub plan_service: Option<PlanService>, // Option to avoid circular dep during initialization if needed, or just simple dep
 }
 
 impl AuditService {
-    pub fn new(pool: DbPool) -> Self {
-        Self { pool }
+    // We defer PlanService injection or handle it carefully. 
+    // Actually, AuditService is foundational. 
+    // If we make AuditService depend on PlanService, and PlanService depends on nothing (it doesn't rely on AuditService), we are good.
+    // BUT! All other services depend on AuditService.
+    // So if AuditService depends on PlanService, then:
+    // User -> Audit -> Plan.
+    // Plan -> (DB).
+    // This seems acyclic. Safe.
+    
+    pub fn new(pool: DbPool, plan_service: Option<PlanService>) -> Self {
+        Self { pool, plan_service }
+    }
+
+    pub fn set_plan_service(&mut self, plan_service: PlanService) {
+        self.plan_service = Some(plan_service);
     }
 
     /// Log an action to the audit_logs table
@@ -125,6 +144,21 @@ impl AuditService {
 
     /// List logs with filters
     pub async fn list(&self, filter: crate::models::AuditLogFilter) -> AppResult<(Vec<crate::models::AuditLogResponse>, i64)> {
+        // Enforce Plan Limits
+        if let Some(tenant_id) = &filter.tenant_id {
+            if let Some(plan_service) = &self.plan_service {
+                let has_access = plan_service
+                    .check_feature_access(tenant_id, "audit_logs")
+                    .await
+                    .map(|f| f.has_access)
+                    .unwrap_or(false); // If check fails (e.g. no plan), deny access
+                
+                if !has_access {
+                    return Err(AppError::Validation("Upgrade your plan to access Audit Logs.".to_string()));
+                }
+            }
+        }
+
         let page = filter.page.unwrap_or(1);
         let per_page = filter.per_page.unwrap_or(20);
         let offset = (page.saturating_sub(1)) * per_page;

@@ -2,7 +2,7 @@
 
 use crate::db::DbPool;
 use crate::models::{TeamMemberWithUser, User};
-use crate::services::{AuthService, AuditService};
+use crate::services::{AuthService, AuditService, PlanService};
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -11,11 +11,12 @@ pub struct TeamService {
     pool: DbPool,
     auth_service: AuthService,
     audit_service: AuditService,
+    plan_service: PlanService,
 }
 
 impl TeamService {
-    pub fn new(pool: DbPool, auth_service: AuthService, audit_service: AuditService) -> Self {
-        Self { pool, auth_service, audit_service }
+    pub fn new(pool: DbPool, auth_service: AuthService, audit_service: AuditService, plan_service: PlanService) -> Self {
+        Self { pool, auth_service, audit_service, plan_service }
     }
 
     /// List all members of a team
@@ -134,6 +135,23 @@ impl TeamService {
         actor_id: Option<&str>,
         ip_address: Option<&str>
     ) -> Result<TeamMemberWithUser, String> {
+        // 0. Check Plan Limits (max_users)
+        let limit = self.plan_service.get_feature_limit(tenant_id, "max_users")
+            .await
+            .map_err(|e| e.to_string())?;
+
+        if let Some(max_users) = limit {
+            let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM tenant_members WHERE tenant_id = $1")
+                .bind(tenant_id)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(|e| e.to_string())?;
+
+            if count >= max_users {
+                return Err(format!("Plan limit reached: Maximum {} users allowed.", max_users));
+            }
+        }
+
         // 1. Check if user exists
         let existing_user: Option<User> = sqlx::query_as("SELECT * FROM users WHERE email = $1")
             .bind(email)
@@ -190,6 +208,18 @@ impl TeamService {
             .map_err(|_| "Role not found".to_string())?;
 
         // 3. Add to tenant_members
+        // Check if already a member
+        let is_member: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM tenant_members WHERE tenant_id = $1 AND user_id = $2)")
+            .bind(tenant_id)
+            .bind(&user_id)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+            
+        if is_member {
+            return Err("User is already a member of this team".to_string());
+        }
+
         let member_id = Uuid::new_v4().to_string();
         let now = Utc::now();
         

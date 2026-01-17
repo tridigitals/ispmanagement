@@ -34,6 +34,10 @@
     let apiRateLimitPerMinute = 100;
     let enableIpBlocking = false;
 
+    // Storage Settings
+    let storageMaxFileSizeMb = 500;
+    let storageAllowedExtensions = "";
+
     let hasChanges = false;
 
     const categories = {
@@ -53,6 +57,10 @@
             label: "Security & Rate Limiting",
             icon: "shield",
         },
+        storage: {
+            label: "Storage Configuration",
+            icon: "hard-drive",
+        },
     };
 
     onMount(async () => {
@@ -71,6 +79,9 @@
             data.forEach((s) => {
                 settingsMap[s.key] = s.value;
             });
+            
+            console.log("Loaded Settings:", settingsMap); // Debugging
+            console.log("Storage Extensions:", settingsMap["storage_allowed_extensions"]); // Debugging
 
             // Maintenance
             maintenanceMode = settingsMap["maintenance_mode"] === "true";
@@ -118,6 +129,14 @@
                 settingsMap["api_rate_limit_per_minute"] || "100",
             );
             enableIpBlocking = settingsMap["enable_ip_blocking"] === "true";
+
+            // Storage
+            storageMaxFileSizeMb = parseInt(
+                settingsMap["storage_max_file_size_mb"] || "500",
+            );
+            storageAllowedExtensions =
+                settingsMap["storage_allowed_extensions"] ||
+                "jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,zip,mp4,mov";
         } catch (err) {
             console.error("Failed to load settings:", err);
             toast.error("Failed to load settings");
@@ -212,6 +231,17 @@
                     "enable_ip_blocking",
                     enableIpBlocking ? "true" : "false",
                     "Enable IP blocking",
+                ),
+                // Storage
+                api.settings.upsert(
+                    "storage_max_file_size_mb",
+                    storageMaxFileSizeMb.toString(),
+                    "Maximum file upload size in MB",
+                ),
+                api.settings.upsert(
+                    "storage_allowed_extensions",
+                    storageAllowedExtensions,
+                    "Allowed file extensions",
                 ),
             ];
 
@@ -601,6 +631,59 @@
                                     />
                                     <span class="slider"></span>
                                 </label>
+                            </div>
+                        </div>
+                    </div>
+                {/if}
+
+                <!-- Storage Tab -->
+                {#if activeTab === "storage"}
+                    <div class="card section fade-in">
+                        <div class="card-header">
+                            <h3>Storage Configuration</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <label
+                                        class="setting-label"
+                                        for="max-file-size"
+                                        >Max File Size (MB)</label
+                                    >
+                                    <p class="setting-description">
+                                        Maximum allowed size for a single file upload.
+                                    </p>
+                                </div>
+                                <div class="input-group">
+                                    <input
+                                        type="number"
+                                        id="max-file-size"
+                                        bind:value={storageMaxFileSizeMb}
+                                        on:input={handleChange}
+                                        min="1"
+                                    />
+                                    <span class="input-suffix">MB</span>
+                                </div>
+                            </div>
+
+                            <div class="setting-row">
+                                <div class="setting-info full-width">
+                                    <label
+                                        class="setting-label"
+                                        for="allowed-extensions"
+                                        >Allowed Extensions</label
+                                    >
+                                    <p class="setting-description">
+                                        Comma-separated list of allowed file extensions (e.g., jpg, png, pdf). Use * for all.
+                                    </p>
+                                    <textarea
+                                        id="allowed-extensions"
+                                        bind:value={storageAllowedExtensions}
+                                        on:input={handleChange}
+                                        rows="3"
+                                        placeholder="jpg, png, pdf..."
+                                    ></textarea>
+                                </div>
                             </div>
                         </div>
                     </div>

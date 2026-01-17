@@ -1,10 +1,15 @@
 use axum::{
     routing::{get, post, delete, put},
+    extract::DefaultBodyLimit,
     Router,
 };
 use std::net::SocketAddr;
-use tower_http::cors::{Any, CorsLayer};
-use crate::services::{AuthService, UserService, SettingsService, EmailService, TeamService, AuditService, RoleService, SystemService};
+use tower_http::{
+    cors::{Any, CorsLayer},
+    timeout::TimeoutLayer,
+};
+use std::time::Duration;
+use crate::services::{AuthService, UserService, SettingsService, EmailService, TeamService, AuditService, RoleService, SystemService, PlanService, StorageService};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::{info, warn};
@@ -23,6 +28,8 @@ pub mod websocket;
 pub mod public;
 pub mod audit;
 pub mod system;
+pub mod plans;
+pub mod storage;
 
 pub use websocket::WsHub;
 
@@ -37,6 +44,8 @@ pub struct AppState {
     pub audit_service: Arc<AuditService>,
     pub role_service: Arc<RoleService>,
     pub system_service: Arc<SystemService>,
+    pub plan_service: Arc<PlanService>,
+    pub storage_service: Arc<StorageService>,
     pub ws_hub: Arc<WsHub>,
     pub app_data_dir: PathBuf,
 }
@@ -50,6 +59,8 @@ pub async fn start_server(
     role_service: RoleService,
     audit_service: AuditService,
     system_service: SystemService,
+    plan_service: PlanService,
+    storage_service: StorageService,
     ws_hub: Arc<WsHub>,
     app_data_dir: PathBuf,
     default_port: u16,
@@ -63,6 +74,8 @@ pub async fn start_server(
         audit_service: Arc::new(audit_service),
         role_service: Arc::new(role_service),
         system_service: Arc::new(system_service),
+        plan_service: Arc::new(plan_service),
+        storage_service: Arc::new(storage_service),
         ws_hub,
         app_data_dir,
     };
@@ -133,6 +146,9 @@ pub async fn start_server(
                 .route("/api/superadmin/audit-logs", get(audit::list_audit_logs))
                 .route("/api/superadmin/system", get(system::get_system_health))
 
+                // Plans Routes
+                .nest("/api/plans", plans::plan_routes())
+
                 // Settings Routes
 
                 .route("/api/settings", get(settings::get_all_settings).post(settings::upsert_setting))
@@ -159,6 +175,10 @@ pub async fn start_server(
                 // WebSocket Route
                 .route("/api/ws", get(websocket::ws_handler))
 
+                // Storage Routes
+                .route("/api/storage/files/{id}/content", get(storage::serve_file))
+                .route("/api/storage/upload", post(storage::upload_file_http))
+
                 // Public Routes
                 .route("/api/public/tenants/{slug}", get(public::get_tenant_by_slug))
                 .route("/api/public/domains/{domain}", get(public::get_tenant_by_domain))
@@ -166,6 +186,8 @@ pub async fn start_server(
                 // Version Route
                 .route("/api/version", get(get_app_version))
 
+                .layer(DefaultBodyLimit::max(1024 * 1024 * 1024)) // 1GB Upload Limit
+                .layer(TimeoutLayer::new(Duration::from_secs(3600))) // 1 Hour Timeout for large uploads
                 .layer(cors)
 
                 .with_state(state);

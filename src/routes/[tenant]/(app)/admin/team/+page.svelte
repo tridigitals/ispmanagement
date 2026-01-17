@@ -9,9 +9,8 @@
     import TableToolbar from "$lib/components/TableToolbar.svelte";
     import StatsCard from "$lib/components/StatsCard.svelte";
     import Modal from "$lib/components/Modal.svelte";
-    import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
     import Select from "$lib/components/Select.svelte";
-    import { toast } from "$lib/stores/toast";
+    import { toast } from "svelte-sonner";
     import { t } from "svelte-i18n";
     import type { TeamMember, Role } from "$lib/api/client";
 
@@ -39,11 +38,6 @@
     let inviteRoleId = "";
     let invitePassword = ""; // Optional password for new user
     let inviting = false;
-
-    // Remove Confirmation
-    let showRemoveConfirm = false;
-    let memberToRemove: string | null = null;
-    let removing = false;
 
     // Edit Role
     let showEditModal = false;
@@ -134,24 +128,28 @@
     }
 
     function confirmRemove(memberId: string) {
-        memberToRemove = memberId;
-        showRemoveConfirm = true;
-    }
-
-    async function removeMember() {
-        if (!memberToRemove) return;
-        removing = true;
-        try {
-            await api.team.remove(memberToRemove);
-            teamMembers = teamMembers.filter((m) => m.id !== memberToRemove);
-            toast.success("Member removed successfully");
-            showRemoveConfirm = false;
-            memberToRemove = null;
-        } catch (e: any) {
-            toast.error("Failed to remove member: " + e.message);
-        } finally {
-            removing = false;
-        }
+        toast.error(
+            "Are you sure you want to remove this member? They will lose access to the workspace immediately.",
+            {
+                action: {
+                    label: "Remove Member",
+                    onClick: async () => {
+                        const promise = api.team.remove(memberId);
+                        toast.promise(promise, {
+                            loading: "Removing member...",
+                            success: (data) => {
+                                teamMembers = teamMembers.filter(
+                                    (m) => m.id !== memberId,
+                                );
+                                return "Member removed successfully";
+                            },
+                            error: (err) =>
+                                `Failed to remove member: ${err.message}`,
+                        });
+                    },
+                },
+            },
+        );
     }
 
     function openEditModal(member: TeamMember) {
@@ -443,18 +441,6 @@
         </div>
     </form>
 </Modal>
-
-<!-- Remove Confirmation Dialog -->
-<ConfirmDialog
-    show={showRemoveConfirm}
-    title="Remove Member"
-    message="Are you sure you want to remove this member? They will lose access to the workspace immediately."
-    confirmText="Remove Member"
-    type="danger"
-    loading={removing}
-    on:confirm={removeMember}
-    on:cancel={() => (showRemoveConfirm = false)}
-/>
 
 <style>
     .page-content {

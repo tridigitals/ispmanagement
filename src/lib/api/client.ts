@@ -75,6 +75,19 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             'get_tenant_by_slug': { method: 'GET', path: '/public/tenants/:slug' },
             'get_tenant_by_domain': { method: 'GET', path: '/public/domains/:domain' },
             'get_app_version': { method: 'GET', path: '/version' },
+            // Plans
+            'list_plans': { method: 'GET', path: '/plans' },
+            'get_plan': { method: 'GET', path: '/plans/:plan_id' },
+            'create_plan': { method: 'POST', path: '/plans' },
+            'update_plan': { method: 'PUT', path: '/plans/:plan_id' },
+            'delete_plan': { method: 'DELETE', path: '/plans/:plan_id' },
+            'list_features': { method: 'GET', path: '/plans/features' },
+            'create_feature': { method: 'POST', path: '/plans/features' },
+            'delete_feature': { method: 'DELETE', path: '/plans/features/:feature_id' },
+            'set_plan_feature': { method: 'POST', path: '/plans/:plan_id/features' },
+            'get_tenant_subscription': { method: 'GET', path: '/plans/subscriptions/:tenant_id' },
+            'assign_plan_to_tenant': { method: 'POST', path: '/plans/subscriptions/:tenant_id/assign' },
+            'check_feature_access': { method: 'GET', path: '/plans/access/:tenant_id/:feature_code' },
         };
 
         let route = commandMap[command];
@@ -458,6 +471,96 @@ export const install = {
     },
 };
 
+// Plans API (Superadmin only)
+// Plans API (Superadmin only)
+export const plans = {
+    list: (): Promise<any[]> =>
+        safeInvoke('list_plans', { token: getTokenOrThrow() }),
+
+    get: (planId: string): Promise<any> =>
+        safeInvoke('get_plan', { token: getTokenOrThrow(), planId }),
+
+    create: (name: string, slug: string, description?: string, price_monthly?: number, price_yearly?: number, is_active?: boolean, is_default?: boolean, sort_order?: number): Promise<any> =>
+        safeInvoke('create_plan', { token: getTokenOrThrow(), name, slug, description, price_monthly, price_yearly, is_active, is_default, sort_order }),
+
+    update: (planId: string, name?: string, slug?: string, description?: string, price_monthly?: number, price_yearly?: number, is_active?: boolean, is_default?: boolean, sort_order?: number): Promise<any> =>
+        safeInvoke('update_plan', { token: getTokenOrThrow(), planId, name, slug, description, price_monthly, price_yearly, is_active, is_default, sort_order }),
+
+    delete: (planId: string): Promise<void> =>
+        safeInvoke('delete_plan', { token: getTokenOrThrow(), planId }),
+
+    listFeatures: (): Promise<any[]> =>
+        safeInvoke('list_features', { token: getTokenOrThrow() }),
+
+    // DEPRECATED: Feature creation is system managed
+    createFeature: (code: string, name: string, description?: string, value_type?: string, category?: string, default_value?: string, sort_order?: number): Promise<any> =>
+        safeInvoke('create_feature', { token: getTokenOrThrow(), code, name, description, value_type, category, default_value, sort_order }),
+
+    // DEPRECATED: Feature deletion is system managed
+    deleteFeature: (featureId: string): Promise<void> =>
+        safeInvoke('delete_feature', { token: getTokenOrThrow(), featureId }),
+
+    setPlanFeature: (planId: string, featureId: string, value: string): Promise<void> =>
+        safeInvoke('set_plan_feature', { token: getTokenOrThrow(), planId, featureId, value }),
+
+    getSubscription: (tenantId: string): Promise<any> =>
+        safeInvoke('get_tenant_subscription', { token: getTokenOrThrow(), tenantId }),
+
+    assignPlan: (tenantId: string, planId: string): Promise<any> =>
+        safeInvoke('assign_plan_to_tenant', { token: getTokenOrThrow(), tenantId, planId }),
+
+    checkAccess: (tenantId: string, featureCode: string): Promise<any> =>
+        safeInvoke('check_feature_access', { token: getTokenOrThrow(), tenantId, featureCode }),
+};
+
+export interface FileRecord {
+    id: string;
+    tenant_id: string;
+    name: string;
+    original_name: string;
+    path: string;
+    size: number;
+    content_type: string;
+    uploaded_by: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export const storage = {
+    listFiles: (page: number = 1, perPage: number = 20, search: string = ""): Promise<PaginatedResponse<FileRecord>> =>
+        safeInvoke('list_files_admin', { token: getTokenOrThrow(), page, perPage, search: search || null }),
+
+    deleteFile: (fileId: string): Promise<void> =>
+        safeInvoke('delete_file_admin', { token: getTokenOrThrow(), fileId }),
+
+    listFilesTenant: (page: number = 1, perPage: number = 20, search: string = ""): Promise<PaginatedResponse<FileRecord>> =>
+        safeInvoke('list_files_tenant', { token: getTokenOrThrow(), page, perPage, search: search || null }),
+
+    deleteFileTenant: (fileId: string): Promise<void> =>
+        safeInvoke('delete_file_tenant', { token: getTokenOrThrow(), fileId }),
+
+    uploadFile: async (file: File): Promise<FileRecord> => {
+        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch(`${API_BASE}/storage/upload`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${getTokenOrThrow()}`
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Upload failed: ${error}`);
+        }
+
+        return await response.json();
+    },
+};
+
 // Combined API object
 export const api = {
     auth,
@@ -467,6 +570,8 @@ export const api = {
     superadmin,
     settings,
     install,
+    plans,
+    storage,
 };
 
 export default api;

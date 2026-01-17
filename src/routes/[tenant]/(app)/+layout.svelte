@@ -5,7 +5,6 @@
     import { appSettings } from "$lib/stores/settings";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
-    import Toast from "$lib/components/Toast.svelte";
 
     import { page } from "$app/stores";
     import { user } from "$lib/stores/auth";
@@ -63,7 +62,6 @@
 </script>
 
 <div class="app-shell">
-    <Toast />
     <!-- Sidebar sits on the base layer -->
     <Sidebar bind:isMobileOpen={mobileOpen} />
 

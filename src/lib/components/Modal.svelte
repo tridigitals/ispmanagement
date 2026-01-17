@@ -121,7 +121,10 @@
         display: flex;
         justify-content: flex-end;
         gap: 1rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
+        background: transparent; /* Explicitly transparent */
+        border-bottom-left-radius: 16px;
+        border-bottom-right-radius: 16px;
     }
 
     @media (max-width: 640px) {

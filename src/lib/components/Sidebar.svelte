@@ -73,6 +73,12 @@
                 href: `${tenantPrefix}/admin/settings`,
                 show: $can("read", "settings"),
             },
+            {
+                label: "Storage",
+                icon: "folder",
+                href: `${tenantPrefix}/admin/storage`,
+                show: true,
+            },
         ].filter((i) => i.show);
     })();
 

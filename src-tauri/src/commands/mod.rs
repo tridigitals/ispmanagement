@@ -9,6 +9,8 @@ pub mod roles;
 pub mod team;
 pub mod audit;
 pub mod system;
+pub mod plans;
+pub mod storage;
 
 #[tauri::command]
 pub fn get_app_version() -> String {
@@ -23,3 +25,5 @@ pub use superadmin::*;
 pub use roles::*;
 pub use team::*;
 pub use system::*;
+pub use plans::*;
+pub use storage::*;

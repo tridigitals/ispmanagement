@@ -13,7 +13,7 @@ mod http;
 use commands::*;
 use commands::audit::list_audit_logs;
 use db::connection::{init_db, seed_defaults};
-use services::{AuthService, EmailService, SettingsService, UserService, TeamService, AuditService, RoleService, SystemService};
+use services::{AuthService, EmailService, SettingsService, UserService, TeamService, AuditService, RoleService, SystemService, PlanService};
 use tauri::Manager;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -35,7 +35,8 @@ pub fn run() {
     info!("Starting Application");
 
     let mut builder = tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init());
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_fs::init());
 
     // Only enable single-instance in production to allow dev and prod to run simultaneously
     #[cfg(not(debug_assertions))]
@@ -148,7 +149,8 @@ pub fn run() {
                 info!("Default settings seeded.");
 
                 // Create services - AuditService must be first
-                let audit_service = AuditService::new(pool.clone());
+                let plan_service = PlanService::new(pool.clone());
+                let audit_service = AuditService::new(pool.clone(), Some(plan_service.clone()));
                 // RoleService needs AuditService
                 let role_service = RoleService::new(pool.clone(), audit_service.clone());
 
@@ -170,12 +172,22 @@ pub fn run() {
                 .unwrap_or_else(|_| uuid::Uuid::new_v4().to_string());
                 info!("JWT Secret loaded.");
 
+                // Initialize App Data Dir for Storage
+                let app_data_dir = app_handle.path().app_data_dir().unwrap_or(std::path::PathBuf::from("app_data"));
+                
                 let settings_service = SettingsService::new(pool.clone(), audit_service.clone());
                 let email_service = EmailService::new(settings_service.clone());
                 let auth_service = AuthService::new(pool.clone(), jwt_secret, email_service.clone(), audit_service.clone());
                 let user_service = UserService::new(pool.clone(), audit_service.clone());
-                let team_service = TeamService::new(pool.clone(), auth_service.clone(), audit_service.clone());
+                let team_service = TeamService::new(pool.clone(), auth_service.clone(), audit_service.clone(), plan_service.clone());
                 let system_service = SystemService::new(pool.clone());
+                let storage_service = crate::services::StorageService::new(pool.clone(), plan_service.clone(), app_data_dir.clone());
+                
+                // Seed default features
+                plan_service.seed_default_features()
+                    .await
+                    .map_err(|e| format!("Failed to seed default features: {}", e))?;
+                info!("Default features seeded.");
                 
                 // Create WebSocket hub for real-time sync (shared between HTTP and Tauri)
                 let ws_hub = std::sync::Arc::new(http::WsHub::new());
@@ -189,13 +201,29 @@ pub fn run() {
                 app_handle.manage(audit_service.clone());
                 app_handle.manage(role_service.clone());
                 app_handle.manage(system_service.clone());
+                app_handle.manage(plan_service.clone());
+                app_handle.manage(storage_service.clone());
                 app_handle.manage(ws_hub.clone());
                 info!("Services added to Tauri state.");
 
                 // Start HTTP Server (This can run in background)
                 let app_dir = app_data_dir.clone();
                 tauri::async_runtime::spawn(async move {
-                    http::start_server(auth_service, user_service, settings_service, email_service, team_service, role_service, audit_service, system_service, ws_hub, app_dir, 3000).await;
+                    http::start_server(
+                        auth_service, 
+                        user_service, 
+                        settings_service, 
+                        email_service, 
+                        team_service, 
+                        role_service, 
+                        audit_service, 
+                        system_service, 
+                        plan_service, 
+                        storage_service, 
+                        ws_hub, 
+                        app_dir, 
+                        3000
+                    ).await;
                 });
 
                 info!("Services initialized successfully");
@@ -273,6 +301,25 @@ pub fn run() {
                                     list_audit_logs,
                                     // System Health commands
                                     get_system_health,
+                                    // Plan commands
+                                    list_plans,
+                                    get_plan,
+                                    create_plan,
+                                    update_plan,
+                                    delete_plan,
+                                    list_features,
+                                    // create_feature, // System Managed
+                                    // delete_feature, // System Managed
+                                    set_plan_feature,
+                                    assign_plan_to_tenant,
+                                    get_tenant_subscription,
+                                    check_feature_access,
+                                    // Storage commands
+                                    upload_file,
+                                    list_files_admin,
+                                    delete_file_admin,
+                                    list_files_tenant,
+                                    delete_file_tenant,
                                     // General
                                     get_app_version,
                                 ])

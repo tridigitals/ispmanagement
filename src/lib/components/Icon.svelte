@@ -35,6 +35,17 @@
         X,
         Slash,
         Info,
+        Image,
+        FileText,
+        Film,
+        Music,
+        Archive,
+        File,
+        RefreshCw,
+        Grid,
+        List,
+        HardDrive,
+        Folder,
     } from "lucide-svelte";
 
     export let name: string;
@@ -78,9 +89,21 @@
         plus: Plus,
         edit: Edit,
         trash: Trash2,
+        "trash-2": Trash2,
         x: X,
         slash: Slash,
         info: Info,
+        image: Image,
+        "file-text": FileText,
+        film: Film,
+        music: Music,
+        archive: Archive,
+        file: File,
+        "refresh-cw": RefreshCw,
+        grid: Grid,
+        list: List,
+        "hard-drive": HardDrive,
+        folder: Folder,
     };
 
     $: IconComponent = icons[name] || HelpCircle; // Fallback to HelpCircle if not found

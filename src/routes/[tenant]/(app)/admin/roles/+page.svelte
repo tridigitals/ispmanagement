@@ -7,10 +7,9 @@
     import Icon from "$lib/components/Icon.svelte";
     import Table from "$lib/components/Table.svelte";
     import TableToolbar from "$lib/components/TableToolbar.svelte";
-    import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
     import { t } from "svelte-i18n";
     import type { Role, Permission } from "$lib/api/client";
-    import { toast } from "$lib/stores/toast";
+    import { toast } from "svelte-sonner";
 
     let roles: Role[] = [];
     let permissions: Permission[] = [];
@@ -48,11 +47,6 @@
     let roleLevel = 0;
     let selectedPermissions: Set<string> = new Set();
     let saving = false;
-
-    // Confirm Dialog State
-    let showConfirm = false;
-    let deletingRole: Role | null = null;
-    let deleting = false;
 
     // Group permissions by resource for better UI
     $: permissionGroups = groupPermissions(permissions);
@@ -167,24 +161,26 @@
     }
 
     function confirmDelete(role: Role) {
-        deletingRole = role;
-        showConfirm = true;
-    }
-
-    async function executeDelete() {
-        if (!deletingRole) return;
-        deleting = true;
-        try {
-            await api.roles.delete(deletingRole.id);
-            toast.success("Role deleted successfully");
-            await loadData();
-            showConfirm = false;
-        } catch (e: any) {
-            toast.error(e.message || "Failed to delete role");
-        } finally {
-            deleting = false;
-            deletingRole = null;
-        }
+        toast.error(
+            `Are you sure you want to delete role "${role.name}"? This action cannot be undone.`,
+            {
+                action: {
+                    label: "Delete Role",
+                    onClick: async () => {
+                        const promise = api.roles.delete(role.id);
+                        toast.promise(promise, {
+                            loading: "Deleting role...",
+                            success: (data) => {
+                                loadData();
+                                return "Role deleted successfully";
+                            },
+                            error: (err) => `Failed to delete role: ${err.message}`,
+                        });
+                    },
+                },
+                duration: 10000,
+            },
+        );
     }
 </script>
 
@@ -437,16 +433,6 @@
         </div>
     </div>
 {/if}
-
-<ConfirmDialog
-    bind:show={showConfirm}
-    title="Delete Role"
-    message={`Are you sure you want to delete role "${deletingRole?.name}"? This action cannot be undone.`}
-    confirmText="Delete Role"
-    cancelText="Cancel"
-    loading={deleting}
-    on:confirm={executeDelete}
-/>
 
 <style>
     .page-content {

@@ -8,8 +8,15 @@
   "permissions": [
     "core:default",
     "opener:default",
+    "fs:default",
     "core:window:allow-set-icon",
     "core:window:allow-set-title",
-    "core:webview:allow-internal-toggle-devtools"
+    "core:webview:allow-internal-toggle-devtools",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        "$APP_DATA/**"
+      ]
+    }
   ]
 }

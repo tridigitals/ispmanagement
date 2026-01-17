@@ -65,9 +65,23 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
             custom_domain TEXT UNIQUE,
             logo_url TEXT,
             is_active BOOLEAN NOT NULL DEFAULT true,
+            storage_usage BIGINT NOT NULL DEFAULT 0,
             created_at TIMESTAMPTZ NOT NULL,
             updated_at TIMESTAMPTZ NOT NULL
         )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Add storage_usage column if it doesn't exist (for existing tables)
+    sqlx::query(r#"
+        DO $$ 
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='tenants' AND column_name='storage_usage') THEN
+                ALTER TABLE tenants ADD COLUMN storage_usage BIGINT NOT NULL DEFAULT 0;
+            END IF;
+        END $$;
     "#)
     .execute(pool)
     .await?;
@@ -235,6 +249,114 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
         tracing::error!("Failed to create idx_roles_name_global: {}", e);
     }
 
+    // ==================== SUBSCRIPTION PLANS ====================
+    
+    // Create plans table
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS plans (
+            id TEXT PRIMARY KEY NOT NULL,
+            name TEXT NOT NULL,
+            slug TEXT UNIQUE NOT NULL,
+            description TEXT,
+            price_monthly DECIMAL(10,2) DEFAULT 0,
+            price_yearly DECIMAL(10,2) DEFAULT 0,
+            is_active BOOLEAN DEFAULT true,
+            is_default BOOLEAN DEFAULT false,
+            sort_order INTEGER DEFAULT 0,
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Rename legacy feature_definitions table if exists
+    sqlx::query("ALTER TABLE IF EXISTS feature_definitions RENAME TO features")
+        .execute(pool)
+        .await
+        .ok(); // Ignore if it doesn't exist or fails
+
+    // Create features table (was feature_definitions)
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS features (
+            id TEXT PRIMARY KEY NOT NULL,
+            code TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            value_type TEXT NOT NULL DEFAULT 'boolean',
+            category TEXT DEFAULT 'general',
+            default_value TEXT DEFAULT 'false',
+            sort_order INTEGER DEFAULT 0,
+            created_at TIMESTAMPTZ NOT NULL
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Create plan_features table
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS plan_features (
+            id TEXT PRIMARY KEY NOT NULL,
+            plan_id TEXT NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            feature_id TEXT NOT NULL REFERENCES features(id) ON DELETE CASCADE,
+            value TEXT NOT NULL,
+            UNIQUE(plan_id, feature_id)
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Create tenant_subscriptions table
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS tenant_subscriptions (
+            id TEXT PRIMARY KEY NOT NULL,
+            tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+            plan_id TEXT NOT NULL REFERENCES plans(id),
+            status TEXT DEFAULT 'active',
+            trial_ends_at TIMESTAMPTZ,
+            current_period_start TIMESTAMPTZ DEFAULT NOW(),
+            current_period_end TIMESTAMPTZ,
+            feature_overrides JSONB DEFAULT '{}',
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL,
+            UNIQUE(tenant_id)
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Create file_records table
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS file_records (
+            id TEXT PRIMARY KEY NOT NULL,
+            tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            original_name TEXT NOT NULL,
+            path TEXT NOT NULL,
+            size BIGINT NOT NULL,
+            content_type TEXT NOT NULL,
+            uploaded_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Create indexes for plans
+    if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_plans_slug ON plans(slug)").execute(pool).await {
+        tracing::error!("Failed to create idx_plans_slug: {}", e);
+    }
+    if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_feature_definitions_code ON feature_definitions(code)").execute(pool).await {
+        tracing::error!("Failed to create idx_feature_definitions_code: {}", e);
+    }
+    if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_plan_features_plan ON plan_features(plan_id)").execute(pool).await {
+        tracing::error!("Failed to create idx_plan_features_plan: {}", e);
+    }
+    if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_tenant_subscriptions_tenant ON tenant_subscriptions(tenant_id)").execute(pool).await {
+        tracing::error!("Failed to create idx_tenant_subscriptions_tenant: {}", e);
+    }
+
     info!("PostgreSQL migrations completed");
     Ok(())
 }
@@ -250,12 +372,16 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
             custom_domain TEXT UNIQUE,
             logo_url TEXT,
             is_active INTEGER NOT NULL DEFAULT 1,
+            storage_usage INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
     "#)
     .execute(pool)
     .await?;
+
+    // Add storage_usage column if it doesn't exist (SQLite)
+    let _ = sqlx::query("ALTER TABLE tenants ADD COLUMN storage_usage INTEGER NOT NULL DEFAULT 0").execute(pool).await;
 
     // Create users table
     sqlx::query(r#"
@@ -387,6 +513,106 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_tenants_slug ON tenants(slug)").execute(pool).await.ok();
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_roles_tenant ON roles(tenant_id)").execute(pool).await.ok();
 
+    // ==================== SUBSCRIPTION PLANS (SQLite) ====================
+    
+    // Create plans table
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS plans (
+            id TEXT PRIMARY KEY NOT NULL,
+            name TEXT NOT NULL,
+            slug TEXT UNIQUE NOT NULL,
+            description TEXT,
+            price_monthly REAL DEFAULT 0,
+            price_yearly REAL DEFAULT 0,
+            is_active INTEGER DEFAULT 1,
+            is_default INTEGER DEFAULT 0,
+            sort_order INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Create feature_definitions table
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS feature_definitions (
+            id TEXT PRIMARY KEY NOT NULL,
+            code TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            value_type TEXT NOT NULL DEFAULT 'boolean',
+            category TEXT DEFAULT 'general',
+            default_value TEXT DEFAULT 'false',
+            sort_order INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Create plan_features table
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS plan_features (
+            id TEXT PRIMARY KEY NOT NULL,
+            plan_id TEXT NOT NULL,
+            feature_id TEXT NOT NULL,
+            value TEXT NOT NULL,
+            UNIQUE(plan_id, feature_id),
+            FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE CASCADE,
+            FOREIGN KEY (feature_id) REFERENCES feature_definitions(id) ON DELETE CASCADE
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Create tenant_subscriptions table
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS tenant_subscriptions (
+            id TEXT PRIMARY KEY NOT NULL,
+            tenant_id TEXT NOT NULL,
+            plan_id TEXT NOT NULL,
+            status TEXT DEFAULT 'active',
+            trial_ends_at TEXT,
+            current_period_start TEXT,
+            current_period_end TEXT,
+            feature_overrides TEXT DEFAULT '{}',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(tenant_id),
+            FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+            FOREIGN KEY (plan_id) REFERENCES plans(id)
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Create file_records table (SQLite)
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS file_records (
+            id TEXT PRIMARY KEY NOT NULL,
+            tenant_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            original_name TEXT NOT NULL,
+            path TEXT NOT NULL,
+            size INTEGER NOT NULL,
+            content_type TEXT NOT NULL,
+            uploaded_by TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+            FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Create indexes for plans (SQLite)
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_plans_slug ON plans(slug)").execute(pool).await.ok();
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_feature_definitions_code ON feature_definitions(code)").execute(pool).await.ok();
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_plan_features_plan ON plan_features(plan_id)").execute(pool).await.ok();
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_tenant_subscriptions_tenant ON tenant_subscriptions(tenant_id)").execute(pool).await.ok();
+
     info!("SQLite migrations completed");
     
     seed_defaults(pool).await?;
@@ -417,6 +643,10 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
         ("auth_lockout_duration_minutes", "15", "Account lockout duration in minutes"),
         ("auth_allow_registration", "true", "Allow public user registration"),
         ("auth_require_email_verification", "false", "Require email verification after registration"),
+        ("maintenance_mode", "false", "System maintenance mode"),
+        ("maintenance_message", "The system is currently under maintenance. Please try again later.", "Maintenance message displayed to users"),
+        ("storage_max_file_size_mb", "500", "Maximum file upload size in Megabytes"),
+        ("storage_allowed_extensions", "jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,zip,rar,7z,mp4,mov,avi,mp3,wav", "Comma-separated list of allowed file extensions"),
     ];
 
     for (key, value, description) in defaults {

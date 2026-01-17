@@ -97,6 +97,30 @@
                     {#if !isCollapsed}<span in:fade>Users</span>{/if}
                 </a>
                 <a
+                    href="/superadmin/plans"
+                    class="nav-item"
+                    class:active={$page.url.pathname.startsWith(
+                        "/superadmin/plans",
+                    )}
+                    title="Subscription Plans"
+                    on:click={handleNavClick}
+                >
+                    <Icon name="credit-card" size={20} />
+                    {#if !isCollapsed}<span in:fade>Plans</span>{/if}
+                </a>
+                <a
+                    href="/superadmin/storage"
+                    class="nav-item"
+                    class:active={$page.url.pathname.startsWith(
+                        "/superadmin/storage",
+                    )}
+                    title="Storage Manager"
+                    on:click={handleNavClick}
+                >
+                    <Icon name="folder" size={20} />
+                    {#if !isCollapsed}<span in:fade>Storage</span>{/if}
+                </a>
+                <a
                     href="/superadmin/audit-logs"
                     class="nav-item"
                     class:active={$page.url.pathname.startsWith(
@@ -131,6 +155,18 @@
                 >
                     <Icon name="server" size={20} />
                     {#if !isCollapsed}<span in:fade>System</span>{/if}
+                </a>
+                <a
+                    href="/superadmin/plans"
+                    class="nav-item"
+                    class:active={$page.url.pathname.startsWith(
+                        "/superadmin/plans",
+                    )}
+                    title="Subscription Plans"
+                    on:click={handleNavClick}
+                >
+                    <Icon name="layers" size={20} />
+                    {#if !isCollapsed}<span in:fade>Plans</span>{/if}
                 </a>
                 <div class="spacer"></div>
                 <a
@@ -169,6 +205,10 @@
                                 Settings
                             {:else if $page.url.pathname.includes("/system")}
                                 System
+                            {:else if $page.url.pathname.includes("/plans")}
+                                Plans
+                            {:else if $page.url.pathname.includes("/tenants")}
+                                Tenants
                             {:else}
                                 {$page.url.pathname.split("/").pop()}
                             {/if}

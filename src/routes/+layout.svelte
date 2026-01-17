@@ -14,6 +14,8 @@
         connectWebSocket,
         disconnectWebSocket,
     } from "$lib/stores/websocket";
+    import { Toaster } from "svelte-sonner";
+    import GlobalUploads from "$lib/components/GlobalUploads.svelte";
 
     let loading = true;
 
@@ -106,6 +108,8 @@
         <p>Loading...</p>
     </div>
 {:else}
+    <Toaster />
+    <GlobalUploads />
     <slot />
 {/if}
 
