@@ -11,8 +11,8 @@
 
     // Strict auth check
     onMount(() => {
-        // Auto-collapse on mobile
-        if (window.innerWidth < 768) {
+        // Auto-collapse on mobile (using new 900px breakpoint)
+        if (window.innerWidth < 900) {
             isCollapsed = true;
         }
 
@@ -44,6 +44,12 @@
 
         return () => clearInterval(check);
     });
+
+    function handleNavClick() {
+        if (window.innerWidth < 900) {
+            isCollapsed = true;
+        }
+    }
 </script>
 
 {#if authorized}
@@ -73,6 +79,7 @@
                     class="nav-item"
                     class:active={$page.url.pathname === "/superadmin"}
                     title="Dashboard"
+                    on:click={handleNavClick}
                 >
                     <Icon name="grid" size={20} />
                     {#if !isCollapsed}<span in:fade>Dashboard</span>{/if}
@@ -84,6 +91,7 @@
                         "/superadmin/users",
                     )}
                     title="Global Users"
+                    on:click={handleNavClick}
                 >
                     <Icon name="users" size={20} />
                     {#if !isCollapsed}<span in:fade>Users</span>{/if}
@@ -95,6 +103,7 @@
                         "/superadmin/audit-logs",
                     )}
                     title="Audit Logs"
+                    on:click={handleNavClick}
                 >
                     <Icon name="activity" size={20} />
                     {#if !isCollapsed}<span in:fade>Audit Logs</span>{/if}
@@ -106,12 +115,30 @@
                         "/superadmin/settings",
                     )}
                     title="Platform Settings"
+                    on:click={handleNavClick}
                 >
                     <Icon name="settings" size={20} />
                     {#if !isCollapsed}<span in:fade>Settings</span>{/if}
                 </a>
+                <a
+                    href="/superadmin/system"
+                    class="nav-item"
+                    class:active={$page.url.pathname.startsWith(
+                        "/superadmin/system",
+                    )}
+                    title="System Health"
+                    on:click={handleNavClick}
+                >
+                    <Icon name="server" size={20} />
+                    {#if !isCollapsed}<span in:fade>System</span>{/if}
+                </a>
                 <div class="spacer"></div>
-                <a href="/dashboard" class="nav-item back" title="Back to App">
+                <a
+                    href="/dashboard"
+                    class="nav-item back"
+                    title="Back to App"
+                    on:click={handleNavClick}
+                >
                     <Icon name="arrow-left" size={20} />
                     {#if !isCollapsed}<span in:fade>Exit</span>{/if}
                 </a>
@@ -140,6 +167,8 @@
                                 Audit Logs
                             {:else if $page.url.pathname.includes("/settings")}
                                 Settings
+                            {:else if $page.url.pathname.includes("/system")}
+                                System
                             {:else}
                                 {$page.url.pathname.split("/").pop()}
                             {/if}

@@ -13,7 +13,7 @@ mod http;
 use commands::*;
 use commands::audit::list_audit_logs;
 use db::connection::{init_db, seed_defaults};
-use services::{AuthService, EmailService, SettingsService, UserService, TeamService, AuditService, RoleService};
+use services::{AuthService, EmailService, SettingsService, UserService, TeamService, AuditService, RoleService, SystemService};
 use tauri::Manager;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -175,6 +175,7 @@ pub fn run() {
                 let auth_service = AuthService::new(pool.clone(), jwt_secret, email_service.clone(), audit_service.clone());
                 let user_service = UserService::new(pool.clone(), audit_service.clone());
                 let team_service = TeamService::new(pool.clone(), auth_service.clone(), audit_service.clone());
+                let system_service = SystemService::new(pool.clone());
                 
                 // Create WebSocket hub for real-time sync (shared between HTTP and Tauri)
                 let ws_hub = std::sync::Arc::new(http::WsHub::new());
@@ -187,13 +188,14 @@ pub fn run() {
                 app_handle.manage(team_service.clone());
                 app_handle.manage(audit_service.clone());
                 app_handle.manage(role_service.clone());
+                app_handle.manage(system_service.clone());
                 app_handle.manage(ws_hub.clone());
                 info!("Services added to Tauri state.");
 
                 // Start HTTP Server (This can run in background)
                 let app_dir = app_data_dir.clone();
                 tauri::async_runtime::spawn(async move {
-                    http::start_server(auth_service, user_service, settings_service, email_service, team_service, role_service, audit_service, ws_hub, app_dir, 3000).await;
+                    http::start_server(auth_service, user_service, settings_service, email_service, team_service, role_service, audit_service, system_service, ws_hub, app_dir, 3000).await;
                 });
 
                 info!("Services initialized successfully");
@@ -269,6 +271,8 @@ pub fn run() {
                                     remove_team_member,
                                     // Audit commands
                                     list_audit_logs,
+                                    // System Health commands
+                                    get_system_health,
                                     // General
                                     get_app_version,
                                 ])

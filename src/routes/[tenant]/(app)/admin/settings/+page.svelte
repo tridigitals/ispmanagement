@@ -89,29 +89,7 @@
                 "storage_r2_public_url",
             ],
         },
-        auth: {
-            label: "Authentication",
-            icon: "lock",
-            keys: [
-                "auth_allow_registration",
-                "auth_require_email_verification",
-                "auth_jwt_expiry_hours",
-                "auth_session_timeout_minutes",
-            ],
-        },
-        security: {
-            label: "Security & Policy",
-            icon: "shield",
-            keys: [
-                "auth_password_min_length",
-                "auth_password_require_uppercase",
-                "auth_password_require_number",
-                "auth_password_require_special",
-                "auth_max_login_attempts",
-                "auth_lockout_duration_minutes",
-                "auth_logout_all_on_password_change",
-            ],
-        },
+
         email: {
             label: "Email",
             icon: "mail",

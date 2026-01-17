@@ -4,7 +4,7 @@ use axum::{
 };
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
-use crate::services::{AuthService, UserService, SettingsService, EmailService, TeamService, AuditService, RoleService};
+use crate::services::{AuthService, UserService, SettingsService, EmailService, TeamService, AuditService, RoleService, SystemService};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::{info, warn};
@@ -22,6 +22,7 @@ pub mod roles;
 pub mod websocket;
 pub mod public;
 pub mod audit;
+pub mod system;
 
 pub use websocket::WsHub;
 
@@ -35,6 +36,7 @@ pub struct AppState {
     pub team_service: Arc<TeamService>,
     pub audit_service: Arc<AuditService>,
     pub role_service: Arc<RoleService>,
+    pub system_service: Arc<SystemService>,
     pub ws_hub: Arc<WsHub>,
     pub app_data_dir: PathBuf,
 }
@@ -47,6 +49,7 @@ pub async fn start_server(
     team_service: TeamService,
     role_service: RoleService,
     audit_service: AuditService,
+    system_service: SystemService,
     ws_hub: Arc<WsHub>,
     app_data_dir: PathBuf,
     default_port: u16,
@@ -59,6 +62,7 @@ pub async fn start_server(
         team_service: Arc::new(team_service),
         audit_service: Arc::new(audit_service),
         role_service: Arc::new(role_service),
+        system_service: Arc::new(system_service),
         ws_hub,
         app_data_dir,
     };
@@ -127,6 +131,7 @@ pub async fn start_server(
 
                 .route("/api/superadmin/tenants/{id}", delete(superadmin::delete_tenant).put(superadmin::update_tenant))
                 .route("/api/superadmin/audit-logs", get(audit::list_audit_logs))
+                .route("/api/superadmin/system", get(system::get_system_health))
 
                 // Settings Routes
 

@@ -127,18 +127,16 @@
     @media (max-width: 640px) {
         .modal-card {
             max-width: 100% !important;
-            margin-bottom: 0;
-            border-bottom-left-radius: 0;
-            border-bottom-right-radius: 0;
+            margin: 1rem;
         }
 
         .modal-backdrop {
-            align-items: flex-end; /* Bottom sheet effect on mobile */
-            padding: 0;
+            align-items: center;
+            padding: 1rem;
         }
 
         .modal-body {
-            max-height: 60vh;
+            max-height: 70vh;
         }
     }
 </style>

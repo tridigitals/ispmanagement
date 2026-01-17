@@ -78,6 +78,7 @@ futures = "0.3"
 # Environment
 dotenvy = "0.15"
 tauri-plugin-single-instance = "2.0.1"
+sysinfo = "0.30"
 
 [profile.dev]
 incremental = false

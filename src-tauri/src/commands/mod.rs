@@ -8,6 +8,7 @@ pub mod superadmin;
 pub mod roles;
 pub mod team;
 pub mod audit;
+pub mod system;
 
 #[tauri::command]
 pub fn get_app_version() -> String {
@@ -21,3 +22,4 @@ pub use install::*;
 pub use superadmin::*;
 pub use roles::*;
 pub use team::*;
+pub use system::*;

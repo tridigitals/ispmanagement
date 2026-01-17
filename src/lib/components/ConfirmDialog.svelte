@@ -9,17 +9,27 @@
     export let confirmText = "Confirm";
     export let cancelText = "Cancel";
     export let type: "danger" | "warning" | "info" = "danger";
+    export let confirmationKeyword = "";
     export let loading = false;
 
     const dispatch = createEventDispatcher();
 
+    let inputValue = "";
+
+    $: canConfirm =
+        !loading &&
+        (!confirmationKeyword || inputValue === confirmationKeyword);
+
     function onConfirm() {
+        if (!canConfirm) return;
         dispatch("confirm");
+        inputValue = ""; // Reset after confirm
     }
 
     function onCancel() {
         show = false;
         dispatch("cancel");
+        inputValue = ""; // Reset after cancel
     }
 </script>
 
@@ -36,13 +46,31 @@
             />
         </div>
         <p class="message">{message}</p>
+
+        {#if confirmationKeyword}
+            <div class="confirmation-input">
+                <p class="instruction">
+                    Type <strong>{confirmationKeyword}</strong> to confirm.
+                </p>
+                <input
+                    type="text"
+                    bind:value={inputValue}
+                    placeholder="Type {confirmationKeyword} here"
+                    class="confirm-input"
+                />
+            </div>
+        {/if}
     </div>
 
     <div slot="footer" class="actions">
         <button class="btn btn-ghost" on:click={onCancel} disabled={loading}>
             {cancelText}
         </button>
-        <button class="btn btn-{type}" on:click={onConfirm} disabled={loading}>
+        <button
+            class="btn btn-{type}"
+            on:click={onConfirm}
+            disabled={!canConfirm}
+        >
             {#if loading}
                 <span class="spinner"></span>
             {/if}
@@ -89,6 +117,41 @@
         color: var(--text-secondary, #94a3b8);
         line-height: 1.5;
         margin: 0;
+    }
+
+    .confirmation-input {
+        margin-top: 1.5rem;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .instruction {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    .instruction strong {
+        color: var(--text-primary);
+        user-select: all;
+    }
+
+    .confirm-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+        background: var(--bg-primary, rgba(0, 0, 0, 0.2));
+        color: var(--text-primary, white);
+        border-radius: 6px;
+        text-align: center;
+        font-size: 1rem;
+    }
+
+    .confirm-input:focus {
+        outline: none;
+        border-color: var(--color-primary, #6366f1);
     }
 
     .actions {
@@ -146,8 +209,9 @@
     }
 
     .btn:disabled {
-        opacity: 0.7;
+        opacity: 0.5;
         cursor: not-allowed;
+        filter: grayscale(0.5);
     }
 
     .spinner {

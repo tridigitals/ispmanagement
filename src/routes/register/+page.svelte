@@ -11,6 +11,7 @@
     import { fade, fly } from "svelte/transition";
     import { t } from "svelte-i18n";
     import Icon from "$lib/components/Icon.svelte";
+    import { toast } from "$lib/stores/toast";
 
     let name = "";
     let email = "";
@@ -98,7 +99,7 @@
                     goto("/dashboard");
                 }
             } else if (response.message) {
-                alert(response.message);
+                toast.error(response.message);
                 goto("/login");
             }
         } catch (err) {

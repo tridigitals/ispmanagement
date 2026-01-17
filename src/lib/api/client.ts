@@ -48,6 +48,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             'create_tenant': { method: 'POST', path: '/superadmin/tenants' },
             'delete_tenant': { method: 'DELETE', path: '/superadmin/tenants/:id' },
             'list_audit_logs': { method: 'GET', path: '/superadmin/audit-logs' },
+            'get_system_health': { method: 'GET', path: '/superadmin/system' },
             // Settings
             'get_logo': { method: 'GET', path: '/settings/logo' },
             'get_all_settings': { method: 'GET', path: '/settings' },
@@ -369,6 +370,9 @@ export const superadmin = {
 
     listAuditLogs: (page?: number, perPage?: number, filters?: { user_id?: string, tenant_id?: string, action?: string, date_from?: string, date_to?: string, search?: string }): Promise<PaginatedResponse<AuditLog>> =>
         safeInvoke('list_audit_logs', { token: getTokenOrThrow(), page, perPage, ...filters }),
+
+    getSystemHealth: (): Promise<any> =>
+        safeInvoke('get_system_health', { token: getTokenOrThrow() }),
 };
 
 // Public API (No Auth)
