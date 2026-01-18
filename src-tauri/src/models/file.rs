@@ -11,6 +11,8 @@ pub struct FileRecord {
     pub path: String,
     pub size: i64,
     pub content_type: String,
+    #[sqlx(default)]
+    pub storage_provider: String,
     pub uploaded_by: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

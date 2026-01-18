@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { user, isAuthenticated, isAdmin } from "$lib/stores/auth";
+    import { user, isAuthenticated, isAdmin, can } from "$lib/stores/auth";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
     import { t } from "svelte-i18n";
@@ -24,18 +24,20 @@
             <p>{$t("dashboard.greeting.welcome_message")}</p>
         </div>
         <div class="header-actions">
-            <button class="btn btn-primary">
-                <Icon name="activity" size={16} />
-                {$t("dashboard.generate_report")}
-            </button>
+            {#if $can("upload", "storage")}
+                <button class="btn btn-primary" onclick={() => goto(`/${$user?.tenant_slug}/storage`)}>
+                    <Icon name="hard-drive" size={16} />
+                    Manage Files
+                </button>
+            {/if}
         </div>
     </header>
 
     {#if $isAdmin}
         <div
             class="admin-banner"
-            on:click={() => goto("/admin")}
-            on:keydown={(e) => e.key === "Enter" && goto("/admin")}
+            onclick={() => goto(`/${$user?.tenant_slug}/admin`)}
+            onkeydown={(e) => e.key === "Enter" && goto(`/${$user?.tenant_slug}/admin`)}
             role="button"
             tabindex="0"
         >
@@ -52,6 +54,7 @@
         </div>
     {/if}
 
+    <!-- Stats Row (User Focused) -->
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-header">
@@ -62,9 +65,7 @@
             </div>
             <div class="stat-body">
                 <span class="stat-value">{$user?.role}</span>
-                <span class="stat-label"
-                    >{$t("dashboard.stats.account_role")}</span
-                >
+                <span class="stat-label">{$t("dashboard.stats.account_role")}</span>
             </div>
         </div>
 
@@ -75,14 +76,8 @@
                 </div>
             </div>
             <div class="stat-body">
-                <span class="stat-value"
-                    >{new Date(
-                        $user?.created_at || Date.now(),
-                    ).toLocaleDateString()}</span
-                >
-                <span class="stat-label"
-                    >{$t("dashboard.stats.member_since")}</span
-                >
+                <span class="stat-value">{new Date($user?.created_at || Date.now()).toLocaleDateString()}</span>
+                <span class="stat-label">{$t("dashboard.stats.member_since")}</span>
             </div>
         </div>
 
@@ -94,9 +89,7 @@
             </div>
             <div class="stat-body">
                 <span class="stat-value">{$t("dashboard.stats.active")}</span>
-                <span class="stat-label"
-                    >{$t("dashboard.stats.system_status")}</span
-                >
+                <span class="stat-label">{$t("dashboard.stats.system_status")}</span>
             </div>
         </div>
     </div>
@@ -105,9 +98,7 @@
         <section class="activity-section">
             <div class="section-header">
                 <h2>{$t("dashboard.recent_activity.title")}</h2>
-                <button class="text-btn"
-                    >{$t("dashboard.recent_activity.view_all")}</button
-                >
+                <button class="text-btn">{$t("dashboard.recent_activity.view_all")}</button>
             </div>
 
             <div class="card activity-card">
@@ -117,11 +108,7 @@
                     </div>
                     <h3>{$t("dashboard.recent_activity.empty.title")}</h3>
                     <p>{$t("dashboard.recent_activity.empty.description")}</p>
-                    <button class="btn btn-secondary mt-4"
-                        >{$t(
-                            "dashboard.recent_activity.empty.learn_more",
-                        )}</button
-                    >
+                    <button class="btn btn-secondary mt-4">{$t("dashboard.recent_activity.empty.learn_more")}</button>
                 </div>
             </div>
         </section>
@@ -131,7 +118,7 @@
                 <h2>{$t("dashboard.quick_actions.title")}</h2>
             </div>
             <div class="actions-list">
-                <button class="action-item" on:click={() => goto("/profile")}>
+                <button class="action-item" onclick={() => goto(`/${$user?.tenant_slug}/profile`)}>
                     <Icon name="profile" size={18} />
                     {$t("dashboard.quick_actions.update_profile")}
                 </button>
@@ -215,9 +202,7 @@
         justify-content: space-between;
         align-items: center;
         cursor: pointer;
-        transition:
-            transform 0.2s,
-            box-shadow 0.2s;
+        transition: transform 0.2s, box-shadow 0.2s;
         box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
     }
 

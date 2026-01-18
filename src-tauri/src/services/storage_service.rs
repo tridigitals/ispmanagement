@@ -7,6 +7,25 @@ use std::path::PathBuf;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
+use aws_sdk_s3::{Client, config::Region};
+use aws_sdk_s3::primitives::ByteStream;
+
+#[derive(Debug)]
+pub enum StorageContent {
+    Local(PathBuf),
+    S3(ByteStream),
+}
+
+#[derive(Debug, Clone)]
+pub struct StorageConfig {
+    pub driver: String,
+    pub bucket: String,
+    pub region: String,
+    pub endpoint: String,
+    pub access_key: String,
+    pub secret_key: String,
+    pub public_url: String,
+}
 
 #[derive(Clone)]
 pub struct StorageService {
@@ -18,9 +37,6 @@ pub struct StorageService {
 impl StorageService {
     pub fn new(pool: DbPool, plan_service: PlanService, app_data_dir: PathBuf) -> Self {
         let storage_path = app_data_dir.join("uploads");
-        // Ensure directory exists (sync for simplicity in constructor, or move to init)
-        // Ideally we should use tokio::fs::create_dir_all async, but new is usually sync.
-        // We can create it lazily.
         if !storage_path.exists() {
              std::fs::create_dir_all(&storage_path).unwrap_or_else(|e| {
                  eprintln!("Failed to create storage directory: {}", e);
@@ -32,6 +48,113 @@ impl StorageService {
             plan_service,
             base_storage_path: storage_path,
         }
+    }
+
+    /// Get file content stream (Local path or S3 Stream)
+    pub async fn get_file_content(&self, file_id: &str) -> AppResult<(crate::models::FileRecord, StorageContent)> {
+        let file = self.get_file(file_id).await?;
+
+        if file.storage_provider == "local" {
+            let path = PathBuf::from(&file.path);
+            if !path.exists() {
+                return Err(AppError::NotFound("File not found on disk".to_string()));
+            }
+            Ok((file, StorageContent::Local(path)))
+        } else if file.storage_provider == "s3" || file.storage_provider == "r2" {
+            let config = self.get_storage_config(&file.tenant_id).await?;
+            let client = self.get_s3_client(&config).await;
+            
+            let output = client.get_object()
+                .bucket(&config.bucket)
+                .key(&file.path)
+                .send()
+                .await
+                .map_err(|e| AppError::Internal(format!("Failed to get S3 object: {}", e)))?;
+            
+            Ok((file, StorageContent::S3(output.body)))
+        } else {
+            Err(AppError::Internal("Unknown storage provider".to_string()))
+        }
+    }
+
+    /// Get storage configuration for a tenant (prioritizing tenant settings over global)
+    async fn get_storage_config(&self, tenant_id: &str) -> AppResult<StorageConfig> {
+        let keys = vec![
+            "storage_driver", "storage_s3_bucket", "storage_s3_region", 
+            "storage_s3_endpoint", "storage_s3_access_key", "storage_s3_secret_key", "storage_s3_public_url"
+        ];
+
+        let mut config = StorageConfig {
+            driver: "local".to_string(),
+            bucket: "".to_string(),
+            region: "us-east-1".to_string(),
+            endpoint: "".to_string(),
+            access_key: "".to_string(),
+            secret_key: "".to_string(),
+            public_url: "".to_string(),
+        };
+
+        // Fetch Tenant Driver preference first
+        let tenant_driver: Option<String> = sqlx::query_scalar("SELECT value FROM settings WHERE tenant_id = $1 AND key = 'storage_driver'")
+            .bind(tenant_id)
+            .fetch_optional(&self.pool).await.unwrap_or(None);
+
+        let use_tenant_config = match tenant_driver.as_deref() {
+            Some("s3") | Some("r2") => true,
+            _ => false, 
+        };
+
+        let rows: Vec<(String, String)> = if use_tenant_config {
+            config.driver = tenant_driver.unwrap();
+            sqlx::query_as("SELECT key, value FROM settings WHERE tenant_id = $1 AND key = ANY($2)")
+                .bind(tenant_id)
+                .bind(&keys)
+                .fetch_all(&self.pool).await.unwrap_or_default()
+        } else {
+            sqlx::query_as("SELECT key, value FROM settings WHERE tenant_id IS NULL AND key = ANY($1)")
+                .bind(&keys)
+                .fetch_all(&self.pool).await.unwrap_or_default()
+        };
+
+        for (k, v) in rows {
+            match k.as_str() {
+                "storage_driver" => if !use_tenant_config { config.driver = v },
+                "storage_s3_bucket" => config.bucket = v,
+                "storage_s3_region" => config.region = v,
+                "storage_s3_endpoint" => config.endpoint = v,
+                "storage_s3_access_key" => config.access_key = v,
+                "storage_s3_secret_key" => config.secret_key = v,
+                "storage_s3_public_url" => config.public_url = v,
+                _ => {}
+            }
+        }
+
+        Ok(config)
+    }
+
+    /// Create S3 Client from config
+    async fn get_s3_client(&self, config: &StorageConfig) -> Client {
+        let region = Region::new(config.region.clone());
+        
+        let creds = aws_sdk_s3::config::Credentials::new(
+            &config.access_key,
+            &config.secret_key,
+            None,
+            None,
+            "static"
+        );
+
+        let mut builder = aws_sdk_s3::Config::builder()
+            .region(region)
+            .credentials_provider(creds)
+            .behavior_version_latest();
+
+        if !config.endpoint.is_empty() {
+            builder = builder.endpoint_url(&config.endpoint);
+        }
+        
+        let s3_config = builder.build();
+        Client::from_conf(s3_config)
     }
 
     /// Prepare upload path (mkdir) and return (Absolute Path, Safe Filename, File ID)
@@ -71,39 +194,27 @@ impl StorageService {
         file_path: &str,
         content_type: &str,
         size: i64,
+        storage_provider: &str,
         user_id: Option<&str>,
+        bypass_quota: bool,
     ) -> AppResult<crate::models::FileRecord> {
-        // Direct execution without explicit transaction for debugging
         #[cfg(feature = "postgres")]
         tracing::info!("[Storage] Mode: POSTGRES");
         #[cfg(feature = "sqlite")]
         tracing::info!("[Storage] Mode: SQLITE");
         
-        // Check Limits
-        // Note: passing pool directly
-        // Warning: get_feature_limit_with_conn expects a transaction reference usually.
-        // We might need to check how plan_service implements it.
-        // If it requires tx, we might need a small ad-hoc tx just for that or change plan_service.
-        // Let's assume for now we skip limit check to isolate the INSERT issue, OR we create a short tx just for limit check.
-        // Actually, let's keep the limit check simple: assume it passes for now to debug INSERT visibility.
-        
-        /* 
-        let limit_gb = self.plan_service.get_feature_limit_with_conn(tenant_id, "max_storage_gb", &mut tx).await?;
-        if let Some(max_gb) = limit_gb { ... }
-        */
-        
         let now = Utc::now();
         
         #[cfg(feature="postgres")]
         let query = r#"
-            INSERT INTO file_records (id, tenant_id, name, original_name, path, size, content_type, uploaded_by, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            INSERT INTO file_records (id, tenant_id, name, original_name, path, size, content_type, storage_provider, uploaded_by, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         "#;
 
         #[cfg(feature="sqlite")]
         let query = r#"
-            INSERT INTO file_records (id, tenant_id, name, original_name, path, size, content_type, uploaded_by, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO file_records (id, tenant_id, name, original_name, path, size, content_type, storage_provider, uploaded_by, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#;
 
         tracing::info!("[Storage] Executing INSERT for {}", file_id);
@@ -117,6 +228,7 @@ impl StorageService {
             .bind(file_path)
             .bind(size)
             .bind(content_type)
+            .bind(storage_provider)
             .bind(user_id)
             .bind(now)
             .bind(now)
@@ -132,33 +244,22 @@ impl StorageService {
             .bind(file_path)
             .bind(size)
             .bind(content_type)
+            .bind(storage_provider)
             .bind(user_id)
             .bind(now.to_rfc3339())
             .bind(now.to_rfc3339())
             .execute(&self.pool).await
             .map_err(|e| AppError::Internal(format!("Insert failed: {}", e)))?;
 
-        tracing::info!("[Storage] INSERT Success. Updating usage...");
+        tracing::info!("[Storage] INSERT Success.");
 
-        // VERIFICATION STEP
-        #[cfg(feature="postgres")]
-        {
-            let exists: Option<(String,)> = sqlx::query_as("SELECT id FROM file_records WHERE id = $1")
-                .bind(file_id)
-                .fetch_optional(&self.pool).await.unwrap_or(None);
-            
-            if exists.is_some() {
-                tracing::info!("[Storage] ✅ VERIFIED: Record {} exists in DB.", file_id);
-            } else {
-                tracing::error!("[Storage] ❌ GHOST INSERT: Record {} NOT found immediately after insert!", file_id);
-            }
+        if !bypass_quota {
+            sqlx::query("UPDATE tenants SET storage_usage = storage_usage + $1 WHERE id = $2")
+                .bind(size)
+                .bind(tenant_id)
+                .execute(&self.pool).await
+                .map_err(|e| AppError::Internal(format!("Update usage failed: {}", e)))?;
         }
-
-        sqlx::query("UPDATE tenants SET storage_usage = storage_usage + $1 WHERE id = $2")
-            .bind(size)
-            .bind(tenant_id)
-            .execute(&self.pool).await
-            .map_err(|e| AppError::Internal(format!("Update usage failed: {}", e)))?;
 
         Ok(crate::models::FileRecord {
             id: file_id.to_string(),
@@ -168,6 +269,7 @@ impl StorageService {
             path: file_path.to_string(),
             size,
             content_type: content_type.to_string(),
+            storage_provider: storage_provider.to_string(),
             uploaded_by: user_id.map(|s| s.to_string()),
             created_at: now,
             updated_at: now,
@@ -314,6 +416,7 @@ impl StorageService {
                     path: file_path.to_string_lossy().to_string(),
                     size,
                     content_type: content_type.to_string(),
+                    storage_provider: "local".to_string(), // Default for direct upload
                     uploaded_by: user_id.map(|s| s.to_string()),
                     created_at: now,
                     updated_at: now,
@@ -477,6 +580,7 @@ impl StorageService {
                 let path: String = row.try_get("path").ok()?;
                 let size: i64 = row.try_get("size").ok()?;
                 let content_type: String = row.try_get("content_type").ok()?;
+                let storage_provider: String = row.try_get("storage_provider").unwrap_or("local".to_string());
                 let uploaded_by: Option<String> = row.try_get("uploaded_by").ok();
                 let created_at: DateTime<Utc> = row.try_get("created_at").ok()?;
                 let updated_at: DateTime<Utc> = row.try_get("updated_at").ok()?;
@@ -489,6 +593,7 @@ impl StorageService {
                     path,
                     size,
                     content_type,
+                    storage_provider,
                     uploaded_by,
                     created_at,
                     updated_at,
@@ -584,6 +689,23 @@ impl StorageService {
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
         if let Some(file) = record {
+            // 1. Delete from Storage Provider
+            if file.storage_provider == "local" {
+                let path = PathBuf::from(&file.path);
+                if path.exists() {
+                    fs::remove_file(path).await.ok();
+                }
+            } else if file.storage_provider == "s3" || file.storage_provider == "r2" {
+                if let Ok(config) = self.get_storage_config(&file.tenant_id).await {
+                    let client = self.get_s3_client(&config).await;
+                    let _ = client.delete_object()
+                        .bucket(&config.bucket)
+                        .key(&file.path)
+                        .send()
+                        .await;
+                }
+            }
+
             // 2. Remove from DB
             #[cfg(feature = "postgres")]
             sqlx::query("DELETE FROM file_records WHERE id = $1")
@@ -599,23 +721,17 @@ impl StorageService {
                 .await
                 .map_err(|e| AppError::Internal(e.to_string()))?;
 
-            // 3. Update tenant storage
-            sqlx::query("UPDATE tenants SET storage_usage = storage_usage - $1 WHERE id = $2")
-                .bind(file.size)
-                .bind(&file.tenant_id)
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| AppError::Internal(e.to_string()))?;
-
-            // 4. Commit before trying to delete from disk
-            tx.commit().await.map_err(|e| AppError::Internal(format!("Failed to commit transaction: {}", e)))?;
-            
-            // 5. Remove from Disk
-            let path = PathBuf::from(&file.path);
-            if path.exists() {
-                fs::remove_file(path).await
-                    .map_err(|e| AppError::Internal(format!("Failed to delete file from disk: {}", e)))?;
+            // 3. Update usage (Only if local)
+            if file.storage_provider == "local" {
+                sqlx::query("UPDATE tenants SET storage_usage = storage_usage - $1 WHERE id = $2")
+                    .bind(file.size)
+                    .bind(&file.tenant_id)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| AppError::Internal(e.to_string()))?;
             }
+
+            tx.commit().await.map_err(|e| AppError::Internal(format!("Failed to commit transaction: {}", e)))?;
         } else {
             tx.rollback().await.map_err(|e| AppError::Internal(format!("Failed to rollback transaction: {}", e)))?;
         }
@@ -623,7 +739,7 @@ impl StorageService {
         Ok(())
     }
 
-    /// Delete file (Tenant) - Secure deletion checking tenant_id
+    /// Delete file (Tenant)
     pub async fn delete_tenant_file(&self, file_id: &str, tenant_id: &str) -> AppResult<()> {
         let mut tx = self.pool.begin().await.map_err(|e| AppError::Internal(format!("Failed to begin transaction: {}", e)))?;
 
@@ -644,7 +760,22 @@ impl StorageService {
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
         if let Some(file) = record {
-            // 2. Remove from DB
+             if file.storage_provider == "local" {
+                let path = PathBuf::from(&file.path);
+                if path.exists() {
+                    fs::remove_file(path).await.ok();
+                }
+            } else if file.storage_provider == "s3" || file.storage_provider == "r2" {
+                if let Ok(config) = self.get_storage_config(&file.tenant_id).await {
+                    let client = self.get_s3_client(&config).await;
+                    let _ = client.delete_object()
+                        .bucket(&config.bucket)
+                        .key(&file.path)
+                        .send()
+                        .await;
+                }
+            }
+
             #[cfg(feature = "postgres")]
             sqlx::query("DELETE FROM file_records WHERE id = $1")
                 .bind(file_id)
@@ -659,25 +790,17 @@ impl StorageService {
                 .await
                 .map_err(|e| AppError::Internal(e.to_string()))?;
 
-            // 3. Update tenant storage
-            sqlx::query("UPDATE tenants SET storage_usage = storage_usage - $1 WHERE id = $2")
-                .bind(file.size)
-                .bind(tenant_id)
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| AppError::Internal(e.to_string()))?;
-
-            // 4. Commit before trying to delete from disk
-            tx.commit().await.map_err(|e| AppError::Internal(format!("Failed to commit transaction: {}", e)))?;
-            
-            // 5. Remove from Disk
-            let path = PathBuf::from(&file.path);
-            if path.exists() {
-                fs::remove_file(path).await
-                    .map_err(|e| AppError::Internal(format!("Failed to delete file from disk: {}", e)))?;
+            if file.storage_provider == "local" {
+                sqlx::query("UPDATE tenants SET storage_usage = storage_usage - $1 WHERE id = $2")
+                    .bind(file.size)
+                    .bind(tenant_id)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| AppError::Internal(e.to_string()))?;
             }
+
+            tx.commit().await.map_err(|e| AppError::Internal(format!("Failed to commit transaction: {}", e)))?;
         } else {
-             // Rollback if file not found or doesn't belong to tenant
             tx.rollback().await.map_err(|e| AppError::Internal(format!("Failed to rollback transaction: {}", e)))?;
             return Err(AppError::NotFound("File not found or access denied".to_string()));
         }
@@ -753,25 +876,67 @@ impl StorageService {
             .map_err(|e| AppError::Internal(format!("Failed to read temp file: {}", e)))?;
         let size = metadata.len();
 
-        // Prepare destination
-        let (dest_path, safe_name, file_id) = self.prepare_upload_path(tenant_id, file_name).await?;
+        // 1. Get Configuration
+        let config = self.get_storage_config(tenant_id).await?;
+        let is_custom_storage = config.driver == "s3" || config.driver == "r2";
 
-        // Move file (Rename is atomic and fast)
-        fs::rename(&temp_path, &dest_path).await
-            .map_err(|e| AppError::Internal(format!("Failed to move final file: {}", e)))?;
+        let final_path: String;
+        let safe_name: String;
+        let file_id: String;
 
-        tracing::info!("[Storage] File moved to: {:?}. Registering in DB...", dest_path);
+        // 2. Process File based on Driver
+        if is_custom_storage {
+            // --- S3 / R2 Upload ---
+            let client = self.get_s3_client(&config).await;
+            
+            let file_uuid = Uuid::new_v4().to_string();
+            let ext = std::path::Path::new(file_name).extension().and_then(|s| s.to_str()).unwrap_or("bin");
+            let now = Utc::now();
+            // Structure: tenant_id/YYYY/MM/uuid.ext
+            let key = format!("{}/{}/{}/{}.{}", tenant_id, now.format("%Y"), now.format("%m"), file_uuid, ext);
+            
+            safe_name = format!("{}.{}", file_uuid, ext);
+            file_id = file_uuid;
+            final_path = key.clone();
 
-        // Register in DB
+            let body = ByteStream::from_path(&temp_path).await
+                .map_err(|e| AppError::Internal(format!("Failed to read file for S3 upload: {}", e)))?;
+
+            client.put_object()
+                .bucket(&config.bucket)
+                .key(&key)
+                .body(body)
+                .content_type(content_type)
+                .send()
+                .await
+                .map_err(|e| AppError::Internal(format!("S3 Upload Failed: {}", e)))?;
+
+            fs::remove_file(&temp_path).await.ok();
+
+        } else {
+            // --- Local Storage ---
+            let (dest_path, s_name, f_id) = self.prepare_upload_path(tenant_id, file_name).await?;
+            
+            fs::rename(&temp_path, &dest_path).await
+                .map_err(|e| AppError::Internal(format!("Failed to move final file: {}", e)))?;
+            
+            final_path = dest_path.to_string_lossy().to_string();
+            safe_name = s_name;
+            file_id = f_id;
+        }
+
+        // 3. Register in DB
         let res = self.register_upload(
             tenant_id,
             &file_id,
             file_name,
             &safe_name,
-            &dest_path.to_string_lossy(),
+            &final_path,
             content_type,
             size as i64,
-            user_id
+            &config.driver,
+            user_id,
+            is_custom_storage // bypass quota if custom
         ).await;
 
         if let Err(ref e) = res {

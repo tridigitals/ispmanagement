@@ -68,6 +68,12 @@
                 show: $can("read", "roles"),
             },
             {
+                label: "Subscription",
+                icon: "credit-card",
+                href: `${tenantPrefix}/admin/subscription`,
+                show: true,
+            },
+            {
                 label: $t("sidebar.settings"),
                 icon: "settings",
                 href: `${tenantPrefix}/admin/settings`,

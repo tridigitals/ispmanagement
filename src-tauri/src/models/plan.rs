@@ -156,3 +156,15 @@ pub struct FeatureAccess {
     pub value: String,
     pub value_type: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TenantSubscriptionDetails {
+    pub plan_name: String,
+    pub plan_slug: String,
+    pub status: String,
+    pub current_period_end: Option<DateTime<Utc>>,
+    pub storage_usage: i64,
+    pub storage_limit: Option<i64>,
+    pub member_usage: i64,
+    pub member_limit: Option<i64>,
+}

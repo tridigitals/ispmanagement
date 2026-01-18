@@ -20,16 +20,16 @@
         sort_order: number;
     }
 
-    let plans: Plan[] = [];
-    let loading = true;
+    let plans = $state<Plan[]>([]);
+    let loading = $state(true);
 
     // Confirm Dialog State
-    let showConfirm = false;
-    let confirmTitle = "";
-    let confirmMessage = "";
-    let confirmAction: () => Promise<void> = async () => {};
-    let confirmType: "danger" | "warning" | "info" = "danger";
-    let confirmKeyword = "";
+    let showConfirm = $state(false);
+    let confirmTitle = $state("");
+    let confirmMessage = $state("");
+    let confirmAction = $state<() => Promise<void>>(async () => {});
+    let confirmType = $state<"danger" | "warning" | "info">("danger");
+    let confirmKeyword = $state("");
 
     // Table configuration
     const planColumns = [
@@ -46,13 +46,13 @@
         },
     ];
 
-    let planSearch = "";
+    let planSearch = $state("");
 
-    $: filteredPlans = plans.filter(
+    let filteredPlans = $derived(plans.filter(
         (p) =>
             p.name.toLowerCase().includes(planSearch.toLowerCase()) ||
             p.slug.toLowerCase().includes(planSearch.toLowerCase()),
-    );
+    ));
 
     onMount(async () => {
         await loadData();
@@ -134,7 +134,7 @@
             <p class="subtitle">Manage plans and features for your tenants</p>
         </div>
         <div class="header-actions">
-            <button class="btn btn-primary" on:click={createPlan}>
+            <button class="btn btn-primary" onclick={createPlan}>
                 <Icon name="plus" size={16} />
                 Add Plan
             </button>
@@ -182,14 +182,14 @@
                             <button
                                 class="btn btn-sm btn-icon"
                                 title="Edit"
-                                on:click={() => editPlan(item)}
+                                onclick={() => editPlan(item)}
                             >
                                 <Icon name="edit" size={16} />
                             </button>
                             <button
                                 class="btn btn-sm btn-danger btn-icon"
                                 title="Delete"
-                                on:click={() => confirmDeletePlan(item)}
+                                onclick={() => confirmDeletePlan(item)}
                             >
                                 <Icon name="trash" size={16} />
                             </button>
@@ -209,7 +209,7 @@
     message={confirmMessage}
     type={confirmType}
     confirmationKeyword={confirmKeyword}
-    on:confirm={handleConfirm}
+    onconfirm={handleConfirm}
 />
 
 <style>

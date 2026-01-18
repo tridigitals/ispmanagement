@@ -4,9 +4,33 @@ use crate::services::{AuthService, PlanService};
 use crate::models::{
     Plan, PlanWithFeatures, FeatureDefinition, TenantSubscription, FeatureAccess,
     CreatePlanRequest, UpdatePlanRequest, CreateFeatureRequest, SetPlanFeatureRequest,
-    AssignPlanRequest,
+    AssignPlanRequest, TenantSubscriptionDetails,
 };
 use tauri::State;
+
+/// Get detailed tenant subscription info (Usage vs Limits)
+#[tauri::command]
+pub async fn get_tenant_subscription_details(
+    token: String,
+    tenant_id: Option<String>,
+    auth_service: State<'_, AuthService>,
+    plan_service: State<'_, PlanService>,
+) -> Result<TenantSubscriptionDetails, String> {
+    let claims = auth_service.validate_token(&token).await
+        .map_err(|e| e.to_string())?;
+    
+    let target_tenant_id = if let Some(tid) = tenant_id {
+        if !claims.is_super_admin && claims.tenant_id.as_deref() != Some(&tid) {
+            return Err("Unauthorized".to_string());
+        }
+        tid
+    } else {
+        claims.tenant_id.ok_or_else(|| "No tenant context".to_string())?
+    };
+
+    plan_service.get_tenant_subscription_details(&target_tenant_id).await
+        .map_err(|e| e.to_string())
+}
 
 /// List all plans
 #[tauri::command]

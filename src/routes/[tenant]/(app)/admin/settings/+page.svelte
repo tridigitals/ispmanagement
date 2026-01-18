@@ -34,9 +34,9 @@
     ];
 
     const storageOptions = [
-        { value: "local", label: "Local File System" },
-        { value: "s3", label: "AWS S3 / Compatible" },
-        { value: "r2", label: "Cloudflare R2" },
+        { value: "system", label: "System Default (Managed)" },
+        { value: "s3", label: "Custom AWS S3" },
+        { value: "r2", label: "Custom Cloudflare R2" },
     ];
 
     const emailProviderOptions = [
@@ -75,21 +75,15 @@
             label: "Storage",
             icon: "database",
             keys: [
-                "storage_provider",
-                "storage_local_path",
+                "storage_driver",
                 "storage_s3_bucket",
                 "storage_s3_region",
+                "storage_s3_endpoint",
                 "storage_s3_access_key",
                 "storage_s3_secret_key",
-                "storage_s3_endpoint",
-                "storage_r2_bucket",
-                "storage_r2_account_id",
-                "storage_r2_access_key",
-                "storage_r2_secret_key",
-                "storage_r2_public_url",
+                "storage_s3_public_url",
             ],
         },
-
         email: {
             label: "Email",
             icon: "mail",
@@ -163,7 +157,7 @@
                     let val = settings[key]?.value;
                     if (val === undefined || val === null) {
                         // Set defaults for specific keys
-                        if (key === "storage_provider") val = "local";
+                        if (key === "storage_driver") val = "system";
                         else if (key === "auth_logout_all_on_password_change")
                             val = "true";
                         else val = "";
@@ -381,7 +375,7 @@
     function getInputType(key: string) {
         if (key === "default_locale") return "select-locale";
         if (key === "currency_symbol") return "select-currency";
-        if (key === "storage_provider") return "select-storage";
+        if (key === "storage_driver") return "select-storage";
         if (key === "email_provider") return "select-email-provider";
         if (key === "email_smtp_encryption") return "select-smtp-encryption";
         if (key === "app_logo_path") return "file";
@@ -417,14 +411,20 @@
 
     function isFieldVisible(key: string) {
         // Storage provider visibility
-        if (key === "storage_provider") return true;
-        const storageProvider = localSettings["storage_provider"] || "local";
-        if (key.startsWith("storage_local_") && storageProvider !== "local")
-            return false;
-        if (key.startsWith("storage_s3_") && storageProvider !== "s3")
-            return false;
-        if (key.startsWith("storage_r2_") && storageProvider !== "r2")
-            return false;
+        if (key === "storage_driver") return true;
+        
+        const storageDriver = localSettings["storage_driver"] || "system";
+        
+        // Hide all details if system default is selected
+        if (storageDriver === "system" && key.startsWith("storage_")) return false;
+
+        // Common S3 fields for both s3 and r2 drivers
+        const s3Fields = [
+            "storage_s3_bucket", "storage_s3_region", "storage_s3_endpoint",
+            "storage_s3_access_key", "storage_s3_secret_key", "storage_s3_public_url"
+        ];
+        
+        if (s3Fields.includes(key) && (storageDriver !== "s3" && storageDriver !== "r2")) return false;
 
         // Email provider visibility
         if (key === "email_provider") return true;

@@ -33,6 +33,7 @@ pub async fn init_db(_app_data_dir: PathBuf) -> Result<DbPool, sqlx::Error> {
         
         seed_defaults(&pool).await?;
         seed_roles(&pool).await?;
+        seed_plans(&pool).await?;
 
         Ok(pool)
     }
@@ -50,6 +51,11 @@ pub async fn init_db(_app_data_dir: PathBuf) -> Result<DbPool, sqlx::Error> {
         run_migrations_sqlite(&pool).await?;
         
         info!("SQLite database initialized successfully");
+        
+        seed_defaults(&pool).await?;
+        seed_roles(&pool).await?;
+        seed_plans(&pool).await?;
+
         Ok(pool)
     }
 }
@@ -335,10 +341,24 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
             path TEXT NOT NULL,
             size BIGINT NOT NULL,
             content_type TEXT NOT NULL,
+            storage_provider TEXT NOT NULL DEFAULT 'local',
             uploaded_by TEXT REFERENCES users(id) ON DELETE SET NULL,
             created_at TIMESTAMPTZ NOT NULL,
             updated_at TIMESTAMPTZ NOT NULL
         )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Migration: Add storage_provider to file_records if not exists
+    sqlx::query(r#"
+        DO $$ 
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='file_records' AND column_name='storage_provider') THEN
+                ALTER TABLE file_records ADD COLUMN storage_provider TEXT NOT NULL DEFAULT 'local';
+            END IF;
+        END $$;
     "#)
     .execute(pool)
     .await?;
@@ -597,6 +617,7 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
             path TEXT NOT NULL,
             size INTEGER NOT NULL,
             content_type TEXT NOT NULL,
+            storage_provider TEXT NOT NULL DEFAULT 'local',
             uploaded_by TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
@@ -606,6 +627,9 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     "#)
     .execute(pool)
     .await?;
+
+    // Migration: Add storage_provider to file_records if not exists (SQLite)
+    let _ = sqlx::query("ALTER TABLE file_records ADD COLUMN storage_provider TEXT NOT NULL DEFAULT 'local'").execute(pool).await;
 
     // Create indexes for plans (SQLite)
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_plans_slug ON plans(slug)").execute(pool).await.ok();
@@ -647,6 +671,14 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
         ("maintenance_message", "The system is currently under maintenance. Please try again later.", "Maintenance message displayed to users"),
         ("storage_max_file_size_mb", "500", "Maximum file upload size in Megabytes"),
         ("storage_allowed_extensions", "jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,zip,rar,7z,mp4,mov,avi,mp3,wav", "Comma-separated list of allowed file extensions"),
+        // Storage Driver Settings
+        ("storage_driver", "local", "Storage driver: local, s3, or r2"),
+        ("storage_s3_bucket", "", "S3 Bucket Name"),
+        ("storage_s3_region", "auto", "S3 Region (e.g. us-east-1, auto for R2)"),
+        ("storage_s3_endpoint", "", "S3 Endpoint URL (Required for R2/MinIO)"),
+        ("storage_s3_access_key", "", "S3 Access Key ID"),
+        ("storage_s3_secret_key", "", "S3 Secret Access Key"),
+        ("storage_s3_public_url", "", "Public CDN URL for S3 files (optional)"),
     ];
 
     for (key, value, description) in defaults {
@@ -908,6 +940,121 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
         assign_perm(pool, "Admin", p).await?;
         assign_perm(pool, "Member", p).await?;
         assign_perm(pool, "Viewer", p).await?;
+    }
+
+    Ok(())
+}
+
+/// Seed default subscription plans
+pub async fn seed_plans(pool: &DbPool) -> Result<(), sqlx::Error> {
+    let now = chrono::Utc::now();
+
+    // 1. Seed Features
+    let features = vec![
+        ("max_storage_gb", "Storage Limit (GB)", "Maximum storage space allowed", "number", "0.5"),
+        ("max_members", "Team Member Limit", "Maximum number of team members", "number", "2"),
+        ("support_level", "Support Level", "Level of customer support provided", "string", "basic"),
+        ("custom_domain", "Custom Domain", "Ability to use custom domain", "boolean", "false"),
+    ];
+
+    for (code, name, desc, vtype, default_val) in features {
+        let id = uuid::Uuid::new_v4().to_string();
+        
+        #[cfg(feature = "postgres")]
+        sqlx::query(r#"
+            INSERT INTO features (id, code, name, description, value_type, default_value, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (code) DO NOTHING
+        "#)
+        .bind(id).bind(code).bind(name).bind(desc).bind(vtype).bind(default_val).bind(now)
+        .execute(pool).await?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query(r#"
+            INSERT OR IGNORE INTO features (id, code, name, description, value_type, default_value, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        "#)
+        .bind(id).bind(code).bind(name).bind(desc).bind(vtype).bind(default_val).bind(now.to_rfc3339())
+        .execute(pool).await?;
+    }
+
+    // 2. Seed Plans
+    let plans = vec![
+        ("Free", "free", "Perfect for getting started", 0.0, 0.0, true, true, 1),
+        ("Pro", "pro", "For growing teams", 29.0, 290.0, true, false, 2),
+        ("Enterprise", "enterprise", "For large organizations", 99.0, 990.0, true, false, 3),
+    ];
+
+    for (name, slug, desc, price_m, price_y, active, is_default, order) in plans {
+        let plan_id = uuid::Uuid::new_v4().to_string();
+
+        #[cfg(feature = "postgres")]
+        sqlx::query(r#"
+            INSERT INTO plans (id, name, slug, description, price_monthly, price_yearly, is_active, is_default, sort_order, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            ON CONFLICT (slug) DO NOTHING
+        "#)
+        .bind(&plan_id).bind(name).bind(slug).bind(desc).bind(price_m).bind(price_y).bind(active).bind(is_default).bind(order).bind(now).bind(now)
+        .execute(pool).await?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query(r#"
+            INSERT OR IGNORE INTO plans (id, name, slug, description, price_monthly, price_yearly, is_active, is_default, sort_order, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        "#)
+        .bind(&plan_id).bind(name).bind(slug).bind(desc).bind(price_m).bind(price_y).bind(active).bind(is_default).bind(order).bind(now.to_rfc3339()).bind(now.to_rfc3339())
+        .execute(pool).await?;
+
+        // 3. Link Features to Plans (Fetch IDs first)
+        let pid_query = "SELECT id FROM plans WHERE slug = $1"; // PG
+        #[cfg(feature = "sqlite")]
+        let pid_query = "SELECT id FROM plans WHERE slug = ?";
+
+        let fetched_pid: Option<String> = sqlx::query_scalar(pid_query)
+            .bind(slug)
+            .fetch_optional(pool).await?;
+
+        if let Some(pid) = fetched_pid {
+            let features_to_add = match slug {
+                "free" => vec![
+                    ("max_storage_gb", "0.5"),
+                    ("max_members", "2"),
+                    ("support_level", "community"),
+                    ("custom_domain", "false"),
+                ],
+                "pro" => vec![
+                    ("max_storage_gb", "50"),
+                    ("max_members", "10"),
+                    ("support_level", "priority"),
+                    ("custom_domain", "true"),
+                ],
+                "enterprise" => vec![
+                    ("max_storage_gb", "500"),
+                    ("max_members", "999"),
+                    ("support_level", "dedicated"),
+                    ("custom_domain", "true"),
+                ],
+                _ => vec![],
+            };
+
+            for (code, val) in features_to_add {
+                let fid_query = "SELECT id FROM features WHERE code = $1"; // PG
+                #[cfg(feature = "sqlite")]
+                let fid_query = "SELECT id FROM features WHERE code = ?";
+                
+                let fid: Option<String> = sqlx::query_scalar(fid_query).bind(code).fetch_optional(pool).await.unwrap_or(None);
+                
+                if let Some(fid) = fid {
+                    let pf_id = uuid::Uuid::new_v4().to_string();
+                    #[cfg(feature = "postgres")]
+                    sqlx::query("INSERT INTO plan_features (id, plan_id, feature_id, value) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING")
+                        .bind(&pf_id).bind(&pid).bind(&fid).bind(val).execute(pool).await.ok();
+                    #[cfg(feature = "sqlite")]
+                    sqlx::query("INSERT OR IGNORE INTO plan_features (id, plan_id, feature_id, value) VALUES (?, ?, ?, ?)")
+                        .bind(&pf_id).bind(&pid).bind(&fid).bind(val).execute(pool).await.ok();
+                }
+            }
+        }
     }
 
     Ok(())

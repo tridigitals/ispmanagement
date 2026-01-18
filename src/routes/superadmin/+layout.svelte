@@ -156,18 +156,6 @@
                     <Icon name="server" size={20} />
                     {#if !isCollapsed}<span in:fade>System</span>{/if}
                 </a>
-                <a
-                    href="/superadmin/plans"
-                    class="nav-item"
-                    class:active={$page.url.pathname.startsWith(
-                        "/superadmin/plans",
-                    )}
-                    title="Subscription Plans"
-                    on:click={handleNavClick}
-                >
-                    <Icon name="layers" size={20} />
-                    {#if !isCollapsed}<span in:fade>Plans</span>{/if}
-                </a>
                 <div class="spacer"></div>
                 <a
                     href="/dashboard"

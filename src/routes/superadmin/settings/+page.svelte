@@ -34,9 +34,26 @@
     let apiRateLimitPerMinute = 100;
     let enableIpBlocking = false;
 
-    // Storage Settings
+    // ... inside <script>
+    // Constants
+    const STORAGE_DRIVERS = [
+        { value: "local", label: "Local Disk" },
+        { value: "s3", label: "AWS S3 / Compatible" },
+        { value: "r2", label: "Cloudflare R2" },
+    ];
+
+    // Storage
     let storageMaxFileSizeMb = 500;
     let storageAllowedExtensions = "";
+    
+    // Storage Driver Config
+    let storageDriver = "local";
+    let storageS3Bucket = "";
+    let storageS3Region = "us-east-1";
+    let storageS3Endpoint = "";
+    let storageS3AccessKey = "";
+    let storageS3SecretKey = "";
+    let storageS3PublicUrl = "";
 
     let hasChanges = false;
 
@@ -134,6 +151,14 @@
             storageAllowedExtensions =
                 settingsMap["storage_allowed_extensions"] ||
                 "jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,zip,mp4,mov";
+            
+            storageDriver = settingsMap["storage_driver"] || "local";
+            storageS3Bucket = settingsMap["storage_s3_bucket"] || "";
+            storageS3Region = settingsMap["storage_s3_region"] || "auto";
+            storageS3Endpoint = settingsMap["storage_s3_endpoint"] || "";
+            storageS3AccessKey = settingsMap["storage_s3_access_key"] || "";
+            storageS3SecretKey = settingsMap["storage_s3_secret_key"] || "";
+            storageS3PublicUrl = settingsMap["storage_s3_public_url"] || "";
         } catch (err) {
             console.error("Failed to load settings:", err);
             toast.error("Failed to load settings");
@@ -240,6 +265,14 @@
                     storageAllowedExtensions,
                     "Allowed file extensions",
                 ),
+                // Storage Driver
+                api.settings.upsert("storage_driver", storageDriver, "Storage Driver"),
+                api.settings.upsert("storage_s3_bucket", storageS3Bucket, "S3 Bucket"),
+                api.settings.upsert("storage_s3_region", storageS3Region, "S3 Region"),
+                api.settings.upsert("storage_s3_endpoint", storageS3Endpoint, "S3 Endpoint"),
+                api.settings.upsert("storage_s3_access_key", storageS3AccessKey, "S3 Access Key"),
+                api.settings.upsert("storage_s3_secret_key", storageS3SecretKey, "S3 Secret Key"),
+                api.settings.upsert("storage_s3_public_url", storageS3PublicUrl, "S3 Public URL"),
             ];
 
             await Promise.all(updates);
@@ -640,6 +673,71 @@
                             <h3>Storage Configuration</h3>
                         </div>
                         <div class="card-body">
+                            <!-- Driver Selection -->
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <label class="setting-label">Storage Driver</label>
+                                    <p class="setting-description">
+                                        Choose where files are stored. Local uses the server's disk.
+                                    </p>
+                                </div>
+                                <div class="input-group">
+                                    <select 
+                                        bind:value={storageDriver} 
+                                        on:change={handleChange}
+                                        class="native-select"
+                                    >
+                                        <option value="local">Local Disk</option>
+                                        <option value="s3">AWS S3 / MinIO</option>
+                                        <option value="r2">Cloudflare R2</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {#if storageDriver !== 'local'}
+                                <div class="sub-settings fade-in">
+                                    <div class="setting-row">
+                                        <div class="setting-info">
+                                            <label class="setting-label">Bucket Name</label>
+                                        </div>
+                                        <input type="text" bind:value={storageS3Bucket} on:input={handleChange} placeholder="e.g. my-app-uploads" />
+                                    </div>
+                                    <div class="setting-row">
+                                        <div class="setting-info">
+                                            <label class="setting-label">Region</label>
+                                            <p class="setting-description">Use 'auto' for R2.</p>
+                                        </div>
+                                        <input type="text" bind:value={storageS3Region} on:input={handleChange} placeholder="us-east-1" />
+                                    </div>
+                                    <div class="setting-row">
+                                        <div class="setting-info">
+                                            <label class="setting-label">Endpoint URL</label>
+                                            <p class="setting-description">Required for R2 (https://ID.r2.cloudflarestorage.com) or MinIO.</p>
+                                        </div>
+                                        <input type="text" bind:value={storageS3Endpoint} on:input={handleChange} placeholder="https://..." />
+                                    </div>
+                                    <div class="setting-row">
+                                        <div class="setting-info">
+                                            <label class="setting-label">Access Key ID</label>
+                                        </div>
+                                        <input type="text" bind:value={storageS3AccessKey} on:input={handleChange} />
+                                    </div>
+                                    <div class="setting-row">
+                                        <div class="setting-info">
+                                            <label class="setting-label">Secret Access Key</label>
+                                        </div>
+                                        <input type="password" bind:value={storageS3SecretKey} on:input={handleChange} />
+                                    </div>
+                                    <div class="setting-row">
+                                        <div class="setting-info">
+                                            <label class="setting-label">Public Access URL (Optional)</label>
+                                            <p class="setting-description">CDN URL if serving files publicly.</p>
+                                        </div>
+                                        <input type="text" bind:value={storageS3PublicUrl} on:input={handleChange} placeholder="https://cdn.example.com" />
+                                    </div>
+                                </div>
+                            {/if}
+
                             <div class="setting-row">
                                 <div class="setting-info">
                                     <label
@@ -1035,6 +1133,42 @@
         color: var(--text-secondary);
         font-size: 0.85rem;
         white-space: nowrap;
+    }
+
+    .native-select {
+        background: var(--bg-app);
+        border: 1px solid var(--border-color);
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-sm);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        cursor: pointer;
+        min-width: 150px;
+    }
+
+    .native-select:focus {
+        outline: none;
+        border-color: var(--color-primary);
+    }
+
+    .sub-settings {
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: var(--radius-md);
+        padding: 1rem 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .sub-settings input[type="text"],
+    .sub-settings input[type="password"] {
+        width: 100%;
+        max-width: 400px;
+        padding: 0.5rem 0.75rem;
+        background: var(--bg-app);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        color: var(--text-primary);
+        font-size: 0.9rem;
     }
 
     /* Mobile Responsive */

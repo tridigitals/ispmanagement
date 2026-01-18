@@ -8,8 +8,9 @@ use axum::{
 use tokio_util::io::ReaderStream;
 use tokio::fs;
 use tokio::fs::File;
-use tokio::io::{AsyncWriteExt, AsyncReadExt, AsyncSeekExt}; // Added imports
+use tokio::io::{AsyncWriteExt, AsyncReadExt, AsyncSeekExt};
 use crate::http::AppState;
+use crate::services::storage_service::StorageContent;
 use tracing::{info, warn, error};
 
 #[derive(serde::Deserialize)]
@@ -108,113 +109,108 @@ pub async fn serve_file(
     headers: HeaderMap,
     Path(id): Path<String>,
 ) -> Response {
-    // ... existing serve_file logic ...
-    // 1. Get file record from DB
-    let record = match state.storage_service.get_file(&id).await {
-        Ok(r) => r,
+    let (record, content) = match state.storage_service.get_file_content(&id).await {
+        Ok(res) => res,
         Err(_) => return StatusCode::NOT_FOUND.into_response(),
     };
 
-    let path = std::path::Path::new(&record.path);
-    if !path.exists() {
-        return StatusCode::NOT_FOUND.into_response();
-    }
+    match content {
+        StorageContent::Local(path) => {
+            let file_size = match fs::metadata(&path).await {
+                Ok(m) => m.len(),
+                Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            };
 
-    // 2. Handle Range Header for Video Seeking
-    let file_size = match fs::metadata(path).await {
-        Ok(m) => m.len(),
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-    };
+            let range_header = headers.get(header::RANGE).and_then(|v| v.to_str().ok());
 
-    let range_header = headers.get(header::RANGE).and_then(|v| v.to_str().ok());
+            if let Some(range_str) = range_header {
+                if let Some(range) = parse_range(range_str, file_size) {
+                    let start = range.0;
+                    let end = range.1;
+                    let chunk_size = (end - start) + 1;
 
-    if let Some(range_str) = range_header {
-        if let Some(range) = parse_range(range_str, file_size) {
-            let start = range.0;
-            let end = range.1;
-            let chunk_size = (end - start) + 1;
+                    let mut file = match File::open(path).await {
+                        Ok(f) => f,
+                        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+                    };
 
-            let mut file = match File::open(path).await {
+                    if let Err(_) = file.seek(std::io::SeekFrom::Start(start)).await {
+                        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+                    }
+
+                    let stream = ReaderStream::new(file.take(chunk_size));
+                    let body = Body::from_stream(stream);
+
+                    return Response::builder()
+                        .status(StatusCode::PARTIAL_CONTENT)
+                        .header(header::CONTENT_TYPE, &record.content_type)
+                        .header(header::ACCEPT_RANGES, "bytes")
+                        .header(header::CONTENT_RANGE, format!("bytes {}-{}/{}", start, end, file_size))
+                        .header(header::CONTENT_LENGTH, chunk_size)
+                        .header(header::CONTENT_DISPOSITION, format!("inline; filename=\"{}\"", record.original_name))
+                        .body(body)
+                        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response());
+                }
+            }
+
+            let file = match File::open(path).await {
                 Ok(f) => f,
                 Err(_) => return StatusCode::NOT_FOUND.into_response(),
             };
-
-            // Seek to start position
-            if let Err(_) = file.seek(std::io::SeekFrom::Start(start)).await {
-                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-            }
-
-            // Stream only the requested part
-            let stream = ReaderStream::new(file.take(chunk_size));
+            let stream = ReaderStream::new(file);
             let body = Body::from_stream(stream);
 
-            return Response::builder()
-                .status(StatusCode::PARTIAL_CONTENT)
-                .header(header::CONTENT_TYPE, &record.content_type)
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, record.content_type)
                 .header(header::ACCEPT_RANGES, "bytes")
-                .header(header::CONTENT_RANGE, format!("bytes {}-{}/{}", start, end, file_size))
-                .header(header::CONTENT_LENGTH, chunk_size)
+                .header(header::CONTENT_LENGTH, file_size)
                 .header(header::CONTENT_DISPOSITION, format!("inline; filename=\"{}\"", record.original_name))
                 .body(body)
-                .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response());
+                .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+        },
+        StorageContent::S3(byte_stream) => {
+            let body = Body::from_stream(ReaderStream::new(byte_stream.into_async_read()));
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, record.content_type)
+                .header(header::CONTENT_DISPOSITION, format!("inline; filename=\"{}\"", record.original_name))
+                .body(body)
+                .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
         }
     }
-
-    // 3. Fallback: Serve full file (200 OK)
-    let file = match File::open(path).await {
-        Ok(f) => f,
-        Err(_) => return StatusCode::NOT_FOUND.into_response(),
-    };
-
-    let stream = ReaderStream::new(file);
-    let body = Body::from_stream(stream);
-
-    Response::builder()
-        .status(StatusCode::OK)
-        .header(header::CONTENT_TYPE, record.content_type)
-        .header(header::ACCEPT_RANGES, "bytes")
-        .header(header::CONTENT_LENGTH, file_size)
-        .header(header::CONTENT_DISPOSITION, format!("inline; filename=\"{}\"", record.original_name))
-        .body(body)
-        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
 }
 
-/// Force download file (Attachment)
 pub async fn download_file(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Response {
-    // 1. Get file record from DB
-    let record = match state.storage_service.get_file(&id).await {
-        Ok(r) => r,
+    let (record, content) = match state.storage_service.get_file_content(&id).await {
+        Ok(res) => res,
         Err(_) => return StatusCode::NOT_FOUND.into_response(),
     };
 
-    let path = std::path::Path::new(&record.path);
-    if !path.exists() {
-        return StatusCode::NOT_FOUND.into_response();
-    }
-
-    // 2. Open file
-    let file = match File::open(path).await {
-        Ok(f) => f,
-        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+    let body = match content {
+        StorageContent::Local(path) => {
+            let file = match File::open(path).await {
+                Ok(f) => f,
+                Err(_) => return StatusCode::NOT_FOUND.into_response(),
+            };
+            Body::from_stream(ReaderStream::new(file))
+        },
+        StorageContent::S3(byte_stream) => {
+            Body::from_stream(ReaderStream::new(byte_stream.into_async_read()))
+        }
     };
 
-    let stream = ReaderStream::new(file);
-    let body = Body::from_stream(stream);
-
-    // 3. Send with Attachment disposition
     Response::builder()
         .status(StatusCode::OK)
-        .header(header::CONTENT_TYPE, record.content_type) // Or application/octet-stream to force?
-        // attachment forces "Save As" dialog
+        .header(header::CONTENT_TYPE, record.content_type)
         .header(header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}\"", record.original_name))
         .body(body)
         .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
 }
 
-/// Helper to parse Range header: "bytes=start-end"
 fn parse_range(range_str: &str, file_size: u64) -> Option<(u64, u64)> {
     if !range_str.starts_with("bytes=") {
         return None;
@@ -230,7 +226,6 @@ fn parse_range(range_str: &str, file_size: u64) -> Option<(u64, u64)> {
     let start = parts[0].parse::<u64>().ok().unwrap_or(0);
     let end = parts[1].parse::<u64>().ok().unwrap_or(file_size - 1);
 
-    // Clamp end to file size
     let end = if end >= file_size { file_size - 1 } else { end };
 
     if start > end {
@@ -247,7 +242,6 @@ pub async fn upload_file_http(
 ) -> Response {
     info!("[Upload] 📥 New upload request received");
 
-    // 1. Validate Token
     let auth_header = headers.get(header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
         .filter(|h| h.starts_with("Bearer "))
@@ -280,7 +274,6 @@ pub async fn upload_file_http(
         }
     };
 
-    // 2. Get Global Limits
     let max_mb: u64 = state.settings_service.get_value(None, "storage_max_file_size_mb").await
         .unwrap_or(None)
         .and_then(|v| v.parse().ok())
@@ -294,7 +287,6 @@ pub async fn upload_file_http(
 
     info!("[Upload] 👤 User: {}, Tenant: {}, Limit: {}MB", claims.sub, tenant_id, max_mb);
 
-    // 3. Process Stream
     while let Ok(Some(field)) = multipart.next_field().await {
         let name = field.name().unwrap_or("").to_string();
         
@@ -302,16 +294,14 @@ pub async fn upload_file_http(
             let file_name = field.file_name().unwrap_or("upload.bin").to_string();
             let content_type = field.content_type().unwrap_or("application/octet-stream").to_string();
             
-            // Check Extension
             let ext = std::path::Path::new(&file_name)
                 .extension().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
             
             if !allowed_exts.contains(&ext) && !allowed_exts.contains(&"*".to_string()) {
-                 warn!("[Upload] ❌ Blocked extension: .{}", ext);
+                 warn!("[Upload] ❌ Blocked extension: .{}\n", ext);
                  return (StatusCode::BAD_REQUEST, format!("File type '.{}' not allowed", ext)).into_response();
             }
 
-            // Prepare Path
             let (path, safe_name, file_id) = match state.storage_service.prepare_upload_path(&tenant_id, &file_name).await {
                 Ok(p) => p,
                 Err(e) => {
@@ -322,7 +312,6 @@ pub async fn upload_file_http(
 
             info!("[Upload] 📝 Streaming to disk: {:?}", path);
 
-            // Stream Write
             let mut file = match File::create(&path).await {
                 Ok(f) => f,
                 Err(e) => {
@@ -339,7 +328,6 @@ pub async fn upload_file_http(
                 let chunk_len = chunk.len() as u64;
                 current_size += chunk_len;
                 
-                // Log progress every 5MB
                 let current_mb = current_size / (1024 * 1024);
                 if current_mb >= last_reported_mb + 5 {
                     info!("[Upload] ⏳ Progress: {} MB received...", current_mb);
@@ -361,11 +349,9 @@ pub async fn upload_file_http(
                 }
             }
 
-            // Important: sync data to disk
             let _ = file.flush().await;
             info!("[Upload] ✅ Write finished. Total size: {} MB. Registering...", current_size / (1024 * 1024));
 
-            // Register in DB
             let result = state.storage_service.register_upload(
                 &tenant_id,
                 &file_id,
@@ -374,7 +360,9 @@ pub async fn upload_file_http(
                 &path.to_string_lossy(),
                 &content_type,
                 current_size as i64,
-                Some(&claims.sub)
+                "local", // Direct HTTP upload defaults to local for now
+                Some(&claims.sub),
+                false // Count quota
             ).await;
 
             return match result {
@@ -395,8 +383,6 @@ pub async fn upload_file_http(
     (StatusCode::BAD_REQUEST, "No file field found").into_response()
 }
 
-// --- Chunked Upload Handlers ---
-
 #[derive(serde::Serialize)]
 pub struct InitResponse {
     pub upload_id: String,
@@ -413,7 +399,6 @@ pub async fn init_upload(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Response {
-    // Auth Check
     let auth_header = headers.get(header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
         .filter(|h| h.starts_with("Bearer "))
@@ -438,7 +423,6 @@ pub async fn upload_chunk(
     headers: HeaderMap,
     mut multipart: Multipart,
 ) -> Response {
-    // Auth Check (Quick check, session is validated by existence of temp file mostly)
     let auth_header = headers.get(header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
         .filter(|h| h.starts_with("Bearer "))
@@ -486,7 +470,6 @@ pub async fn complete_upload(
     headers: HeaderMap,
     Json(payload): Json<CompleteRequest>,
 ) -> Response {
-    // Auth Check & Tenant ID
     let auth_header = headers.get(header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
         .filter(|h| h.starts_with("Bearer "))
@@ -506,9 +489,6 @@ pub async fn complete_upload(
         Some(tid) => tid,
         None => if claims.is_super_admin { "system".to_string() } else { return StatusCode::FORBIDDEN.into_response() }
     };
-
-    // Limits Check (Optional: Check final size vs limit here again)
-    // For now, relying on service logic
 
     match state.storage_service.complete_chunk_session(
         &tenant_id, 

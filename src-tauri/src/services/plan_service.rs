@@ -644,6 +644,55 @@ impl PlanService {
         Ok(access.value.parse::<i64>().ok())
     }
 
+    /// Get detailed subscription info for dashboard (Usage vs Limits)
+    pub async fn get_tenant_subscription_details(&self, tenant_id: &str) -> Result<crate::models::TenantSubscriptionDetails, sqlx::Error> {
+        // 1. Get Subscription & Plan
+        let sub = self.get_tenant_subscription(tenant_id).await?;
+        
+        let (plan_name, plan_slug, status, period_end) = if let Some(s) = sub {
+            let plan = self.get_plan(&s.plan_id).await?;
+            (plan.name, plan.slug, s.status, s.current_period_end)
+        } else {
+            ("Free".to_string(), "free".to_string(), "active".to_string(), None)
+        };
+
+        // 2. Get Limits
+        let storage_limit_gb = self.get_feature_limit(tenant_id, "max_storage_gb").await?;
+        let storage_limit = storage_limit_gb.map(|gb| (gb * 1024 * 1024 * 1024)); // Convert GB to Bytes
+
+        let member_limit = self.get_feature_limit(tenant_id, "max_members").await?;
+
+        // 3. Get Usage
+        // Storage Usage
+        #[cfg(feature = "postgres")]
+        let storage_usage: i64 = sqlx::query_scalar("SELECT storage_usage FROM tenants WHERE id = $1")
+            .bind(tenant_id).fetch_one(&self.pool).await?;
+        
+        #[cfg(feature = "sqlite")]
+        let storage_usage: i64 = sqlx::query_scalar("SELECT storage_usage FROM tenants WHERE id = ?")
+            .bind(tenant_id).fetch_one(&self.pool).await?;
+
+        // Member Usage
+        #[cfg(feature = "postgres")]
+        let member_usage: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM tenant_members WHERE tenant_id = $1")
+            .bind(tenant_id).fetch_one(&self.pool).await?;
+
+        #[cfg(feature = "sqlite")]
+        let member_usage: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM tenant_members WHERE tenant_id = ?")
+            .bind(tenant_id).fetch_one(&self.pool).await?;
+
+        Ok(crate::models::TenantSubscriptionDetails {
+            plan_name,
+            plan_slug,
+            status,
+            current_period_end: period_end,
+            storage_usage,
+            storage_limit,
+            member_usage,
+            member_limit,
+        })
+    }
+
     /// Get numeric limit for a feature (for things like max_users) within a transaction
     pub async fn get_feature_limit_with_conn<'a>(&self, tenant_id: &str, feature_code: &str, tx: &mut sqlx::Transaction<'a, Postgres>) -> Result<Option<i64>, sqlx::Error>
     {

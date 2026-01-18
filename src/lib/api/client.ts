@@ -491,6 +491,17 @@ export const install = {
 };
 
 // Plans API (Superadmin only)
+export interface TenantSubscriptionDetails {
+    plan_name: string;
+    plan_slug: string;
+    status: string;
+    current_period_end: string | null;
+    storage_usage: number;
+    storage_limit: number | null;
+    member_usage: number;
+    member_limit: number | null;
+}
+
 // Plans API (Superadmin only)
 export const plans = {
     list: (): Promise<any[]> =>
@@ -524,6 +535,9 @@ export const plans = {
 
     getSubscription: (tenantId: string): Promise<any> =>
         safeInvoke('get_tenant_subscription', { token: getTokenOrThrow(), tenantId }),
+
+    getSubscriptionDetails: (tenantId?: string): Promise<TenantSubscriptionDetails> =>
+        safeInvoke('get_tenant_subscription_details', { token: getTokenOrThrow(), tenantId }),
 
     assignPlan: (tenantId: string, planId: string): Promise<any> =>
         safeInvoke('assign_plan_to_tenant', { token: getTokenOrThrow(), tenantId, planId }),

@@ -47,6 +47,8 @@
         HardDrive,
         Folder,
         Download,
+        CreditCard,
+        Server,
     } from "lucide-svelte";
 
     export let name: string;
@@ -106,6 +108,8 @@
         "hard-drive": HardDrive,
         folder: Folder,
         download: Download,
+        "credit-card": CreditCard,
+        server: Server,
     };
 
     $: IconComponent = icons[name] || HelpCircle; // Fallback to HelpCircle if not found

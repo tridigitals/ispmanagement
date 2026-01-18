@@ -314,6 +314,7 @@ pub fn run() {
                                     set_plan_feature,
                                     assign_plan_to_tenant,
                                     get_tenant_subscription,
+                                    get_tenant_subscription_details,
                                     check_feature_access,
                                     // Storage commands
                                     upload_file,
