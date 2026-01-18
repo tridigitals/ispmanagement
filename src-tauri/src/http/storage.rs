@@ -1,18 +1,111 @@
 use axum::{
-    extract::{Path, State, Multipart},
+    extract::{Path, State, Multipart, Query},
     http::{header, StatusCode, HeaderMap},
     response::{IntoResponse, Response},
-    body::Body,
+    body::{Body, Bytes},
     Json,
 };
 use tokio_util::io::ReaderStream;
+use tokio::fs;
 use tokio::fs::File;
-use tokio::io::AsyncWriteExt; // Import for write_all
+use tokio::io::{AsyncWriteExt, AsyncReadExt, AsyncSeekExt}; // Added imports
 use crate::http::AppState;
 use tracing::{info, warn, error};
 
+#[derive(serde::Deserialize)]
+pub struct ListFileParams {
+    pub page: Option<u32>,
+    pub per_page: Option<u32>,
+    pub search: Option<String>,
+}
+
+pub async fn list_files(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(params): Query<ListFileParams>,
+) -> Response {
+    let auth_header = headers.get(header::AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+        .filter(|h| h.starts_with("Bearer "))
+        .map(|h| h[7..].to_string());
+
+    let token = match auth_header {
+        Some(t) => t,
+        None => return (StatusCode::UNAUTHORIZED, "Missing Token").into_response(),
+    };
+
+    let claims = match state.auth_service.validate_token(&token).await {
+        Ok(c) => c,
+        Err(_) => return (StatusCode::UNAUTHORIZED, "Invalid Token").into_response(),
+    };
+
+    let page = params.page.unwrap_or(1);
+    let per_page = params.per_page.unwrap_or(20);
+
+    info!("[ListFiles] User: {}, Tenant: {:?}, SuperAdmin: {}", claims.sub, claims.tenant_id, claims.is_super_admin);
+
+    if let Some(tid) = claims.tenant_id {
+        info!("[ListFiles] Branch: Tenant Mode ({})", tid);
+        match state.storage_service.list_tenant_files(&tid, page, per_page, params.search).await {
+            Ok((data, total)) => {
+                info!("[ListFiles] Found {} files for tenant", total);
+                Json(crate::models::PaginatedResponse { data, total, page, per_page }).into_response()
+            },
+            Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+        }
+    } else if claims.is_super_admin {
+        info!("[ListFiles] Branch: Admin Mode (All Files)");
+        match state.storage_service.list_all_files(page, per_page, params.search).await {
+            Ok((data, total)) => {
+                info!("[ListFiles] Found {} files total", total);
+                Json(crate::models::PaginatedResponse { data, total, page, per_page }).into_response()
+            },
+            Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+        }
+    } else {
+        warn!("[ListFiles] Access Denied: No Tenant Context");
+        (StatusCode::FORBIDDEN, "No Tenant Context").into_response()
+    }
+}
+
+pub async fn delete_file(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Response {
+    let auth_header = headers.get(header::AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+        .filter(|h| h.starts_with("Bearer "))
+        .map(|h| h[7..].to_string());
+
+    let token = match auth_header {
+        Some(t) => t,
+        None => return (StatusCode::UNAUTHORIZED, "Missing Token").into_response(),
+    };
+
+    let claims = match state.auth_service.validate_token(&token).await {
+        Ok(c) => c,
+        Err(_) => return (StatusCode::UNAUTHORIZED, "Invalid Token").into_response(),
+    };
+
+    if let Some(tid) = claims.tenant_id {
+        match state.storage_service.delete_tenant_file(&id, &tid).await {
+            Ok(_) => StatusCode::OK.into_response(),
+            Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+        }
+    } else if claims.is_super_admin {
+        match state.storage_service.delete_file(&id).await {
+            Ok(_) => StatusCode::OK.into_response(),
+            Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+        }
+    } else {
+        (StatusCode::FORBIDDEN, "No Tenant Context").into_response()
+    }
+}
+
 pub async fn serve_file(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(id): Path<String>,
 ) -> Response {
     // 1. Get file record from DB
@@ -21,23 +114,94 @@ pub async fn serve_file(
         Err(_) => return StatusCode::NOT_FOUND.into_response(),
     };
 
-    // 2. Open file from disk
-    let file = match File::open(&record.path).await {
+    let path = std::path::Path::new(&record.path);
+    if !path.exists() {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+
+    // 2. Handle Range Header for Video Seeking
+    let file_size = match fs::metadata(path).await {
+        Ok(m) => m.len(),
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
+
+    let range_header = headers.get(header::RANGE).and_then(|v| v.to_str().ok());
+
+    if let Some(range_str) = range_header {
+        if let Some(range) = parse_range(range_str, file_size) {
+            let start = range.0;
+            let end = range.1;
+            let chunk_size = (end - start) + 1;
+
+            let mut file = match File::open(path).await {
+                Ok(f) => f,
+                Err(_) => return StatusCode::NOT_FOUND.into_response(),
+            };
+
+            // Seek to start position
+            if let Err(_) = file.seek(std::io::SeekFrom::Start(start)).await {
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            }
+
+            // Stream only the requested part
+            let stream = ReaderStream::new(file.take(chunk_size));
+            let body = Body::from_stream(stream);
+
+            return Response::builder()
+                .status(StatusCode::PARTIAL_CONTENT)
+                .header(header::CONTENT_TYPE, &record.content_type)
+                .header(header::ACCEPT_RANGES, "bytes")
+                .header(header::CONTENT_RANGE, format!("bytes {}-{}/{}", start, end, file_size))
+                .header(header::CONTENT_LENGTH, chunk_size)
+                .header(header::CONTENT_DISPOSITION, format!("inline; filename=\"{}\"", record.original_name))
+                .body(body)
+                .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response());
+        }
+    }
+
+    // 3. Fallback: Serve full file (200 OK)
+    let file = match File::open(path).await {
         Ok(f) => f,
         Err(_) => return StatusCode::NOT_FOUND.into_response(),
     };
 
-    // 3. Create stream
     let stream = ReaderStream::new(file);
     let body = Body::from_stream(stream);
 
-    // 4. Set headers
-    let headers = [
-        (header::CONTENT_TYPE, record.content_type),
-        (header::CONTENT_DISPOSITION, format!("inline; filename=\"{}\"", record.original_name)),
-    ];
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, record.content_type)
+        .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::CONTENT_LENGTH, file_size)
+        .header(header::CONTENT_DISPOSITION, format!("inline; filename=\"{}\"", record.original_name))
+        .body(body)
+        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+}
 
-    (headers, body).into_response()
+/// Helper to parse Range header: "bytes=start-end"
+fn parse_range(range_str: &str, file_size: u64) -> Option<(u64, u64)> {
+    if !range_str.starts_with("bytes=") {
+        return None;
+    }
+
+    let range = &range_str[6..];
+    let parts: Vec<&str> = range.split('-').collect();
+
+    if parts.len() != 2 {
+        return None;
+    }
+
+    let start = parts[0].parse::<u64>().ok().unwrap_or(0);
+    let end = parts[1].parse::<u64>().ok().unwrap_or(file_size - 1);
+
+    // Clamp end to file size
+    let end = if end >= file_size { file_size - 1 } else { end };
+
+    if start > end {
+        return None;
+    }
+
+    Some((start, end))
 }
 
 pub async fn upload_file_http(
@@ -193,4 +357,131 @@ pub async fn upload_file_http(
 
     warn!("[Upload] ⚠️ No file field found");
     (StatusCode::BAD_REQUEST, "No file field found").into_response()
+}
+
+// --- Chunked Upload Handlers ---
+
+#[derive(serde::Serialize)]
+pub struct InitResponse {
+    pub upload_id: String,
+}
+
+#[derive(serde::Deserialize)]
+pub struct CompleteRequest {
+    pub upload_id: String,
+    pub file_name: String,
+    pub content_type: String,
+}
+
+pub async fn init_upload(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Response {
+    // Auth Check
+    let auth_header = headers.get(header::AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+        .filter(|h| h.starts_with("Bearer "))
+        .map(|h| h[7..].to_string());
+
+    if let Some(token) = auth_header {
+        if state.auth_service.validate_token(&token).await.is_err() {
+            return (StatusCode::UNAUTHORIZED, "Invalid Token").into_response();
+        }
+    } else {
+        return (StatusCode::UNAUTHORIZED, "Missing Token").into_response();
+    }
+
+    match state.storage_service.init_chunk_session().await {
+        Ok(id) => Json(InitResponse { upload_id: id }).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+    }
+}
+
+pub async fn upload_chunk(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    mut multipart: Multipart,
+) -> Response {
+    // Auth Check (Quick check, session is validated by existence of temp file mostly)
+    let auth_header = headers.get(header::AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+        .filter(|h| h.starts_with("Bearer "))
+        .map(|h| h[7..].to_string());
+
+    if let Some(token) = auth_header {
+        if state.auth_service.validate_token(&token).await.is_err() {
+            return (StatusCode::UNAUTHORIZED, "Invalid Token").into_response();
+        }
+    } else {
+        return (StatusCode::UNAUTHORIZED, "Missing Token").into_response();
+    }
+
+    let mut upload_id = String::new();
+    
+    while let Ok(Some(field)) = multipart.next_field().await {
+        let name = field.name().unwrap_or("").to_string();
+        
+        if name == "upload_id" {
+            if let Ok(txt) = field.text().await {
+                upload_id = txt;
+            }
+        } else if name == "chunk" {
+            if upload_id.is_empty() {
+                return (StatusCode::BAD_REQUEST, "upload_id must come before chunk").into_response();
+            }
+
+            let data = match field.bytes().await {
+                Ok(b) => b,
+                Err(e) => return (StatusCode::BAD_REQUEST, e.to_string()).into_response(),
+            };
+
+            match state.storage_service.process_chunk(&upload_id, &data).await {
+                Ok(_) => return StatusCode::OK.into_response(),
+                Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+            }
+        }
+    }
+
+    (StatusCode::BAD_REQUEST, "Missing chunk data").into_response()
+}
+
+pub async fn complete_upload(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(payload): Json<CompleteRequest>,
+) -> Response {
+    // Auth Check & Tenant ID
+    let auth_header = headers.get(header::AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+        .filter(|h| h.starts_with("Bearer "))
+        .map(|h| h[7..].to_string());
+
+    let token = match auth_header {
+        Some(t) => t,
+        None => return (StatusCode::UNAUTHORIZED, "Missing Token").into_response(),
+    };
+
+    let claims = match state.auth_service.validate_token(&token).await {
+        Ok(c) => c,
+        Err(_) => return (StatusCode::UNAUTHORIZED, "Invalid Token").into_response(),
+    };
+
+    let tenant_id = match claims.tenant_id {
+        Some(tid) => tid,
+        None => if claims.is_super_admin { "system".to_string() } else { return StatusCode::FORBIDDEN.into_response() }
+    };
+
+    // Limits Check (Optional: Check final size vs limit here again)
+    // For now, relying on service logic
+
+    match state.storage_service.complete_chunk_session(
+        &tenant_id, 
+        &payload.upload_id, 
+        &payload.file_name, 
+        &payload.content_type, 
+        Some(&claims.sub)
+    ).await {
+        Ok(record) => Json(record).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+    }
 }

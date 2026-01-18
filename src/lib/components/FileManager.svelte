@@ -37,6 +37,7 @@
 
     async function loadFiles() {
         loading = true;
+        console.log(`[FileManager] Loading files for mode: ${mode}`);
         try {
             let res;
             if (mode === "admin") {
@@ -45,13 +46,18 @@
                 res = await api.storage.listFilesTenant(page, perPage, searchQuery);
             }
             
+            console.log("[FileManager] API Response:", res);
+
             files = res.data;
             total = res.total;
+            console.log(`[FileManager] Loaded ${files.length} files. Total: ${total}`);
+
             totalPages = Math.ceil(total / perPage);
             
             // Calculate size for current page
             if(files.length > 0) totalSize = files.reduce((acc, curr) => acc + curr.size, 0);
         } catch (e: any) {
+            console.error("[FileManager] Load Error:", e);
             toast.error("Failed to load files: " + e.message);
         } finally {
             loading = false;

@@ -17,8 +17,8 @@ function createUploadStore() {
     return {
         subscribe,
         
-        // Start a new upload
-        upload: (file: File, token: string) => {
+        // Start a new upload (Chunked)
+        upload: async (file: File, token: string) => {
             const settings = get(appSettings);
             
             // 1. Client-side Validation: Size
@@ -42,10 +42,7 @@ function createUploadStore() {
 
             const id = Math.random().toString(36).substring(7);
             const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-            const UPLOAD_URL = `${API_BASE}/storage/upload`;
-
-            console.log(`[Upload] Starting upload: ${file.name} (${file.size} bytes)`);
-            console.log(`[Upload] Target URL: ${UPLOAD_URL}`);
+            const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB Chunks (Safe for CF/Nginx)
 
             const item: UploadItem = {
                 id,
@@ -57,77 +54,87 @@ function createUploadStore() {
             // Add to store
             update(items => [item, ...items]);
 
-            // Create XHR
-            const xhr = new XMLHttpRequest();
-            item.xhr = xhr;
+            try {
+                // Step 1: Init
+                const initRes = await fetch(`${API_BASE}/storage/upload/init`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!initRes.ok) throw new Error("Failed to initialize upload");
+                const { upload_id } = await initRes.json();
 
-            // Setup Data
-            const formData = new FormData();
-            formData.append("file", file);
+                // Step 2: Upload Chunks
+                let offset = 0;
+                const total = file.size;
 
-            // Progress Handler
-            xhr.upload.onprogress = (e) => {
-                if (e.lengthComputable) {
-                    const percent = Math.round((e.loaded / e.total) * 100);
-                    // console.log(`[Upload] Progress: ${percent}%`); // Uncomment if needed, spammy
+                while (offset < total) {
+                    // Check if cancelled
+                    const currentItem = get(uploadStore).find(i => i.id === id);
+                    if (!currentItem || currentItem.status !== 'uploading') break;
+
+                    const chunk = file.slice(offset, offset + CHUNK_SIZE);
+                    const formData = new FormData();
+                    formData.append("upload_id", upload_id);
+                    formData.append("chunk", chunk);
+
+                    const chunkRes = await fetch(`${API_BASE}/storage/upload/chunk`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        body: formData
+                    });
+
+                    if (!chunkRes.ok) throw new Error(`Chunk upload failed at offset ${offset}`);
+
+                    offset += chunk.size;
+                    const percent = Math.round((offset / total) * 100);
+                    
                     update(items => 
                         items.map(i => i.id === id ? { ...i, progress: percent } : i)
                     );
                 }
-            };
 
-            xhr.upload.onloadstart = () => {
-                console.log("[Upload] Network: Upload started");
-            };
+                // Step 3: Complete
+                const completeRes = await fetch(`${API_BASE}/storage/upload/complete`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        upload_id,
+                        file_name: file.name,
+                        content_type: file.type || 'application/octet-stream'
+                    })
+                });
 
-            // Completion Handler
-            xhr.onload = () => {
-                console.log(`[Upload] Network: Finished with status ${xhr.status}`);
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    update(items => 
-                        items.map(i => i.id === id ? { ...i, status: "success", progress: 100 } : i)
-                    );
-                    // toast.success(`Uploaded: ${file.name}`);
-                    
-                    // Auto remove success after 5 seconds
-                    setTimeout(() => {
-                        update(items => items.filter(i => i.id !== id));
-                    }, 5000);
+                if (!completeRes.ok) throw new Error("Failed to finalize upload");
 
-                } else {
-                    let errorMessage = "Upload failed";
-                    try {
-                        const res = JSON.parse(xhr.responseText);
-                        errorMessage = res.error || res.message || errorMessage;
-                    } catch (e) {
-                        errorMessage = xhr.responseText || errorMessage;
-                    }
-                    console.error("[Upload] Server Error:", errorMessage);
-                    update(items => 
-                        items.map(i => i.id === id ? { ...i, status: "error", error: errorMessage } : i)
-                    );
-                    toast.error(`Failed: ${file.name} - ${errorMessage}`);
-                }
-            };
-
-            // Error Handler
-            xhr.onerror = () => {
-                console.error("[Upload] Network Error (XHR onerror)");
+                // Success
                 update(items => 
-                    items.map(i => i.id === id ? { ...i, status: "error", error: "Network Error" } : i)
+                    items.map(i => i.id === id ? { ...i, status: "success", progress: 100 } : i)
                 );
-                toast.error(`Network Error: ${file.name}`);
-            };
-            
-            xhr.onabort = () => {
-                console.warn("[Upload] Aborted by user");
-            };
+                
+                // Cleanup
+                setTimeout(() => {
+                    update(items => items.filter(i => i.id !== id));
+                }, 5000);
 
-            // Execute
-            console.log("[Upload] Sending request...");
-            xhr.open("POST", UPLOAD_URL);
-            xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-            xhr.send(formData);
+            } catch (e: any) {
+                console.error("[Upload] Error:", e);
+                update(items => 
+                    items.map(i => i.id === id ? { ...i, status: "error", error: e.message } : i)
+                );
+                toast.error(`Failed: ${file.name}`);
+            }
+        },
+
+        // Cancel an upload (Logical cancel only since fetch cannot be aborted easily without AbortController per chunk)
+        cancel: (id: string) => {
+            update(items => {
+                // Changing status to 'error' or removing it will break the loop in 'upload' function
+                return items.filter(i => i.id !== id);
+            });
         },
 
         // Cancel an upload

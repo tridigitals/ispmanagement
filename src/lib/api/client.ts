@@ -88,21 +88,40 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             'get_tenant_subscription': { method: 'GET', path: '/plans/subscriptions/:tenant_id' },
             'assign_plan_to_tenant': { method: 'POST', path: '/plans/subscriptions/:tenant_id/assign' },
             'check_feature_access': { method: 'GET', path: '/plans/access/:tenant_id/:feature_code' },
+
+            // Storage
+            'list_files_admin': { method: 'GET', path: '/storage/files' },
+            'list_files_tenant': { method: 'GET', path: '/storage/files' },
+            'delete_file_admin': { method: 'DELETE', path: '/storage/files/:file_id' },
+            'delete_file_tenant': { method: 'DELETE', path: '/storage/files/:file_id' },
+            'upload_init': { method: 'POST', path: '/storage/upload/init' },
+            'upload_chunk': { method: 'POST', path: '/storage/upload/chunk' },
+            'upload_complete': { method: 'POST', path: '/storage/upload/complete' },
         };
 
         let route = commandMap[command];
         if (route) {
+            // Helper to convert camelCase to snake_case
+            const toSnakeCase = (str: string) => str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+
             // Handle path parameters (e.g. :key, :id)
             let path = route.path;
             const queryParams: Record<string, string> = {};
 
             if (args) {
                 for (const [key, value] of Object.entries(args)) {
+                    // Skip null/undefined values to avoid 'null' string in query params
+                    if (value === null || value === undefined) continue;
+
+                    // Try both camelCase and snake_case for path params
+                    const snakeKey = toSnakeCase(key);
                     if (path.includes(`:${key}`)) {
                         path = path.replace(`:${key}`, String(value));
+                    } else if (path.includes(`:${snakeKey}`)) {
+                        path = path.replace(`:${snakeKey}`, String(value));
                     } else if (route.method === 'GET' && key !== 'token') {
-                        // Add non-path params as query params for GET requests
-                        queryParams[key] = String(value);
+                        // Add non-path params as query params for GET requests (use snake_case for HTTP)
+                        queryParams[snakeKey] = String(value);
                     }
                 }
             }

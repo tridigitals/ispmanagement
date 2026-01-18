@@ -13,9 +13,40 @@
     $: currentFile = files[index];
     $: isImage = currentFile?.content_type.startsWith("image/");
     $: isVideo = currentFile?.content_type.startsWith("video/");
+    $: isAudio = currentFile?.content_type.startsWith("audio/");
+    $: isPdf = currentFile?.content_type === "application/pdf";
+    $: isText = currentFile?.content_type.startsWith("text/") || 
+                currentFile?.content_type === "application/json" ||
+                currentFile?.content_type === "application/xml" ||
+                currentFile?.original_name.endsWith(".md") ||
+                currentFile?.original_name.endsWith(".csv");
     
     // Use HTTP API endpoint for serving files
     $: fileSrc = currentFile ? `${API_BASE}/storage/files/${currentFile.id}/content` : "";
+
+    let textContent = "";
+    let loadingText = false;
+
+    $: if (currentFile && isText) {
+        loadTextContent();
+    }
+
+    async function loadTextContent() {
+        loadingText = true;
+        textContent = "";
+        try {
+            const res = await fetch(fileSrc);
+            if (res.ok) {
+                textContent = await res.text();
+            } else {
+                textContent = "Failed to load content.";
+            }
+        } catch (e) {
+            textContent = "Error loading content.";
+        } finally {
+            loadingText = false;
+        }
+    }
 
     function close() {
         dispatch("close");
@@ -94,12 +125,38 @@
                 {:else if isVideo}
                     <!-- svelte-ignore a11y-media-has-caption -->
                     <video src={fileSrc} controls class="media-content" autoplay></video>
+                {:else if isAudio}
+                    <div class="audio-player">
+                        <div class="audio-visual">
+                            <Icon name="music" size={80} />
+                        </div>
+                        <audio src={fileSrc} controls autoplay class="w-full mt-6"></audio>
+                    </div>
+                {:else if isPdf}
+                    <object data={fileSrc} type="application/pdf" class="pdf-viewer">
+                        <div class="generic-file">
+                            <p>Browser does not support PDF preview.</p>
+                            <a href={fileSrc} download={currentFile.original_name} class="btn-download">Download PDF</a>
+                        </div>
+                    </object>
+                {:else if isText}
+                    <div class="text-viewer">
+                        {#if loadingText}
+                            <div class="spinner"></div>
+                        {:else}
+                            <pre>{textContent}</pre>
+                        {/if}
+                    </div>
                 {:else}
                     <div class="generic-file">
                         <Icon name="file-text" size={64} class="mb-4 text-gray-400" />
                         <h3>Preview not available</h3>
                         <p>{currentFile.original_name}</p>
-                        <p class="text-sm text-gray-500">{formatSize(currentFile.size)}</p>
+                        <p class="text-sm text-gray-500 mb-6">{formatSize(currentFile.size)}</p>
+                        <a href={fileSrc} download={currentFile.original_name} class="btn-download">
+                            <Icon name="download" size={18} />
+                            Download File
+                        </a>
                     </div>
                 {/if}
             </div>
@@ -211,6 +268,79 @@
         object-fit: contain;
         border-radius: 4px;
         box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+
+    .audio-player {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: rgba(30, 41, 59, 0.8);
+        padding: 3rem;
+        border-radius: 16px;
+        min-width: 300px;
+        width: 100%;
+        max-width: 500px;
+    }
+
+    .pdf-viewer {
+        width: 80vw;
+        height: 80vh;
+        border-radius: 8px;
+        background: white;
+    }
+
+    .text-viewer {
+        background: white;
+        color: #1e293b;
+        padding: 2rem;
+        border-radius: 8px;
+        width: 80vw;
+        height: 80vh;
+        overflow: auto;
+        font-family: monospace;
+        white-space: pre-wrap;
+    }
+
+    .btn-download {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: var(--color-primary, #6366f1);
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: filter 0.2s;
+    }
+
+    .btn-download:hover {
+        filter: brightness(1.1);
+    }
+
+    .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgba(0,0,0,0.1);
+        border-top-color: var(--color-primary, #6366f1);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: auto;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .audio-visual {
+        width: 120px;
+        height: 120px;
+        background: linear-gradient(135deg, #06b6d4, #3b82f6);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 30px rgba(6, 182, 212, 0.3);
+        margin-bottom: 1.5rem;
     }
 
     .generic-file {

@@ -771,12 +771,13 @@ impl AuthService {
 
         info!("User logged in: {}", user.email);
 
-        // Get user's primary tenant
+        // Get user's primary tenant (oldest one they joined)
         let tenant: Option<crate::models::tenant::Tenant> = sqlx::query_as(
             r#"
             SELECT t.* FROM tenants t
             JOIN tenant_members tm ON t.id = tm.tenant_id
             WHERE tm.user_id = $1
+            ORDER BY tm.created_at ASC
             LIMIT 1
             "#
         )

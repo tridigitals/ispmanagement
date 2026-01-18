@@ -176,8 +176,13 @@ pub async fn start_server(
                 .route("/api/ws", get(websocket::ws_handler))
 
                 // Storage Routes
+                .route("/api/storage/files", get(storage::list_files))
+                .route("/api/storage/files/{id}", delete(storage::delete_file))
                 .route("/api/storage/files/{id}/content", get(storage::serve_file))
                 .route("/api/storage/upload", post(storage::upload_file_http))
+                .route("/api/storage/upload/init", post(storage::init_upload))
+                .route("/api/storage/upload/chunk", post(storage::upload_chunk))
+                .route("/api/storage/upload/complete", post(storage::complete_upload))
 
                 // Public Routes
                 .route("/api/public/tenants/{slug}", get(public::get_tenant_by_slug))
