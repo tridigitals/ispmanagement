@@ -108,6 +108,7 @@ pub async fn serve_file(
     headers: HeaderMap,
     Path(id): Path<String>,
 ) -> Response {
+    // ... existing serve_file logic ...
     // 1. Get file record from DB
     let record = match state.storage_service.get_file(&id).await {
         Ok(r) => r,
@@ -174,6 +175,41 @@ pub async fn serve_file(
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::CONTENT_LENGTH, file_size)
         .header(header::CONTENT_DISPOSITION, format!("inline; filename=\"{}\"", record.original_name))
+        .body(body)
+        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+}
+
+/// Force download file (Attachment)
+pub async fn download_file(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Response {
+    // 1. Get file record from DB
+    let record = match state.storage_service.get_file(&id).await {
+        Ok(r) => r,
+        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+    };
+
+    let path = std::path::Path::new(&record.path);
+    if !path.exists() {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+
+    // 2. Open file
+    let file = match File::open(path).await {
+        Ok(f) => f,
+        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+    };
+
+    let stream = ReaderStream::new(file);
+    let body = Body::from_stream(stream);
+
+    // 3. Send with Attachment disposition
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, record.content_type) // Or application/octet-stream to force?
+        // attachment forces "Save As" dialog
+        .header(header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}\"", record.original_name))
         .body(body)
         .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
 }

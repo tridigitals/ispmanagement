@@ -10,6 +10,7 @@
     import StatsCard from "$lib/components/StatsCard.svelte";
     import Modal from "$lib/components/Modal.svelte";
     import Select from "$lib/components/Select.svelte";
+    import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
     import { toast } from "svelte-sonner";
     import { t } from "svelte-i18n";
     import type { TeamMember, Role } from "$lib/api/client";
@@ -22,53 +23,59 @@
         { key: "actions", label: "", align: "right" as const },
     ];
 
-    let teamMembers: TeamMember[] = [];
-    let roles: Role[] = [];
-    let loading = true;
-    let error = "";
+    let teamMembers = $state<TeamMember[]>([]);
+    let roles = $state<Role[]>([]);
+    let loading = $state(true);
+    let error = $state("");
 
     // Filters & Search
-    let searchQuery = "";
-    let roleFilter = "all";
+    let searchQuery = $state("");
+    let roleFilter = $state("all");
 
     // Invite modal
-    let showInviteModal = false;
-    let inviteEmail = "";
-    let inviteName = "";
-    let inviteRoleId = "";
-    let invitePassword = ""; // Optional password for new user
-    let inviting = false;
+    let showInviteModal = $state(false);
+    let inviteEmail = $state("");
+    let inviteName = $state("");
+    let inviteRoleId = $state("");
+    let invitePassword = $state(""); // Optional password for new user
+    let inviting = $state(false);
 
     // Edit Role
-    let showEditModal = false;
-    let editingMember: TeamMember | null = null;
-    let editRoleId = "";
-    let savingRole = false;
+    let showEditModal = $state(false);
+    let editingMember = $state<TeamMember | null>(null);
+    let editRoleId = $state("");
+    let savingRole = $state(false);
 
-    $: filteredMembers = teamMembers.filter((m) => {
+    // Delete State
+    let showDeleteModal = $state(false);
+    let memberToDelete = $state<TeamMember | null>(null);
+    let isDeleting = $state(false);
+
+    let filteredMembers = $derived(teamMembers.filter((m) => {
         const matchesSearch =
             m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             m.email.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesRole = roleFilter === "all" || m.role_id === roleFilter;
         return matchesSearch && matchesRole;
-    });
+    }));
 
-    $: stats = {
+    let stats = $derived({
         total: teamMembers.length,
         active: teamMembers.filter((m) => m.is_active).length,
         inactive: teamMembers.filter((m) => !m.is_active).length,
-    };
+    });
 
-    $: myMember = teamMembers.find((m) => m.email === $user?.email);
-    $: myRoleLevel =
+    let myMember = $derived(teamMembers.find((m) => m.email === $user?.email));
+    let myRoleLevel = $derived(
         myMember && roles.length > 0
             ? roles.find((r) => r.id === myMember?.role_id)?.level || 0
-            : 0;
+            : 0
+    );
 
-    $: roleOptions = [
+    let roleOptions = $derived([
         { label: "All Roles", value: "all" },
         ...roles.map((r) => ({ label: r.name, value: r.id })),
-    ];
+    ]);
 
     onMount(async () => {
         if (!$can("read", "team")) {
@@ -127,29 +134,25 @@
         }
     }
 
-    function confirmRemove(memberId: string) {
-        toast.error(
-            "Are you sure you want to remove this member? They will lose access to the workspace immediately.",
-            {
-                action: {
-                    label: "Remove Member",
-                    onClick: async () => {
-                        const promise = api.team.remove(memberId);
-                        toast.promise(promise, {
-                            loading: "Removing member...",
-                            success: (data) => {
-                                teamMembers = teamMembers.filter(
-                                    (m) => m.id !== memberId,
-                                );
-                                return "Member removed successfully";
-                            },
-                            error: (err) =>
-                                `Failed to remove member: ${err.message}`,
-                        });
-                    },
-                },
-            },
-        );
+    function confirmRemove(member: TeamMember) {
+        memberToDelete = member;
+        showDeleteModal = true;
+    }
+
+    async function handleConfirmDelete() {
+        if (!memberToDelete) return;
+        isDeleting = true;
+        try {
+            await api.team.remove(memberToDelete.id);
+            teamMembers = teamMembers.filter((m) => m.id !== memberToDelete?.id);
+            toast.success("Member removed successfully");
+            showDeleteModal = false;
+            memberToDelete = null;
+        } catch (e: any) {
+            toast.error("Failed to remove member: " + e.message);
+        } finally {
+            isDeleting = false;
+        }
     }
 
     function openEditModal(member: TeamMember) {
@@ -230,7 +233,7 @@
                     {#if $can("create", "team")}
                         <button
                             class="btn btn-primary"
-                            on:click={() => (showInviteModal = true)}
+                            onclick={() => (showInviteModal = true)}
                         >
                             <Icon name="plus" size={18} />
                             {$t("admin.team.invite_button") || "Add Member"}
@@ -244,7 +247,7 @@
             <div class="error-state">
                 <Icon name="alert-circle" size={48} color="#ef4444" />
                 <p>{error}</p>
-                <button class="btn btn-glass" on:click={loadData}>Retry</button>
+                <button class="btn btn-glass" onclick={loadData}>Retry</button>
             </div>
         {:else}
             <div class="table-wrapper">
@@ -310,7 +313,7 @@
                                     <button
                                         class="action-btn primary"
                                         title="Edit Role"
-                                        on:click={() => openEditModal(item)}
+                                        onclick={() => openEditModal(item)}
                                     >
                                         <Icon name="edit" size={18} />
                                     </button>
@@ -319,7 +322,7 @@
                                     <button
                                         class="action-btn danger"
                                         title="Remove Member"
-                                        on:click={() => confirmRemove(item.id)}
+                                        onclick={() => confirmRemove(item)}
                                     >
                                         <Icon name="trash" size={18} />
                                     </button>
@@ -333,13 +336,23 @@
     </div>
 </div>
 
+<ConfirmDialog
+    bind:show={showDeleteModal}
+    title="Remove Team Member"
+    message={`Are you sure you want to remove ${memberToDelete?.name} from the team? They will lose access immediately.`}
+    confirmText="Remove Member"
+    type="danger"
+    loading={isDeleting}
+    onconfirm={handleConfirmDelete}
+/>
+
 <!-- Add Member Modal -->
 <Modal
     show={showInviteModal}
     title={$t("admin.team.add_member_modal_title") || "Add Team Member"}
-    on:close={() => (showInviteModal = false)}
+    onclose={() => (showInviteModal = false)}
 >
-    <form on:submit|preventDefault={inviteMember}>
+    <form onsubmit={(e) => { e.preventDefault(); inviteMember(); }}>
         <div class="form-group">
             <label>
                 {$t("admin.team.name_label") || "Name"}
@@ -386,7 +399,7 @@
             <button
                 type="button"
                 class="btn btn-ghost"
-                on:click={() => (showInviteModal = false)}
+                onclick={() => (showInviteModal = false)}
             >
                 {$t("admin.team.cancel") || "Cancel"}
             </button>
@@ -403,9 +416,9 @@
 <Modal
     show={showEditModal}
     title="Edit Member Role"
-    on:close={() => (showEditModal = false)}
+    onclose={() => (showEditModal = false)}
 >
-    <form on:submit|preventDefault={saveMemberRole}>
+    <form onsubmit={(e) => { e.preventDefault(); saveMemberRole(); }}>
         <div class="form-group">
             <label>
                 Member Name
@@ -431,7 +444,7 @@
             <button
                 type="button"
                 class="btn btn-ghost"
-                on:click={() => (showEditModal = false)}
+                onclick={() => (showEditModal = false)}
             >
                 Cancel
             </button>

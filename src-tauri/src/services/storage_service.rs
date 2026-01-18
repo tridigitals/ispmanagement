@@ -426,16 +426,6 @@ impl StorageService {
         per_page: u32, 
         search: Option<String>
     ) -> AppResult<(Vec<crate::models::FileRecord>, i64)> {
-        tracing::info!("[StorageService] Listing files for tenant: {}", tenant_id);
-        
-        // DEBUG: Check what is actually in the DB
-        #[cfg(feature = "postgres")]
-        {
-            let all_rows: Vec<(String, String)> = sqlx::query_as("SELECT id, tenant_id FROM file_records LIMIT 5")
-                .fetch_all(&self.pool).await.unwrap_or_default();
-            tracing::info!("[DEBUG] Sample rows in DB: {:?}", all_rows);
-        }
-
         let offset = (page.saturating_sub(1)) * per_page;
 
         #[cfg(feature = "postgres")]
@@ -448,8 +438,6 @@ impl StorageService {
                 .fetch_one(&self.pool)
                 .await
                 .map_err(|e| AppError::Internal(format!("Count query failed: {}", e)))?;
-            tracing::info!("[StorageService] Raw COUNT: {}", raw_count);
-            tracing::info!("[StorageService] Query params: page={}, per_page={}, offset={}, search={:?}", page, per_page, offset, search);
 
             // Data query - Use raw query and manual mapping to avoid query_as issue
             let data_rows: Vec<sqlx::postgres::PgRow> = if search.is_some() {
@@ -476,8 +464,6 @@ impl StorageService {
                 .await
                 .map_err(|e| AppError::Internal(format!("Data query failed: {}", e)))?
             };
-
-            tracing::info!("[StorageService] Raw data rows fetched: {}", data_rows.len());
 
             // Manual mapping
             let files: Vec<crate::models::FileRecord> = data_rows.iter().filter_map(|row| {
@@ -508,17 +494,13 @@ impl StorageService {
                     updated_at,
                 })
             }).collect();
-
-            tracing::info!("[StorageService] Manually mapped: {} files", files.len());
             
             Ok((files, raw_count))
         }
 
         #[cfg(feature = "sqlite")]
         {
-            // ... (SQLite impl)
-            // Add simplified log for SQLite path too just in case
-            tracing::info!("[StorageService] SQLite path triggered");
+            // SQLite implementation
             // ... code continues ...
             use sqlx::{Sqlite, QueryBuilder, Row};
             

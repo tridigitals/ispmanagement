@@ -7,28 +7,27 @@
     import Icon from "$lib/components/Icon.svelte";
     import Table from "$lib/components/Table.svelte";
     import TableToolbar from "$lib/components/TableToolbar.svelte";
+    import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
     import { t } from "svelte-i18n";
     import type { Role, Permission } from "$lib/api/client";
     import { toast } from "svelte-sonner";
 
-    let roles: Role[] = [];
-    let permissions: Permission[] = [];
-    let loading = true;
+    let roles = $state<Role[]>([]);
+    let permissions = $state<Permission[]>([]);
+    let loading = $state(true);
 
-    let error = "";
+    let error = $state("");
 
     // Search
-    let searchQuery = "";
+    let searchQuery = $state("");
 
-    $: filteredRoles = roles.filter(
+    let filteredRoles = $derived(roles.filter(
         (role) =>
             role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (role.description || "")
                 .toLowerCase()
                 .includes(searchQuery.toLowerCase()),
-    );
-
-    // Table Columns
+    ));
 
     // Table Columns
     const columns = [
@@ -40,16 +39,21 @@
     ];
 
     // Modal state
-    let showModal = false;
-    let editingRole: Role | null = null;
-    let roleName = "";
-    let roleDescription = "";
-    let roleLevel = 0;
-    let selectedPermissions: Set<string> = new Set();
-    let saving = false;
+    let showModal = $state(false);
+    let editingRole = $state<Role | null>(null);
+    let roleName = $state("");
+    let roleDescription = $state("");
+    let roleLevel = $state(0);
+    let selectedPermissions = $state<Set<string>>(new Set());
+    let saving = $state(false);
+
+    // Delete State
+    let showDeleteModal = $state(false);
+    let roleToDelete = $state<Role | null>(null);
+    let isDeleting = $state(false);
 
     // Group permissions by resource for better UI
-    $: permissionGroups = groupPermissions(permissions);
+    let permissionGroups = $derived(groupPermissions(permissions));
 
     function groupPermissions(perms: Permission[]) {
         const groups: Record<string, Permission[]> = {};
@@ -110,19 +114,21 @@
         } else {
             selectedPermissions.add(permId);
         }
-        selectedPermissions = selectedPermissions;
+        // Force reactivity for Set in Svelte 5 state
+        selectedPermissions = new Set(selectedPermissions);
     }
 
     function toggleGroup(resource: string, groupPerms: Permission[]) {
         const allKeys = groupPerms.map((p) => `${p.resource}:${p.action}`);
         const allSelected = allKeys.every((k) => selectedPermissions.has(k));
 
+        const nextSet = new Set(selectedPermissions);
         if (allSelected) {
-            allKeys.forEach((k) => selectedPermissions.delete(k));
+            allKeys.forEach((k) => nextSet.delete(k));
         } else {
-            allKeys.forEach((k) => selectedPermissions.add(k));
+            allKeys.forEach((k) => nextSet.add(k));
         }
-        selectedPermissions = selectedPermissions;
+        selectedPermissions = nextSet;
     }
 
     async function saveRole() {
@@ -161,26 +167,24 @@
     }
 
     function confirmDelete(role: Role) {
-        toast.error(
-            `Are you sure you want to delete role "${role.name}"? This action cannot be undone.`,
-            {
-                action: {
-                    label: "Delete Role",
-                    onClick: async () => {
-                        const promise = api.roles.delete(role.id);
-                        toast.promise(promise, {
-                            loading: "Deleting role...",
-                            success: (data) => {
-                                loadData();
-                                return "Role deleted successfully";
-                            },
-                            error: (err) => `Failed to delete role: ${err.message}`,
-                        });
-                    },
-                },
-                duration: 10000,
-            },
-        );
+        roleToDelete = role;
+        showDeleteModal = true;
+    }
+
+    async function handleConfirmDelete() {
+        if (!roleToDelete) return;
+        isDeleting = true;
+        try {
+            await api.roles.delete(roleToDelete.id);
+            toast.success("Role deleted successfully");
+            await loadData();
+            showDeleteModal = false;
+            roleToDelete = null;
+        } catch (e: any) {
+            toast.error("Failed to delete role: " + e.message);
+        } finally {
+            isDeleting = false;
+        }
     }
 </script>
 
@@ -203,7 +207,7 @@
                     {#if $can("create", "roles")}
                         <button
                             class="btn btn-primary"
-                            on:click={openCreateModal}
+                            onclick={openCreateModal}
                         >
                             <Icon name="plus" size={18} />
                             Create Role
@@ -249,7 +253,7 @@
                                 <button
                                     class="btn-icon danger"
                                     title="Delete Role"
-                                    on:click={() => confirmDelete(item)}
+                                    onclick={() => confirmDelete(item)}
                                 >
                                     <Icon name="trash" size={18} />
                                     <span class="btn-text">Delete</span>
@@ -259,7 +263,7 @@
                                 <button
                                     class="btn-icon primary"
                                     title="Edit Role"
-                                    on:click={() => openEditModal(item)}
+                                    onclick={() => openEditModal(item)}
                                 >
                                     <Icon name="edit" size={18} />
                                     <span class="btn-text">Edit Role</span>
@@ -273,13 +277,23 @@
     </div>
 </div>
 
+<ConfirmDialog
+    bind:show={showDeleteModal}
+    title="Delete Role"
+    message={`Are you sure you want to permanently delete the role "${roleToDelete?.name}"? All users assigned to this role might lose permissions.`}
+    confirmText="Delete Role"
+    type="danger"
+    loading={isDeleting}
+    onconfirm={handleConfirmDelete}
+/>
+
 {#if showModal}
     <div
         class="modal-backdrop"
         role="button"
         tabindex="0"
-        on:click={() => (showModal = false)}
-        on:keydown={(e) => e.key === "Escape" && (showModal = false)}
+        onclick={() => (showModal = false)}
+        onkeydown={(e) => e.key === "Escape" && (showModal = false)}
         transition:fade={{ duration: 200 }}
     >
         <div
@@ -287,19 +301,19 @@
             role="dialog"
             aria-modal="true"
             tabindex="-1"
-            on:click|stopPropagation
-            on:keydown|stopPropagation
+            onclick={(e) => e.stopPropagation()}
+            onkeydown={(e) => e.stopPropagation()}
             transition:fly={{ y: 20, duration: 300 }}
         >
             <div class="modal-header">
                 <h3>{editingRole ? "Edit Role" : "Create New Role"}</h3>
-                <button class="close-btn" on:click={() => (showModal = false)}>
+                <button class="close-btn" onclick={() => (showModal = false)}>
                     <Icon name="x" size={20} />
                 </button>
             </div>
 
             <div class="modal-body-scroll">
-                <form on:submit|preventDefault={saveRole} id="roleForm">
+                <form onsubmit={(e) => { e.preventDefault(); saveRole(); }} id="roleForm">
                     <div class="form-row">
                         <div class="form-group flex-1">
                             <label for="role-name">Role Name</label>
@@ -361,7 +375,7 @@
                                             <input
                                                 type="checkbox"
                                                 checked={allSelected}
-                                                on:change={() =>
+                                                onchange={() =>
                                                     toggleGroup(
                                                         resource,
                                                         groupPerms,
@@ -387,7 +401,7 @@
                                                 <input
                                                     type="checkbox"
                                                     checked={isChecked}
-                                                    on:change={() =>
+                                                    onchange={() =>
                                                         togglePermission(
                                                             permKey,
                                                         )}
@@ -414,7 +428,7 @@
                 <button
                     type="button"
                     class="btn btn-glass"
-                    on:click={() => (showModal = false)}>Cancel</button
+                    onclick={() => (showModal = false)}>Cancel</button
                 >
                 <button
                     type="submit"

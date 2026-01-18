@@ -79,9 +79,6 @@
             data.forEach((s) => {
                 settingsMap[s.key] = s.value;
             });
-            
-            console.log("Loaded Settings:", settingsMap); // Debugging
-            console.log("Storage Extensions:", settingsMap["storage_allowed_extensions"]); // Debugging
 
             // Maintenance
             maintenanceMode = settingsMap["maintenance_mode"] === "true";

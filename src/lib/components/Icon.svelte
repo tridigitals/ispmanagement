@@ -46,6 +46,7 @@
         List,
         HardDrive,
         Folder,
+        Download,
     } from "lucide-svelte";
 
     export let name: string;
@@ -104,6 +105,7 @@
         list: List,
         "hard-drive": HardDrive,
         folder: Folder,
+        download: Download,
     };
 
     $: IconComponent = icons[name] || HelpCircle; // Fallback to HelpCircle if not found

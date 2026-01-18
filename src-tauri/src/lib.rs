@@ -36,7 +36,8 @@ pub fn run() {
 
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_fs::init());
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init());
 
     // Only enable single-instance in production to allow dev and prod to run simultaneously
     #[cfg(not(debug_assertions))]

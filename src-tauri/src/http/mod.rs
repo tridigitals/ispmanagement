@@ -179,6 +179,7 @@ pub async fn start_server(
                 .route("/api/storage/files", get(storage::list_files))
                 .route("/api/storage/files/{id}", delete(storage::delete_file))
                 .route("/api/storage/files/{id}/content", get(storage::serve_file))
+                .route("/api/storage/files/{id}/download", get(storage::download_file))
                 .route("/api/storage/upload", post(storage::upload_file_http))
                 .route("/api/storage/upload/init", post(storage::init_upload))
                 .route("/api/storage/upload/chunk", post(storage::upload_chunk))

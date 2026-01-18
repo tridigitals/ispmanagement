@@ -1,28 +1,33 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from "svelte";
     import { fade, scale } from "svelte/transition";
-    import Icon from "$lib/components/Icon.svelte";
-    import type { FileRecord } from "$lib/api/client";
+    import Icon from "./Icon.svelte";
+    import { downloadFile } from "$lib/utils/download";
 
-    export let files: FileRecord[] = [];
-    export let index: number = 0;
+    export let index = 0;
+    export let files: any[] = []; // FileRecord[]
 
     const dispatch = createEventDispatcher();
+    
+    // API URL
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
     $: currentFile = files[index];
     $: isImage = currentFile?.content_type.startsWith("image/");
     $: isVideo = currentFile?.content_type.startsWith("video/");
     $: isAudio = currentFile?.content_type.startsWith("audio/");
-    $: isPdf = currentFile?.content_type === "application/pdf";
-    $: isText = currentFile?.content_type.startsWith("text/") || 
-                currentFile?.content_type === "application/json" ||
-                currentFile?.content_type === "application/xml" ||
-                currentFile?.original_name.endsWith(".md") ||
-                currentFile?.original_name.endsWith(".csv");
-    
+    $: isPdf = currentFile?.content_type.includes("pdf");
+    $: isText = currentFile?.content_type.includes("text") || 
+                currentFile?.content_type.includes("json") || 
+                currentFile?.content_type.includes("xml") ||
+                currentFile?.content_type.includes("javascript") ||
+                currentFile?.content_type.includes("css") ||
+                currentFile?.content_type.includes("html");
+
     // Use HTTP API endpoint for serving files
     $: fileSrc = currentFile ? `${API_BASE}/storage/files/${currentFile.id}/content` : "";
+    // Note: for native download we can use the content URL directly as we fetch the blob manually
+    $: downloadUrl = currentFile ? `${API_BASE}/storage/files/${currentFile.id}/download` : "";
 
     let textContent = "";
     let loadingText = false;
@@ -85,39 +90,61 @@
     }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 <div 
     class="lightbox-overlay" 
     transition:fade={{ duration: 200 }}
-    on:click={close}
+    onclick={close}
+    role="button"
+    tabindex="0"
+    onkeydown={(e) => e.key === 'Escape' && close()}
 >
     <!-- Top Bar -->
-    <div class="top-bar" on:click|stopPropagation>
+    <div 
+        class="top-bar" 
+        onclick={(e) => e.stopPropagation()} 
+        role="toolbar" 
+        tabindex="-1"
+        onkeydown={(e) => e.stopPropagation()}
+    >
         <div class="file-counter">
             {index + 1} / {files.length}
         </div>
         <div class="actions">
-            <!-- <button class="action-btn" title="Download">
+            <button 
+                class="action-btn" 
+                title="Download"
+                onclick={(e) => {
+                    e.stopPropagation();
+                    downloadFile(downloadUrl, currentFile.original_name);
+                }}
+            >
                 <Icon name="download" size={20} />
-            </button> -->
-            <button class="action-btn close" on:click={close}>
+            </button>
+            <button class="action-btn close" onclick={close}>
                 <Icon name="x" size={24} />
             </button>
         </div>
     </div>
 
     <!-- Navigation Buttons -->
-    <button class="nav-btn prev" on:click={prev} title="Previous">
+    <button class="nav-btn prev" onclick={prev} title="Previous">
         <Icon name="chevron-left" size={32} />
     </button>
 
-    <button class="nav-btn next" on:click={next} title="Next">
+    <button class="nav-btn next" onclick={next} title="Next">
         <Icon name="chevron-right" size={32} />
     </button>
 
     <!-- Main Content -->
-    <div class="content-wrapper" on:click|stopPropagation>
+    <div 
+        class="content-wrapper" 
+        onclick={(e) => e.stopPropagation()}
+        role="group"
+        tabindex="-1"
+        onkeydown={(e) => e.stopPropagation()}
+    >
         {#key currentFile.id}
             <div class="media-container" in:scale={{ start: 0.95, duration: 200 }}>
                 {#if isImage}
@@ -136,7 +163,12 @@
                     <object data={fileSrc} type="application/pdf" class="pdf-viewer">
                         <div class="generic-file">
                             <p>Browser does not support PDF preview.</p>
-                            <a href={fileSrc} download={currentFile.original_name} class="btn-download">Download PDF</a>
+                            <button 
+                                class="btn-download"
+                                onclick={() => downloadFile(downloadUrl, currentFile.original_name)}
+                            >
+                                Download PDF
+                            </button>
                         </div>
                     </object>
                 {:else if isText}
@@ -153,10 +185,13 @@
                         <h3>Preview not available</h3>
                         <p>{currentFile.original_name}</p>
                         <p class="text-sm text-gray-500 mb-6">{formatSize(currentFile.size)}</p>
-                        <a href={fileSrc} download={currentFile.original_name} class="btn-download">
+                        <button 
+                            class="btn-download"
+                            onclick={() => downloadFile(downloadUrl, currentFile.original_name)}
+                        >
                             <Icon name="download" size={18} />
                             Download File
-                        </a>
+                        </button>
                     </div>
                 {/if}
             </div>
@@ -186,41 +221,44 @@
         position: absolute;
         top: 0;
         left: 0;
-        right: 0;
-        padding: 1.5rem 2rem;
+        width: 100%;
+        padding: 1.5rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        z-index: 50;
+        z-index: 20;
+        background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
     }
 
     .file-counter {
-        font-family: monospace;
-        background: rgba(255, 255, 255, 0.1);
-        padding: 4px 12px;
-        border-radius: 20px;
+        color: rgba(255, 255, 255, 0.8);
         font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
     }
 
     .action-btn {
-        background: transparent;
+        background: rgba(255, 255, 255, 0.1);
         border: none;
-        color: rgba(255, 255, 255, 0.7);
+        color: white;
         cursor: pointer;
-        padding: 8px;
+        padding: 0.5rem;
         border-radius: 50%;
-        transition: all 0.2s;
         display: flex;
+        align-items: center;
+        justify: center;
+        transition: all 0.2s;
+        text-decoration: none; /* For <a> tag */
     }
 
     .action-btn:hover {
-        background: rgba(255, 255, 255, 0.1);
-        color: white;
-    }
-
-    .action-btn.close:hover {
-        background: rgba(239, 68, 68, 0.2);
-        color: #ef4444;
+        background: rgba(255, 255, 255, 0.2);
+        transform: scale(1.05);
     }
 
     .nav-btn {

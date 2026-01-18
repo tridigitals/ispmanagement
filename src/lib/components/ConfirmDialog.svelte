@@ -1,39 +1,52 @@
 <script lang="ts">
     import Modal from "./Modal.svelte";
     import Icon from "./Icon.svelte";
-    import { createEventDispatcher } from "svelte";
 
-    export let show = false;
-    export let title = "Confirm Action";
-    export let message = "Are you sure you want to proceed?";
-    export let confirmText = "Confirm";
-    export let cancelText = "Cancel";
-    export let type: "danger" | "warning" | "info" = "danger";
-    export let confirmationKeyword = "";
-    export let loading = false;
+    let { 
+        show = $bindable(false), 
+        title = "Confirm Action", 
+        message = "Are you sure you want to proceed?", 
+        confirmText = "Confirm", 
+        cancelText = "Cancel", 
+        type = "danger", 
+        confirmationKeyword = "", 
+        loading = false,
+        onconfirm,
+        oncancel
+    } = $props<{
+        show?: boolean;
+        title?: string;
+        message?: string;
+        confirmText?: string;
+        cancelText?: string;
+        type?: "danger" | "warning" | "info";
+        confirmationKeyword?: string;
+        loading?: boolean;
+        onconfirm?: () => void;
+        oncancel?: () => void;
+    }>();
 
-    const dispatch = createEventDispatcher();
+    let inputValue = $state("");
 
-    let inputValue = "";
-
-    $: canConfirm =
+    let canConfirm = $derived(
         !loading &&
-        (!confirmationKeyword || inputValue === confirmationKeyword);
+        (!confirmationKeyword || inputValue === confirmationKeyword)
+    );
 
-    function onConfirm() {
+    function handleConfirm() {
         if (!canConfirm) return;
-        dispatch("confirm");
+        if (onconfirm) onconfirm();
         inputValue = ""; // Reset after confirm
     }
 
-    function onCancel() {
+    function handleCancel() {
         show = false;
-        dispatch("cancel");
+        if (oncancel) oncancel();
         inputValue = ""; // Reset after cancel
     }
 </script>
 
-<Modal {show} {title} width="400px" on:close={onCancel}>
+<Modal {show} {title} width="400px" onclose={handleCancel}>
     <div class="confirm-content">
         <div class="icon-wrapper {type}">
             <Icon
@@ -55,28 +68,30 @@
                 <input
                     type="text"
                     bind:value={inputValue}
-                    placeholder="Type {confirmationKeyword} here"
+                    placeholder={`Type ${confirmationKeyword} here`}
                     class="confirm-input"
                 />
             </div>
         {/if}
     </div>
 
-    <div slot="footer" class="actions">
-        <button class="btn btn-ghost" on:click={onCancel} disabled={loading}>
-            {cancelText}
-        </button>
-        <button
-            class="btn btn-{type}"
-            on:click={onConfirm}
-            disabled={!canConfirm}
-        >
-            {#if loading}
-                <span class="spinner"></span>
-            {/if}
-            {confirmText}
-        </button>
-    </div>
+    {#snippet footer()}
+        <div class="actions">
+            <button class="btn btn-ghost" onclick={handleCancel} disabled={loading}>
+                {cancelText}
+            </button>
+            <button
+                class="btn btn-{type}"
+                onclick={handleConfirm}
+                disabled={!canConfirm}
+            >
+                {#if loading}
+                    <span class="spinner"></span>
+                {/if}
+                {confirmText}
+            </button>
+        </div>
+    {/snippet}
 </Modal>
 
 <style>

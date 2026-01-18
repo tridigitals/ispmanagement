@@ -8,7 +8,6 @@ export interface UploadItem {
     progress: number; // 0 - 100
     status: "pending" | "uploading" | "success" | "error";
     error?: string;
-    xhr?: XMLHttpRequest;
 }
 
 function createUploadStore() {
@@ -121,7 +120,6 @@ function createUploadStore() {
                 }, 5000);
 
             } catch (e: any) {
-                console.error("[Upload] Error:", e);
                 update(items => 
                     items.map(i => i.id === id ? { ...i, status: "error", error: e.message } : i)
                 );
@@ -129,21 +127,10 @@ function createUploadStore() {
             }
         },
 
-        // Cancel an upload (Logical cancel only since fetch cannot be aborted easily without AbortController per chunk)
+        // Cancel an upload (Logical cancel only)
         cancel: (id: string) => {
             update(items => {
-                // Changing status to 'error' or removing it will break the loop in 'upload' function
-                return items.filter(i => i.id !== id);
-            });
-        },
-
-        // Cancel an upload
-        cancel: (id: string) => {
-            update(items => {
-                const item = items.find(i => i.id === id);
-                if (item && item.xhr && item.status === 'uploading') {
-                    item.xhr.abort();
-                }
+                // Removing it will break the loop in 'upload' function
                 return items.filter(i => i.id !== id);
             });
         },

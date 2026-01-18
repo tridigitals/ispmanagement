@@ -1,24 +1,33 @@
 <script lang="ts">
     import { fade, fly } from "svelte/transition";
     import Icon from "./Icon.svelte";
-    import { createEventDispatcher } from "svelte";
 
-    export let title = "";
-    export let width = "420px";
-    export let show = false;
-
-    const dispatch = createEventDispatcher();
+    let { 
+        title = "", 
+        width = "420px", 
+        show = false, 
+        onclose,
+        children,
+        footer
+    } = $props<{
+        title?: string;
+        width?: string;
+        show: boolean;
+        onclose?: () => void;
+        children?: import('svelte').Snippet;
+        footer?: import('svelte').Snippet;
+    }>();
 
     function close() {
-        dispatch("close");
+        if (onclose) onclose();
     }
 </script>
 
 {#if show}
     <div
         class="modal-backdrop"
-        on:click={close}
-        on:keydown={(e) => e.key === "Escape" && close()}
+        onclick={close}
+        onkeydown={(e) => e.key === "Escape" && close()}
         role="button"
         tabindex="0"
         transition:fade={{ duration: 200 }}
@@ -26,8 +35,8 @@
         <div
             class="modal-card"
             style="max-width: {width}"
-            on:click|stopPropagation
-            on:keydown|stopPropagation
+            onclick={(e) => e.stopPropagation()}
+            onkeydown={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-label={title}
@@ -35,16 +44,18 @@
         >
             <div class="modal-header">
                 <h3>{title}</h3>
-                <button class="close-btn" on:click={close}>
+                <button class="close-btn" onclick={close}>
                     <Icon name="x" size={20} />
                 </button>
             </div>
             <div class="modal-body">
-                <slot />
+                {#if children}
+                    {@render children()}
+                {/if}
             </div>
-            {#if $$slots.footer}
+            {#if footer}
                 <div class="modal-footer">
-                    <slot name="footer" />
+                    {@render footer()}
                 </div>
             {/if}
         </div>

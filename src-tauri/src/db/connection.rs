@@ -803,6 +803,10 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
         // Settings Management
         ("settings", "read", "View settings"),
         ("settings", "update", "Update settings"),
+        // Storage Management
+        ("storage", "read", "View files"),
+        ("storage", "upload", "Upload files"),
+        ("storage", "delete", "Delete files"),
     ];
 
     // Cleanup: Remove permissions with non-standard IDs (e.g. random UUIDs)
@@ -884,20 +888,21 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
         "admin:access", // Access to admin panel
         "team:read", "team:create", "team:update", "team:delete",
         "roles:read", "roles:create", "roles:update", "roles:delete",
-        "settings:read", "settings:update"
+        "settings:read", "settings:update",
+        "storage:read", "storage:upload", "storage:delete"
     ];
     for p in admin_perms {
         assign_perm(pool, "Admin", p).await?;
         assign_perm(pool, "Owner", p).await?; // Owner gets all admin perms too
     }
 
-    let member_perms = vec!["dashboard:read", "team:read"];
+    let member_perms = vec!["dashboard:read", "team:read", "storage:read", "storage:upload"];
     for p in member_perms {
         assign_perm(pool, "Member", p).await?;
     }
 
     // All roles get dashboard access by default
-    let all_roles_perms = vec!["dashboard:read"];
+    let all_roles_perms = vec!["dashboard:read", "storage:read"];
     for p in all_roles_perms {
         assign_perm(pool, "Owner", p).await?;
         assign_perm(pool, "Admin", p).await?;

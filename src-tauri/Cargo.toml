@@ -84,6 +84,7 @@ tauri-plugin-single-instance = "2.0.1"
 sysinfo = "0.30"
 tauri-plugin-fs = "2.4.5"
 tokio-util = { version = "0.7.18", features = ["io", "compat"] }
+tauri-plugin-dialog = "2.6.0"
 
 [profile.dev]
 incremental = false
