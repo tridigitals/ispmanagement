@@ -97,6 +97,13 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             'upload_init': { method: 'POST', path: '/storage/upload/init' },
             'upload_chunk': { method: 'POST', path: '/storage/upload/chunk' },
             'upload_complete': { method: 'POST', path: '/storage/upload/complete' },
+            // Payment
+            'list_bank_accounts': { method: 'GET', path: '/payment/banks' },
+            'create_bank_account': { method: 'POST', path: '/payment/banks' },
+            'delete_bank_account': { method: 'DELETE', path: '/payment/banks/:id' },
+            'create_invoice_for_plan': { method: 'POST', path: '/payment/invoices/plan' },
+            'get_invoice': { method: 'GET', path: '/payment/invoices/:id' },
+            'pay_invoice_midtrans': { method: 'POST', path: '/payment/invoices/:id/midtrans' },
         };
 
         let route = commandMap[command];
@@ -546,6 +553,14 @@ export const plans = {
         safeInvoke('check_feature_access', { token: getTokenOrThrow(), tenantId, featureCode }),
 };
 
+export const tenant = {
+    getSelf: (): Promise<any> =>
+        safeInvoke('get_current_tenant', { token: getTokenOrThrow() }),
+
+    updateSelf: (data: { name?: string, customDomain?: string }): Promise<any> =>
+        safeInvoke('update_current_tenant', { token: getTokenOrThrow(), name: data.name, customDomain: data.customDomain }),
+};
+
 export interface FileRecord {
     id: string;
     tenant_id: string;
@@ -558,6 +573,55 @@ export interface FileRecord {
     created_at: string;
     updated_at: string;
 }
+
+export interface BankAccount {
+    id: string;
+    bank_name: string;
+    account_number: string;
+    account_holder: string;
+    is_active: boolean;
+}
+
+export interface Invoice {
+    id: string;
+    invoice_number: string;
+    amount: number;
+    status: string; // "pending", "paid", "failed"
+    description: string | null;
+    due_date: string;
+    paid_at: string | null;
+    payment_method: string | null;
+}
+
+export const payment = {
+    listBanks: (): Promise<BankAccount[]> =>
+        safeInvoke('list_bank_accounts', { token: getTokenOrThrow() }),
+
+    createBank: (bank_name: string, account_number: string, account_holder: string): Promise<BankAccount> =>
+        safeInvoke('create_bank_account', { token: getTokenOrThrow(), bankName: bank_name, accountNumber: account_number, accountHolder: account_holder }),
+
+    deleteBank: (id: string): Promise<void> =>
+        safeInvoke('delete_bank_account', { token: getTokenOrThrow(), id }),
+
+    // Invoice & Transaction
+    createInvoiceForPlan: (planId: string, billingCycle: "monthly" | "yearly"): Promise<Invoice> =>
+        safeInvoke('create_invoice_for_plan', { token: getTokenOrThrow(), planId, billingCycle }),
+
+    getInvoice: (id: string): Promise<Invoice> =>
+        safeInvoke('get_invoice', { token: getTokenOrThrow(), id }),
+
+    listInvoices: (): Promise<Invoice[]> =>
+        safeInvoke('list_invoices', { token: getTokenOrThrow() }),
+
+    listAllInvoices: (): Promise<Invoice[]> =>
+        safeInvoke('list_all_invoices', { token: getTokenOrThrow() }),
+
+    payMidtrans: (id: string): Promise<string> => // Returns Snap Token
+        safeInvoke('pay_invoice_midtrans', { token: getTokenOrThrow(), id }),
+
+    checkStatus: (id: string): Promise<string> => 
+        safeInvoke('check_payment_status', { token: getTokenOrThrow(), id }),
+};
 
 export const storage = {
     listFiles: (page: number = 1, perPage: number = 20, search: string = ""): Promise<PaginatedResponse<FileRecord>> =>
@@ -605,6 +669,8 @@ export const api = {
     install,
     plans,
     storage,
+    payment,
+    tenant,
 };
 
 export default api;

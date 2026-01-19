@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { api } from "$lib/api/client";
+    import type { Setting, BankAccount } from "$lib/api/client";
     import { isSuperAdmin } from "$lib/stores/auth";
     import { goto } from "$app/navigation";
     import Icon from "$lib/components/Icon.svelte";
@@ -11,9 +12,19 @@
     let saving = false;
     let activeTab = "general";
 
-    // Data Models
+    // Bank Account Data Models
+    let bankAccounts: BankAccount[] = [];
+    let newBankName = "";
+    let newAccountNumber = "";
+    let newAccountHolder = "";
+    let addingBank = false;
+
+    // Maintenance
     let maintenanceMode = false;
     let maintenanceMessage = "";
+    
+    // General
+    let appPublicUrl = "";
 
     // Authentication Settings
     let authAllowRegistration = false;
@@ -34,14 +45,6 @@
     let apiRateLimitPerMinute = 100;
     let enableIpBlocking = false;
 
-    // ... inside <script>
-    // Constants
-    const STORAGE_DRIVERS = [
-        { value: "local", label: "Local Disk" },
-        { value: "s3", label: "AWS S3 / Compatible" },
-        { value: "r2", label: "Cloudflare R2" },
-    ];
-
     // Storage
     let storageMaxFileSizeMb = 500;
     let storageAllowedExtensions = "";
@@ -55,7 +58,20 @@
     let storageS3SecretKey = "";
     let storageS3PublicUrl = "";
 
+    // Payment Settings
+    let paymentMidtransEnabled = false;
+    let paymentMidtransMerchantId = "";
+    let paymentMidtransServerKey = "";
+    let paymentMidtransClientKey = "";
+    let paymentMidtransIsProduction = false;
+    let paymentManualEnabled = true;
+    let paymentManualInstructions = "";
+
     let hasChanges = false;
+
+    // Sending test email state
+    let testEmailAddress = "";
+    let sendingTestEmail = false;
 
     const categories = {
         general: {
@@ -77,6 +93,10 @@
         storage: {
             label: "Storage Configuration",
             icon: "hard-drive",
+        },
+        payment: {
+            label: "Payment Gateway",
+            icon: "credit-card",
         },
     };
 
@@ -102,6 +122,9 @@
             maintenanceMessage =
                 settingsMap["maintenance_message"] ||
                 "The system is currently under maintenance. Please try again later.";
+            
+            // General
+            appPublicUrl = settingsMap["app_public_url"] || "http://localhost:3000";
 
             // Authentication
             authAllowRegistration =
@@ -159,6 +182,22 @@
             storageS3AccessKey = settingsMap["storage_s3_access_key"] || "";
             storageS3SecretKey = settingsMap["storage_s3_secret_key"] || "";
             storageS3PublicUrl = settingsMap["storage_s3_public_url"] || "";
+
+            // Payment
+            paymentMidtransEnabled = settingsMap["payment_midtrans_enabled"] === "true";
+            paymentMidtransMerchantId = settingsMap["payment_midtrans_merchant_id"] || "";
+            paymentMidtransServerKey = settingsMap["payment_midtrans_server_key"] || "";
+            paymentMidtransClientKey = settingsMap["payment_midtrans_client_key"] || "";
+            paymentMidtransIsProduction = settingsMap["payment_midtrans_is_production"] === "true";
+            paymentManualEnabled = settingsMap["payment_manual_enabled"] !== "false"; // Default true
+            paymentManualInstructions = settingsMap["payment_manual_instructions"] || "Please transfer to our bank account.";
+
+            // Load banks (always load to ensure availability)
+            try {
+                bankAccounts = await api.payment.listBanks();
+            } catch (e) {
+                console.error("Failed to load banks:", e);
+            }
         } catch (err) {
             console.error("Failed to load settings:", err);
             toast.error("Failed to load settings");
@@ -176,6 +215,11 @@
         try {
             const updates = [
                 // Maintenance
+                api.settings.upsert(
+                    "app_public_url",
+                    appPublicUrl,
+                    "Public Application URL",
+                ),
                 api.settings.upsert(
                     "maintenance_mode",
                     maintenanceMode ? "true" : "false",
@@ -273,6 +317,14 @@
                 api.settings.upsert("storage_s3_access_key", storageS3AccessKey, "S3 Access Key"),
                 api.settings.upsert("storage_s3_secret_key", storageS3SecretKey, "S3 Secret Key"),
                 api.settings.upsert("storage_s3_public_url", storageS3PublicUrl, "S3 Public URL"),
+                // Payment
+                api.settings.upsert("payment_midtrans_enabled", paymentMidtransEnabled ? "true" : "false", "Enable Midtrans"),
+                api.settings.upsert("payment_midtrans_merchant_id", paymentMidtransMerchantId, "Midtrans Merchant ID"),
+                api.settings.upsert("payment_midtrans_server_key", paymentMidtransServerKey, "Midtrans Server Key"),
+                api.settings.upsert("payment_midtrans_client_key", paymentMidtransClientKey, "Midtrans Client Key"),
+                api.settings.upsert("payment_midtrans_is_production", paymentMidtransIsProduction ? "true" : "false", "Midtrans Production Mode"),
+                api.settings.upsert("payment_manual_enabled", paymentManualEnabled ? "true" : "false", "Enable Manual Payment"),
+                api.settings.upsert("payment_manual_instructions", paymentManualInstructions, "Manual Payment Instructions"),
             ];
 
             await Promise.all(updates);
@@ -290,6 +342,56 @@
     function discardChanges() {
         loadSettings();
         hasChanges = false;
+    }
+
+    async function sendTestEmail() {
+        if (!testEmailAddress) {
+            toast.error("Please enter an email address");
+            return;
+        }
+        sendingTestEmail = true;
+        try {
+            const result = await api.settings.sendTestEmail(testEmailAddress);
+            toast.success(result);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to send test email: " + String(error));
+        } finally {
+            sendingTestEmail = false;
+        }
+    }
+
+    async function addBank() {
+        if (!newBankName || !newAccountNumber || !newAccountHolder) return;
+        addingBank = true;
+        try {
+            await api.payment.createBank(newBankName, newAccountNumber, newAccountHolder);
+            bankAccounts = await api.payment.listBanks();
+            newBankName = "";
+            newAccountNumber = "";
+            newAccountHolder = "";
+            toast.success("Bank account added");
+        } catch (e: any) {
+            toast.error(e.message || "Failed to add bank");
+        } finally {
+            addingBank = false;
+        }
+    }
+
+    async function deleteBank(id: string) {
+        if (!confirm("Are you sure?")) return;
+        try {
+            await api.payment.deleteBank(id);
+            bankAccounts = bankAccounts.filter(b => b.id !== id);
+            toast.success("Bank account removed");
+        } catch (e: any) {
+            toast.error(e.message || "Failed to delete bank");
+        }
+    }
+
+    function showMessage(type: "success" | "error", msg: string) {
+        if (type === "success") toast.success(msg);
+        else toast.error(msg);
     }
 </script>
 
@@ -341,9 +443,17 @@
                 {#if activeTab === "general"}
                     <div class="card section fade-in">
                         <div class="card-header">
-                            <h3>Maintenance Mode</h3>
+                            <h3>General Settings</h3>
                         </div>
                         <div class="card-body">
+                            <div class="setting-row">
+                                <div class="setting-info full-width">
+                                    <label class="setting-label">Public Application URL</label>
+                                    <p class="setting-description">Base URL for redirects, emails, and payment callbacks (e.g. https://app.example.com).</p>
+                                    <input type="text" bind:value={appPublicUrl} on:input={handleChange} class="form-input" placeholder="https://..." />
+                                </div>
+                            </div>
+
                             <div class="setting-row">
                                 <div class="setting-info">
                                     <label class="setting-label"
@@ -784,6 +894,155 @@
                     </div>
                 {/if}
 
+                <!-- Payment Tab -->
+                {#if activeTab === "payment"}
+                    <div class="card section fade-in">
+                        <div class="card-header">
+                            <h3>Payment Gateway (Midtrans)</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <label class="setting-label">Enable Midtrans Gateway</label>
+                                    <p class="setting-description">Allow users to pay online via Midtrans.</p>
+                                </div>
+                                <label class="toggle">
+                                    <input
+                                        type="checkbox"
+                                        bind:checked={paymentMidtransEnabled}
+                                        on:change={handleChange}
+                                    />
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            {#if paymentMidtransEnabled}
+                                <div class="sub-settings fade-in">
+                                    <div class="setting-row">
+                                        <div class="setting-info">
+                                            <label class="setting-label">Merchant ID</label>
+                                        </div>
+                                        <input type="text" bind:value={paymentMidtransMerchantId} on:input={handleChange} class="form-input" />
+                                    </div>
+                                    <div class="setting-row">
+                                        <div class="setting-info">
+                                            <label class="setting-label">Server Key</label>
+                                            <p class="setting-description">From Midtrans Dashboard > Settings > Access Keys.</p>
+                                        </div>
+                                        <input type="password" bind:value={paymentMidtransServerKey} on:input={handleChange} class="form-input" />
+                                    </div>
+                                    <div class="setting-row">
+                                        <div class="setting-info">
+                                            <label class="setting-label">Client Key</label>
+                                            <p class="setting-description">Public key for frontend Snap.js.</p>
+                                        </div>
+                                        <input type="text" bind:value={paymentMidtransClientKey} on:input={handleChange} class="form-input" />
+                                    </div>
+                                    <div class="setting-row">
+                                        <div class="setting-info">
+                                            <label class="setting-label">Production Mode</label>
+                                            <p class="setting-description">Enable for real transactions. Disable for Sandbox.</p>
+                                        </div>
+                                        <label class="toggle">
+                                            <input
+                                                type="checkbox"
+                                                bind:checked={paymentMidtransIsProduction}
+                                                on:change={handleChange}
+                                            />
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            {/if}
+                        </div>
+                    </div>
+
+                    <div class="card section fade-in">
+                        <div class="card-header">
+                            <h3>Manual Bank Transfer</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <label class="setting-label">Enable Manual Transfer</label>
+                                    <p class="setting-description">Allow users to pay via bank transfer and upload proof.</p>
+                                </div>
+                                <label class="toggle">
+                                    <input
+                                        type="checkbox"
+                                        bind:checked={paymentManualEnabled}
+                                        on:change={handleChange}
+                                    />
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            {#if paymentManualEnabled}
+                                <div class="sub-settings fade-in">
+                                    <div class="setting-row">
+                                        <div class="setting-info full-width">
+                                            <label class="setting-label">Payment Instructions</label>
+                                            <p class="setting-description">
+                                                Instructions shown to user when they select Manual Transfer.
+                                            </p>
+                                            <textarea
+                                                bind:value={paymentManualInstructions}
+                                                on:input={handleChange}
+                                                rows="3"
+                                                placeholder="Please transfer to one of the bank accounts below and upload proof."
+                                            ></textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="bank-accounts-list">
+                                        <h4 class="subsection-title">Bank Accounts</h4>
+                                        {#if bankAccounts.length > 0}
+                                            <table class="simple-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Bank</th>
+                                                        <th>Number</th>
+                                                        <th>Holder</th>
+                                                        <th>Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {#each bankAccounts as bank}
+                                                        <tr>
+                                                            <td>{bank.bank_name}</td>
+                                                            <td>{bank.account_number}</td>
+                                                            <td>{bank.account_holder}</td>
+                                                            <td>
+                                                                <button class="btn-icon danger" on:click={() => deleteBank(bank.id)}>
+                                                                    <Icon name="trash" size={16} />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    {/each}
+                                                </tbody>
+                                            </table>
+                                        {:else}
+                                            <p class="text-muted">No bank accounts added yet.</p>
+                                        {/if}
+                                    </div>
+
+                                    <div class="add-bank-form">
+                                        <h4>Add New Account</h4>
+                                        <div class="form-row-inline">
+                                            <input type="text" bind:value={newBankName} placeholder="Bank Name (e.g. BCA)" class="form-input" />
+                                            <input type="text" bind:value={newAccountNumber} placeholder="Account Number" class="form-input" />
+                                            <input type="text" bind:value={newAccountHolder} placeholder="Account Holder" class="form-input" />
+                                            <button class="btn btn-primary" on:click={addBank} disabled={addingBank}>
+                                                <Icon name="plus" size={16} /> Add
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            {/if}
+                        </div>
+                    </div>
+                {/if}
+
                 <!-- Actions Footer -->
                 <div class="actions-footer">
                     <button
@@ -1135,6 +1394,22 @@
         white-space: nowrap;
     }
 
+    .form-input {
+        width: 100%;
+        max-width: 400px;
+        padding: 0.5rem 0.75rem;
+        background: var(--bg-app);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+    
+    .form-input:focus {
+        outline: none;
+        border-color: var(--color-primary);
+    }
+
     .native-select {
         background: var(--bg-app);
         border: 1px solid var(--border-color);
@@ -1169,6 +1444,73 @@
         border-radius: var(--radius-sm);
         color: var(--text-primary);
         font-size: 0.9rem;
+    }
+
+    .text-muted {
+        color: var(--text-secondary);
+        font-style: italic;
+        font-size: 0.9rem;
+    }
+
+    .subsection-title {
+        margin: 1.5rem 0 0.5rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .simple-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+    }
+
+    .simple-table th, .simple-table td {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.9rem;
+    }
+
+    .simple-table th {
+        background: var(--bg-tertiary);
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    .form-row-inline {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .form-row-inline .form-input {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .btn-icon {
+        padding: 0.4rem;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        color: var(--text-secondary);
+        transition: all 0.2s;
+    }
+
+    .btn-icon:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+    }
+
+    .btn-icon.danger:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
     }
 
     /* Mobile Responsive */

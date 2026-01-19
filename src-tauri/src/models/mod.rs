@@ -1,21 +1,22 @@
 //! Models module
 
-pub mod settings;
-pub mod user;
-pub mod tenant;
 pub mod role;
-
-pub use settings::*;
-pub use user::*;
-pub use tenant::*;
-pub use role::*;
+pub mod tenant;
+pub mod user;
+pub mod settings;
 pub mod audit_log;
-pub use audit_log::*;
-pub use audit_log::{AuditLog, AuditLogResponse};
 pub mod plan;
-pub use plan::*;
 pub mod file;
+pub mod invoice;
+
+pub use role::*;
+pub use tenant::*;
+pub use user::*;
+pub use settings::*;
+pub use audit_log::*;
+pub use plan::*;
 pub use file::*;
+pub use invoice::*;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct PaginatedResponse<T> {

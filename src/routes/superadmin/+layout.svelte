@@ -109,6 +109,18 @@
                     {#if !isCollapsed}<span in:fade>Plans</span>{/if}
                 </a>
                 <a
+                    href="/superadmin/invoices"
+                    class="nav-item"
+                    class:active={$page.url.pathname.startsWith(
+                        "/superadmin/invoices",
+                    )}
+                    title="Invoices & Payments"
+                    on:click={handleNavClick}
+                >
+                    <Icon name="credit-card" size={20} />
+                    {#if !isCollapsed}<span in:fade>Invoices</span>{/if}
+                </a>
+                <a
                     href="/superadmin/storage"
                     class="nav-item"
                     class:active={$page.url.pathname.startsWith(

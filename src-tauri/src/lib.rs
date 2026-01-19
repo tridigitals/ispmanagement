@@ -13,7 +13,7 @@ mod http;
 use commands::*;
 use commands::audit::list_audit_logs;
 use db::connection::{init_db, seed_defaults};
-use services::{AuthService, EmailService, SettingsService, UserService, TeamService, AuditService, RoleService, SystemService, PlanService};
+use services::{AuthService, EmailService, SettingsService, UserService, TeamService, AuditService, RoleService, SystemService, PlanService, PaymentService}; // Added PaymentService
 use tauri::Manager;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -183,6 +183,7 @@ pub fn run() {
                 let team_service = TeamService::new(pool.clone(), auth_service.clone(), audit_service.clone(), plan_service.clone());
                 let system_service = SystemService::new(pool.clone());
                 let storage_service = crate::services::StorageService::new(pool.clone(), plan_service.clone(), app_data_dir.clone());
+                let payment_service = PaymentService::new(pool.clone());
                 
                 // Seed default features
                 plan_service.seed_default_features()
@@ -204,6 +205,7 @@ pub fn run() {
                 app_handle.manage(system_service.clone());
                 app_handle.manage(plan_service.clone());
                 app_handle.manage(storage_service.clone());
+                app_handle.manage(payment_service.clone());
                 app_handle.manage(ws_hub.clone());
                 info!("Services added to Tauri state.");
 
@@ -220,7 +222,8 @@ pub fn run() {
                         audit_service, 
                         system_service, 
                         plan_service, 
-                        storage_service, 
+                        storage_service,
+                        payment_service, 
                         ws_hub, 
                         app_dir, 
                         3000
@@ -322,6 +325,19 @@ pub fn run() {
                                     delete_file_admin,
                                     list_files_tenant,
                                     delete_file_tenant,
+                                    // Payment commands
+                                    list_bank_accounts,
+                                    create_bank_account,
+                                    delete_bank_account,
+                                    create_invoice_for_plan,
+                                    get_invoice,
+                                    pay_invoice_midtrans,
+                                    check_payment_status,
+                                    list_invoices,
+                                    list_all_invoices,
+                                    // Tenant Self-Management
+                                    get_current_tenant,
+                                    update_current_tenant,
                                     // General
                                     get_app_version,
                                 ])

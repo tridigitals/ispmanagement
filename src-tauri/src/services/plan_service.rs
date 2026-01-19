@@ -448,11 +448,18 @@ impl PlanService {
 
     // ==================== TENANT SUBSCRIPTIONS ====================
 
-    /// Get tenant subscription
-    pub async fn get_tenant_subscription(&self, tenant_id: &str) -> Result<Option<TenantSubscription>, sqlx::Error> {
+    /// Get tenant subscription (Internal raw fetch)
+    async fn get_tenant_subscription_raw(&self, tenant_id: &str) -> Result<Option<TenantSubscription>, sqlx::Error> {
         #[cfg(feature = "postgres")]
         let sub: Option<TenantSubscription> = sqlx::query_as(
-            "SELECT * FROM tenant_subscriptions WHERE tenant_id = $1"
+            r#"
+            SELECT 
+                id, tenant_id, plan_id, status, trial_ends_at, 
+                current_period_start, current_period_end, 
+                feature_overrides::TEXT as feature_overrides, 
+                created_at, updated_at 
+            FROM tenant_subscriptions WHERE tenant_id = $1
+            "#
         )
         .bind(tenant_id)
         .fetch_optional(&self.pool)
@@ -468,15 +475,110 @@ impl PlanService {
 
         Ok(sub)
     }
+
+    /// Get tenant subscription with auto-expiration check
+    pub async fn get_tenant_subscription(&self, tenant_id: &str) -> Result<Option<TenantSubscription>, sqlx::Error> {
+        let sub = self.get_tenant_subscription_raw(tenant_id).await?;
+
+        if let Some(ref s) = sub {
+            // Check for expiration
+            if let Some(end_date) = s.current_period_end {
+                if end_date < Utc::now() && s.status == "active" {
+                    // Expired! Downgrade to Free.
+                    self.downgrade_to_free(tenant_id).await?;
+                    // Return the new state
+                    return self.get_tenant_subscription_raw(tenant_id).await;
+                }
+            }
+        }
+
+        Ok(sub)
+    }
+
+    /// Downgrade tenant to Free plan
+    async fn downgrade_to_free(&self, tenant_id: &str) -> Result<(), sqlx::Error> {
+        // 1. Get Free Plan ID
+        #[cfg(feature = "postgres")]
+        let free_plan_id: Option<String> = sqlx::query_scalar("SELECT id FROM plans WHERE slug = 'free'")
+            .fetch_optional(&self.pool).await?;
+        
+        #[cfg(feature = "sqlite")]
+        let free_plan_id: Option<String> = sqlx::query_scalar("SELECT id FROM plans WHERE slug = 'free'")
+            .fetch_optional(&self.pool).await?;
+
+        if let Some(free_id) = free_plan_id {
+            let now = Utc::now();
+            
+            // 2. Update Subscription
+            #[cfg(feature = "postgres")]
+            sqlx::query(
+                "UPDATE tenant_subscriptions SET plan_id = $1, status = 'active', current_period_end = NULL, updated_at = $2 WHERE tenant_id = $3"
+            )
+            .bind(&free_id).bind(now).bind(tenant_id)
+            .execute(&self.pool).await?;
+
+            #[cfg(feature = "sqlite")]
+            sqlx::query(
+                "UPDATE tenant_subscriptions SET plan_id = ?, status = 'active', current_period_end = NULL, updated_at = ? WHERE tenant_id = ?"
+            )
+            .bind(&free_id).bind(now.to_rfc3339()).bind(tenant_id)
+            .execute(&self.pool).await?;
+        }
+        Ok(())
+    }
     
     /// Get tenant subscription within a transaction
     pub async fn get_tenant_subscription_with_conn<'a>(&self, tenant_id: &str, tx: &mut sqlx::Transaction<'a, Postgres>) -> Result<Option<TenantSubscription>, sqlx::Error> {
+        // 1. Fetch
         let sub: Option<TenantSubscription> = sqlx::query_as(
-            "SELECT * FROM tenant_subscriptions WHERE tenant_id = $1"
+            r#"
+            SELECT 
+                id, tenant_id, plan_id, status, trial_ends_at, 
+                current_period_start, current_period_end, 
+                feature_overrides::TEXT as feature_overrides, 
+                created_at, updated_at 
+            FROM tenant_subscriptions WHERE tenant_id = $1
+            "#
         )
         .bind(tenant_id)
         .fetch_optional(&mut **tx)
         .await?;
+
+        // 2. Check Expiration
+        if let Some(ref s) = sub {
+            if let Some(end_date) = s.current_period_end {
+                if end_date < Utc::now() && s.status == "active" {
+                    // Downgrade Logic (Inline for transaction)
+                    let free_plan_id: Option<String> = sqlx::query_scalar("SELECT id FROM plans WHERE slug = 'free'")
+                        .fetch_optional(&mut **tx).await?;
+
+                    if let Some(free_id) = free_plan_id {
+                        let now = Utc::now();
+                        sqlx::query(
+                            "UPDATE tenant_subscriptions SET plan_id = $1, status = 'active', current_period_end = NULL, updated_at = $2 WHERE tenant_id = $3"
+                        )
+                        .bind(free_id).bind(now).bind(tenant_id)
+                        .execute(&mut **tx).await?;
+                        
+                        // Refetch
+                        return sqlx::query_as(
+                            r#"
+                            SELECT 
+                                id, tenant_id, plan_id, status, trial_ends_at, 
+                                current_period_start, current_period_end, 
+                                feature_overrides::TEXT as feature_overrides, 
+                                created_at, updated_at 
+                            FROM tenant_subscriptions WHERE tenant_id = $1
+                            "#
+                        )
+                        .bind(tenant_id)
+                        .fetch_optional(&mut **tx)
+                        .await;
+                    }
+                }
+            }
+        }
+
         Ok(sub)
     }
 

@@ -33,6 +33,9 @@ pub enum AppError {
     #[error("Not authorized")]
     Unauthorized,
 
+    #[error("Configuration error: {0}")]
+    Configuration(String),
+
     #[error("Internal error: {0}")]
     Internal(String),
 

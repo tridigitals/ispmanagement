@@ -9,7 +9,7 @@ use tower_http::{
     timeout::TimeoutLayer,
 };
 use std::time::Duration;
-use crate::services::{AuthService, UserService, SettingsService, EmailService, TeamService, AuditService, RoleService, SystemService, PlanService, StorageService};
+use crate::services::{AuthService, UserService, SettingsService, EmailService, TeamService, AuditService, RoleService, SystemService, PlanService, StorageService, PaymentService};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::{info, warn};
@@ -30,6 +30,7 @@ pub mod audit;
 pub mod system;
 pub mod plans;
 pub mod storage;
+pub mod payment;
 
 pub use websocket::WsHub;
 
@@ -46,6 +47,7 @@ pub struct AppState {
     pub system_service: Arc<SystemService>,
     pub plan_service: Arc<PlanService>,
     pub storage_service: Arc<StorageService>,
+    pub payment_service: Arc<PaymentService>,
     pub ws_hub: Arc<WsHub>,
     pub app_data_dir: PathBuf,
 }
@@ -61,6 +63,7 @@ pub async fn start_server(
     system_service: SystemService,
     plan_service: PlanService,
     storage_service: StorageService,
+    payment_service: PaymentService,
     ws_hub: Arc<WsHub>,
     app_data_dir: PathBuf,
     default_port: u16,
@@ -74,8 +77,9 @@ pub async fn start_server(
         audit_service: Arc::new(audit_service),
         role_service: Arc::new(role_service),
         system_service: Arc::new(system_service),
-        plan_service: Arc::new(plan_service),
+        plan_service: Arc::new(plan_service.clone()),
         storage_service: Arc::new(storage_service),
+        payment_service: Arc::new(payment_service.clone()),
         ws_hub,
         app_data_dir,
     };
@@ -148,6 +152,9 @@ pub async fn start_server(
 
                 // Plans Routes
                 .nest("/api/plans", plans::plan_routes())
+
+                // Payment Routes
+                .nest("/api/payment", payment::router())
 
                 // Settings Routes
 

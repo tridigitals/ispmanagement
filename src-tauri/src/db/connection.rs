@@ -350,6 +350,41 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
+    // Create invoices table
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY NOT NULL,
+            tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+            invoice_number TEXT UNIQUE NOT NULL,
+            amount DECIMAL(10,2) NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            description TEXT,
+            due_date TIMESTAMPTZ NOT NULL,
+            paid_at TIMESTAMPTZ,
+            payment_method TEXT,
+            external_id TEXT,
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Create bank_accounts table
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS bank_accounts (
+            id TEXT PRIMARY KEY NOT NULL,
+            bank_name TEXT NOT NULL,
+            account_number TEXT NOT NULL,
+            account_holder TEXT NOT NULL,
+            is_active BOOLEAN NOT NULL DEFAULT true,
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
     // Migration: Add storage_provider to file_records if not exists
     sqlx::query(r#"
         DO $$ 
@@ -628,6 +663,42 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
+    // Create invoices table (SQLite)
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY NOT NULL,
+            tenant_id TEXT NOT NULL,
+            invoice_number TEXT UNIQUE NOT NULL,
+            amount REAL NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            description TEXT,
+            due_date TEXT NOT NULL,
+            paid_at TEXT,
+            payment_method TEXT,
+            external_id TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Create bank_accounts table (SQLite)
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS bank_accounts (
+            id TEXT PRIMARY KEY NOT NULL,
+            bank_name TEXT NOT NULL,
+            account_number TEXT NOT NULL,
+            account_holder TEXT NOT NULL,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
     // Migration: Add storage_provider to file_records if not exists (SQLite)
     let _ = sqlx::query("ALTER TABLE file_records ADD COLUMN storage_provider TEXT NOT NULL DEFAULT 'local'").execute(pool).await;
 
@@ -655,6 +726,7 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
     let defaults = vec![
         ("app_name", app_name.as_str(), "Application name"),
         ("app_description", "Enterprise-grade boilerplate built with Rust and SvelteKit. Secure, scalable, and lightweight.", "Application description"),
+        ("app_public_url", "https://apisaas.tridigitals.com", "Public URL of the application"),
         ("app_version", "1.0.0", "Application version"),
         ("jwt_secret", jwt_secret.as_str(), "JWT signing secret"),
         ("auth_jwt_expiry_hours", "24", "JWT token expiry in hours"),
@@ -679,6 +751,14 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
         ("storage_s3_access_key", "", "S3 Access Key ID"),
         ("storage_s3_secret_key", "", "S3 Secret Access Key"),
         ("storage_s3_public_url", "", "Public CDN URL for S3 files (optional)"),
+        // Payment Settings
+        ("payment_midtrans_enabled", "false", "Enable Midtrans Payment Gateway"),
+        ("payment_midtrans_merchant_id", "", "Midtrans Merchant ID"),
+        ("payment_midtrans_server_key", "", "Midtrans Server Key"),
+        ("payment_midtrans_client_key", "", "Midtrans Client Key"),
+        ("payment_midtrans_is_production", "false", "Use Midtrans Production Environment"),
+        ("payment_manual_enabled", "true", "Enable Manual Bank Transfer"),
+        ("payment_manual_instructions", "Please transfer the total amount to one of the bank accounts listed below and upload your proof of payment.", "Instructions for manual bank transfer"),
     ];
 
     for (key, value, description) in defaults {

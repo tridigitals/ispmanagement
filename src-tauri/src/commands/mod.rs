@@ -11,6 +11,8 @@ pub mod audit;
 pub mod system;
 pub mod plans;
 pub mod storage;
+pub mod payment;
+pub mod tenant;
 
 #[tauri::command]
 pub fn get_app_version() -> String {
@@ -27,3 +29,5 @@ pub use team::*;
 pub use system::*;
 pub use plans::*;
 pub use storage::*;
+pub use payment::*;
+pub use tenant::*;
