@@ -363,6 +363,7 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
             paid_at TIMESTAMPTZ,
             payment_method TEXT,
             external_id TEXT,
+            merchant_id TEXT REFERENCES tenants(id) ON DELETE CASCADE,
             created_at TIMESTAMPTZ NOT NULL,
             updated_at TIMESTAMPTZ NOT NULL
         )
@@ -392,6 +393,19 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
             IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                           WHERE table_name='file_records' AND column_name='storage_provider') THEN
                 ALTER TABLE file_records ADD COLUMN storage_provider TEXT NOT NULL DEFAULT 'local';
+            END IF;
+        END $$;
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Migration: Add merchant_id to invoices if not exists
+    sqlx::query(r#"
+        DO $$ 
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='invoices' AND column_name='merchant_id') THEN
+                ALTER TABLE invoices ADD COLUMN merchant_id TEXT REFERENCES tenants(id) ON DELETE CASCADE;
             END IF;
         END $$;
     "#)
@@ -676,9 +690,11 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
             paid_at TEXT,
             payment_method TEXT,
             external_id TEXT,
+            merchant_id TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
-            FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+            FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+            FOREIGN KEY (merchant_id) REFERENCES tenants(id) ON DELETE CASCADE
         )
     "#)
     .execute(pool)
@@ -701,6 +717,9 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
 
     // Migration: Add storage_provider to file_records if not exists (SQLite)
     let _ = sqlx::query("ALTER TABLE file_records ADD COLUMN storage_provider TEXT NOT NULL DEFAULT 'local'").execute(pool).await;
+
+    // Migration: Add merchant_id to invoices if not exists (SQLite)
+    let _ = sqlx::query("ALTER TABLE invoices ADD COLUMN merchant_id TEXT").execute(pool).await;
 
     // Create indexes for plans (SQLite)
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_plans_slug ON plans(slug)").execute(pool).await.ok();

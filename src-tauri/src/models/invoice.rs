@@ -15,6 +15,7 @@ pub struct Invoice {
     pub paid_at: Option<DateTime<Utc>>,
     pub payment_method: Option<String>,
     pub external_id: Option<String>,
+    pub merchant_id: Option<String>, // NULL = System, Some = Tenant
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

@@ -5,7 +5,7 @@
     import { appSettings } from "$lib/stores/settings";
     import { appLogo } from "$lib/stores/logo";
     import { goto } from "$app/navigation";
-    import { locale, t } from "svelte-i18n";
+    import { locale, t, waitLocale } from "svelte-i18n";
     import Icon from "$lib/components/Icon.svelte";
     import MobileFabMenu from "$lib/components/MobileFabMenu.svelte";
     import Input from "$lib/components/Input.svelte";
@@ -74,6 +74,20 @@
                 "email_webhook_url",
             ],
         },
+        payment: {
+            label: "Payments",
+            icon: "credit-card",
+            keys: [
+                "payment_midtrans_enabled",
+                "payment_midtrans_merchant_id",
+                "payment_midtrans_client_key",
+                "payment_midtrans_server_key",
+                "payment_midtrans_is_production",
+                "payment_manual_enabled",
+                "payment_manual_instructions",
+                "payment_manual_accounts",
+            ],
+        },
     };
 
     onMount(async () => {
@@ -120,6 +134,9 @@
             // Init Tenant local values
             localSettings['tenant_name'] = tenantInfo.name;
             localSettings['custom_domain'] = tenantInfo.custom_domain || "";
+
+            // Init Bank Accounts
+            loadBankAccounts();
 
             // Use current logo from store
             let logoStoreValue;
@@ -199,9 +216,20 @@
                     if (key === "app_logo_path") return Promise.resolve();
                     const val = localSettings[key];
                     if (val !== undefined && val !== settings[key]?.value) {
+                        // If locale changed, update immediately
+                        if (key === "default_locale") {
+                            locale.set(val);
+                            // We don't await waitLocale here because it's inside map/all
+                            // But we can trigger a reload effect
+                        }
                         return api.settings.upsert(key, val);
                     }
                 }));
+            }
+
+            // If locale changed, ensure it's loaded
+            if (localSettings["default_locale"] !== settings["default_locale"]?.value) {
+                await waitLocale();
             }
 
             await loadSettings();
@@ -246,6 +274,37 @@
     // Test Email State
     let testEmailAddress = $state("");
     let sendingTestEmail = $state(false);
+
+    // Bank Account Management State
+    let bankAccounts = $state<any[]>([]);
+    let newBank = $state({ bank_name: "", account_number: "", account_holder: "" });
+    let showAddBank = $state(false);
+
+    // Sync bankAccounts state with localSettings JSON string
+    function loadBankAccounts() {
+        try {
+            const json = localSettings['payment_manual_accounts'];
+            bankAccounts = json ? JSON.parse(json) : [];
+        } catch (e) {
+            bankAccounts = [];
+        }
+    }
+
+    function addBankAccount() {
+        if (!newBank.bank_name || !newBank.account_number || !newBank.account_holder) return;
+        
+        bankAccounts = [...bankAccounts, { ...newBank, id: crypto.randomUUID() }];
+        newBank = { bank_name: "", account_number: "", account_holder: "" };
+        showAddBank = false;
+        
+        // Update settings string
+        handleChange('payment_manual_accounts', JSON.stringify(bankAccounts));
+    }
+
+    function removeBankAccount(id: string) {
+        bankAccounts = bankAccounts.filter(b => b.id !== id);
+        handleChange('payment_manual_accounts', JSON.stringify(bankAccounts));
+    }
 
     async function sendTestEmail() {
         if (!testEmailAddress) return;
@@ -499,6 +558,149 @@
                                 </div>
                             </div>
 
+                        {:else if activeTab === 'payment'}
+                            <!-- Payment Settings -->
+                            <div class="payment-settings">
+                                <label class="section-label">Payment Methods</label>
+                                
+                                <!-- Midtrans Card -->
+                                <div class="method-card">
+                                    <div class="method-header">
+                                        <div class="m-icon midtrans">M</div>
+                                        <div class="m-info">
+                                            <h4>Midtrans Payment Gateway</h4>
+                                            <p>Accept payments via Credit Card, GoPay, ShopeePay, VA, etc.</p>
+                                        </div>
+                                        <label class="toggle">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={localSettings['payment_midtrans_enabled'] === 'true'} 
+                                                onchange={(e) => handleChange('payment_midtrans_enabled', e.currentTarget.checked)}
+                                            />
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+
+                                    {#if localSettings['payment_midtrans_enabled'] === 'true'}
+                                        <div class="method-config fade-in">
+                                            <div class="config-grid">
+                                                <div class="setting-item">
+                                                    <label>Merchant ID</label>
+                                                    <Input value={localSettings['payment_midtrans_merchant_id']} oninput={(e) => handleChange('payment_midtrans_merchant_id', e.target.value)} placeholder="G123456789" />
+                                                </div>
+                                                <div class="setting-item">
+                                                    <label>Client Key</label>
+                                                    <Input value={localSettings['payment_midtrans_client_key']} oninput={(e) => handleChange('payment_midtrans_client_key', e.target.value)} placeholder="SB-Mid-client-..." />
+                                                </div>
+                                                <div class="setting-item full-width">
+                                                    <label>Server Key</label>
+                                                    <Input type="password" value={localSettings['payment_midtrans_server_key']} oninput={(e) => handleChange('payment_midtrans_server_key', e.target.value)} placeholder="SB-Mid-server-..." showPasswordToggle={true} />
+                                                </div>
+                                                <div class="setting-item full-width checkbox-row">
+                                                    <label class="checkbox-label">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={localSettings['payment_midtrans_is_production'] === 'true'}
+                                                            onchange={(e) => handleChange('payment_midtrans_is_production', e.currentTarget.checked)}
+                                                        />
+                                                        <span>Enable Production Mode (Live)</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {/if}
+                                </div>
+
+                                <!-- Manual Transfer Card -->
+                                <div class="method-card mt-6">
+                                    <div class="method-header">
+                                        <div class="m-icon manual"><Icon name="landmark" size={24} /></div>
+                                        <div class="m-info">
+                                            <h4>Bank Transfer (Manual)</h4>
+                                            <p>Accept payments via direct bank transfer verification.</p>
+                                        </div>
+                                        <label class="toggle">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={localSettings['payment_manual_enabled'] === 'true'} 
+                                                onchange={(e) => handleChange('payment_manual_enabled', e.currentTarget.checked)}
+                                            />
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+
+                                    {#if localSettings['payment_manual_enabled'] === 'true'}
+                                        <div class="method-config fade-in">
+                                            <div class="setting-item full-width">
+                                                <label>Payment Instructions</label>
+                                                <textarea 
+                                                    class="form-textarea" 
+                                                    rows="4"
+                                                    value={localSettings['payment_manual_instructions']} 
+                                                    oninput={(e) => handleChange('payment_manual_instructions', e.target.value)}
+                                                    placeholder="Please transfer to BCA 1234567890 a/n PT Company..."
+                                                ></textarea>
+                                                <p class="help-text">These instructions will be shown to the user during checkout.</p>
+                                            </div>
+                                            <div class="bank-accounts-manager mt-6">
+                                                <div class="bm-header">
+                                                    <label>Bank Accounts</label>
+                                                    <button class="btn btn-primary btn-xs" onclick={() => showAddBank = !showAddBank}>
+                                                        <Icon name={showAddBank ? "minus" : "plus"} size={14} />
+                                                        {showAddBank ? "Cancel" : "Add Bank"}
+                                                    </button>
+                                                </div>
+
+                                                {#if showAddBank}
+                                                    <div class="add-bank-form fade-in">
+                                                        <div class="form-row">
+                                                            <Input value={newBank.bank_name} oninput={(e) => newBank.bank_name = e.target.value} placeholder="Bank Name (e.g. BCA)" />
+                                                            <Input value={newBank.account_number} oninput={(e) => newBank.account_number = e.target.value} placeholder="Account Number" />
+                                                        </div>
+                                                        <div class="form-row">
+                                                            <Input value={newBank.account_holder} oninput={(e) => newBank.account_holder = e.target.value} placeholder="Account Holder Name" />
+                                                            <button class="btn btn-secondary" onclick={addBankAccount}>Add</button>
+                                                        </div>
+                                                    </div>
+                                                {/if}
+
+                                                <div class="bank-list-grid">
+                                                    {#if bankAccounts.length === 0}
+                                                        <div class="empty-state">
+                                                            <div class="icon-placeholder"><Icon name="landmark" size={24} /></div>
+                                                            <p>No bank accounts added yet.</p>
+                                                            <button class="btn btn-primary btn-sm mt-2" onclick={() => showAddBank = true}>Add One</button>
+                                                        </div>
+                                                    {:else}
+                                                        {#each bankAccounts as bank}
+                                                            <div class="bank-card-item">
+                                                                <div class="bc-icon">
+                                                                    <Icon name="landmark" size={20} />
+                                                                </div>
+                                                                <div class="bc-details">
+                                                                    <span class="bc-name">{bank.bank_name}</span>
+                                                                    <span class="bc-number">{bank.account_number}</span>
+                                                                    <span class="bc-holder">{bank.account_holder}</span>
+                                                                </div>
+                                                                <div class="bc-actions">
+                                                                    <button class="btn-icon delete" onclick={() => removeBankAccount(bank.id)} title="Remove Account">
+                                                                        <Icon name="trash" size={16} />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        {/each}
+                                                        <button class="add-bank-card" onclick={() => showAddBank = true}>
+                                                            <Icon name="plus" size={24} />
+                                                            <span>Add Account</span>
+                                                        </button>
+                                                    {/if}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {/if}
+                                </div>
+                            </div>
+
                         {:else}
                             <div class="settings-list">
                                 {#each categories[activeTab as keyof typeof categories].keys as key}
@@ -652,4 +854,71 @@
         .config-grid { grid-template-columns: 1fr; }
         .test-form { flex-direction: column; }
     }
+
+    /* Payment UI */
+    .method-card {
+        background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden;
+    }
+    .method-header {
+        padding: 1.25rem; display: flex; align-items: center; gap: 1rem;
+        background: var(--bg-surface);
+    }
+    .m-icon {
+        width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 1.2rem; flex-shrink: 0;
+    }
+    .m-icon.midtrans { background: #002c5f; color: white; }
+    .m-icon.manual { background: var(--bg-tertiary); color: var(--text-secondary); }
+    
+    .m-info { flex: 1; }
+    .m-info h4 { margin: 0; font-size: 1rem; color: var(--text-primary); }
+    .m-info p { margin: 0; font-size: 0.85rem; color: var(--text-secondary); }
+
+    .method-config {
+        padding: 1.5rem; background: var(--bg-tertiary); border-top: 1px solid var(--border-color);
+    }
+    .checkbox-row { display: flex; align-items: center; margin-top: 0.5rem; }
+    .checkbox-label { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; font-size: 0.9rem; color: var(--text-primary); }
+    
+    .form-textarea {
+        width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color);
+        background: var(--bg-surface); color: var(--text-primary); font-family: inherit; font-size: 0.9rem;
+        resize: vertical; transition: border-color 0.2s;
+    }
+    .form-textarea:focus { outline: none; border-color: var(--color-primary); }
+
+    /* Bank Manager UI */
+    .bank-accounts-manager { margin-top: 1.5rem; border-top: 1px dashed var(--border-color); padding-top: 1.5rem; }
+    .bm-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    
+    .bank-list-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    
+    .bank-card-item {
+        background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px;
+        padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; position: relative;
+        transition: all 0.2s;
+    }
+    .bank-card-item:hover { border-color: var(--color-primary); box-shadow: var(--shadow-sm); }
+    
+    .bc-icon {
+        width: 36px; height: 36px; background: var(--bg-tertiary); border-radius: 8px;
+        display: flex; align-items: center; justify-content: center; color: var(--text-secondary);
+    }
+    .bc-details { display: flex; flex-direction: column; gap: 0.25rem; }
+    .bc-name { font-weight: 700; color: var(--text-primary); font-size: 0.95rem; }
+    .bc-number { font-family: monospace; font-size: 1rem; letter-spacing: 0.05em; color: var(--text-primary); }
+    .bc-holder { font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; }
+    
+    .bc-actions { position: absolute; top: 1rem; right: 1rem; }
+    
+    .add-bank-card {
+        border: 2px dashed var(--border-color); background: transparent; border-radius: 12px;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem;
+        min-height: 140px; color: var(--text-secondary); cursor: pointer; transition: all 0.2s;
+    }
+    .add-bank-card:hover { border-color: var(--color-primary); color: var(--color-primary); background: var(--color-primary-subtle); }
+    .add-bank-card span { font-weight: 600; font-size: 0.9rem; }
+
+    .empty-state { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; padding: 2rem; background: var(--bg-surface); border-radius: 12px; border: 1px solid var(--border-color); }
+    .icon-placeholder { width: 48px; height: 48px; background: var(--bg-tertiary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; color: var(--text-secondary); }
 </style>

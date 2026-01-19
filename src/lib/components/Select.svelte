@@ -10,6 +10,7 @@
     export let disabled = false;
     export let width = "auto";
     export let placement: "top" | "bottom" = "bottom"; // Control opening direction
+    export let onchange: ((e: any) => void) | undefined = undefined; // Svelte 5 compatibility
 
     let isOpen = false;
     let containerElement: HTMLElement;
@@ -37,6 +38,9 @@
     function selectOption(optionVal: any) {
         value = optionVal;
         dispatch("change", value);
+        if (onchange) {
+            onchange({ detail: value }); // Mock CustomEvent for compatibility
+        }
         isOpen = false;
     }
 

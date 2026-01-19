@@ -37,7 +37,7 @@ impl PaymentService {
             r#"
             INSERT INTO invoices (id, tenant_id, invoice_number, amount, status, description, due_date, external_id, created_at, updated_at)
             VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8, $8)
-            RETURNING id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, external_id, created_at, updated_at
+            RETURNING id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, external_id, merchant_id, created_at, updated_at
             "#
         )
         .bind(&id)
@@ -79,7 +79,7 @@ impl PaymentService {
         #[cfg(feature = "postgres")]
         let invoice = sqlx::query_as::<_, Invoice>(
             r#"
-            SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, external_id, created_at, updated_at 
+            SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, external_id, merchant_id, created_at, updated_at 
             FROM invoices WHERE id = $1
             "#
         )
@@ -104,7 +104,7 @@ impl PaymentService {
         let invoices = if let Some(tid) = tenant_id {
             sqlx::query_as::<_, Invoice>(
                 r#"
-                SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, external_id, created_at, updated_at 
+                SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, external_id, merchant_id, created_at, updated_at 
                 FROM invoices WHERE tenant_id = $1 ORDER BY created_at DESC
                 "#
             )
@@ -113,7 +113,7 @@ impl PaymentService {
         } else {
             sqlx::query_as::<_, Invoice>(
                 r#"
-                SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, external_id, created_at, updated_at 
+                SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, external_id, merchant_id, created_at, updated_at 
                 FROM invoices ORDER BY created_at DESC
                 "#
             )
@@ -136,20 +136,33 @@ impl PaymentService {
     pub async fn initiate_midtrans(&self, invoice_id: &str) -> AppResult<String> {
         let invoice = self.get_invoice(invoice_id).await?;
 
-        // 1. Fetch Settings
-        let server_key: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_server_key'")
-            .fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or_default();
+        // 1. Fetch Settings (Context Aware)
+        // If merchant_id is present, use Tenant's keys. Otherwise, use Global (System) keys.
+        let (server_key, is_production) = if let Some(mid) = &invoice.merchant_id {
+            // Tenant Merchant
+            let sk: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_server_key' AND tenant_id = $1")
+                .bind(mid).fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or_default();
+            
+            let prod_str: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_is_production' AND tenant_id = $1")
+                .bind(mid).fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or("false".to_string());
+            
+            (sk, prod_str == "true")
+        } else {
+            // System Merchant (Global)
+            let sk: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_server_key' AND tenant_id IS NULL")
+                .fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or_default();
+            
+            let prod_str: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_is_production' AND tenant_id IS NULL")
+                .fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or("false".to_string());
+            
+            (sk, prod_str == "true")
+        };
         
-        let is_prod_str: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_is_production'")
-            .fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or("false".to_string());
-        
-        let app_url: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'app_public_url'")
+        let app_url: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'app_public_url' AND tenant_id IS NULL")
             .fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or("http://localhost:3000".to_string());
         
-        let is_production = is_prod_str == "true";
-
         if server_key.is_empty() {
-            return Err(AppError::Configuration("Midtrans Server Key not configured".to_string()));
+            return Err(AppError::Configuration("Midtrans Server Key not configured for this merchant".to_string()));
         }
 
         // 2. Prepare API URL
@@ -210,14 +223,24 @@ impl PaymentService {
     pub async fn check_transaction_status(&self, invoice_id: &str) -> AppResult<String> {
         let invoice = self.get_invoice(invoice_id).await?;
 
-        // 1. Fetch Settings (Similar to initiate_midtrans)
-        let server_key: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_server_key'")
-            .fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or_default();
-        
-        let is_prod_str: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_is_production'")
-            .fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or("false".to_string());
-        
-        let is_production = is_prod_str == "true";
+        // 1. Fetch Settings (Context Aware)
+        let (server_key, is_production) = if let Some(mid) = &invoice.merchant_id {
+            let sk: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_server_key' AND tenant_id = $1")
+                .bind(mid).fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or_default();
+            
+            let prod_str: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_is_production' AND tenant_id = $1")
+                .bind(mid).fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or("false".to_string());
+            
+            (sk, prod_str == "true")
+        } else {
+            let sk: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_server_key' AND tenant_id IS NULL")
+                .fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or_default();
+            
+            let prod_str: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_is_production' AND tenant_id IS NULL")
+                .fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or("false".to_string());
+            
+            (sk, prod_str == "true")
+        };
 
         if server_key.is_empty() {
             return Err(AppError::Configuration("Midtrans Server Key not configured".to_string()));
