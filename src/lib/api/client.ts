@@ -86,6 +86,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             'delete_feature': { method: 'DELETE', path: '/plans/features/:feature_id' },
             'set_plan_feature': { method: 'POST', path: '/plans/:plan_id/features' },
             'get_tenant_subscription': { method: 'GET', path: '/plans/subscriptions/:tenant_id' },
+            'get_tenant_subscription_details': { method: 'GET', path: '/plans/subscriptions/details' },
             'assign_plan_to_tenant': { method: 'POST', path: '/plans/subscriptions/:tenant_id/assign' },
             'check_feature_access': { method: 'GET', path: '/plans/access/:tenant_id/:feature_code' },
 
@@ -103,7 +104,14 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             'delete_bank_account': { method: 'DELETE', path: '/payment/banks/:id' },
             'create_invoice_for_plan': { method: 'POST', path: '/payment/invoices/plan' },
             'get_invoice': { method: 'GET', path: '/payment/invoices/:id' },
+            'list_invoices': { method: 'GET', path: '/payment/invoices' },
+            'list_all_invoices': { method: 'GET', path: '/payment/invoices/all' },
             'pay_invoice_midtrans': { method: 'POST', path: '/payment/invoices/:id/midtrans' },
+            'check_payment_status': { method: 'GET', path: '/payment/invoices/:id/status' },
+
+            // Tenant
+            'get_current_tenant': { method: 'GET', path: '/tenant/me' },
+            'update_current_tenant': { method: 'PUT', path: '/tenant/me' },
         };
 
         let route = commandMap[command];
@@ -427,7 +435,17 @@ export const settings = {
     getAll: (): Promise<Setting[]> =>
         safeInvoke('get_all_settings', { token: getTokenOrThrow() }),
 
-    getPublicSettings: (): Promise<{ app_name?: string, app_description?: string, default_locale?: string, maintenance_mode?: boolean, maintenance_message?: string }> =>
+    getPublicSettings: (): Promise<{ 
+        app_name?: string, 
+        app_description?: string, 
+        default_locale?: string, 
+        maintenance_mode?: boolean, 
+        maintenance_message?: string,
+        payment_midtrans_enabled?: boolean,
+        payment_midtrans_client_key?: string,
+        payment_midtrans_is_production?: boolean,
+        payment_manual_enabled?: boolean
+    }> =>
         safeInvoke('get_public_settings'),
 
     getAuthSettings: (): Promise<AuthSettings> =>

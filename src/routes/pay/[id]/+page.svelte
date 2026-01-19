@@ -3,6 +3,7 @@
     import { onMount } from "svelte";
     import { api, type Invoice, type BankAccount } from "$lib/api/client";
     import { goto } from "$app/navigation";
+    import { user } from "$lib/stores/auth";
     import Icon from "$lib/components/Icon.svelte";
     import { toast } from "svelte-sonner";
 
@@ -18,14 +19,11 @@
 
     onMount(async () => {
         try {
-            // Load Settings to check enabled methods
-            // Assuming user is logged in (Tenant Admin)
-            const settings = await api.settings.getAll();
-            const sMap: Record<string, string> = {};
-            settings.forEach(s => sMap[s.key] = s.value);
+            // Load Public Settings (contains payment config)
+            const publicSettings = await api.settings.getPublicSettings();
             
-            midtransEnabled = sMap["payment_midtrans_enabled"] === "true";
-            manualEnabled = sMap["payment_manual_enabled"] !== "false"; // Default true
+            midtransEnabled = !!publicSettings.payment_midtrans_enabled;
+            manualEnabled = publicSettings.payment_manual_enabled ?? true; // Default true
 
             // Set default method
             if (midtransEnabled) paymentMethod = "online";
@@ -41,8 +39,8 @@
             
             // Load Midtrans Snap JS if enabled
             if (midtransEnabled) {
-                const clientKey = sMap["payment_midtrans_client_key"];
-                const isProd = sMap["payment_midtrans_is_production"] === "true";
+                const clientKey = publicSettings.payment_midtrans_client_key;
+                const isProd = !!publicSettings.payment_midtrans_is_production;
                 if (clientKey) loadSnapScript(clientKey, isProd);
             }
 
@@ -119,7 +117,7 @@
             <div class="loading">Loading invoice...</div>
         {:else if invoice}
             <div class="header">
-                <button class="back-link" onclick={() => history.back()}>
+                <button class="back-link" onclick={() => goto($user?.tenant_slug ? `/${$user.tenant_slug}/admin/subscription` : '/dashboard')}>
                     <Icon name="arrow-left" size={18} />
                     <span>Back</span>
                 </button>
@@ -206,8 +204,10 @@
                         <Icon name="check" size={32} />
                     </div>
                     <h3>Payment Successful!</h3>
-                    <p>Thank you for your payment.</p>
-                    <button class="btn btn-primary" onclick={() => history.back()}>Back to Dashboard</button>
+                    <p>Thank you for your payment. Your subscription has been activated.</p>
+                    <button class="btn btn-primary" onclick={() => goto($user?.tenant_slug ? `/${$user.tenant_slug}/admin/subscription` : '/dashboard')}>
+                        Go to Subscription
+                    </button>
                 </div>
             {/if}
         {:else}

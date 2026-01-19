@@ -53,6 +53,34 @@ impl PlanService {
         Ok(plans)
     }
 
+    /// List active plans (for public/tenant view)
+    pub async fn list_active_plans(&self) -> Result<Vec<Plan>, sqlx::Error> {
+        #[cfg(feature = "postgres")]
+        let plans: Vec<Plan> = sqlx::query_as(
+            r#"
+            SELECT 
+                id, name, slug, description, 
+                price_monthly::FLOAT8 as price_monthly, 
+                price_yearly::FLOAT8 as price_yearly, 
+                is_active, is_default, sort_order, created_at, updated_at
+            FROM plans 
+            WHERE is_active = true
+            ORDER BY sort_order ASC, created_at ASC
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let plans: Vec<Plan> = sqlx::query_as(
+            "SELECT * FROM plans WHERE is_active = 1 ORDER BY sort_order ASC, created_at ASC"
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(plans)
+    }
+
     /// Get plan by ID with features
     pub async fn get_plan_with_features(&self, plan_id: &str) -> Result<Option<PlanWithFeatures>, sqlx::Error> {
         #[cfg(feature = "postgres")]

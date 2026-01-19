@@ -404,7 +404,7 @@ impl PaymentService {
         #[cfg(feature = "postgres")]
         let invoice: Option<Invoice> = sqlx::query_as::<_, Invoice>(
             r#"
-            SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, external_id, created_at, updated_at 
+            SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, external_id, merchant_id, created_at, updated_at 
             FROM invoices WHERE invoice_number = $1
             "#
         )

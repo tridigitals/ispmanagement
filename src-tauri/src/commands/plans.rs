@@ -39,16 +39,16 @@ pub async fn list_plans(
     auth_service: State<'_, AuthService>,
     plan_service: State<'_, PlanService>,
 ) -> Result<Vec<Plan>, String> {
-    // Verify superadmin
     let claims = auth_service.validate_token(&token).await
         .map_err(|e| e.to_string())?;
     
-    if !claims.is_super_admin {
-        return Err("Unauthorized: Superadmin access required".to_string());
+    if claims.is_super_admin {
+        plan_service.list_plans().await
+            .map_err(|e| e.to_string())
+    } else {
+        plan_service.list_active_plans().await
+            .map_err(|e| e.to_string())
     }
-
-    plan_service.list_plans().await
-        .map_err(|e| e.to_string())
 }
 
 /// Get plan with features

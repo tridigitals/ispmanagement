@@ -31,6 +31,7 @@ pub mod system;
 pub mod plans;
 pub mod storage;
 pub mod payment;
+pub mod tenant;
 
 pub use websocket::WsHub;
 
@@ -173,6 +174,9 @@ pub async fn start_server(
                 // Team Routes
                 .route("/api/team", get(team::list_team_members).post(team::add_team_member))
                 .route("/api/team/{id}", put(team::update_team_member).delete(team::remove_team_member))
+
+                // Tenant Routes
+                .route("/api/tenant/me", get(tenant::get_current_tenant).put(tenant::update_current_tenant))
 
                 // Roles Routes
                 .route("/api/roles", get(roles::get_roles).post(roles::create_new_role))

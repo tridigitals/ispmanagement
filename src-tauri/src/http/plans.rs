@@ -1,7 +1,7 @@
 //! Plan Management HTTP Endpoints
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, State, Query},
     http::{StatusCode, HeaderMap},
     Json,
     routing::{get, post, put, delete},
@@ -13,7 +13,7 @@ use std::sync::Arc;
 use crate::http::AppState;
 use crate::models::{
     Plan, PlanWithFeatures, FeatureDefinition, TenantSubscription, FeatureAccess,
-    CreatePlanRequest, UpdatePlanRequest, CreateFeatureRequest,
+    CreatePlanRequest, UpdatePlanRequest, CreateFeatureRequest, TenantSubscriptionDetails,
 };
 use crate::services::Claims;
 
@@ -32,6 +32,7 @@ pub fn plan_routes() -> Router<AppState> {
         // Plan Features
         .route("/{plan_id}/features", post(set_plan_feature))
         // Subscriptions
+        .route("/subscriptions/details", get(get_subscription_details))
         .route("/subscriptions/{tenant_id}", get(get_subscription))
         .route("/subscriptions/{tenant_id}/assign", post(assign_plan))
         // Feature access check
@@ -74,9 +75,14 @@ async fn list_plans(
     headers: HeaderMap,
 ) -> Result<Json<Vec<Plan>>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
-    require_superadmin(&claims)?;
+    
+    let plans = if claims.is_super_admin {
+        state.plan_service.list_plans().await
+    } else {
+        state.plan_service.list_active_plans().await
+    };
 
-    state.plan_service.list_plans().await
+    plans
         .map(Json)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
             error: e.to_string()
@@ -215,6 +221,44 @@ async fn set_plan_feature(
 }
 
 // ==================== SUBSCRIPTIONS ====================
+
+#[derive(Deserialize)]
+struct SubscriptionDetailsParams {
+    tenant_id: Option<String>,
+}
+
+async fn get_subscription_details(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(params): Query<SubscriptionDetailsParams>,
+) -> Result<Json<TenantSubscriptionDetails>, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    
+    // Determine target tenant_id
+    let target_tenant_id = match params.tenant_id {
+        Some(ref tid) => {
+             // If specifying a tenant, must be superadmin or own tenant
+             if !claims.is_super_admin && claims.tenant_id.as_deref() != Some(tid) {
+                 return Err((StatusCode::FORBIDDEN, Json(ErrorResponse {
+                     error: "Unauthorized".to_string()
+                 })));
+             }
+             tid.clone()
+        },
+        None => {
+            // Default to own tenant
+            claims.tenant_id.ok_or_else(|| (StatusCode::BAD_REQUEST, Json(ErrorResponse {
+                error: "Tenant ID required".to_string()
+            })))?
+        }
+    };
+
+    state.plan_service.get_tenant_subscription_details(&target_tenant_id).await
+        .map(Json)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
+            error: e.to_string()
+        })))
+}
 
 async fn get_subscription(
     State(state): State<AppState>,

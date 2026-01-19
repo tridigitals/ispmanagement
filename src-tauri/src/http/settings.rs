@@ -28,6 +28,11 @@ pub struct PublicSettings {
     pub default_locale: Option<String>,
     pub maintenance_mode: bool,
     pub maintenance_message: Option<String>,
+    // Payment Settings
+    pub payment_midtrans_enabled: bool,
+    pub payment_midtrans_client_key: Option<String>,
+    pub payment_midtrans_is_production: bool,
+    pub payment_manual_enabled: bool,
 }
 
 pub async fn get_public_settings(
@@ -40,14 +45,30 @@ pub async fn get_public_settings(
     let maintenance_mode_str = state.settings_service.get_value(None, "maintenance_mode").await?;
     let maintenance_message = state.settings_service.get_value(None, "maintenance_message").await?;
     
+    // Payment
+    let midtrans_enabled_str = state.settings_service.get_value(None, "payment_midtrans_enabled").await?;
+    let midtrans_client_key = state.settings_service.get_value(None, "payment_midtrans_client_key").await?;
+    let midtrans_is_prod_str = state.settings_service.get_value(None, "payment_midtrans_is_production").await?;
+    let manual_enabled_str = state.settings_service.get_value(None, "payment_manual_enabled").await?;
+
     let maintenance_mode = maintenance_mode_str.as_deref() == Some("true");
-    
+    let payment_midtrans_enabled = midtrans_enabled_str.as_deref() == Some("true");
+    let payment_midtrans_is_production = midtrans_is_prod_str.as_deref() == Some("true");
+    // Default manual to true if not set, or check explicit "true"? Usually better to default false if system managed, but user said "only bank transfer appears", implying manual works. 
+    // If manual_enabled_str is None, user might see it enabled if I default true. 
+    // In frontend: `sMap["payment_manual_enabled"] !== "false"; // Default true`. 
+    let payment_manual_enabled = manual_enabled_str.as_deref() != Some("false");
+
     Ok(Json(PublicSettings {
         app_name,
         app_description,
         default_locale,
         maintenance_mode,
         maintenance_message,
+        payment_midtrans_enabled,
+        payment_midtrans_client_key: midtrans_client_key,
+        payment_midtrans_is_production,
+        payment_manual_enabled,
     }))
 }
 

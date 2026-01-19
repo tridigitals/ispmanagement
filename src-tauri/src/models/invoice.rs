@@ -40,6 +40,7 @@ pub struct CreateInvoiceRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateBankAccountRequest {
     pub bank_name: String,
     pub account_number: String,

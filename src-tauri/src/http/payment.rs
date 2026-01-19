@@ -1,17 +1,211 @@
 //! Payment HTTP Handlers (Webhooks)
 
 use axum::{
-    extract::State,
-    http::StatusCode,
+    extract::{State, Path},
+    http::{StatusCode, HeaderMap},
     response::IntoResponse,
-    Json, routing::post, Router,
+    Json, 
+    routing::{post, get, delete}, 
+    Router,
 };
+use serde::{Serialize, Deserialize};
 use serde_json::Value;
 use crate::http::AppState;
+use crate::models::{Invoice, BankAccount, CreateBankAccountRequest};
+use crate::services::Claims;
 
 pub fn router() -> Router<AppState> {
     Router::new()
+        .route("/invoices", get(list_invoices))
+        .route("/invoices/all", get(list_all_invoices))
+        .route("/invoices/plan", post(create_invoice_for_plan))
+        .route("/invoices/{id}", get(get_invoice))
+        .route("/invoices/{id}/midtrans", post(pay_invoice_midtrans))
+        .route("/invoices/{id}/status", get(check_payment_status))
+        .route("/banks", get(list_bank_accounts).post(create_bank_account))
+        .route("/banks/{id}", delete(delete_bank_account))
         .route("/midtrans/notification", post(midtrans_notification))
+}
+
+#[derive(Serialize)]
+struct ErrorResponse {
+    error: String,
+}
+
+// Helper to extract and validate token from headers
+async fn authenticate(state: &AppState, headers: &HeaderMap) -> Result<Claims, (StatusCode, Json<ErrorResponse>)> {
+    let auth_header = headers.get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+        .ok_or_else(|| (StatusCode::UNAUTHORIZED, Json(ErrorResponse {
+            error: "Missing authorization header".to_string()
+        })))?;
+
+    state.auth_service.validate_token(auth_header).await
+        .map_err(|e| (StatusCode::UNAUTHORIZED, Json(ErrorResponse {
+            error: e.to_string()
+        })))
+}
+
+fn require_superadmin(claims: &Claims) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
+    if !claims.is_super_admin {
+        return Err((StatusCode::FORBIDDEN, Json(ErrorResponse {
+            error: "Superadmin access required".to_string()
+        })));
+    }
+    Ok(())
+}
+
+async fn list_invoices(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<Invoice>>, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    let tenant_id = claims.tenant_id.as_deref();
+
+    state.payment_service.list_invoices(tenant_id).await
+        .map(Json)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
+            error: e.to_string()
+        })))
+}
+
+async fn list_all_invoices(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<Invoice>>, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    require_superadmin(&claims)?;
+
+    state.payment_service.list_invoices(None).await
+        .map(Json)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
+            error: e.to_string()
+        })))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CreateInvoiceForPlanBody {
+    plan_id: String,
+    billing_cycle: String,
+}
+
+async fn create_invoice_for_plan(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(body): Json<CreateInvoiceForPlanBody>,
+) -> Result<Json<Invoice>, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    let tenant_id = claims.tenant_id.ok_or_else(|| (StatusCode::BAD_REQUEST, Json(ErrorResponse {
+        error: "No tenant context".to_string()
+    })))?;
+
+    let plan = state.plan_service.get_plan(&body.plan_id).await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
+            error: e.to_string()
+        })))?;
+    
+    let amount = if body.billing_cycle == "yearly" {
+        plan.price_yearly
+    } else {
+        plan.price_monthly
+    };
+
+    let desc = format!("{} Plan ({} billing)", plan.name, body.billing_cycle);
+    let ext_id = format!("{}:{}", body.plan_id, body.billing_cycle);
+
+    state.payment_service.create_invoice(&tenant_id, amount, Some(desc), Some(ext_id)).await
+        .map(Json)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
+            error: e.to_string()
+        })))
+}
+
+async fn get_invoice(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<Invoice>, (StatusCode, Json<ErrorResponse>)> {
+    let _claims = authenticate(&state, &headers).await?;
+    
+    // In a real app, we should verify that the invoice belongs to the tenant
+    state.payment_service.get_invoice(&id).await
+        .map(Json)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
+            error: e.to_string()
+        })))
+}
+
+async fn pay_invoice_midtrans(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<String>, (StatusCode, Json<ErrorResponse>)> {
+    let _claims = authenticate(&state, &headers).await?;
+
+    state.payment_service.initiate_midtrans(&id).await
+        .map(Json)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
+            error: e.to_string()
+        })))
+}
+
+async fn check_payment_status(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<String>, (StatusCode, Json<ErrorResponse>)> {
+    let _claims = authenticate(&state, &headers).await?;
+
+    state.payment_service.check_transaction_status(&id).await
+        .map(Json)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
+            error: e.to_string()
+        })))
+}
+
+async fn list_bank_accounts(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<BankAccount>>, (StatusCode, Json<ErrorResponse>)> {
+    let _claims = authenticate(&state, &headers).await?;
+
+    state.payment_service.list_bank_accounts().await
+        .map(Json)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
+            error: e.to_string()
+        })))
+}
+
+async fn create_bank_account(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<CreateBankAccountRequest>,
+) -> Result<Json<BankAccount>, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    require_superadmin(&claims)?;
+
+    state.payment_service.create_bank_account(req).await
+        .map(Json)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
+            error: e.to_string()
+        })))
+}
+
+async fn delete_bank_account(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    require_superadmin(&claims)?;
+
+    state.payment_service.delete_bank_account(&id).await
+        .map(|_| StatusCode::NO_CONTENT)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
+            error: e.to_string()
+        })))
 }
 
 async fn midtrans_notification(

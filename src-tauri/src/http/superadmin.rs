@@ -15,6 +15,7 @@ pub struct TenantListResponse {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateTenantRequest {
     pub name: String,
     pub slug: String,
@@ -162,6 +163,7 @@ pub async fn create_tenant(
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateTenantRequest {
     pub name: String,
     pub slug: String,
