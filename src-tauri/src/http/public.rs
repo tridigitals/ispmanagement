@@ -110,3 +110,26 @@ pub async fn get_tenant_by_domain(
     
     Ok(Json(tenant))
 }
+#[derive(serde::Deserialize)]
+pub struct DomainQuery {
+    domain: String,
+}
+
+pub async fn lookup_tenant_by_domain(
+    State(state): State<AppState>,
+    axum::extract::Query(query): axum::extract::Query<DomainQuery>,
+) -> Result<Json<Tenant>, crate::error::AppError> {
+    println!("DEBUG: [HTTP] Lookup tenant for domain query: '{}'", query.domain);
+    
+    // Validate domain format if necessary
+    
+    let tenant: Option<Tenant> = sqlx::query_as("SELECT * FROM tenants WHERE custom_domain = $1 AND is_active = true")
+        .bind(&query.domain)
+        .fetch_optional(&state.auth_service.pool)
+        .await?;
+
+    match tenant {
+        Some(t) => Ok(Json(t)),
+        None => Err(crate::error::AppError::NotFound("Tenant not found".to_string())),
+    }
+}

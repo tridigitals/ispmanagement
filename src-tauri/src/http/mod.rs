@@ -69,6 +69,7 @@ pub async fn start_server(
     ws_hub: Arc<WsHub>,
     app_data_dir: PathBuf,
     default_port: u16,
+    pool: crate::db::DbPool, // Add pool argument
 ) {
     let state = AppState {
         auth_service: Arc::new(auth_service),
@@ -88,12 +89,12 @@ pub async fn start_server(
 
     // Dynamic CORS Configuration
     let origins_str = env::var("CORS_ALLOWED_ORIGINS").unwrap_or_else(|_| {
-        "http://localhost:5173,http://localhost:3000,tauri://localhost,https://tauri.localhost,https://saas.tridigitals.com".to_string()
+        "http://localhost:5173,http://localhost:3000,http://localhost:1420,tauri://localhost,https://tauri.localhost,https://saas.tridigitals.com,https://saas1.tridigitals.com".to_string()
     });
 
     let origins: Vec<axum::http::HeaderValue> = origins_str
         .split(',')
-        .map(|s| s.trim())
+        .map(|s| s.trim().trim_end_matches('/')) // Remove trailing slash
         .filter_map(|s| {
             s.parse::<axum::http::HeaderValue>()
                 .map_err(|e| warn!("Invalid CORS origin '{}': {}", s, e))
@@ -101,10 +102,53 @@ pub async fn start_server(
         })
         .collect();
 
-    info!("Allowed CORS Origins: {:?}", origins);
+    // Fetch custom domains from DB
+    let mut db_origins: Vec<axum::http::HeaderValue> = Vec::new();
+    
+    // Use the pool to query active custom domains
+    let rows: Vec<(String,)> = sqlx::query_as("SELECT custom_domain FROM tenants WHERE custom_domain IS NOT NULL AND custom_domain != ''")
+        .fetch_all(&pool)
+        .await
+        .unwrap_or_else(|e| {
+            warn!("Failed to fetch custom domains for CORS: {}", e);
+            vec![]
+        });
+
+    info!("Found {} custom domains in DB", rows.len());
+
+    for (domain,) in rows {
+        // Ensure domain has protocol if missing (assume https)
+        let url_str = if domain.starts_with("http") {
+             domain.clone()
+        } else {
+             format!("https://{}", domain)
+        };
+        
+        // Strip trailing slash
+        let clean_url = url_str.trim().trim_end_matches('/');
+
+        match clean_url.parse::<axum::http::HeaderValue>() {
+            Ok(val) => {
+                info!("Adding allowed CORS origin from DB: {}", clean_url);
+                db_origins.push(val);
+            },
+            Err(e) => {
+                warn!("Invalid custom domain from DB '{}': {}", clean_url, e);
+            }
+        }
+    }
+
+    let all_origins = [origins, db_origins].concat();
+
+    info!("FINAL Allowed CORS Origins count: {}", all_origins.len());
+    for o in &all_origins {
+        if let Ok(s) = o.to_str() {
+            info!("  - Allowed: {}", s);
+        }
+    }
 
     let cors = CorsLayer::new()
-        .allow_origin(origins)
+        .allow_origin(all_origins)
         .allow_methods(Any)
         .allow_headers(Any);
 
@@ -198,8 +242,9 @@ pub async fn start_server(
                 .route("/api/storage/upload/complete", post(storage::complete_upload))
 
                 // Public Routes
-                .route("/api/public/tenants/{slug}", get(public::get_tenant_by_slug))
-                .route("/api/public/domains/{domain}", get(public::get_tenant_by_domain))
+                .route("/api/public/tenant-lookup", get(public::lookup_tenant_by_domain))
+                .route("/api/public/tenant/{slug}", get(public::get_tenant_by_slug))
+                .route("/api/public/domain/{domain}", get(public::get_tenant_by_domain))
 
                 // Version Route
                 .route("/api/version", get(get_app_version))

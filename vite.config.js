@@ -10,7 +10,21 @@ export default defineConfig(async ({ mode }) => {
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '');
 
-  const allowedHosts = (env.VITE_ALLOWED_HOSTS || "").split(",").filter(Boolean);
+  // Extract hostnames from CORS_ALLOWED_ORIGINS for allowedHosts
+  const corsOrigins = (env.CORS_ALLOWED_ORIGINS || "").split(",");
+  const parsedHosts = corsOrigins.map(origin => {
+    try {
+      // Remove trailing slash if present before parsing (though URL ctor handles it)
+      return new URL(origin.trim()).hostname;
+    } catch {
+      return null; // Ignore invalid URLs
+    }
+  }).filter(Boolean);
+
+  const explicitAllowedHosts = (env.VITE_ALLOWED_HOSTS || "").split(",").filter(Boolean);
+
+  // Combine all sources
+  const finalAllowedHosts = [...new Set([...parsedHosts, ...explicitAllowedHosts, 'localhost', '127.0.0.1'])];
 
   return {
     plugins: [sveltekit()],
@@ -24,7 +38,7 @@ export default defineConfig(async ({ mode }) => {
       port: 1420,
       strictPort: true,
       host: host || false,
-      allowedHosts: allowedHosts.includes('all') ? true : [...allowedHosts, 'localhost', '127.0.0.1', 'saas.tridigitals.com'],
+      allowedHosts: explicitAllowedHosts.includes('all') ? true : finalAllowedHosts,
       hmr: host
         ? {
           protocol: "ws",

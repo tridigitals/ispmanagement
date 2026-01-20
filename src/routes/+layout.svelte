@@ -16,6 +16,7 @@
     } from "$lib/stores/websocket";
     import { Toaster } from "svelte-sonner";
     import GlobalUploads from "$lib/components/GlobalUploads.svelte";
+    import { getSlugFromDomain } from "$lib/utils/domain";
 
     let loading = true;
 
@@ -33,7 +34,53 @@
             await Promise.all([appSettings.init(), appLogo.init()]);
 
             // Wait for i18n to be ready (locale set in appSettings.init)
+            // Wait for i18n to be ready (locale set in appSettings.init)
             await waitLocale();
+
+            // --- Dynamic Custom Domain Lookup ---
+            const hostname = window.location.hostname;
+            const knownSlug = getSlugFromDomain(hostname);
+
+            // If we are on a custom domain (not localhost/IP) and we DON'T know the slug yet
+            // We need to ask the backend.
+            const isLocal =
+                hostname.includes("localhost") ||
+                hostname.includes("127.0.0.1") ||
+                hostname.includes("tauri");
+
+            if (!knownSlug && !isLocal) {
+                try {
+                    // We use fetch directly here to avoid auth store dependencies loop if possible
+                    // or use the 'api' client but it might not be ready? 'api.public' is stateless usually.
+                    // Let's use fetch for safety and simplicity on this "boot" phase.
+                    const apiUrl =
+                        import.meta.env.VITE_API_URL ||
+                        "http://localhost:3000/api";
+                    const res = await fetch(
+                        `${apiUrl}/public/tenant-lookup?domain=${hostname}`,
+                    );
+
+                    if (res.ok) {
+                        const tenant = await res.json();
+                        if (tenant && tenant.slug) {
+                            console.log(
+                                `[Domain] Found tenant '${tenant.slug}' for '${hostname}'. Caching and reloading...`,
+                            );
+                            // Cache it
+                            await import("$lib/utils/domain").then((m) =>
+                                m.cacheDomainMapping(hostname, tenant.slug),
+                            );
+
+                            // RELOAD to let hooks.ts reroute handle it
+                            window.location.reload();
+                            return; // Stop initialization
+                        }
+                    }
+                } catch (e) {
+                    console.warn("[Domain] Failed to lookup custom domain:", e);
+                }
+            }
+            // ------------------------------------
 
             // Check if app is installed
             const isInstalled = await install.checkIsInstalled();

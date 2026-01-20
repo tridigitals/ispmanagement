@@ -26,7 +26,19 @@ export function getSlugFromDomain(hostname: string): string | null {
         // return parts[0]; 
     }
 
-    // Example Hardcoded Mapping
+    // Check LocalStorage cache (Dynamic mappings from first-visit check)
+    if (typeof localStorage !== 'undefined') {
+        try {
+            const cache = JSON.parse(localStorage.getItem('tenant_domain_map') || '{}');
+            if (cache[hostname]) {
+                return cache[hostname];
+            }
+        } catch (e) {
+            console.error('Failed to parse domain map cache', e);
+        }
+    }
+
+    // Example Hardcoded Mapping (Keep as fallback or remove if desired)
     const domainMap: Record<string, string> = {
         'dashboard.tridigitals.com': 'tridigitals',
         'saas.tridigitals.com': 'tridigitals',
@@ -34,4 +46,19 @@ export function getSlugFromDomain(hostname: string): string | null {
     };
 
     return domainMap[hostname] || null;
+}
+
+/**
+ * Helper to cache a new domain mapping
+ */
+export function cacheDomainMapping(domain: string, slug: string) {
+    if (typeof localStorage === 'undefined') return;
+
+    try {
+        const cache = JSON.parse(localStorage.getItem('tenant_domain_map') || '{}');
+        cache[domain] = slug;
+        localStorage.setItem('tenant_domain_map', JSON.stringify(cache));
+    } catch (e) {
+        console.error('Failed to update domain map cache', e);
+    }
 }

@@ -226,7 +226,8 @@ pub fn run() {
                         payment_service, 
                         ws_hub, 
                         app_dir, 
-                        3000
+                        3000,
+                        pool.clone(), // Pass pool
                     ).await;
                 });
 
