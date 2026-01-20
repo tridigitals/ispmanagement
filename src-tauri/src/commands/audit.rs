@@ -1,6 +1,6 @@
 //! Audit Logs Commands
 
-use crate::models::{PaginatedResponse, AuditLog};
+use crate::models::PaginatedResponse;
 use crate::services::{AuditService, AuthService};
 use tauri::State;
 

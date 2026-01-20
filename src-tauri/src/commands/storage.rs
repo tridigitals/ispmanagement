@@ -24,7 +24,7 @@ pub async fn upload_file(
     
     // For "Admin Mode" FileManager (Global), if they use this, it uploads as NULL tenant (System File).
     
-    let tenant_id = claims.tenant_id.as_deref().unwrap_or("system"); // Or handle NULL in service if DB allows
+    let _tenant_id = claims.tenant_id.as_deref().unwrap_or("system"); // Or handle NULL in service if DB allows
     
     // Actually, our DB schema enforces tenant_id NOT NULL for file_records?
     // Let's check schema.

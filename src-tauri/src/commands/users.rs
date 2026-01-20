@@ -1,17 +1,13 @@
 //! User Management Commands
 
 use crate::models::{CreateUserDto, PaginatedResponse, UpdateUserDto, UserResponse};
-use crate::services::{AuthService, UserService, AuditService};
-use serde::Serialize;
+use crate::services::{AuthService, UserService};
+
 use tauri::State;
 use validator::Validate;
 
 /// Paginated response wrapper
-#[derive(Serialize)]
-pub struct UserListResponse {
-    pub users: Vec<UserResponse>,
-    pub total: i64,
-}
+
 
 
 /// List users with pagination (Super Admin Only)

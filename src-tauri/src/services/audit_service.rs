@@ -1,7 +1,6 @@
 use crate::db::connection::DbPool;
 use crate::error::{AppError, AppResult};
-use crate::models::{AuditLogResponse, AuditLogFilter}; // audit_service.rs implies these might be needed if not fully qualified
-use tauri::State;
+ // audit_service.rs implies these might be needed if not fully qualified
 use chrono::Utc;
 // We need to import PlanService but it might cause circular deps if not careful.
 // Actually PlanService depends on DbPool, not AuditService.
@@ -29,6 +28,7 @@ impl AuditService {
         Self { pool, plan_service }
     }
 
+    #[allow(dead_code)]
     pub fn set_plan_service(&mut self, plan_service: PlanService) {
         self.plan_service = Some(plan_service);
     }

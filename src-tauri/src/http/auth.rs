@@ -3,7 +3,7 @@ use axum::{
     http::{StatusCode, HeaderMap},
     response::{IntoResponse, Response},
     Json,
-    extract::{ConnectInfo, FromRequestParts},
+    extract::ConnectInfo,
 };
 use std::net::SocketAddr;
 use serde_json::json;

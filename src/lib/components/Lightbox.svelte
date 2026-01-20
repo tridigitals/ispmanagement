@@ -8,26 +8,32 @@
     export let files: any[] = []; // FileRecord[]
 
     const dispatch = createEventDispatcher();
-    
+
     // API URL
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    const API_BASE =
+        import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
     $: currentFile = files[index];
     $: isImage = currentFile?.content_type.startsWith("image/");
     $: isVideo = currentFile?.content_type.startsWith("video/");
     $: isAudio = currentFile?.content_type.startsWith("audio/");
     $: isPdf = currentFile?.content_type.includes("pdf");
-    $: isText = currentFile?.content_type.includes("text") || 
-                currentFile?.content_type.includes("json") || 
-                currentFile?.content_type.includes("xml") ||
-                currentFile?.content_type.includes("javascript") ||
-                currentFile?.content_type.includes("css") ||
-                currentFile?.content_type.includes("html");
+    $: isText =
+        currentFile?.content_type.includes("text") ||
+        currentFile?.content_type.includes("json") ||
+        currentFile?.content_type.includes("xml") ||
+        currentFile?.content_type.includes("javascript") ||
+        currentFile?.content_type.includes("css") ||
+        currentFile?.content_type.includes("html");
 
     // Use HTTP API endpoint for serving files
-    $: fileSrc = currentFile ? `${API_BASE}/storage/files/${currentFile.id}/content` : "";
+    $: fileSrc = currentFile
+        ? `${API_BASE}/storage/files/${currentFile.id}/content`
+        : "";
     // Note: for native download we can use the content URL directly as we fetch the blob manually
-    $: downloadUrl = currentFile ? `${API_BASE}/storage/files/${currentFile.id}/download` : "";
+    $: downloadUrl = currentFile
+        ? `${API_BASE}/storage/files/${currentFile.id}/download`
+        : "";
 
     let textContent = "";
     let loadingText = false;
@@ -58,7 +64,7 @@
     }
 
     function next(e?: Event) {
-        if(e) e.stopPropagation();
+        if (e) e.stopPropagation();
         if (index < files.length - 1) {
             index++;
         } else {
@@ -67,7 +73,7 @@
     }
 
     function prev(e?: Event) {
-        if(e) e.stopPropagation();
+        if (e) e.stopPropagation();
         if (index > 0) {
             index--;
         } else {
@@ -92,19 +98,20 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div 
-    class="lightbox-overlay" 
+<div
+    class="lightbox-overlay"
     transition:fade={{ duration: 200 }}
     onclick={close}
     role="button"
     tabindex="0"
-    onkeydown={(e) => e.key === 'Escape' && close()}
+    onkeydown={(e) =>
+        (e.key === "Escape" || e.key === "Enter" || e.key === " ") && close()}
 >
     <!-- Top Bar -->
-    <div 
-        class="top-bar" 
-        onclick={(e) => e.stopPropagation()} 
-        role="toolbar" 
+    <div
+        class="top-bar"
+        onclick={(e) => e.stopPropagation()}
+        role="toolbar"
         tabindex="-1"
         onkeydown={(e) => e.stopPropagation()}
     >
@@ -112,8 +119,8 @@
             {index + 1} / {files.length}
         </div>
         <div class="actions">
-            <button 
-                class="action-btn" 
+            <button
+                class="action-btn"
                 title="Download"
                 onclick={(e) => {
                     e.stopPropagation();
@@ -138,34 +145,56 @@
     </button>
 
     <!-- Main Content -->
-    <div 
-        class="content-wrapper" 
+    <div
+        class="content-wrapper"
         onclick={(e) => e.stopPropagation()}
-        role="group"
+        role="none"
         tabindex="-1"
         onkeydown={(e) => e.stopPropagation()}
     >
         {#key currentFile.id}
-            <div class="media-container" in:scale={{ start: 0.95, duration: 200 }}>
+            <div
+                class="media-container"
+                in:scale={{ start: 0.95, duration: 200 }}
+            >
                 {#if isImage}
-                    <img src={fileSrc} alt={currentFile.original_name} class="media-content" />
+                    <img
+                        src={fileSrc}
+                        alt={currentFile.original_name}
+                        class="media-content"
+                    />
                 {:else if isVideo}
                     <!-- svelte-ignore a11y-media-has-caption -->
-                    <video src={fileSrc} controls class="media-content" autoplay></video>
+                    <video src={fileSrc} controls class="media-content" autoplay
+                    ></video>
                 {:else if isAudio}
                     <div class="audio-player">
                         <div class="audio-visual">
                             <Icon name="music" size={80} />
                         </div>
-                        <audio src={fileSrc} controls autoplay class="w-full mt-6"></audio>
+                        <audio
+                            src={fileSrc}
+                            controls
+                            autoplay
+                            class="w-full mt-6"
+                        ></audio>
                     </div>
                 {:else if isPdf}
-                    <object data={fileSrc} type="application/pdf" class="pdf-viewer">
+                    <object
+                        data={fileSrc}
+                        type="application/pdf"
+                        class="pdf-viewer"
+                        title="PDF Preview"
+                    >
                         <div class="generic-file">
                             <p>Browser does not support PDF preview.</p>
-                            <button 
+                            <button
                                 class="btn-download"
-                                onclick={() => downloadFile(downloadUrl, currentFile.original_name)}
+                                onclick={() =>
+                                    downloadFile(
+                                        downloadUrl,
+                                        currentFile.original_name,
+                                    )}
                             >
                                 Download PDF
                             </button>
@@ -181,13 +210,23 @@
                     </div>
                 {:else}
                     <div class="generic-file">
-                        <Icon name="file-text" size={64} class="mb-4 text-gray-400" />
+                        <Icon
+                            name="file-text"
+                            size={64}
+                            class="mb-4 text-gray-400"
+                        />
                         <h3>Preview not available</h3>
                         <p>{currentFile.original_name}</p>
-                        <p class="text-sm text-gray-500 mb-6">{formatSize(currentFile.size)}</p>
-                        <button 
+                        <p class="text-sm text-gray-500 mb-6">
+                            {formatSize(currentFile.size)}
+                        </p>
+                        <button
                             class="btn-download"
-                            onclick={() => downloadFile(downloadUrl, currentFile.original_name)}
+                            onclick={() =>
+                                downloadFile(
+                                    downloadUrl,
+                                    currentFile.original_name,
+                                )}
                         >
                             <Icon name="download" size={18} />
                             Download File
@@ -196,10 +235,14 @@
                 {/if}
             </div>
         {/key}
-        
+
         <div class="caption">
             <h3>{currentFile.original_name}</h3>
-            <p>{formatSize(currentFile.size)} • {new Date(currentFile.created_at).toLocaleString()}</p>
+            <p>
+                {formatSize(currentFile.size)} • {new Date(
+                    currentFile.created_at,
+                ).toLocaleString()}
+            </p>
         </div>
     </div>
 </div>
@@ -227,7 +270,7 @@
         justify-content: space-between;
         align-items: center;
         z-index: 20;
-        background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+        background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
     }
 
     .file-counter {
@@ -251,7 +294,7 @@
         border-radius: 50%;
         display: flex;
         align-items: center;
-        justify: center;
+        justify-content: center;
         transition: all 0.2s;
         text-decoration: none; /* For <a> tag */
     }
@@ -279,8 +322,12 @@
         background: rgba(255, 255, 255, 0.1);
     }
 
-    .nav-btn.prev { left: 1rem; }
-    .nav-btn.next { right: 1rem; }
+    .nav-btn.prev {
+        left: 1rem;
+    }
+    .nav-btn.next {
+        right: 1rem;
+    }
 
     .content-wrapper {
         display: flex;
@@ -305,7 +352,7 @@
         max-height: 80vh;
         object-fit: contain;
         border-radius: 4px;
-        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
     }
 
     .audio-player {
@@ -360,14 +407,18 @@
     .spinner {
         width: 32px;
         height: 32px;
-        border: 3px solid rgba(0,0,0,0.1);
+        border: 3px solid rgba(0, 0, 0, 0.1);
         border-top-color: var(--color-primary, #6366f1);
         border-radius: 50%;
         animation: spin 1s linear infinite;
         margin: auto;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
 
     .audio-visual {
         width: 120px;

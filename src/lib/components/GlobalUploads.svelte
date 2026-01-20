@@ -15,13 +15,22 @@
 {#if activeCount > 0}
     <div class="upload-container" transition:fly={{ y: 50, duration: 300 }}>
         <!-- Header -->
-        <div class="header" on:click={toggle}>
+        <div
+            class="header"
+            onclick={toggle}
+            role="button"
+            tabindex="0"
+            onkeydown={(e) => (e.key === "Enter" || e.key === " ") && toggle()}
+        >
             <div class="title">
                 <span class="count">{activeCount}</span>
                 <span>Uploads in progress</span>
             </div>
             <button class="toggle-btn">
-                <Icon name={isExpanded ? "chevron-down" : "chevron-up"} size={18} />
+                <Icon
+                    name={isExpanded ? "chevron-down" : "chevron-up"}
+                    size={18}
+                />
             </button>
         </div>
 
@@ -36,25 +45,28 @@
                         <div class="item-content">
                             <div class="item-top">
                                 <span class="name">{item.file.name}</span>
-                                {#if item.status === 'error'}
+                                {#if item.status === "error"}
                                     <span class="status error">Failed</span>
-                                {:else if item.status === 'success'}
+                                {:else if item.status === "success"}
                                     <span class="status success">Done</span>
                                 {:else}
                                     <span class="status">{item.progress}%</span>
                                 {/if}
                             </div>
-                            
+
                             <div class="progress-track">
-                                <div 
-                                    class="progress-bar {item.status}" 
+                                <div
+                                    class="progress-bar {item.status}"
                                     style="width: {item.progress}%"
                                 ></div>
                             </div>
                         </div>
-                        
-                        {#if item.status === 'uploading'}
-                            <button class="cancel-btn" on:click={() => uploadStore.cancel(item.id)}>
+
+                        {#if item.status === "uploading"}
+                            <button
+                                class="cancel-btn"
+                                onclick={() => uploadStore.cancel(item.id)}
+                            >
                                 <Icon name="x" size={14} />
                             </button>
                         {/if}
@@ -74,7 +86,7 @@
         background: var(--bg-surface);
         border: 1px solid var(--border-color);
         border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         z-index: 10000;
         overflow: hidden;
         font-family: var(--font-family);
@@ -163,8 +175,12 @@
         font-variant-numeric: tabular-nums;
     }
 
-    .status.success { color: var(--color-success); }
-    .status.error { color: var(--color-danger); }
+    .status.success {
+        color: var(--color-success);
+    }
+    .status.error {
+        color: var(--color-danger);
+    }
 
     .progress-track {
         height: 4px;
@@ -179,8 +195,12 @@
         transition: width 0.2s ease;
     }
 
-    .progress-bar.success { background: var(--color-success); }
-    .progress-bar.error { background: var(--color-danger); }
+    .progress-bar.success {
+        background: var(--color-success);
+    }
+    .progress-bar.error {
+        background: var(--color-danger);
+    }
 
     .cancel-btn {
         background: none;

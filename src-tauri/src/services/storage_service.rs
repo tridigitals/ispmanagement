@@ -533,7 +533,7 @@ impl StorageService {
 
         #[cfg(feature = "postgres")]
         {
-            use sqlx::Row;
+
             
             // Debug: Test raw query to see if data exists
             let raw_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM file_records WHERE tenant_id = $1")

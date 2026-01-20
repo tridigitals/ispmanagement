@@ -3,8 +3,7 @@
 use crate::services::{AuthService, PlanService};
 use crate::models::{
     Plan, PlanWithFeatures, FeatureDefinition, TenantSubscription, FeatureAccess,
-    CreatePlanRequest, UpdatePlanRequest, CreateFeatureRequest, SetPlanFeatureRequest,
-    AssignPlanRequest, TenantSubscriptionDetails,
+    CreatePlanRequest, UpdatePlanRequest, TenantSubscriptionDetails,
 };
 use tauri::State;
 

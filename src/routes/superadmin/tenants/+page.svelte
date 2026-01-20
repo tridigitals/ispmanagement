@@ -348,7 +348,7 @@
     confirmationKeyword="DELETE"
     type="danger"
     loading={confirmLoading}
-    on:confirm={handleDelete}
+    onconfirm={handleDelete}
 />
 
 <style>

@@ -37,6 +37,7 @@ pub use websocket::WsHub;
 
 // App State to share services with Axum handlers
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct AppState {
     pub auth_service: Arc<AuthService>,
     pub user_service: Arc<UserService>,
@@ -204,7 +205,10 @@ pub async fn start_server(
                 .route("/api/version", get(get_app_version))
 
                 .layer(DefaultBodyLimit::max(1024 * 1024 * 1024)) // 1GB Upload Limit
-                .layer(TimeoutLayer::new(Duration::from_secs(3600))) // 1 Hour Timeout for large uploads
+                .layer({
+                    #[allow(deprecated)]
+                    TimeoutLayer::new(Duration::from_secs(3600))
+                }) // 1 Hour Timeout for large uploads
                 .layer(cors)
 
                 .with_state(state);

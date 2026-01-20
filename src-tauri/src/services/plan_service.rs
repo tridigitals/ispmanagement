@@ -4,7 +4,7 @@ use crate::db::DbPool;
 use crate::models::{
     Plan, PlanWithFeatures, FeatureDefinition, PlanFeature, PlanFeatureValue,
     TenantSubscription, FeatureAccess,
-    CreatePlanRequest, UpdatePlanRequest, CreateFeatureRequest, UpdateFeatureRequest,
+    CreatePlanRequest, UpdatePlanRequest, CreateFeatureRequest,
 };
 use chrono::Utc;
 use uuid::Uuid;
@@ -456,6 +456,7 @@ impl PlanService {
     }
 
     /// Remove a feature from a plan
+    #[allow(dead_code)]
     pub async fn remove_plan_feature(&self, plan_id: &str, feature_id: &str) -> Result<(), sqlx::Error> {
         #[cfg(feature = "postgres")]
         sqlx::query("DELETE FROM plan_features WHERE plan_id = $1 AND feature_id = $2")
@@ -788,7 +789,7 @@ impl PlanService {
 
         // 2. Get Limits
         let storage_limit_gb = self.get_feature_limit(tenant_id, "max_storage_gb").await?;
-        let storage_limit = storage_limit_gb.map(|gb| (gb * 1024 * 1024 * 1024)); // Convert GB to Bytes
+        let storage_limit = storage_limit_gb.map(|gb| gb * 1024 * 1024 * 1024); // Convert GB to Bytes
 
         let member_limit = self.get_feature_limit(tenant_id, "max_members").await?;
 

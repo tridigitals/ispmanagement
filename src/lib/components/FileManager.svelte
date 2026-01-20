@@ -19,15 +19,16 @@
     let viewMode = $state<"list" | "grid">("grid");
     let fileInput = $state<HTMLInputElement>();
     let selectedFileIndex = $state(-1); // -1 means lightbox closed
-    
+
     // API URL
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-    
+    const API_BASE =
+        import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+
     // Modal State
     let showDeleteModal = $state(false);
     let fileToDelete = $state<FileRecord | null>(null);
     let isDeleting = $state(false);
-    
+
     // Selection State
     let selectedFileIds = $state<string[]>([]);
     let isBatchDeleting = $state(false);
@@ -38,25 +39,37 @@
     let total = $state(0);
     let totalPages = $state(1);
     let searchQuery = $state("");
-    let activeFilter = $state<"all" | "image" | "video" | "audio" | "document">("all");
-    
+    let activeFilter = $state<"all" | "image" | "video" | "audio" | "document">(
+        "all",
+    );
+
     // Stats
     let totalSize = $state(0);
 
     // Derived filtered files
-    let filteredFiles = $derived(files.filter(f => {
-        if (activeFilter === 'all') return true;
-        if (activeFilter === 'image') return f.content_type.startsWith('image/');
-        if (activeFilter === 'video') return f.content_type.startsWith('video/');
-        if (activeFilter === 'audio') return f.content_type.startsWith('audio/');
-        if (activeFilter === 'document') return !f.content_type.startsWith('image/') && !f.content_type.startsWith('video/') && !f.content_type.startsWith('audio/');
-        return true;
-    }));
+    let filteredFiles = $derived(
+        files.filter((f) => {
+            if (activeFilter === "all") return true;
+            if (activeFilter === "image")
+                return f.content_type.startsWith("image/");
+            if (activeFilter === "video")
+                return f.content_type.startsWith("video/");
+            if (activeFilter === "audio")
+                return f.content_type.startsWith("audio/");
+            if (activeFilter === "document")
+                return (
+                    !f.content_type.startsWith("image/") &&
+                    !f.content_type.startsWith("video/") &&
+                    !f.content_type.startsWith("audio/")
+                );
+            return true;
+        }),
+    );
 
     // Selection Helpers
     function toggleSelection(id: string) {
         if (selectedFileIds.includes(id)) {
-            selectedFileIds = selectedFileIds.filter(fid => fid !== id);
+            selectedFileIds = selectedFileIds.filter((fid) => fid !== id);
         } else {
             selectedFileIds = [...selectedFileIds, id];
         }
@@ -66,7 +79,7 @@
         if (selectedFileIds.length === filteredFiles.length) {
             selectedFileIds = [];
         } else {
-            selectedFileIds = filteredFiles.map(f => f.id);
+            selectedFileIds = filteredFiles.map((f) => f.id);
         }
     }
 
@@ -76,13 +89,13 @@
 
     async function handleBatchDelete() {
         if (selectedFileIds.length === 0) return;
-        
+
         // Show confirmation using existing modal logic mechanism or new one?
         // Let's repurpose the modal: "Delete 5 files?"
         // Ideally we need a separate confirm flow or reuse the existing dialog with tweaked text.
-        // For simplicity, let's reuse fileToDelete=null as a signal for batch? 
+        // For simplicity, let's reuse fileToDelete=null as a signal for batch?
         // Or cleaner: add isBatch flag to the dialog context.
-        
+
         fileToDelete = null; // null means batch mode
         showDeleteModal = true;
     }
@@ -111,9 +124,11 @@
         isDeleting = false;
         showDeleteModal = false;
         selectedFileIds = [];
-        
+
         if (errors > 0) {
-            toast.warning(`Deleted ${successCount} files. Failed to delete ${errors} files.`);
+            toast.warning(
+                `Deleted ${successCount} files. Failed to delete ${errors} files.`,
+            );
         } else {
             toast.success(`Deleted ${successCount} files successfully.`);
         }
@@ -122,7 +137,7 @@
 
     // Auto-reload on upload success (Svelte 5 Effect)
     $effect(() => {
-        const finished = $uploadStore.filter(u => u.status === 'success');
+        const finished = $uploadStore.filter((u) => u.status === "success");
         if (finished.length > 0) {
             loadFiles();
             uploadStore.clearFinished();
@@ -136,16 +151,21 @@
             if (mode === "admin") {
                 res = await api.storage.listFiles(page, perPage, searchQuery);
             } else {
-                res = await api.storage.listFilesTenant(page, perPage, searchQuery);
+                res = await api.storage.listFilesTenant(
+                    page,
+                    perPage,
+                    searchQuery,
+                );
             }
-            
+
             files = res.data;
             total = res.total;
 
             totalPages = Math.ceil(total / perPage);
-            
+
             // Calculate size for current page
-            if(files.length > 0) totalSize = files.reduce((acc, curr) => acc + curr.size, 0);
+            if (files.length > 0)
+                totalSize = files.reduce((acc, curr) => acc + curr.size, 0);
         } catch (e: any) {
             toast.error("Failed to load files: " + e.message);
         } finally {
@@ -162,7 +182,7 @@
                 uploadStore.upload(file, $token);
             }
             // Reset input
-            target.value = '';
+            target.value = "";
         }
     }
 
@@ -189,7 +209,7 @@
         }
 
         if (!fileToDelete) return;
-        
+
         isDeleting = true;
         try {
             if (mode === "admin") {
@@ -222,7 +242,8 @@
         if (mimeType.startsWith("video/")) return "film";
         if (mimeType.startsWith("audio/")) return "music";
         if (mimeType.includes("pdf")) return "file-text";
-        if (mimeType.includes("zip") || mimeType.includes("compressed")) return "archive";
+        if (mimeType.includes("zip") || mimeType.includes("compressed"))
+            return "archive";
         return "file";
     }
 
@@ -273,7 +294,7 @@
                     bind:this={fileInput}
                     onchange={handleFileSelect}
                 />
-                <button class="btn-primary" onclick={() => fileInput.click()}>
+                <button class="btn-primary" onclick={() => fileInput?.click()}>
                     <Icon name="plus" size={18} />
                     <span>Upload</span>
                 </button>
@@ -298,37 +319,45 @@
         <!-- Filter Sidebar -->
         <aside class="fm-sidebar">
             <div class="filter-group">
-                <button 
-                    class="filter-btn {activeFilter === 'all' ? 'active' : ''}" 
-                    onclick={() => activeFilter = 'all'}
+                <button
+                    class="filter-btn {activeFilter === 'all' ? 'active' : ''}"
+                    onclick={() => (activeFilter = "all")}
                 >
                     <Icon name="hard-drive" size={18} />
                     <span>All Files</span>
                 </button>
-                <button 
-                    class="filter-btn {activeFilter === 'image' ? 'active' : ''}" 
-                    onclick={() => activeFilter = 'image'}
+                <button
+                    class="filter-btn {activeFilter === 'image'
+                        ? 'active'
+                        : ''}"
+                    onclick={() => (activeFilter = "image")}
                 >
                     <Icon name="image" size={18} />
                     <span>Images</span>
                 </button>
-                <button 
-                    class="filter-btn {activeFilter === 'video' ? 'active' : ''}" 
-                    onclick={() => activeFilter = 'video'}
+                <button
+                    class="filter-btn {activeFilter === 'video'
+                        ? 'active'
+                        : ''}"
+                    onclick={() => (activeFilter = "video")}
                 >
                     <Icon name="film" size={18} />
                     <span>Videos</span>
                 </button>
-                <button 
-                    class="filter-btn {activeFilter === 'audio' ? 'active' : ''}" 
-                    onclick={() => activeFilter = 'audio'}
+                <button
+                    class="filter-btn {activeFilter === 'audio'
+                        ? 'active'
+                        : ''}"
+                    onclick={() => (activeFilter = "audio")}
                 >
                     <Icon name="music" size={18} />
                     <span>Audio</span>
                 </button>
-                <button 
-                    class="filter-btn {activeFilter === 'document' ? 'active' : ''}" 
-                    onclick={() => activeFilter = 'document'}
+                <button
+                    class="filter-btn {activeFilter === 'document'
+                        ? 'active'
+                        : ''}"
+                    onclick={() => (activeFilter = "document")}
                 >
                     <Icon name="file-text" size={18} />
                     <span>Documents</span>
@@ -342,12 +371,19 @@
                 {#if selectedFileIds.length > 0}
                     <div class="action-bar">
                         <div class="selection-count">
-                            <span class="count-pill">{selectedFileIds.length}</span>
+                            <span class="count-pill"
+                                >{selectedFileIds.length}</span
+                            >
                             <span>Selected</span>
                         </div>
                         <div class="action-buttons">
-                            <button class="btn-ghost" onclick={deselectAll}>Cancel</button>
-                            <button class="btn-danger-sm" onclick={handleBatchDelete}>
+                            <button class="btn-ghost" onclick={deselectAll}
+                                >Cancel</button
+                            >
+                            <button
+                                class="btn-danger-sm"
+                                onclick={handleBatchDelete}
+                            >
                                 <Icon name="trash-2" size={16} />
                                 Delete Selected
                             </button>
@@ -366,14 +402,18 @@
 
                     <div class="view-toggles">
                         <button
-                            class="toggle-btn {viewMode === 'grid' ? 'active' : ''}"
+                            class="toggle-btn {viewMode === 'grid'
+                                ? 'active'
+                                : ''}"
                             onclick={() => (viewMode = "grid")}
                             title="Grid View"
                         >
                             <Icon name="grid" size={18} />
                         </button>
                         <button
-                            class="toggle-btn {viewMode === 'list' ? 'active' : ''}"
+                            class="toggle-btn {viewMode === 'list'
+                                ? 'active'
+                                : ''}"
                             onclick={() => (viewMode = "list")}
                             title="List View"
                         >
@@ -383,36 +423,47 @@
                 {/if}
             </div>
 
-        <!-- File Browser -->
-        <div class="browser-area">
-            {#if loading && files.length === 0}
-                <div class="loading-state">
-                    <div class="spinner"></div>
-                    <p>Loading files...</p>
-                </div>
-            {:else if files.length === 0}
-                <div class="empty-state">
-                    <div class="empty-icon">
-                        <Icon name="folder" size={48} />
+            <!-- File Browser -->
+            <div class="browser-area">
+                {#if loading && files.length === 0}
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <p>Loading files...</p>
                     </div>
-                    <h3>No Files Found</h3>
-                    <p>Try adjusting your search terms.</p>
-                </div>
-            {:else if viewMode === "grid"}
-                <!-- Grid View -->
-                <div class="grid-view">
+                {:else if files.length === 0}
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <Icon name="folder" size={48} />
+                        </div>
+                        <h3>No Files Found</h3>
+                        <p>Try adjusting your search terms.</p>
+                    </div>
+                {:else if viewMode === "grid"}
+                    <!-- Grid View -->
+                    <div class="grid-view">
                         {#each filteredFiles as file, index (file.id)}
-                            <div 
-                                class="file-card cursor-pointer {selectedFileIds.includes(file.id) ? 'selected' : ''}" 
-                                animate:flip={{duration: 200}}
+                            <div
+                                class="file-card cursor-pointer {selectedFileIds.includes(
+                                    file.id,
+                                )
+                                    ? 'selected'
+                                    : ''}"
+                                animate:flip={{ duration: 200 }}
                                 ondblclick={() => openLightbox(index)}
                                 onclick={() => handleItemClick(index)}
+                                role="button"
+                                tabindex="0"
+                                onkeydown={(e) =>
+                                    (e.key === "Enter" || e.key === " ") &&
+                                    handleItemClick(index)}
                             >
                                 {#if $can("delete", "storage")}
                                     <div class="selection-checkbox">
-                                        <input 
-                                            type="checkbox" 
-                                            checked={selectedFileIds.includes(file.id)}
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedFileIds.includes(
+                                                file.id,
+                                            )}
                                             onclick={(e) => {
                                                 e.stopPropagation();
                                                 toggleSelection(file.id);
@@ -421,187 +472,252 @@
                                     </div>
                                 {/if}
 
-                                {#if file.content_type.startsWith('image/')}
+                                {#if file.content_type.startsWith("image/")}
                                     <div class="file-preview-image">
-                                        <img 
-                                            src={`${API_BASE}/storage/files/${file.id}/content`} 
+                                        <img
+                                            src={`${API_BASE}/storage/files/${file.id}/content`}
                                             alt={file.original_name}
                                             loading="lazy"
-                                            onerror={(e) => { 
-                                                const target = e.currentTarget as HTMLImageElement;
-                                                target.style.display = 'none';
-                                                const fallback = target.nextElementSibling as HTMLElement;
-                                                if (fallback) fallback.style.display = 'flex';
+                                            onerror={(e) => {
+                                                const target =
+                                                    e.currentTarget as HTMLImageElement;
+                                                target.style.display = "none";
+                                                const fallback =
+                                                    target.nextElementSibling as HTMLElement;
+                                                if (fallback)
+                                                    fallback.style.display =
+                                                        "flex";
                                             }}
                                         />
                                         <!-- Fallback Icon (hidden by default) -->
-                                        <div class="file-preview {getIconColorClass(file.content_type)} fallback" style="display: none;">
-                                            <Icon name={getFileIcon(file.content_type)} size={32} />
+                                        <div
+                                            class="file-preview {getIconColorClass(
+                                                file.content_type,
+                                            )} fallback"
+                                            style="display: none;"
+                                        >
+                                            <Icon
+                                                name={getFileIcon(
+                                                    file.content_type,
+                                                )}
+                                                size={32}
+                                            />
                                         </div>
                                     </div>
                                 {:else}
-                                    <div class="file-preview {getIconColorClass(file.content_type)}">
-                                        <Icon name={getFileIcon(file.content_type)} size={32} />
+                                    <div
+                                        class="file-preview {getIconColorClass(
+                                            file.content_type,
+                                        )}"
+                                    >
+                                        <Icon
+                                            name={getFileIcon(
+                                                file.content_type,
+                                            )}
+                                            size={32}
+                                        />
                                     </div>
                                 {/if}
 
                                 <div class="file-info">
-                                <div
-                                    class="file-name"
-                                    title={file.original_name}
-                                >
-                                    {file.original_name}
-                                </div>
-                                <div class="file-meta">
-                                    <span>{formatSize(file.size)}</span>
-                                    <span>•</span>
-                                    <span
-                                        >{new Date(
-                                            file.created_at,
-                                        ).toLocaleDateString()}</span
+                                    <div
+                                        class="file-name"
+                                        title={file.original_name}
                                     >
+                                        {file.original_name}
+                                    </div>
+                                    <div class="file-meta">
+                                        <span>{formatSize(file.size)}</span>
+                                        <span>•</span>
+                                        <span
+                                            >{new Date(
+                                                file.created_at,
+                                            ).toLocaleDateString()}</span
+                                        >
+                                    </div>
                                 </div>
+
+                                {#if $can("delete", "storage")}
+                                    <div class="file-actions">
+                                        <button
+                                            class="action-btn delete"
+                                            onclick={(e) => {
+                                                e.stopPropagation();
+                                                confirmDelete(file);
+                                            }}
+                                            title="Delete"
+                                        >
+                                            <Icon name="trash-2" size={14} />
+                                        </button>
+                                    </div>
+                                {/if}
                             </div>
-                            
-                            {#if $can("delete", "storage")}
-                                <div class="file-actions">
-                                    <button
-                                        class="action-btn delete"
-                                        onclick={(e) => {
-                                            e.stopPropagation();
-                                            confirmDelete(file);
-                                        }}
-                                        title="Delete"
-                                    >
-                                        <Icon name="trash-2" size={14} />
-                                    </button>
-                                </div>
-                            {/if}
-                        </div>
-                    {/each}
-                </div>
-            {:else}
-                <!-- List View -->
-                <div class="list-view">
-                    <table class="file-table">
-                        <thead>
-                            <tr>
-                                <th class="w-10 text-center">
-                                    {#if $can("delete", "storage")}
-                                        <input 
-                                            type="checkbox" 
-                                            checked={selectedFileIds.length > 0 && selectedFileIds.length === filteredFiles.length}
-                                            indeterminate={selectedFileIds.length > 0 && selectedFileIds.length < filteredFiles.length}
-                                            onclick={selectAll}
-                                        />
-                                    {/if}
-                                </th>
-                                <th>Name</th>
-                                <th>Size</th>
-                                <th>Type</th>
-                                <th>Uploaded</th>
-                                <th class="text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {#each filteredFiles as file, index (file.id)}
-                                <tr 
-                                    animate:flip={{duration: 200}}
-                                    class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                                    ondblclick={() => openLightbox(index)}
-                                    onclick={() => handleItemClick(index)}
-                                >
-                                    <td class="text-center" onclick={(e) => e.stopPropagation()}>
+                        {/each}
+                    </div>
+                {:else}
+                    <!-- List View -->
+                    <div class="list-view">
+                        <table class="file-table">
+                            <thead>
+                                <tr>
+                                    <th class="w-10 text-center">
                                         {#if $can("delete", "storage")}
-                                            <input 
-                                                type="checkbox" 
-                                                checked={selectedFileIds.includes(file.id)}
-                                                onclick={() => toggleSelection(file.id)}
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedFileIds.length >
+                                                    0 &&
+                                                    selectedFileIds.length ===
+                                                        filteredFiles.length}
+                                                indeterminate={selectedFileIds.length >
+                                                    0 &&
+                                                    selectedFileIds.length <
+                                                        filteredFiles.length}
+                                                onclick={selectAll}
                                             />
                                         {/if}
-                                    </td>
-                                    <td>
-                                        <div class="file-cell">
-                                            {#if file.content_type.startsWith('image/')}
-                                                <img 
-                                                    src={`${API_BASE}/storage/files/${file.id}/content`} 
-                                                    alt={file.original_name}
-                                                    class="list-thumbnail"
-                                                    loading="lazy"
-                                                    onerror={(e) => { 
-                                                        const target = e.currentTarget as HTMLImageElement;
-                                                        target.style.display = 'none';
-                                                        const fallback = target.nextElementSibling as HTMLElement;
-                                                        if (fallback) fallback.style.display = 'flex';
-                                                    }}
-                                                />
-                                                <!-- Fallback -->
-                                                <div class="list-icon {getIconColorClass(file.content_type)} fallback" style="display: none;">
-                                                    <Icon name={getFileIcon(file.content_type)} size={16} />
-                                                </div>
-                                            {:else}
-                                                <div class="list-icon {getIconColorClass(file.content_type)}">
-                                                    <Icon name={getFileIcon(file.content_type)} size={16} />
-                                                </div>
-                                            {/if}
-                                            <span class="name-text" title={file.original_name}>{file.original_name}</span>
-                                        </div>
-                                    </td>
-                                    <td class="meta-text"
-                                        >{formatSize(file.size)}</td
-                                    >
-                                    <td class="meta-text uppercase"
-                                        >{file.content_type.split("/")[1] ||
-                                            "FILE"}</td
-                                    >
-                                    <td class="meta-text"
-                                        >{new Date(
-                                            file.created_at,
-                                        ).toLocaleDateString()}</td
-                                    >
-                                    <td class="text-right">
-                                        {#if $can("delete", "storage")}
-                                            <button
-                                                class="text-btn delete"
-                                                onclick={(e) => {
-                                                    e.stopPropagation();
-                                                    confirmDelete(file);
-                                                }}
-                                            >
-                                                Delete
-                                            </button>
-                                        {/if}
-                                    </td>
+                                    </th>
+                                    <th>Name</th>
+                                    <th>Size</th>
+                                    <th>Type</th>
+                                    <th>Uploaded</th>
+                                    <th class="text-right">Action</th>
                                 </tr>
-                            {/each}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {#each filteredFiles as file, index (file.id)}
+                                    <tr
+                                        animate:flip={{ duration: 200 }}
+                                        class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                        ondblclick={() => openLightbox(index)}
+                                        onclick={() => handleItemClick(index)}
+                                    >
+                                        <td
+                                            class="text-center"
+                                            onclick={(e) => e.stopPropagation()}
+                                        >
+                                            {#if $can("delete", "storage")}
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedFileIds.includes(
+                                                        file.id,
+                                                    )}
+                                                    onclick={() =>
+                                                        toggleSelection(
+                                                            file.id,
+                                                        )}
+                                                />
+                                            {/if}
+                                        </td>
+                                        <td>
+                                            <div class="file-cell">
+                                                {#if file.content_type.startsWith("image/")}
+                                                    <img
+                                                        src={`${API_BASE}/storage/files/${file.id}/content`}
+                                                        alt={file.original_name}
+                                                        class="list-thumbnail"
+                                                        loading="lazy"
+                                                        onerror={(e) => {
+                                                            const target =
+                                                                e.currentTarget as HTMLImageElement;
+                                                            target.style.display =
+                                                                "none";
+                                                            const fallback =
+                                                                target.nextElementSibling as HTMLElement;
+                                                            if (fallback)
+                                                                fallback.style.display =
+                                                                    "flex";
+                                                        }}
+                                                    />
+                                                    <!-- Fallback -->
+                                                    <div
+                                                        class="list-icon {getIconColorClass(
+                                                            file.content_type,
+                                                        )} fallback"
+                                                        style="display: none;"
+                                                    >
+                                                        <Icon
+                                                            name={getFileIcon(
+                                                                file.content_type,
+                                                            )}
+                                                            size={16}
+                                                        />
+                                                    </div>
+                                                {:else}
+                                                    <div
+                                                        class="list-icon {getIconColorClass(
+                                                            file.content_type,
+                                                        )}"
+                                                    >
+                                                        <Icon
+                                                            name={getFileIcon(
+                                                                file.content_type,
+                                                            )}
+                                                            size={16}
+                                                        />
+                                                    </div>
+                                                {/if}
+                                                <span
+                                                    class="name-text"
+                                                    title={file.original_name}
+                                                    >{file.original_name}</span
+                                                >
+                                            </div>
+                                        </td>
+                                        <td class="meta-text"
+                                            >{formatSize(file.size)}</td
+                                        >
+                                        <td class="meta-text uppercase"
+                                            >{file.content_type.split("/")[1] ||
+                                                "FILE"}</td
+                                        >
+                                        <td class="meta-text"
+                                            >{new Date(
+                                                file.created_at,
+                                            ).toLocaleDateString()}</td
+                                        >
+                                        <td class="text-right">
+                                            {#if $can("delete", "storage")}
+                                                <button
+                                                    class="text-btn delete"
+                                                    onclick={(e) => {
+                                                        e.stopPropagation();
+                                                        confirmDelete(file);
+                                                    }}
+                                                >
+                                                    Delete
+                                                </button>
+                                            {/if}
+                                        </td>
+                                    </tr>
+                                {/each}
+                            </tbody>
+                        </table>
+                    </div>
+                {/if}
+            </div>
+
+            <!-- Pagination Footer -->
+            {#if totalPages > 1}
+                <div class="pagination-footer">
+                    <span class="page-info">Page {page} of {totalPages}</span>
+                    <div class="page-controls">
+                        <button
+                            disabled={page === 1}
+                            onclick={() => {
+                                page--;
+                                loadFiles();
+                            }}>Previous</button
+                        >
+                        <button
+                            disabled={page === totalPages}
+                            onclick={() => {
+                                page++;
+                                loadFiles();
+                            }}>Next</button
+                        >
+                    </div>
                 </div>
             {/if}
-        </div>
-
-        <!-- Pagination Footer -->
-        {#if totalPages > 1}
-            <div class="pagination-footer">
-                <span class="page-info">Page {page} of {totalPages}</span>
-                <div class="page-controls">
-                    <button
-                        disabled={page === 1}
-                        onclick={() => {
-                            page--;
-                            loadFiles();
-                        }}>Previous</button
-                    >
-                    <button
-                        disabled={page === totalPages}
-                        onclick={() => {
-                            page++;
-                            loadFiles();
-                        }}>Next</button
-                    >
-                </div>
-            </div>
-        {/if}
         </div>
     </div>
 
@@ -616,14 +732,11 @@
 
     <ConfirmDialog
         bind:show={showDeleteModal}
-        title={fileToDelete ? "Delete File" : "Delete Selected Files"}
-        message={fileToDelete 
-            ? `Are you sure you want to permanently delete "${fileToDelete?.original_name}"?` 
-            : `Are you sure you want to permanently delete ${selectedFileIds.length} selected files?`}
+        title="Delete File"
+        message="Are you sure you want to delete this file? This action cannot be undone."
         confirmText="Delete"
         type="danger"
-        loading={isDeleting}
-        on:confirm={handleConfirmDelete}
+        onconfirm={handleConfirmDelete}
     />
 </div>
 
@@ -862,8 +975,14 @@
     }
 
     @keyframes fade-in {
-        from { opacity: 0; transform: translateY(-5px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(-5px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     /* Toolbar */
@@ -1309,7 +1428,7 @@
            We should just ensure the table scrolls if list view IS somehow active, 
            OR rely on the user seeing Grid view by default/forced.
            Let's make the table scrollable just in case. */
-        
+
         .list-view {
             overflow-x: auto;
             display: block;
@@ -1323,7 +1442,7 @@
         .content-card.flex-row {
             flex-direction: column;
         }
-        
+
         /* Ensure browser area expands but contains overflow */
         .browser-area {
             padding: 0.5rem;
@@ -1359,7 +1478,10 @@
         }
 
         .grid-view {
-            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); /* Smaller min width */
+            grid-template-columns: repeat(
+                auto-fill,
+                minmax(130px, 1fr)
+            ); /* Smaller min width */
             gap: 0.5rem;
         }
 
@@ -1371,7 +1493,7 @@
             height: 100px;
             margin-bottom: 0.5rem;
         }
-        
+
         .file-preview-image {
             height: 100px;
             margin-bottom: 0.5rem;

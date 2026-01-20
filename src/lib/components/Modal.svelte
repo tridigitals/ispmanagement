@@ -2,20 +2,20 @@
     import { fade, fly } from "svelte/transition";
     import Icon from "./Icon.svelte";
 
-    let { 
-        title = "", 
-        width = "420px", 
-        show = false, 
+    let {
+        title = "",
+        width = "420px",
+        show = $bindable(false),
         onclose,
         children,
-        footer
+        footer,
     } = $props<{
         title?: string;
         width?: string;
         show: boolean;
         onclose?: () => void;
-        children?: import('svelte').Snippet;
-        footer?: import('svelte').Snippet;
+        children?: import("svelte").Snippet;
+        footer?: import("svelte").Snippet;
     }>();
 
     function close() {
@@ -40,6 +40,7 @@
             role="dialog"
             aria-modal="true"
             aria-label={title}
+            tabindex="-1"
             transition:fly={{ y: 20, duration: 300 }}
         >
             <div class="modal-header">

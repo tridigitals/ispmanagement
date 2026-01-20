@@ -7,7 +7,7 @@
         key: string;
         label: string;
         class?: string;
-        align?: "left" | "center" | "right";
+        align?: string;
         width?: string;
     }[] = [];
 
@@ -22,6 +22,8 @@
     export let pageSize = 10;
     export let pageSizeOptions = [5, 10, 25, 50, 100];
 
+    export let count = 0;
+
     let currentPage = 0;
     let currentSize = pageSize;
 
@@ -30,9 +32,11 @@
         currentPage = 0;
     }
 
-    $: paginatedData = pagination
-        ? data.slice(currentPage * currentSize, (currentPage + 1) * currentSize)
-        : data;
+    // Search props
+    export let searchable = false;
+    export let searchPlaceholder = "Search...";
+
+    let searchQuery = "";
 
     function handlePageChange(e: CustomEvent<number>) {
         currentPage = e.detail;
@@ -42,9 +46,51 @@
         currentSize = e.detail;
         currentPage = 0;
     }
+
+    $: filteredData =
+        searchable && searchQuery
+            ? data.filter((item) =>
+                  Object.values(item).some((val) =>
+                      String(val)
+                          .toLowerCase()
+                          .includes(searchQuery.toLowerCase()),
+                  ),
+              )
+            : data;
+
+    $: paginatedData = pagination
+        ? filteredData.slice(
+              currentPage * currentSize,
+              (currentPage + 1) * currentSize,
+          )
+        : filteredData;
+
+    // Reset page when search changes
+    $: if (searchQuery) currentPage = 0;
 </script>
 
 <div class="table-container" class:mobile-scroll={mobileView === "scroll"}>
+    {#if searchable}
+        <div class="table-search">
+            <div class="search-input-wrapper">
+                <Icon name="search" size={18} />
+                <input
+                    type="text"
+                    placeholder={searchPlaceholder}
+                    bind:value={searchQuery}
+                    class="search-input"
+                />
+                {#if searchQuery}
+                    <button
+                        class="clear-btn"
+                        on:click={() => (searchQuery = "")}
+                    >
+                        <Icon name="x" size={14} />
+                    </button>
+                {/if}
+            </div>
+        </div>
+    {/if}
     {#if loading}
         <div class="loading-state">
             <div class="spinner"></div>
@@ -105,7 +151,7 @@
 
     {#if pagination && data.length > 0}
         <Pagination
-            count={data.length}
+            count={count || data.length}
             page={currentPage}
             pageSize={currentSize}
             {pageSizeOptions}
@@ -261,5 +307,50 @@
             font-weight: 600;
             font-size: 1rem;
         }
+    }
+
+    .table-search {
+        padding: 0 0 1rem 0;
+    }
+
+    .search-input-wrapper {
+        position: relative;
+        max-width: 300px;
+        display: flex;
+        align-items: center;
+        background: var(--bg-app, #f1f5f9);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        gap: 0.5rem;
+        color: var(--text-secondary);
+    }
+
+    .search-input-wrapper:focus-within {
+        border-color: var(--color-primary);
+        color: var(--text-primary);
+    }
+
+    .search-input {
+        border: none;
+        background: transparent;
+        outline: none;
+        width: 100%;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+
+    .clear-btn {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        color: var(--text-secondary);
+    }
+
+    .clear-btn:hover {
+        color: var(--text-primary);
     }
 </style>

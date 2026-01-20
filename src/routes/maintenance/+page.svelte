@@ -274,35 +274,6 @@
         font-family: monospace;
     }
 
-    .features {
-        display: flex;
-        justify-content: center;
-        gap: 1.5rem;
-        flex-wrap: wrap;
-        margin-bottom: 2rem;
-    }
-
-    .feature {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 1rem;
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 12px;
-        min-width: 120px;
-    }
-
-    .feature-icon {
-        font-size: 1.5rem;
-    }
-
-    .feature span {
-        color: rgba(255, 255, 255, 0.6);
-        font-size: 0.8rem;
-        text-align: center;
-    }
-
     .footer-text {
         color: rgba(255, 255, 255, 0.4);
         font-size: 0.85rem;
@@ -316,15 +287,6 @@
 
         h1 {
             font-size: 1.5rem;
-        }
-
-        .features {
-            gap: 0.75rem;
-        }
-
-        .feature {
-            min-width: 90px;
-            padding: 0.75rem;
         }
     }
 </style>

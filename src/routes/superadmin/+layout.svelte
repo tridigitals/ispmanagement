@@ -56,11 +56,16 @@
     <div class="sa-layout">
         <!-- Mobile Overlay -->
         {#if !isCollapsed}
-            <div
+            <button
                 class="mobile-overlay"
-                on:click={() => (isCollapsed = true)}
+                onclick={() => (isCollapsed = true)}
+                onkeydown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") isCollapsed = true;
+                }}
+                tabindex="0"
+                aria-label="Close menu"
                 in:fade={{ duration: 200 }}
-            ></div>
+            ></button>
         {/if}
 
         <!-- Super Admin Sidebar -->
@@ -79,7 +84,7 @@
                     class="nav-item"
                     class:active={$page.url.pathname === "/superadmin"}
                     title="Dashboard"
-                    on:click={handleNavClick}
+                    onclick={handleNavClick}
                 >
                     <Icon name="grid" size={20} />
                     {#if !isCollapsed}<span in:fade>Dashboard</span>{/if}
@@ -91,7 +96,7 @@
                         "/superadmin/users",
                     )}
                     title="Global Users"
-                    on:click={handleNavClick}
+                    onclick={handleNavClick}
                 >
                     <Icon name="users" size={20} />
                     {#if !isCollapsed}<span in:fade>Users</span>{/if}
@@ -103,7 +108,7 @@
                         "/superadmin/plans",
                     )}
                     title="Subscription Plans"
-                    on:click={handleNavClick}
+                    onclick={handleNavClick}
                 >
                     <Icon name="credit-card" size={20} />
                     {#if !isCollapsed}<span in:fade>Plans</span>{/if}
@@ -115,7 +120,7 @@
                         "/superadmin/invoices",
                     )}
                     title="Invoices & Payments"
-                    on:click={handleNavClick}
+                    onclick={handleNavClick}
                 >
                     <Icon name="credit-card" size={20} />
                     {#if !isCollapsed}<span in:fade>Invoices</span>{/if}
@@ -127,7 +132,7 @@
                         "/superadmin/storage",
                     )}
                     title="Storage Manager"
-                    on:click={handleNavClick}
+                    onclick={handleNavClick}
                 >
                     <Icon name="folder" size={20} />
                     {#if !isCollapsed}<span in:fade>Storage</span>{/if}
@@ -139,7 +144,7 @@
                         "/superadmin/audit-logs",
                     )}
                     title="Audit Logs"
-                    on:click={handleNavClick}
+                    onclick={handleNavClick}
                 >
                     <Icon name="activity" size={20} />
                     {#if !isCollapsed}<span in:fade>Audit Logs</span>{/if}
@@ -151,7 +156,7 @@
                         "/superadmin/settings",
                     )}
                     title="Platform Settings"
-                    on:click={handleNavClick}
+                    onclick={handleNavClick}
                 >
                     <Icon name="settings" size={20} />
                     {#if !isCollapsed}<span in:fade>Settings</span>{/if}
@@ -163,7 +168,7 @@
                         "/superadmin/system",
                     )}
                     title="System Health"
-                    on:click={handleNavClick}
+                    onclick={handleNavClick}
                 >
                     <Icon name="server" size={20} />
                     {#if !isCollapsed}<span in:fade>System</span>{/if}
@@ -173,7 +178,7 @@
                     href="/dashboard"
                     class="nav-item back"
                     title="Back to App"
-                    on:click={handleNavClick}
+                    onclick={handleNavClick}
                 >
                     <Icon name="arrow-left" size={20} />
                     {#if !isCollapsed}<span in:fade>Exit</span>{/if}
@@ -187,7 +192,7 @@
                 <div class="topbar-left">
                     <button
                         class="hamburger-btn"
-                        on:click={() => (isCollapsed = !isCollapsed)}
+                        onclick={() => (isCollapsed = !isCollapsed)}
                     >
                         <Icon name="sidebar-toggle" size={20} />
                     </button>
@@ -283,6 +288,9 @@
         backdrop-filter: blur(2px);
         z-index: 45;
         display: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
     }
 
     /* Sidebar */

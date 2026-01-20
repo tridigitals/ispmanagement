@@ -225,6 +225,7 @@ export interface User {
     permissions: string[];
     tenant_slug?: string;
     tenant_id?: string;
+    tenant_role?: string;
 }
 
 export interface AuthResponse {
@@ -435,11 +436,11 @@ export const settings = {
     getAll: (): Promise<Setting[]> =>
         safeInvoke('get_all_settings', { token: getTokenOrThrow() }),
 
-    getPublicSettings: (): Promise<{ 
-        app_name?: string, 
-        app_description?: string, 
-        default_locale?: string, 
-        maintenance_mode?: boolean, 
+    getPublicSettings: (): Promise<{
+        app_name?: string,
+        app_description?: string,
+        default_locale?: string,
+        maintenance_mode?: boolean,
         maintenance_message?: string,
         payment_midtrans_enabled?: boolean,
         payment_midtrans_client_key?: string,
@@ -637,7 +638,7 @@ export const payment = {
     payMidtrans: (id: string): Promise<string> => // Returns Snap Token
         safeInvoke('pay_invoice_midtrans', { token: getTokenOrThrow(), id }),
 
-    checkStatus: (id: string): Promise<string> => 
+    checkStatus: (id: string): Promise<string> =>
         safeInvoke('check_payment_status', { token: getTokenOrThrow(), id }),
 };
 

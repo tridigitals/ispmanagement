@@ -7,6 +7,7 @@ use chrono::Utc;
 use uuid::Uuid;
 
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct TeamService {
     pool: DbPool,
     auth_service: AuthService,

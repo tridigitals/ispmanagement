@@ -4,7 +4,7 @@ use axum::{
     Json,
 };
 use crate::http::AppState;
-use crate::models::{PaginatedResponse, AuditLog};
+use crate::models::PaginatedResponse;
 
 #[derive(serde::Deserialize)]
 pub struct AuditLogQuery {

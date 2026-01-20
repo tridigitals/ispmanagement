@@ -7,7 +7,7 @@
     import Icon from "$lib/components/Icon.svelte";
     import { toast } from "svelte-sonner";
 
-    let invoiceId = $page.params.id;
+    let invoiceId = $page.params.id as string;
     let invoice = $state<Invoice | null>(null);
     let bankAccounts = $state<BankAccount[]>([]);
     let loading = $state(true);
@@ -21,7 +21,7 @@
         try {
             // Load Public Settings (contains payment config)
             const publicSettings = await api.settings.getPublicSettings();
-            
+
             midtransEnabled = !!publicSettings.payment_midtrans_enabled;
             manualEnabled = publicSettings.payment_manual_enabled ?? true; // Default true
 
@@ -31,19 +31,18 @@
 
             // Load Invoice
             invoice = await api.payment.getInvoice(invoiceId);
-            
+
             // Load Manual Bank Accounts & Instructions
             if (manualEnabled) {
                 bankAccounts = await api.payment.listBanks();
             }
-            
+
             // Load Midtrans Snap JS if enabled
             if (midtransEnabled) {
                 const clientKey = publicSettings.payment_midtrans_client_key;
                 const isProd = !!publicSettings.payment_midtrans_is_production;
                 if (clientKey) loadSnapScript(clientKey, isProd);
             }
-
         } catch (e: any) {
             toast.error(e.message || "Failed to load invoice");
         } finally {
@@ -52,11 +51,11 @@
     });
 
     function loadSnapScript(clientKey: string, isProd: boolean) {
-        const script = document.createElement('script');
-        script.src = isProd 
+        const script = document.createElement("script");
+        script.src = isProd
             ? "https://app.midtrans.com/snap/snap.js"
             : "https://app.sandbox.midtrans.com/snap/snap.js";
-        script.setAttribute('data-client-key', clientKey); 
+        script.setAttribute("data-client-key", clientKey);
         document.head.appendChild(script);
     }
 
@@ -65,23 +64,23 @@
         try {
             const token = await api.payment.payMidtrans(invoice.id);
             snapToken = token;
-            
+
             // @ts-ignore
             window.snap.pay(token, {
-                onSuccess: function(result: any){
+                onSuccess: function (result: any) {
                     toast.success("Payment successful!");
                     // Reload invoice to check status or redirect
                     location.reload();
                 },
-                onPending: function(result: any){
+                onPending: function (result: any) {
                     toast.info("Waiting for payment...");
                 },
-                onError: function(result: any){
+                onError: function (result: any) {
                     toast.error("Payment failed");
                 },
-                onClose: function(){
+                onClose: function () {
                     // closed
-                }
+                },
             });
         } catch (e: any) {
             toast.error("Failed to initiate payment: " + e.message);
@@ -104,9 +103,9 @@
     }
 
     function formatCurrency(amount: number) {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'IDR' // Or dynamic
+        return new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "IDR", // Or dynamic
         }).format(amount);
     }
 </script>
@@ -117,7 +116,15 @@
             <div class="loading">Loading invoice...</div>
         {:else if invoice}
             <div class="header">
-                <button class="back-link" onclick={() => goto($user?.tenant_slug ? `/${$user.tenant_slug}/admin/subscription` : '/dashboard')}>
+                <button
+                    class="back-link"
+                    onclick={() =>
+                        goto(
+                            $user?.tenant_slug
+                                ? `/${$user.tenant_slug}/admin/subscription`
+                                : "/dashboard",
+                        )}
+                >
                     <Icon name="arrow-left" size={18} />
                     <span>Back</span>
                 </button>
@@ -136,56 +143,81 @@
                 </div>
                 <div class="status-row">
                     <span class="label">Status</span>
-                    <span class="status-pill {invoice.status}">{invoice.status}</span>
+                    <span class="status-pill {invoice.status}"
+                        >{invoice.status}</span
+                    >
                 </div>
             </div>
 
-            {#if invoice.status === 'pending'}
+            {#if invoice.status === "pending"}
                 <div class="payment-tabs">
                     {#if midtransEnabled}
-                        <button 
-                            class="tab {paymentMethod === 'online' ? 'active' : ''}" 
-                            onclick={() => paymentMethod = 'online'}
+                        <button
+                            class="tab {paymentMethod === 'online'
+                                ? 'active'
+                                : ''}"
+                            onclick={() => (paymentMethod = "online")}
                         >
                             <Icon name="credit-card" size={18} />
                             Online Payment
                         </button>
                     {/if}
                     {#if manualEnabled}
-                        <button 
-                            class="tab {paymentMethod === 'manual' ? 'active' : ''}" 
-                            onclick={() => paymentMethod = 'manual'}
+                        <button
+                            class="tab {paymentMethod === 'manual'
+                                ? 'active'
+                                : ''}"
+                            onclick={() => (paymentMethod = "manual")}
                         >
-                            <Icon name="landmark" size={18} /> <!-- Bank icon -->
+                            <Icon name="landmark" size={18} />
+                            <!-- Bank icon -->
                             Bank Transfer
                         </button>
                     {/if}
                 </div>
 
                 <div class="payment-content">
-                    {#if paymentMethod === 'online' && midtransEnabled}
+                    {#if paymentMethod === "online" && midtransEnabled}
                         <div class="online-method">
-                            <p>Pay securely with Credit Card, GoPay, ShopeePay, or Virtual Account via Midtrans.</p>
-                            <button class="btn btn-primary btn-lg w-full" onclick={handlePayOnline}>
+                            <p>
+                                Pay securely with Credit Card, GoPay, ShopeePay,
+                                or Virtual Account via Midtrans.
+                            </p>
+                            <button
+                                class="btn btn-primary btn-lg w-full"
+                                onclick={handlePayOnline}
+                            >
                                 Pay Now
                             </button>
                             <div style="margin-top: 1rem;">
-                                <button class="btn btn-secondary w-full" onclick={checkPaymentStatus}>
+                                <button
+                                    class="btn btn-secondary w-full"
+                                    onclick={checkPaymentStatus}
+                                >
                                     Check Payment Status
                                 </button>
                             </div>
                         </div>
-                    {:else if paymentMethod === 'manual' && manualEnabled}
+                    {:else if paymentMethod === "manual" && manualEnabled}
                         <div class="manual-method">
-                            <p class="instructions">Please transfer the exact amount to one of the following accounts:</p>
-                            
+                            <p class="instructions">
+                                Please transfer the exact amount to one of the
+                                following accounts:
+                            </p>
+
                             <div class="bank-list">
                                 {#each bankAccounts as bank}
                                     <div class="bank-item">
-                                        <div class="bank-name">{bank.bank_name}</div>
+                                        <div class="bank-name">
+                                            {bank.bank_name}
+                                        </div>
                                         <div class="bank-details">
-                                            <span class="number">{bank.account_number}</span>
-                                            <span class="holder">{bank.account_holder}</span>
+                                            <span class="number"
+                                                >{bank.account_number}</span
+                                            >
+                                            <span class="holder"
+                                                >{bank.account_holder}</span
+                                            >
                                         </div>
                                     </div>
                                 {/each}
@@ -193,19 +225,32 @@
 
                             <div class="upload-section">
                                 <p>Already transferred? Upload your receipt.</p>
-                                <button class="btn btn-secondary w-full">Upload Proof of Payment</button>
+                                <button class="btn btn-secondary w-full"
+                                    >Upload Proof of Payment</button
+                                >
                             </div>
                         </div>
                     {/if}
                 </div>
-            {:else if invoice.status === 'paid'}
+            {:else if invoice.status === "paid"}
                 <div class="success-message">
                     <div class="icon-circle success">
                         <Icon name="check" size={32} />
                     </div>
                     <h3>Payment Successful!</h3>
-                    <p>Thank you for your payment. Your subscription has been activated.</p>
-                    <button class="btn btn-primary" onclick={() => goto($user?.tenant_slug ? `/${$user.tenant_slug}/admin/subscription` : '/dashboard')}>
+                    <p>
+                        Thank you for your payment. Your subscription has been
+                        activated.
+                    </p>
+                    <button
+                        class="btn btn-primary"
+                        onclick={() =>
+                            goto(
+                                $user?.tenant_slug
+                                    ? `/${$user.tenant_slug}/admin/subscription`
+                                    : "/dashboard",
+                            )}
+                    >
                         Go to Subscription
                     </button>
                 </div>
@@ -267,8 +312,15 @@
         color: var(--text-primary);
     }
 
-    .header h1 { margin: 0; font-size: 1.5rem; }
-    .invoice-number { color: var(--text-secondary); font-size: 0.9rem; font-family: monospace; }
+    .header h1 {
+        margin: 0;
+        font-size: 1.5rem;
+    }
+    .invoice-number {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        font-family: monospace;
+    }
 
     .summary-section {
         padding: 1.5rem;
@@ -304,9 +356,18 @@
         font-weight: 700;
         text-transform: uppercase;
     }
-    .status-pill.pending { background: #fef3c7; color: #d97706; }
-    .status-pill.paid { background: #dcfce7; color: #16a34a; }
-    .status-pill.failed { background: #fee2e2; color: #dc2626; }
+    .status-pill.pending {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    .status-pill.paid {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+    .status-pill.failed {
+        background: #fee2e2;
+        color: #dc2626;
+    }
 
     /* Tabs */
     .payment-tabs {
@@ -361,9 +422,21 @@
         background: var(--bg-app);
     }
 
-    .bank-name { font-weight: 700; margin-bottom: 0.25rem; }
-    .bank-details { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-secondary); }
-    .number { font-family: monospace; font-size: 1rem; color: var(--text-primary); }
+    .bank-name {
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+    }
+    .bank-details {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+    .number {
+        font-family: monospace;
+        font-size: 1rem;
+        color: var(--text-primary);
+    }
 
     .btn {
         padding: 0.75rem 1.5rem;
@@ -378,12 +451,28 @@
         gap: 0.5rem;
     }
 
-    .btn-primary { background: var(--color-primary); color: white; }
-    .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color); }
-    .w-full { width: 100%; }
-    .btn-lg { font-size: 1rem; padding: 1rem; }
+    .btn-primary {
+        background: var(--color-primary);
+        color: white;
+    }
+    .btn-secondary {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+    }
+    .w-full {
+        width: 100%;
+    }
+    .btn-lg {
+        font-size: 1rem;
+        padding: 1rem;
+    }
 
-    .loading, .error { text-align: center; padding: 2rem; }
+    .loading,
+    .error {
+        text-align: center;
+        padding: 2rem;
+    }
 
     .success-message {
         display: flex;
@@ -393,8 +482,14 @@
         padding: 2rem;
     }
     .icon-circle.success {
-        width: 64px; height: 64px; background: #dcfce7; color: #16a34a;
-        border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        width: 64px;
+        height: 64px;
+        background: #dcfce7;
+        color: #16a34a;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         margin: 0 auto 1rem;
     }
 </style>

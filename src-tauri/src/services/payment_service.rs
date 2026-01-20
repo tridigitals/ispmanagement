@@ -378,6 +378,7 @@ impl PaymentService {
     }
 
     /// Toggle active status
+    #[allow(dead_code)]
     pub async fn toggle_bank_account(&self, id: &str, is_active: bool) -> Result<(), sqlx::Error> {
         #[cfg(feature = "postgres")]
         sqlx::query("UPDATE bank_accounts SET is_active = $1, updated_at = $2 WHERE id = $3")

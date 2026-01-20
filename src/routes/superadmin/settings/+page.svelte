@@ -22,7 +22,7 @@
     // Maintenance
     let maintenanceMode = false;
     let maintenanceMessage = "";
-    
+
     // General
     let appPublicUrl = "";
 
@@ -48,7 +48,7 @@
     // Storage
     let storageMaxFileSizeMb = 500;
     let storageAllowedExtensions = "";
-    
+
     // Storage Driver Config
     let storageDriver = "local";
     let storageS3Bucket = "";
@@ -122,9 +122,10 @@
             maintenanceMessage =
                 settingsMap["maintenance_message"] ||
                 "The system is currently under maintenance. Please try again later.";
-            
+
             // General
-            appPublicUrl = settingsMap["app_public_url"] || "http://localhost:3000";
+            appPublicUrl =
+                settingsMap["app_public_url"] || "http://localhost:3000";
 
             // Authentication
             authAllowRegistration =
@@ -174,7 +175,7 @@
             storageAllowedExtensions =
                 settingsMap["storage_allowed_extensions"] ||
                 "jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,zip,mp4,mov";
-            
+
             storageDriver = settingsMap["storage_driver"] || "local";
             storageS3Bucket = settingsMap["storage_s3_bucket"] || "";
             storageS3Region = settingsMap["storage_s3_region"] || "auto";
@@ -184,13 +185,21 @@
             storageS3PublicUrl = settingsMap["storage_s3_public_url"] || "";
 
             // Payment
-            paymentMidtransEnabled = settingsMap["payment_midtrans_enabled"] === "true";
-            paymentMidtransMerchantId = settingsMap["payment_midtrans_merchant_id"] || "";
-            paymentMidtransServerKey = settingsMap["payment_midtrans_server_key"] || "";
-            paymentMidtransClientKey = settingsMap["payment_midtrans_client_key"] || "";
-            paymentMidtransIsProduction = settingsMap["payment_midtrans_is_production"] === "true";
-            paymentManualEnabled = settingsMap["payment_manual_enabled"] !== "false"; // Default true
-            paymentManualInstructions = settingsMap["payment_manual_instructions"] || "Please transfer to our bank account.";
+            paymentMidtransEnabled =
+                settingsMap["payment_midtrans_enabled"] === "true";
+            paymentMidtransMerchantId =
+                settingsMap["payment_midtrans_merchant_id"] || "";
+            paymentMidtransServerKey =
+                settingsMap["payment_midtrans_server_key"] || "";
+            paymentMidtransClientKey =
+                settingsMap["payment_midtrans_client_key"] || "";
+            paymentMidtransIsProduction =
+                settingsMap["payment_midtrans_is_production"] === "true";
+            paymentManualEnabled =
+                settingsMap["payment_manual_enabled"] !== "false"; // Default true
+            paymentManualInstructions =
+                settingsMap["payment_manual_instructions"] ||
+                "Please transfer to our bank account.";
 
             // Load banks (always load to ensure availability)
             try {
@@ -310,21 +319,77 @@
                     "Allowed file extensions",
                 ),
                 // Storage Driver
-                api.settings.upsert("storage_driver", storageDriver, "Storage Driver"),
-                api.settings.upsert("storage_s3_bucket", storageS3Bucket, "S3 Bucket"),
-                api.settings.upsert("storage_s3_region", storageS3Region, "S3 Region"),
-                api.settings.upsert("storage_s3_endpoint", storageS3Endpoint, "S3 Endpoint"),
-                api.settings.upsert("storage_s3_access_key", storageS3AccessKey, "S3 Access Key"),
-                api.settings.upsert("storage_s3_secret_key", storageS3SecretKey, "S3 Secret Key"),
-                api.settings.upsert("storage_s3_public_url", storageS3PublicUrl, "S3 Public URL"),
+                api.settings.upsert(
+                    "storage_driver",
+                    storageDriver,
+                    "Storage Driver",
+                ),
+                api.settings.upsert(
+                    "storage_s3_bucket",
+                    storageS3Bucket,
+                    "S3 Bucket",
+                ),
+                api.settings.upsert(
+                    "storage_s3_region",
+                    storageS3Region,
+                    "S3 Region",
+                ),
+                api.settings.upsert(
+                    "storage_s3_endpoint",
+                    storageS3Endpoint,
+                    "S3 Endpoint",
+                ),
+                api.settings.upsert(
+                    "storage_s3_access_key",
+                    storageS3AccessKey,
+                    "S3 Access Key",
+                ),
+                api.settings.upsert(
+                    "storage_s3_secret_key",
+                    storageS3SecretKey,
+                    "S3 Secret Key",
+                ),
+                api.settings.upsert(
+                    "storage_s3_public_url",
+                    storageS3PublicUrl,
+                    "S3 Public URL",
+                ),
                 // Payment
-                api.settings.upsert("payment_midtrans_enabled", paymentMidtransEnabled ? "true" : "false", "Enable Midtrans"),
-                api.settings.upsert("payment_midtrans_merchant_id", paymentMidtransMerchantId, "Midtrans Merchant ID"),
-                api.settings.upsert("payment_midtrans_server_key", paymentMidtransServerKey, "Midtrans Server Key"),
-                api.settings.upsert("payment_midtrans_client_key", paymentMidtransClientKey, "Midtrans Client Key"),
-                api.settings.upsert("payment_midtrans_is_production", paymentMidtransIsProduction ? "true" : "false", "Midtrans Production Mode"),
-                api.settings.upsert("payment_manual_enabled", paymentManualEnabled ? "true" : "false", "Enable Manual Payment"),
-                api.settings.upsert("payment_manual_instructions", paymentManualInstructions, "Manual Payment Instructions"),
+                api.settings.upsert(
+                    "payment_midtrans_enabled",
+                    paymentMidtransEnabled ? "true" : "false",
+                    "Enable Midtrans",
+                ),
+                api.settings.upsert(
+                    "payment_midtrans_merchant_id",
+                    paymentMidtransMerchantId,
+                    "Midtrans Merchant ID",
+                ),
+                api.settings.upsert(
+                    "payment_midtrans_server_key",
+                    paymentMidtransServerKey,
+                    "Midtrans Server Key",
+                ),
+                api.settings.upsert(
+                    "payment_midtrans_client_key",
+                    paymentMidtransClientKey,
+                    "Midtrans Client Key",
+                ),
+                api.settings.upsert(
+                    "payment_midtrans_is_production",
+                    paymentMidtransIsProduction ? "true" : "false",
+                    "Midtrans Production Mode",
+                ),
+                api.settings.upsert(
+                    "payment_manual_enabled",
+                    paymentManualEnabled ? "true" : "false",
+                    "Enable Manual Payment",
+                ),
+                api.settings.upsert(
+                    "payment_manual_instructions",
+                    paymentManualInstructions,
+                    "Manual Payment Instructions",
+                ),
             ];
 
             await Promise.all(updates);
@@ -365,7 +430,11 @@
         if (!newBankName || !newAccountNumber || !newAccountHolder) return;
         addingBank = true;
         try {
-            await api.payment.createBank(newBankName, newAccountNumber, newAccountHolder);
+            await api.payment.createBank(
+                newBankName,
+                newAccountNumber,
+                newAccountHolder,
+            );
             bankAccounts = await api.payment.listBanks();
             newBankName = "";
             newAccountNumber = "";
@@ -382,7 +451,7 @@
         if (!confirm("Are you sure?")) return;
         try {
             await api.payment.deleteBank(id);
-            bankAccounts = bankAccounts.filter(b => b.id !== id);
+            bankAccounts = bankAccounts.filter((b) => b.id !== id);
             toast.success("Bank account removed");
         } catch (e: any) {
             toast.error(e.message || "Failed to delete bank");
@@ -448,15 +517,32 @@
                         <div class="card-body">
                             <div class="setting-row">
                                 <div class="setting-info full-width">
-                                    <label class="setting-label">Public Application URL</label>
-                                    <p class="setting-description">Base URL for redirects, emails, and payment callbacks (e.g. https://app.example.com).</p>
-                                    <input type="text" bind:value={appPublicUrl} on:input={handleChange} class="form-input" placeholder="https://..." />
+                                    <label
+                                        class="setting-label"
+                                        for="public-url"
+                                        >Public Application URL</label
+                                    >
+                                    <p class="setting-description">
+                                        Base URL for redirects, emails, and
+                                        payment callbacks (e.g.
+                                        https://app.example.com).
+                                    </p>
+                                    <input
+                                        type="text"
+                                        id="public-url"
+                                        bind:value={appPublicUrl}
+                                        on:input={handleChange}
+                                        class="form-input"
+                                        placeholder="https://..."
+                                    />
                                 </div>
                             </div>
 
                             <div class="setting-row">
                                 <div class="setting-info">
-                                    <label class="setting-label"
+                                    <label
+                                        class="setting-label"
+                                        for="maintenance-mode"
                                         >Enable Maintenance Mode</label
                                     >
                                     <p class="setting-description">
@@ -467,6 +553,7 @@
                                 <label class="toggle">
                                     <input
                                         type="checkbox"
+                                        id="maintenance-mode"
                                         bind:checked={maintenanceMode}
                                         on:change={handleChange}
                                     />
@@ -507,7 +594,9 @@
                         <div class="card-body">
                             <div class="setting-row">
                                 <div class="setting-info">
-                                    <label class="setting-label"
+                                    <label
+                                        class="setting-label"
+                                        for="allow-registration"
                                         >Allow Public Registration</label
                                     >
                                     <p class="setting-description">
@@ -517,6 +606,7 @@
                                 <label class="toggle">
                                     <input
                                         type="checkbox"
+                                        id="allow-registration"
                                         bind:checked={authAllowRegistration}
                                         on:change={handleChange}
                                     />
@@ -525,7 +615,9 @@
                             </div>
                             <div class="setting-row">
                                 <div class="setting-info">
-                                    <label class="setting-label"
+                                    <label
+                                        class="setting-label"
+                                        for="require-email-verify"
                                         >Require Email Verification</label
                                     >
                                     <p class="setting-description">
@@ -536,6 +628,7 @@
                                 <label class="toggle">
                                     <input
                                         type="checkbox"
+                                        id="require-email-verify"
                                         bind:checked={
                                             authRequireEmailVerification
                                         }
@@ -620,13 +713,16 @@
                             </div>
                             <div class="setting-row">
                                 <div class="setting-info">
-                                    <label class="setting-label"
+                                    <label
+                                        class="setting-label"
+                                        for="require-uppercase"
                                         >Require Uppercase</label
                                     >
                                 </div>
                                 <label class="toggle">
                                     <input
                                         type="checkbox"
+                                        id="require-uppercase"
                                         bind:checked={
                                             authPasswordRequireUppercase
                                         }
@@ -637,13 +733,16 @@
                             </div>
                             <div class="setting-row">
                                 <div class="setting-info">
-                                    <label class="setting-label"
+                                    <label
+                                        class="setting-label"
+                                        for="require-number"
                                         >Require Number</label
                                     >
                                 </div>
                                 <label class="toggle">
                                     <input
                                         type="checkbox"
+                                        id="require-number"
                                         bind:checked={authPasswordRequireNumber}
                                         on:change={handleChange}
                                     />
@@ -652,13 +751,16 @@
                             </div>
                             <div class="setting-row">
                                 <div class="setting-info">
-                                    <label class="setting-label"
+                                    <label
+                                        class="setting-label"
+                                        for="require-special"
                                         >Require Special Character</label
                                     >
                                 </div>
                                 <label class="toggle">
                                     <input
                                         type="checkbox"
+                                        id="require-special"
                                         bind:checked={
                                             authPasswordRequireSpecial
                                         }
@@ -755,8 +857,8 @@
 
                             <div class="setting-row">
                                 <div class="setting-info">
-                                    <label class="setting-label"
-                                        >Enable IP Blocking</label
+                                    <span class="setting-label"
+                                        >Enable IP Blocking</span
                                     >
                                     <p class="setting-description">
                                         Automatically block IP addresses with
@@ -768,6 +870,7 @@
                                         type="checkbox"
                                         bind:checked={enableIpBlocking}
                                         on:change={handleChange}
+                                        aria-label="Enable IP Blocking"
                                     />
                                     <span class="slider"></span>
                                 </label>
@@ -786,64 +889,141 @@
                             <!-- Driver Selection -->
                             <div class="setting-row">
                                 <div class="setting-info">
-                                    <label class="setting-label">Storage Driver</label>
+                                    <label
+                                        class="setting-label"
+                                        for="storage-driver"
+                                        >Storage Driver</label
+                                    >
                                     <p class="setting-description">
-                                        Choose where files are stored. Local uses the server's disk.
+                                        Choose where files are stored. Local
+                                        uses the server's disk.
                                     </p>
                                 </div>
                                 <div class="input-group">
-                                    <select 
-                                        bind:value={storageDriver} 
+                                    <select
+                                        id="storage-driver"
+                                        bind:value={storageDriver}
                                         on:change={handleChange}
                                         class="native-select"
                                     >
-                                        <option value="local">Local Disk</option>
-                                        <option value="s3">AWS S3 / MinIO</option>
-                                        <option value="r2">Cloudflare R2</option>
+                                        <option value="local">Local Disk</option
+                                        >
+                                        <option value="s3"
+                                            >AWS S3 / MinIO</option
+                                        >
+                                        <option value="r2">Cloudflare R2</option
+                                        >
                                     </select>
                                 </div>
                             </div>
 
-                            {#if storageDriver !== 'local'}
+                            {#if storageDriver !== "local"}
                                 <div class="sub-settings fade-in">
                                     <div class="setting-row">
                                         <div class="setting-info">
-                                            <label class="setting-label">Bucket Name</label>
+                                            <label
+                                                class="setting-label"
+                                                for="bucket-name"
+                                                >Bucket Name</label
+                                            >
                                         </div>
-                                        <input type="text" bind:value={storageS3Bucket} on:input={handleChange} placeholder="e.g. my-app-uploads" />
+                                        <input
+                                            type="text"
+                                            id="bucket-name"
+                                            bind:value={storageS3Bucket}
+                                            on:input={handleChange}
+                                            placeholder="e.g. my-app-uploads"
+                                        />
                                     </div>
                                     <div class="setting-row">
                                         <div class="setting-info">
-                                            <label class="setting-label">Region</label>
-                                            <p class="setting-description">Use 'auto' for R2.</p>
+                                            <label
+                                                class="setting-label"
+                                                for="bucket-region"
+                                                >Region</label
+                                            >
+                                            <p class="setting-description">
+                                                Use 'auto' for R2.
+                                            </p>
                                         </div>
-                                        <input type="text" bind:value={storageS3Region} on:input={handleChange} placeholder="us-east-1" />
+                                        <input
+                                            type="text"
+                                            id="bucket-region"
+                                            bind:value={storageS3Region}
+                                            on:input={handleChange}
+                                            placeholder="us-east-1"
+                                        />
                                     </div>
                                     <div class="setting-row">
                                         <div class="setting-info">
-                                            <label class="setting-label">Endpoint URL</label>
-                                            <p class="setting-description">Required for R2 (https://ID.r2.cloudflarestorage.com) or MinIO.</p>
+                                            <label
+                                                class="setting-label"
+                                                for="bucket-endpoint"
+                                                >Endpoint URL</label
+                                            >
+                                            <p class="setting-description">
+                                                Required for R2
+                                                (https://ID.r2.cloudflarestorage.com)
+                                                or MinIO.
+                                            </p>
                                         </div>
-                                        <input type="text" bind:value={storageS3Endpoint} on:input={handleChange} placeholder="https://..." />
+                                        <input
+                                            type="text"
+                                            id="bucket-endpoint"
+                                            bind:value={storageS3Endpoint}
+                                            on:input={handleChange}
+                                            placeholder="https://..."
+                                        />
                                     </div>
                                     <div class="setting-row">
                                         <div class="setting-info">
-                                            <label class="setting-label">Access Key ID</label>
+                                            <label
+                                                class="setting-label"
+                                                for="access-key"
+                                                >Access Key ID</label
+                                            >
                                         </div>
-                                        <input type="text" bind:value={storageS3AccessKey} on:input={handleChange} />
+                                        <input
+                                            type="text"
+                                            id="access-key"
+                                            bind:value={storageS3AccessKey}
+                                            on:input={handleChange}
+                                        />
                                     </div>
                                     <div class="setting-row">
                                         <div class="setting-info">
-                                            <label class="setting-label">Secret Access Key</label>
+                                            <label
+                                                class="setting-label"
+                                                for="access-secret-key"
+                                                >Secret Access Key</label
+                                            >
                                         </div>
-                                        <input type="password" bind:value={storageS3SecretKey} on:input={handleChange} />
+                                        <input
+                                            type="password"
+                                            id="access-secret-key"
+                                            bind:value={storageS3SecretKey}
+                                            on:input={handleChange}
+                                        />
                                     </div>
                                     <div class="setting-row">
                                         <div class="setting-info">
-                                            <label class="setting-label">Public Access URL (Optional)</label>
-                                            <p class="setting-description">CDN URL if serving files publicly.</p>
+                                            <label
+                                                class="setting-label"
+                                                for="public-access-url"
+                                                >Public Access URL (Optional)</label
+                                            >
+                                            <p class="setting-description">
+                                                CDN URL if serving files
+                                                publicly.
+                                            </p>
                                         </div>
-                                        <input type="text" bind:value={storageS3PublicUrl} on:input={handleChange} placeholder="https://cdn.example.com" />
+                                        <input
+                                            type="text"
+                                            id="public-access-url"
+                                            bind:value={storageS3PublicUrl}
+                                            on:input={handleChange}
+                                            placeholder="https://cdn.example.com"
+                                        />
                                     </div>
                                 </div>
                             {/if}
@@ -856,7 +1036,8 @@
                                         >Max File Size (MB)</label
                                     >
                                     <p class="setting-description">
-                                        Maximum allowed size for a single file upload.
+                                        Maximum allowed size for a single file
+                                        upload.
                                     </p>
                                 </div>
                                 <div class="input-group">
@@ -879,7 +1060,9 @@
                                         >Allowed Extensions</label
                                     >
                                     <p class="setting-description">
-                                        Comma-separated list of allowed file extensions (e.g., jpg, png, pdf). Use * for all.
+                                        Comma-separated list of allowed file
+                                        extensions (e.g., jpg, png, pdf). Use *
+                                        for all.
                                     </p>
                                     <textarea
                                         id="allowed-extensions"
@@ -903,11 +1086,18 @@
                         <div class="card-body">
                             <div class="setting-row">
                                 <div class="setting-info">
-                                    <label class="setting-label">Enable Midtrans Gateway</label>
-                                    <p class="setting-description">Allow users to pay online via Midtrans.</p>
+                                    <label
+                                        class="setting-label"
+                                        for="midtrans-gateway-toggle"
+                                        >Enable Midtrans Gateway</label
+                                    >
+                                    <p class="setting-description">
+                                        Allow users to pay online via Midtrans.
+                                    </p>
                                 </div>
                                 <label class="toggle">
                                     <input
+                                        id="midtrans-gateway-toggle"
                                         type="checkbox"
                                         bind:checked={paymentMidtransEnabled}
                                         on:change={handleChange}
@@ -920,33 +1110,84 @@
                                 <div class="sub-settings fade-in">
                                     <div class="setting-row">
                                         <div class="setting-info">
-                                            <label class="setting-label">Merchant ID</label>
+                                            <label
+                                                class="setting-label"
+                                                for="midtrans-merchant-id"
+                                                >Merchant ID</label
+                                            >
                                         </div>
-                                        <input type="text" bind:value={paymentMidtransMerchantId} on:input={handleChange} class="form-input" />
+                                        <input
+                                            id="midtrans-merchant-id"
+                                            type="text"
+                                            bind:value={
+                                                paymentMidtransMerchantId
+                                            }
+                                            on:input={handleChange}
+                                            class="form-input"
+                                        />
                                     </div>
                                     <div class="setting-row">
                                         <div class="setting-info">
-                                            <label class="setting-label">Server Key</label>
-                                            <p class="setting-description">From Midtrans Dashboard > Settings > Access Keys.</p>
+                                            <label
+                                                class="setting-label"
+                                                for="midtrans-server-key"
+                                                >Server Key</label
+                                            >
+                                            <p class="setting-description">
+                                                From Midtrans Dashboard >
+                                                Settings > Access Keys.
+                                            </p>
                                         </div>
-                                        <input type="password" bind:value={paymentMidtransServerKey} on:input={handleChange} class="form-input" />
+                                        <input
+                                            id="midtrans-server-key"
+                                            type="password"
+                                            bind:value={
+                                                paymentMidtransServerKey
+                                            }
+                                            on:input={handleChange}
+                                            class="form-input"
+                                        />
                                     </div>
                                     <div class="setting-row">
                                         <div class="setting-info">
-                                            <label class="setting-label">Client Key</label>
-                                            <p class="setting-description">Public key for frontend Snap.js.</p>
+                                            <label
+                                                class="setting-label"
+                                                for="midtrans-client-key"
+                                                >Client Key</label
+                                            >
+                                            <p class="setting-description">
+                                                Public key for frontend Snap.js.
+                                            </p>
                                         </div>
-                                        <input type="text" bind:value={paymentMidtransClientKey} on:input={handleChange} class="form-input" />
+                                        <input
+                                            id="midtrans-client-key"
+                                            type="text"
+                                            bind:value={
+                                                paymentMidtransClientKey
+                                            }
+                                            on:input={handleChange}
+                                            class="form-input"
+                                        />
                                     </div>
                                     <div class="setting-row">
                                         <div class="setting-info">
-                                            <label class="setting-label">Production Mode</label>
-                                            <p class="setting-description">Enable for real transactions. Disable for Sandbox.</p>
+                                            <label
+                                                class="setting-label"
+                                                for="midtrans-production"
+                                                >Production Mode</label
+                                            >
+                                            <p class="setting-description">
+                                                Enable for real transactions.
+                                                Disable for Sandbox.
+                                            </p>
                                         </div>
                                         <label class="toggle">
                                             <input
+                                                id="midtrans-production"
                                                 type="checkbox"
-                                                bind:checked={paymentMidtransIsProduction}
+                                                bind:checked={
+                                                    paymentMidtransIsProduction
+                                                }
                                                 on:change={handleChange}
                                             />
                                             <span class="slider"></span>
@@ -964,11 +1205,19 @@
                         <div class="card-body">
                             <div class="setting-row">
                                 <div class="setting-info">
-                                    <label class="setting-label">Enable Manual Transfer</label>
-                                    <p class="setting-description">Allow users to pay via bank transfer and upload proof.</p>
+                                    <label
+                                        class="setting-label"
+                                        for="manual-transfer-toggle"
+                                        >Enable Manual Transfer</label
+                                    >
+                                    <p class="setting-description">
+                                        Allow users to pay via bank transfer and
+                                        upload proof.
+                                    </p>
                                 </div>
                                 <label class="toggle">
                                     <input
+                                        id="manual-transfer-toggle"
                                         type="checkbox"
                                         bind:checked={paymentManualEnabled}
                                         on:change={handleChange}
@@ -981,12 +1230,20 @@
                                 <div class="sub-settings fade-in">
                                     <div class="setting-row">
                                         <div class="setting-info full-width">
-                                            <label class="setting-label">Payment Instructions</label>
+                                            <label
+                                                class="setting-label"
+                                                for="manual-instructions"
+                                                >Payment Instructions</label
+                                            >
                                             <p class="setting-description">
-                                                Instructions shown to user when they select Manual Transfer.
+                                                Instructions shown to user when
+                                                they select Manual Transfer.
                                             </p>
                                             <textarea
-                                                bind:value={paymentManualInstructions}
+                                                id="manual-instructions"
+                                                bind:value={
+                                                    paymentManualInstructions
+                                                }
                                                 on:input={handleChange}
                                                 rows="3"
                                                 placeholder="Please transfer to one of the bank accounts below and upload proof."
@@ -995,7 +1252,9 @@
                                     </div>
 
                                     <div class="bank-accounts-list">
-                                        <h4 class="subsection-title">Bank Accounts</h4>
+                                        <h4 class="subsection-title">
+                                            Bank Accounts
+                                        </h4>
                                         {#if bankAccounts.length > 0}
                                             <table class="simple-table">
                                                 <thead>
@@ -1009,12 +1268,27 @@
                                                 <tbody>
                                                     {#each bankAccounts as bank}
                                                         <tr>
-                                                            <td>{bank.bank_name}</td>
-                                                            <td>{bank.account_number}</td>
-                                                            <td>{bank.account_holder}</td>
+                                                            <td
+                                                                >{bank.bank_name}</td
+                                                            >
+                                                            <td
+                                                                >{bank.account_number}</td
+                                                            >
+                                                            <td
+                                                                >{bank.account_holder}</td
+                                                            >
                                                             <td>
-                                                                <button class="btn-icon danger" on:click={() => deleteBank(bank.id)}>
-                                                                    <Icon name="trash" size={16} />
+                                                                <button
+                                                                    class="btn-icon danger"
+                                                                    on:click={() =>
+                                                                        deleteBank(
+                                                                            bank.id,
+                                                                        )}
+                                                                >
+                                                                    <Icon
+                                                                        name="trash"
+                                                                        size={16}
+                                                                    />
                                                                 </button>
                                                             </td>
                                                         </tr>
@@ -1022,17 +1296,38 @@
                                                 </tbody>
                                             </table>
                                         {:else}
-                                            <p class="text-muted">No bank accounts added yet.</p>
+                                            <p class="text-muted">
+                                                No bank accounts added yet.
+                                            </p>
                                         {/if}
                                     </div>
 
                                     <div class="add-bank-form">
                                         <h4>Add New Account</h4>
                                         <div class="form-row-inline">
-                                            <input type="text" bind:value={newBankName} placeholder="Bank Name (e.g. BCA)" class="form-input" />
-                                            <input type="text" bind:value={newAccountNumber} placeholder="Account Number" class="form-input" />
-                                            <input type="text" bind:value={newAccountHolder} placeholder="Account Holder" class="form-input" />
-                                            <button class="btn btn-primary" on:click={addBank} disabled={addingBank}>
+                                            <input
+                                                type="text"
+                                                bind:value={newBankName}
+                                                placeholder="Bank Name (e.g. BCA)"
+                                                class="form-input"
+                                            />
+                                            <input
+                                                type="text"
+                                                bind:value={newAccountNumber}
+                                                placeholder="Account Number"
+                                                class="form-input"
+                                            />
+                                            <input
+                                                type="text"
+                                                bind:value={newAccountHolder}
+                                                placeholder="Account Holder"
+                                                class="form-input"
+                                            />
+                                            <button
+                                                class="btn btn-primary"
+                                                on:click={addBank}
+                                                disabled={addingBank}
+                                            >
                                                 <Icon name="plus" size={16} /> Add
                                             </button>
                                         </div>
@@ -1146,7 +1441,6 @@
         margin: 0;
     }
 
-    .content-card,
     .card {
         background: var(--bg-surface);
         border-radius: var(--radius-lg);
@@ -1404,7 +1698,7 @@
         color: var(--text-primary);
         font-size: 0.9rem;
     }
-    
+
     .form-input:focus {
         outline: none;
         border-color: var(--color-primary);
@@ -1468,7 +1762,8 @@
         overflow: hidden;
     }
 
-    .simple-table th, .simple-table td {
+    .simple-table th,
+    .simple-table td {
         padding: 0.75rem 1rem;
         text-align: left;
         border-bottom: 1px solid var(--border-color);

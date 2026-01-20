@@ -4,7 +4,7 @@ use axum::{
     Json,
 };
 use std::net::SocketAddr;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use crate::models::{CreateUserDto, UpdateUserDto, UserResponse, PaginatedResponse};
 use super::AppState;

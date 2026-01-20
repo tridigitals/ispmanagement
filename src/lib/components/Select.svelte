@@ -11,6 +11,7 @@
     export let width = "auto";
     export let placement: "top" | "bottom" = "bottom"; // Control opening direction
     export let onchange: ((e: any) => void) | undefined = undefined; // Svelte 5 compatibility
+    export let id = "";
 
     let isOpen = false;
     let containerElement: HTMLElement;
@@ -55,7 +56,7 @@
     }
 </script>
 
-<svelte:window on:click={handleClickOutside} />
+<svelte:window onclick={handleClickOutside} />
 
 <div
     class="select-container"
@@ -70,9 +71,10 @@
         class="select-trigger {disabled ? 'disabled' : ''} {isOpen
             ? 'open'
             : ''}"
-        on:click={toggle}
+        onclick={toggle}
         type="button"
         {disabled}
+        {id}
     >
         <span class="selected-text {value === '' ? 'placeholder' : ''}">
             {selectedLabel}
@@ -92,7 +94,7 @@
                     class="dropdown-item {option.value === value
                         ? 'selected'
                         : ''}"
-                    on:click={() => selectOption(option.value)}
+                    onclick={() => selectOption(option.value)}
                     type="button"
                 >
                     {option.label}

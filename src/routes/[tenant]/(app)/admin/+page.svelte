@@ -16,8 +16,12 @@
 
     // Dynamic Link Logic
     let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
-    let isCustomDomain = $derived(domainSlug && domainSlug === $user?.tenant_slug);
-    let tenantPrefix = $derived($user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : "");
+    let isCustomDomain = $derived(
+        domainSlug && domainSlug === $user?.tenant_slug,
+    );
+    let tenantPrefix = $derived(
+        $user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : "",
+    );
 
     onMount(() => {
         initData();
@@ -40,7 +44,9 @@
 
             const currentUser = get(user);
             if (currentUser?.tenant_id) {
-                subscription = await api.plans.getSubscriptionDetails(currentUser.tenant_id);
+                subscription = await api.plans.getSubscriptionDetails(
+                    currentUser.tenant_id,
+                );
             }
         } catch (err) {
             console.error("Failed to load admin stats:", err);
@@ -66,7 +72,15 @@
         </div>
     {:else}
         <div class="stats-grid">
-            <div class="stat-card" onclick={() => goto(`${tenantPrefix}/admin/team`)} role="button" tabindex="0">
+            <div
+                class="stat-card"
+                onclick={() => goto(`${tenantPrefix}/admin/team`)}
+                role="button"
+                tabindex="0"
+                onkeydown={(e) =>
+                    (e.key === "Enter" || e.key === " ") &&
+                    goto(`${tenantPrefix}/admin/team`)}
+            >
                 <div class="stat-icon">
                     <Icon name="users" size={32} />
                 </div>
@@ -75,8 +89,16 @@
                     <span class="stat-label">Team Members</span>
                 </div>
             </div>
-            
-            <div class="stat-card" onclick={() => goto(`${tenantPrefix}/admin/settings`)} role="button" tabindex="0">
+
+            <div
+                class="stat-card"
+                onclick={() => goto(`${tenantPrefix}/admin/settings`)}
+                role="button"
+                tabindex="0"
+                onkeydown={(e) =>
+                    (e.key === "Enter" || e.key === " ") &&
+                    goto(`${tenantPrefix}/admin/settings`)}
+            >
                 <div class="stat-icon">
                     <Icon name="settings" size={32} />
                 </div>
@@ -87,20 +109,39 @@
             </div>
 
             <!-- Subscription Status Card -->
-            <div class="stat-card featured" onclick={() => goto(`${tenantPrefix}/admin/subscription`)} role="button" tabindex="0">
+            <div
+                class="stat-card featured"
+                onclick={() => goto(`${tenantPrefix}/admin/subscription`)}
+                role="button"
+                tabindex="0"
+                onkeydown={(e) =>
+                    (e.key === "Enter" || e.key === " ") &&
+                    goto(`${tenantPrefix}/admin/subscription`)}
+            >
                 <div class="stat-icon">
                     <Icon name="credit-card" size={32} />
                 </div>
                 <div class="stat-content w-full">
                     {#if subscription}
                         <div class="plan-header">
-                            <span class="plan-name">{subscription.plan_name}</span>
-                            <span class="status-pill active">{subscription.status}</span>
+                            <span class="plan-name"
+                                >{subscription.plan_name}</span
+                            >
+                            <span class="status-pill active"
+                                >{subscription.status}</span
+                            >
                         </div>
                         <div class="progress-container">
-                            <div 
-                                class="progress-bar" 
-                                style="width: {subscription.storage_limit ? Math.min(100, (subscription.storage_usage / subscription.storage_limit) * 100) : 0}%"
+                            <div
+                                class="progress-bar"
+                                style="width: {subscription.storage_limit
+                                    ? Math.min(
+                                          100,
+                                          (subscription.storage_usage /
+                                              subscription.storage_limit) *
+                                              100,
+                                      )
+                                    : 0}%"
                             ></div>
                         </div>
                         <span class="usage-text">
@@ -151,7 +192,7 @@
                     <p>Configure application policies and defaults.</p>
                 </button>
             {/if}
-            
+
             <button
                 class="action-card"
                 onclick={() => goto(`${tenantPrefix}/admin/subscription`)}
@@ -343,16 +384,28 @@
         animation: spin 1s linear infinite;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
 
     .fade-in {
         animation: fadeIn 0.4s ease-out;
     }
 
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
-    .w-full { width: 100%; }
+    .w-full {
+        width: 100%;
+    }
 </style>

@@ -1,7 +1,7 @@
 //! Authentication Commands
 
 use crate::models::{LoginDto, RegisterDto, UserResponse};
-use crate::services::{AuthResponse, AuthService, AuditService};
+use crate::services::{AuthResponse, AuthService};
 use tauri::State;
 use validator::Validate;
 

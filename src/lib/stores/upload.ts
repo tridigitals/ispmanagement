@@ -15,15 +15,15 @@ function createUploadStore() {
 
     return {
         subscribe,
-        
+
         // Start a new upload (Chunked)
         upload: async (file: File, token: string) => {
             const settings = get(appSettings);
-            
+
             // 1. Client-side Validation: Size
             const maxMb = parseInt(settings.storage_max_file_size_mb || "500");
             const maxBytes = maxMb * 1024 * 1024;
-            
+
             if (file.size > maxBytes) {
                 toast.error(`File is too large! Maximum allowed is ${maxMb} MB.`);
                 return;
@@ -31,7 +31,7 @@ function createUploadStore() {
 
             // 2. Client-side Validation: Extension
             const allowedExtsStr = settings.storage_allowed_extensions || "jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,zip,mp4,mov";
-            const allowedExts = allowedExtsStr.split(',').map(s => s.trim().toLowerCase());
+            const allowedExts = allowedExtsStr.split(',').map((s: string) => s.trim().toLowerCase());
             const fileExt = file.name.split('.').pop()?.toLowerCase() || "";
 
             if (!allowedExts.includes(fileExt) && !allowedExts.includes("*")) {
@@ -59,7 +59,7 @@ function createUploadStore() {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                
+
                 if (!initRes.ok) throw new Error("Failed to initialize upload");
                 const { upload_id } = await initRes.json();
 
@@ -87,8 +87,8 @@ function createUploadStore() {
 
                     offset += chunk.size;
                     const percent = Math.round((offset / total) * 100);
-                    
-                    update(items => 
+
+                    update(items =>
                         items.map(i => i.id === id ? { ...i, progress: percent } : i)
                     );
                 }
@@ -96,7 +96,7 @@ function createUploadStore() {
                 // Step 3: Complete
                 const completeRes = await fetch(`${API_BASE}/storage/upload/complete`, {
                     method: 'POST',
-                    headers: { 
+                    headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     },
@@ -110,17 +110,17 @@ function createUploadStore() {
                 if (!completeRes.ok) throw new Error("Failed to finalize upload");
 
                 // Success
-                update(items => 
+                update(items =>
                     items.map(i => i.id === id ? { ...i, status: "success", progress: 100 } : i)
                 );
-                
+
                 // Cleanup
                 setTimeout(() => {
                     update(items => items.filter(i => i.id !== id));
                 }, 5000);
 
             } catch (e: any) {
-                update(items => 
+                update(items =>
                     items.map(i => i.id === id ? { ...i, status: "error", error: e.message } : i)
                 );
                 toast.error(`Failed: ${file.name}`);

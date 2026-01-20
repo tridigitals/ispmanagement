@@ -1,4 +1,5 @@
 //! Role and Permission models for RBAC
+#![allow(dead_code)]
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -19,6 +20,7 @@ pub struct Role {
 }
 
 impl Role {
+    #[allow(dead_code)]
     pub fn new(tenant_id: Option<String>, name: String, description: Option<String>, is_system: bool, level: i32) -> Self {
         let now = Utc::now();
         Self {

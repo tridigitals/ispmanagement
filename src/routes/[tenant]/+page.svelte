@@ -37,7 +37,8 @@
                 // Check for Tauri environment to allow auto-redirection
                 // @ts-ignore
                 const isTauri =
-                    typeof window !== "undefined" && window.__TAURI_INTERNALS__;
+                    typeof window !== "undefined" &&
+                    (window as any).__TAURI_INTERNALS__;
 
                 if (isTauri) {
                     if (get(isAdmin)) {
@@ -84,7 +85,8 @@
                 // Check for Tauri environment to allow auto-redirection
                 // @ts-ignore
                 const isTauri =
-                    typeof window !== "undefined" && window.__TAURI_INTERNALS__;
+                    typeof window !== "undefined" &&
+                    (window as any).__TAURI_INTERNALS__;
 
                 if (isTauri) {
                     // Allow redirection

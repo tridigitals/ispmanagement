@@ -1,4 +1,5 @@
 //! Subscription Plan Models
+#![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
@@ -136,6 +137,7 @@ pub struct UpdateFeatureRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct SetPlanFeatureRequest {
     pub plan_id: String,
     pub feature_id: String,
@@ -143,6 +145,7 @@ pub struct SetPlanFeatureRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct AssignPlanRequest {
     pub tenant_id: String,
     pub plan_id: String,

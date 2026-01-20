@@ -1,6 +1,6 @@
 //! System Health & Monitoring Service
 
-use sqlx::{Pool, Postgres, Sqlite};
+use sqlx::{Pool, Postgres};
 use serde::Serialize;
 use chrono::{DateTime, Utc};
 use sysinfo::System;
