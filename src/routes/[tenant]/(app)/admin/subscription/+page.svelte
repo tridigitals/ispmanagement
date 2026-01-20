@@ -348,7 +348,7 @@
                         searchable={true}
                         searchPlaceholder="Search invoices..."
                     >
-                        <svelte:fragment slot="cell" let:item let:column>
+                        {#snippet cell({ item, column })}
                             {#if column.key === "amount"}
                                 {formatCurrency(item.amount)}
                             {:else if column.key === "status"}
@@ -381,7 +381,7 @@
                             {:else}
                                 {item[column.key]}
                             {/if}
-                        </svelte:fragment>
+                        {/snippet}
                     </Table>
                 </div>
             </div>

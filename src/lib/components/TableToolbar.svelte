@@ -1,23 +1,34 @@
 <script lang="ts">
     import Icon from "./Icon.svelte";
-    import { createEventDispatcher } from "svelte";
 
-    export let searchQuery = "";
-    export let placeholder = "Search...";
-    export let showSearch = true;
-
-    const dispatch = createEventDispatcher();
+    let {
+        searchQuery = $bindable(""),
+        placeholder = "Search...",
+        showSearch = true,
+        onsearch = undefined,
+        onclear = undefined,
+        filters,
+        actions,
+    }: {
+        searchQuery?: string;
+        placeholder?: string;
+        showSearch?: boolean;
+        onsearch?: (query: string) => void;
+        onclear?: () => void;
+        filters?: import("svelte").Snippet;
+        actions?: import("svelte").Snippet;
+    } = $props();
 
     function handleInput(e: Event) {
         const target = e.target as HTMLInputElement;
         searchQuery = target.value;
-        dispatch("search", searchQuery);
+        if (onsearch) onsearch(searchQuery);
     }
 
     function clearSearch() {
         searchQuery = "";
-        dispatch("search", "");
-        dispatch("clear");
+        if (onsearch) onsearch("");
+        if (onclear) onclear();
     }
 </script>
 
@@ -31,23 +42,27 @@
                 <input
                     type="text"
                     bind:value={searchQuery}
-                    on:input={handleInput}
+                    oninput={handleInput}
                     {placeholder}
                 />
                 {#if searchQuery}
-                    <button class="clear-btn" on:click={clearSearch}>
+                    <button class="clear-btn" onclick={clearSearch}>
                         <Icon name="x" size={14} />
                     </button>
                 {/if}
             </div>
         {/if}
         <div class="filters">
-            <slot name="filters" />
+            {#if filters}
+                {@render filters()}
+            {/if}
         </div>
     </div>
 
     <div class="actions">
-        <slot name="actions" />
+        {#if actions}
+            {@render actions()}
+        {/if}
     </div>
 </div>
 

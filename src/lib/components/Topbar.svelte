@@ -5,7 +5,7 @@
     import { t } from "svelte-i18n";
     import Icon from "./Icon.svelte";
 
-    export let onMobileMenuClick: () => void;
+    let { onMobileMenuClick }: { onMobileMenuClick: () => void } = $props();
 
     // Helper to get page title based on path
     function getPageTitle(path: string) {
@@ -19,7 +19,7 @@
         return "SaaS App";
     }
 
-    $: title = getPageTitle($page.url.pathname);
+    let title = $derived(getPageTitle($page.url.pathname));
 </script>
 
 <header class="topbar">
@@ -27,14 +27,14 @@
         <!-- Desktop Sidebar Toggle -->
         <button
             class="icon-btn toggle-btn hide-mobile"
-            on:click={() => ($isSidebarCollapsed = !$isSidebarCollapsed)}
+            onclick={() => ($isSidebarCollapsed = !$isSidebarCollapsed)}
         >
             <Icon name="sidebar-toggle" size={20} />
         </button>
         <!-- Mobile Menu Toggle -->
         <button
             class="icon-btn toggle-btn hide-desktop"
-            on:click={onMobileMenuClick}
+            onclick={onMobileMenuClick}
         >
             <Icon name="menu" size={20} />
         </button>

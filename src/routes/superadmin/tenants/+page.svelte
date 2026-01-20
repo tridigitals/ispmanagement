@@ -215,7 +215,7 @@
             searchable={true}
             searchPlaceholder="Search tenants..."
         >
-            <svelte:fragment slot="cell" let:item let:column>
+            {#snippet cell({ item, column })}
                 {#if column.key === "custom_domain"}
                     {#if item.custom_domain}
                         <code class="domain-badge">{item.custom_domain}</code>
@@ -252,7 +252,7 @@
                 {:else}
                     {item[column.key]}
                 {/if}
-            </svelte:fragment>
+            {/snippet}
         </Table>
     </div>
 </div>

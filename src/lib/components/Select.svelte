@@ -1,34 +1,47 @@
 <script lang="ts">
     import Icon from "./Icon.svelte";
-    import { createEventDispatcher, onDestroy } from "svelte";
     import { fade, slide } from "svelte/transition";
 
-    export let value: any = "";
-    export let options: Array<{ label: string; value: any }> | Array<any> = [];
-    export let placeholder = "Select option";
-    export let label = "";
-    export let disabled = false;
-    export let width = "auto";
-    export let placement: "top" | "bottom" = "bottom"; // Control opening direction
-    export let onchange: ((e: any) => void) | undefined = undefined; // Svelte 5 compatibility
-    export let id = "";
+    let {
+        value = $bindable(""),
+        options = [],
+        placeholder = "Select option",
+        label = "",
+        disabled = false,
+        width = "auto",
+        placement = "bottom",
+        id = "",
+        onchange,
+    } = $props<{
+        value?: any;
+        options?: Array<{ label: string; value: any }> | Array<any>;
+        placeholder?: string;
+        label?: string;
+        disabled?: boolean;
+        width?: string;
+        placement?: "top" | "bottom";
+        id?: string;
+        onchange?: (detail: any) => void;
+    }>();
 
-    let isOpen = false;
+    let isOpen = $state(false);
     let containerElement: HTMLElement;
 
     // Normalize options
-    $: normalizedOptions = options.map((opt) => {
-        if (typeof opt === "object" && opt !== null && "value" in opt) {
-            return opt as { label: string; value: any };
-        }
-        return { label: String(opt), value: opt };
-    });
+    let normalizedOptions = $derived(
+        (options || []).map((opt: any) => {
+            if (typeof opt === "object" && opt !== null && "value" in opt) {
+                return opt as { label: string; value: any };
+            }
+            return { label: String(opt), value: opt };
+        }),
+    );
 
-    $: selectedLabel =
-        normalizedOptions.find((opt) => opt.value === value)?.label ||
-        placeholder;
-
-    const dispatch = createEventDispatcher();
+    let selectedLabel = $derived(
+        normalizedOptions.find(
+            (opt: { label: string; value: any }) => opt.value === value,
+        )?.label || placeholder,
+    );
 
     function toggle() {
         if (!disabled) {
@@ -38,9 +51,10 @@
 
     function selectOption(optionVal: any) {
         value = optionVal;
-        dispatch("change", value);
         if (onchange) {
-            onchange({ detail: value }); // Mock CustomEvent for compatibility
+            onchange({ detail: value }); // Mock CustomEvent detail for compatibility if needed, or just value?
+            // Existing code used: onchange({ detail: value })
+            // Let's stick to that signature for now to minimize breakage
         }
         isOpen = false;
     }

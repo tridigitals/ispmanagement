@@ -36,9 +36,9 @@
     }
 
     function formatCurrency(amount: number) {
-        return new Intl.NumberFormat('id-ID', {
-            style: 'currency',
-            currency: 'IDR'
+        return new Intl.NumberFormat("id-ID", {
+            style: "currency",
+            currency: "IDR",
         }).format(amount);
     }
 
@@ -57,9 +57,11 @@
     <div class="page-header">
         <div class="header-content">
             <h1>All Invoices</h1>
-            <p class="subtitle">Monitor all payments and transactions across the platform</p>
+            <p class="subtitle">
+                Monitor all payments and transactions across the platform
+            </p>
         </div>
-        <button class="btn btn-secondary" on:click={loadInvoices}>
+        <button class="btn btn-secondary" onclick={loadInvoices}>
             <Icon name="refresh-cw" size={18} />
             <span>Refresh</span>
         </button>
@@ -77,7 +79,7 @@
             searchable={true}
             searchPlaceholder="Search invoices..."
         >
-            <svelte:fragment slot="cell" let:item let:column>
+            {#snippet cell({ item, column })}
                 {#if column.key === "amount"}
                     {formatCurrency(item.amount)}
                 {:else if column.key === "status"}
@@ -86,28 +88,57 @@
                     {new Date(item[column.key]).toLocaleDateString()}
                 {:else if column.key === "actions"}
                     <div class="actions">
-                        <button class="action-btn" title="Check Status" on:click={() => checkStatus(item.id)}>
+                        <button
+                            class="action-btn"
+                            title="Check Status"
+                            onclick={() => checkStatus(item.id)}
+                        >
                             <Icon name="search" size={18} />
                         </button>
-                        <a href="/pay/{item.id}" class="action-btn" title="View Public Link" target="_blank">
+                        <a
+                            href="/pay/{item.id}"
+                            class="action-btn"
+                            title="View Public Link"
+                            target="_blank"
+                        >
                             <Icon name="external-link" size={18} />
                         </a>
                     </div>
                 {:else}
                     {item[column.key]}
                 {/if}
-            </svelte:fragment>
+            {/snippet}
         </Table>
     </div>
 </div>
 
 <style>
-    .page-container { padding: 2rem; max-width: 1400px; margin: 0 auto; }
-    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; }
-    .header-content h1 { font-size: 1.8rem; font-weight: 700; margin: 0 0 0.5rem; }
-    .subtitle { color: var(--text-secondary); }
-    .content-card { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
-    
+    .page-container {
+        padding: 2rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 2rem;
+    }
+    .header-content h1 {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem;
+    }
+    .subtitle {
+        color: var(--text-secondary);
+    }
+    .content-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
     .status-pill {
         padding: 0.25rem 0.6rem;
         border-radius: 12px;
@@ -115,17 +146,53 @@
         font-weight: 700;
         text-transform: uppercase;
     }
-    .status-pill.pending { background: #fef3c7; color: #d97706; }
-    .status-pill.paid { background: #dcfce7; color: #16a34a; }
-    .status-pill.failed { background: #fee2e2; color: #dc2626; }
-
-    .actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
-    .action-btn { 
-        width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-        border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-radius: 6px;
+    .status-pill.pending {
+        background: #fef3c7;
+        color: #d97706;
     }
-    .action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
-    
-    .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; }
-    .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); }
+    .status-pill.paid {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+    .status-pill.failed {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .actions {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        border-radius: 6px;
+    }
+    .action-btn:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+    }
+    .btn-secondary {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
 </style>

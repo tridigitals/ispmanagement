@@ -1,46 +1,50 @@
 <script lang="ts">
-    import { createEventDispatcher, onMount } from "svelte";
+    import { onMount } from "svelte";
     import { fade, scale } from "svelte/transition";
     import Icon from "./Icon.svelte";
     import { downloadFile } from "$lib/utils/download";
 
-    export let index = 0;
-    export let files: any[] = []; // FileRecord[]
-
-    const dispatch = createEventDispatcher();
+    let { index = $bindable(0), files = [], onclose } = $props();
 
     // API URL
     const API_BASE =
         import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
-    $: currentFile = files[index];
-    $: isImage = currentFile?.content_type.startsWith("image/");
-    $: isVideo = currentFile?.content_type.startsWith("video/");
-    $: isAudio = currentFile?.content_type.startsWith("audio/");
-    $: isPdf = currentFile?.content_type.includes("pdf");
-    $: isText =
+    let currentFile = $derived(files[index]);
+    let isImage = $derived(currentFile?.content_type.startsWith("image/"));
+    let isVideo = $derived(currentFile?.content_type.startsWith("video/"));
+    let isAudio = $derived(currentFile?.content_type.startsWith("audio/"));
+    let isPdf = $derived(currentFile?.content_type.includes("pdf"));
+    let isText = $derived(
         currentFile?.content_type.includes("text") ||
-        currentFile?.content_type.includes("json") ||
-        currentFile?.content_type.includes("xml") ||
-        currentFile?.content_type.includes("javascript") ||
-        currentFile?.content_type.includes("css") ||
-        currentFile?.content_type.includes("html");
+            currentFile?.content_type.includes("json") ||
+            currentFile?.content_type.includes("xml") ||
+            currentFile?.content_type.includes("javascript") ||
+            currentFile?.content_type.includes("css") ||
+            currentFile?.content_type.includes("html"),
+    );
 
     // Use HTTP API endpoint for serving files
-    $: fileSrc = currentFile
-        ? `${API_BASE}/storage/files/${currentFile.id}/content`
-        : "";
+    let fileSrc = $derived(
+        currentFile
+            ? `${API_BASE}/storage/files/${currentFile.id}/content`
+            : "",
+    );
     // Note: for native download we can use the content URL directly as we fetch the blob manually
-    $: downloadUrl = currentFile
-        ? `${API_BASE}/storage/files/${currentFile.id}/download`
-        : "";
+    let downloadUrl = $derived(
+        currentFile
+            ? `${API_BASE}/storage/files/${currentFile.id}/download`
+            : "",
+    );
 
-    let textContent = "";
-    let loadingText = false;
+    let textContent = $state("");
+    let loadingText = $state(false);
 
-    $: if (currentFile && isText) {
-        loadTextContent();
-    }
+    $effect(() => {
+        if (currentFile && isText) {
+            loadTextContent();
+        }
+    });
 
     async function loadTextContent() {
         loadingText = true;
@@ -60,7 +64,7 @@
     }
 
     function close() {
-        dispatch("close");
+        if (onclose) onclose();
     }
 
     function next(e?: Event) {
@@ -85,6 +89,7 @@
         if (e.key === "Escape") close();
         if (e.key === "ArrowRight") next();
         if (e.key === "ArrowLeft") prev();
+        e.stopPropagation(); // Prevent background scrolling/interactions
     }
 
     function formatSize(bytes: number) {
@@ -164,9 +169,15 @@
                         class="media-content"
                     />
                 {:else if isVideo}
-                    <!-- svelte-ignore a11y-media-has-caption -->
-                    <video src={fileSrc} controls class="media-content" autoplay
-                    ></video>
+                    <!-- svelte-ignore a11y_media_has_caption -->
+                    <video
+                        src={fileSrc}
+                        controls
+                        class="media-content"
+                        autoplay
+                    >
+                        <track kind="captions" />
+                    </video>
                 {:else if isAudio}
                     <div class="audio-player">
                         <div class="audio-visual">

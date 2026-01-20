@@ -6,8 +6,9 @@
     import { fade } from "svelte/transition";
     import Icon from "$lib/components/Icon.svelte";
 
-    let authorized = false;
-    let isCollapsed = false;
+    let authorized = $state(false);
+    let isCollapsed = $state(false);
+    let { children } = $props();
 
     // Strict auth check
     onMount(() => {
@@ -238,7 +239,7 @@
 
             <!-- Content -->
             <main class="sa-content" in:fade>
-                <slot />
+                {@render children()}
             </main>
         </div>
     </div>

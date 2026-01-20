@@ -726,7 +726,7 @@
         <Lightbox
             bind:index={selectedFileIndex}
             {files}
-            on:close={() => (selectedFileIndex = -1)}
+            onclose={() => (selectedFileIndex = -1)}
         />
     {/if}
 

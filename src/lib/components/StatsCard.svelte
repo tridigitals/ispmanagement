@@ -1,25 +1,34 @@
 <script lang="ts">
     import Icon from "./Icon.svelte";
 
-    export let title: string;
-    export let value: string | number;
-    export let icon: string;
-    export let color = "primary"; // primary, success, warning, danger
-    export let trend: string | null = null; // "+5%", "-2%"
-    export let trendType: "up" | "down" | "neutral" = "neutral";
+    let {
+        title,
+        value,
+        icon,
+        color = "primary",
+        trend = null,
+        trendType = "neutral",
+    } = $props();
 
-    function getColorVar(color: string) {
-        switch (color) {
-            case "success": return "var(--color-success, #10b981)";
-            case "warning": return "var(--color-warning, #f59e0b)";
-            case "danger": return "var(--color-danger, #ef4444)";
-            default: return "var(--color-primary, #6366f1)";
+    function getColorVar(c: string) {
+        switch (c) {
+            case "success":
+                return "var(--color-success, #10b981)";
+            case "warning":
+                return "var(--color-warning, #f59e0b)";
+            case "danger":
+                return "var(--color-danger, #ef4444)";
+            default:
+                return "var(--color-primary, #6366f1)";
         }
     }
 </script>
 
 <div class="stats-card">
-    <div class="icon-wrapper" style="background: {getColorVar(color)}20; color: {getColorVar(color)}">
+    <div
+        class="icon-wrapper"
+        style="background: {getColorVar(color)}20; color: {getColorVar(color)}"
+    >
         <Icon name={icon} size={24} />
     </div>
     <div class="content">
@@ -27,7 +36,14 @@
         <div class="value">{value}</div>
         {#if trend}
             <div class="trend {trendType}">
-                <Icon name={trendType === 'up' ? 'trending-up' : trendType === 'down' ? 'trending-down' : 'minus'} size={14} />
+                <Icon
+                    name={trendType === "up"
+                        ? "trending-up"
+                        : trendType === "down"
+                          ? "trending-down"
+                          : "minus"}
+                    size={14}
+                />
                 <span>{trend}</span>
             </div>
         {/if}
@@ -43,7 +59,9 @@
         display: flex;
         align-items: flex-start;
         gap: 1rem;
-        transition: transform 0.2s, box-shadow 0.2s;
+        transition:
+            transform 0.2s,
+            box-shadow 0.2s;
     }
 
     .stats-card:hover {
@@ -86,7 +104,13 @@
         font-weight: 600;
     }
 
-    .trend.up { color: var(--color-success, #10b981); }
-    .trend.down { color: var(--color-danger, #ef4444); }
-    .trend.neutral { color: var(--text-secondary, #94a3b8); }
+    .trend.up {
+        color: var(--color-success, #10b981);
+    }
+    .trend.down {
+        color: var(--color-danger, #ef4444);
+    }
+    .trend.neutral {
+        color: var(--text-secondary, #94a3b8);
+    }
 </style>

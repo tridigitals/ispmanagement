@@ -73,19 +73,13 @@
         await loadLogs();
     });
 
-    function handlePageChange(e: CustomEvent<number>) {
-        page = e.detail + 1; // Pagination component key is 0-indexed, API is 1-indexed usually or we adjust.
-        // Wait, Pagination.svelte likely emits 0-indexed page if current is 0.
-        // Let's check Pagination implementation if possible, but standard is 0-indexed usually.
-        // My previous logic was specific. Table.svelte handles pagination event.
-        // Table uses 0-indexed page internally.
-        // My AuditService uses 1-indexed page.
-        // So page = e.detail + 1.
+    function handlePageChange(newPage: number) {
+        page = newPage + 1;
         loadLogs();
     }
 
-    function handlePageSizeChange(e: CustomEvent<number>) {
-        pageSize = e.detail;
+    function handlePageSizeChange(newSize: number) {
+        pageSize = newSize;
         page = 1;
         loadLogs();
     }
@@ -108,7 +102,7 @@
         <p class="subtitle">Track system activity and security events</p>
     </div>
     <div class="header-right">
-        <button class="btn-refresh" on:click={loadLogs} title="Refresh Logs">
+        <button class="btn-refresh" onclick={loadLogs} title="Refresh Logs">
             <Icon name="refresh-cw" size={18} />
         </button>
     </div>
@@ -124,7 +118,7 @@
                 id="filter-search"
                 type="text"
                 bind:value={filters.search}
-                on:input={handleSearch}
+                oninput={handleSearch}
                 placeholder="Search resources, details..."
                 class="filter-input"
             />
@@ -137,7 +131,7 @@
             id="filter-action"
             type="text"
             bind:value={filters.action}
-            on:input={handleSearch}
+            oninput={handleSearch}
             placeholder="e.g. login, create_user"
             class="filter-input"
         />
@@ -149,7 +143,7 @@
             id="filter-date-from"
             type="datetime-local"
             bind:value={filters.date_from}
-            on:change={handleSearch}
+            onchange={handleSearch}
             class="filter-input"
         />
     </div>
@@ -160,7 +154,7 @@
             id="filter-date-to"
             type="datetime-local"
             bind:value={filters.date_to}
-            on:change={handleSearch}
+            onchange={handleSearch}
             class="filter-input"
         />
     </div>
@@ -174,10 +168,11 @@
         pagination={true}
         {pageSize}
         count={total}
-        on:change={handlePageChange}
-        on:pageSizeChange={handlePageSizeChange}
+        onchange={handlePageChange}
+        onpageSizeChange={handlePageSizeChange}
+        serverSide={true}
     >
-        <div slot="cell" let:item let:key>
+        {#snippet cell({ item, key })}
             {#if key === "created_at"}
                 <span class="text-sm text-gray-500">
                     {new Date(item.created_at).toLocaleString()}
@@ -239,7 +234,7 @@
                     >{item.ip_address || "—"}</span
                 >
             {/if}
-        </div>
+        {/snippet}
     </Table>
 </div>
 

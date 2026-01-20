@@ -48,11 +48,13 @@
 
     let planSearch = $state("");
 
-    let filteredPlans = $derived(plans.filter(
-        (p) =>
-            p.name.toLowerCase().includes(planSearch.toLowerCase()) ||
-            p.slug.toLowerCase().includes(planSearch.toLowerCase()),
-    ));
+    let filteredPlans = $derived(
+        plans.filter(
+            (p) =>
+                p.name.toLowerCase().includes(planSearch.toLowerCase()) ||
+                p.slug.toLowerCase().includes(planSearch.toLowerCase()),
+        ),
+    );
 
     onMount(async () => {
         await loadData();
@@ -149,9 +151,9 @@
                 placeholder="Search plans..."
                 bind:searchQuery={planSearch}
             >
-                <div slot="actions">
+                {#snippet actions()}
                     <!-- Additional actions if needed -->
-                </div>
+                {/snippet}
             </TableToolbar>
 
             <Table
@@ -162,7 +164,7 @@
                 pagination={true}
                 pageSize={10}
             >
-                <div slot="cell" let:item let:column>
+                {#snippet cell({ item, column })}
                     {#if column.key === "status"}
                         <div class="status-badges">
                             {#if item.is_active}
@@ -197,7 +199,7 @@
                     {:else}
                         {item[column.key]}
                     {/if}
-                </div>
+                {/snippet}
             </Table>
         </div>
     {/if}

@@ -51,13 +51,16 @@
     let memberToDelete = $state<TeamMember | null>(null);
     let isDeleting = $state(false);
 
-    let filteredMembers = $derived(teamMembers.filter((m) => {
-        const matchesSearch =
-            m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            m.email.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesRole = roleFilter === "all" || m.role_id === roleFilter;
-        return matchesSearch && matchesRole;
-    }));
+    let filteredMembers = $derived(
+        teamMembers.filter((m) => {
+            const matchesSearch =
+                m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                m.email.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesRole =
+                roleFilter === "all" || m.role_id === roleFilter;
+            return matchesSearch && matchesRole;
+        }),
+    );
 
     let stats = $derived({
         total: teamMembers.length,
@@ -69,7 +72,7 @@
     let myRoleLevel = $derived(
         myMember && roles.length > 0
             ? roles.find((r) => r.id === myMember?.role_id)?.level || 0
-            : 0
+            : 0,
     );
 
     let roleOptions = $derived([
@@ -144,7 +147,9 @@
         isDeleting = true;
         try {
             await api.team.remove(memberToDelete.id);
-            teamMembers = teamMembers.filter((m) => m.id !== memberToDelete?.id);
+            teamMembers = teamMembers.filter(
+                (m) => m.id !== memberToDelete?.id,
+            );
             toast.success("Member removed successfully");
             showDeleteModal = false;
             memberToDelete = null;
@@ -222,14 +227,16 @@
 
         <div class="toolbar-wrapper">
             <TableToolbar bind:searchQuery placeholder="Search members...">
-                <div slot="filters" class="filter-dropdown">
-                    <Select
-                        bind:value={roleFilter}
-                        options={roleOptions}
-                        width="150px"
-                    />
-                </div>
-                <div slot="actions">
+                {#snippet filters()}
+                    <div class="filter-dropdown">
+                        <Select
+                            bind:value={roleFilter}
+                            options={roleOptions}
+                            width="150px"
+                        />
+                    </div>
+                {/snippet}
+                {#snippet actions()}
                     {#if $can("create", "team")}
                         <button
                             class="btn btn-primary"
@@ -239,7 +246,7 @@
                             {$t("admin.team.invite_button") || "Add Member"}
                         </button>
                     {/if}
-                </div>
+                {/snippet}
             </TableToolbar>
         </div>
 
@@ -258,7 +265,7 @@
                     {loading}
                     emptyText="No members found"
                 >
-                    <svelte:fragment slot="empty">
+                    {#snippet empty()}
                         <div class="empty-state-container">
                             <div class="empty-icon">
                                 <Icon name="users" size={64} />
@@ -266,9 +273,9 @@
                             <h3>No members found</h3>
                             <p>Try adjusting your search or filters.</p>
                         </div>
-                    </svelte:fragment>
+                    {/snippet}
 
-                    <svelte:fragment slot="cell" let:item let:key>
+                    {#snippet cell({ item, key })}
                         {#if key === "member"}
                             <div class="member-info">
                                 <div class="avatar">
@@ -329,7 +336,7 @@
                                 {/if}
                             </div>
                         {/if}
-                    </svelte:fragment>
+                    {/snippet}
                 </Table>
             </div>
         {/if}
@@ -352,7 +359,12 @@
     title={$t("admin.team.add_member_modal_title") || "Add Team Member"}
     onclose={() => (showInviteModal = false)}
 >
-    <form onsubmit={(e) => { e.preventDefault(); inviteMember(); }}>
+    <form
+        onsubmit={(e) => {
+            e.preventDefault();
+            inviteMember();
+        }}
+    >
         <div class="form-group">
             <label>
                 {$t("admin.team.name_label") || "Name"}
@@ -418,7 +430,12 @@
     title="Edit Member Role"
     onclose={() => (showEditModal = false)}
 >
-    <form onsubmit={(e) => { e.preventDefault(); saveMemberRole(); }}>
+    <form
+        onsubmit={(e) => {
+            e.preventDefault();
+            saveMemberRole();
+        }}
+    >
         <div class="form-group">
             <label>
                 Member Name

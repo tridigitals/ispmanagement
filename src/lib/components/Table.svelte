@@ -3,70 +3,104 @@
     import { fade } from "svelte/transition";
     import Pagination from "./Pagination.svelte";
 
-    export let columns: {
-        key: string;
-        label: string;
-        class?: string;
-        align?: string;
-        width?: string;
-    }[] = [];
+    let {
+        columns = [],
+        data = [],
+        keyField = "id",
+        loading = false,
+        emptyText = "No data found",
+        mobileView = "card",
+        pagination = false,
+        pageSize = 10,
+        pageSizeOptions = [5, 10, 25, 50, 100],
+        count = 0,
+        onchange,
+        onpageSizeChange,
+        searchable = false,
+        searchPlaceholder = "Search...",
+        children,
+        empty,
+        cell,
+        serverSide = false,
+    }: {
+        columns?: {
+            key: string;
+            label: string;
+            class?: string;
+            align?: string;
+            width?: string;
+        }[];
+        data?: any[];
+        keyField?: string;
+        loading?: boolean;
+        emptyText?: string;
+        mobileView?: "card" | "scroll";
+        pagination?: boolean;
+        pageSize?: number;
+        pageSizeOptions?: number[];
+        count?: number;
+        onchange?: (page: number) => void;
+        onpageSizeChange?: (size: number) => void;
+        searchable?: boolean;
+        searchPlaceholder?: string;
+        children?: import("svelte").Snippet;
+        empty?: import("svelte").Snippet;
+        cell?: import("svelte").Snippet<[any]>; // { item, column, key }
+        serverSide?: boolean;
+    } = $props();
 
-    export let data: any[] = [];
-    export let keyField = "id";
-    export let loading = false;
-    export let emptyText = "No data found";
-    export let mobileView: "card" | "scroll" = "card";
-
-    // Pagination props
-    export let pagination = false;
-    export let pageSize = 10;
-    export let pageSizeOptions = [5, 10, 25, 50, 100];
-
-    export let count = 0;
-
-    let currentPage = 0;
-    let currentSize = pageSize;
+    let currentPage = $state(0);
+    let currentSize = $state(pageSize);
+    let searchQuery = $state("");
 
     // Reset page when data changes length significantly (optional but good UX)
-    $: if (data.length < currentPage * currentSize) {
+    $effect(() => {
+        if (!serverSide && data.length < currentPage * currentSize) {
+            currentPage = 0;
+        }
+    });
+
+    // Reset page when search changes
+    $effect(() => {
+        if (searchQuery) currentPage = 0;
+    });
+
+    // Sync currentSize with pageSize prop
+    $effect(() => {
+        currentSize = pageSize;
+    });
+
+    function handlePageChange(newPage: number) {
+        currentPage = newPage;
+        if (onchange) onchange(newPage);
+    }
+
+    function handlePageSizeChange(newSize: number) {
+        currentSize = newSize;
         currentPage = 0;
+        if (onpageSizeChange) onpageSizeChange(newSize);
     }
 
-    // Search props
-    export let searchable = false;
-    export let searchPlaceholder = "Search...";
-
-    let searchQuery = "";
-
-    function handlePageChange(e: CustomEvent<number>) {
-        currentPage = e.detail;
-    }
-
-    function handlePageSizeChange(e: CustomEvent<number>) {
-        currentSize = e.detail;
-        currentPage = 0;
-    }
-
-    $: filteredData =
+    let filteredData = $derived(
         searchable && searchQuery
-            ? data.filter((item) =>
+            ? data.filter((item: any) =>
                   Object.values(item).some((val) =>
                       String(val)
                           .toLowerCase()
                           .includes(searchQuery.toLowerCase()),
                   ),
               )
-            : data;
+            : data,
+    );
 
-    $: paginatedData = pagination
-        ? filteredData.slice(
-              currentPage * currentSize,
-              (currentPage + 1) * currentSize,
-          )
-        : filteredData;
-
-    // Reset page when search changes
-    $: if (searchQuery) currentPage = 0;
+    let paginatedData = $derived(
+        pagination && !serverSide
+            ? filteredData.slice(
+                  currentPage * currentSize,
+                  (currentPage + 1) * currentSize,
+              )
+            : filteredData,
+    );
 </script>
 
 <div class="table-container" class:mobile-scroll={mobileView === "scroll"}>
@@ -83,7 +117,7 @@
                 {#if searchQuery}
                     <button
                         class="clear-btn"
-                        on:click={() => (searchQuery = "")}
+                        onclick={() => (searchQuery = "")}
                     >
                         <Icon name="x" size={14} />
                     </button>
@@ -98,12 +132,14 @@
         </div>
     {:else if data.length === 0}
         <div class="empty-state">
-            <slot name="empty">
+            {#if empty}
+                {@render empty()}
+            {:else}
                 <div class="empty-icon">
                     <Icon name="search" size={32} />
                 </div>
                 <p>{emptyText}</p>
-            </slot>
+            {/if}
         </div>
     {:else}
         <table
@@ -132,15 +168,16 @@
                                 class={col.class || ""}
                                 style:text-align={col.align || "left"}
                             >
-                                <slot
-                                    name="cell"
-                                    {item}
-                                    column={col}
-                                    key={col.key}
-                                >
+                                {#if cell}
+                                    {@render cell({
+                                        item,
+                                        column: col, // Fix scope: col -> column
+                                        key: col.key,
+                                    })}
+                                {:else}
                                     <!-- Default text renderer -->
                                     {item[col.key] ?? ""}
-                                </slot>
+                                {/if}
                             </td>
                         {/each}
                     </tr>
@@ -155,8 +192,8 @@
             page={currentPage}
             pageSize={currentSize}
             {pageSizeOptions}
-            on:change={handlePageChange}
-            on:pageSizeChange={handlePageSizeChange}
+            onchange={handlePageChange}
+            onpageSizeChange={handlePageSizeChange}
         />
     {/if}
 </div>

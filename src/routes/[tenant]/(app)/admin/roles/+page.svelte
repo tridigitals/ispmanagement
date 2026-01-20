@@ -21,13 +21,15 @@
     // Search
     let searchQuery = $state("");
 
-    let filteredRoles = $derived(roles.filter(
-        (role) =>
-            role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (role.description || "")
-                .toLowerCase()
-                .includes(searchQuery.toLowerCase()),
-    ));
+    let filteredRoles = $derived(
+        roles.filter(
+            (role) =>
+                role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (role.description || "")
+                    .toLowerCase()
+                    .includes(searchQuery.toLowerCase()),
+        ),
+    );
 
     // Table Columns
     const columns = [
@@ -203,7 +205,7 @@
 
         <div class="toolbar-wrapper">
             <TableToolbar bind:searchQuery placeholder="Search roles...">
-                <div slot="actions">
+                {#snippet actions()}
                     {#if $can("create", "roles")}
                         <button
                             class="btn btn-primary"
@@ -213,7 +215,7 @@
                             Create Role
                         </button>
                     {/if}
-                </div>
+                {/snippet}
             </TableToolbar>
         </div>
 
@@ -225,7 +227,7 @@
                 {loading}
                 emptyText="No roles found"
             >
-                <svelte:fragment slot="cell" let:item let:key>
+                {#snippet cell({ item, key })}
                     {#if key === "name"}
                         <div class="role-info">
                             <span class="role-name">{item.name}</span>
@@ -271,7 +273,7 @@
                             {/if}
                         </div>
                     {/if}
-                </svelte:fragment>
+                {/snippet}
             </Table>
         </div>
     </div>
@@ -313,7 +315,13 @@
             </div>
 
             <div class="modal-body-scroll">
-                <form onsubmit={(e) => { e.preventDefault(); saveRole(); }} id="roleForm">
+                <form
+                    onsubmit={(e) => {
+                        e.preventDefault();
+                        saveRole();
+                    }}
+                    id="roleForm"
+                >
                     <div class="form-row">
                         <div class="form-group flex-1">
                             <label for="role-name">Role Name</label>

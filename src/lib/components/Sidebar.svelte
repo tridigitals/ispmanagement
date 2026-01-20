@@ -13,39 +13,32 @@
     import { isSidebarCollapsed } from "$lib/stores/ui";
     import { goto } from "$app/navigation";
     import { t } from "svelte-i18n";
-    import { convertFileSrc } from "@tauri-apps/api/core";
     import { getSlugFromDomain } from "$lib/utils/domain";
     import Icon from "./Icon.svelte";
 
-    // Mobile menu state
-    export let isMobileOpen = false;
-    export function openMobileMenu() {
-        isMobileOpen = true;
-    }
-    export function closeMobileMenu() {
-        isMobileOpen = false;
-    }
-
-    $: String($user?.tenant_slug); // Reactivity trigger
+    let { isMobileOpen = $bindable(false) } = $props();
 
     // Determine if we are on a custom domain that matches the current tenant
-    $: domainSlug = getSlugFromDomain($page.url.hostname);
-    $: isCustomDomain = domainSlug && domainSlug === $user?.tenant_slug;
+    let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
+    let isCustomDomain = $derived(
+        domainSlug && domainSlug === $user?.tenant_slug,
+    );
 
     // If on custom domain, prefix is empty. Otherwise, use slug.
-    $: tenantPrefix =
-        $user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : "";
+    let tenantPrefix = $derived(
+        $user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : "",
+    );
 
-    $: appMenu = [
+    let appMenu = $derived([
         {
             label: $t("sidebar.dashboard"),
             icon: "dashboard",
             href: `${tenantPrefix}/dashboard`,
         },
-    ];
+    ]);
 
     // Add $user as explicit dependency to force reactivity when user permissions change
-    $: adminMenu = (() => {
+    let adminMenu = $derived.by(() => {
         // Access $user to create dependency
         const _ = $user?.permissions;
         return [
@@ -86,12 +79,12 @@
                 show: true,
             },
         ].filter((i) => i.show);
-    })();
+    });
 
-    let isDropdownOpen = false;
+    let isDropdownOpen = $state(false);
 
-    $: isUrlAdmin = $page.url.pathname.includes("/admin");
-    $: currentMenu = isUrlAdmin ? adminMenu : appMenu;
+    let isUrlAdmin = $derived($page.url.pathname.includes("/admin"));
+    let currentMenu = $derived(isUrlAdmin ? adminMenu : appMenu);
 
     function handleLogout() {
         logout();
@@ -118,14 +111,14 @@
     }
 </script>
 
-<svelte:window on:click={handleWindowClick} />
+<svelte:window onclick={handleWindowClick} />
 
 <!-- Mobile Overlay Backdrop -->
 {#if isMobileOpen}
     <div
         class="sidebar-overlay"
-        on:click={closeMobileMenu}
-        on:keydown={(e) => e.key === "Escape" && closeMobileMenu()}
+        onclick={() => (isMobileOpen = false)}
+        onkeydown={(e) => e.key === "Escape" && (isMobileOpen = false)}
         role="button"
         tabindex="0"
         aria-label="Close menu"
@@ -158,7 +151,7 @@
                 <button
                     class="nav-item"
                     class:active={isActive(item)}
-                    on:click={() => navigate(item.href)}
+                    onclick={() => navigate(item.href)}
                 >
                     <Icon name={item.icon} size={18} />
                     <span class="label">{item.label}</span>
@@ -172,7 +165,7 @@
         {#if $isSuperAdmin}
             <button
                 class="context-btn super-admin"
-                on:click={() => goto("/superadmin")}
+                onclick={() => goto("/superadmin")}
                 title="Super Admin Dashboard"
             >
                 <Icon name="server" size={16} />
@@ -183,7 +176,7 @@
         {#if $isAdmin}
             <button
                 class="context-btn"
-                on:click={() =>
+                onclick={() =>
                     goto(
                         isUrlAdmin
                             ? `${tenantPrefix}/dashboard`
@@ -206,27 +199,27 @@
             {#if isDropdownOpen}
                 <div
                     class="dropdown-menu"
-                    on:click|stopPropagation
-                    on:keydown|stopPropagation
+                    onclick={(e) => e.stopPropagation()}
+                    onkeydown={(e) => e.stopPropagation()}
                     role="menu"
                     tabindex="-1"
                 >
                     <button
                         class="menu-item"
-                        on:click={() => navigate(`${tenantPrefix}/profile`)}
+                        onclick={() => navigate(`${tenantPrefix}/profile`)}
                     >
                         <Icon name="profile" size={16} />
                         {$t("sidebar.profile")}
                     </button>
                     <div class="divider"></div>
-                    <button class="menu-item danger" on:click={handleLogout}>
+                    <button class="menu-item danger" onclick={handleLogout}>
                         <Icon name="logout" size={16} />
                         {$t("sidebar.logout")}
                     </button>
                 </div>
             {/if}
 
-            <button class="profile-btn" on:click={toggleDropdown}>
+            <button class="profile-btn" onclick={toggleDropdown}>
                 <div class="avatar">
                     {$user?.name?.charAt(0).toUpperCase() || "?"}
                 </div>

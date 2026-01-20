@@ -35,9 +35,9 @@
     }
 
     function formatCurrency(amount: number) {
-        return new Intl.NumberFormat('id-ID', {
-            style: 'currency',
-            currency: 'IDR'
+        return new Intl.NumberFormat("id-ID", {
+            style: "currency",
+            currency: "IDR",
         }).format(amount);
     }
 </script>
@@ -66,7 +66,7 @@
             searchable={true}
             searchPlaceholder="Search invoices..."
         >
-            <svelte:fragment slot="cell" let:item let:column>
+            {#snippet cell({ item, column })}
                 {#if column.key === "amount"}
                     {formatCurrency(item.amount)}
                 {:else if column.key === "status"}
@@ -75,13 +75,20 @@
                     {new Date(item[column.key]).toLocaleDateString()}
                 {:else if column.key === "actions"}
                     <div class="actions">
-                        {#if item.status === 'pending'}
-                            <a href="/pay/{item.id}" class="btn btn-primary btn-sm">
+                        {#if item.status === "pending"}
+                            <a
+                                href="/pay/{item.id}"
+                                class="btn btn-primary btn-sm"
+                            >
                                 <Icon name="credit-card" size={14} />
                                 Pay Now
                             </a>
                         {:else}
-                            <a href="/pay/{item.id}" class="action-btn" title="View Details">
+                            <a
+                                href="/pay/{item.id}"
+                                class="action-btn"
+                                title="View Details"
+                            >
                                 <Icon name="eye" size={18} />
                             </a>
                         {/if}
@@ -89,18 +96,38 @@
                 {:else}
                     {item[column.key]}
                 {/if}
-            </svelte:fragment>
+            {/snippet}
         </Table>
     </div>
 </div>
 
 <style>
-    .page-container { padding: 2rem; max-width: 1200px; margin: 0 auto; }
-    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; }
-    .header-content h1 { font-size: 1.8rem; font-weight: 700; margin: 0 0 0.5rem; }
-    .subtitle { color: var(--text-secondary); }
-    .content-card { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
-    
+    .page-container {
+        padding: 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 2rem;
+    }
+    .header-content h1 {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem;
+    }
+    .subtitle {
+        color: var(--text-secondary);
+    }
+    .content-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
     .status-pill {
         padding: 0.25rem 0.6rem;
         border-radius: 12px;
@@ -108,19 +135,63 @@
         font-weight: 700;
         text-transform: uppercase;
     }
-    .status-pill.pending { background: #fef3c7; color: #d97706; }
-    .status-pill.paid { background: #dcfce7; color: #16a34a; }
-    .status-pill.failed { background: #fee2e2; color: #dc2626; }
-
-    .actions { display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center; }
-    .action-btn { 
-        width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-        border: none; background: transparent; color: var(--text-secondary); cursor: pointer; border-radius: 6px;
+    .status-pill.pending {
+        background: #fef3c7;
+        color: #d97706;
     }
-    .action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
-    
-    .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; }
-    .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
-    .btn-primary { background: var(--color-primary); color: white; }
-    .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); }
+    .status-pill.paid {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+    .status-pill.failed {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .actions {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+        align-items: center;
+    }
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        border-radius: 6px;
+    }
+    .action-btn:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        text-decoration: none;
+    }
+    .btn-sm {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+    }
+    .btn-primary {
+        background: var(--color-primary);
+        color: white;
+    }
+    .btn-secondary {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
 </style>

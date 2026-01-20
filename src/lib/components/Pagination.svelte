@@ -1,30 +1,30 @@
 <script lang="ts">
-    import { createEventDispatcher } from "svelte";
     import Icon from "./Icon.svelte";
     import Select from "./Select.svelte";
 
-    export let count = 0;
-    export let page = 0; // 0-indexed
-    export let pageSize = 10;
-    export let pageSizeOptions = [5, 10, 25, 50, 100];
+    let {
+        count = 0,
+        page = 0,
+        pageSize = 10,
+        pageSizeOptions = [5, 10, 25, 50, 100],
+        onchange,
+        onpageSizeChange,
+    } = $props();
 
-    const dispatch = createEventDispatcher();
-
-    $: totalPages = Math.ceil(count / pageSize);
-    $: startRow = count === 0 ? 0 : page * pageSize + 1;
-    $: endRow = Math.min((page + 1) * pageSize, count);
+    let totalPages = $derived(Math.ceil(count / pageSize));
+    let startRow = $derived(count === 0 ? 0 : page * pageSize + 1);
+    let endRow = $derived(Math.min((page + 1) * pageSize, count));
 
     function handlePageChange(newPage: number) {
         if (newPage >= 0 && newPage < totalPages) {
-            dispatch("change", newPage);
+            if (onchange) onchange(newPage);
         }
     }
 
-    function handlePageSizeChange(event: CustomEvent) {
-        const newSize = parseInt(event.detail, 10);
-        dispatch("pageSizeChange", newSize);
-        // Reset to first page to avoid out of bounds
-        dispatch("change", 0);
+    function handlePageSizeChange(newSize: number) {
+        // detail from Select is the value
+        if (onpageSizeChange) onpageSizeChange(newSize);
+        if (onchange) onchange(0);
     }
 </script>
 
@@ -36,7 +36,7 @@
                 value={pageSize}
                 options={pageSizeOptions}
                 placement="top"
-                on:change={handlePageSizeChange}
+                onchange={(e) => handlePageSizeChange(e.detail)}
             />
         </div>
     </div>
@@ -49,7 +49,7 @@
             <button
                 class="icon-btn"
                 disabled={page === 0}
-                on:click={() => handlePageChange(page - 1)}
+                onclick={() => handlePageChange(page - 1)}
                 aria-label="Previous page"
             >
                 <Icon name="chevron-left" size={20} />
@@ -57,7 +57,7 @@
             <button
                 class="icon-btn"
                 disabled={page >= totalPages - 1}
-                on:click={() => handlePageChange(page + 1)}
+                onclick={() => handlePageChange(page + 1)}
                 aria-label="Next page"
             >
                 <Icon name="chevron-right" size={20} />

@@ -1,30 +1,58 @@
 <script lang="ts">
-    import { createEventDispatcher } from "svelte";
     import Icon from "$lib/components/Icon.svelte";
 
-    export let value: string | number = "";
-    export let type: "text" | "password" | "email" | "number" = "text";
-    export let label: string = "";
-    export let placeholder: string = "";
-    export let disabled: boolean = false;
-    export let readonly: boolean = false;
-    export let id: string = "";
-    export let error: string = "";
-    export let showPasswordToggle: boolean = false;
+    interface Props {
+        value?: string | number;
+        type?: "text" | "password" | "email" | "number";
+        label?: string;
+        placeholder?: string;
+        disabled?: boolean;
+        readonly?: boolean;
+        id?: string;
+        error?: string;
+        showPasswordToggle?: boolean;
+        oninput?: (e: Event) => void;
+        onchange?: (e: Event) => void;
+        [key: string]: any;
+    }
 
-    const dispatch = createEventDispatcher();
-    let isPasswordVisible = false;
+    let {
+        value = $bindable(""),
+        type = "text",
+        label = "",
+        placeholder = "",
+        disabled = false,
+        readonly = false,
+        id = "",
+        error = "",
+        showPasswordToggle = false,
+        oninput,
+        onchange,
+        ...restProps
+    }: Props = $props();
 
-    $: inputType = showPasswordToggle && isPasswordVisible ? "text" : type;
+    let isPasswordVisible = $state(false);
+
+    let inputType = $derived(
+        showPasswordToggle && isPasswordVisible ? "text" : type,
+    );
 
     function handleInput(e: Event) {
         const target = e.target as HTMLInputElement;
-        value = type === "number" ? Number(target.value) : target.value;
-        dispatch("input", e);
+        // The bind:value handles the update, but we might need to cast if it's a number type
+        // However, standard HTML input binding in Svelte usually handles this.
+        // For strict type parity with previous logic:
+        if (type === "number") {
+            value = Number(target.value);
+        } else {
+            value = target.value;
+        }
+
+        if (oninput) oninput(e);
     }
 
     function handleChange(e: Event) {
-        dispatch("change", e);
+        if (onchange) onchange(e);
     }
 </script>
 
@@ -37,21 +65,21 @@
         <input
             {id}
             type={inputType}
-            {value}
+            bind:value
             {placeholder}
             {disabled}
             {readonly}
             class="form-input"
-            on:input={handleInput}
-            on:change={handleChange}
-            {...$$restProps}
+            oninput={handleInput}
+            onchange={handleChange}
+            {...restProps}
         />
 
         {#if showPasswordToggle && type === "password"}
             <button
                 type="button"
                 class="password-toggle"
-                on:click={() => (isPasswordVisible = !isPasswordVisible)}
+                onclick={() => (isPasswordVisible = !isPasswordVisible)}
                 tabindex="-1"
             >
                 <Icon name={isPasswordVisible ? "eye-off" : "eye"} size={18} />
