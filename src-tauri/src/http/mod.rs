@@ -5,14 +5,14 @@ use axum::{
 };
 use std::net::SocketAddr;
 use tower_http::{
-    cors::{Any, CorsLayer},
+    cors::{AllowOrigin, Any, CorsLayer},
     timeout::TimeoutLayer,
 };
 use std::time::Duration;
 use crate::services::{AuthService, UserService, SettingsService, EmailService, TeamService, AuditService, RoleService, SystemService, PlanService, StorageService, PaymentService};
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tracing::{info, warn};
+use tracing::info;
 use std::env;
 
 use std::path::PathBuf;
@@ -87,68 +87,87 @@ pub async fn start_server(
         app_data_dir,
     };
 
-    // Dynamic CORS Configuration
-    let origins_str = env::var("CORS_ALLOWED_ORIGINS").unwrap_or_else(|_| {
-        "http://localhost:5173,http://localhost:3000,http://localhost:1420,tauri://localhost,https://tauri.localhost,https://saas.tridigitals.com,https://saas1.tridigitals.com".to_string()
-    });
-
-    let origins: Vec<axum::http::HeaderValue> = origins_str
-        .split(',')
-        .map(|s| s.trim().trim_end_matches('/')) // Remove trailing slash
-        .filter_map(|s| {
-            s.parse::<axum::http::HeaderValue>()
-                .map_err(|e| warn!("Invalid CORS origin '{}': {}", s, e))
-                .ok()
-        })
-        .collect();
-
-    // Fetch custom domains from DB
-    let mut db_origins: Vec<axum::http::HeaderValue> = Vec::new();
+    // --- Dynamic CORS Implementation ---
     
-    // Use the pool to query active custom domains
-    let rows: Vec<(String,)> = sqlx::query_as("SELECT custom_domain FROM tenants WHERE custom_domain IS NOT NULL AND custom_domain != ''")
-        .fetch_all(&pool)
-        .await
-        .unwrap_or_else(|e| {
-            warn!("Failed to fetch custom domains for CORS: {}", e);
-            vec![]
-        });
+    // 1. Create a shared cache for allowed origins
+    use std::collections::HashSet;
+    use std::sync::RwLock;
+    
+    // Initial static origins from env
+    let env_origins_str = env::var("CORS_ALLOWED_ORIGINS").unwrap_or_else(|_| {
+        "http://localhost:5173,http://localhost:3000,http://localhost:1420,tauri://localhost,https://tauri.localhost,https://saas.tridigitals.com".to_string()
+    });
+    
+    let mut initial_set = HashSet::new();
+    for s in env_origins_str.split(',') {
+        let clean = s.trim().trim_end_matches('/');
+        initial_set.insert(clean.to_string());
+    }
+    
+    let cors_cache = Arc::new(RwLock::new(initial_set));
+    
+    // 2. Spawn a background task to refresh the cache from DB every 30 seconds
+    let cache_for_task = cors_cache.clone();
+    let pool_for_task = pool.clone();
+    
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(30)); 
+        loop {
+            interval.tick().await; 
+            
+            // Re-fetch custom domains
+             let rows: Result<Vec<(String,)>, _> = sqlx::query_as("SELECT custom_domain FROM tenants WHERE custom_domain IS NOT NULL AND custom_domain != ''")
+                .fetch_all(&pool_for_task)
+                .await;
 
-    info!("Found {} custom domains in DB", rows.len());
+            match rows {
+                Ok(domains) => {
+                    let mut new_custom_domains = HashSet::new();
+                    for (d,) in domains {
+                         let url_str = if d.starts_with("http") { d } else { format!("https://{}", d) };
+                         let clean_url = url_str.trim().trim_end_matches('/').to_string();
+                         new_custom_domains.insert(clean_url);
+                    }
 
-    for (domain,) in rows {
-        // Ensure domain has protocol if missing (assume https)
-        let url_str = if domain.starts_with("http") {
-             domain.clone()
-        } else {
-             format!("https://{}", domain)
-        };
-        
-        // Strip trailing slash
-        let clean_url = url_str.trim().trim_end_matches('/');
+                    // Re-add env origins (so we don't lose them)
+                    // We parse env again or just clone a known set? 
+                    // Simpler: Just ensure we keep the env ones. 
+                    // Optimization: We could store env ones separately, but simpler to just merge.
+                     let env_origins_refresh = env::var("CORS_ALLOWED_ORIGINS").unwrap_or_default();
+                     for s in env_origins_refresh.split(',') {
+                        if !s.trim().is_empty() {
+                            let clean = s.trim().trim_end_matches('/');
+                            new_custom_domains.insert(clean.to_string());
+                        }
+                     }
 
-        match clean_url.parse::<axum::http::HeaderValue>() {
-            Ok(val) => {
-                info!("Adding allowed CORS origin from DB: {}", clean_url);
-                db_origins.push(val);
-            },
-            Err(e) => {
-                warn!("Invalid custom domain from DB '{}': {}", clean_url, e);
+                     // Update the lock
+                     if let Ok(mut lock) = cache_for_task.write() {
+                         *lock = new_custom_domains;
+                         // tracing::info!("CORS Cache Updated. Count: {}", lock.len()); 
+                     }
+                }
+                Err(e) => {
+                    tracing::error!("Failed to refresh CORS domains: {}", e);
+                }
             }
         }
-    }
+    });
 
-    let all_origins = [origins, db_origins].concat();
-
-    info!("FINAL Allowed CORS Origins count: {}", all_origins.len());
-    for o in &all_origins {
-        if let Ok(s) = o.to_str() {
-            info!("  - Allowed: {}", s);
-        }
-    }
-
+    // 3. Define the dynamic CORS layer
+    let cache_for_layer = cors_cache.clone();
+    
     let cors = CorsLayer::new()
-        .allow_origin(all_origins)
+        .allow_origin(AllowOrigin::predicate(move |origin: &_, _req: &_| {
+            if let Ok(origin_str) = origin.to_str() {
+                if let Ok(lock) = cache_for_layer.read() {
+                    if lock.contains(origin_str) {
+                         return true;
+                    }
+                }
+            }
+            false
+        }))
         .allow_methods(Any)
         .allow_headers(Any);
 

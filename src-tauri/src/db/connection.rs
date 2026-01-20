@@ -416,7 +416,7 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_plans_slug ON plans(slug)").execute(pool).await {
         tracing::error!("Failed to create idx_plans_slug: {}", e);
     }
-    if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_feature_definitions_code ON feature_definitions(code)").execute(pool).await {
+    if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_feature_definitions_code ON features(code)").execute(pool).await {
         tracing::error!("Failed to create idx_feature_definitions_code: {}", e);
     }
     if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_plan_features_plan ON plan_features(plan_id)").execute(pool).await {
