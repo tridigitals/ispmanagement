@@ -1,9 +1,9 @@
 //! Settings Commands
 
+use crate::http::websocket::{WsEvent, WsHub};
 use crate::models::{Setting, UpsertSettingDto};
-use crate::services::{AuthService, SettingsService};
 use crate::services::auth_service::AuthSettings;
-use crate::http::websocket::{WsHub, WsEvent};
+use crate::services::{AuthService, SettingsService};
 use base64::{engine::general_purpose, Engine as _};
 use std::fs;
 use std::sync::Arc;
@@ -16,26 +16,71 @@ pub struct PublicSettings {
     pub default_locale: Option<String>,
     pub maintenance_mode: bool,
     pub maintenance_message: Option<String>,
+    // Payment Settings
+    pub payment_midtrans_enabled: bool,
+    pub payment_midtrans_client_key: Option<String>,
+    pub payment_midtrans_is_production: bool,
+    pub payment_manual_enabled: bool,
 }
 
 #[tauri::command]
 pub async fn get_public_settings(
     settings_service: State<'_, SettingsService>,
 ) -> Result<PublicSettings, String> {
-    let app_name = settings_service.get_value(None, "app_name").await.map_err(|e| e.to_string())?;
-    let app_description = settings_service.get_value(None, "app_description").await.map_err(|e| e.to_string())?;
-    let default_locale = settings_service.get_value(None, "default_locale").await.map_err(|e| e.to_string())?;
-    let maintenance_mode_str = settings_service.get_value(None, "maintenance_mode").await.map_err(|e| e.to_string())?;
-    let maintenance_message = settings_service.get_value(None, "maintenance_message").await.map_err(|e| e.to_string())?;
-    
+    let app_name = settings_service
+        .get_value(None, "app_name")
+        .await
+        .map_err(|e| e.to_string())?;
+    let app_description = settings_service
+        .get_value(None, "app_description")
+        .await
+        .map_err(|e| e.to_string())?;
+    let default_locale = settings_service
+        .get_value(None, "default_locale")
+        .await
+        .map_err(|e| e.to_string())?;
+    let maintenance_mode_str = settings_service
+        .get_value(None, "maintenance_mode")
+        .await
+        .map_err(|e| e.to_string())?;
+    let maintenance_message = settings_service
+        .get_value(None, "maintenance_message")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Payment Fetch
+    let midtrans_enabled_str = settings_service
+        .get_value(None, "payment_midtrans_enabled")
+        .await
+        .unwrap_or_default();
+    let payment_midtrans_client_key = settings_service
+        .get_value(None, "payment_midtrans_client_key")
+        .await
+        .unwrap_or_default();
+    let midtrans_prod_str = settings_service
+        .get_value(None, "payment_midtrans_is_production")
+        .await
+        .unwrap_or_default();
+    let manual_enabled_str = settings_service
+        .get_value(None, "payment_manual_enabled")
+        .await
+        .unwrap_or_default();
+
     let maintenance_mode = maintenance_mode_str.as_deref() == Some("true");
-    
+    let payment_midtrans_enabled = midtrans_enabled_str.as_deref() == Some("true");
+    let payment_midtrans_is_production = midtrans_prod_str.as_deref() == Some("true");
+    let payment_manual_enabled = manual_enabled_str.as_deref() != Some("false"); // Default to true if missing
+
     Ok(PublicSettings {
         app_name,
         app_description,
         default_locale,
         maintenance_mode,
         maintenance_message,
+        payment_midtrans_enabled,
+        payment_midtrans_client_key,
+        payment_midtrans_is_production,
+        payment_manual_enabled,
     })
 }
 
@@ -46,8 +91,11 @@ pub async fn get_all_settings(
     settings_service: State<'_, SettingsService>,
     auth_service: State<'_, AuthService>,
 ) -> Result<Vec<Setting>, String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
-    
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
     // Security check: must be admin or superadmin
     // (Actual role names might vary, usually 'admin' or 'owner')
     // Ideally use permission check, but for now checking role or super_admin flag
@@ -63,7 +111,10 @@ pub async fn get_all_settings(
         claims.tenant_id.as_deref()
     };
 
-    settings_service.get_all(target_tenant_id).await.map_err(|e| e.to_string())
+    settings_service
+        .get_all(target_tenant_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// Get public auth settings (no token required)
@@ -82,8 +133,11 @@ pub async fn get_setting(
     settings_service: State<'_, SettingsService>,
     auth_service: State<'_, AuthService>,
 ) -> Result<Option<Setting>, String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
-    
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
     if !claims.is_super_admin && claims.role != "admin" {
         return Err("Unauthorized".to_string());
     }
@@ -94,7 +148,10 @@ pub async fn get_setting(
         claims.tenant_id.as_deref()
     };
 
-    settings_service.get_by_key(target_tenant_id, &key).await.map_err(|e| e.to_string())
+    settings_service
+        .get_by_key(target_tenant_id, &key)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// Get setting value by key
@@ -105,8 +162,11 @@ pub async fn get_setting_value(
     settings_service: State<'_, SettingsService>,
     auth_service: State<'_, AuthService>,
 ) -> Result<Option<String>, String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
-    
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
     if !claims.is_super_admin && claims.role != "admin" {
         return Err("Unauthorized".to_string());
     }
@@ -117,7 +177,10 @@ pub async fn get_setting_value(
         claims.tenant_id.as_deref()
     };
 
-    settings_service.get_value(target_tenant_id, &key).await.map_err(|e| e.to_string())
+    settings_service
+        .get_value(target_tenant_id, &key)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// Upsert (create or update) setting
@@ -131,34 +194,56 @@ pub async fn upsert_setting(
     auth_service: State<'_, AuthService>,
     ws_hub: State<'_, Arc<WsHub>>,
 ) -> Result<Setting, String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     if claims.role != "admin" {
         return Err("Unauthorized".to_string());
     }
-    
+
     // For superadmin, save settings as GLOBAL (tenant_id = None)
     let tenant_id_for_save = if claims.is_super_admin {
         None
     } else {
         claims.tenant_id
     };
-    
+
     let is_maintenance_mode = key == "maintenance_mode";
     let maintenance_enabled = value == "true";
 
-    let dto = UpsertSettingDto { key, value, description };
-    let setting = settings_service.upsert(tenant_id_for_save, dto, Some(&claims.sub), Some("127.0.0.1")).await.map_err(|e| e.to_string())?;
+    let dto = UpsertSettingDto {
+        key,
+        value,
+        description,
+    };
+    let setting = settings_service
+        .upsert(
+            tenant_id_for_save,
+            dto,
+            Some(&claims.sub),
+            Some("127.0.0.1"),
+        )
+        .await
+        .map_err(|e| e.to_string())?;
 
     // Broadcast maintenance mode change to all connected clients
     if is_maintenance_mode {
         // Get maintenance message if exists
-        let maintenance_message = settings_service.get_value(None, "maintenance_message").await.ok().flatten();
-        
-        ws_hub.broadcast(WsEvent::MaintenanceModeChanged { 
+        let maintenance_message = settings_service
+            .get_value(None, "maintenance_message")
+            .await
+            .ok()
+            .flatten();
+
+        ws_hub.broadcast(WsEvent::MaintenanceModeChanged {
             enabled: maintenance_enabled,
             message: maintenance_message,
         });
-        println!("DEBUG: [Tauri] Broadcasted MaintenanceModeChanged event (enabled: {})", maintenance_enabled);
+        println!(
+            "DEBUG: [Tauri] Broadcasted MaintenanceModeChanged event (enabled: {})",
+            maintenance_enabled
+        );
     }
 
     Ok(setting)
@@ -172,8 +257,11 @@ pub async fn delete_setting(
     settings_service: State<'_, SettingsService>,
     auth_service: State<'_, AuthService>,
 ) -> Result<(), String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
-    
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
     if !claims.is_super_admin && claims.role != "admin" {
         return Err("Unauthorized".to_string());
     }
@@ -184,7 +272,10 @@ pub async fn delete_setting(
         claims.tenant_id.as_deref()
     };
 
-    settings_service.delete(target_tenant_id, &key, Some(&claims.sub), Some("127.0.0.1")).await.map_err(|e| e.to_string())
+    settings_service
+        .delete(target_tenant_id, &key, Some(&claims.sub), Some("127.0.0.1"))
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// Upload Logo
@@ -196,7 +287,10 @@ pub async fn upload_logo(
     settings_service: State<'_, SettingsService>,
     app_handle: AppHandle,
 ) -> Result<String, String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     if claims.role != "admin" {
         return Err("Unauthorized".to_string());
     }
@@ -211,7 +305,7 @@ pub async fn upload_logo(
         .path()
         .app_data_dir()
         .map_err(|e| e.to_string())?;
-    
+
     let mut uploads_dir = app_dir.join("uploads");
     if let Some(tid) = &claims.tenant_id {
         uploads_dir = uploads_dir.join(tid);
@@ -227,12 +321,15 @@ pub async fn upload_logo(
 
     // Save path to settings
     let path_str = file_path.to_string_lossy().to_string();
-    let dto = UpsertSettingDto { 
-        key: "app_logo_path".to_string(), 
-        value: path_str.clone(), 
-        description: Some("Path to application logo".to_string()) 
+    let dto = UpsertSettingDto {
+        key: "app_logo_path".to_string(),
+        value: path_str.clone(),
+        description: Some("Path to application logo".to_string()),
     };
-    settings_service.upsert(claims.tenant_id, dto, Some(&claims.sub), Some("127.0.0.1")).await.map_err(|e| e.to_string())?;
+    settings_service
+        .upsert(claims.tenant_id, dto, Some(&claims.sub), Some("127.0.0.1"))
+        .await
+        .map_err(|e| e.to_string())?;
 
     Ok(path_str)
 }
@@ -256,13 +353,13 @@ pub async fn get_logo(
         .path()
         .app_data_dir()
         .map_err(|e| e.to_string())?;
-    
+
     let mut logo_path = app_dir.join("uploads");
     if let Some(tid) = tenant_id {
         logo_path = logo_path.join(tid);
     }
     logo_path = logo_path.join("logo.png");
-    
+
     if logo_path.exists() {
         let bytes = fs::read(&logo_path).map_err(|e| e.to_string())?;
         let base64_str = general_purpose::STANDARD.encode(&bytes);
@@ -288,16 +385,18 @@ pub async fn send_test_email(
     auth_service: State<'_, AuthService>,
     settings_service: State<'_, SettingsService>,
 ) -> Result<String, String> {
-    auth_service.check_admin(&token).await.map_err(|e| e.to_string())?;
-    
+    auth_service
+        .check_admin(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
     // Create email service with cloned settings service
     let email_service = crate::services::EmailService::new((*settings_service).clone());
-    
+
     email_service
         .send_test_email(&to_email)
         .await
         .map_err(|e| e.to_string())?;
-    
+
     Ok(format!("Test email sent successfully to {}", to_email))
 }
-

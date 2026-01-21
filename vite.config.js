@@ -5,6 +5,7 @@ import { sveltekit } from "@sveltejs/kit/vite";
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
+// @ts-ignore
 export default defineConfig(async ({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
@@ -27,7 +28,7 @@ export default defineConfig(async ({ mode }) => {
   const finalAllowedHosts = [...new Set([...parsedHosts, ...explicitAllowedHosts, 'localhost', '127.0.0.1'])];
 
   return {
-    plugins: [sveltekit()],
+    plugins: [await sveltekit()],
 
     // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
     //

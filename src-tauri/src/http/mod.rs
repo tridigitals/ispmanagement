@@ -1,39 +1,43 @@
+use crate::services::{
+    AuditService, AuthService, EmailService, NotificationService, PaymentService, PlanService,
+    RoleService, SettingsService, StorageService, SystemService, TeamService, UserService,
+};
 use axum::{
-    routing::{get, post, delete, put},
     extract::DefaultBodyLimit,
+    routing::{delete, get, post, put},
     Router,
 };
+use std::env;
 use std::net::SocketAddr;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::net::TcpListener;
 use tower_http::{
     cors::{AllowOrigin, Any, CorsLayer},
     timeout::TimeoutLayer,
 };
-use std::time::Duration;
-use crate::services::{AuthService, UserService, SettingsService, EmailService, TeamService, AuditService, RoleService, SystemService, PlanService, StorageService, PaymentService};
-use std::sync::Arc;
-use tokio::net::TcpListener;
 use tracing::info;
-use std::env;
 
 use std::path::PathBuf;
 
+pub mod audit;
 pub mod auth;
 pub mod install;
-pub mod settings;
-pub mod users;
-pub mod superadmin;
-pub mod team;
-pub mod roles;
-pub mod websocket;
-pub mod public;
-pub mod audit;
-pub mod system;
-pub mod plans;
-pub mod storage;
+pub mod notifications;
 pub mod payment;
+pub mod plans;
+pub mod public;
+pub mod roles;
+pub mod settings;
+pub mod storage;
+pub mod superadmin;
+pub mod system;
+pub mod team;
 pub mod tenant;
+pub mod users;
+pub mod websocket;
 
-pub use websocket::WsHub;
+pub use websocket::{WsEvent, WsHub};
 
 // App State to share services with Axum handlers
 #[derive(Clone)]
@@ -50,6 +54,7 @@ pub struct AppState {
     pub plan_service: Arc<PlanService>,
     pub storage_service: Arc<StorageService>,
     pub payment_service: Arc<PaymentService>,
+    pub notification_service: Arc<NotificationService>,
     pub ws_hub: Arc<WsHub>,
     pub app_data_dir: PathBuf,
 }
@@ -66,6 +71,7 @@ pub async fn start_server(
     plan_service: PlanService,
     storage_service: StorageService,
     payment_service: PaymentService,
+    notification_service: NotificationService,
     ws_hub: Arc<WsHub>,
     app_data_dir: PathBuf,
     default_port: u16,
@@ -83,40 +89,41 @@ pub async fn start_server(
         plan_service: Arc::new(plan_service.clone()),
         storage_service: Arc::new(storage_service),
         payment_service: Arc::new(payment_service.clone()),
+        notification_service: Arc::new(notification_service),
         ws_hub,
         app_data_dir,
     };
 
     // --- Dynamic CORS Implementation ---
-    
+
     // 1. Create a shared cache for allowed origins
     use std::collections::HashSet;
     use std::sync::RwLock;
-    
+
     // Initial static origins from env
     let env_origins_str = env::var("CORS_ALLOWED_ORIGINS").unwrap_or_else(|_| {
         "http://localhost:5173,http://localhost:3000,http://localhost:1420,tauri://localhost,https://tauri.localhost,https://saas.tridigitals.com".to_string()
     });
-    
+
     let mut initial_set = HashSet::new();
     for s in env_origins_str.split(',') {
         let clean = s.trim().trim_end_matches('/');
         initial_set.insert(clean.to_string());
     }
-    
+
     let cors_cache = Arc::new(RwLock::new(initial_set));
-    
+
     // 2. Spawn a background task to refresh the cache from DB every 30 seconds
     let cache_for_task = cors_cache.clone();
     let pool_for_task = pool.clone();
-    
+
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_secs(30)); 
+        let mut interval = tokio::time::interval(Duration::from_secs(30));
         loop {
-            interval.tick().await; 
-            
+            interval.tick().await;
+
             // Re-fetch custom domains
-             let rows: Result<Vec<(String,)>, _> = sqlx::query_as("SELECT custom_domain FROM tenants WHERE custom_domain IS NOT NULL AND custom_domain != ''")
+            let rows: Result<Vec<(String,)>, _> = sqlx::query_as("SELECT custom_domain FROM tenants WHERE custom_domain IS NOT NULL AND custom_domain != ''")
                 .fetch_all(&pool_for_task)
                 .await;
 
@@ -124,28 +131,32 @@ pub async fn start_server(
                 Ok(domains) => {
                     let mut new_custom_domains = HashSet::new();
                     for (d,) in domains {
-                         let url_str = if d.starts_with("http") { d } else { format!("https://{}", d) };
-                         let clean_url = url_str.trim().trim_end_matches('/').to_string();
-                         new_custom_domains.insert(clean_url);
+                        let url_str = if d.starts_with("http") {
+                            d
+                        } else {
+                            format!("https://{}", d)
+                        };
+                        let clean_url = url_str.trim().trim_end_matches('/').to_string();
+                        new_custom_domains.insert(clean_url);
                     }
 
                     // Re-add env origins (so we don't lose them)
-                    // We parse env again or just clone a known set? 
-                    // Simpler: Just ensure we keep the env ones. 
+                    // We parse env again or just clone a known set?
+                    // Simpler: Just ensure we keep the env ones.
                     // Optimization: We could store env ones separately, but simpler to just merge.
-                     let env_origins_refresh = env::var("CORS_ALLOWED_ORIGINS").unwrap_or_default();
-                     for s in env_origins_refresh.split(',') {
+                    let env_origins_refresh = env::var("CORS_ALLOWED_ORIGINS").unwrap_or_default();
+                    for s in env_origins_refresh.split(',') {
                         if !s.trim().is_empty() {
                             let clean = s.trim().trim_end_matches('/');
                             new_custom_domains.insert(clean.to_string());
                         }
-                     }
+                    }
 
-                     // Update the lock
-                     if let Ok(mut lock) = cache_for_task.write() {
-                         *lock = new_custom_domains;
-                         // tracing::info!("CORS Cache Updated. Count: {}", lock.len()); 
-                     }
+                    // Update the lock
+                    if let Ok(mut lock) = cache_for_task.write() {
+                        *lock = new_custom_domains;
+                        // tracing::info!("CORS Cache Updated. Count: {}", lock.len());
+                    }
                 }
                 Err(e) => {
                     tracing::error!("Failed to refresh CORS domains: {}", e);
@@ -156,13 +167,13 @@ pub async fn start_server(
 
     // 3. Define the dynamic CORS layer
     let cache_for_layer = cors_cache.clone();
-    
+
     let cors = CorsLayer::new()
         .allow_origin(AllowOrigin::predicate(move |origin: &_, _req: &_| {
             if let Ok(origin_str) = origin.to_str() {
                 if let Ok(lock) = cache_for_layer.read() {
                     if lock.contains(origin_str) {
-                         return true;
+                        return true;
                     }
                 }
             }
@@ -171,115 +182,131 @@ pub async fn start_server(
         .allow_methods(Any)
         .allow_headers(Any);
 
-            // Build router
+    // Build router
 
-            let app = Router::new()
-
-                .route("/", get(root_handler))
-
-                // Install Routes
-
-                .route("/api/install/check", get(install::check_installed))
-
-                .route("/api/install", post(install::install_app))
-
-                // Auth Routes
-
-                .route("/api/auth/settings", get(auth::get_auth_settings))
-
-                .route("/api/auth/me", get(auth::get_current_user))
-
-                .route("/api/auth/login", post(auth::login))
-
-                .route("/api/auth/register", post(auth::register))
-
-                .route("/api/auth/verify-email", post(auth::verify_email))
-
-                .route("/api/auth/forgot-password", post(auth::forgot_password))
-
-                .route("/api/auth/reset-password", post(auth::reset_password))
-
-                .route("/api/auth/validate", post(auth::validate_token))
-
-                // User Routes
-
-                .route("/api/users", get(users::list_users).post(users::create_user))
-
-                .route("/api/users/{id}", get(users::get_user).put(users::update_user).delete(users::delete_user))
-
-                // Super Admin Routes
-
-                .route("/api/superadmin/tenants", get(superadmin::list_tenants).post(superadmin::create_tenant))
-
-                .route("/api/superadmin/tenants/{id}", delete(superadmin::delete_tenant).put(superadmin::update_tenant))
-                .route("/api/superadmin/audit-logs", get(audit::list_audit_logs))
-                .route("/api/superadmin/system", get(system::get_system_health))
-
-                // Plans Routes
-                .nest("/api/plans", plans::plan_routes())
-
-                // Payment Routes
-                .nest("/api/payment", payment::router())
-
-                // Settings Routes
-
-                .route("/api/settings", get(settings::get_all_settings).post(settings::upsert_setting))
-
-                .route("/api/settings/public", get(settings::get_public_settings))
-
-                .route("/api/settings/logo", get(settings::get_logo).post(settings::upload_logo))
-
-                .route("/api/settings/test-email", post(settings::send_test_email))
-
-                .route("/api/settings/{key}", get(settings::get_setting).delete(settings::delete_setting))
-
-                .route("/api/settings/{key}/value", get(settings::get_setting_value))
-
-                // Team Routes
-                .route("/api/team", get(team::list_team_members).post(team::add_team_member))
-                .route("/api/team/{id}", put(team::update_team_member).delete(team::remove_team_member))
-
-                // Tenant Routes
-                .route("/api/tenant/me", get(tenant::get_current_tenant).put(tenant::update_current_tenant))
-
-                // Roles Routes
-                .route("/api/roles", get(roles::get_roles).post(roles::create_new_role))
-                .route("/api/roles/{id}", get(roles::get_role).put(roles::update_existing_role).delete(roles::delete_existing_role))
-                .route("/api/permissions", get(roles::get_permissions))
-
-                // WebSocket Route
-                .route("/api/ws", get(websocket::ws_handler))
-
-                // Storage Routes
-                .route("/api/storage/files", get(storage::list_files))
-                .route("/api/storage/files/{id}", delete(storage::delete_file))
-                .route("/api/storage/files/{id}/content", get(storage::serve_file))
-                .route("/api/storage/files/{id}/download", get(storage::download_file))
-                .route("/api/storage/upload", post(storage::upload_file_http))
-                .route("/api/storage/upload/init", post(storage::init_upload))
-                .route("/api/storage/upload/chunk", post(storage::upload_chunk))
-                .route("/api/storage/upload/complete", post(storage::complete_upload))
-
-                // Public Routes
-                .route("/api/public/tenant-lookup", get(public::lookup_tenant_by_domain))
-                .route("/api/public/tenant/{slug}", get(public::get_tenant_by_slug))
-                .route("/api/public/domain/{domain}", get(public::get_tenant_by_domain))
-
-                // Version Route
-                .route("/api/version", get(get_app_version))
-
-                .layer(DefaultBodyLimit::max(1024 * 1024 * 1024)) // 1GB Upload Limit
-                .layer({
-                    #[allow(deprecated)]
-                    TimeoutLayer::new(Duration::from_secs(3600))
-                }) // 1 Hour Timeout for large uploads
-                .layer(cors)
-
-                .with_state(state);
-
-        
-
-    
+    let app = Router::new()
+        .route("/", get(root_handler))
+        // Install Routes
+        .route("/api/install/check", get(install::check_installed))
+        .route("/api/install", post(install::install_app))
+        // Auth Routes
+        .route("/api/auth/settings", get(auth::get_auth_settings))
+        .route("/api/auth/me", get(auth::get_current_user))
+        .route("/api/auth/login", post(auth::login))
+        .route("/api/auth/register", post(auth::register))
+        .route("/api/auth/verify-email", post(auth::verify_email))
+        .route("/api/auth/forgot-password", post(auth::forgot_password))
+        .route("/api/auth/reset-password", post(auth::reset_password))
+        .route("/api/auth/validate", post(auth::validate_token))
+        // User Routes
+        .route(
+            "/api/users",
+            get(users::list_users).post(users::create_user),
+        )
+        .route(
+            "/api/users/{id}",
+            get(users::get_user)
+                .put(users::update_user)
+                .delete(users::delete_user),
+        )
+        // Super Admin Routes
+        .route(
+            "/api/superadmin/tenants",
+            get(superadmin::list_tenants).post(superadmin::create_tenant),
+        )
+        .route(
+            "/api/superadmin/tenants/{id}",
+            delete(superadmin::delete_tenant).put(superadmin::update_tenant),
+        )
+        .route("/api/superadmin/audit-logs", get(audit::list_audit_logs))
+        .route("/api/superadmin/system", get(system::get_system_health))
+        // Plans Routes
+        .nest("/api/plans", plans::plan_routes())
+        // Payment Routes
+        .nest("/api/payment", payment::router())
+        // Notification Routes
+        .nest("/api/notifications", notifications::router())
+        // Settings Routes
+        .route(
+            "/api/settings",
+            get(settings::get_all_settings).post(settings::upsert_setting),
+        )
+        .route("/api/settings/public", get(settings::get_public_settings))
+        .route(
+            "/api/settings/logo",
+            get(settings::get_logo).post(settings::upload_logo),
+        )
+        .route("/api/settings/test-email", post(settings::send_test_email))
+        .route(
+            "/api/settings/{key}",
+            get(settings::get_setting).delete(settings::delete_setting),
+        )
+        .route(
+            "/api/settings/{key}/value",
+            get(settings::get_setting_value),
+        )
+        // Team Routes
+        .route(
+            "/api/team",
+            get(team::list_team_members).post(team::add_team_member),
+        )
+        .route(
+            "/api/team/{id}",
+            put(team::update_team_member).delete(team::remove_team_member),
+        )
+        // Tenant Routes
+        .route(
+            "/api/tenant/me",
+            get(tenant::get_current_tenant).put(tenant::update_current_tenant),
+        )
+        // Roles Routes
+        .route(
+            "/api/roles",
+            get(roles::get_roles).post(roles::create_new_role),
+        )
+        .route(
+            "/api/roles/{id}",
+            get(roles::get_role)
+                .put(roles::update_existing_role)
+                .delete(roles::delete_existing_role),
+        )
+        .route("/api/permissions", get(roles::get_permissions))
+        // WebSocket Route
+        .route("/api/ws", get(websocket::ws_handler))
+        // Storage Routes
+        .route("/api/storage/files", get(storage::list_files))
+        .route("/api/storage/files/{id}", delete(storage::delete_file))
+        .route("/api/storage/files/{id}/content", get(storage::serve_file))
+        .route(
+            "/api/storage/files/{id}/download",
+            get(storage::download_file),
+        )
+        .route("/api/storage/upload", post(storage::upload_file_http))
+        .route("/api/storage/upload/init", post(storage::init_upload))
+        .route("/api/storage/upload/chunk", post(storage::upload_chunk))
+        .route(
+            "/api/storage/upload/complete",
+            post(storage::complete_upload),
+        )
+        // Public Routes
+        .route(
+            "/api/public/tenant-lookup",
+            get(public::lookup_tenant_by_domain),
+        )
+        .route("/api/public/tenant/{slug}", get(public::get_tenant_by_slug))
+        .route(
+            "/api/public/domain/{domain}",
+            get(public::get_tenant_by_domain),
+        )
+        // Version Route
+        .route("/api/version", get(get_app_version))
+        .layer(DefaultBodyLimit::max(1024 * 1024 * 1024)) // 1GB Upload Limit
+        .layer({
+            #[allow(deprecated)]
+            TimeoutLayer::new(Duration::from_secs(3600))
+        }) // 1 Hour Timeout for large uploads
+        .layer(cors)
+        .with_state(state);
 
     // Determine port
     let port = env::var("PORT")
@@ -293,15 +320,21 @@ pub async fn start_server(
     let listener = match TcpListener::bind(addr).await {
         Ok(l) => l,
         Err(e) => {
-            tracing::error!("Failed to bind to {}: {}. Is another instance running?", addr, e);
+            tracing::error!(
+                "Failed to bind to {}: {}. Is another instance running?",
+                addr,
+                e
+            );
             return;
         }
     };
 
     if let Err(e) = axum::serve(
-        listener, 
-        app.into_make_service_with_connect_info::<SocketAddr>()
-    ).await {
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    {
         tracing::error!("HTTP API server error: {}", e);
     }
 }

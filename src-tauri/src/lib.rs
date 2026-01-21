@@ -13,7 +13,7 @@ mod http;
 use commands::*;
 use commands::audit::list_audit_logs;
 use db::connection::{init_db, seed_defaults};
-use services::{AuthService, EmailService, SettingsService, UserService, TeamService, AuditService, RoleService, SystemService, PlanService, PaymentService}; // Added PaymentService
+use services::{AuthService, EmailService, SettingsService, UserService, TeamService, AuditService, RoleService, SystemService, PlanService, PaymentService, NotificationService}; // Added PaymentService, NotificationService
 use tauri::Manager;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -37,7 +37,8 @@ pub fn run() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_dialog::init());
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init());
 
     // Only enable single-instance in production to allow dev and prod to run simultaneously
     #[cfg(not(debug_assertions))]
@@ -183,16 +184,18 @@ pub fn run() {
                 let team_service = TeamService::new(pool.clone(), auth_service.clone(), audit_service.clone(), plan_service.clone());
                 let system_service = SystemService::new(pool.clone());
                 let storage_service = crate::services::StorageService::new(pool.clone(), plan_service.clone(), app_data_dir.clone());
-                let payment_service = PaymentService::new(pool.clone());
+                
+                // Create WebSocket hub for real-time sync (shared between HTTP and Tauri)
+                let ws_hub = std::sync::Arc::new(http::WsHub::new());
+                
+                let notification_service = NotificationService::new(pool.clone(), ws_hub.clone(), email_service.clone());
+                let payment_service = PaymentService::new(pool.clone(), notification_service.clone());
                 
                 // Seed default features
                 plan_service.seed_default_features()
                     .await
                     .map_err(|e| format!("Failed to seed default features: {}", e))?;
                 info!("Default features seeded.");
-                
-                // Create WebSocket hub for real-time sync (shared between HTTP and Tauri)
-                let ws_hub = std::sync::Arc::new(http::WsHub::new());
 
                 // Manage state - Crucial: This must happen before setup returns
                 app_handle.manage(auth_service.clone());
@@ -206,6 +209,7 @@ pub fn run() {
                 app_handle.manage(plan_service.clone());
                 app_handle.manage(storage_service.clone());
                 app_handle.manage(payment_service.clone());
+                app_handle.manage(notification_service.clone());
                 app_handle.manage(ws_hub.clone());
                 info!("Services added to Tauri state.");
 
@@ -224,6 +228,7 @@ pub fn run() {
                         plan_service, 
                         storage_service,
                         payment_service, 
+                        notification_service,
                         ws_hub, 
                         app_dir, 
                         3000,
@@ -341,6 +346,17 @@ pub fn run() {
                                     update_current_tenant,
                                     // General
                                     get_app_version,
+                                    // Notifications
+                                    list_notifications,
+                                    get_unread_count,
+                                    mark_as_read,
+                                    mark_all_as_read,
+                                    delete_notification,
+                                    get_preferences,
+                                    update_preference,
+                                    subscribe_push,
+                                    unsubscribe_push,
+                                    send_test,
                                 ])
                                 .run(tauri::generate_context!())
                                 .expect("error while running tauri application");

@@ -48,6 +48,17 @@
                 hostname.includes("127.0.0.1") ||
                 hostname.includes("tauri");
 
+            // Service Worker Registration
+            if ("serviceWorker" in navigator) {
+                try {
+                    const reg =
+                        await navigator.serviceWorker.register("/sw.js");
+                    console.log("[SW] Registered:", reg);
+                } catch (e) {
+                    console.error("[SW] Registration failed:", e);
+                }
+            }
+
             if (!knownSlug && !isLocal) {
                 try {
                     // We use fetch directly here to avoid auth store dependencies loop if possible

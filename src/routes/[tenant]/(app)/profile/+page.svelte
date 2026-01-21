@@ -8,6 +8,16 @@
     import { t } from "svelte-i18n";
     import Icon from "$lib/components/Icon.svelte";
     import MobileFabMenu from "$lib/components/MobileFabMenu.svelte";
+    import {
+        preferences,
+        loadPreferences,
+        updatePreference,
+        subscribePush,
+        unsubscribePush,
+        sendTestNotification,
+        checkSubscription,
+        pushEnabled,
+    } from "$lib/stores/notifications";
 
     let activeTab = "general";
     let loading = false;
@@ -32,8 +42,37 @@
     let showCurrentPassword = false;
     let showNewPassword = false;
     let showConfirmPassword = false;
+    let isDesktop = false;
 
-    // Default policy if store not loaded yet
+    // UI Configuration
+    const notificationCategories = [
+        {
+            id: "system",
+            icon: "server",
+            label: "System Updates",
+            desc: "Maintenance & announcements",
+        },
+        {
+            id: "team",
+            icon: "users",
+            label: "Team Activity",
+            desc: "Member changes & invites",
+        },
+        {
+            id: "payment",
+            icon: "credit-card",
+            label: "Billing",
+            desc: "Invoices & subscriptions",
+        },
+        {
+            id: "security",
+            icon: "shield",
+            label: "Security",
+            desc: "Login alerts & password changes",
+        },
+    ];
+
+    let pushPermission = "default"; // 'default', 'granted', 'denied'
     $: policy = $appSettings.auth || {
         password_min_length: 8,
         password_require_uppercase: true,
@@ -47,6 +86,9 @@
 
         await appSettings.init();
 
+        // Check if running in Tauri Desktop
+        isDesktop = !!(window as any).__TAURI_INTERNALS__;
+
         // Initialize profile data from store
         if ($user) {
             profileData = {
@@ -55,6 +97,22 @@
                 email: $user.email,
                 role: $user.role,
             };
+        }
+
+        // Load notification preferences
+        loadPreferences();
+        checkSubscription();
+
+        // Check URL for active tab
+        const urlParams = new URLSearchParams(window.location.search);
+        const tab = urlParams.get("tab");
+        if (
+            tab &&
+            ["general", "security", "preferences", "notifications"].includes(
+                tab,
+            )
+        ) {
+            activeTab = tab;
         }
     });
 
@@ -164,8 +222,13 @@
         { id: "security", label: $t("profile.tabs.security"), icon: "lock" },
         {
             id: "preferences",
-            label: $t("profile.tabs.preferences"),
+            label: $t("profile.tabs.preferences"), // "App Preferences" or "Appearance"
             icon: "settings",
+        },
+        {
+            id: "notifications",
+            label: "Notifications", // TODO: i18n
+            icon: "bell",
         },
     ];
 </script>
@@ -201,7 +264,7 @@
                 {#each tabs as tab}
                     <button
                         class="nav-item {activeTab === tab.id ? 'active' : ''}"
-                        on:click={() => (activeTab = tab.id)}
+                        onclick={() => (activeTab = tab.id)}
                     >
                         <Icon name={tab.icon} size={18} />
                         <span>{tab.label}</span>
@@ -252,7 +315,10 @@
                     </div>
 
                     <form
-                        on:submit|preventDefault={saveProfile}
+                        onsubmit={(e) => {
+                            e.preventDefault();
+                            saveProfile();
+                        }}
                         class="settings-form"
                     >
                         <div class="form-group">
@@ -315,7 +381,10 @@
                     </div>
 
                     <form
-                        on:submit|preventDefault={changePassword}
+                        onsubmit={(e) => {
+                            e.preventDefault();
+                            changePassword();
+                        }}
                         class="settings-form"
                     >
                         <div class="form-group">
@@ -339,7 +408,7 @@
                                 <button
                                     type="button"
                                     class="toggle-password"
-                                    on:click={() =>
+                                    onclick={() =>
                                         (showCurrentPassword =
                                             !showCurrentPassword)}
                                     tabindex="-1"
@@ -376,7 +445,7 @@
                                     <button
                                         type="button"
                                         class="toggle-password"
-                                        on:click={() =>
+                                        onclick={() =>
                                             (showNewPassword =
                                                 !showNewPassword)}
                                         tabindex="-1"
@@ -411,7 +480,7 @@
                                     <button
                                         type="button"
                                         class="toggle-password"
-                                        on:click={() =>
+                                        onclick={() =>
                                             (showConfirmPassword =
                                                 !showConfirmPassword)}
                                         tabindex="-1"
@@ -509,10 +578,153 @@
                             <input
                                 type="checkbox"
                                 checked={$theme === "dark"}
-                                on:change={() => theme.toggle()}
+                                onchange={() => theme.toggle()}
                             />
                             <span class="slider"></span>
                         </label>
+                    </div>
+                </div>
+            {/if}
+
+            {#if activeTab === "notifications"}
+                <div class="section fade-in-up">
+                    <div class="notifications-header">
+                        <div>
+                            <h2 class="section-title">
+                                Notification Preferences
+                            </h2>
+                            <p class="section-subtitle">
+                                Customize how and when you want to be notified.
+                            </p>
+                        </div>
+                        <div class="header-actions">
+                            <button
+                                class="btn btn-outline btn-sm"
+                                onclick={sendTestNotification}
+                            >
+                                <Icon name="bell" size={14} />
+                                <span>Test Notification</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Push Notification Banner / Status Card -->
+                    {#if !isDesktop}
+                        {#if $pushEnabled}
+                            <div class="push-banner active">
+                                <div class="push-content">
+                                    <div class="push-icon success">
+                                        <Icon name="check" size={20} />
+                                    </div>
+                                    <div class="push-text">
+                                        <h4>Push Notifications Active</h4>
+                                        <p>
+                                            You are subscribed to real-time
+                                            updates on this device.
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    class="btn btn-outline btn-sm"
+                                    onclick={unsubscribePush}
+                                >
+                                    Disable
+                                </button>
+                            </div>
+                        {:else if pushPermission !== "granted" || !$pushEnabled}
+                            <!-- Show enable banner if not enabled -->
+                            <div class="push-banner">
+                                <div class="push-content">
+                                    <div class="push-icon">
+                                        <Icon name="bell" size={20} />
+                                    </div>
+                                    <div class="push-text">
+                                        <h4>Enable Push Notifications</h4>
+                                        <p>
+                                            Get real-time updates even when the
+                                            app is closed.
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    class="btn btn-dark btn-sm"
+                                    onclick={async () => {
+                                        await subscribePush();
+                                        pushPermission =
+                                            Notification.permission;
+                                    }}
+                                >
+                                    Enable Push
+                                </button>
+                            </div>
+                        {/if}
+                    {/if}
+
+                    <div class="prefs-grid">
+                        {#each notificationCategories as category}
+                            <div class="pref-card">
+                                <div class="pref-card-header">
+                                    <div class="cat-icon {category.id}">
+                                        <Icon name={category.icon} size={18} />
+                                    </div>
+                                    <div class="cat-info">
+                                        <h3>{category.label}</h3>
+                                        <p>{category.desc}</p>
+                                    </div>
+                                </div>
+
+                                <div class="pref-channels">
+                                    {#each ["in_app", "email", "push"] as channel}
+                                        {@const pref = $preferences.find(
+                                            (p) =>
+                                                p.category === category.id &&
+                                                p.channel === channel,
+                                        )}
+                                        {@const isDisabled =
+                                            category.id === "security" &&
+                                            channel === "email"}
+                                        {@const isEnabled =
+                                            category.id === "security" &&
+                                            channel === "email"
+                                                ? true
+                                                : (pref?.enabled ??
+                                                  channel === "in_app")}
+
+                                        <label
+                                            class="channel-row"
+                                            class:disabled={isDisabled}
+                                        >
+                                            <div class="channel-info">
+                                                <span class="channel-name">
+                                                    {channel === "in_app"
+                                                        ? "In-App"
+                                                        : channel === "email"
+                                                          ? "Email"
+                                                          : "Push"}
+                                                </span>
+                                            </div>
+
+                                            <div class="switch">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isEnabled}
+                                                    disabled={isDisabled}
+                                                    onchange={(e) =>
+                                                        updatePreference(
+                                                            channel,
+                                                            category.id,
+                                                            e.currentTarget
+                                                                .checked,
+                                                        )}
+                                                />
+                                                <span class="slider round"
+                                                ></span>
+                                            </div>
+                                        </label>
+                                    {/each}
+                                </div>
+                            </div>
+                        {/each}
                     </div>
                 </div>
             {/if}
@@ -1030,5 +1242,253 @@
         .btn {
             width: 100%;
         }
+    }
+    /* Notification Preferences Redesign */
+    .notifications-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 2rem;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0 0 0.5rem 0;
+    }
+
+    .section-subtitle {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+    }
+
+    .push-banner {
+        background: linear-gradient(135deg, var(--bg-surface), var(--bg-app));
+        border: 1px solid var(--border-color);
+        border-left: 4px solid var(--color-primary);
+        border-radius: var(--radius-md);
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .push-content {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .push-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: rgba(var(--primary-rgb, 59, 130, 246), 0.1);
+        color: var(--color-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .push-text h4 {
+        margin: 0 0 0.25rem 0;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .push-text p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+
+    .prefs-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .pref-card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        transition:
+            transform 0.2s,
+            box-shadow 0.2s;
+    }
+
+    .pref-card:hover {
+        border-color: var(--border-color);
+        box-shadow: var(--shadow-md);
+    }
+
+    .pref-card-header {
+        padding: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        background: var(--bg-app);
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .cat-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        color: var(--text-secondary);
+    }
+
+    .cat-icon.system {
+        color: var(--color-info);
+    }
+    .cat-icon.team {
+        color: var(--color-success);
+    }
+    .cat-icon.payment {
+        color: var(--color-warning);
+    }
+    .cat-icon.security {
+        color: var(--color-danger);
+    }
+
+    .cat-info h3 {
+        margin: 0 0 0.2rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .cat-info p {
+        margin: 0;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    .pref-channels {
+        padding: 0.5rem 0;
+    }
+
+    .channel-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.85rem 1.25rem;
+        cursor: pointer;
+        transition: background 0.1s;
+    }
+
+    .channel-row:hover:not(.disabled) {
+        background: var(--bg-hover);
+    }
+
+    .channel-row.disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    .channel-name {
+        font-weight: 500;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+
+    /* Modern Switch */
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 36px;
+        height: 20px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: var(--bg-active);
+        transition: 0.3s;
+        border: 1px solid var(--border-input);
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 14px;
+        width: 14px;
+        left: 2px;
+        bottom: 2px;
+        background-color: white;
+        transition: 0.3s;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    input:checked + .slider {
+        background-color: var(--color-primary);
+        border-color: var(--color-primary);
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(16px);
+    }
+
+    /* Round sliders */
+    .slider.round {
+        border-radius: 34px;
+    }
+
+    .slider.round:before {
+        border-radius: 50%;
+    }
+
+    /* Button variants */
+    .btn-dark {
+        background: var(--text-primary);
+        color: var(--bg-app);
+        border: none;
+    }
+    .btn-dark:hover {
+        opacity: 0.9;
+    }
+    .btn-outline {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .btn-outline:hover {
+        background: var(--bg-hover);
+    }
+    .btn-sm {
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .push-banner.active {
+        border-left-color: var(--color-success);
+        background: rgba(16, 185, 129, 0.05);
+    }
+
+    .push-icon.success {
+        background: rgba(16, 185, 129, 0.1);
+        color: var(--color-success);
     }
 </style>

@@ -4,6 +4,7 @@
     import { isSidebarCollapsed } from "$lib/stores/ui";
     import { t } from "svelte-i18n";
     import Icon from "./Icon.svelte";
+    import NotificationDropdown from "./NotificationDropdown.svelte";
 
     let { onMobileMenuClick }: { onMobileMenuClick: () => void } = $props();
 
@@ -49,10 +50,8 @@
         </div>
 
         <!-- Actions -->
-        <button class="icon-btn" title={$t("topbar.notifications")}>
-            <Icon name="bell" size={18} />
-            <span class="badge-dot"></span>
-        </button>
+        <!-- Notification Dropdown -->
+        <NotificationDropdown />
 
         <button class="icon-btn" title={$t("topbar.help")}>
             <Icon name="help-circle" size={18} />
@@ -138,16 +137,5 @@
     .icon-btn:hover {
         background: var(--bg-tertiary);
         color: var(--text-primary);
-    }
-
-    .badge-dot {
-        position: absolute;
-        top: 6px;
-        right: 6px;
-        width: 6px;
-        height: 6px;
-        background: var(--color-danger);
-        border-radius: 50%;
-        border: 1px solid var(--bg-primary);
     }
 </style>

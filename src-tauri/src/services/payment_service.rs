@@ -1,32 +1,42 @@
 //! Payment Service - Manages invoices and bank accounts
 
 use crate::db::DbPool;
-use crate::models::{BankAccount, CreateBankAccountRequest, Invoice};
 use crate::error::{AppError, AppResult};
+use crate::models::{BankAccount, CreateBankAccountRequest, Invoice};
+use base64::{engine::general_purpose, Engine as _};
 use chrono::Utc;
-use uuid::Uuid;
 use reqwest::Client;
 use serde_json::json;
-use base64::{Engine as _, engine::general_purpose};
+use uuid::Uuid;
+
+use crate::services::NotificationService;
 
 #[derive(Clone)]
 pub struct PaymentService {
     pool: DbPool,
     http_client: Client,
+    notification_service: NotificationService,
 }
 
 impl PaymentService {
-    pub fn new(pool: DbPool) -> Self {
-        Self { 
+    pub fn new(pool: DbPool, notification_service: NotificationService) -> Self {
+        Self {
             pool,
             http_client: Client::new(),
+            notification_service,
         }
     }
 
     // ==================== INVOICES ====================
 
     /// Create a new invoice
-    pub async fn create_invoice(&self, tenant_id: &str, amount: f64, description: Option<String>, external_id: Option<String>) -> AppResult<Invoice> {
+    pub async fn create_invoice(
+        &self,
+        tenant_id: &str,
+        amount: f64,
+        description: Option<String>,
+        external_id: Option<String>,
+    ) -> AppResult<Invoice> {
         let id = Uuid::new_v4().to_string();
         // Simple invoice number generation: INV-YYYYMMDD-HHMMSS
         let now = Utc::now();
@@ -122,12 +132,18 @@ impl PaymentService {
 
         #[cfg(feature = "sqlite")]
         let invoices = if let Some(tid) = tenant_id {
-            sqlx::query_as::<_, Invoice>("SELECT * FROM invoices WHERE tenant_id = ? ORDER BY created_at DESC")
-                .bind(tid).fetch_all(&self.pool).await
+            sqlx::query_as::<_, Invoice>(
+                "SELECT * FROM invoices WHERE tenant_id = ? ORDER BY created_at DESC",
+            )
+            .bind(tid)
+            .fetch_all(&self.pool)
+            .await
         } else {
             sqlx::query_as::<_, Invoice>("SELECT * FROM invoices ORDER BY created_at DESC")
-                .fetch_all(&self.pool).await
-        }.map_err(|e| AppError::Internal(e.to_string()))?;
+                .fetch_all(&self.pool)
+                .await
+        }
+        .map_err(|e| AppError::Internal(e.to_string()))?;
 
         Ok(invoices)
     }
@@ -142,27 +158,34 @@ impl PaymentService {
             // Tenant Merchant
             let sk: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_server_key' AND tenant_id = $1")
                 .bind(mid).fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or_default();
-            
+
             let prod_str: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_is_production' AND tenant_id = $1")
                 .bind(mid).fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or("false".to_string());
-            
+
             (sk, prod_str == "true")
         } else {
             // System Merchant (Global)
             let sk: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_server_key' AND tenant_id IS NULL")
                 .fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or_default();
-            
+
             let prod_str: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_is_production' AND tenant_id IS NULL")
                 .fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or("false".to_string());
-            
+
             (sk, prod_str == "true")
         };
-        
-        let app_url: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'app_public_url' AND tenant_id IS NULL")
-            .fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or("http://localhost:3000".to_string());
-        
+
+        let app_url: String = sqlx::query_scalar(
+            "SELECT value FROM settings WHERE key = 'app_public_url' AND tenant_id IS NULL",
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .unwrap_or(None)
+        .unwrap_or("http://localhost:3000".to_string());
+
         if server_key.is_empty() {
-            return Err(AppError::Configuration("Midtrans Server Key not configured for this merchant".to_string()));
+            return Err(AppError::Configuration(
+                "Midtrans Server Key not configured for this merchant".to_string(),
+            ));
         }
 
         // 2. Prepare API URL
@@ -173,7 +196,10 @@ impl PaymentService {
         };
 
         // Construct Webhook URL for Override
-        let webhook_url = format!("{}/api/payment/midtrans/notification", app_url.trim_end_matches('/'));
+        let webhook_url = format!(
+            "{}/api/payment/midtrans/notification",
+            app_url.trim_end_matches('/')
+        );
 
         // 3. Prepare Payload
         let payload = json!({
@@ -198,7 +224,9 @@ impl PaymentService {
         let auth_header = format!("{}:", server_key);
         let auth_b64 = general_purpose::STANDARD.encode(auth_header);
 
-        let res = self.http_client.post(base_url)
+        let res = self
+            .http_client
+            .post(base_url)
             .header("Authorization", format!("Basic {}", auth_b64))
             .header("Content-Type", "application/json")
             .header("X-Override-Notification", webhook_url) // Override Webhook URL
@@ -207,13 +235,18 @@ impl PaymentService {
             .await
             .map_err(|e| AppError::Internal(format!("Midtrans API Req Failed: {}", e)))?;
 
-        let resp_json: serde_json::Value = res.json().await
+        let resp_json: serde_json::Value = res
+            .json()
+            .await
             .map_err(|e| AppError::Internal(format!("Midtrans API Parse Failed: {}", e)))?;
 
         if let Some(token) = resp_json.get("token").and_then(|v| v.as_str()) {
             Ok(token.to_string())
         } else {
-            Err(AppError::Internal(format!("Midtrans Error: {:?}", resp_json)))
+            Err(AppError::Internal(format!(
+                "Midtrans Error: {:?}",
+                resp_json
+            )))
         }
     }
 
@@ -227,37 +260,47 @@ impl PaymentService {
         let (server_key, is_production) = if let Some(mid) = &invoice.merchant_id {
             let sk: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_server_key' AND tenant_id = $1")
                 .bind(mid).fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or_default();
-            
+
             let prod_str: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_is_production' AND tenant_id = $1")
                 .bind(mid).fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or("false".to_string());
-            
+
             (sk, prod_str == "true")
         } else {
             let sk: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_server_key' AND tenant_id IS NULL")
                 .fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or_default();
-            
+
             let prod_str: String = sqlx::query_scalar("SELECT value FROM settings WHERE key = 'payment_midtrans_is_production' AND tenant_id IS NULL")
                 .fetch_optional(&self.pool).await.unwrap_or(None).unwrap_or("false".to_string());
-            
+
             (sk, prod_str == "true")
         };
 
         if server_key.is_empty() {
-            return Err(AppError::Configuration("Midtrans Server Key not configured".to_string()));
+            return Err(AppError::Configuration(
+                "Midtrans Server Key not configured".to_string(),
+            ));
         }
 
         // 2. Prepare API URL (Core API)
         let base_url = if is_production {
-            format!("https://api.midtrans.com/v2/{}/status", invoice.invoice_number)
+            format!(
+                "https://api.midtrans.com/v2/{}/status",
+                invoice.invoice_number
+            )
         } else {
-            format!("https://api.sandbox.midtrans.com/v2/{}/status", invoice.invoice_number)
+            format!(
+                "https://api.sandbox.midtrans.com/v2/{}/status",
+                invoice.invoice_number
+            )
         };
 
         // 3. Send Request
         let auth_header = format!("{}:", server_key);
         let auth_b64 = general_purpose::STANDARD.encode(auth_header);
 
-        let res = self.http_client.get(&base_url)
+        let res = self
+            .http_client
+            .get(&base_url)
             .header("Authorization", format!("Basic {}", auth_b64))
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
@@ -265,11 +308,15 @@ impl PaymentService {
             .await
             .map_err(|e| AppError::Internal(format!("Midtrans API Req Failed: {}", e)))?;
 
-        let resp_json: serde_json::Value = res.json().await
+        let resp_json: serde_json::Value = res
+            .json()
+            .await
             .map_err(|e| AppError::Internal(format!("Midtrans API Parse Failed: {}", e)))?;
 
         // 4. Parse Status
-        let transaction_status = resp_json["transaction_status"].as_str().unwrap_or("pending");
+        let transaction_status = resp_json["transaction_status"]
+            .as_str()
+            .unwrap_or("pending");
         let fraud_status = resp_json["fraud_status"].as_str().unwrap_or("");
 
         let mut payment_status = match transaction_status {
@@ -287,7 +334,8 @@ impl PaymentService {
         // 5. Update Local Status
         // Only update if it changed
         if payment_status != invoice.status {
-            self.process_midtrans_notification(&invoice.invoice_number, payment_status).await?;
+            self.process_midtrans_notification(&invoice.invoice_number, payment_status)
+                .await?;
         }
 
         Ok(payment_status.to_string())
@@ -309,8 +357,14 @@ impl PaymentService {
     }
 
     /// Create a new bank account
-    pub async fn create_bank_account(&self, req: CreateBankAccountRequest) -> Result<BankAccount, sqlx::Error> {
-        println!("Creating bank account: {} - {}", req.bank_name, req.account_number);
+    pub async fn create_bank_account(
+        &self,
+        req: CreateBankAccountRequest,
+    ) -> Result<BankAccount, sqlx::Error> {
+        println!(
+            "Creating bank account: {} - {}",
+            req.bank_name, req.account_number
+        );
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
 
@@ -400,7 +454,11 @@ impl PaymentService {
     }
 
     /// Process Midtrans Notification (Webhook)
-    pub async fn process_midtrans_notification(&self, invoice_number: &str, status: &str) -> AppResult<()> {
+    pub async fn process_midtrans_notification(
+        &self,
+        invoice_number: &str,
+        status: &str,
+    ) -> AppResult<()> {
         // 1. Get Invoice
         #[cfg(feature = "postgres")]
         let invoice: Option<Invoice> = sqlx::query_as::<_, Invoice>(
@@ -413,12 +471,21 @@ impl PaymentService {
         .fetch_optional(&self.pool).await.map_err(|e| AppError::Internal(e.to_string()))?;
 
         #[cfg(feature = "sqlite")]
-        let invoice: Option<Invoice> = sqlx::query_as("SELECT * FROM invoices WHERE invoice_number = ?")
-            .bind(invoice_number).fetch_optional(&self.pool).await.map_err(|e| AppError::Internal(e.to_string()))?;
+        let invoice: Option<Invoice> =
+            sqlx::query_as("SELECT * FROM invoices WHERE invoice_number = ?")
+                .bind(invoice_number)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
 
         let invoice = match invoice {
             Some(i) => i,
-            None => return Err(AppError::NotFound(format!("Invoice {} not found", invoice_number))),
+            None => {
+                return Err(AppError::NotFound(format!(
+                    "Invoice {} not found",
+                    invoice_number
+                )))
+            }
         };
 
         // 2. Update Status
@@ -426,44 +493,159 @@ impl PaymentService {
         let paid_at = if status == "paid" { Some(now) } else { None };
 
         #[cfg(feature = "postgres")]
-        sqlx::query(
-            "UPDATE invoices SET status = $1, paid_at = $2, updated_at = $3 WHERE id = $4"
-        )
-        .bind(status).bind(paid_at).bind(now).bind(&invoice.id)
-        .execute(&self.pool).await.map_err(|e| AppError::Internal(e.to_string()))?;
+        sqlx::query("UPDATE invoices SET status = $1, paid_at = $2, updated_at = $3 WHERE id = $4")
+            .bind(status)
+            .bind(paid_at)
+            .bind(now)
+            .bind(&invoice.id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
         #[cfg(feature = "sqlite")]
         {
             let paid_str = paid_at.map(|t| t.to_rfc3339());
-            sqlx::query(
-                "UPDATE invoices SET status = ?, paid_at = ?, updated_at = ? WHERE id = ?"
-            )
-            .bind(status).bind(paid_str).bind(now.to_rfc3339()).bind(&invoice.id)
-            .execute(&self.pool).await.map_err(|e| AppError::Internal(e.to_string()))?;
+            sqlx::query("UPDATE invoices SET status = ?, paid_at = ?, updated_at = ? WHERE id = ?")
+                .bind(status)
+                .bind(paid_str)
+                .bind(now.to_rfc3339())
+                .bind(&invoice.id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
         }
 
         // 3. Activate Subscription if Paid
         if status == "paid" {
+            println!(
+                "DEBUG: Invoice {} is PAID. External ID: {:?}",
+                invoice.invoice_number, invoice.external_id
+            );
             // external_id stores `plan_id:billing_cycle`
             if let Some(ext_id) = &invoice.external_id {
                 let parts: Vec<&str> = ext_id.split(':').collect();
                 if parts.len() == 2 {
                     let plan_id = parts[0];
                     let cycle = parts[1];
-                    self.activate_subscription(&invoice.tenant_id, plan_id, cycle).await?;
+                    println!(
+                        "DEBUG: Activating subscription for Tenant {}: Plan={}, Cycle={}",
+                        invoice.tenant_id, plan_id, cycle
+                    );
+                    self.activate_subscription(&invoice.tenant_id, plan_id, cycle)
+                        .await?;
                 } else {
+                    println!("DEBUG: Activating subscription (fallback) for Tenant {}: Plan={}, Cycle=monthly", invoice.tenant_id, ext_id);
                     // Fallback for legacy records
-                    self.activate_subscription(&invoice.tenant_id, ext_id, "monthly").await?;
+                    self.activate_subscription(&invoice.tenant_id, ext_id, "monthly")
+                        .await?;
                 }
+            } else {
+                println!(
+                    "ERROR: Invoice {} has NO external_id. Cannot activate subscription.",
+                    invoice.invoice_number
+                );
+            }
+        }
+
+        // 4. Send Notification to Tenant Users
+        if status == "paid" || status == "failed" {
+            // Get all users in this tenant
+            #[cfg(feature = "postgres")]
+            let users: Vec<(String,)> =
+                sqlx::query_as("SELECT user_id FROM tenant_members WHERE tenant_id = $1")
+                    .bind(&invoice.tenant_id)
+                    .fetch_all(&self.pool)
+                    .await
+                    .unwrap_or_default();
+
+            #[cfg(feature = "sqlite")]
+            let users: Vec<(String,)> =
+                sqlx::query_as("SELECT user_id FROM tenant_members WHERE tenant_id = ?")
+                    .bind(&invoice.tenant_id)
+                    .fetch_all(&self.pool)
+                    .await
+                    .unwrap_or_default();
+
+            let title = if status == "paid" {
+                "Payment Successful".to_string()
+            } else {
+                "Payment Failed".to_string()
+            };
+            let message = if status == "paid" {
+                format!(
+                    "Invoice {} has been successfully paid. Thank you!",
+                    invoice.invoice_number
+                )
+            } else {
+                format!(
+                    "Payment for invoice {} failed. Please check your payment method.",
+                    invoice.invoice_number
+                )
+            };
+
+            for (user_id,) in users {
+                // Fire and forget notification
+                let _ = self
+                    .notification_service
+                    .create_notification(
+                        user_id,
+                        Some(invoice.tenant_id.clone()),
+                        title.clone(),
+                        message.clone(),
+                        "info".to_string(),                           // type
+                        "billing".to_string(),                        // category
+                        Some(format!("/admin/settings?tab=billing")), // action_url
+                    )
+                    .await;
+            }
+        }
+
+        // 5. Notify Superadmins (New Sale Alert)
+        if status == "paid" {
+            #[cfg(feature = "postgres")]
+            let super_admins: Vec<(String,)> =
+                sqlx::query_as("SELECT id FROM users WHERE is_super_admin = true")
+                    .fetch_all(&self.pool)
+                    .await
+                    .unwrap_or_default();
+
+            #[cfg(feature = "sqlite")]
+            let super_admins: Vec<(String,)> =
+                sqlx::query_as("SELECT id FROM users WHERE is_super_admin = 1")
+                    .fetch_all(&self.pool)
+                    .await
+                    .unwrap_or_default();
+
+            for (admin_id,) in super_admins {
+                let _ = self
+                    .notification_service
+                    .create_notification(
+                        admin_id,
+                        None, // System notification
+                        "New Subscription Sale!".to_string(),
+                        format!(
+                            "Invoice {} has been paid. Amount: {}",
+                            invoice.invoice_number, invoice.amount
+                        ),
+                        "success".to_string(),
+                        "billing".to_string(),
+                        Some(format!("/superadmin/tenants")),
+                    )
+                    .await;
             }
         }
 
         Ok(())
     }
 
-    async fn activate_subscription(&self, tenant_id: &str, plan_id: &str, billing_cycle: &str) -> AppResult<()> {
+    async fn activate_subscription(
+        &self,
+        tenant_id: &str,
+        plan_id: &str,
+        billing_cycle: &str,
+    ) -> AppResult<()> {
         let now = Utc::now();
-        
+
         // Calculate end date based on cycle
         let end_date = if billing_cycle == "yearly" {
             now + chrono::Duration::days(365)
@@ -471,49 +653,76 @@ impl PaymentService {
             now + chrono::Duration::days(30)
         };
 
+        println!(
+            "DEBUG: DB Update - Tenant: {}, Plan: {}, Start: {}, End: {}",
+            tenant_id, plan_id, now, end_date
+        );
+
+        // Explicit Upsert: Update first, if no match, Insert.
+        // This avoids issues if the UNIQUE constraint is missing or broken.
+
         #[cfg(feature = "postgres")]
-        sqlx::query(
-            r#"
-            INSERT INTO tenant_subscriptions (id, tenant_id, plan_id, status, current_period_start, current_period_end, created_at, updated_at)
-            VALUES ($1, $2, $3, 'active', $4, $5, $6, $6)
-            ON CONFLICT (tenant_id) DO UPDATE SET 
-                plan_id = $3, 
-                status = 'active',
-                current_period_start = $4,
-                current_period_end = $5,
-                updated_at = $6
-            "#
-        )
-        .bind(Uuid::new_v4().to_string())
-        .bind(tenant_id)
-        .bind(plan_id)
-        .bind(now)
-        .bind(Some(end_date))
-        .bind(now)
-        .execute(&self.pool)
-        .await.map_err(|e| AppError::Internal(e.to_string()))?;
+        {
+            let rows = sqlx::query(
+                "UPDATE tenant_subscriptions SET plan_id = $1, status = 'active', current_period_start = $2, current_period_end = $3, updated_at = $4 WHERE tenant_id = $5"
+            )
+            .bind(plan_id)
+            .bind(now)
+            .bind(Some(end_date))
+            .bind(now)
+            .bind(tenant_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .rows_affected();
+
+            if rows == 0 {
+                sqlx::query(
+                    "INSERT INTO tenant_subscriptions (id, tenant_id, plan_id, status, current_period_start, current_period_end, created_at, updated_at) VALUES ($1, $2, $3, 'active', $4, $5, $6, $6)"
+                )
+                .bind(Uuid::new_v4().to_string())
+                .bind(tenant_id)
+                .bind(plan_id)
+                .bind(now)
+                .bind(Some(end_date))
+                .bind(now)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+            }
+        }
 
         #[cfg(feature = "sqlite")]
-        sqlx::query(
-            r#"
-            INSERT INTO tenant_subscriptions (id, tenant_id, plan_id, status, current_period_start, current_period_end, created_at, updated_at)
-            VALUES (?, ?, ?, 'active', ?, ?, ?, ?)
-            ON CONFLICT (tenant_id) DO UPDATE SET 
-                plan_id = excluded.plan_id, 
-                status = 'active',
-                current_period_start = excluded.current_period_start,
-                current_period_end = excluded.current_period_end,
-                updated_at = excluded.updated_at
-            "#
-        )
-        .bind(Uuid::new_v4().to_string())
-        .bind(tenant_id)
-        .bind(plan_id)
-        .bind(now.to_rfc3339())
-        .bind(end_date.to_rfc3339())
-        .bind(now.to_rfc3339())
-        .bind(now.to_rfc3339())
-        .execute(&self.pool).await.map_err(|e| AppError::Internal(e.to_string()))?;
+        {
+            let rows = sqlx::query(
+                "UPDATE tenant_subscriptions SET plan_id = ?, status = 'active', current_period_start = ?, current_period_end = ?, updated_at = ? WHERE tenant_id = ?"
+            )
+            .bind(plan_id)
+            .bind(now.to_rfc3339())
+            .bind(end_date.to_rfc3339())
+            .bind(now.to_rfc3339())
+            .bind(tenant_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .rows_affected();
+
+            if rows == 0 {
+                sqlx::query(
+                    "INSERT INTO tenant_subscriptions (id, tenant_id, plan_id, status, current_period_start, current_period_end, created_at, updated_at) VALUES (?, ?, ?, 'active', ?, ?, ?, ?)"
+                )
+                .bind(Uuid::new_v4().to_string())
+                .bind(tenant_id)
+                .bind(plan_id)
+                .bind(now.to_rfc3339())
+                .bind(end_date.to_rfc3339())
+                .bind(now.to_rfc3339())
+                .bind(now.to_rfc3339())
+                .execute(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+            }
+        }
 
         Ok(())
     }

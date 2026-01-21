@@ -1,18 +1,19 @@
 //! Commands module
 
-pub mod auth;
-pub mod users;
-pub mod settings;
-pub mod install;
-pub mod superadmin;
-pub mod roles;
-pub mod team;
 pub mod audit;
-pub mod system;
-pub mod plans;
-pub mod storage;
+pub mod auth;
+pub mod install;
+pub mod notifications;
 pub mod payment;
+pub mod plans;
+pub mod roles;
+pub mod settings;
+pub mod storage;
+pub mod superadmin;
+pub mod system;
+pub mod team;
 pub mod tenant;
+pub mod users;
 
 #[tauri::command]
 pub fn get_app_version() -> String {
@@ -20,14 +21,15 @@ pub fn get_app_version() -> String {
 }
 
 pub use auth::*;
-pub use users::*;
-pub use settings::*;
 pub use install::*;
-pub use superadmin::*;
-pub use roles::*;
-pub use team::*;
-pub use system::*;
-pub use plans::*;
-pub use storage::*;
+pub use notifications::*;
 pub use payment::*;
+pub use plans::*;
+pub use roles::*;
+pub use settings::*;
+pub use storage::*;
+pub use superadmin::*;
+pub use system::*;
+pub use team::*;
 pub use tenant::*;
+pub use users::*;

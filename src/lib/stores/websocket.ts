@@ -8,6 +8,7 @@ import { writable, get } from 'svelte/store';
 import { checkAuth, authVersion, token, isSuperAdmin } from './auth';
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
+import { handleNotificationReceived, handleUnreadCountUpdated, markAsRead, markAllAsRead, loadNotifications } from './notifications';
 
 // WebSocket connection state
 export const wsConnected = writable(false);
@@ -22,7 +23,12 @@ type WsEvent =
     | { type: 'permissions_changed' }
     | { type: 'maintenance_mode_changed', enabled: boolean, message?: string }
     | { type: 'connected', message: string }
-    | { type: 'ping' };
+    | { type: 'ping' }
+    // Notification Events
+    | { type: 'notification_received', id: string, title: string, message: string, notification_type: any, category: any, action_url: string | null, created_at: string }
+    | { type: 'notification_read', id: string }
+    | { type: 'notifications_cleared' }
+    | { type: 'unread_count_updated', count: number };
 
 let ws: WebSocket | null = null;
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -137,6 +143,35 @@ async function handleWsEvent(event: WsEvent) {
 
         case 'ping':
             // Keep-alive ping, ignore
+            break;
+
+        // Notification Events
+        case 'notification_received':
+            // @ts-ignore
+            handleNotificationReceived({
+                id: event.id,
+                title: event.title,
+                message: event.message,
+                notification_type: event.notification_type,
+                category: event.category,
+                action_url: event.action_url,
+                created_at: event.created_at,
+                user_id: '', // Not needed for display
+                tenant_id: null,
+                is_read: false
+            });
+            break;
+
+        case 'notification_read':
+            markAsRead(event.id);
+            break;
+
+        case 'notifications_cleared':
+            loadNotifications(1); // Reload to sync state
+            break;
+
+        case 'unread_count_updated':
+            handleUnreadCountUpdated(event.count);
             break;
 
         default:

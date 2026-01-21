@@ -89,6 +89,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             'get_tenant_subscription_details': { method: 'GET', path: '/plans/subscriptions/details' },
             'assign_plan_to_tenant': { method: 'POST', path: '/plans/subscriptions/:tenant_id/assign' },
             'check_feature_access': { method: 'GET', path: '/plans/access/:tenant_id/:feature_code' },
+            'send_test': { method: 'POST', path: '/notifications/test' },
 
             // Storage
             'list_files_admin': { method: 'GET', path: '/storage/files' },
@@ -108,6 +109,18 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             'list_all_invoices': { method: 'GET', path: '/payment/invoices/all' },
             'pay_invoice_midtrans': { method: 'POST', path: '/payment/invoices/:id/midtrans' },
             'check_payment_status': { method: 'GET', path: '/payment/invoices/:id/status' },
+
+            // Notifications
+            'list_notifications': { method: 'GET', path: '/notifications' },
+            'get_unread_count': { method: 'GET', path: '/notifications/unread-count' },
+            'mark_as_read': { method: 'POST', path: '/notifications/:id/read' },
+            'mark_all_as_read': { method: 'POST', path: '/notifications/read-all' },
+            'delete_notification': { method: 'DELETE', path: '/notifications/:id' },
+            'get_preferences': { method: 'GET', path: '/notifications/preferences' },
+            'update_preference': { method: 'PUT', path: '/notifications/preferences' },
+            'subscribe_push': { method: 'POST', path: '/notifications/push/subscribe' },
+            'unsubscribe_push': { method: 'POST', path: '/notifications/push/unsubscribe' },
+            'send_test_notification': { method: 'POST', path: '/notifications/test' },
 
             // Tenant
             'get_current_tenant': { method: 'GET', path: '/tenant/me' },
@@ -601,6 +614,28 @@ export interface BankAccount {
     is_active: boolean;
 }
 
+export interface Notification {
+    id: string;
+    user_id: string;
+    tenant_id: string | null;
+    title: string;
+    message: string;
+    notification_type: 'info' | 'success' | 'warning' | 'error';
+    category: 'system' | 'team' | 'payment' | 'security';
+    action_url: string | null;
+    is_read: boolean;
+    created_at: string;
+}
+
+export interface NotificationPreference {
+    id: string;
+    user_id: string;
+    channel: 'in_app' | 'email' | 'push';
+    category: 'system' | 'team' | 'payment' | 'security';
+    enabled: boolean;
+    updated_at: string;
+}
+
 export interface Invoice {
     id: string;
     invoice_number: string;
@@ -677,6 +712,38 @@ export const storage = {
     },
 };
 
+export const notifications = {
+    list: (page?: number, perPage?: number): Promise<PaginatedResponse<Notification>> =>
+        safeInvoke('list_notifications', { token: getTokenOrThrow(), page, perPage }),
+
+    getUnreadCount: (): Promise<{ count: number }> =>
+        safeInvoke('get_unread_count', { token: getTokenOrThrow() }),
+
+    markAsRead: (id: string): Promise<void> =>
+        safeInvoke('mark_as_read', { token: getTokenOrThrow(), id }),
+
+    markAllAsRead: (): Promise<void> =>
+        safeInvoke('mark_all_as_read', { token: getTokenOrThrow() }),
+
+    delete: (id: string): Promise<void> =>
+        safeInvoke('delete_notification', { token: getTokenOrThrow(), id }),
+
+    getPreferences: (): Promise<NotificationPreference[]> =>
+        safeInvoke('get_preferences', { token: getTokenOrThrow() }),
+
+    updatePreference: (channel: string, category: string, enabled: boolean): Promise<void> =>
+        safeInvoke('update_preference', { token: getTokenOrThrow(), channel, category, enabled }),
+
+    subscribePush: (endpoint: string, p256dh: string, auth: string): Promise<void> =>
+        safeInvoke('subscribe_push', { token: getTokenOrThrow(), endpoint, p256dh, auth }),
+
+    unsubscribePush: (endpoint: string): Promise<void> =>
+        safeInvoke('unsubscribe_push', { token: getTokenOrThrow(), endpoint }),
+
+    sendTest: (): Promise<void> =>
+        safeInvoke('send_test', { token: getTokenOrThrow() }),
+};
+
 // Combined API object
 export const api = {
     auth,
@@ -690,6 +757,7 @@ export const api = {
     storage,
     payment,
     tenant,
+    notifications,
 };
 
 export default api;

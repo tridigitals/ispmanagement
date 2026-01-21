@@ -90,6 +90,9 @@ tokio-util = { version = "0.7.18", features = ["io", "compat"] }
 tauri-plugin-dialog = "2.6.0"
 aws-config = "1.8.12"
 aws-sdk-s3 = "1.120.0"
+web-push-native = "0.4.0"
+base64ct = { version = "1.8.3", features = ["alloc"] }
+tauri-plugin-notification = "2.3.3"
 
 [profile.dev]
 incremental = false

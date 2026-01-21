@@ -1,5 +1,11 @@
 <script lang="ts">
-    import { login, isAuthenticated, isAdmin, user } from "$lib/stores/auth";
+    import {
+        login,
+        isAuthenticated,
+        isAdmin,
+        user,
+        isSuperAdmin,
+    } from "$lib/stores/auth";
     import { appSettings } from "$lib/stores/settings";
     import { appLogo } from "$lib/stores/logo";
     import { goto } from "$app/navigation";
@@ -34,6 +40,9 @@
 
             // Tenant Isolation Check
             if (urlTenant && slug && slug !== urlTenant) {
+                // Allow Superadmin to access any tenant workspace
+                if (get(isSuperAdmin)) return;
+
                 // Check for Tauri environment to allow auto-redirection
                 // @ts-ignore
                 const isTauri =
@@ -82,21 +91,28 @@
             // Tenant Isolation Check
             // If we are on a tenant-specific route, ensure the user belongs to this tenant
             if (urlTenant && userSlug !== urlTenant) {
-                // Check for Tauri environment to allow auto-redirection
-                // @ts-ignore
-                const isTauri =
-                    typeof window !== "undefined" &&
-                    (window as any).__TAURI_INTERNALS__;
-
-                if (isTauri) {
-                    // Allow redirection
+                // Allow Superadmin to login to any tenant workspace
+                if (response.user.is_super_admin) {
+                    // Proceed
                 } else {
-                    // Logout immediately if mismatch (WEB ONLY)
-                    await import("$lib/stores/auth").then((m) => m.logout());
-                    throw new Error(
-                        $t("auth.login.error_wrong_tenant") ||
-                            "You do not have access to this workspace. Please login at your own workspace URL.",
-                    );
+                    // Check for Tauri environment to allow auto-redirection
+                    // @ts-ignore
+                    const isTauri =
+                        typeof window !== "undefined" &&
+                        (window as any).__TAURI_INTERNALS__;
+
+                    if (isTauri) {
+                        // Allow redirection
+                    } else {
+                        // Logout immediately if mismatch (WEB ONLY)
+                        await import("$lib/stores/auth").then((m) =>
+                            m.logout(),
+                        );
+                        throw new Error(
+                            $t("auth.login.error_wrong_tenant") ||
+                                "You do not have access to this workspace. Please login at your own workspace URL.",
+                        );
+                    }
                 }
             }
 
