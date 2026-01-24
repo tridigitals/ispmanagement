@@ -4,11 +4,10 @@ use crate::models::{CreatePushSubscriptionRequest, UpdatePreferenceRequest, User
 use axum::{
     extract::{Path, Query, State},
     http::HeaderMap,
-    routing::{delete, get, post, put},
+    routing::{delete, get, post},
     Json, Router,
 };
 use serde::Deserialize;
-use std::sync::Arc;
 
 #[derive(Deserialize)]
 pub struct ListNotificationsQuery {

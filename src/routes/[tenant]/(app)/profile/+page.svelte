@@ -59,7 +59,7 @@
             desc: "Member changes & invites",
         },
         {
-            id: "payment",
+            id: "billing",
             icon: "credit-card",
             label: "Billing",
             desc: "Invoices & subscriptions",

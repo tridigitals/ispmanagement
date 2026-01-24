@@ -469,6 +469,21 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
+    // Migration: Add proof_attachment to invoices if not exists
+    sqlx::query(
+        r#"
+        DO $$ 
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='invoices' AND column_name='proof_attachment') THEN
+                ALTER TABLE invoices ADD COLUMN proof_attachment TEXT;
+            END IF;
+        END $$;
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
     // Create indexes for plans
     if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_plans_slug ON plans(slug)")
         .execute(pool)
@@ -905,10 +920,16 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
         "ALTER TABLE file_records ADD COLUMN storage_provider TEXT NOT NULL DEFAULT 'local'",
     )
     .execute(pool)
+    .await?;
+
+    // Migration: Add merchant_id and proof_attachment to invoices (SQLite)
+    let _ = sqlx::query(
+        "ALTER TABLE invoices ADD COLUMN merchant_id TEXT REFERENCES tenants(id) ON DELETE CASCADE",
+    )
+    .execute(pool)
     .await;
 
-    // Migration: Add merchant_id to invoices if not exists (SQLite)
-    let _ = sqlx::query("ALTER TABLE invoices ADD COLUMN merchant_id TEXT")
+    let _ = sqlx::query("ALTER TABLE invoices ADD COLUMN proof_attachment TEXT")
         .execute(pool)
         .await;
 

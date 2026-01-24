@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -17,6 +17,7 @@ pub struct Invoice {
     pub payment_method: Option<String>,
     pub external_id: Option<String>,
     pub merchant_id: Option<String>, // NULL = System, Some = Tenant
+    pub proof_attachment: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

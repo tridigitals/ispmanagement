@@ -675,6 +675,12 @@ export const payment = {
 
     checkStatus: (id: string): Promise<string> =>
         safeInvoke('check_payment_status', { token: getTokenOrThrow(), id }),
+
+    submitPaymentProof: (invoiceId: string, filePath: string): Promise<void> =>
+        safeInvoke('submit_payment_proof', { token: getTokenOrThrow(), invoiceId, filePath }),
+
+    verifyPayment: (invoiceId: string, status: "paid" | "failed", rejectionReason?: string): Promise<void> =>
+        safeInvoke('verify_payment', { token: getTokenOrThrow(), invoiceId, status, rejectionReason }),
 };
 
 export const storage = {

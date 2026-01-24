@@ -108,6 +108,55 @@
             currency: "IDR", // Or dynamic
         }).format(amount);
     }
+    let fileInput: HTMLInputElement;
+    let uploading = $state(false);
+
+    async function handleFileUpload(e: Event) {
+        const target = e.target as HTMLInputElement;
+        const file = target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error("File size must be less than 5MB");
+            return;
+        }
+
+        uploading = true;
+        try {
+            // 1. Upload file to storage
+            // Note: This requires the user to be logged in, which they should be for subscription payment.
+            // If this is a public invoice link for non-logged users, we'd need a public upload endpoint.
+            // Assuming logged in for now as per `submit_payment_proof` requirement.
+
+            const uploadedFile = await api.storage.uploadFile(file);
+
+            // 2. Submit proof path/url
+            // We'll store the URL or ID. Let's store the URL for easy display.
+            // Assuming `uploadedFile.url` or we construct it.
+            // `FileRecord` has `url` usually? Let's check `client.ts` interface.
+            // If not, we store `uploadedFile.id` and fetch via ID?
+            // Actually `uploadFile` returns `FileRecord`.
+
+            // Let's assume we can get a serving URL.
+            // For local storage, it might be served via specific route.
+            // For now, let's store the file ID or name.
+            // Ideally, we store the full accessible URL.
+            // Let's verify `FileRecord` interface in `client.ts`.
+
+            // Temporary: Just store the ID or Name if URL isn't explicit in `FileRecord`
+            // But `submit_payment_proof` takes string.
+
+            await api.payment.submitPaymentProof(invoice!.id, uploadedFile.id); // Storing ID for security/lookup
+
+            toast.success("Proof uploaded successfully!");
+            // Reload to show pending state
+            location.reload();
+        } catch (e: any) {
+            toast.error("Upload failed: " + e.message);
+        } finally {
+            uploading = false;
+        }
+    }
 </script>
 
 <div class="checkout-page fade-in">
@@ -225,12 +274,51 @@
 
                             <div class="upload-section">
                                 <p>Already transferred? Upload your receipt.</p>
-                                <button class="btn btn-secondary w-full"
-                                    >Upload Proof of Payment</button
+                                <input
+                                    type="file"
+                                    accept="image/*,application/pdf"
+                                    onchange={handleFileUpload}
+                                    style="display: none;"
+                                    bind:this={fileInput}
+                                />
+                                <button
+                                    class="btn btn-secondary w-full"
+                                    onclick={() => fileInput?.click()}
+                                    disabled={uploading}
                                 >
+                                    {#if uploading}
+                                        Uploading...
+                                    {:else}
+                                        <Icon name="upload" size={18} />
+                                        Upload Proof of Payment
+                                    {/if}
+                                </button>
                             </div>
                         </div>
                     {/if}
+                </div>
+            {:else if invoice.status === "verification_pending"}
+                <div class="pending-message">
+                    <div class="icon-circle pending">
+                        <Icon name="clock" size={32} />
+                    </div>
+                    <h3>Payment Verification Pending</h3>
+                    <p>
+                        We have received your payment proof. Our team is
+                        verifying it. We will notify you once approved.
+                    </p>
+                    <button
+                        class="btn btn-secondary"
+                        onclick={() =>
+                            goto(
+                                $user?.tenant_slug
+                                    ? `/${$user.tenant_slug}/admin/subscription`
+                                    : "/dashboard",
+                            )}
+                    >
+                        Return to Dashboard
+                    </button>
+                    <!-- Allow re-upload in case of mistake? Optional. -->
                 </div>
             {:else if invoice.status === "paid"}
                 <div class="success-message">
@@ -491,5 +579,33 @@
         align-items: center;
         justify-content: center;
         margin: 0 auto 1rem;
+    }
+
+    .pending-message {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .icon-circle.pending {
+        width: 64px;
+        height: 64px;
+        background: #fef3c7;
+        color: #d97706;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+    }
+
+    .upload-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        text-align: center;
     }
 </style>

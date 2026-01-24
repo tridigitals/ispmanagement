@@ -341,6 +341,8 @@ pub fn run() {
                                     check_payment_status,
                                     list_invoices,
                                     list_all_invoices,
+                                    submit_payment_proof,
+                                    verify_payment,
                                     // Tenant Self-Management
                                     get_current_tenant,
                                     update_current_tenant,

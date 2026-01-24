@@ -47,7 +47,7 @@ impl PaymentService {
             r#"
             INSERT INTO invoices (id, tenant_id, invoice_number, amount, status, description, due_date, external_id, created_at, updated_at)
             VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8, $8)
-            RETURNING id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, external_id, merchant_id, created_at, updated_at
+            RETURNING id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
             "#
         )
         .bind(&id)
@@ -89,7 +89,7 @@ impl PaymentService {
         #[cfg(feature = "postgres")]
         let invoice = sqlx::query_as::<_, Invoice>(
             r#"
-            SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, external_id, merchant_id, created_at, updated_at 
+            SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at 
             FROM invoices WHERE id = $1
             "#
         )
@@ -114,7 +114,7 @@ impl PaymentService {
         let invoices = if let Some(tid) = tenant_id {
             sqlx::query_as::<_, Invoice>(
                 r#"
-                SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, external_id, merchant_id, created_at, updated_at 
+                SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at 
                 FROM invoices WHERE tenant_id = $1 ORDER BY created_at DESC
                 "#
             )
@@ -123,7 +123,7 @@ impl PaymentService {
         } else {
             sqlx::query_as::<_, Invoice>(
                 r#"
-                SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, external_id, merchant_id, created_at, updated_at 
+                SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at 
                 FROM invoices ORDER BY created_at DESC
                 "#
             )
@@ -463,7 +463,7 @@ impl PaymentService {
         #[cfg(feature = "postgres")]
         let invoice: Option<Invoice> = sqlx::query_as::<_, Invoice>(
             r#"
-            SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, external_id, merchant_id, created_at, updated_at 
+            SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at 
             FROM invoices WHERE invoice_number = $1
             "#
         )
@@ -629,7 +629,7 @@ impl PaymentService {
                         ),
                         "success".to_string(),
                         "billing".to_string(),
-                        Some(format!("/superadmin/tenants")),
+                        Some(format!("/superadmin/invoices")),
                     )
                     .await;
             }
@@ -723,6 +723,93 @@ impl PaymentService {
                 .map_err(|e| AppError::Internal(e.to_string()))?;
             }
         }
+
+        Ok(())
+    }
+
+    /// Submit Payment Proof (Manual Transfer)
+    pub async fn submit_payment_proof(&self, invoice_id: &str, file_path: &str) -> AppResult<()> {
+        let now = Utc::now();
+
+        #[cfg(feature = "postgres")]
+        sqlx::query("UPDATE invoices SET status = 'verification_pending', proof_attachment = $1, updated_at = $2 WHERE id = $3")
+            .bind(file_path)
+            .bind(now)
+            .bind(invoice_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query("UPDATE invoices SET status = 'verification_pending', proof_attachment = ?, updated_at = ? WHERE id = ?")
+            .bind(file_path)
+            .bind(now.to_rfc3339())
+            .bind(invoice_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        // Notify Admins about new proof
+        // TODO: This should ideally notify Superadmins.
+        // Reusing the same Superadmin notification logic could be good here.
+        // For now, let's keep it simple and just update the status.
+        // We will add a Notification Trigger next.
+
+        #[cfg(feature = "postgres")]
+        let super_admins: Vec<(String,)> =
+            sqlx::query_as("SELECT id FROM users WHERE is_super_admin = true")
+                .fetch_all(&self.pool)
+                .await
+                .unwrap_or_default();
+
+        #[cfg(feature = "sqlite")]
+        let super_admins: Vec<(String,)> =
+            sqlx::query_as("SELECT id FROM users WHERE is_super_admin = 1")
+                .fetch_all(&self.pool)
+                .await
+                .unwrap_or_default();
+
+        for (admin_id,) in super_admins {
+            let _ = self
+                .notification_service
+                .create_notification(
+                    admin_id,
+                    None,
+                    "New Payment Proof Uploaded".to_string(),
+                    format!(
+                        "A payment proof has been uploaded for invoice {}",
+                        invoice_id
+                    ),
+                    "info".to_string(),
+                    "billing".to_string(),
+                    Some(format!("/superadmin/invoices")),
+                )
+                .await;
+        }
+
+        Ok(())
+    }
+
+    /// Verify Payment (Approve/Reject)
+    pub async fn verify_payment(
+        &self,
+        invoice_id: &str,
+        status: &str,
+        _rejection_reason: Option<String>,
+    ) -> AppResult<()> {
+        if status != "paid" && status != "failed" {
+            return Err(AppError::Validation(
+                "Status must be 'paid' or 'failed'".to_string(),
+            ));
+        }
+
+        // 1. Get Invoice to reuse existing logic
+        let invoice = self.get_invoice(invoice_id).await?;
+
+        // 2. Reuse process_midtrans_notification logic
+        // process_midtrans_notification(&self, invoice: &Invoice, status: &str)
+        self.process_midtrans_notification(&invoice.invoice_number, status)
+            .await?;
 
         Ok(())
     }

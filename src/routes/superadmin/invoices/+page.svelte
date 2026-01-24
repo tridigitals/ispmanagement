@@ -96,6 +96,13 @@
                             <Icon name="search" size={18} />
                         </button>
                         <a
+                            href="/superadmin/invoices/{item.id}"
+                            class="action-btn"
+                            title="View Details"
+                        >
+                            <Icon name="eye" size={18} />
+                        </a>
+                        <a
                             href="/pay/{item.id}"
                             class="action-btn"
                             title="View Public Link"
