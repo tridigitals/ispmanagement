@@ -14,6 +14,7 @@
         connectWebSocket,
         disconnectWebSocket,
     } from "$lib/stores/websocket";
+    import { refreshUnreadCount } from "$lib/stores/notifications";
     import { Toaster } from "svelte-sonner";
     import GlobalUploads from "$lib/components/GlobalUploads.svelte";
     import { getSlugFromDomain } from "$lib/utils/domain";
@@ -51,9 +52,7 @@
             // Service Worker Registration
             if ("serviceWorker" in navigator) {
                 try {
-                    const reg =
-                        await navigator.serviceWorker.register("/sw.js");
-                    console.log("[SW] Registered:", reg);
+                    await navigator.serviceWorker.register("/sw.js");
                 } catch (e) {
                     console.error("[SW] Registration failed:", e);
                 }
@@ -134,6 +133,7 @@
                 // Connect to WebSocket for real-time updates (only if authenticated)
                 if ($isAuthenticated) {
                     connectWebSocket();
+                    refreshUnreadCount();
                 }
             }
         } catch (e) {

@@ -18,7 +18,22 @@ self.addEventListener('push', function (event) {
             };
 
             event.waitUntil(
-                self.registration.showNotification(data.title, options)
+                clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
+                    // Check if any client is focused/visible using the application
+                    const isAppFocused = clientList.some(client =>
+                        client.url.includes(self.location.origin) &&
+                        client.visibilityState === 'visible' &&
+                        ('focused' in client ? client.focused : true) // focused prop might not be available in all browsers
+                    );
+
+                    // If app is focused, we rely on the in-app WebSocket notification
+                    if (isAppFocused) {
+                        console.log('App is focused, suppressing push notification');
+                        return;
+                    }
+
+                    return self.registration.showNotification(data.title, options);
+                })
             );
         } catch (e) {
             console.error('Push event error:', e);
