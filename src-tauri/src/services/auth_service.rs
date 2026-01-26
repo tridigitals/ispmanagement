@@ -1047,19 +1047,25 @@ impl AuthService {
                 user_response.role = tenant_role;
             }
 
-            // Get tenant slug
+            // Get tenant slug and custom_domain
             #[cfg(feature = "postgres")]
-            let slug_query = "SELECT slug FROM tenants WHERE id = $1";
-            #[cfg(feature = "sqlite")]
-            let slug_query = "SELECT slug FROM tenants WHERE id = ?";
-
-            let slug: Option<String> = sqlx::query_scalar(slug_query)
+            let tenant_info: Option<(String, Option<String>)> = sqlx::query_as("SELECT slug, custom_domain FROM tenants WHERE id = $1")
                 .bind(&tid)
                 .fetch_optional(&self.pool)
                 .await
                 .unwrap_or(None);
 
-            user_response.tenant_slug = slug;
+            #[cfg(feature = "sqlite")]
+            let tenant_info: Option<(String, Option<String>)> = sqlx::query_as("SELECT slug, custom_domain FROM tenants WHERE id = ?")
+                .bind(&tid)
+                .fetch_optional(&self.pool)
+                .await
+                .unwrap_or(None);
+
+            if let Some((slug, domain)) = tenant_info {
+                user_response.tenant_slug = Some(slug);
+                user_response.tenant_custom_domain = domain;
+            }
         }
 
         Ok(user_response)
@@ -1292,6 +1298,7 @@ impl AuthService {
         let mut user_response: crate::models::user::UserResponse = user.into();
         user_response.permissions = permissions;
         user_response.tenant_slug = tenant.as_ref().map(|t| t.slug.clone());
+        user_response.tenant_custom_domain = tenant.as_ref().and_then(|t| t.custom_domain.clone());
 
         // Override role with tenant role if available
         if let Some(tid) = &tenant_id {

@@ -45,31 +45,59 @@
 
         if ($isAuthenticated) {
             const u = get(user);
-            const slug = u?.tenant_slug;
-
-            if (slug) {
-                if (get(isAdmin)) {
-                    goto(`/${slug}/admin`);
-                } else {
-                    goto(`/${slug}/dashboard`);
-                }
-            } else {
-                goto("/dashboard");
-            }
+            // Re-use the main redirection logic
+            // Note: We don't have the full tenant object here, but we now have u.tenant_custom_domain
+            // from the updated User model.
+            redirectUser(u, undefined); 
         }
     });
 
-    function redirectUser(u: any) {
+    function redirectUser(u: any, t?: any) {
         const slug = u?.tenant_slug;
+        // Prefer tenant object, fallback to user's enriched property
+        const customDomain = t?.custom_domain || u?.tenant_custom_domain;
+        const currentHost = $page.url.hostname;
+
+        // 1. Super Admin: Can login anywhere
+        if (u.is_super_admin) {
+            // If logged in on a tenant domain/subdomain, go to tenant admin
+            if (slug && currentHost.includes(slug)) {
+                goto(`/${slug}/admin`);
+            } else {
+                // Otherwise go to superadmin dashboard
+                goto("/superadmin");
+            }
+            return;
+        }
+
+        // 2. Tenant User with Custom Domain
+        if (customDomain) {
+            if (currentHost !== customDomain) {
+                // Redirect to custom domain (full redirect)
+                window.location.href = `${window.location.protocol}//${customDomain}/dashboard`;
+                return;
+            }
+        }
+
+        // 3. Tenant User (Subdomain)
         if (slug) {
-            // Check hostname/domain logic
+            // Check if we are already on the correct subdomain (slug.basedomain.com)
+            // Or if we are using path-based routing (domain.com/slug/dashboard)
+            
+            // NOTE: This assumes standard "slug.basedomain.com" structure OR path-based "/slug/..."
+            // If the current hostname DOES NOT contain the slug, and it's the main domain, 
+            // we should probably redirect to the subdomain if that's the architecture.
+            // For now, let's stick to the existing path-based logic but make it robust.
+
             if ($page.url.hostname.includes(slug)) {
+                // We are on the correct subdomain (presumably)
                 if (u.role === "admin") {
-                    goto(`/admin`);
+                    goto(`/admin`); // Root of subdomain
                 } else {
                     goto(`/dashboard`);
                 }
             } else {
+                // We are on main domain, redirect to path-based tenant dashboard
                 if (u.role === "admin") {
                     goto(`/${slug}/admin`);
                 } else {
@@ -77,6 +105,7 @@
                 }
             }
         } else {
+            // Fallback for users without tenant (shouldn't happen usually)
             goto("/dashboard");
         }
     }
@@ -114,7 +143,7 @@
             }
 
             if (response.user) {
-                redirectUser(response.user);
+                redirectUser(response.user, response.tenant);
             }
         } catch (err) {
             error = err instanceof Error ? err.message : String(err);
@@ -214,7 +243,7 @@
                     );
                 }
 
-                redirectUser(response.user);
+                redirectUser(response.user, response.tenant);
             }
         } catch (err) {
             error = err instanceof Error ? err.message : String(err);

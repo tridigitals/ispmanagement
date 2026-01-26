@@ -248,11 +248,13 @@ export interface User {
     tenant_slug?: string;
     tenant_id?: string;
     tenant_role?: string;
+    tenant_custom_domain?: string;
     preferred_2fa_method?: string;
 }
 
 export interface AuthResponse {
     user: User;
+    tenant?: any; // Added tenant field
     token?: string;
     expires_at?: string;
     message?: string;
