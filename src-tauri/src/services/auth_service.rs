@@ -1436,28 +1436,61 @@ impl AuthService {
     pub async fn disable_2fa(&self, user_id: &str, code: &str) -> AppResult<()> {
         let user = self.get_user_by_id(user_id).await?;
 
-        // Verify code first
-        if let Some(secret) = user.two_factor_secret {
+        if !user.two_factor_enabled {
+            return Err(AppError::Validation("2FA is not enabled".to_string()));
+        }
+
+        let mut verified = false;
+
+        // 1. Try TOTP if secret exists
+        if let Some(secret) = &user.two_factor_secret {
             let totp = TOTP::new(
                 Algorithm::SHA1,
                 6,
                 1,
                 30,
-                Secret::Encoded(secret).to_bytes().unwrap(),
+                Secret::Encoded(secret.clone()).to_bytes().unwrap(),
                 None,
                 "".to_string(),
             )
             .unwrap();
 
-            if !totp.check_current(code).unwrap_or(false) {
-                return Err(AppError::Validation("Invalid OTP code".to_string()));
+            if totp.check_current(code).unwrap_or(false) {
+                verified = true;
             }
-        } else {
-            return Err(AppError::Validation("2FA is not enabled".to_string()));
         }
 
-        // DB Update
-        let query = "UPDATE users SET two_factor_enabled = false, two_factor_secret = NULL, two_factor_recovery_codes = NULL, updated_at = $1 WHERE id = $2";
+        // 2. Try Email OTP if not verified yet
+        if !verified {
+            if let Some(stored_code) = &user.email_otp_code {
+                if let Some(expires) = &user.email_otp_expires {
+                    if Utc::now() <= *expires && stored_code == code {
+                        verified = true;
+                    }
+                }
+            }
+        }
+
+        // 3. Try Recovery Codes if not verified yet
+        if !verified {
+            let recovery_codes: Vec<String> = user
+                .two_factor_recovery_codes
+                .as_ref()
+                .and_then(|s| serde_json::from_str(s).ok())
+                .unwrap_or_default();
+
+            if recovery_codes.iter().any(|r| r == code) {
+                verified = true;
+            }
+        }
+
+        if !verified {
+            return Err(AppError::Validation("Invalid authentication code".to_string()));
+        }
+
+        // DB Update: Clear all 2FA related fields
+        let query = "UPDATE users SET two_factor_enabled = false, two_factor_secret = NULL, two_factor_recovery_codes = NULL, email_otp_code = NULL, email_otp_expires = NULL, preferred_2fa_method = 'totp', updated_at = $1 WHERE id = $2";
+
         #[cfg(feature = "postgres")]
         sqlx::query(query)
             .bind(Utc::now())
@@ -1466,7 +1499,7 @@ impl AuthService {
             .await?;
 
         #[cfg(feature = "sqlite")]
-        sqlx::query("UPDATE users SET two_factor_enabled = false, two_factor_secret = NULL, two_factor_recovery_codes = NULL, updated_at = ? WHERE id = ?")
+        sqlx::query("UPDATE users SET two_factor_enabled = false, two_factor_secret = NULL, two_factor_recovery_codes = NULL, email_otp_code = NULL, email_otp_expires = NULL, preferred_2fa_method = 'totp', updated_at = ? WHERE id = ?")
             .bind(Utc::now().to_rfc3339())
             .bind(user_id)
             .execute(&self.pool)

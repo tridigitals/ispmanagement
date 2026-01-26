@@ -230,7 +230,8 @@
             if (method === "totp") {
                 const { secret, qr } = await api.auth.enable2FA();
                 twoFactorData.secret = secret;
-                twoFactorData.qr = qr;
+                // Clean base64 string
+                twoFactorData.qr = qr.replace(/\s/g, "");
             } else {
                 await api.auth.requestEmail2FASetup();
             }
@@ -292,14 +293,28 @@
             await api.auth.disable2FA(twoFactorData.disableCode);
             twoFactorData.enabled = false;
             twoFactorData.disableCode = "";
-            user.update((u) =>
-                u ? { ...u, two_factor_enabled: false } : null,
-            );
+            user.update((u) => (u ? { ...u, two_factor_enabled: false } : null));
             showMessage("success", "Two-factor authentication disabled.");
         } catch (error: any) {
             showMessage("error", error.toString());
         } finally {
             loading = false;
+        }
+    }
+
+    let disableOtpSending = false;
+    let disableOtpSent = false;
+
+    async function sendDisableEmailOtp() {
+        disableOtpSending = true;
+        try {
+            await api.auth.request2FADisableCode();
+            disableOtpSent = true;
+            showMessage("success", "Verification code sent to your email.");
+        } catch (error: any) {
+            showMessage("error", error.toString());
+        } finally {
+            disableOtpSending = false;
         }
     }
 
@@ -801,16 +816,38 @@
                                 <div class="disable-box">
                                     <h4>Disable 2FA</h4>
                                     <p>
-                                        To disable, please confirm by entering a
-                                        code from your device.
+                                        {#if $user?.preferred_2fa_method === "email"}
+                                            To disable, please request a code
+                                            and enter it below.
+                                        {:else}
+                                            To disable, please confirm by
+                                            entering a code from your device.
+                                        {/if}
                                     </p>
+
+                                    {#if $user?.preferred_2fa_method === "email"}
+                                        <button
+                                            class="btn btn-outline btn-sm"
+                                            style="margin-bottom: 1rem;"
+                                            onclick={sendDisableEmailOtp}
+                                            disabled={disableOtpSending}
+                                        >
+                                            <Icon name="mail" size={16} />
+                                            <span>
+                                                {disableOtpSending
+                                                    ? "Sending..."
+                                                    : disableOtpSent
+                                                      ? "Resend Code"
+                                                      : "Send Code"}
+                                            </span>
+                                        </button>
+                                    {/if}
+
                                     <div class="form-group">
                                         <input
                                             type="text"
                                             class="form-input"
-                                            bind:value={
-                                                twoFactorData.disableCode
-                                            }
+                                            bind:value={twoFactorData.disableCode}
                                             placeholder="Enter authentication code"
                                         />
                                     </div>
@@ -1924,5 +1961,29 @@
     .push-icon.success {
         background: rgba(16, 185, 129, 0.1);
         color: var(--color-success);
+    }
+
+    /* QR Code Styles */
+    .qr-wrapper {
+        background: white;
+        padding: 1rem;
+        border-radius: var(--radius-md);
+        display: inline-block;
+        margin: 1rem 0;
+    }
+
+    .qr-img {
+        width: 200px;
+        height: 200px;
+        display: block;
+    }
+
+    .secret-text {
+        font-family: monospace;
+        background: var(--bg-secondary);
+        padding: 0.5rem;
+        border-radius: 4px;
+        word-break: break-all;
+        margin-top: 0.5rem;
     }
 </style>

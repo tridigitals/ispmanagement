@@ -372,6 +372,9 @@ export const auth = {
     disable2FA: (code: string): Promise<void> =>
         safeInvoke('disable_2fa', { token: getTokenOrThrow(), code }),
 
+    request2FADisableCode: (): Promise<void> =>
+        safeInvoke('request_2fa_disable_code', { token: getTokenOrThrow() }),
+
     verifyLogin2FA: (tempToken: string, code: string, trustDevice?: boolean): Promise<AuthResponse> =>
         safeInvoke('verify_login_2fa', { tempToken: tempToken, code, trustDevice: trustDevice }),
 

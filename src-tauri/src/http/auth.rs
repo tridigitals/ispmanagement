@@ -367,7 +367,28 @@ pub async fn disable_2fa(
         "success": true
     })))
 }
+
+/// Request Email OTP for disabling 2FA
+pub async fn request_2fa_disable_code(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let auth_header = headers
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+        .ok_or_else(|| crate::error::AppError::Unauthorized)?;
+
+    let claims = state.auth_service.validate_token(auth_header).await?;
+    state.auth_service.generate_email_otp(&claims.sub).await?;
+
+    Ok(Json(json!({
+        "message": "OTP sent to email"
+    })))
+}
+
 #[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Set2FAPreferenceDto {
     method: String,
 }

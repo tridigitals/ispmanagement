@@ -148,20 +148,28 @@ pub async fn reset_password(
         .map_err(|e| e.to_string())
 }
 
+#[derive(serde::Serialize)]
+pub struct Enable2faResponse {
+    pub secret: String,
+    pub qr: String,
+}
+
 /// Enable 2FA: Returns secret and QR code (base64)
 #[tauri::command]
 pub async fn enable_2fa(
     token: String,
     auth_service: State<'_, AuthService>,
-) -> Result<(String, String), String> {
+) -> Result<Enable2faResponse, String> {
     let claims = auth_service
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
-    auth_service
+    let (secret, qr) = auth_service
         .enable_2fa(&claims.sub)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    Ok(Enable2faResponse { secret, qr })
 }
 
 /// Verify 2FA Setup: Returns recovery codes
@@ -312,6 +320,23 @@ pub async fn set_2fa_preference(
         .map_err(|e| e.to_string())?;
     auth_service
         .set_2fa_preference(&claims.sub, &method)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Request a code to disable 2FA (for email method)
+#[tauri::command]
+pub async fn request_2fa_disable_code(
+    token: String,
+    auth_service: State<'_, AuthService>,
+) -> Result<(), String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    auth_service
+        .generate_email_otp(&claims.sub)
         .await
         .map_err(|e| e.to_string())
 }

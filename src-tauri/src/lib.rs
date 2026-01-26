@@ -279,6 +279,7 @@ pub fn run() {
             request_email_2fa_setup,
             verify_email_2fa_setup,
             set_2fa_preference,
+            request_2fa_disable_code,
             // User commands
             list_users,
             get_user,
