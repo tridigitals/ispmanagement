@@ -46,33 +46,23 @@ impl AuditService {
     ) {
         // We spawn this to not block the main request flow, or just await it.
         // For safety/reliability in this context, we'll await it but ignore errors to not fail the main action.
-        let id = uuid::Uuid::new_v4();
+        let id = uuid::Uuid::new_v4().to_string();
         let now = Utc::now();
 
         // Ensure table exists (Quick fix for no migration runner)
         // ideally this should be done once on startup, but for safety in this dev env:
         let _ = self.ensure_table().await;
 
-        #[cfg(feature = "postgres")]
         let query = r#"
             INSERT INTO audit_logs (id, user_id, tenant_id, action, resource, resource_id, details, ip_address, created_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         "#;
 
-        #[cfg(feature = "sqlite")]
-        let query = r#"
-            INSERT INTO audit_logs (id, user_id, tenant_id, action, resource, resource_id, details, ip_address, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        "#;
-
-        let user_uuid = user_id.and_then(|u| uuid::Uuid::parse_str(u).ok());
-        let tenant_uuid = tenant_id.and_then(|t| uuid::Uuid::parse_str(t).ok());
-
         #[cfg(feature = "postgres")]
         let res = sqlx::query(query)
-            .bind(id)
-            .bind(user_uuid)
-            .bind(tenant_uuid)
+            .bind(&id)
+            .bind(user_id)
+            .bind(tenant_id)
             .bind(action)
             .bind(resource)
             .bind(resource_id)
@@ -82,8 +72,8 @@ impl AuditService {
 
         #[cfg(feature = "sqlite")]
         let res = sqlx::query(query)
-            .bind(id.to_string())
-            .bind(user_id) // Sqlite stores UUIDs as TEXT
+            .bind(&id)
+            .bind(user_id)
             .bind(tenant_id)
             .bind(action)
             .bind(resource)
@@ -116,9 +106,9 @@ impl AuditService {
         #[cfg(feature = "postgres")]
         sqlx::query(
             r#"CREATE TABLE IF NOT EXISTS audit_logs (
-                id UUID PRIMARY KEY,
-                user_id UUID,
-                tenant_id UUID,
+                id TEXT PRIMARY KEY,
+                user_id TEXT,
+                tenant_id TEXT,
                 action VARCHAR(255) NOT NULL,
                 resource VARCHAR(255) NOT NULL,
                 resource_id TEXT,

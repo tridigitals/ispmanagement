@@ -6,10 +6,9 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct AuditLog {
-    #[serde(with = "uuid::serde::simple")] // Or just normal serde defaults for uuid
-    pub id: Uuid,
-    pub user_id: Option<Uuid>,
-    pub tenant_id: Option<Uuid>,
+    pub id: String,
+    pub user_id: Option<String>,
+    pub tenant_id: Option<String>,
     pub action: String,
     pub resource: String,
     pub resource_id: Option<String>,
@@ -27,7 +26,7 @@ impl AuditLog {
         ip_address: Option<String>,
     ) -> Self {
         Self {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().to_string(),
             user_id: None,
             tenant_id: None,
             action,
@@ -42,12 +41,11 @@ impl AuditLog {
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct AuditLogResponse {
-    #[serde(with = "uuid::serde::simple")]
-    pub id: Uuid,
-    pub user_id: Option<Uuid>,
+    pub id: String,
+    pub user_id: Option<String>,
     pub user_name: Option<String>, 
     pub user_email: Option<String>,
-    pub tenant_id: Option<Uuid>,
+    pub tenant_id: Option<String>,
     pub tenant_name: Option<String>,
     pub action: String,
     pub resource: String,

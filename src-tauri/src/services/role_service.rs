@@ -579,7 +579,7 @@ impl RoleService {
     pub async fn delete_role(&self, role_id: &str, is_super_admin: bool, actor_id: Option<&str>, ip_address: Option<&str>) -> Result<bool, sqlx::Error> {
         // Check if system role
         #[cfg(feature = "postgres")]
-        let role_info: Option<(bool, Option<Uuid>)> = sqlx::query_as("SELECT is_system, tenant_id FROM roles WHERE id = $1")
+        let role_info: Option<(bool, Option<String>)> = sqlx::query_as("SELECT is_system, tenant_id FROM roles WHERE id = $1")
             .bind(role_id)
             .fetch_optional(&self.pool)
             .await?;
