@@ -53,11 +53,13 @@
         }
     });
 
-    function redirectUser(u: any, t?: any) {
+    async function redirectUser(u: any, t?: any) {
         const slug = u?.tenant_slug;
         // Prefer tenant object, fallback to user's enriched property
         const customDomain = t?.custom_domain || u?.tenant_custom_domain;
-        const currentHost = $page.url.hostname;
+        const currentHost = window.location.hostname;
+        // @ts-ignore
+        const isTauri = typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__;
 
         // 1. Super Admin: Can login anywhere
         if (u.is_super_admin) {
@@ -72,12 +74,12 @@
         }
 
         // 2. Tenant User with Custom Domain
-        if (customDomain) {
-            if (currentHost !== customDomain) {
-                // Redirect to custom domain (full redirect)
-                window.location.href = `${window.location.protocol}//${customDomain}/dashboard`;
-                return;
-            }
+        if (!isTauri && customDomain && currentHost !== customDomain) {
+            // Domain mismatch -> Logout and show error instead of redirecting
+            const { logout } = await import("$lib/stores/auth");
+            logout();
+            error = "Invalid login credentials or unauthorized domain.";
+            return;
         }
 
         // 3. Tenant User (Subdomain)
@@ -149,7 +151,7 @@
                 const currentHost = window.location.hostname;
                 
                 if (customDomain && currentHost !== customDomain && !response.user.is_super_admin) {
-                    error = `Invalid domain. Please login at ${customDomain}`;
+                    error = "Invalid login credentials or unauthorized domain.";
                     // Clear session immediately
                     token.set(null);
                     user.set(null);
@@ -268,7 +270,7 @@
                 const currentHost = window.location.hostname;
                 
                 if (customDomain && currentHost !== customDomain && !response.user.is_super_admin) {
-                    error = `Invalid domain. Please login at ${customDomain}`;
+                    error = "Invalid login credentials or unauthorized domain.";
                     // Clear session immediately
                     token.set(null);
                     user.set(null);

@@ -31,13 +31,17 @@
             const currentSlug = $page.params.tenant;
             const userSlug = $user?.tenant_slug;
             
-            // Custom Domain Enforcement
+            // Custom Domain Enforcement (Web only)
             const userCustomDomain = $user?.tenant_custom_domain;
             const currentHost = $page.url.hostname;
+            // @ts-ignore
+            const isTauri = typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__;
 
-            if (userCustomDomain && currentHost !== userCustomDomain && !$isSuperAdmin) {
-                console.warn(`[Layout] Domain Mismatch! Redirecting to ${userCustomDomain}`);
-                window.location.href = `${window.location.protocol}//${userCustomDomain}/dashboard`;
+            if (!isTauri && userCustomDomain && currentHost !== userCustomDomain && !$isSuperAdmin) {
+                console.warn(`[Layout] Domain Mismatch! User belongs to ${userCustomDomain}. Logging out.`);
+                // Domain Mismatch -> Logout and redirect to login
+                import("$lib/stores/auth").then((m) => m.logout());
+                goto("/login");
                 return;
             }
 

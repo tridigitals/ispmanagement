@@ -177,7 +177,7 @@
                 const isTauri = typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__;
 
                 if (!isTauri && customDomain && currentHost !== customDomain && !response.user.is_super_admin) {
-                    error = `Invalid domain. Please login at ${customDomain}`;
+                    error = "Invalid login credentials or unauthorized domain.";
                     loading = false;
                     return;
                 }
@@ -185,7 +185,7 @@
                 // Store auth data
                 const { setAuthData } = await import("$lib/stores/auth");
                 setAuthData(response.token, response.user, rememberMe);
-                redirectAfterLogin(response.user);
+                redirectAfterLogin(response.user, response.tenant);
             }
         } catch (err) {
             error = err instanceof Error ? err.message : String(err);
@@ -194,21 +194,33 @@
         }
     }
 
-    function redirectAfterLogin(u: any) {
+    async function redirectAfterLogin(u: any, t?: any) {
         const slug = u?.tenant_slug;
+        const customDomain = t?.custom_domain || u?.tenant_custom_domain;
+        const currentHost = window.location.hostname;
+        // @ts-ignore
+        const isTauri = typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__;
+
+        // Domain Validation: Prevent login on wrong domain (Web only)
+        if (!isTauri && customDomain && currentHost !== customDomain && !u.is_super_admin) {
+            const { logout } = await import("$lib/stores/auth");
+            logout();
+            error = "Invalid login credentials or unauthorized domain.";
+            return;
+        }
 
         if (slug) {
             if ($page.url.hostname.includes(slug)) {
                 if (u.role === "admin") {
                     goto(`/admin`);
+                } else {
+                    goto(`/dashboard`);
                 }
             } else {
                 if (u.role === "admin") {
                     goto(`/${slug}/admin`);
-                } else {
-                    goto(`/dashboard`);
                 }
-            }
+            } // This closing brace was missing in the original search
         } else {
             goto("/dashboard");
         }
@@ -256,7 +268,7 @@
             if (!isTauri && customDomain && currentHost !== customDomain && !response.user.is_super_admin) {
                 // Logout immediately
                 await import("$lib/stores/auth").then((m) => m.logout());
-                error = `Invalid domain. Please login at ${customDomain}`;
+                error = "Invalid login credentials or unauthorized domain.";
                 loading = false;
                 return;
             }
@@ -302,21 +314,7 @@
             const slug = userSlug;
 
             if (slug) {
-                // If the current domain already matches the user's tenant slug, avoid adding it to the path
-                const currentSlug = $page.url.pathname.split("/")[1] || "";
-
-                if ($page.url.hostname.includes(slug)) {
-                    // Check if we are ALREADY on the tenant domain
-                    if (response.user.role === "admin") {
-                        goto(`/admin`);
-                    }
-                } else {
-                    if (response.user.role === "admin") {
-                        goto(`/${slug}/admin`);
-                    } else {
-                        goto(`/dashboard`);
-                    }
-                }
+                redirectAfterLogin(response.user, response.tenant);
             } else {
                 goto("/dashboard"); // Fallback
             }
