@@ -170,6 +170,18 @@
             }
 
             if (response.token && response.user) {
+                // Domain Validation: Prevent login on wrong domain (Web only)
+                const customDomain = response.tenant?.custom_domain || response.user.tenant_custom_domain;
+                const currentHost = window.location.hostname;
+                // @ts-ignore
+                const isTauri = typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__;
+
+                if (!isTauri && customDomain && currentHost !== customDomain && !response.user.is_super_admin) {
+                    error = `Invalid domain. Please login at ${customDomain}`;
+                    loading = false;
+                    return;
+                }
+
                 // Store auth data
                 const { setAuthData } = await import("$lib/stores/auth");
                 setAuthData(response.token, response.user, rememberMe);
@@ -184,20 +196,17 @@
 
     function redirectAfterLogin(u: any) {
         const slug = u?.tenant_slug;
-        console.log("[Tenant Login] Redirecting user with slug:", slug);
 
         if (slug) {
             if ($page.url.hostname.includes(slug)) {
                 if (u.role === "admin") {
                     goto(`/admin`);
-                } else {
-                    goto(`/dashboard`);
                 }
             } else {
                 if (u.role === "admin") {
                     goto(`/${slug}/admin`);
                 } else {
-                    goto(`/${slug}/dashboard`);
+                    goto(`/dashboard`);
                 }
             }
         } else {
@@ -212,14 +221,10 @@
 
         try {
             const response = await login(email, password, rememberMe);
-            console.log(
-                "[Tenant Login] Full response:",
-                JSON.stringify(response, null, 2),
-            );
+
 
             // Check for 2FA requirement FIRST
             if (response.requires_2fa) {
-                console.log("[Tenant Login] 2FA required.");
                 tempToken = response.temp_token || "";
                 available2FAMethods = response.available_2fa_methods || [
                     "totp",
@@ -242,11 +247,23 @@
                 return;
             }
 
+            // Domain Validation: Prevent login on wrong domain (Web only)
+            const customDomain = response.tenant?.custom_domain || response.user.tenant_custom_domain;
+            const currentHost = window.location.hostname;
+            // @ts-ignore
+            const isTauri = typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__;
+
+            if (!isTauri && customDomain && currentHost !== customDomain && !response.user.is_super_admin) {
+                // Logout immediately
+                await import("$lib/stores/auth").then((m) => m.logout());
+                error = `Invalid domain. Please login at ${customDomain}`;
+                loading = false;
+                return;
+            }
+
             const userSlug = response.user?.tenant_slug;
             const urlTenant = $page.params.tenant;
 
-            // Tenant Isolation Check
-            // If we are on a tenant-specific route, ensure the user belongs to this tenant
             // Tenant Isolation Check
             // If we are on a tenant-specific route, ensure the user belongs to this tenant
             if (
@@ -254,15 +271,8 @@
                 userSlug &&
                 urlTenant.toLowerCase() !== userSlug.toLowerCase()
             ) {
-                console.log("[Login] Tenant Mismatch details:", {
-                    urlTenant,
-                    userSlug,
-                    isSuperAdmin: response.user.is_super_admin,
-                });
-
                 // Allow Superadmin to login to any tenant workspace
                 if (response.user.is_super_admin) {
-                    console.log("[Login] Allowing Superadmin override.");
                     // Proceed
                 } else {
                     // Check for Tauri environment to allow auto-redirection
@@ -272,14 +282,8 @@
                         (window as any).__TAURI_INTERNALS__;
 
                     if (isTauri) {
-                        console.log(
-                            "[Login] Tauri detected. Allowing internal redirect.",
-                        );
                         // Allow redirection
                     } else {
-                        console.warn(
-                            "[Login] Tenant Mismatch (Web). Logging out.",
-                        );
                         // Logout immediately if mismatch (WEB ONLY)
                         await import("$lib/stores/auth").then((m) =>
                             m.logout(),
@@ -296,44 +300,27 @@
             }
 
             const slug = userSlug;
-            console.log("[Login] Determining redirect for slug:", slug);
-            console.log("[Login] Current URL info:", {
-                pathname: $page.url.pathname,
-                hostname: $page.url.hostname,
-            });
 
             if (slug) {
                 // If the current domain already matches the user's tenant slug, avoid adding it to the path
                 const currentSlug = $page.url.pathname.split("/")[1] || "";
 
                 if ($page.url.hostname.includes(slug)) {
-                    console.log(
-                        "[Login] Hostname includes slug. Redirecting to root dashboard.",
-                    );
                     // Check if we are ALREADY on the tenant domain
                     if (response.user.role === "admin") {
                         goto(`/admin`);
-                    } else {
-                        goto(`/dashboard`);
                     }
                 } else {
-                    console.log(
-                        "[Login] Hostname does NOT include slug. Redirecting to slug-prefixed dashboard.",
-                    );
                     if (response.user.role === "admin") {
                         goto(`/${slug}/admin`);
                     } else {
-                        goto(`/${slug}/dashboard`);
+                        goto(`/dashboard`);
                     }
                 }
             } else {
-                console.log(
-                    "[Login] No slug found. Redirecting to fallback dashboard.",
-                );
                 goto("/dashboard"); // Fallback
             }
         } catch (err) {
-            console.error("[Login] Error during submit:", err);
             error = err instanceof Error ? err.message : String(err);
             loading = false;
         } finally {

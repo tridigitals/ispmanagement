@@ -144,6 +144,25 @@
             }
 
             if (response.user) {
+                // Domain Check: Prevent login on wrong domain
+                const customDomain = response.tenant?.custom_domain || response.user.tenant_custom_domain;
+                const currentHost = window.location.hostname;
+                
+                if (customDomain && currentHost !== customDomain && !response.user.is_super_admin) {
+                    error = `Invalid domain. Please login at ${customDomain}`;
+                    // Clear session immediately
+                    token.set(null);
+                    user.set(null);
+                    if (typeof window !== 'undefined') {
+                        localStorage.removeItem('auth_token');
+                        sessionStorage.removeItem('auth_token');
+                        localStorage.removeItem('auth_user');
+                        sessionStorage.removeItem('auth_user');
+                    }
+                    loading = false;
+                    return;
+                }
+
                 redirectUser(response.user, response.tenant);
             }
         } catch (err) {
@@ -242,6 +261,25 @@
                     (rememberMe ? sessionStorage : localStorage).removeItem(
                         "auth_user",
                     );
+                }
+
+                // Domain Check: Prevent login on wrong domain
+                const customDomain = response.tenant?.custom_domain || response.user.tenant_custom_domain;
+                const currentHost = window.location.hostname;
+                
+                if (customDomain && currentHost !== customDomain && !response.user.is_super_admin) {
+                    error = `Invalid domain. Please login at ${customDomain}`;
+                    // Clear session immediately
+                    token.set(null);
+                    user.set(null);
+                    if (typeof window !== 'undefined') {
+                        localStorage.removeItem('auth_token');
+                        sessionStorage.removeItem('auth_token');
+                        localStorage.removeItem('auth_user');
+                        sessionStorage.removeItem('auth_user');
+                    }
+                    loading = false;
+                    return;
                 }
 
                 redirectUser(response.user, response.tenant);
