@@ -28,6 +28,19 @@ pub struct User {
     // Timestamps
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    // 2FA
+    #[serde(default)]
+    pub two_factor_enabled: bool,
+    #[serde(skip_serializing)]
+    pub two_factor_secret: Option<String>,
+    #[serde(skip_serializing)]
+    pub two_factor_recovery_codes: Option<String>,
+    // Email OTP
+    #[serde(skip_serializing)]
+    pub email_otp_code: Option<String>,
+    #[serde(skip_serializing)]
+    pub email_otp_expires: Option<DateTime<Utc>>,
+    pub preferred_2fa_method: Option<String>,
 }
 
 impl User {
@@ -51,9 +64,15 @@ impl User {
             locked_until: None,
             created_at: now,
             updated_at: now,
+            two_factor_enabled: false,
+            two_factor_secret: None,
+            two_factor_recovery_codes: None,
+            email_otp_code: None,
+            email_otp_expires: None,
+            preferred_2fa_method: Some("totp".to_string()),
         }
     }
-    
+
     /// Check if account is currently locked
     pub fn is_locked(&self) -> bool {
         if let Some(locked_until) = self.locked_until {
@@ -74,6 +93,8 @@ pub struct UserResponse {
     pub is_super_admin: bool,
     pub avatar_url: Option<String>,
     pub is_active: bool,
+    pub two_factor_enabled: bool,
+    pub preferred_2fa_method: Option<String>,
     pub created_at: DateTime<Utc>,
     pub permissions: Vec<String>,
     pub tenant_slug: Option<String>,
@@ -90,6 +111,8 @@ impl From<User> for UserResponse {
             is_super_admin: user.is_super_admin,
             avatar_url: user.avatar_url,
             is_active: user.is_active,
+            two_factor_enabled: user.two_factor_enabled,
+            preferred_2fa_method: user.preferred_2fa_method,
             created_at: user.created_at,
             permissions: vec![], // Populated by service
             tenant_slug: None,   // Populated by service

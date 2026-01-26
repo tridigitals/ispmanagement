@@ -36,7 +36,30 @@
             "require_uppercase": "1 uppercase",
             "require_number": "1 number",
             "require_special": "1 special char"
+        },
+        "2fa": {
+            "select_method": "Select Verification Method",
+            "select_method_desc": "Choose how you'd like to verify your identity",
+            "use_app": "Authenticator App",
+            "use_email": "Email Code",
+            "enter_code": "Enter Verification Code",
+            "totp_desc": "Enter the 6-digit code from your authenticator app",
+            "enter_email_code": "Enter Email Code",
+            "email_desc": "We'll send a verification code to your email",
+            "email_sent": "A verification code has been sent to your email",
+            "sending_email": "Sending verification code...",
+            "verify": "Verify",
+            "resend_code": "Resend Code",
+            "code_resent": "Verification code sent!",
+            "trust_device": "Trust this device for 30 days",
+            "invalid_code": "Invalid verification code"
         }
+    },
+    "common": {
+        "back": "Back",
+        "cancel": "Cancel",
+        "save": "Save",
+        "loading": "Loading..."
     },
     "sidebar": {
         "dashboard": "Dashboard",

@@ -99,6 +99,21 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
+    // Add enforce_2fa column if it doesn't exist
+    sqlx::query(
+        r#"
+        DO $$ 
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='tenants' AND column_name='enforce_2fa') THEN
+                ALTER TABLE tenants ADD COLUMN enforce_2fa BOOLEAN NOT NULL DEFAULT false;
+            END IF;
+        END $$;
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
     // Create users table
     sqlx::query(
         r#"
@@ -580,6 +595,62 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
+    // Migration: Add 2FA columns to users if not exists
+    sqlx::query(r#"
+        DO $$ 
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='two_factor_enabled') THEN
+                ALTER TABLE users ADD COLUMN two_factor_enabled BOOLEAN NOT NULL DEFAULT false;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='two_factor_secret') THEN
+                ALTER TABLE users ADD COLUMN two_factor_secret TEXT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='two_factor_recovery_codes') THEN
+                ALTER TABLE users ADD COLUMN two_factor_recovery_codes TEXT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='email_otp_code') THEN
+                ALTER TABLE users ADD COLUMN email_otp_code TEXT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='email_otp_expires') THEN
+                ALTER TABLE users ADD COLUMN email_otp_expires TIMESTAMPTZ;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='preferred_2fa_method') THEN
+                ALTER TABLE users ADD COLUMN preferred_2fa_method TEXT DEFAULT 'totp';
+            END IF;
+        END $$;
+    "#)
+    .execute(pool)
+    .await?;
+
+    // Migration: Create trusted_devices table for 2FA device trust
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS trusted_devices (
+            id TEXT PRIMARY KEY NOT NULL,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            device_fingerprint VARCHAR(255) NOT NULL,
+            ip_address VARCHAR(45),
+            user_agent TEXT,
+            trusted_at TIMESTAMPTZ DEFAULT NOW(),
+            expires_at TIMESTAMPTZ NOT NULL,
+            last_used_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE(user_id, device_fingerprint)
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_trusted_devices_user ON trusted_devices(user_id)")
+        .execute(pool)
+        .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_trusted_devices_expires ON trusted_devices(expires_at)",
+    )
+    .execute(pool)
+    .await?;
+
     info!("PostgreSQL migrations completed");
     Ok(())
 }
@@ -604,6 +675,16 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     )
     .execute(pool)
     .await?;
+
+    // Add storage_usage column if it doesn't exist (SQLite)
+    let _ = sqlx::query("ALTER TABLE tenants ADD COLUMN storage_usage INTEGER NOT NULL DEFAULT 0")
+        .execute(pool)
+        .await;
+
+    // Add enforce_2fa column if it doesn't exist (SQLite)
+    let _ = sqlx::query("ALTER TABLE tenants ADD COLUMN enforce_2fa INTEGER NOT NULL DEFAULT 0")
+        .execute(pool)
+        .await;
 
     // Add storage_usage column if it doesn't exist (SQLite)
     let _ = sqlx::query("ALTER TABLE tenants ADD COLUMN storage_usage INTEGER NOT NULL DEFAULT 0")
@@ -1021,6 +1102,57 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     )
     .execute(pool)
     .await?;
+
+    // Migration: Add 2FA columns to users if not exists (SQLite)
+    let _ =
+        sqlx::query("ALTER TABLE users ADD COLUMN two_factor_enabled INTEGER NOT NULL DEFAULT 0")
+            .execute(pool)
+            .await;
+    let _ = sqlx::query("ALTER TABLE users ADD COLUMN two_factor_secret TEXT")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("ALTER TABLE users ADD COLUMN two_factor_recovery_codes TEXT")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("ALTER TABLE users ADD COLUMN email_otp_code TEXT")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("ALTER TABLE users ADD COLUMN email_otp_expires TEXT")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("ALTER TABLE users ADD COLUMN preferred_2fa_method TEXT DEFAULT 'totp'")
+        .execute(pool)
+        .await;
+
+    // Create trusted_devices table for 2FA device trust (SQLite)
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS trusted_devices (
+            id TEXT PRIMARY KEY NOT NULL,
+            user_id TEXT NOT NULL,
+            device_fingerprint TEXT NOT NULL,
+            ip_address TEXT,
+            user_agent TEXT,
+            trusted_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            last_used_at TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_trusted_devices_user ON trusted_devices(user_id)")
+        .execute(pool)
+        .await
+        .ok();
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_trusted_devices_expires ON trusted_devices(expires_at)",
+    )
+    .execute(pool)
+    .await
+    .ok();
 
     seed_defaults(pool).await?;
     seed_roles(pool).await?;

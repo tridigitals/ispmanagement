@@ -37,6 +37,15 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             'validate_token': { method: 'POST', path: '/auth/validate' },
             'get_auth_settings': { method: 'GET', path: '/auth/settings' },
             'get_current_user': { method: 'GET', path: '/auth/me' },
+            'enable_2fa': { method: 'POST', path: '/auth/2fa/enable' },
+            'verify_2fa_setup': { method: 'POST', path: '/auth/2fa/verify-setup' },
+            'disable_2fa': { method: 'POST', path: '/auth/2fa/disable' },
+            'verify_login_2fa': { method: 'POST', path: '/auth/2fa/verify' },
+            'request_email_2fa_setup': { method: 'POST', path: '/auth/2fa/email/enable-request' },
+            'verify_email_2fa_setup': { method: 'POST', path: '/auth/2fa/email/enable-verify' },
+            'set_2fa_preference': { method: 'POST', path: '/auth/2fa/preference' },
+            'request_email_otp': { method: 'POST', path: '/auth/2fa/email/request' },
+            'verify_email_otp': { method: 'POST', path: '/auth/2fa/email/verify' },
             // Users
             'list_users': { method: 'GET', path: '/users' },
             'get_user': { method: 'GET', path: '/users/:id' },
@@ -239,6 +248,7 @@ export interface User {
     tenant_slug?: string;
     tenant_id?: string;
     tenant_role?: string;
+    preferred_2fa_method?: string;
 }
 
 export interface AuthResponse {
@@ -246,6 +256,9 @@ export interface AuthResponse {
     token?: string;
     expires_at?: string;
     message?: string;
+    requires_2fa?: boolean;
+    temp_token?: string;
+    available_2fa_methods?: string[];
 }
 
 export interface PaginatedResponse<T> {
@@ -347,6 +360,36 @@ export const auth = {
 
     resetPassword: (token: string, password: string): Promise<void> =>
         safeInvoke('reset_password', { token, password }),
+
+    enable2FA: (): Promise<{ secret: string; qr: string }> =>
+        safeInvoke('enable_2fa', { token: getTokenOrThrow() }),
+
+    verify2FASetup: (secret: string, code: string): Promise<{ recovery_codes: string[] }> =>
+        safeInvoke('verify_2fa_setup', { token: getTokenOrThrow(), secret, code }),
+
+    disable2FA: (code: string): Promise<void> =>
+        safeInvoke('disable_2fa', { token: getTokenOrThrow(), code }),
+
+    verifyLogin2FA: (tempToken: string, code: string, trustDevice?: boolean): Promise<AuthResponse> =>
+        safeInvoke('verify_login_2fa', { tempToken: tempToken, code, trustDevice: trustDevice }),
+
+    requestEmailOtp: (tempToken: string): Promise<void> =>
+        safeInvoke('request_email_otp', { tempToken: tempToken }),
+
+    verifyEmailOtp: (tempToken: string, code: string, trustDevice?: boolean): Promise<AuthResponse> =>
+        safeInvoke('verify_email_otp', { tempToken: tempToken, code, trustDevice: trustDevice }),
+
+    get2FAMethods: (): Promise<string[]> =>
+        safeInvoke('get_2fa_methods', {}),
+
+    set2FAPreference: (method: string): Promise<void> =>
+        safeInvoke('set_2fa_preference', { token: getTokenOrThrow(), method }),
+
+    requestEmail2FASetup: (): Promise<void> =>
+        safeInvoke('request_email_2fa_setup', { token: getTokenOrThrow() }),
+
+    verifyEmail2FASetup: (code: string): Promise<void> =>
+        safeInvoke('verify_email_2fa_setup', { token: getTokenOrThrow(), code }),
 };
 
 // Users API

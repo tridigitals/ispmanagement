@@ -100,7 +100,7 @@ export async function login(email: string, password: string, remember: boolean =
     // console.log('[Auth] Login called. Remember:', remember);
     const response = await auth.login(email, password);
     if (response.token) {
-        setAuth(response.token, response.user, remember);
+        setAuthData(response.token, response.user, remember);
     }
     return response;
 }
@@ -109,12 +109,12 @@ export async function register(email: string, password: string, name: string): P
     const response = await auth.register(email, password, name);
     // Default to remember=true for registration, or could be passed
     if (response.token) {
-        setAuth(response.token, response.user, true);
+        setAuthData(response.token, response.user, true);
     }
     return response;
 }
 
-function setAuth(newToken: string, newUser: User, remember: boolean) {
+export function setAuthData(newToken: string, newUser: User, remember: boolean) {
     // console.log('[Auth] Setting auth data. Remember:', remember);
     token.set(newToken);
     user.set(newUser);

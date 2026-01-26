@@ -36,7 +36,30 @@
             "require_uppercase": "1 huruf besar",
             "require_number": "1 angka",
             "require_special": "1 karakter spesial"
+        },
+        "2fa": {
+            "select_method": "Pilih Metode Verifikasi",
+            "select_method_desc": "Pilih cara untuk memverifikasi identitas Anda",
+            "use_app": "Aplikasi Authenticator",
+            "use_email": "Kode Email",
+            "enter_code": "Masukkan Kode Verifikasi",
+            "totp_desc": "Masukkan kode 6 digit dari aplikasi authenticator Anda",
+            "enter_email_code": "Masukkan Kode Email",
+            "email_desc": "Kami akan mengirim kode verifikasi ke email Anda",
+            "email_sent": "Kode verifikasi telah dikirim ke email Anda",
+            "sending_email": "Mengirim kode verifikasi...",
+            "verify": "Verifikasi",
+            "resend_code": "Kirim Ulang Kode",
+            "code_resent": "Kode verifikasi terkirim!",
+            "trust_device": "Percayai perangkat ini selama 30 hari",
+            "invalid_code": "Kode verifikasi tidak valid"
         }
+    },
+    "common": {
+        "back": "Kembali",
+        "cancel": "Batal",
+        "save": "Simpan",
+        "loading": "Memuat..."
     },
     "sidebar": {
         "dashboard": "Dasbor",

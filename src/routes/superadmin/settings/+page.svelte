@@ -45,6 +45,12 @@
     let apiRateLimitPerMinute = 100;
     let enableIpBlocking = false;
 
+    // 2FA Configuration
+    let twoFAEnabled = true;
+    let twoFAMethodTotp = true;
+    let twoFAMethodEmail = false;
+    let twoFAEmailOtpExpiryMinutes = 5;
+
     // Storage
     let storageMaxFileSizeMb = 500;
     let storageAllowedExtensions = "";
@@ -167,6 +173,15 @@
                 settingsMap["api_rate_limit_per_minute"] || "100",
             );
             enableIpBlocking = settingsMap["enable_ip_blocking"] === "true";
+
+            // 2FA Configuration
+            twoFAEnabled = settingsMap["2fa_enabled"] !== "false"; // Default true
+            const methods = settingsMap["2fa_methods"] || "totp";
+            twoFAMethodTotp = methods.includes("totp");
+            twoFAMethodEmail = methods.includes("email");
+            twoFAEmailOtpExpiryMinutes = parseInt(
+                settingsMap["2fa_email_otp_expiry_minutes"] || "5",
+            );
 
             // Storage
             storageMaxFileSizeMb = parseInt(
@@ -306,6 +321,27 @@
                     "enable_ip_blocking",
                     enableIpBlocking ? "true" : "false",
                     "Enable IP blocking",
+                ),
+                // 2FA Configuration
+                api.settings.upsert(
+                    "2fa_enabled",
+                    twoFAEnabled ? "true" : "false",
+                    "Enable Two-Factor Authentication",
+                ),
+                api.settings.upsert(
+                    "2fa_methods",
+                    [
+                        twoFAMethodTotp ? "totp" : "",
+                        twoFAMethodEmail ? "email" : "",
+                    ]
+                        .filter(Boolean)
+                        .join(",") || "totp",
+                    "Available 2FA methods",
+                ),
+                api.settings.upsert(
+                    "2fa_email_otp_expiry_minutes",
+                    twoFAEmailOtpExpiryMinutes.toString(),
+                    "Email OTP expiry in minutes",
                 ),
                 // Storage
                 api.settings.upsert(
@@ -875,6 +911,106 @@
                                     <span class="slider"></span>
                                 </label>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- 2FA Settings Card -->
+                    <div
+                        class="card section fade-in"
+                        style="margin-top: 1.5rem;"
+                    >
+                        <div class="card-header">
+                            <h3>Two-Factor Authentication</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <span class="setting-label">Enable 2FA</span
+                                    >
+                                    <p class="setting-description">
+                                        Allow users to set up two-factor
+                                        authentication for enhanced security.
+                                    </p>
+                                </div>
+                                <label class="toggle">
+                                    <input
+                                        type="checkbox"
+                                        bind:checked={twoFAEnabled}
+                                        on:change={handleChange}
+                                        aria-label="Enable 2FA"
+                                    />
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <span class="setting-label"
+                                        >TOTP (Authenticator App)</span
+                                    >
+                                    <p class="setting-description">
+                                        Allow users to verify with Google
+                                        Authenticator, Authy, etc.
+                                    </p>
+                                </div>
+                                <label class="toggle">
+                                    <input
+                                        type="checkbox"
+                                        bind:checked={twoFAMethodTotp}
+                                        on:change={handleChange}
+                                        aria-label="Enable TOTP"
+                                    />
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <span class="setting-label">Email OTP</span>
+                                    <p class="setting-description">
+                                        Allow users to receive verification
+                                        codes via email.
+                                    </p>
+                                </div>
+                                <label class="toggle">
+                                    <input
+                                        type="checkbox"
+                                        bind:checked={twoFAMethodEmail}
+                                        on:change={handleChange}
+                                        aria-label="Enable Email OTP"
+                                    />
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            {#if twoFAMethodEmail}
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <label
+                                            class="setting-label"
+                                            for="email-otp-expiry"
+                                            >Email OTP Expiry</label
+                                        >
+                                        <p class="setting-description">
+                                            How long email verification codes
+                                            remain valid.
+                                        </p>
+                                    </div>
+                                    <div class="input-group">
+                                        <input
+                                            type="number"
+                                            id="email-otp-expiry"
+                                            bind:value={
+                                                twoFAEmailOtpExpiryMinutes
+                                            }
+                                            on:input={handleChange}
+                                            min="1"
+                                            max="30"
+                                        />
+                                        <span class="input-suffix">min</span>
+                                    </div>
+                                </div>
+                            {/if}
                         </div>
                     </div>
                 {/if}

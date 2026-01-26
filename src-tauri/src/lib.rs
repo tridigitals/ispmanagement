@@ -1,4 +1,4 @@
-//! SaaS Boilerplate - Main Library Entry Point
+//! SaaS Boilerplate - Main Library Entry Point (Rebuild Triggered)
 //! 
 //! This is the core library for the Tauri application.
 //! It wires together all modules: database, services, and commands.
@@ -179,7 +179,7 @@ pub fn run() {
                 
                 let settings_service = SettingsService::new(pool.clone(), audit_service.clone());
                 let email_service = EmailService::new(settings_service.clone());
-                let auth_service = AuthService::new(pool.clone(), jwt_secret, email_service.clone(), audit_service.clone());
+                let auth_service = AuthService::new(pool.clone(), jwt_secret, email_service.clone(), audit_service.clone(), settings_service.clone());
                 let user_service = UserService::new(pool.clone(), audit_service.clone());
                 let team_service = TeamService::new(pool.clone(), auth_service.clone(), audit_service.clone(), plan_service.clone());
                 let system_service = SystemService::new(pool.clone());
@@ -269,6 +269,16 @@ pub fn run() {
             verify_email,
             forgot_password,
             reset_password,
+            enable_2fa,
+            verify_2fa_setup,
+            disable_2fa,
+            verify_login_2fa,
+            request_email_otp,
+            verify_email_otp,
+            get_2fa_methods,
+            request_email_2fa_setup,
+            verify_email_2fa_setup,
+            set_2fa_preference,
             // User commands
             list_users,
             get_user,

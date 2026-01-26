@@ -31,7 +31,11 @@
             const currentSlug = $page.params.tenant;
             const userSlug = $user?.tenant_slug;
 
-            if (currentSlug && userSlug && currentSlug !== userSlug) {
+            if (
+                currentSlug &&
+                userSlug &&
+                currentSlug.toLowerCase() !== userSlug.toLowerCase()
+            ) {
                 console.warn(
                     `[Layout] Tenant Mismatch! User ${userSlug} tried to access ${currentSlug}`,
                 );

@@ -198,6 +198,23 @@ pub async fn start_server(
         .route("/api/auth/forgot-password", post(auth::forgot_password))
         .route("/api/auth/reset-password", post(auth::reset_password))
         .route("/api/auth/validate", post(auth::validate_token))
+        .route("/api/auth/2fa/verify", post(auth::verify_login_2fa))
+        .route("/api/auth/2fa/email/request", post(auth::request_email_otp))
+        .route("/api/auth/2fa/email/verify", post(auth::verify_email_otp))
+        .route("/api/auth/2fa/methods", get(auth::get_2fa_methods))
+        // 2FA Setup Routes
+        .route("/api/auth/2fa/enable", post(auth::enable_2fa))
+        .route("/api/auth/2fa/verify-setup", post(auth::verify_2fa_setup))
+        .route("/api/auth/2fa/disable", post(auth::disable_2fa))
+        .route("/api/auth/2fa/preference", post(auth::set_2fa_preference))
+        .route(
+            "/api/auth/2fa/email/enable-request",
+            post(auth::request_email_2fa_setup),
+        )
+        .route(
+            "/api/auth/2fa/email/enable-verify",
+            post(auth::verify_email_2fa_setup),
+        )
         // User Routes
         .route(
             "/api/users",

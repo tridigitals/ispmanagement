@@ -93,6 +93,7 @@ aws-sdk-s3 = "1.120.0"
 web-push-native = "0.4.0"
 base64ct = { version = "1.8.3", features = ["alloc"] }
 tauri-plugin-notification = "2.3.3"
+totp-rs = { version = "5.7.0", features = ["qr", "gen_secret"] }
 
 [profile.dev]
 incremental = false

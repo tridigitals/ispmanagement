@@ -11,6 +11,8 @@ pub struct Tenant {
     pub custom_domain: Option<String>,
     pub logo_url: Option<String>,
     pub is_active: bool,
+    #[serde(default)]
+    pub enforce_2fa: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -25,6 +27,7 @@ impl Tenant {
             custom_domain: None,
             logo_url: None,
             is_active: true,
+            enforce_2fa: false,
             created_at: now,
             updated_at: now,
         }
@@ -36,7 +39,7 @@ pub struct TenantMember {
     pub id: String,
     pub tenant_id: String,
     pub user_id: String,
-    pub role: String, // String representation for backward compatibility
+    pub role: String,            // String representation for backward compatibility
     pub role_id: Option<String>, // New RBAC role ID
     pub created_at: DateTime<Utc>,
 }

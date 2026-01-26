@@ -38,6 +38,18 @@
         confirm: "",
     };
 
+    // 2FA State
+    let twoFactorData = {
+        enabled: false,
+        secret: "",
+        qr: "",
+        code: "",
+        recoveryCodes: [] as string[],
+        showSetup: false,
+        showRecovery: false,
+        disableCode: "",
+    };
+
     // Visibility States
     let showCurrentPassword = false;
     let showNewPassword = false;
@@ -97,6 +109,7 @@
                 email: $user.email,
                 role: $user.role,
             };
+            twoFactorData.enabled = $user.two_factor_enabled || false;
         }
 
         // Load notification preferences
@@ -202,6 +215,108 @@
                 error.toString() ||
                     $t("profile.messages.change_password_failed"),
             );
+        } finally {
+            loading = false;
+        }
+    }
+
+    // 2FA Methods
+    let setupMethod = "totp"; // 'totp' | 'email'
+
+    async function start2FA(method: "totp" | "email") {
+        setupMethod = method;
+        loading = true;
+        try {
+            if (method === "totp") {
+                const { secret, qr } = await api.auth.enable2FA();
+                twoFactorData.secret = secret;
+                twoFactorData.qr = qr;
+            } else {
+                await api.auth.requestEmail2FASetup();
+            }
+            twoFactorData.showSetup = true;
+        } catch (error: any) {
+            showMessage("error", error.toString());
+        } finally {
+            loading = false;
+        }
+    }
+
+    async function verify2FA() {
+        loading = true;
+        try {
+            if (setupMethod === "totp") {
+                const { recovery_codes } = await api.auth.verify2FASetup(
+                    twoFactorData.secret,
+                    twoFactorData.code,
+                );
+                twoFactorData.recoveryCodes = recovery_codes;
+            } else {
+                await api.auth.verifyEmail2FASetup(twoFactorData.code);
+                // Email 2FA doesn't have recovery codes usually, but we could generate them if we wanted.
+                // For now, let's assume no recovery codes for email 2FA or fetch them separately?
+                // Actually backend logic for email 2FA setup doesn't return recovery codes in my new impl.
+                // So we just skip showing recovery codes for email setup.
+                twoFactorData.recoveryCodes = [];
+            }
+
+            twoFactorData.enabled = true;
+            twoFactorData.showSetup = false;
+
+            // Only show recovery codes if we have them (TOTP flow)
+            if (twoFactorData.recoveryCodes.length > 0) {
+                twoFactorData.showRecovery = true;
+            } else {
+                showMessage("success", "Two-factor authentication enabled!");
+            }
+
+            user.update((u) =>
+                u
+                    ? {
+                          ...u,
+                          two_factor_enabled: true,
+                          preferred_2fa_method: setupMethod,
+                      }
+                    : null,
+            );
+        } catch (error: any) {
+            showMessage("error", error.toString());
+        } finally {
+            loading = false;
+        }
+    }
+
+    async function disable2FA() {
+        loading = true;
+        try {
+            await api.auth.disable2FA(twoFactorData.disableCode);
+            twoFactorData.enabled = false;
+            twoFactorData.disableCode = "";
+            user.update((u) =>
+                u ? { ...u, two_factor_enabled: false } : null,
+            );
+            showMessage("success", "Two-factor authentication disabled.");
+        } catch (error: any) {
+            showMessage("error", error.toString());
+        } finally {
+            loading = false;
+        }
+    }
+
+    async function change2FAMethod(method: "totp" | "email") {
+        if (!$user?.two_factor_enabled) return;
+        loading = true;
+        try {
+            await api.auth.set2FAPreference(method);
+            user.update((u) =>
+                u ? { ...u, preferred_2fa_method: method } : null,
+            );
+            showMessage(
+                "success",
+                `2FA method changed to ${method === "totp" ? "Authenticator App" : "Email"}`,
+            );
+        } catch (error: any) {
+            showMessage("error", error.toString());
         } finally {
             loading = false;
         }
@@ -370,6 +485,7 @@
             {/if}
 
             {#if activeTab === "security"}
+                <!-- Existing Password Form -->
                 <div class="card section fade-in-up">
                     <div class="card-header">
                         <h2 class="card-title">
@@ -555,6 +671,324 @@
                             </button>
                         </div>
                     </form>
+                </div>
+
+                <!-- 2FA Section -->
+                <div class="card section fade-in-up" style="margin-top: 2rem;">
+                    <div class="card-header">
+                        <h2 class="card-title">Two-Factor Authentication</h2>
+                        <p class="card-subtitle">
+                            Protect your account with an extra layer of
+                            security.
+                        </p>
+                    </div>
+
+                    <div class="setup-content">
+                        {#if twoFactorData.enabled}
+                            <div class="status-active">
+                                <div class="status-icon">
+                                    <Icon
+                                        name="check"
+                                        size={24}
+                                        color="var(--success)"
+                                    />
+                                </div>
+                                <div style="flex: 1">
+                                    <h3>2FA is Enabled</h3>
+                                    <p>Your account is secured with 2FA.</p>
+
+                                    <div
+                                        class="method-selector"
+                                        style="margin-top: 1rem;"
+                                    >
+                                        <h4
+                                            style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);"
+                                        >
+                                            Preferred Method
+                                        </h4>
+                                        <div
+                                            class="radio-group"
+                                            style="display: flex; gap: 1rem;"
+                                        >
+                                            <label
+                                                class="radio-card"
+                                                class:selected={$user?.preferred_2fa_method !==
+                                                    "email"}
+                                                style="flex: 1; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s; background: var(--bg-primary);"
+                                            >
+                                                <input
+                                                    type="radio"
+                                                    name="2fa_method"
+                                                    value="totp"
+                                                    checked={$user?.preferred_2fa_method !==
+                                                        "email"}
+                                                    onchange={() =>
+                                                        change2FAMethod("totp")}
+                                                    style="accent-color: var(--color-primary);"
+                                                />
+                                                <div
+                                                    class="radio-content"
+                                                    style="display: flex; align-items: center; gap: 0.5rem;"
+                                                >
+                                                    <Icon
+                                                        name="smartphone"
+                                                        size={18}
+                                                    />
+                                                    <span
+                                                        style="font-weight: 500;"
+                                                        >Authenticator App</span
+                                                    >
+                                                </div>
+                                            </label>
+
+                                            <label
+                                                class="radio-card"
+                                                class:selected={$user?.preferred_2fa_method ===
+                                                    "email"}
+                                                style="flex: 1; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s; background: var(--bg-primary);"
+                                            >
+                                                <input
+                                                    type="radio"
+                                                    name="2fa_method"
+                                                    value="email"
+                                                    checked={$user?.preferred_2fa_method ===
+                                                        "email"}
+                                                    onchange={() =>
+                                                        change2FAMethod(
+                                                            "email",
+                                                        )}
+                                                    style="accent-color: var(--color-primary);"
+                                                />
+                                                <div
+                                                    class="radio-content"
+                                                    style="display: flex; align-items: center; gap: 0.5rem;"
+                                                >
+                                                    <Icon
+                                                        name="mail"
+                                                        size={18}
+                                                    />
+                                                    <span
+                                                        style="font-weight: 500;"
+                                                        >Email Verification</span
+                                                    >
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {#if twoFactorData.showRecovery}
+                                <div class="recovery-codes-box">
+                                    <h4>Save your Recovery Codes!</h4>
+                                    <p>
+                                        These codes are the ONLY way to access
+                                        your account if you lose your phone.
+                                    </p>
+                                    <div class="code-grid">
+                                        {#each twoFactorData.recoveryCodes as code}
+                                            <div class="code-item">{code}</div>
+                                        {/each}
+                                    </div>
+                                    <button
+                                        class="btn btn-primary width-full"
+                                        onclick={() =>
+                                            (twoFactorData.showRecovery = false)}
+                                        >I have saved them</button
+                                    >
+                                </div>
+                            {:else}
+                                <div class="disable-box">
+                                    <h4>Disable 2FA</h4>
+                                    <p>
+                                        To disable, please confirm by entering a
+                                        code from your device.
+                                    </p>
+                                    <div class="form-group">
+                                        <input
+                                            type="text"
+                                            class="form-input"
+                                            bind:value={
+                                                twoFactorData.disableCode
+                                            }
+                                            placeholder="Enter authentication code"
+                                        />
+                                    </div>
+                                    <button
+                                        class="btn btn-danger"
+                                        onclick={disable2FA}
+                                        disabled={twoFactorData.disableCode
+                                            .length < 6 || loading}
+                                    >
+                                        {loading
+                                            ? "Disabling..."
+                                            : "Disable 2FA"}
+                                    </button>
+                                </div>
+                            {/if}
+                        {:else if !twoFactorData.showSetup}
+                            <div class="empty-state-2fa">
+                                <p>
+                                    Add an extra layer of security to your
+                                    account by requiring a code from your phone
+                                    when logging in.
+                                </p>
+                                <h4
+                                    style="margin: 1.5rem 0 1rem; color: var(--text-primary);"
+                                >
+                                    Choose Setup Method
+                                </h4>
+                                <div
+                                    class="setup-method-actions"
+                                    style="display: flex; gap: 1rem; justify-content: center;"
+                                >
+                                    <button
+                                        class="btn btn-primary"
+                                        onclick={() => start2FA("totp")}
+                                        disabled={loading}
+                                    >
+                                        <div
+                                            style="display: flex; align-items: center; gap: 0.5rem;"
+                                        >
+                                            <Icon name="smartphone" size={18} />
+                                            <span>Authenticator App</span>
+                                        </div>
+                                    </button>
+                                    <button
+                                        class="btn btn-secondary"
+                                        onclick={() => start2FA("email")}
+                                        disabled={loading}
+                                        style="background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);"
+                                    >
+                                        <div
+                                            style="display: flex; align-items: center; gap: 0.5rem;"
+                                        >
+                                            <Icon name="mail" size={18} />
+                                            <span>Email Verification</span>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        {:else}
+                            <div class="setup-grid">
+                                {#if setupMethod === "totp"}
+                                    <div class="qr-section">
+                                        <p class="step-label">
+                                            1. Scan this QR code
+                                        </p>
+                                        <div class="qr-wrapper">
+                                            <img
+                                                src="data:image/png;base64,{twoFactorData.qr}"
+                                                alt="QR Code"
+                                                class="qr-img"
+                                            />
+                                        </div>
+                                        <p class="secret-text">
+                                            Key: {twoFactorData.secret}
+                                        </p>
+                                    </div>
+                                    <div class="verify-section">
+                                        <p class="step-label">
+                                            2. Enter the code
+                                        </p>
+                                        <input
+                                            type="text"
+                                            class="form-input text-center text-lg"
+                                            bind:value={twoFactorData.code}
+                                            placeholder="000 000"
+                                            maxlength="6"
+                                        />
+                                        <div class="form-actions row">
+                                            <button
+                                                class="btn btn-outline"
+                                                onclick={() =>
+                                                    (twoFactorData.showSetup = false)}
+                                                >Cancel</button
+                                            >
+                                            <button
+                                                class="btn btn-primary"
+                                                onclick={verify2FA}
+                                                disabled={twoFactorData.code
+                                                    .length < 6 || loading}
+                                                >{loading
+                                                    ? "Verifying..."
+                                                    : "Activate"}</button
+                                            >
+                                        </div>
+                                    </div>
+                                {:else}
+                                    <!-- Email Setup UI -->
+                                    <div
+                                        class="verify-section"
+                                        style="max-width: 400px; margin: 0 auto; text-align: center; width: 100%;"
+                                    >
+                                        <div style="margin-bottom: 2rem;">
+                                            <div
+                                                style="width: 60px; height: 60px; background: var(--bg-secondary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;"
+                                            >
+                                                <Icon
+                                                    name="mail"
+                                                    size={32}
+                                                    color="var(--primary)"
+                                                />
+                                            </div>
+                                            <h3 style="margin-bottom: 0.5rem;">
+                                                Verify your Email
+                                            </h3>
+                                            <p
+                                                style="color: var(--text-secondary);"
+                                            >
+                                                We sent a verification code to <strong
+                                                    >{profileData.email}</strong
+                                                >
+                                            </p>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label
+                                                for="email-otp"
+                                                class="form-label"
+                                                style="text-align: left;"
+                                                >Verification Code</label
+                                            >
+                                            <input
+                                                type="text"
+                                                id="email-otp"
+                                                class="form-input text-center text-lg"
+                                                bind:value={twoFactorData.code}
+                                                placeholder="000000"
+                                                maxlength="6"
+                                                style="letter-spacing: 0.5em;"
+                                            />
+                                        </div>
+
+                                        <div
+                                            class="form-actions row"
+                                            style="margin-top: 1.5rem;"
+                                        >
+                                            <button
+                                                class="btn btn-outline"
+                                                onclick={() =>
+                                                    (twoFactorData.showSetup = false)}
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                class="btn btn-primary"
+                                                onclick={verify2FA}
+                                                disabled={twoFactorData.code
+                                                    .length < 6 || loading}
+                                            >
+                                                {loading
+                                                    ? "Verifying..."
+                                                    : "Verify & Enable"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                {/if}
+                            </div>
+                        {/if}
+                    </div>
                 </div>
             {/if}
 

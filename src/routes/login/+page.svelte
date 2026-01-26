@@ -1,5 +1,12 @@
 <script lang="ts">
-    import { login, isAuthenticated, isAdmin, user } from "$lib/stores/auth";
+    import {
+        login,
+        isAuthenticated,
+        isAdmin,
+        user,
+        token,
+    } from "$lib/stores/auth";
+    import { api } from "$lib/api/client";
     import { appSettings } from "$lib/stores/settings";
     import { appLogo } from "$lib/stores/logo";
     import { goto } from "$app/navigation";
@@ -16,6 +23,15 @@
     let error = "";
     let loading = false;
     let activeField = "";
+
+    // 2FA State
+    let step = "login"; // 'login' | '2fa-select' | '2fa-totp' | '2fa-email'
+    let twoFactorCode = "";
+    let tempToken = "";
+    let available2FAMethods: string[] = [];
+    let selected2FAMethod = "";
+    let emailOtpSent = false;
+    let emailOtpSending = false;
 
     let showPassword = false;
 
@@ -43,6 +59,28 @@
         }
     });
 
+    function redirectUser(u: any) {
+        const slug = u?.tenant_slug;
+        if (slug) {
+            // Check hostname/domain logic
+            if ($page.url.hostname.includes(slug)) {
+                if (u.role === "admin") {
+                    goto(`/admin`);
+                } else {
+                    goto(`/dashboard`);
+                }
+            } else {
+                if (u.role === "admin") {
+                    goto(`/${slug}/admin`);
+                } else {
+                    goto(`/${slug}/dashboard`);
+                }
+            }
+        } else {
+            goto("/dashboard");
+        }
+    }
+
     async function handleSubmit(e: Event) {
         e.preventDefault();
         error = "";
@@ -50,29 +88,133 @@
 
         try {
             const response = await login(email, password, rememberMe);
-            const slug = response.user?.tenant_slug;
 
-            if (slug) {
-                // If the current domain already matches the user's tenant slug, avoid adding it to the path
-                const currentSlug = $page.url.pathname.split("/")[1] || "";
-                // OR better yet, check against domain map if we had one client side
-                // For now, simpler check:
-                if ($page.url.hostname.includes(slug)) {
-                    // Check if we are ALREADY on the tenant domain
-                    if (response.user.role === "admin") {
-                        goto(`/admin`);
-                    } else {
-                        goto(`/dashboard`);
+            if (response.requires_2fa) {
+                tempToken = response.temp_token || "";
+                available2FAMethods = response.available_2fa_methods || [
+                    "totp",
+                ];
+
+                // If only one method, go directly to it
+                if (available2FAMethods.length === 1) {
+                    selected2FAMethod = available2FAMethods[0];
+                    step =
+                        available2FAMethods[0] === "email"
+                            ? "2fa-email"
+                            : "2fa-totp";
+
+                    // Auto-send email OTP if email is the only method
+                    if (available2FAMethods[0] === "email") {
+                        await sendEmailOtp();
                     }
                 } else {
-                    if (response.user.role === "admin") {
-                        goto(`/${slug}/admin`);
-                    } else {
-                        goto(`/${slug}/dashboard`);
-                    }
+                    step = "2fa-select";
                 }
+                return;
+            }
+
+            if (response.user) {
+                redirectUser(response.user);
+            }
+        } catch (err) {
+            error = err instanceof Error ? err.message : String(err);
+        } finally {
+            loading = false;
+        }
+    }
+
+    async function selectMethod(method: string) {
+        selected2FAMethod = method;
+        twoFactorCode = "";
+        error = "";
+
+        if (method === "email") {
+            step = "2fa-email";
+            await sendEmailOtp();
+        } else {
+            step = "2fa-totp";
+        }
+    }
+
+    // Resend countdown state
+    let resendCountdown = 0;
+    let resendInterval: ReturnType<typeof setInterval> | null = null;
+    const RESEND_DELAY = 60; // seconds
+
+    function startResendCountdown() {
+        resendCountdown = RESEND_DELAY;
+        if (resendInterval) clearInterval(resendInterval);
+        resendInterval = setInterval(() => {
+            resendCountdown--;
+            if (resendCountdown <= 0) {
+                if (resendInterval) clearInterval(resendInterval);
+                resendInterval = null;
+            }
+        }, 1000);
+    }
+
+    async function sendEmailOtp(isResend = false) {
+        emailOtpSending = true;
+        error = "";
+        try {
+            await api.auth.requestEmailOtp(tempToken);
+            emailOtpSent = true;
+            startResendCountdown();
+
+            // Show toast on resend
+            if (isResend) {
+                const { toast } = await import("svelte-sonner");
+                toast.success(
+                    $t("auth.2fa.code_resent") || "Verification code sent!",
+                );
+            }
+        } catch (err) {
+            error = err instanceof Error ? err.message : String(err);
+        } finally {
+            emailOtpSending = false;
+        }
+    }
+
+    let trustDevice = false;
+
+    async function handle2FAVerify() {
+        if (!twoFactorCode || twoFactorCode.length < 6) return;
+        error = "";
+        loading = true;
+        try {
+            let response;
+            if (selected2FAMethod === "email") {
+                response = await api.auth.verifyEmailOtp(
+                    tempToken,
+                    twoFactorCode,
+                    trustDevice,
+                );
             } else {
-                goto("/dashboard"); // Fallback
+                response = await api.auth.verifyLogin2FA(
+                    tempToken,
+                    twoFactorCode,
+                    trustDevice,
+                );
+            }
+
+            if (response.token) {
+                token.set(response.token);
+                user.set(response.user);
+
+                if (typeof window !== "undefined") {
+                    const storage = rememberMe ? localStorage : sessionStorage;
+                    storage.setItem("auth_token", response.token);
+                    storage.setItem("auth_user", JSON.stringify(response.user));
+
+                    (rememberMe ? sessionStorage : localStorage).removeItem(
+                        "auth_token",
+                    );
+                    (rememberMe ? sessionStorage : localStorage).removeItem(
+                        "auth_user",
+                    );
+                }
+
+                redirectUser(response.user);
             }
         } catch (err) {
             error = err instanceof Error ? err.message : String(err);
@@ -86,8 +228,28 @@
     <div class="form-section">
         <div class="form-wrapper">
             <div class="form-header">
-                <h2>{$t("auth.login.title")}</h2>
-                <p>{$t("auth.login.subtitle")}</p>
+                <h2>
+                    {#if step === "login"}
+                        {$t("auth.login.title")}
+                    {:else if step === "2fa-select"}
+                        Two-Factor Authentication
+                    {:else if step === "2fa-totp"}
+                        Authenticator App
+                    {:else if step === "2fa-email"}
+                        Email Verification
+                    {/if}
+                </h2>
+                <p>
+                    {#if step === "login"}
+                        {$t("auth.login.subtitle")}
+                    {:else if step === "2fa-select"}
+                        Choose your preferred verification method
+                    {:else if step === "2fa-totp"}
+                        Enter the 6-digit code from your authenticator app
+                    {:else if step === "2fa-email"}
+                        Enter the 6-digit code sent to your email
+                    {/if}
+                </p>
             </div>
 
             {#if error}
@@ -96,75 +258,299 @@
                 </div>
             {/if}
 
-            <form on:submit={handleSubmit}>
-                <div class="input-group" class:focus={activeField === "email"}>
-                    <label for="email">{$t("auth.login.email_label")}</label>
-                    <div class="field">
-                        <span class="icon"><Icon name="mail" size={18} /></span>
-                        <input
-                            type="email"
-                            id="email"
-                            bind:value={email}
-                            on:focus={() => (activeField = "email")}
-                            on:blur={() => (activeField = "")}
-                            placeholder={$t("auth.login.email_placeholder")}
-                            required
-                        />
-                    </div>
-                </div>
-
-                <div
-                    class="input-group"
-                    class:focus={activeField === "password"}
-                >
-                    <label for="password"
-                        >{$t("auth.login.password_label")}</label
+            {#if step === "login"}
+                <form on:submit={handleSubmit}>
+                    <div
+                        class="input-group"
+                        class:focus={activeField === "email"}
                     >
-                    <div class="field">
-                        <span class="icon"><Icon name="lock" size={18} /></span>
-                        <input
-                            type={showPassword ? "text" : "password"}
-                            id="password"
-                            bind:value={password}
-                            on:focus={() => (activeField = "password")}
-                            on:blur={() => (activeField = "")}
-                            placeholder={$t("auth.login.password_placeholder")}
-                            required
-                            class="password-input"
-                        />
+                        <label for="email">{$t("auth.login.email_label")}</label
+                        >
+                        <div class="field">
+                            <span class="icon"
+                                ><Icon name="mail" size={18} /></span
+                            >
+                            <input
+                                type="email"
+                                id="email"
+                                bind:value={email}
+                                on:focus={() => (activeField = "email")}
+                                on:blur={() => (activeField = "")}
+                                placeholder={$t("auth.login.email_placeholder")}
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <div
+                        class="input-group"
+                        class:focus={activeField === "password"}
+                    >
+                        <label for="password"
+                            >{$t("auth.login.password_label")}</label
+                        >
+                        <div class="field">
+                            <span class="icon"
+                                ><Icon name="lock" size={18} /></span
+                            >
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                id="password"
+                                bind:value={password}
+                                on:focus={() => (activeField = "password")}
+                                on:blur={() => (activeField = "")}
+                                placeholder={$t(
+                                    "auth.login.password_placeholder",
+                                )}
+                                required
+                                class="password-input"
+                            />
+                            <button
+                                type="button"
+                                class="toggle-password"
+                                on:click={() => (showPassword = !showPassword)}
+                                tabindex="-1"
+                            >
+                                <Icon
+                                    name={showPassword ? "eye-off" : "eye"}
+                                    size={18}
+                                />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-utils">
+                        <label class="checkbox">
+                            <input type="checkbox" bind:checked={rememberMe} />
+                            <span class="checkmark"></span>
+                            <span>{$t("auth.login.remember_me")}</span>
+                        </label>
+                        <a href="/forgot-password"
+                            >{$t("auth.login.forgot_password")}</a
+                        >
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="btn-primary"
+                        disabled={loading}
+                    >
+                        {#if loading}
+                            <div class="spinner"></div>
+                        {:else}
+                            {$t("auth.login.submit_button")}
+                        {/if}
+                    </button>
+                </form>
+            {:else if step === "2fa-select"}
+                <!-- 2FA Method Selection -->
+                <div class="method-selection">
+                    <p
+                        style="margin-bottom: 1.5rem; color: var(--text-secondary);"
+                    >
+                        Choose your verification method:
+                    </p>
+
+                    {#each available2FAMethods as method}
                         <button
                             type="button"
-                            class="toggle-password"
-                            on:click={() => (showPassword = !showPassword)}
-                            tabindex="-1"
+                            class="method-btn"
+                            on:click={() => selectMethod(method)}
                         >
                             <Icon
-                                name={showPassword ? "eye-off" : "eye"}
-                                size={18}
+                                name={method === "totp" ? "shield" : "mail"}
+                                size={24}
                             />
+                            <span>
+                                {method === "totp"
+                                    ? "Authenticator App"
+                                    : "Email Code"}
+                            </span>
                         </button>
-                    </div>
-                </div>
+                    {/each}
 
-                <div class="form-utils">
-                    <label class="checkbox">
-                        <input type="checkbox" bind:checked={rememberMe} />
-                        <span class="checkmark"></span>
-                        <span>{$t("auth.login.remember_me")}</span>
-                    </label>
-                    <a href="/forgot-password"
-                        >{$t("auth.login.forgot_password")}</a
+                    <button
+                        type="button"
+                        class="btn-text"
+                        on:click={() => (step = "login")}
+                        style="width: 100%; margin-top: 1rem; background: none; border: none; color: var(--text-secondary); cursor: pointer;"
                     >
+                        Back to Login
+                    </button>
                 </div>
+            {:else if step === "2fa-totp"}
+                <!-- TOTP Form -->
+                <form on:submit|preventDefault={handle2FAVerify}>
+                    <div
+                        class="input-group"
+                        class:focus={activeField === "2fa"}
+                    >
+                        <label for="2fa-code">Authenticator Code</label>
+                        <div class="field">
+                            <span class="icon"
+                                ><Icon name="shield" size={18} /></span
+                            >
+                            <input
+                                type="text"
+                                id="2fa-code"
+                                bind:value={twoFactorCode}
+                                on:focus={() => (activeField = "2fa")}
+                                on:blur={() => (activeField = "")}
+                                placeholder="000000"
+                                maxlength="6"
+                                required
+                                style="letter-spacing: 0.5em; text-align: center;"
+                            />
+                        </div>
+                    </div>
 
-                <button type="submit" class="btn-primary" disabled={loading}>
-                    {#if loading}
-                        <div class="spinner"></div>
-                    {:else}
-                        {$t("auth.login.submit_button")}
+                    <div
+                        class="form-utils"
+                        style="margin-bottom: 1rem; justify-content: center;"
+                    >
+                        <label class="checkbox">
+                            <input type="checkbox" bind:checked={trustDevice} />
+                            <span class="checkmark"></span>
+                            <span
+                                >{$t("auth.2fa.trust_device") ||
+                                    "Trust this device for 30 days"}</span
+                            >
+                        </label>
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="btn-primary"
+                        disabled={loading || twoFactorCode.length < 6}
+                    >
+                        {#if loading}
+                            <div class="spinner"></div>
+                        {:else}
+                            Verify & Login
+                        {/if}
+                    </button>
+
+                    {#if available2FAMethods.length > 1}
+                        <button
+                            type="button"
+                            class="btn-text"
+                            on:click={() => (step = "2fa-select")}
+                            style="width: 100%; margin-top: 0.5rem; background: none; border: none; color: var(--text-secondary); cursor: pointer;"
+                        >
+                            Try another method
+                        </button>
                     {/if}
-                </button>
-            </form>
+
+                    <button
+                        type="button"
+                        class="btn-text"
+                        on:click={() => (step = "login")}
+                        style="width: 100%; margin-top: 0.5rem; background: none; border: none; color: var(--text-secondary); cursor: pointer;"
+                    >
+                        Back to Login
+                    </button>
+                </form>
+            {:else if step === "2fa-email"}
+                <!-- Email OTP Form -->
+                <form on:submit|preventDefault={handle2FAVerify}>
+                    {#if emailOtpSent}
+                        <div
+                            class="otp-sent-notice"
+                            style="margin-bottom: 1rem; padding: 1rem; background: var(--bg-success); border-radius: 8px; color: var(--text-success);"
+                        >
+                            <Icon name="check-circle" size={18} />
+                            <span>Verification code sent to your email</span>
+                        </div>
+                    {/if}
+
+                    <div
+                        class="input-group"
+                        class:focus={activeField === "2fa"}
+                    >
+                        <label for="email-otp-code"
+                            >Email Verification Code</label
+                        >
+                        <div class="field">
+                            <span class="icon"
+                                ><Icon name="mail" size={18} /></span
+                            >
+                            <input
+                                type="text"
+                                id="email-otp-code"
+                                bind:value={twoFactorCode}
+                                on:focus={() => (activeField = "2fa")}
+                                on:blur={() => (activeField = "")}
+                                placeholder="000000"
+                                maxlength="6"
+                                required
+                                style="letter-spacing: 0.5em; text-align: center;"
+                            />
+                        </div>
+                    </div>
+
+                    <div
+                        class="form-utils"
+                        style="margin-bottom: 1rem; justify-content: center;"
+                    >
+                        <label class="checkbox">
+                            <input type="checkbox" bind:checked={trustDevice} />
+                            <span class="checkmark"></span>
+                            <span
+                                >{$t("auth.2fa.trust_device") ||
+                                    "Trust this device for 30 days"}</span
+                            >
+                        </label>
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="btn-primary"
+                        disabled={loading || twoFactorCode.length < 6}
+                    >
+                        {#if loading}
+                            <div class="spinner"></div>
+                        {:else}
+                            Verify & Login
+                        {/if}
+                    </button>
+
+                    <button
+                        type="button"
+                        class="btn-text"
+                        on:click={() => sendEmailOtp(true)}
+                        disabled={emailOtpSending || resendCountdown > 0}
+                        style="width: 100%; margin-top: 0.5rem; background: none; border: none; color: var(--primary); cursor: pointer;"
+                    >
+                        {#if emailOtpSending}
+                            Sending...
+                        {:else if resendCountdown > 0}
+                            {$t("auth.2fa.resend_code") || "Resend Code"} ({resendCountdown}s)
+                        {:else}
+                            {$t("auth.2fa.resend_code") || "Resend Code"}
+                        {/if}
+                    </button>
+
+                    {#if available2FAMethods.length > 1}
+                        <button
+                            type="button"
+                            class="btn-text"
+                            on:click={() => (step = "2fa-select")}
+                            style="width: 100%; margin-top: 0.5rem; background: none; border: none; color: var(--text-secondary); cursor: pointer;"
+                        >
+                            Try another method
+                        </button>
+                    {/if}
+
+                    <button
+                        type="button"
+                        class="btn-text"
+                        on:click={() => (step = "login")}
+                        style="width: 100%; margin-top: 0.5rem; background: none; border: none; color: var(--text-secondary); cursor: pointer;"
+                    >
+                        Back to Login
+                    </button>
+                </form>
+            {/if}
 
             <p class="footer-text">
                 {$t("auth.login.footer_text")}
@@ -398,5 +784,37 @@
         to {
             transform: rotate(360deg);
         }
+    }
+
+    .method-selection {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .method-btn {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        width: 100%;
+        padding: 1rem 1.5rem;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 1rem;
+    }
+
+    .method-btn:hover {
+        background: var(--bg-tertiary);
+        border-color: var(--color-primary);
+    }
+
+    .otp-sent-notice {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
 </style>
