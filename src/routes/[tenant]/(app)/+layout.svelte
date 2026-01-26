@@ -30,6 +30,16 @@
             // Check if current URL slug matches user's assigned tenant slug
             const currentSlug = $page.params.tenant;
             const userSlug = $user?.tenant_slug;
+            
+            // Custom Domain Enforcement
+            const userCustomDomain = $user?.tenant_custom_domain;
+            const currentHost = $page.url.hostname;
+
+            if (userCustomDomain && currentHost !== userCustomDomain && !$isSuperAdmin) {
+                console.warn(`[Layout] Domain Mismatch! Redirecting to ${userCustomDomain}`);
+                window.location.href = `${window.location.protocol}//${userCustomDomain}/dashboard`;
+                return;
+            }
 
             if (
                 currentSlug &&

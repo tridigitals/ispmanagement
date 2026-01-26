@@ -26,6 +26,7 @@
 
     // 2FA State
     let step = "login"; // 'login' | '2fa-select' | '2fa-totp' | '2fa-email'
+    // State to track 2FA input
     let twoFactorCode = "";
     let tempToken = "";
     let available2FAMethods: string[] = [];
