@@ -340,3 +340,28 @@ pub async fn request_2fa_disable_code(
         .await
         .map_err(|e| e.to_string())
 }
+
+/// Reset 2FA for a specific user (Admin only)
+#[tauri::command]
+pub async fn reset_user_2fa(
+    token: String,
+    user_id: String,
+    auth_service: State<'_, AuthService>,
+) -> Result<(), String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Must be at least Admin or Super Admin
+    if !claims.is_super_admin && claims.role != "admin" && claims.role != "Owner" {
+        return Err("Unauthorized: Only administrators can reset 2FA".to_string());
+    }
+
+    auth_service
+        .reset_2fa(&user_id, Some(&claims.sub), Some("127.0.0.1"))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+

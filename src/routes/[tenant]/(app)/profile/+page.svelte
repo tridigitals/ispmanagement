@@ -116,16 +116,22 @@
         loadPreferences();
         checkSubscription();
 
-        // Check URL for active tab
+        // Check URL for active tab or 2FA requirement
         const urlParams = new URLSearchParams(window.location.search);
-        const tab = urlParams.get("tab");
-        if (
-            tab &&
-            ["general", "security", "preferences", "notifications"].includes(
-                tab,
-            )
-        ) {
-            activeTab = tab;
+        
+        if (urlParams.get("2fa_required") === "true") {
+            activeTab = "security";
+            showMessage("error", "Your organization requires Two-Factor Authentication. Please enable it to continue.");
+        } else {
+            const tab = urlParams.get("tab");
+            if (
+                tab &&
+                ["general", "security", "preferences", "notifications"].includes(
+                    tab,
+                )
+            ) {
+                activeTab = tab;
+            }
         }
     });
 

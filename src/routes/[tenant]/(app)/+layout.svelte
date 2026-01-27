@@ -1,47 +1,39 @@
 <script lang="ts">
     import Sidebar from "$lib/components/Sidebar.svelte";
     import Topbar from "$lib/components/Topbar.svelte";
-    import { isAuthenticated, isSuperAdmin } from "$lib/stores/auth";
+    import { isAuthenticated, isSuperAdmin, is2FARequiredButDisabled } from "$lib/stores/auth";
     import { appSettings } from "$lib/stores/settings";
-    import { goto } from "$app/navigation";
-    import { onMount } from "svelte";
-
     import { page } from "$app/stores";
     import { user } from "$lib/stores/auth";
+    import { getSlugFromDomain } from "$lib/utils/domain";
 
     let { children } = $props();
 
+    // Determine if we are on a custom domain that matches the current tenant
+    let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
+    let isCustomDomain = $derived(
+        domainSlug && domainSlug === $user?.tenant_slug,
+    );
+
+    // If on custom domain, prefix is empty. Otherwise, use slug.
+    let tenantPrefix = $derived(
+        $user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : "",
+    );
+
     // Reactive Auth Guard & Tenant Scoping
-    $effect(() => {
-        if (!$isAuthenticated) {
-            goto("/");
-        } else {
-            // Check maintenance mode - redirect non-superadmin users
-            const settings = $appSettings as any;
-            const isMaintenanceMode =
-                settings.maintenance_mode === true ||
-                settings.maintenance_mode === "true";
 
-            if (isMaintenanceMode && !$isSuperAdmin) {
-                goto("/maintenance");
-                return;
-            }
-
-            // Check if current URL slug matches user's assigned tenant slug
-            const currentSlug = $page.params.tenant;
-            const userSlug = $user?.tenant_slug;
-            
-            // Custom Domain Enforcement (Web only)
-            const userCustomDomain = $user?.tenant_custom_domain;
-            const currentHost = $page.url.hostname;
-            // @ts-ignore
-            const isTauri = typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__;
-
-            if (!isTauri && userCustomDomain && currentHost !== userCustomDomain && !$isSuperAdmin) {
+// ...
+            if (userCustomDomain && currentHost !== userCustomDomain && !$isSuperAdmin) {
                 console.warn(`[Layout] Domain Mismatch! User belongs to ${userCustomDomain}. Logging out.`);
                 // Domain Mismatch -> Logout and redirect to login
                 import("$lib/stores/auth").then((m) => m.logout());
                 goto("/login");
+                return;
+            }
+
+            // 2FA Enforcement
+            if ($is2FARequiredButDisabled && !$page.url.pathname.includes("/profile")) {
+                goto(`${tenantPrefix}/profile?2fa_required=true`);
                 return;
             }
 

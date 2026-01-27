@@ -3,13 +3,14 @@
  * Manages user authentication state
  */
 import { writable, derived, get } from 'svelte/store';
-import { auth, type User, type AuthResponse } from '$lib/api/client';
+import { auth, type User, type Tenant, type AuthResponse } from '$lib/api/client';
 import { appSettings } from './settings';
 import { appLogo } from './logo';
 
 // Token storage key
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';
+const TENANT_KEY = 'auth_tenant';
 
 // Auth version counter - increments on each refresh to force reactivity
 export const authVersion = writable(0);
@@ -19,7 +20,6 @@ function getStoredToken(): string | null {
     if (typeof window === 'undefined') return null;
     const local = localStorage.getItem(TOKEN_KEY);
     const session = sessionStorage.getItem(TOKEN_KEY);
-    // console.log('[Auth] Reading token:', { local: !!local, session: !!session });
     return local || session;
 }
 
@@ -29,10 +29,25 @@ function getStoredUser(): User | null {
     return stored ? JSON.parse(stored) : null;
 }
 
+function getStoredTenant(): Tenant | null {
+    if (typeof window === 'undefined') return null;
+    const stored = localStorage.getItem(TENANT_KEY) || sessionStorage.getItem(TENANT_KEY);
+    return stored ? JSON.parse(stored) : null;
+}
+
 // Create stores
 export const token = writable<string | null>(getStoredToken());
 export const user = writable<User | null>(getStoredUser());
+export const tenant = writable<Tenant | null>(getStoredTenant());
 export const isAuthenticated = derived(token, $token => !!$token);
+
+// Derived store to check if 2FA setup is required by tenant but not enabled by user
+export const is2FARequiredButDisabled = derived([user, tenant], ([$user, $tenant]) => {
+    if (!$user || !$tenant) return false;
+    // Super Admins bypass enforcement
+    if ($user.is_super_admin) return false;
+    return $tenant.enforce_2fa && !$user.two_factor_enabled;
+});
 
 // isAdmin is now permission-based: checks for 'admin:access' permission OR wildcard '*'
 export const isAdmin = derived(user, $user => {
@@ -67,12 +82,9 @@ token.subscribe(value => {
         // Only refresh logo and settings when logging IN (token exists)
         // On logout (value is null), we keep the cached logo in localStorage
         if (value) {
-            // console.log(`[AuthStore] Token exists, refreshing logo and settings...`);
             appLogo.refresh(value);
             appSettings.refresh();
         }
-        // When logging out, we intentionally do NOT refresh logo/settings
-        // This keeps the last tenant's branding visible on login page
     }
 });
 
@@ -95,12 +107,22 @@ user.subscribe(value => {
     }
 });
 
+// Persist tenant changes to active storage
+tenant.subscribe(value => {
+    if (typeof window === 'undefined') return;
+    const storage = getActiveStorage();
+    if (storage && value) {
+        storage.setItem(TENANT_KEY, JSON.stringify(value));
+    } else if (storage && !value) {
+        storage.removeItem(TENANT_KEY);
+    }
+});
+
 // Auth actions
 export async function login(email: string, password: string, remember: boolean = true): Promise<AuthResponse> {
-    // console.log('[Auth] Login called. Remember:', remember);
     const response = await auth.login(email, password);
     if (response.token) {
-        setAuthData(response.token, response.user, remember);
+        setAuthData(response.token, response.user, remember, response.tenant);
     }
     return response;
 }
@@ -109,40 +131,47 @@ export async function register(email: string, password: string, name: string): P
     const response = await auth.register(email, password, name);
     // Default to remember=true for registration, or could be passed
     if (response.token) {
-        setAuthData(response.token, response.user, true);
+        setAuthData(response.token, response.user, true, response.tenant);
     }
     return response;
 }
 
-export function setAuthData(newToken: string, newUser: User, remember: boolean) {
-    // console.log('[Auth] Setting auth data. Remember:', remember);
+export function setAuthData(newToken: string, newUser: User, remember: boolean, newTenant?: Tenant) {
     token.set(newToken);
     user.set(newUser);
+    if (newTenant) tenant.set(newTenant);
 
     if (typeof window === 'undefined') return;
 
     // Clear both first to ensure no duplicates
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(TENANT_KEY);
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(USER_KEY);
+    sessionStorage.removeItem(TENANT_KEY);
 
     const storage = remember ? localStorage : sessionStorage;
-    // console.log('[Auth] Using storage:', remember ? 'localStorage' : 'sessionStorage');
 
     storage.setItem(TOKEN_KEY, newToken);
     storage.setItem(USER_KEY, JSON.stringify(newUser));
+    if (newTenant) {
+        storage.setItem(TENANT_KEY, JSON.stringify(newTenant));
+    }
 }
 
 export function logout(): void {
     token.set(null);
     user.set(null);
+    tenant.set(null);
 
     if (typeof window === 'undefined') return;
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(TENANT_KEY);
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(USER_KEY);
+    sessionStorage.removeItem(TENANT_KEY);
 }
 
 export async function checkAuth(): Promise<boolean> {
@@ -152,7 +181,6 @@ export async function checkAuth(): Promise<boolean> {
     try {
         const isValid = await auth.validateToken(currentToken);
         if (!isValid) {
-            console.warn('[Auth] Token validation returned false');
             logout();
             return false;
         }
@@ -161,18 +189,29 @@ export async function checkAuth(): Promise<boolean> {
         const currentUser = await auth.getCurrentUser(currentToken);
         user.set(currentUser);
 
+        // Fetch current tenant info if logged in
+        try {
+            const currentTenant = await api.tenant.getSelf();
+            tenant.set(currentTenant);
+        } catch (e) {
+            // Ignore if tenant fetch fails (e.g. no tenant assigned yet)
+        }
+
         // Increment auth version to force reactive components to re-render
         authVersion.update(v => v + 1);
 
-        // Also update storage so Sidebar gets fresh data
+        // Also update storage so components get fresh data
         const storage = localStorage.getItem(TOKEN_KEY) ? localStorage : sessionStorage;
         if (currentUser) {
             storage.setItem(USER_KEY, JSON.stringify(currentUser));
         }
+        const $tenant = get(tenant);
+        if ($tenant) {
+            storage.setItem(TENANT_KEY, JSON.stringify($tenant));
+        }
 
         return true;
     } catch (e) {
-        console.warn('[Auth] checkAuth failed (user likely session expired):', e);
         logout();
         return false;
     }

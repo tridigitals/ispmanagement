@@ -280,6 +280,7 @@ pub fn run() {
             verify_email_2fa_setup,
             set_2fa_preference,
             request_2fa_disable_code,
+            reset_user_2fa,
             // User commands
             list_users,
             get_user,

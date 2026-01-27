@@ -207,6 +207,7 @@ pub async fn start_server(
         .route("/api/auth/2fa/verify-setup", post(auth::verify_2fa_setup))
         .route("/api/auth/2fa/disable", post(auth::disable_2fa))
         .route("/api/auth/2fa/disable-request", post(auth::request_2fa_disable_code))
+        .route("/api/auth/2fa/reset/{user_id}", post(auth::reset_user_2fa))
         .route("/api/auth/2fa/preference", post(auth::set_2fa_preference))
         .route(
             "/api/auth/2fa/email/enable-request",

@@ -146,7 +146,7 @@
             }
 
             if (response.user) {
-                // Domain Check: Prevent login on wrong domain
+                // ... (existing domain check)
                 const customDomain = response.tenant?.custom_domain || response.user.tenant_custom_domain;
                 const currentHost = window.location.hostname;
                 
@@ -249,40 +249,8 @@
             }
 
             if (response.token) {
-                token.set(response.token);
-                user.set(response.user);
-
-                if (typeof window !== "undefined") {
-                    const storage = rememberMe ? localStorage : sessionStorage;
-                    storage.setItem("auth_token", response.token);
-                    storage.setItem("auth_user", JSON.stringify(response.user));
-
-                    (rememberMe ? sessionStorage : localStorage).removeItem(
-                        "auth_token",
-                    );
-                    (rememberMe ? sessionStorage : localStorage).removeItem(
-                        "auth_user",
-                    );
-                }
-
-                // Domain Check: Prevent login on wrong domain
-                const customDomain = response.tenant?.custom_domain || response.user.tenant_custom_domain;
-                const currentHost = window.location.hostname;
-                
-                if (customDomain && currentHost !== customDomain && !response.user.is_super_admin) {
-                    error = "Invalid login credentials or unauthorized domain.";
-                    // Clear session immediately
-                    token.set(null);
-                    user.set(null);
-                    if (typeof window !== 'undefined') {
-                        localStorage.removeItem('auth_token');
-                        sessionStorage.removeItem('auth_token');
-                        localStorage.removeItem('auth_user');
-                        sessionStorage.removeItem('auth_user');
-                    }
-                    loading = false;
-                    return;
-                }
+                const { setAuthData } = await import("$lib/stores/auth");
+                setAuthData(response.token, response.user, rememberMe, response.tenant);
 
                 redirectUser(response.user, response.tenant);
             }

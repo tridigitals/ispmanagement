@@ -252,9 +252,21 @@ export interface User {
     preferred_2fa_method?: string;
 }
 
+export interface Tenant {
+    id: string;
+    name: string;
+    slug: string;
+    custom_domain?: string;
+    logo_url?: string;
+    is_active: boolean;
+    enforce_2fa: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface AuthResponse {
     user: User;
-    tenant?: any; // Added tenant field
+    tenant?: Tenant; // Use explicit type
     token?: string;
     expires_at?: string;
     message?: string;
@@ -374,6 +386,9 @@ export const auth = {
 
     request2FADisableCode: (): Promise<void> =>
         safeInvoke('request_2fa_disable_code', { token: getTokenOrThrow() }),
+
+    resetUser2FA: (userId: string): Promise<void> =>
+        safeInvoke('reset_user_2fa', { token: getTokenOrThrow(), userId }),
 
     verifyLogin2FA: (tempToken: string, code: string, trustDevice?: boolean): Promise<AuthResponse> =>
         safeInvoke('verify_login_2fa', { tempToken: tempToken, code, trustDevice: trustDevice }),

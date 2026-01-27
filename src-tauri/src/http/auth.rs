@@ -387,6 +387,37 @@ pub async fn request_2fa_disable_code(
     })))
 }
 
+use axum::extract::Path;
+
+/// Reset 2FA for a specific user (Admin only)
+pub async fn reset_user_2fa(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(user_id): Path<String>,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let auth_header = headers
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+        .ok_or_else(|| crate::error::AppError::Unauthorized)?;
+
+    let claims = state.auth_service.validate_token(auth_header).await?;
+
+    // Must be Admin or Super Admin
+    if !claims.is_super_admin && claims.role != "admin" && claims.role != "Owner" {
+        return Err(crate::error::AppError::Forbidden(
+            "Only administrators can reset 2FA".to_string(),
+        ));
+    }
+
+    state
+        .auth_service
+        .reset_2fa(&user_id, Some(&claims.sub), None)
+        .await?;
+
+    Ok(Json(json!({ "success": true })))
+}
+
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Set2FAPreferenceDto {

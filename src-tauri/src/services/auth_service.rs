@@ -1958,6 +1958,39 @@ impl AuthService {
         Ok(())
     }
 
+    /// Reset 2FA for a user (Admin/Superadmin only)
+    pub async fn reset_2fa(&self, user_id: &str, actor_id: Option<&str>, ip_address: Option<&str>) -> AppResult<()> {
+        let query = "UPDATE users SET two_factor_enabled = false, two_factor_secret = NULL, two_factor_recovery_codes = NULL, email_otp_code = NULL, email_otp_expires = NULL, preferred_2fa_method = 'totp', updated_at = $1 WHERE id = $2";
+
+        #[cfg(feature = "postgres")]
+        sqlx::query(query)
+            .bind(Utc::now())
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query("UPDATE users SET two_factor_enabled = false, two_factor_secret = NULL, two_factor_recovery_codes = NULL, email_otp_code = NULL, email_otp_expires = NULL, preferred_2fa_method = 'totp', updated_at = ? WHERE id = ?")
+            .bind(Utc::now().to_rfc3339())
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
+
+        self.audit_service
+            .log(
+                actor_id,
+                None,
+                "USER_2FA_RESET_BY_ADMIN",
+                "auth",
+                Some(user_id),
+                Some("2FA reset by administrator"),
+                ip_address,
+            )
+            .await;
+
+        Ok(())
+    }
+
     /// Remove all trusted devices for a user (useful on password change)
     pub async fn revoke_trusted_devices(&self, user_id: &str) -> AppResult<()> {
         #[cfg(feature = "postgres")]

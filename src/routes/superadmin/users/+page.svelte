@@ -35,6 +35,26 @@
         }
     });
 
+    async function reset2FA(u: User) {
+        if (
+            !confirm(
+                `Are you sure you want to reset 2FA for ${u.name}? They will be able to login without a secondary code.`,
+            )
+        )
+            return;
+
+        try {
+            await api.auth.resetUser2FA(u.id);
+            // Update local state
+            allUsers = allUsers.map((user) =>
+                user.id === u.id ? { ...user, two_factor_enabled: false } : user,
+            );
+            alert("Two-factor authentication has been reset.");
+        } catch (err: any) {
+            alert("Failed to reset 2FA: " + err.message);
+        }
+    }
+
     const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
 </script>
 
@@ -70,6 +90,7 @@
                         <th>Tenant ID</th>
                         <th>Status</th>
                         <th>Joined</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -128,6 +149,19 @@
                                     u.created_at,
                                 ).toLocaleDateString()}</td
                             >
+                            <td>
+                                <div class="actions">
+                                    {#if u.two_factor_enabled}
+                                        <button
+                                            class="btn-icon warning"
+                                            onclick={() => reset2FA(u)}
+                                            title="Reset 2FA"
+                                        >
+                                            <Icon name="shield-off" size={16} />
+                                        </button>
+                                    {/if}
+                                </div>
+                            </td>
                         </tr>
                     {:else}
                         <tr>
@@ -371,6 +405,21 @@
         to {
             transform: rotate(360deg);
         }
+    }
+
+    .btn-icon:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+    }
+
+    .btn-icon.warning:hover {
+        background: rgba(245, 158, 11, 0.15);
+        color: #f59e0b;
+    }
+
+    .actions {
+        display: flex;
+        gap: 0.5rem;
     }
 
     .empty-state {
