@@ -55,6 +55,7 @@ pub struct NotificationPreference {
 }
 
 impl NotificationPreference {
+    #[allow(dead_code)]
     pub fn new(user_id: String, channel: String, category: String, enabled: bool) -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
@@ -79,6 +80,7 @@ pub struct PushSubscription {
 }
 
 impl PushSubscription {
+    #[allow(dead_code)]
     pub fn new(user_id: String, endpoint: String, p256dh: String, auth: String) -> Self {
         Self {
             id: Uuid::new_v4().to_string(),

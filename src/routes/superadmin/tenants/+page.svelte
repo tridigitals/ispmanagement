@@ -8,11 +8,13 @@
     import Table from "$lib/components/Table.svelte";
     import Modal from "$lib/components/Modal.svelte";
     import Input from "$lib/components/Input.svelte";
+    import Select from "$lib/components/Select.svelte";
     import { toast } from "$lib/stores/toast";
 
     import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
 
     let tenants: any[] = [];
+    let plans: any[] = [];
     let loading = true;
     let error = "";
 
@@ -27,6 +29,7 @@
         ownerEmail: "",
         ownerPassword: "",
         isActive: true,
+        planId: "",
     };
     let creating = false;
     let showPassword = false;
@@ -47,24 +50,41 @@
     ];
 
     onMount(async () => {
-        loadTenants();
+        loadData();
     });
 
-    async function loadTenants() {
+    async function loadData() {
         loading = true;
         try {
-            const res: any = await api.superadmin.listTenants();
+            const [tenantsRes, plansRes] = await Promise.all([
+                api.superadmin.listTenants(),
+                api.plans.list()
+            ]);
 
-            if (Array.isArray(res)) {
-                tenants = res;
-            } else if (res && Array.isArray(res.data)) {
-                tenants = res.data;
+            if (Array.isArray(tenantsRes)) {
+                tenants = tenantsRes;
+            } else if (tenantsRes && Array.isArray(tenantsRes.data)) {
+                tenants = tenantsRes.data;
             } else {
-                console.warn("Unexpected response format:", res);
                 tenants = [];
             }
+
+            // Map plans for Select component
+            plans = plansRes
+                .filter(p => p.is_active)
+                .map(p => ({
+                    label: `${p.name} - ${p.price_monthly > 0 ? '$' + p.price_monthly + '/mo' : 'Free'}`,
+                    value: p.id
+                }));
+            
+            // Set default plan if needed
+            const defaultPlan = plansRes.find(p => p.is_default);
+            if (defaultPlan) {
+                newTenant.planId = defaultPlan.id;
+            }
+
         } catch (e: any) {
-            console.error("Load tenants error:", e);
+            console.error("Load data error:", e);
             error = e.toString();
             if (e.toString().includes("Unauthorized")) {
                 goto("/dashboard");
@@ -74,9 +94,26 @@
         }
     }
 
+    async function loadTenants() {
+        try {
+            const res: any = await api.superadmin.listTenants();
+            if (Array.isArray(res)) {
+                tenants = res;
+            } else if (res && Array.isArray(res.data)) {
+                tenants = res.data;
+            }
+        } catch (e) {
+            console.error("Reload error", e);
+        }
+    }
+
     function openCreateModal() {
         isEditing = false;
         editingId = "";
+        
+        // Find default plan again to reset
+        // We need to keep plans state
+        
         newTenant = {
             name: "",
             slug: "",
@@ -84,6 +121,7 @@
             ownerEmail: "",
             ownerPassword: "",
             isActive: true,
+            planId: plans.length > 0 ? plans[0].value : "",
         };
         showCreateModal = true;
     }
@@ -98,6 +136,7 @@
             ownerEmail: "---", // Email cannot be changed here easily in this view
             ownerPassword: "", // Password not needed for update
             isActive: tenant.is_active,
+            planId: "", // Plan cannot be changed here for now (use subscription page)
         };
         showCreateModal = true;
     }
@@ -147,6 +186,7 @@
                 newTenant.customDomain || null,
                 newTenant.ownerEmail,
                 newTenant.ownerPassword,
+                newTenant.planId || undefined // Pass planId
             );
 
             showCreateModal = false;
@@ -283,6 +323,17 @@
         />
 
         {#if !isEditing}
+            <div class="divider">
+                <span>Initial Subscription</span>
+            </div>
+
+            <Select
+                label="Subscription Plan"
+                options={plans}
+                bind:value={newTenant.planId}
+                placeholder="Select a plan"
+            />
+
             <div class="divider">
                 <span>Initial Admin User</span>
             </div>

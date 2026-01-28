@@ -483,8 +483,8 @@ export const superadmin = {
     listTenants: (): Promise<{ data: any[], total: number }> =>
         safeInvoke('list_tenants', { token: getTokenOrThrow() }),
 
-    createTenant: (name: string, slug: string, customDomain: string | null, ownerEmail: string, ownerPassword: string): Promise<any> =>
-        safeInvoke('create_tenant', { token: getTokenOrThrow(), name, slug, customDomain, ownerEmail, ownerPassword }),
+    createTenant: (name: string, slug: string, customDomain: string | null, ownerEmail: string, ownerPassword: string, planId?: string): Promise<any> =>
+        safeInvoke('create_tenant', { token: getTokenOrThrow(), name, slug, customDomain, ownerEmail, ownerPassword, planId }),
 
     deleteTenant: (id: string): Promise<void> =>
         safeInvoke('delete_tenant', { token: getTokenOrThrow(), id }),

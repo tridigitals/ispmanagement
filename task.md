@@ -3,23 +3,24 @@
 ## Progress Checklist
 
 ### Database
-- [/] Create PostgreSQL migration for plans tables
-- [ ] Create SQLite migration for plans tables
-- [ ] Add seed data for default plans and features
+- [x] Create PostgreSQL migrations/logic for plans tables (in `connection.rs`)
+- [x] Create SQLite migrations/logic for plans tables (in `connection.rs`)
+- [x] Add seed data for default plans and features (in `connection.rs`)
 
 ### Backend (Rust)
-- [ ] Create Plan models (`src-tauri/src/models/plan.rs`)
-- [ ] Create PlanService (`src-tauri/src/services/plan_service.rs`)
-- [ ] Create Tauri commands (`src-tauri/src/commands/plans.rs`)
-- [ ] Create HTTP endpoints (`src-tauri/src/http/plans.rs`)
-- [ ] Wire up in `lib.rs` and module exports
+- [x] Create Plan models (`src-tauri/src/models/plan.rs`)
+- [x] Create PlanService (`src-tauri/src/services/plan_service.rs`)
+- [x] Create Tauri commands (`src-tauri/src/commands/plans.rs`)
+- [x] Create HTTP endpoints (`src-tauri/src/http/plans.rs`)
+- [x] Wire up in `lib.rs` and module exports
 
 ### Frontend (SvelteKit)
-- [ ] Update API client with plans methods
-- [ ] Create Plans management page
-- [ ] Create Features management page
-- [ ] Add navigation to Superadmin layout
-- [ ] Update Tenants page with plan assignment
+- [x] Update API client with plans methods (`src/lib/api/client.ts`)
+- [x] Create Plans management page (`src/routes/superadmin/plans/`)
+- [ ] Create Features management page (Partially integrated into Plans page)
+- [x] Add navigation to Superadmin layout
+- [x] Update Tenants page with plan assignment (`src/routes/superadmin/tenants/+page.svelte`)
+- [ ] Implement Plan upgrade/downgrade UI for Tenants
 
 ### Verification
 - [ ] Test plan CRUD operations

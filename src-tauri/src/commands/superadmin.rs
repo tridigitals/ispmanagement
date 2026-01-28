@@ -1,5 +1,5 @@
 use crate::models::Tenant;
-use crate::services::{AuthService, AuditService};
+use crate::services::{AuthService, AuditService, PlanService};
 use tauri::State;
 
 #[derive(serde::Serialize)]
@@ -73,8 +73,10 @@ pub async fn create_tenant(
     custom_domain: Option<String>,
     owner_email: String,
     owner_password: String,
+    plan_id: Option<String>,
     auth_service: State<'_, AuthService>,
     audit_service: State<'_, AuditService>,
+    plan_service: State<'_, PlanService>,
 ) -> Result<Tenant, String> {
 
     let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
@@ -202,6 +204,26 @@ pub async fn create_tenant(
     q_m.execute(&mut *tx).await.map_err(|e| e.to_string())?;
 
     tx.commit().await.map_err(|e| e.to_string())?;
+
+    // 5. Assign Plan
+    let plan_id_to_assign = if let Some(pid) = plan_id {
+        Some(pid)
+    } else {
+        // Try to find default plan
+        let default_plan_id: Option<String> = sqlx::query_scalar("SELECT id FROM plans WHERE is_default = 1 OR is_default = true LIMIT 1")
+            .fetch_optional(&auth_service.pool)
+            .await
+            .unwrap_or(None);
+        
+        default_plan_id
+    };
+
+    if let Some(pid) = plan_id_to_assign {
+        if let Err(e) = plan_service.assign_plan_to_tenant(&tenant.id, &pid).await {
+            // Log error but don't fail the request since tenant is created
+            tracing::error!("Failed to assign plan {} to tenant {}: {}", pid, tenant.id, e);
+        }
+    }
 
     audit_service.log(
         Some(&claims.sub),

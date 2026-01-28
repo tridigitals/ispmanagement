@@ -201,7 +201,7 @@ pub struct Verify2faDto {
     temp_token: String,
     code: String,
     trust_device: Option<bool>,
-    device_fingerprint: Option<String>,
+    _device_fingerprint: Option<String>,
 }
 
 pub async fn verify_login_2fa(

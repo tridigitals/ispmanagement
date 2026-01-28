@@ -1993,6 +1993,7 @@ impl AuthService {
     }
 
     /// Remove all trusted devices for a user (useful on password change)
+    #[allow(dead_code)]
     pub async fn revoke_trusted_devices(&self, user_id: &str) -> AppResult<()> {
         #[cfg(feature = "postgres")]
         let query = "DELETE FROM trusted_devices WHERE user_id = $1";

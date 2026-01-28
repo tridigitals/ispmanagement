@@ -34,7 +34,8 @@ pub fn run() {
     init_logging();
     info!("Starting Application");
 
-    let builder = tauri::Builder::default()
+    #[allow(unused_mut)]
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())

@@ -160,7 +160,7 @@ impl AuditService {
             
             let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
                 r#"SELECT 
-                    l.id, l.user_id, l.tenant_id, l.action, l.resource, l.resource_id, l.details, l.ip_address, l.created_at,
+                    l.id::text, l.user_id::text, l.tenant_id::text, l.action, l.resource, l.resource_id, l.details, l.ip_address, l.created_at,
                     u.name as user_name, u.email as user_email,
                     t.name as tenant_name,
                     CASE 
