@@ -76,7 +76,7 @@ impl Default for AuthSettings {
             password_require_special: false,
             max_login_attempts: 5,
             lockout_duration_minutes: 15,
-            allow_registration: true,
+            allow_registration: false,
             logout_all_on_password_change: true,
             require_email_verification: false,
         }
@@ -116,7 +116,7 @@ impl AuthService {
 
         // Helper to get setting value
         async fn get_setting(pool: &DbPool, key: &str) -> Option<String> {
-            sqlx::query_scalar::<_, String>("SELECT value FROM settings WHERE key = $1")
+            sqlx::query_scalar::<_, String>("SELECT value FROM settings WHERE key = $1 AND tenant_id IS NULL")
                 .bind(key)
                 .fetch_optional(pool)
                 .await
@@ -151,10 +151,11 @@ impl AuthService {
             // Fallback to superadmin settings key (without auth_ prefix)
             settings.lockout_duration_minutes = val.parse().unwrap_or(15);
         }
-        if let Some(val) = get_setting(&self.pool, "auth_allow_registration").await {
-            settings.allow_registration = val == "true";
-        }
-        if let Some(val) = get_setting(&self.pool, "auth_logout_all_on_password_change").await {
+                if let Some(val) = get_setting(&self.pool, "auth_allow_registration").await {
+                    settings.allow_registration = val == "true";
+                }
+        
+                if let Some(val) = get_setting(&self.pool, "auth_logout_all_on_password_change").await {
             settings.logout_all_on_password_change = val == "true";
         }
         if let Some(val) = get_setting(&self.pool, "auth_require_email_verification").await {

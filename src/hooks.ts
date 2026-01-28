@@ -2,7 +2,7 @@ import type { Reroute } from '@sveltejs/kit';
 import { getSlugFromDomain } from '$lib/utils/domain';
 
 // Paths that should NOT be rerouted to tenant prefix
-const PUBLIC_PATHS = ['/maintenance', '/install', '/login', '/register', '/forgot-password', '/reset-password'];
+const PUBLIC_PATHS = ['/maintenance', '/install', '/login', '/register', '/forgot-password', '/reset-password', '/superadmin'];
 
 /**
  * Reroute hook to handle custom domains and rewrite paths to /[tenant]/...

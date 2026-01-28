@@ -12,7 +12,7 @@
     import { page } from "$app/stores";
     import { onMount } from "svelte";
     import { fade, fly } from "svelte/transition";
-    import { get } from "svelte/store";
+    import { get, derived } from "svelte/store";
     import { t } from "svelte-i18n";
     import Icon from "$lib/components/Icon.svelte";
 
@@ -40,6 +40,9 @@
     $: appDescription =
         $appSettings.app_description ||
         "Enterprise-grade boilerplate built with Rust and SvelteKit. Secure, scalable, and lightweight.";
+
+    // Derived store for registration allowed state - secure by default
+    const allowRegistration = derived(appSettings, $s => $s.auth?.allow_registration === true);
 
     onMount(async () => {
         await Promise.all([appSettings.init(), appLogo.init()]);
@@ -426,10 +429,12 @@
                     </button>
                 </form>
 
+            {#if $allowRegistration}
                 <p class="footer-text">
                     {$t("auth.login.footer_text")}
                     <a href="/register">{$t("auth.login.register_link")}</a>
                 </p>
+            {/if}
             {:else if step === "2fa-select"}
                 <!-- 2FA Method Selection -->
                 <div class="twofa-section" in:fade>

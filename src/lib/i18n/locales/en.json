@@ -18,6 +18,7 @@
         "register": {
             "title": "Create Account",
             "subtitle": "Start your journey with us",
+            "disabled_message": "Public registration is currently disabled",
             "name_label": "Full Name",
             "name_placeholder": "John Doe",
             "email_label": "Email",

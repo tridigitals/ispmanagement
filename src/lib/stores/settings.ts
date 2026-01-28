@@ -112,6 +112,9 @@ function createSettingsStore() {
         refresh: async () => {
             await loadSettings();
         },
+        reset: () => {
+            set(defaults);
+        },
         updateSetting: (key: string, value: any) => {
             update(s => {
                 const newState = { ...s, [key]: value };

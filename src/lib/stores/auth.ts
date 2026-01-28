@@ -3,7 +3,7 @@
  * Manages user authentication state
  */
 import { writable, derived, get } from 'svelte/store';
-import { auth, type User, type Tenant, type AuthResponse } from '$lib/api/client';
+import { api, auth, type User, type Tenant, type AuthResponse } from '$lib/api/client';
 import { appSettings } from './settings';
 import { appLogo } from './logo';
 
@@ -80,10 +80,12 @@ export const can = derived(user, $user => {
 token.subscribe(value => {
     if (typeof window !== 'undefined') {
         // Only refresh logo and settings when logging IN (token exists)
-        // On logout (value is null), we keep the cached logo in localStorage
         if (value) {
             appLogo.refresh(value);
             appSettings.refresh();
+        } else {
+            // On logout, reset settings to default (secure by default)
+            appSettings.reset();
         }
     }
 });

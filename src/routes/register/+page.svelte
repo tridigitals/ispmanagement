@@ -38,6 +38,11 @@
         password_require_special: false,
     };
 
+    $: if ($appSettings.auth && $appSettings.auth.allow_registration === false) {
+        toast.error($t("auth.register.disabled_message") || "Public registration is currently disabled");
+        goto("/login");
+    }
+
     onMount(async () => {
         if ($isAuthenticated) {
             goto("/dashboard");
@@ -110,176 +115,183 @@
     }
 </script>
 
-<div class="auth-container">
-    <div class="brand-section">
-        <div class="brand-content" in:fade={{ duration: 1000 }}>
-            <div class="logo-area">
-                {#if $appLogo}
-                    <img src={$appLogo} alt="App Logo" class="app-logo" />
-                {:else}
-                    <Icon name="app" size={48} strokeWidth={1.5} />
-                {/if}
-                <h1>{appName}</h1>
-            </div>
-            <p>{appDescription}</p>
-        </div>
-    </div>
-
-    <div class="form-section">
-        <div class="form-wrapper">
-            <div class="form-header">
-                <h2>{$t("auth.register.title")}</h2>
-                <p>{$t("auth.register.subtitle")}</p>
-            </div>
-
-            {#if error}
-                <div class="alert error" in:fly={{ y: -10 }}>
-                    {error}
-                </div>
-            {/if}
-
-            <form on:submit={handleSubmit}>
-                <!-- Full Name -->
-                <div class="input-group" class:focus={activeField === "name"}>
-                    <label for="name">{$t("auth.register.name_label")}</label>
-                    <div class="field">
-                        <span class="icon"><Icon name="user" size={18} /></span>
-                        <input
-                            type="text"
-                            id="name"
-                            bind:value={name}
-                            on:focus={() => (activeField = "name")}
-                            on:blur={() => (activeField = "")}
-                            placeholder={$t("auth.register.name_placeholder")}
-                            required
-                            disabled={loading}
-                        />
-                    </div>
-                </div>
-
-                <!-- Email -->
-                <div class="input-group" class:focus={activeField === "email"}>
-                    <label for="email">{$t("auth.register.email_label")}</label>
-                    <div class="field">
-                        <span class="icon"><Icon name="mail" size={18} /></span>
-                        <input
-                            type="email"
-                            id="email"
-                            bind:value={email}
-                            on:focus={() => (activeField = "email")}
-                            on:blur={() => (activeField = "")}
-                            placeholder={$t("auth.register.email_placeholder")}
-                            required
-                            disabled={loading}
-                        />
-                    </div>
-                </div>
-
-                <!-- Password -->
-                <div
-                    class="input-group"
-                    class:focus={activeField === "password"}
-                >
-                    <label for="password"
-                        >{$t("auth.register.password_label")}</label
-                    >
-                    <div class="field">
-                        <span class="icon"><Icon name="lock" size={18} /></span>
-                        <input
-                            type={showPassword ? "text" : "password"}
-                            id="password"
-                            bind:value={password}
-                            on:focus={() => (activeField = "password")}
-                            on:blur={() => (activeField = "")}
-                            placeholder={$t(
-                                "auth.register.password_placeholder",
-                            )}
-                            required
-                            class="password-input"
-                            disabled={loading}
-                        />
-                        <button
-                            type="button"
-                            class="toggle-password"
-                            on:click={() => (showPassword = !showPassword)}
-                            tabindex="-1"
-                        >
-                            <Icon
-                                name={showPassword ? "eye-off" : "eye"}
-                                size={18}
-                            />
-                        </button>
-                    </div>
-                    <div class="password-hint">
-                        {$t("auth.validation.min_length", {
-                            values: { length: policy.password_min_length },
-                        })}
-                        {#if policy.password_require_uppercase}, {$t(
-                                "auth.validation.require_uppercase",
-                            )}{/if}
-                        {#if policy.password_require_number}, {$t(
-                                "auth.validation.require_number",
-                            )}{/if}
-                        {#if policy.password_require_special}, {$t(
-                                "auth.validation.require_special",
-                            )}{/if}
-                    </div>
-                </div>
-
-                <!-- Confirm Password -->
-                <div
-                    class="input-group"
-                    class:focus={activeField === "confirmPassword"}
-                >
-                    <label for="confirmPassword"
-                        >{$t("auth.register.confirm_password_label")}</label
-                    >
-                    <div class="field">
-                        <span class="icon"><Icon name="lock" size={18} /></span>
-                        <input
-                            type={showConfirmPassword ? "text" : "password"}
-                            id="confirmPassword"
-                            bind:value={confirmPassword}
-                            on:focus={() => (activeField = "confirmPassword")}
-                            on:blur={() => (activeField = "")}
-                            placeholder={$t(
-                                "auth.register.password_placeholder",
-                            )}
-                            required
-                            class="password-input"
-                            disabled={loading}
-                        />
-                        <button
-                            type="button"
-                            class="toggle-password"
-                            on:click={() =>
-                                (showConfirmPassword = !showConfirmPassword)}
-                            tabindex="-1"
-                        >
-                            <Icon
-                                name={showConfirmPassword ? "eye-off" : "eye"}
-                                size={18}
-                            />
-                        </button>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn-primary" disabled={loading}>
-                    {#if loading}
-                        <div class="spinner"></div>
+{#if $appSettings.auth?.allow_registration}
+    <div class="auth-container">
+        <div class="brand-section">
+            <div class="brand-content" in:fade={{ duration: 1000 }}>
+                <div class="logo-area">
+                    {#if $appLogo}
+                        <img src={$appLogo} alt="App Logo" class="app-logo" />
                     {:else}
-                        {$t("auth.register.submit_button")}
+                        <Icon name="app" size={48} strokeWidth={1.5} />
                     {/if}
-                </button>
-            </form>
+                    <h1>{appName}</h1>
+                </div>
+                <p>{appDescription}</p>
+            </div>
+        </div>
 
-            <p class="footer-text">
-                {$t("auth.register.footer_text")}
-                <a href="/login">{$t("auth.register.login_link")}</a>
-            </p>
+        <div class="form-section">
+            <div class="form-wrapper">
+                <div class="form-header">
+                    <h2>{$t("auth.register.title")}</h2>
+                    <p>{$t("auth.register.subtitle")}</p>
+                </div>
+
+                {#if error}
+                    <div class="alert error" in:fly={{ y: -10 }}>
+                        {error}
+                    </div>
+                {/if}
+
+                <form on:submit={handleSubmit}>
+                    <!-- Full Name -->
+                    <div class="input-group" class:focus={activeField === "name"}>
+                        <label for="name">{$t("auth.register.name_label")}</label>
+                        <div class="field">
+                            <span class="icon"><Icon name="user" size={18} /></span>
+                            <input
+                                type="text"
+                                id="name"
+                                bind:value={name}
+                                on:focus={() => (activeField = "name")}
+                                on:blur={() => (activeField = "")}
+                                placeholder={$t("auth.register.name_placeholder")}
+                                required
+                                disabled={loading}
+                            />
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="input-group" class:focus={activeField === "email"}>
+                        <label for="email">{$t("auth.register.email_label")}</label>
+                        <div class="field">
+                            <span class="icon"><Icon name="mail" size={18} /></span>
+                            <input
+                                type="email"
+                                id="email"
+                                bind:value={email}
+                                on:focus={() => (activeField = "email")}
+                                on:blur={() => (activeField = "")}
+                                placeholder={$t("auth.register.email_placeholder")}
+                                required
+                                disabled={loading}
+                            />
+                        </div>
+                    </div>
+
+                    <!-- Password -->
+                    <div
+                        class="input-group"
+                        class:focus={activeField === "password"}
+                    >
+                        <label for="password"
+                            >{$t("auth.register.password_label")}</label
+                        >
+                        <div class="field">
+                            <span class="icon"><Icon name="lock" size={18} /></span>
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                id="password"
+                                bind:value={password}
+                                on:focus={() => (activeField = "password")}
+                                on:blur={() => (activeField = "")}
+                                placeholder={$t(
+                                    "auth.register.password_placeholder",
+                                )}
+                                required
+                                class="password-input"
+                                disabled={loading}
+                            />
+                            <button
+                                type="button"
+                                class="toggle-password"
+                                on:click={() => (showPassword = !showPassword)}
+                                tabindex="-1"
+                            >
+                                <Icon
+                                    name={showPassword ? "eye-off" : "eye"}
+                                    size={18}
+                                />
+                            </button>
+                        </div>
+                        <div class="password-hint">
+                            {$t("auth.validation.min_length", {
+                                values: { length: policy.password_min_length },
+                            })}
+                            {#if policy.password_require_uppercase}, {$t(
+                                    "auth.validation.require_uppercase",
+                                )}{/if}
+                            {#if policy.password_require_number}, {$t(
+                                    "auth.validation.require_number",
+                                )}{/if}
+                            {#if policy.password_require_special}, {$t(
+                                    "auth.validation.require_special",
+                                )}{/if}
+                        </div>
+                    </div>
+
+                    <!-- Confirm Password -->
+                    <div
+                        class="input-group"
+                        class:focus={activeField === "confirmPassword"}
+                    >
+                        <label for="confirmPassword"
+                            >{$t("auth.register.confirm_password_label")}</label
+                        >
+                        <div class="field">
+                            <span class="icon"><Icon name="lock" size={18} /></span>
+                            <input
+                                type={showConfirmPassword ? "text" : "password"}
+                                id="confirmPassword"
+                                bind:value={confirmPassword}
+                                on:focus={() => (activeField = "confirmPassword")}
+                                on:blur={() => (activeField = "")}
+                                placeholder={$t(
+                                    "auth.register.password_placeholder",
+                                )}
+                                required
+                                class="password-input"
+                                disabled={loading}
+                            />
+                            <button
+                                type="button"
+                                class="toggle-password"
+                                on:click={() =>
+                                    (showConfirmPassword = !showConfirmPassword)}
+                                tabindex="-1"
+                            >
+                                <Icon
+                                    name={showConfirmPassword ? "eye-off" : "eye"}
+                                    size={18}
+                                />
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary" disabled={loading}>
+                        {#if loading}
+                            <div class="spinner"></div>
+                        {:else}
+                            {$t("auth.register.submit_button")}
+                        {/if}
+                    </button>
+                </form>
+
+                <p class="footer-text">
+                    {$t("auth.register.footer_text")}
+                    <a href="/login">{$t("auth.register.login_link")}</a>
+                </p>
+            </div>
         </div>
     </div>
-</div>
+{:else}
+    <!-- Loading state or empty while redirecting -->
+    <div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: var(--bg-primary);">
+        <div class="spinner"></div>
+    </div>
+{/if}
 
 <style>
     .auth-container {
