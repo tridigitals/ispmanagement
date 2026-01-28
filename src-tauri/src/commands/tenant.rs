@@ -25,6 +25,7 @@ pub async fn update_current_tenant(
     token: String,
     name: Option<String>,
     custom_domain: Option<String>,
+    enforce_2fa: Option<bool>,
     auth_service: State<'_, AuthService>,
     plan_service: State<'_, PlanService>,
 ) -> Result<Tenant, String> {
@@ -51,17 +52,19 @@ pub async fn update_current_tenant(
 
     // 3. Update
     #[cfg(feature = "postgres")]
-    let sql = "UPDATE tenants SET name = $1, custom_domain = $2, updated_at = $3 WHERE id = $4 RETURNING *";
+    let sql = "UPDATE tenants SET name = $1, custom_domain = $2, enforce_2fa = $3, updated_at = $4 WHERE id = $5 RETURNING *";
     #[cfg(feature = "sqlite")]
-    let sql = "UPDATE tenants SET name = ?, custom_domain = ?, updated_at = ? WHERE id = ? RETURNING *";
+    let sql = "UPDATE tenants SET name = ?, custom_domain = ?, enforce_2fa = ?, updated_at = ? WHERE id = ? RETURNING *";
 
     let new_name = name.unwrap_or(current.name);
     let new_domain = custom_domain.or(current.custom_domain);
+    let new_enforce = enforce_2fa.unwrap_or(current.enforce_2fa);
     let now = Utc::now();
 
     let q = sqlx::query_as::<_, Tenant>(sql)
         .bind(new_name)
-        .bind(new_domain);
+        .bind(new_domain)
+        .bind(new_enforce);
 
     #[cfg(feature = "postgres")]
     let q = q.bind(now);

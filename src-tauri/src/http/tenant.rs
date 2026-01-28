@@ -34,6 +34,7 @@ pub async fn get_current_tenant(
 pub struct UpdateTenantSelfRequest {
     pub name: Option<String>,
     pub custom_domain: Option<String>,
+    pub enforce_2fa: Option<bool>,
 }
 
 pub async fn update_current_tenant(
@@ -69,16 +70,18 @@ pub async fn update_current_tenant(
     // 3. Update
     let new_name = payload.name.unwrap_or(current.name);
     let new_domain = payload.custom_domain.or(current.custom_domain);
+    let new_enforce = payload.enforce_2fa.unwrap_or(current.enforce_2fa);
     let now = Utc::now();
 
     #[cfg(feature = "postgres")]
-    let sql = "UPDATE tenants SET name = $1, custom_domain = $2, updated_at = $3 WHERE id = $4 RETURNING *";
+    let sql = "UPDATE tenants SET name = $1, custom_domain = $2, enforce_2fa = $3, updated_at = $4 WHERE id = $5 RETURNING *";
     #[cfg(feature = "sqlite")]
-    let sql = "UPDATE tenants SET name = ?, custom_domain = ?, updated_at = ? WHERE id = ? RETURNING *";
+    let sql = "UPDATE tenants SET name = ?, custom_domain = ?, enforce_2fa = ?, updated_at = ? WHERE id = ? RETURNING *";
 
     let q = sqlx::query_as::<_, Tenant>(sql)
         .bind(new_name)
-        .bind(new_domain);
+        .bind(new_domain)
+        .bind(new_enforce);
 
     #[cfg(feature = "postgres")]
     let q = q.bind(now);

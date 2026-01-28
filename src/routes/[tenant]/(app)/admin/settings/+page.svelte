@@ -46,6 +46,11 @@
             icon: "globe",
             keys: [], // Managed manually
         },
+        security: {
+            label: "Security",
+            icon: "shield",
+            keys: [], // Managed manually
+        },
         storage: {
             label: "Storage",
             icon: "database",
@@ -143,6 +148,7 @@
             // Init Tenant local values
             localSettings["tenant_name"] = tenantInfo.name;
             localSettings["custom_domain"] = tenantInfo.custom_domain || "";
+            localSettings["enforce_2fa"] = String(tenantInfo.enforce_2fa);
 
             // Init Bank Accounts
             loadBankAccounts();
@@ -165,20 +171,25 @@
         localSettings[key] = String(value);
 
         // Check if tenant setting
-        if (key === "tenant_name" || key === "custom_domain") {
+        if (key === "tenant_name" || key === "custom_domain" || key === "enforce_2fa") {
             const originalName = tenantInfo?.name || "";
             const originalDomain = tenantInfo?.custom_domain || "";
+            const originalEnforce = tenantInfo?.enforce_2fa ?? false;
 
             if (key === "tenant_name" && value !== originalName)
                 tenantChanges.name = value;
             if (key === "custom_domain" && value !== originalDomain)
                 tenantChanges.customDomain = value;
+            if (key === "enforce_2fa" && Boolean(value) !== originalEnforce)
+                (tenantChanges as any).enforce2fa = Boolean(value);
 
             // Revert if matches original
             if (key === "tenant_name" && value === originalName)
                 delete tenantChanges.name;
             if (key === "custom_domain" && value === originalDomain)
                 delete tenantChanges.customDomain;
+            if (key === "enforce_2fa" && Boolean(value) === originalEnforce)
+                delete (tenantChanges as any).enforce2fa;
 
             hasChanges = Object.keys(tenantChanges).length > 0;
         } else {
@@ -485,6 +496,30 @@
                                         placeholder="Locked"
                                     />
                                 {/if}
+                            </div>
+                        {:else if activeTab === "security"}
+                            <!-- Security Settings -->
+                            <div class="setting-item mt-6">
+                                <div class="setting-info">
+                                    <h3>Enforce Two-Factor Authentication</h3>
+                                    <p>
+                                        Require all members of this organization
+                                        to enable 2FA before accessing the
+                                        dashboard.
+                                    </p>
+                                </div>
+                                <label class="toggle">
+                                    <input
+                                        type="checkbox"
+                                        checked={localSettings["enforce_2fa"] === "true"}
+                                        onchange={(e) =>
+                                            handleChange(
+                                                "enforce_2fa",
+                                                e.currentTarget.checked,
+                                            )}
+                                    />
+                                    <span class="slider"></span>
+                                </label>
                             </div>
                         {:else if activeTab === "storage"}
                             <!-- Redesigned Storage Settings -->

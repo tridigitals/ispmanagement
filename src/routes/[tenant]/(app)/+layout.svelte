@@ -6,6 +6,8 @@
     import { page } from "$app/stores";
     import { user } from "$lib/stores/auth";
     import { getSlugFromDomain } from "$lib/utils/domain";
+    import { goto } from "$app/navigation";
+    import { onMount } from "svelte";
 
     let { children } = $props();
 
@@ -21,34 +23,37 @@
     );
 
     // Reactive Auth Guard & Tenant Scoping
+    $effect(() => {
+        const currentHost = $page.url.hostname;
+        const userCustomDomain = ($user as any)?.custom_domain;
+        const currentSlug = $page.params.tenant;
+        const userSlug = $user?.tenant_slug;
 
-// ...
-            if (userCustomDomain && currentHost !== userCustomDomain && !$isSuperAdmin) {
-                console.warn(`[Layout] Domain Mismatch! User belongs to ${userCustomDomain}. Logging out.`);
-                // Domain Mismatch -> Logout and redirect to login
-                import("$lib/stores/auth").then((m) => m.logout());
-                goto("/login");
-                return;
-            }
+        if (userCustomDomain && currentHost !== userCustomDomain && !$isSuperAdmin) {
+            console.warn(`[Layout] Domain Mismatch! User belongs to ${userCustomDomain}. Logging out.`);
+            // Domain Mismatch -> Logout and redirect to login
+            import("$lib/stores/auth").then((m) => m.logout());
+            goto("/login");
+            return;
+        }
 
-            // 2FA Enforcement
-            if ($is2FARequiredButDisabled && !$page.url.pathname.includes("/profile")) {
-                goto(`${tenantPrefix}/profile?2fa_required=true`);
-                return;
-            }
+        // 2FA Enforcement
+        if ($is2FARequiredButDisabled && !$page.url.pathname.includes("/profile")) {
+            goto(`${tenantPrefix}/profile?2fa_required=true`);
+            return;
+        }
 
-            if (
-                currentSlug &&
-                userSlug &&
-                currentSlug.toLowerCase() !== userSlug.toLowerCase()
-            ) {
-                console.warn(
-                    `[Layout] Tenant Mismatch! User ${userSlug} tried to access ${currentSlug}`,
-                );
-                // Strict Isolation: Logout user if they try to access a different tenant's area
-                import("$lib/stores/auth").then((m) => m.logout());
-                goto(`/${currentSlug}`);
-            }
+        if (
+            currentSlug &&
+            userSlug &&
+            currentSlug.toLowerCase() !== userSlug.toLowerCase()
+        ) {
+            console.warn(
+                `[Layout] Tenant Mismatch! User ${userSlug} tried to access ${currentSlug}`,
+            );
+            // Strict Isolation: Logout user if they try to access a different tenant's area
+            import("$lib/stores/auth").then((m) => m.logout());
+            goto(`/${currentSlug}`);
         }
     });
 
