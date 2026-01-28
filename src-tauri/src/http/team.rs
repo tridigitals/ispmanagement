@@ -59,6 +59,16 @@ pub async fn add_team_member(
     
     state.auth_service.check_permission(&claims.sub, &tenant_id, "team", "create").await?;
     
+    // Check Role Level
+    let requester_level = state.team_service.get_user_role_level(&claims.sub, &tenant_id).await
+        .map_err(|e| crate::error::AppError::Internal(e))?;
+    let new_role_level = state.team_service.get_role_level_by_id(&payload.role_id).await
+        .map_err(|e| crate::error::AppError::Internal(e))?;
+
+    if requester_level < new_role_level {
+         return Err(crate::error::AppError::Forbidden("Insufficient permissions: Cannot assign role higher than your own".to_string()));
+    }
+
     let member = state.team_service
         .add_member(&tenant_id, &payload.email, &payload.name, &payload.role_id, payload.password, Some(&claims.sub), Some(&ip))
         .await

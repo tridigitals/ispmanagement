@@ -44,6 +44,14 @@ pub async fn add_team_member(
     auth.check_permission(&claims.sub, &tenant_id, "team", "create")
         .await
         .map_err(|e| e.to_string())?;
+
+    // Check Role Level to prevent privilege escalation
+    let requester_level = team_service.get_user_role_level(&claims.sub, &tenant_id).await?;
+    let new_role_level = team_service.get_role_level_by_id(&role_id).await?;
+    
+    if requester_level < new_role_level {
+         return Err("Insufficient permissions: Cannot assign role higher than your own".to_string());
+    }
     
     team_service.add_member(&tenant_id, &email, &name, &role_id, password, Some(&claims.sub), Some("127.0.0.1"))
         .await
