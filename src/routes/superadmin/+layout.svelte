@@ -5,6 +5,7 @@
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";
     import Icon from "$lib/components/Icon.svelte";
+    import { isSidebarCollapsed } from "$lib/stores/ui";
 
     let authorized = $state(false);
     let isCollapsed = $state(false);
@@ -12,10 +13,10 @@
 
     // Strict auth check
     onMount(() => {
-        // Auto-collapse on mobile (using new 900px breakpoint)
-        if (window.innerWidth < 900) {
-            isCollapsed = true;
-        }
+        // Sync collapse state to shared store and auto-collapse on mobile
+        const isMobile = window.innerWidth < 900;
+        isCollapsed = isMobile || $isSidebarCollapsed;
+        $isSidebarCollapsed = isCollapsed;
 
         // 1. Check if logged in at all
         if (!$token) {
@@ -49,14 +50,26 @@
     function handleNavClick() {
         if (window.innerWidth < 900) {
             isCollapsed = true;
+            $isSidebarCollapsed = true;
         }
+    }
+
+    function toggleSidebar() {
+        const isDesktop = window.innerWidth >= 900;
+        if (!isDesktop) {
+            isCollapsed = !isCollapsed;
+            $isSidebarCollapsed = isCollapsed;
+            return;
+        }
+        isCollapsed = !isCollapsed;
+        $isSidebarCollapsed = isCollapsed;
     }
 </script>
 
 {#if authorized}
     <div class="sa-layout">
         <!-- Mobile Overlay -->
-        {#if !isCollapsed}
+        {#if !isCollapsed && window.innerWidth < 900}
             <button
                 class="mobile-overlay"
                 onclick={() => (isCollapsed = true)}
@@ -191,11 +204,8 @@
             <!-- Topbar -->
             <header class="sa-topbar">
                 <div class="topbar-left">
-                    <button
-                        class="hamburger-btn"
-                        onclick={() => (isCollapsed = !isCollapsed)}
-                    >
-                        <Icon name="sidebar-toggle" size={20} />
+                    <button class="hamburger-btn" onclick={toggleSidebar} title={$isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
+                        <Icon name="menu" size={20} />
                     </button>
                     <div class="breadcrumb">
                         <span class="root">Super Admin</span>
@@ -296,13 +306,13 @@
 
     /* Sidebar */
     .sa-sidebar {
-        width: var(--sidebar-width);
-        background: var(--bg-surface);
+        width: 240px;
+        background: var(--bg-app);
         border-right: 1px solid var(--border-color);
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 1.5rem 0;
+        padding: 12px;
         z-index: 50;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         height: 100vh;
@@ -319,7 +329,7 @@
         display: flex;
         align-items: center;
         gap: 0.75rem;
-        padding: 0 1.5rem;
+        padding: 0 1rem;
         width: 100%;
         overflow: hidden;
         white-space: nowrap;
@@ -348,11 +358,11 @@
     .sa-sidebar nav {
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
+        gap: 8px;
         width: 100%;
         align-items: center;
         flex: 1;
-        padding: 0 1rem;
+        padding: 0;
     }
 
     .nav-item {
@@ -360,9 +370,9 @@
         height: 44px;
         display: flex;
         align-items: center;
-        padding: 0 0.75rem;
-        gap: 0.75rem;
-        border-radius: var(--radius-md);
+        padding: 8px 12px;
+        gap: 10px;
+        border-radius: var(--radius-sm);
         color: var(--text-secondary);
         transition: all 0.2s;
         text-decoration: none;
@@ -377,7 +387,7 @@
 
     .sa-sidebar.collapsed .nav-item {
         width: 44px;
-        padding: 0;
+        padding: 8px;
         justify-content: center;
     }
 
@@ -387,9 +397,8 @@
     }
 
     .nav-item.active {
-        background: var(--color-primary);
-        color: white;
-        box-shadow: 0 4px 12px var(--color-primary-subtle);
+        background: var(--bg-active);
+        color: var(--text-primary);
     }
 
     .nav-item.back {
@@ -415,13 +424,12 @@
     /* Topbar */
     .sa-topbar {
         height: 64px;
-        background: rgba(var(--bg-app), 0.8);
-        backdrop-filter: blur(10px);
+        background: var(--bg-primary);
         border-bottom: 1px solid var(--border-color);
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 2rem;
+        padding: 0 clamp(12px, 4vw, 32px);
         position: sticky;
         top: 0;
         z-index: 40;
@@ -474,35 +482,14 @@
     .actions {
         display: flex;
         align-items: center;
-        gap: 1.5rem;
-    }
-
-    .search-box {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-md);
-        padding: 0.4rem 0.8rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: var(--text-secondary);
-    }
-
-    .search-box input {
-        background: transparent;
-        border: none;
-        outline: none;
-        color: var(--text-primary);
-        font-size: 0.9rem;
-        width: 200px;
+        gap: 1rem;
     }
 
     .profile-pill {
         display: flex;
         align-items: center;
         gap: 0.75rem;
-        padding: 0.25rem;
-        padding-right: 0.75rem;
+        padding: 0.25rem 0.75rem;
         background: var(--bg-surface);
         border-radius: 30px;
         border: 1px solid var(--border-color);

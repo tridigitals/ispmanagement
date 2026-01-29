@@ -94,9 +94,8 @@
 <style>
     .app-shell {
         display: flex;
-        height: 100vh;
-        height: 100dvh; /* Fallback & Modern unit */
-        width: 100vw;
+        min-height: 100dvh; /* Modern unit for mobile browsers */
+        width: 100%;
         background: var(--bg-app); /* Background dasar aplikasi */
         overflow: hidden;
     }
@@ -105,7 +104,8 @@
         flex: 1;
         display: flex;
         flex-direction: column;
-        padding: 8px 8px 8px 0; /* Padding untuk efek floating, kecuali kiri (nempel sidebar) */
+        padding: clamp(6px, 1vw, 12px);
+        padding-left: 0; /* Sidebar occupies the left edge */
     }
 
     .content-surface {
@@ -124,5 +124,18 @@
         flex: 1;
         overflow-y: auto;
         position: relative;
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    @media (max-width: 900px) {
+        .main-viewport {
+            padding: clamp(4px, 2vw, 10px);
+        }
+
+        .content-surface {
+            border-radius: var(--radius-md);
+            border-left: none;
+            border-right: none;
+        }
     }
 </style>

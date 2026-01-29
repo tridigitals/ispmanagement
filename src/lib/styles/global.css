@@ -51,6 +51,13 @@
     --touch-target: 44px;
     /* Minimum touch target for accessibility */
     --content-max-width: 1400px;
+
+    /* Breakpoints */
+    --bp-xs: 480px;
+    --bp-sm: 640px;
+    --bp-md: 768px;
+    --bp-lg: 900px;
+    --bp-xl: 1024px;
 }
 
 /* Light Mode */
@@ -132,15 +139,15 @@ textarea {
 
 /* ==================== RESPONSIVE UTILITY CLASSES ==================== */
 
-/* Hide on mobile (< 640px) */
-@media (max-width: 639px) {
+/* Hide on mobile/tablet (< 900px) */
+@media (max-width: 899px) {
     .hide-mobile {
         display: none !important;
     }
 }
 
-/* Hide on desktop (>= 640px) */
-@media (min-width: 640px) {
+/* Hide on desktop (>= 900px) */
+@media (min-width: 900px) {
     .hide-desktop {
         display: none !important;
     }
@@ -161,7 +168,11 @@ textarea {
 }
 
 /* Safe area insets for mobile (notch, home indicator) */
-}
+body {
+    padding-top: env(safe-area-inset-top);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
 }
 
 /* ==================== COMPONENTS ==================== */

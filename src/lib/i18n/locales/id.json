@@ -78,12 +78,20 @@
         "search_placeholder": "Cari...",
         "notifications": "Notifikasi",
         "help": "Bantuan",
+        "toggle_dark": "Ganti ke mode gelap",
+        "toggle_light": "Ganti ke mode terang",
         "titles": {
             "dashboard": "Dasbor",
             "profile": "Profil Saya",
             "admin_overview": "Ringkasan Admin",
             "user_management": "Manajemen Pengguna",
-            "global_settings": "Pengaturan Global"
+            "global_settings": "Pengaturan Global",
+            "team": "Tim",
+            "roles": "Peran & Hak Akses",
+            "storage": "Penyimpanan",
+            "subscription": "Langganan",
+            "invoices": "Invoice",
+            "default": "Ruang Kerja"
         }
     },
     "dashboard": {

@@ -28,28 +28,26 @@
     let loading = $state(true);
     let error = $state("");
 
-    // Filters & Search
     let searchQuery = $state("");
     let roleFilter = $state("all");
 
-    // Invite modal
     let showInviteModal = $state(false);
     let inviteEmail = $state("");
     let inviteName = $state("");
     let inviteRoleId = $state("");
-    let invitePassword = $state(""); // Optional password for new user
+    let invitePassword = $state("");
     let inviting = $state(false);
 
-    // Edit Role
     let showEditModal = $state(false);
     let editingMember = $state<TeamMember | null>(null);
     let editRoleId = $state("");
     let savingRole = $state(false);
 
-    // Delete State
     let showDeleteModal = $state(false);
     let memberToDelete = $state<TeamMember | null>(null);
     let isDeleting = $state(false);
+
+    let statusFilter = $state<"all" | "active" | "inactive">("all");
 
     let filteredMembers = $derived(
         teamMembers.filter((m) => {
@@ -58,7 +56,10 @@
                 m.email.toLowerCase().includes(searchQuery.toLowerCase());
             const matchesRole =
                 roleFilter === "all" || m.role_id === roleFilter;
-            return matchesSearch && matchesRole;
+            const matchesStatus =
+                statusFilter === "all" ||
+                (statusFilter === "active" ? m.is_active : !m.is_active);
+            return matchesSearch && matchesRole && matchesStatus;
         }),
     );
 
@@ -98,15 +99,12 @@
             teamMembers = membersRes;
             roles = rolesRes;
 
-            // Set default role for invite
             if (roles.length > 0 && !inviteRoleId) {
-                // Try to find "Member" role, otherwise first one
                 const memberRole = roles.find((r) => r.name === "Member");
                 inviteRoleId = memberRole ? memberRole.id : roles[0].id;
             }
         } catch (e: any) {
             error = e.toString();
-            console.error("Failed to load team data:", e);
             toast.error("Failed to load team data");
         } finally {
             loading = false;
@@ -123,12 +121,11 @@
                 inviteRoleId,
                 invitePassword,
             );
-            await loadData(); // Reload list
+            await loadData();
             showInviteModal = false;
             inviteEmail = "";
             inviteName = "";
             invitePassword = "";
-            // Keep role selection
             toast.success("Team member added successfully");
         } catch (e: any) {
             toast.error("Failed to add member: " + e.message);
@@ -143,13 +140,12 @@
     }
 
     async function handleConfirmDelete() {
-        if (!memberToDelete) return;
+        const target = memberToDelete;
+        if (!target) return;
         isDeleting = true;
         try {
-            await api.team.remove(memberToDelete.id);
-            teamMembers = teamMembers.filter(
-                (m) => m.id !== memberToDelete?.id,
-            );
+            await api.team.remove(target.id);
+            teamMembers = teamMembers.filter((m) => m.id !== target.id);
             toast.success("Member removed successfully");
             showDeleteModal = false;
             memberToDelete = null;
@@ -167,23 +163,18 @@
     }
 
     async function saveMemberRole() {
-        if (!editingMember || !editRoleId) return;
+        const member = editingMember;
+        if (!member || !editRoleId) return;
         savingRole = true;
         try {
-            await api.team.updateRole(editingMember.id, editRoleId);
-
-            // Update local state
-            const index = teamMembers.findIndex(
-                (m) => m.id === editingMember!.id,
-            );
+            await api.team.updateRole(member.id, editRoleId);
+            const index = teamMembers.findIndex((m) => m.id === member.id);
             if (index !== -1) {
                 const role = roles.find((r) => r.id === editRoleId);
                 teamMembers[index].role_id = editRoleId;
                 teamMembers[index].role_name = role?.name || "";
-                // Force reactivity
                 teamMembers = [...teamMembers];
             }
-
             toast.success("Member role updated successfully");
             showEditModal = false;
             editingMember = null;
@@ -198,42 +189,96 @@
 </script>
 
 <div class="page-content fade-in">
-    <!-- Stats Row -->
-    <div class="stats-row" in:fly={{ y: 20, duration: 400 }}>
-        <StatsCard
-            title="Total Members"
-            value={stats.total}
-            icon="users"
-            color="primary"
-        />
-        <StatsCard
-            title="Active Members"
-            value={stats.active}
-            icon="check-circle"
-            color="success"
-        />
-        <StatsCard
-            title="Inactive Members"
-            value={stats.inactive}
-            icon="slash"
-            color="warning"
-        />
+    <div class="stats-row" in:fly={{ y: 20, duration: 300 }}>
+        <button
+            class="stat-btn"
+            class:active={statusFilter === "all"}
+            onclick={() => (statusFilter = "all")}
+            aria-label="Show all members"
+            title="Show all members"
+            type="button"
+        >
+            <StatsCard
+                title="Total Members"
+                value={stats.total}
+                icon="users"
+                color="primary"
+            />
+        </button>
+        <button
+            class="stat-btn"
+            class:active={statusFilter === "active"}
+            onclick={() => (statusFilter = "active")}
+            aria-label="Show active members"
+            title="Show active members"
+            type="button"
+        >
+            <StatsCard
+                title="Active Members"
+                value={stats.active}
+                icon="check-circle"
+                color="success"
+            />
+        </button>
+        <button
+            class="stat-btn"
+            class:active={statusFilter === "inactive"}
+            onclick={() => (statusFilter = "inactive")}
+            aria-label="Show inactive members"
+            title="Show inactive members"
+            type="button"
+        >
+            <StatsCard
+                title="Inactive Members"
+                value={stats.inactive}
+                icon="slash"
+                color="warning"
+            />
+        </button>
     </div>
 
-    <div class="content-card" in:fly={{ y: 20, delay: 100 }}>
-        <div class="card-header">
-            <h2>{$t("admin.team.title") || "Team Members"}</h2>
+    <div class="glass-card" in:fly={{ y: 20, delay: 80 }}>
+        <div class="card-header glass">
+            <div>
+                <h3>{$t("admin.team.title") || "Team Members"}</h3>
+                <span class="muted"
+                    >Manage your organization members and access</span
+                >
+            </div>
+            <span class="count-badge">{stats.total} members</span>
         </div>
 
         <div class="toolbar-wrapper">
             <TableToolbar bind:searchQuery placeholder="Search members...">
                 {#snippet filters()}
                     <div class="filter-dropdown">
-                        <Select
-                            bind:value={roleFilter}
-                            options={roleOptions}
-                            width="150px"
-                        />
+                        <Select bind:value={roleFilter} options={roleOptions} width="100%" />
+                    </div>
+                    <div class="status-filter">
+                        <button
+                            type="button"
+                            class="filter-chip"
+                            class:active={statusFilter === "all"}
+                            onclick={() => (statusFilter = "all")}
+                        >
+                            All
+                        </button>
+                        <button
+                            type="button"
+                            class="filter-chip"
+                            class:active={statusFilter === "active"}
+                            onclick={() => (statusFilter = "active")}
+                        >
+                            Active
+                        </button>
+                        <button
+                            type="button"
+                            class="filter-chip"
+                            class:active={statusFilter === "inactive"}
+                            onclick={() => (statusFilter = "inactive")}
+                        >
+                            Inactive
+                        </button>
                     </div>
                 {/snippet}
                 {#snippet actions()}
@@ -288,50 +333,42 @@
                                             <span class="you-badge">YOU</span>
                                         {/if}
                                     </div>
-                                    <div
-                                        class="text-muted"
-                                        style="font-size: 0.85rem"
-                                    >
+                                    <div class="text-muted" style="font-size: 0.85rem">
                                         {item.email}
                                     </div>
                                 </div>
                             </div>
                         {:else if key === "role"}
-                            <span
-                                class="role-pill {item.role_name?.toLowerCase() ||
-                                    'member'}"
-                            >
+                            <span class="role-pill {item.role_name?.toLowerCase() || 'member'}">
                                 {item.role_name || "Member"}
                             </span>
                         {:else if key === "status"}
-                            <span
-                                class="status-pill {item.is_active
-                                    ? 'active'
-                                    : 'inactive'}"
-                            >
+                            <span class="status-pill {item.is_active ? 'active' : 'inactive'}">
                                 <span class="dot"></span>
                                 {item.is_active ? "Active" : "Inactive"}
                             </span>
                         {:else if key === "created_at"}
                             {new Date(item.created_at).toLocaleDateString()}
                         {:else if key === "actions"}
-                            <div class="action-buttons">
+                            <div class="action-buttons-cell">
                                 {#if $can("update", "team") && myRoleLevel > (roles.find((r) => r.id === item.role_id)?.level || 0)}
                                     <button
-                                        class="action-btn primary"
+                                        class="btn-icon primary"
                                         title="Edit Role"
                                         onclick={() => openEditModal(item)}
                                     >
                                         <Icon name="edit" size={18} />
+                                        <span class="btn-text">Edit</span>
                                     </button>
                                 {/if}
                                 {#if item.email !== $user?.email && $can("delete", "team") && myRoleLevel > (roles.find((r) => r.id === item.role_id)?.level || 0)}
                                     <button
-                                        class="action-btn danger"
+                                        class="btn-icon danger"
                                         title="Remove Member"
                                         onclick={() => confirmRemove(item)}
                                     >
                                         <Icon name="trash" size={18} />
+                                        <span class="btn-text">Delete</span>
                                     </button>
                                 {/if}
                             </div>
@@ -353,7 +390,6 @@
     onconfirm={handleConfirmDelete}
 />
 
-<!-- Add Member Modal -->
 <Modal
     show={showInviteModal}
     title={$t("admin.team.add_member_modal_title") || "Add Team Member"}
@@ -424,7 +460,6 @@
     </form>
 </Modal>
 
-<!-- Edit Member Modal -->
 <Modal
     show={showEditModal}
     title="Edit Member Role"
@@ -474,48 +509,153 @@
 
 <style>
     .page-content {
-        padding: 1.5rem;
+        padding: clamp(1rem, 3vw, 1.5rem);
         max-width: 1400px;
         margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        --glass: rgba(255, 255, 255, 0.04);
+        --glass-border: rgba(255, 255, 255, 0.08);
+        --accent-emerald: #10b981;
+        --accent-amber: #f59e0b;
+        --accent-cyan: #22d3ee;
+        --accent-indigo: #6366f1;
     }
 
     .stats-row {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-
-    .content-card {
-        background: var(--bg-surface, #1e293b);
-        border-radius: 16px;
-        border: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
-        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
-    }
-
-    .card-header {
-        padding: 1.5rem 2rem;
-        border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         gap: 1rem;
     }
 
-    .header-left {
-        display: flex;
-        align-items: center;
-        gap: 2rem;
-        flex: 1;
+    .stat-btn {
+        background: transparent;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        text-align: left;
+        border-radius: 18px;
+        transition: transform 0.2s ease;
     }
 
-    .card-header h2 {
-        font-size: 1.25rem;
-        font-weight: 700;
+    .stat-btn:active {
+        transform: translateY(1px);
+    }
+
+    .stat-btn.active :global(.stats-card) {
+        border-color: rgba(99, 102, 241, 0.45);
+        box-shadow:
+            0 14px 36px rgba(0, 0, 0, 0.3),
+            0 0 0 1px rgba(99, 102, 241, 0.25) inset;
+    }
+
+    :global([data-theme="light"]) .stat-btn.active :global(.stats-card) {
+        border-color: rgba(99, 102, 241, 0.3);
+        box-shadow:
+            0 14px 36px rgba(0, 0, 0, 0.08),
+            0 0 0 1px rgba(99, 102, 241, 0.18) inset;
+    }
+
+    .glass-card {
+        background: linear-gradient(145deg, var(--bg-surface, #0f172a), #0b0c10);
+        border-radius: 16px;
+        border: 1px solid var(--glass-border);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+        overflow: hidden;
+    }
+
+    .card-header {
+        padding: 1.25rem 1.75rem;
+        border-bottom: 1px solid var(--glass-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .card-header h3 {
         margin: 0;
-        color: var(--text-primary, #fff);
-        white-space: nowrap;
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--text-primary);
+    }
+
+    .card-header .muted {
+        display: block;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+    }
+
+    .count-badge {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text-secondary);
+        padding: 0.35rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 800;
+        border: 1px solid var(--glass-border);
+    }
+
+    .toolbar-wrapper {
+        padding: 1rem 1.75rem 0.5rem;
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    .status-filter {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.25rem;
+        border-radius: 12px;
+        border: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.03);
+        flex-wrap: wrap;
+    }
+
+    :global([data-theme="light"]) .status-filter {
+        background: rgba(0, 0, 0, 0.02);
+    }
+
+    .filter-chip {
+        height: 32px;
+        padding: 0 0.75rem;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--text-secondary);
+        font-weight: 650;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    @media (max-width: 768px) {
+        .toolbar-wrapper {
+            padding: 0.9rem 1rem 0.75rem;
+        }
+        .table-wrapper {
+            padding: 1rem;
+        }
+        .filter-dropdown {
+            width: 100%;
+        }
+    }
+
+    .filter-chip:hover {
+        background: rgba(99, 102, 241, 0.08);
+        color: var(--text-primary);
+    }
+
+    .filter-chip.active {
+        background: rgba(99, 102, 241, 0.14);
+        border-color: rgba(99, 102, 241, 0.28);
+        color: var(--text-primary);
+    }
+
+    .table-wrapper {
+        padding: 1.5rem 1.75rem 1.75rem;
     }
 
     .member-info {
@@ -525,20 +665,18 @@
     }
 
     .avatar {
-        width: 40px;
-        height: 40px;
-        background: linear-gradient(
-            135deg,
-            var(--color-primary, #6366f1),
-            var(--color-primary-dark, #4f46e5)
-        );
-        border-radius: 10px;
+        width: 42px;
+        height: 42px;
+        background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.35), transparent 60%), linear-gradient(135deg, var(--color-primary, #6366f1), var(--color-primary-dark, #4f46e5));
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 700;
         color: white;
         font-size: 0.9rem;
+        border: 1px solid var(--glass-border);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
     }
 
     .member-name {
@@ -562,15 +700,17 @@
         font-size: 0.8rem;
         font-weight: 600;
         text-transform: capitalize;
+        border: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.04);
     }
 
     .role-pill.admin {
-        background: rgba(99, 102, 241, 0.2);
+        background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.14), transparent 60%);
         color: #818cf8;
     }
 
     .role-pill.user {
-        background: rgba(16, 185, 129, 0.2);
+        background: radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.14), transparent 60%);
         color: #34d399;
     }
 
@@ -585,14 +725,14 @@
     }
 
     .status-pill.active {
-        background: rgba(16, 185, 129, 0.15);
-        color: #34d399;
-        border: 1px solid rgba(16, 185, 129, 0.2);
+        background: rgba(16, 185, 129, 0.14);
+        color: #22c55e;
+        border: 1px solid rgba(16, 185, 129, 0.25);
     }
 
     .status-pill.inactive {
-        background: rgba(239, 68, 68, 0.15);
-        color: #f87171;
+        background: rgba(239, 68, 68, 0.12);
+        color: #ef4444;
         border: 1px solid rgba(239, 68, 68, 0.2);
     }
 
@@ -622,44 +762,52 @@
         }
 
         .card-header {
-            flex-direction: column;
-            align-items: stretch;
             padding: 1rem;
-        }
-
-        .header-left {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 1rem;
-        }
-
-        .search-bar {
-            max-width: none;
         }
     }
 
-    .action-btn {
-        width: 36px;
+    .action-buttons-cell {
+        display: inline-flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+
+    .btn-icon {
         height: 36px;
-        border-radius: 8px;
+        padding: 0 0.75rem;
+        border-radius: 10px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        border: none;
-        background: transparent;
-        color: var(--text-secondary, #64748b);
+        gap: 0.5rem;
+        border: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text-secondary, #cbd5e1);
         cursor: pointer;
         transition: all 0.2s;
     }
 
-    .action-btn:hover {
-        background: rgba(255, 255, 255, 0.1);
+    .btn-icon:hover {
+        background: rgba(99, 102, 241, 0.12);
         color: var(--text-primary, #fff);
+        border-color: rgba(99, 102, 241, 0.4);
     }
 
-    .action-btn.danger:hover {
-        background: rgba(239, 68, 68, 0.2);
+    .btn-icon.danger:hover {
+        background: rgba(239, 68, 68, 0.14);
         color: #ef4444;
+        border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-text {
+        font-size: 0.85rem;
+        font-weight: 650;
+    }
+
+    @media (max-width: 900px) {
+        .btn-text {
+            display: none;
+        }
     }
 
     .loading-state,
@@ -689,11 +837,14 @@
         text-align: center;
         padding: 4rem 2rem;
         color: var(--text-secondary, #94a3b8);
+        background: var(--glass);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
     }
 
     .empty-state-container .empty-icon {
         margin-bottom: 1.5rem;
-        opacity: 0.5;
+        opacity: 0.7;
     }
 
     .empty-state-container h3 {
@@ -708,47 +859,48 @@
 
     /* Buttons */
     .btn {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        padding: 0.75rem 1.25rem;
-        border-radius: 10px;
-        font-weight: 600;
+        padding: 0.6rem 1.2rem;
+        border-radius: 8px;
+        font-weight: 500;
         cursor: pointer;
         border: none;
-        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
         transition: all 0.2s;
     }
 
-    .btn-primary {
-        background: var(--color-primary, #6366f1);
-        color: white;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    .btn:disabled {
+        opacity: 0.7;
+        cursor: wait;
     }
 
-    .btn-primary:hover {
-        opacity: 0.9;
-        transform: translateY(-1px);
+    .btn-primary {
+        background: var(--color-primary);
+        color: white;
     }
 
     .btn-glass {
         background: rgba(255, 255, 255, 0.05);
-        color: var(--text-secondary, #cbd5e1);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
     }
 
     .btn-glass:hover {
         background: rgba(255, 255, 255, 0.1);
-        color: var(--text-primary, #fff);
+        color: var(--text-primary);
     }
 
     .btn-ghost {
         background: transparent;
-        color: var(--text-secondary, #cbd5e1);
+        color: var(--text-secondary);
+        border: 1px solid transparent;
     }
     .btn-ghost:hover {
-        color: var(--text-primary, #fff);
-        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-primary);
+        background: rgba(255, 255, 255, 0.06);
+        border-color: var(--glass-border);
     }
 
     /* Forms */
@@ -803,5 +955,54 @@
         background: rgba(255, 255, 255, 0.05) !important;
         opacity: 0.7;
         cursor: not-allowed;
+    }
+
+    /* Light theme adjustments */
+    :global([data-theme="light"]) .glass-card {
+        background: linear-gradient(135deg, #ffffff, #f7f7fb);
+        border-color: rgba(0, 0, 0, 0.06);
+        box-shadow:
+            0 12px 32px rgba(0, 0, 0, 0.08),
+            0 0 0 1px rgba(255, 255, 255, 0.8);
+    }
+
+    :global([data-theme="light"]) .btn-icon {
+        background: rgba(0, 0, 0, 0.02);
+        border-color: rgba(0, 0, 0, 0.08);
+        color: #475569;
+    }
+    :global([data-theme="light"]) .btn-icon:hover {
+        background: rgba(99, 102, 241, 0.12);
+        color: #111827;
+        border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    :global([data-theme="light"]) .role-pill {
+        border-color: rgba(0, 0, 0, 0.08);
+        background: rgba(0, 0, 0, 0.03);
+    }
+
+    :global([data-theme="light"]) .status-pill.active {
+        background: rgba(16, 185, 129, 0.12);
+        color: #15803d;
+        border-color: rgba(16, 185, 129, 0.25);
+    }
+    :global([data-theme="light"]) .status-pill.inactive {
+        background: rgba(239, 68, 68, 0.12);
+        color: #b91c1c;
+        border-color: rgba(239, 68, 68, 0.25);
+    }
+
+    :global([data-theme="light"]) .empty-state-container {
+        background: #ffffff;
+        border-color: rgba(0, 0, 0, 0.06);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+    }
+
+    :global([data-theme="light"]) .form-group input,
+    :global([data-theme="light"]) .form-group select {
+        background: #ffffff;
+        border-color: rgba(0, 0, 0, 0.08);
+        color: #0f172a;
     }
 </style>

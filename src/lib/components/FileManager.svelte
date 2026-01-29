@@ -11,7 +11,7 @@
     import { flip } from "svelte/animate";
 
     // Props (Svelte 5)
-    let { mode = "admin" } = $props();
+    let { mode = "admin", showHeader = true } = $props();
 
     // State
     let files = $state<FileRecord[]>([]);
@@ -46,24 +46,54 @@
     // Stats
     let totalSize = $state(0);
 
+    function matchesFilter(f: FileRecord, filter: typeof activeFilter) {
+        if (filter === "all") return true;
+        if (filter === "image") return f.content_type.startsWith("image/");
+        if (filter === "video") return f.content_type.startsWith("video/");
+        if (filter === "audio") return f.content_type.startsWith("audio/");
+        if (filter === "document")
+            return (
+                !f.content_type.startsWith("image/") &&
+                !f.content_type.startsWith("video/") &&
+                !f.content_type.startsWith("audio/")
+            );
+        return true;
+    }
+
+    const filterCards = [
+        { id: "all", label: "All Files", icon: "hard-drive" },
+        { id: "image", label: "Images", icon: "image" },
+        { id: "video", label: "Videos", icon: "film" },
+        { id: "audio", label: "Audio", icon: "music" },
+        { id: "document", label: "Documents", icon: "file-text" },
+    ] as const;
+
+    let filterCounts = $derived.by(() => {
+        const counts: Record<string, number> = {
+            all: files.length,
+            image: 0,
+            video: 0,
+            audio: 0,
+            document: 0,
+        };
+
+        for (const f of files) {
+            if (matchesFilter(f, "image")) counts.image++;
+            if (matchesFilter(f, "video")) counts.video++;
+            if (matchesFilter(f, "audio")) counts.audio++;
+            if (matchesFilter(f, "document")) counts.document++;
+        }
+        return counts;
+    });
+
+    function setActiveFilter(next: typeof activeFilter) {
+        activeFilter = next;
+        deselectAll();
+    }
+
     // Derived filtered files
     let filteredFiles = $derived(
-        files.filter((f) => {
-            if (activeFilter === "all") return true;
-            if (activeFilter === "image")
-                return f.content_type.startsWith("image/");
-            if (activeFilter === "video")
-                return f.content_type.startsWith("video/");
-            if (activeFilter === "audio")
-                return f.content_type.startsWith("audio/");
-            if (activeFilter === "document")
-                return (
-                    !f.content_type.startsWith("image/") &&
-                    !f.content_type.startsWith("video/") &&
-                    !f.content_type.startsWith("audio/")
-                );
-            return true;
-        }),
+        files.filter((f) => matchesFilter(f, activeFilter)),
     );
 
     // Selection Helpers
@@ -86,6 +116,12 @@
     function deselectAll() {
         selectedFileIds = [];
     }
+
+    let selectedTotalSize = $derived.by(() => {
+        if (selectedFileIds.length === 0) return 0;
+        const map = new Map(files.map((f) => [f.id, f.size]));
+        return selectedFileIds.reduce((acc, id) => acc + (map.get(id) || 0), 0);
+    });
 
     async function handleBatchDelete() {
         if (selectedFileIds.length === 0) return;
@@ -147,6 +183,10 @@
     async function loadFiles() {
         loading = true;
         try {
+            selectedFileIds = [];
+            fileToDelete = null;
+            showDeleteModal = false;
+
             let res;
             if (mode === "admin") {
                 res = await api.storage.listFiles(page, perPage, searchQuery);
@@ -176,10 +216,11 @@
     async function handleFileSelect(e: Event) {
         const target = e.target as HTMLInputElement;
         if (target.files && target.files.length > 0) {
-            const file = target.files[0];
             // Delegate to global upload store
             if ($token) {
-                uploadStore.upload(file, $token);
+                for (const file of Array.from(target.files)) {
+                    uploadStore.upload(file, $token);
+                }
             }
             // Reset input
             target.value = "";
@@ -274,97 +315,81 @@
 </script>
 
 <div class="page-container" in:fly={{ y: 20, duration: 300 }}>
-    <!-- Page Header -->
-    <div class="page-header">
-        <div class="header-content">
-            <h1>
-                {mode === "admin" ? "Global Storage Manager" : "File Manager"}
-            </h1>
-            <p class="subtitle">
-                {mode === "admin"
-                    ? "Manage uploaded files and assets across all tenants"
-                    : "Manage your organization's files and assets"}
-            </p>
-        </div>
-        <div class="header-actions">
-            {#if mode !== "admin" && $can("upload", "storage")}
-                <input
-                    type="file"
-                    class="hidden"
-                    bind:this={fileInput}
-                    onchange={handleFileSelect}
-                />
-                <button class="btn-primary" onclick={() => fileInput?.click()}>
-                    <Icon name="plus" size={18} />
-                    <span>Upload</span>
-                </button>
-            {/if}
-
-            <div class="stats-badge">
-                <Icon name="hard-drive" size={16} />
-                <span>{total} Files</span>
+    {#if showHeader}
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="header-content">
+                <h1>
+                    {mode === "admin"
+                        ? "Global Storage Manager"
+                        : "File Manager"}
+                </h1>
+                <p class="subtitle">
+                    {mode === "admin"
+                        ? "Manage uploaded files and assets across all tenants"
+                        : "Manage your organization's files and assets"}
+                </p>
             </div>
-            <button class="btn-refresh" onclick={loadFiles} title="Refresh">
-                <Icon
-                    name="refresh-cw"
-                    size={18}
-                    class={loading ? "spin" : ""}
-                />
-            </button>
+            <div class="header-actions">
+                {#if mode !== "admin" && $can("upload", "storage")}
+                    <input
+                        type="file"
+                        class="hidden"
+                        multiple
+                        bind:this={fileInput}
+                        onchange={handleFileSelect}
+                    />
+                    <button
+                        class="btn btn-primary"
+                        onclick={() => fileInput?.click()}
+                    >
+                        <Icon name="plus" size={18} />
+                        <span>Upload</span>
+                    </button>
+                {/if}
+
+                <div class="stats-badge">
+                    <Icon name="hard-drive" size={16} />
+                    <span>{total} Files</span>
+                </div>
+                <button
+                    class="btn-refresh"
+                    onclick={loadFiles}
+                    title="Refresh"
+                >
+                    <Icon
+                        name="refresh-cw"
+                        size={18}
+                        class={loading ? "spin" : ""}
+                    />
+                </button>
+            </div>
         </div>
+    {/if}
+
+    <div class="filter-cards" aria-label="File type filters">
+        {#each filterCards as c}
+            <button
+                type="button"
+                class="filter-card"
+                class:active={activeFilter === c.id}
+                onclick={() => setActiveFilter(c.id)}
+                aria-label={`Filter: ${c.label}`}
+                title={`Filter: ${c.label}`}
+            >
+                <div class="fc-icon">
+                    <Icon name={c.icon} size={18} />
+                </div>
+                <div class="fc-text">
+                    <div class="fc-title">{c.label}</div>
+                    <div class="fc-value">{filterCounts[c.id]}</div>
+                </div>
+            </button>
+        {/each}
     </div>
 
     <!-- Main Content Card -->
-    <div class="content-card flex-row">
-        <!-- Filter Sidebar -->
-        <aside class="fm-sidebar">
-            <div class="filter-group">
-                <button
-                    class="filter-btn {activeFilter === 'all' ? 'active' : ''}"
-                    onclick={() => (activeFilter = "all")}
-                >
-                    <Icon name="hard-drive" size={18} />
-                    <span>All Files</span>
-                </button>
-                <button
-                    class="filter-btn {activeFilter === 'image'
-                        ? 'active'
-                        : ''}"
-                    onclick={() => (activeFilter = "image")}
-                >
-                    <Icon name="image" size={18} />
-                    <span>Images</span>
-                </button>
-                <button
-                    class="filter-btn {activeFilter === 'video'
-                        ? 'active'
-                        : ''}"
-                    onclick={() => (activeFilter = "video")}
-                >
-                    <Icon name="film" size={18} />
-                    <span>Videos</span>
-                </button>
-                <button
-                    class="filter-btn {activeFilter === 'audio'
-                        ? 'active'
-                        : ''}"
-                    onclick={() => (activeFilter = "audio")}
-                >
-                    <Icon name="music" size={18} />
-                    <span>Audio</span>
-                </button>
-                <button
-                    class="filter-btn {activeFilter === 'document'
-                        ? 'active'
-                        : ''}"
-                    onclick={() => (activeFilter = "document")}
-                >
-                    <Icon name="file-text" size={18} />
-                    <span>Documents</span>
-                </button>
-            </div>
-        </aside>
-
+    <div class="glass-card">
         <div class="fm-main">
             <!-- Toolbar / Action Bar -->
             <div class="toolbar">
@@ -375,6 +400,10 @@
                                 >{selectedFileIds.length}</span
                             >
                             <span>Selected</span>
+                            <span class="sep">•</span>
+                            <span class="meta"
+                                >{formatSize(selectedTotalSize)}</span
+                            >
                         </div>
                         <div class="action-buttons">
                             <button class="btn-ghost" onclick={deselectAll}
@@ -418,6 +447,41 @@
                             title="List View"
                         >
                             <Icon name="list" size={18} />
+                        </button>
+                    </div>
+
+                    <div class="toolbar-actions">
+                        {#if mode !== "admin" && $can("upload", "storage")}
+                            <input
+                                type="file"
+                                class="hidden"
+                                multiple
+                                bind:this={fileInput}
+                                onchange={handleFileSelect}
+                            />
+                            <button
+                                class="btn btn-primary"
+                                onclick={() => fileInput?.click()}
+                            >
+                                <Icon name="plus" size={18} />
+                                <span>Upload</span>
+                            </button>
+                        {/if}
+
+                        <div class="stats-badge">
+                            <Icon name="hard-drive" size={16} />
+                            <span>{total} Files</span>
+                        </div>
+                        <button
+                            class="btn-refresh"
+                            onclick={loadFiles}
+                            title="Refresh"
+                        >
+                            <Icon
+                                name="refresh-cw"
+                                size={18}
+                                class={loading ? "spin" : ""}
+                            />
                         </button>
                     </div>
                 {/if}
@@ -732,9 +796,13 @@
 
     <ConfirmDialog
         bind:show={showDeleteModal}
-        title="Delete File"
-        message="Are you sure you want to delete this file? This action cannot be undone."
-        confirmText="Delete"
+        title={fileToDelete
+            ? "Delete File"
+            : `Delete ${selectedFileIds.length} files`}
+        message={fileToDelete
+            ? "Are you sure you want to delete this file? This action cannot be undone."
+            : `Are you sure you want to delete ${selectedFileIds.length} files (${formatSize(selectedTotalSize)})? This action cannot be undone.`}
+        confirmText={fileToDelete ? "Delete" : `Delete ${selectedFileIds.length}`}
         type="danger"
         onconfirm={handleConfirmDelete}
     />
@@ -814,58 +882,117 @@
         color: var(--color-primary);
     }
 
-    .btn-primary {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        background: var(--color-primary);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-size: 0.9rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: filter 0.2s;
-        height: 36px;
-    }
-
-    .btn-primary:hover {
-        filter: brightness(1.1);
-    }
-
-    .btn-primary:disabled {
-        opacity: 0.7;
-        cursor: not-allowed;
-    }
-
     .hidden {
         display: none;
     }
 
-    /* Content Card */
-    .content-card {
-        background: var(--bg-surface);
-        border-radius: var(--radius-lg);
-        border: 1px solid var(--border-color);
-        box-shadow: var(--shadow-sm);
+    /* Filter cards */
+    .filter-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 1rem;
+    }
+
+    .filter-card {
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        padding: 1rem 1.1rem;
         display: flex;
-        flex-direction: column;
-        min-height: 500px; /* Substantial height */
-        flex: 1; /* Expand to fill space */
-        overflow: hidden; /* Contain sidebar */
+        align-items: center;
+        gap: 0.85rem;
+        cursor: pointer;
+        text-align: left;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     }
 
-    .content-card.flex-row {
-        flex-direction: row;
+    .filter-card:hover {
+        transform: translateY(-1px);
+        border-color: rgba(99, 102, 241, 0.28);
+        box-shadow: 0 14px 36px rgba(0, 0, 0, 0.25);
     }
 
-    .fm-sidebar {
-        width: 220px;
-        border-right: 1px solid var(--border-color);
-        background: var(--bg-surface);
-        padding: 1rem;
+    .filter-card.active {
+        border-color: rgba(99, 102, 241, 0.45);
+        box-shadow:
+            0 14px 36px rgba(0, 0, 0, 0.28),
+            0 0 0 1px rgba(99, 102, 241, 0.2) inset;
+    }
+
+    .fc-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text-primary);
         flex-shrink: 0;
+    }
+
+    .fc-text {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
+    .fc-title {
+        font-weight: 750;
+        color: var(--text-primary);
+        font-size: 0.95rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .fc-value {
+        font-weight: 800;
+        color: var(--text-primary);
+        font-size: 1.1rem;
+    }
+
+    :global([data-theme="light"]) .filter-card {
+        background: linear-gradient(135deg, #ffffff, #f7f7fb);
+        border-color: rgba(0, 0, 0, 0.06);
+        box-shadow:
+            0 10px 28px rgba(0, 0, 0, 0.06),
+            0 0 0 1px rgba(255, 255, 255, 0.8);
+    }
+
+    :global([data-theme="light"]) .filter-card:hover {
+        box-shadow:
+            0 14px 36px rgba(0, 0, 0, 0.08),
+            0 0 0 1px rgba(255, 255, 255, 0.8);
+    }
+
+    :global([data-theme="light"]) .filter-card.active {
+        border-color: rgba(99, 102, 241, 0.3);
+        box-shadow:
+            0 14px 36px rgba(0, 0, 0, 0.08),
+            0 0 0 1px rgba(99, 102, 241, 0.16) inset;
+    }
+
+    /* Main glass container */
+    .glass-card {
+        background: linear-gradient(145deg, var(--bg-surface), #0b0c10);
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+        overflow: hidden;
+        min-height: 520px;
+    }
+
+    :global([data-theme="light"]) .glass-card {
+        background: linear-gradient(135deg, #ffffff, #f7f7fb);
+        border-color: rgba(0, 0, 0, 0.06);
+        box-shadow:
+            0 12px 32px rgba(0, 0, 0, 0.08),
+            0 0 0 1px rgba(255, 255, 255, 0.8);
     }
 
     .fm-main {
@@ -873,39 +1000,6 @@
         display: flex;
         flex-direction: column;
         min-width: 0; /* Prevent flex overflow */
-    }
-
-    .filter-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
-
-    .filter-btn {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.75rem 1rem;
-        border: none;
-        background: transparent;
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-        font-weight: 500;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.2s;
-        text-align: left;
-        width: 100%;
-    }
-
-    .filter-btn:hover {
-        background: var(--bg-hover);
-        color: var(--text-primary);
-    }
-
-    .filter-btn.active {
-        background: var(--color-primary-subtle);
-        color: var(--color-primary);
     }
 
     .action-bar {
@@ -922,6 +1016,16 @@
         gap: 0.5rem;
         font-weight: 600;
         color: var(--text-primary);
+    }
+
+    .sep {
+        opacity: 0.6;
+    }
+
+    .meta {
+        color: var(--text-secondary);
+        font-weight: 650;
+        font-size: 0.9rem;
     }
 
     .count-pill {
@@ -988,11 +1092,15 @@
     /* Toolbar */
     .toolbar {
         padding: 1rem 1.5rem;
-        border-bottom: 1px solid var(--border-color);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 1rem;
+    }
+
+    :global([data-theme="light"]) .toolbar {
+        border-bottom-color: rgba(0, 0, 0, 0.06);
     }
 
     .search-box {
@@ -1036,6 +1144,13 @@
         padding: 3px;
         border-radius: 8px;
         border: 1px solid var(--border-color);
+    }
+
+    .toolbar-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-shrink: 0;
     }
 
     .toggle-btn {
@@ -1348,11 +1463,16 @@
     /* Pagination */
     .pagination-footer {
         padding: 1rem 1.5rem;
-        border-top: 1px solid var(--border-color);
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background: var(--bg-surface);
+        background: rgba(255, 255, 255, 0.015);
+    }
+
+    :global([data-theme="light"]) .pagination-footer {
+        border-top-color: rgba(0, 0, 0, 0.06);
+        background: rgba(0, 0, 0, 0.015);
     }
 
     .page-info {
@@ -1394,7 +1514,7 @@
             overflow-x: hidden;
         }
 
-        .content-card {
+        .glass-card {
             max-width: 100%;
         }
 
@@ -1409,10 +1529,65 @@
             justify-content: space-between;
         }
 
+        .filter-cards {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+
+        .filter-card {
+            padding: 0.85rem 0.95rem;
+            border-radius: 16px;
+        }
+
+        .fc-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+        }
+
+        .fc-title {
+            font-size: 0.9rem;
+        }
+
+        .fc-value {
+            font-size: 1rem;
+        }
+
         .toolbar {
             flex-direction: column;
             align-items: stretch;
             padding: 1rem;
+        }
+
+        .action-bar {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.75rem;
+        }
+
+        .selection-count {
+            flex-wrap: wrap;
+        }
+
+        .action-buttons {
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-actions {
+            width: 100%;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .toolbar-actions :global(.btn) {
+            flex: 1 1 auto;
+        }
+
+        .stats-badge {
+            flex: 1 1 auto;
+            justify-content: center;
         }
 
         .search-box {
@@ -1422,12 +1597,6 @@
         .view-toggles {
             display: none; /* Hide toggles on mobile */
         }
-
-        /* Force Grid View on mobile logic could be done in JS, but CSS override is safer for layout shifts */
-        /* However, since we use {#if viewMode}, JS state controls rendering. 
-           We should just ensure the table scrolls if list view IS somehow active, 
-           OR rely on the user seeing Grid view by default/forced.
-           Let's make the table scrollable just in case. */
 
         .list-view {
             overflow-x: auto;
@@ -1439,49 +1608,13 @@
             min-width: 600px; /* Force scroll */
         }
 
-        .content-card.flex-row {
-            flex-direction: column;
-        }
-
         /* Ensure browser area expands but contains overflow */
         .browser-area {
-            padding: 0.5rem;
-        }
-
-        .fm-sidebar {
-            width: 100%;
-            border-right: none;
-            border-bottom: 1px solid var(--border-color);
-            padding: 0.5rem;
-            flex-shrink: 0;
-        }
-
-        .filter-group {
-            flex-direction: row;
-            overflow-x: auto;
-            padding-bottom: 0.5rem;
-            scrollbar-width: none; /* Firefox */
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .filter-group::-webkit-scrollbar {
-            display: none; /* Chrome/Safari */
-        }
-
-        .filter-btn {
-            width: auto;
-            white-space: nowrap;
-            padding: 0.5rem 0.75rem;
-            font-size: 0.8rem;
-            border: 1px solid var(--border-color); /* Add border for better tap targets */
-            margin-right: 0.5rem;
+            padding: 0.75rem;
         }
 
         .grid-view {
-            grid-template-columns: repeat(
-                auto-fill,
-                minmax(130px, 1fr)
-            ); /* Smaller min width */
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 0.5rem;
         }
 

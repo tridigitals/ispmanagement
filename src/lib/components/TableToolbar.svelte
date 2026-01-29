@@ -36,9 +36,9 @@
     <div class="search-section">
         {#if showSearch}
             <div class="search-input-wrapper">
-                <div class="search-icon">
+                <span class="search-icon">
                     <Icon name="search" size={18} />
-                </div>
+                </span>
                 <input
                     type="text"
                     bind:value={searchQuery}
@@ -81,49 +81,52 @@
         align-items: center;
         gap: 1rem;
         flex: 1;
-        min-width: 300px;
+        min-width: 0;
+        flex-wrap: wrap;
     }
 
     .search-input-wrapper {
-        position: relative;
-        flex: 1;
-        max-width: 400px;
-    }
-
-    .search-icon {
-        position: absolute;
-        left: 0.75rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--text-secondary);
-        pointer-events: none;
         display: flex;
         align-items: center;
-        justify-content: center;
-    }
-
-    input {
-        width: 100%;
-        padding: 0.6rem 1rem 0.6rem 2.5rem;
-        border-radius: 8px;
+        gap: 0.5rem;
+        flex: 1 1 auto;
+        min-width: 240px;
+        max-width: 420px;
+        min-width: 0;
+        padding: 0.55rem 0.75rem;
+        border-radius: 12px;
         border: 1px solid var(--border-color);
         background: var(--bg-surface);
-        color: var(--text-primary);
-        font-size: 0.9rem;
         transition: all 0.2s;
     }
 
-    input:focus {
+    .search-icon {
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+    }
+
+    input {
+        width: auto;
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: var(--text-primary);
+        font-size: 0.9rem;
         outline: none;
+    }
+
+    .search-input-wrapper:focus-within {
         border-color: var(--color-primary);
         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        color: var(--text-primary);
     }
 
     .clear-btn {
-        position: absolute;
-        right: 0.5rem;
-        top: 50%;
-        transform: translateY(-50%);
         background: transparent;
         border: none;
         color: var(--text-secondary);
@@ -132,6 +135,7 @@
         display: flex;
         align-items: center;
         border-radius: 50%;
+        flex: 0 0 auto;
     }
 
     .clear-btn:hover {
@@ -143,11 +147,13 @@
         display: flex;
         align-items: center;
         gap: 0.75rem;
+        flex: 1 1 auto;
     }
 
     .actions {
         display: flex;
         gap: 0.75rem;
+        margin-left: auto;
     }
 
     @media (max-width: 768px) {
@@ -155,20 +161,51 @@
             flex-direction: column;
             align-items: stretch;
             gap: 1rem;
+            justify-content: flex-start;
+            margin-bottom: 0.75rem;
         }
 
         .search-section {
             flex-direction: column;
             align-items: stretch;
-            min-width: 100%;
+            min-width: 0;
+        }
+
+        .filters {
+            width: 100%;
+            justify-content: flex-start;
+            flex-direction: column;
+            align-items: stretch;
         }
 
         .search-input-wrapper {
-            max-width: 100%;
+            max-width: none;
+            min-width: 0;
+            flex: 0 0 auto;
         }
 
         .actions {
-            justify-content: flex-end;
+            width: 100%;
+            justify-content: stretch;
+            margin-left: 0;
+        }
+
+        .filters {
+            flex: 0 0 auto;
+        }
+
+        .actions :global(.btn),
+        .actions :global(.btn-primary),
+        .actions :global(.btn-secondary),
+        .actions :global(a.btn) {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 420px) {
+        .search-input-wrapper {
+            padding: 0.5rem 0.65rem;
         }
     }
 </style>

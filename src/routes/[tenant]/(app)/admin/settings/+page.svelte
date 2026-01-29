@@ -96,6 +96,14 @@
         },
     };
 
+    let mobileMenuItems = $derived(
+        Object.entries(categories).map(([id, cat]) => ({
+            id,
+            label: cat.label,
+            icon: cat.icon,
+        })),
+    );
+
     onMount(async () => {
         if (!$isAdmin || !$can("read", "settings")) {
             goto("/unauthorized");
@@ -499,7 +507,7 @@
                             </div>
                         {:else if activeTab === "security"}
                             <!-- Security Settings -->
-                            <div class="setting-item mt-6">
+                            <div class="setting-item setting-item-row mt-6">
                                 <div class="setting-info">
                                     <h3>Enforce Two-Factor Authentication</h3>
                                     <p>
@@ -1081,7 +1089,7 @@
                                                         >Bank Accounts</span
                                                     >
                                                     <button
-                                                        class="btn btn-primary btn-xs"
+                                                        class="btn btn-primary btn-sm"
                                                         onclick={() =>
                                                             (showAddBank =
                                                                 !showAddBank)}
@@ -1363,67 +1371,122 @@
             {/if}
         </main>
     </div>
+
+    <MobileFabMenu
+        items={mobileMenuItems}
+        {activeTab}
+        title="Settings"
+        on:change={(e) => {
+            activeTab = e.detail;
+            discardChanges();
+        }}
+    />
 </div>
 
 <style>
     .page-container {
-        padding: 2rem;
-        max-width: 1200px;
+        padding: clamp(1rem, 3vw, 1.5rem);
+        max-width: 1400px;
         margin: 0 auto;
+        --glass: rgba(255, 255, 255, 0.04);
+        --glass-2: rgba(255, 255, 255, 0.02);
+        --glass-border: rgba(255, 255, 255, 0.08);
+        --code-bg: rgba(255, 255, 255, 0.06);
+    }
+
+    :global([data-theme="light"]) .page-container {
+        --glass: rgba(0, 0, 0, 0.02);
+        --glass-2: rgba(0, 0, 0, 0.015);
+        --glass-border: rgba(0, 0, 0, 0.06);
+        --code-bg: rgba(0, 0, 0, 0.05);
     }
     .layout-grid {
         display: grid;
-        grid-template-columns: 260px 1fr;
-        gap: 2rem;
+        grid-template-columns: 280px 1fr;
+        gap: 1.5rem;
         align-items: start;
     }
 
     .sidebar {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 1rem;
+        background: linear-gradient(145deg, var(--glass), var(--glass-2));
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 0.75rem;
         position: sticky;
-        top: 2rem;
+        top: 1.5rem;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+        backdrop-filter: blur(10px);
+    }
+
+    :global([data-theme="light"]) .sidebar {
+        background: linear-gradient(135deg, #ffffff, #f7f7fb);
+        box-shadow:
+            0 12px 32px rgba(0, 0, 0, 0.08),
+            0 0 0 1px rgba(255, 255, 255, 0.8);
     }
     .nav-item {
         display: flex;
         align-items: center;
         gap: 0.75rem;
-        padding: 0.75rem 1rem;
+        padding: 0.7rem 0.9rem;
         width: 100%;
-        border: none;
+        border: 1px solid transparent;
         background: transparent;
         color: var(--text-secondary);
-        font-weight: 500;
+        font-weight: 600;
         cursor: pointer;
-        border-radius: 8px;
+        border-radius: 12px;
         text-align: left;
+        transition: all 0.2s;
     }
     .nav-item:hover {
-        background: var(--bg-hover);
+        background: rgba(99, 102, 241, 0.08);
         color: var(--text-primary);
     }
     .nav-item.active {
-        background: rgba(99, 102, 241, 0.1);
-        color: var(--color-primary);
-        font-weight: 600;
+        background: radial-gradient(
+            circle at 20% 20%,
+            rgba(99, 102, 241, 0.18),
+            transparent 60%
+        );
+        border-color: rgba(99, 102, 241, 0.35);
+        color: var(--text-primary);
+    }
+
+    :global([data-theme="light"]) .nav-item.active {
+        background: radial-gradient(
+            circle at 20% 20%,
+            rgba(99, 102, 241, 0.12),
+            transparent 60%
+        );
+        border-color: rgba(99, 102, 241, 0.25);
     }
 
     .card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
+        background: linear-gradient(145deg, var(--glass), var(--glass-2));
+        border: 1px solid var(--glass-border);
+        border-radius: 18px;
         overflow: hidden;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+        backdrop-filter: blur(10px);
+    }
+
+    :global([data-theme="light"]) .card {
+        background: linear-gradient(135deg, #ffffff, #f7f7fb);
+        box-shadow:
+            0 12px 32px rgba(0, 0, 0, 0.08),
+            0 0 0 1px rgba(255, 255, 255, 0.8);
     }
     .card-header {
-        padding: 1.5rem;
-        border-bottom: 1px solid var(--border-color);
+        padding: 1.25rem 1.75rem;
+        border-bottom: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.015);
     }
     .card-title {
         font-size: 1.25rem;
-        font-weight: 600;
+        font-weight: 800;
         margin: 0;
+        letter-spacing: 0.01em;
     }
     .card-subtitle {
         color: var(--text-secondary);
@@ -1432,21 +1495,68 @@
     }
 
     .settings-body {
-        padding: 2rem;
+        padding: 1.5rem 1.75rem;
     }
     .settings-list {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 2rem;
+        gap: 1.25rem;
     }
     .setting-item {
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
+        gap: 0.6rem;
+    }
+
+    .settings-list .setting-item {
+        padding: 1rem;
+        border-radius: 16px;
+        border: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.02);
+        transition: border-color 0.2s ease;
+    }
+
+    :global([data-theme="light"]) .settings-list .setting-item {
+        background: rgba(255, 255, 255, 0.7);
+    }
+
+    .settings-list .setting-item:hover {
+        border-color: rgba(99, 102, 241, 0.25);
+    }
+
+    .setting-item-row {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        border-radius: 16px;
+        border: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    :global([data-theme="light"]) .setting-item-row {
+        background: rgba(255, 255, 255, 0.7);
     }
     .setting-info label {
-        font-weight: 500;
+        font-weight: 650;
         color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+
+    .setting-info h3 {
+        font-size: 1rem;
+        font-weight: 800;
+        margin: 0;
+        color: var(--text-primary);
+        letter-spacing: 0.01em;
+    }
+
+    .setting-info p {
+        margin: 0.25rem 0 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        line-height: 1.4;
     }
 
     .setting-group {
@@ -1456,7 +1566,9 @@
         gap: 0.5rem;
     }
     .setting-group label {
-        font-weight: 500;
+        font-weight: 650;
+        color: var(--text-primary);
+        font-size: 0.9rem;
     }
     .help-text {
         font-size: 0.85rem;
@@ -1464,10 +1576,24 @@
         margin-top: 0.25rem;
     }
     code {
-        background: var(--bg-tertiary);
-        padding: 0.1rem 0.3rem;
-        border-radius: 4px;
-        font-family: monospace;
+        background: var(--code-bg);
+        border: 1px solid var(--glass-border);
+        padding: 0.12rem 0.35rem;
+        border-radius: 8px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+            "Liberation Mono", "Courier New", monospace;
+    }
+
+    .file-upload {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .file-upload input[type="file"] {
+        width: 100%;
+        max-width: 320px;
     }
 
     .upgrade-banner {
@@ -1477,7 +1603,7 @@
             rgba(236, 72, 153, 0.1)
         );
         border: 1px solid var(--color-primary-subtle);
-        border-radius: 8px;
+        border-radius: 16px;
         padding: 1rem;
         display: flex;
         align-items: center;
@@ -1485,7 +1611,16 @@
         margin-bottom: 1rem;
     }
     .icon-box {
-        color: var(--color-primary);
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text-primary);
+        flex-shrink: 0;
     }
     .upgrade-banner .text {
         flex: 1;
@@ -1493,7 +1628,8 @@
     .upgrade-banner h4 {
         margin: 0;
         font-size: 0.95rem;
-        font-weight: 600;
+        font-weight: 750;
+        color: var(--text-primary);
     }
     .upgrade-banner p {
         margin: 0;
@@ -1502,46 +1638,21 @@
     }
 
     .card-footer {
-        padding: 1.5rem;
-        background: var(--bg-tertiary);
-        border-top: 1px solid var(--border-color);
+        padding: 1.25rem 1.5rem;
+        background: rgba(255, 255, 255, 0.015);
+        border-top: 1px solid var(--glass-border);
         display: flex;
         justify-content: flex-end;
-        gap: 1rem;
-    }
-
-    .btn {
-        padding: 0.6rem 1.2rem;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        border: none;
-    }
-    .btn-primary {
-        background: var(--color-primary);
-        color: white;
-    }
-    .btn-primary:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-    .btn-secondary {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        color: var(--text-secondary);
-    }
-    .btn-sm {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.85rem;
+        gap: 0.75rem;
     }
 
     .logo-preview {
-        width: 48px;
-        height: 48px;
+        width: 44px;
+        height: 44px;
         object-fit: contain;
-        border-radius: 6px;
-        border: 1px solid var(--border-color);
-        margin-bottom: 0.5rem;
+        border-radius: 12px;
+        border: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.02);
     }
     .loading-state {
         padding: 4rem;
@@ -1551,10 +1662,15 @@
     .spinner {
         width: 32px;
         height: 32px;
-        border: 3px solid var(--border-color);
+        border: 3px solid rgba(255, 255, 255, 0.12);
         border-top-color: var(--color-primary);
         border-radius: 50%;
         animation: spin 1s linear infinite;
+    }
+
+    :global([data-theme="light"]) .spinner {
+        border-color: rgba(0, 0, 0, 0.12);
+        border-top-color: var(--color-primary);
     }
     @keyframes spin {
         to {
@@ -1569,104 +1685,206 @@
         .desktop-sidebar {
             display: none;
         }
+        .settings-body {
+            padding: 1.25rem;
+        }
+        .card-header {
+            padding: 1.1rem 1.25rem;
+        }
         .settings-list {
             grid-template-columns: 1fr;
         }
     }
 
+    /* Toggle Switch */
+    .toggle {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+        flex-shrink: 0;
+    }
+
+    .toggle input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(255, 255, 255, 0.1);
+        transition: 0.3s;
+        border-radius: 24px;
+        border: 1px solid var(--glass-border);
+    }
+
+    :global([data-theme="light"]) .slider {
+        background-color: rgba(0, 0, 0, 0.06);
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    input:checked + .slider {
+        background-color: var(--color-primary);
+        border-color: rgba(99, 102, 241, 0.4);
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(20px);
+    }
+
     /* Storage UI */
     .section-label {
-        font-weight: 600;
+        font-weight: 750;
         color: var(--text-primary);
-        margin-bottom: 1rem;
+        margin-bottom: 0.9rem;
         display: block;
+        font-size: 0.95rem;
     }
     .provider-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
         gap: 1rem;
-        margin-bottom: 2rem;
+        margin-bottom: 1.75rem;
     }
 
     .provider-card {
         display: flex;
         align-items: center;
         gap: 1rem;
-        padding: 1.25rem;
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
+        padding: 1.1rem 1.15rem;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
         text-align: left;
         cursor: pointer;
         transition: all 0.2s;
         position: relative;
     }
     .provider-card:hover {
-        border-color: var(--color-primary);
-        background: var(--bg-hover);
+        border-color: rgba(99, 102, 241, 0.28);
+        background: rgba(99, 102, 241, 0.06);
+        transform: translateY(-1px);
     }
     .provider-card.selected {
-        border: 2px solid var(--color-primary);
-        background: var(--color-primary-subtle);
+        border-color: rgba(99, 102, 241, 0.42);
+        background: radial-gradient(
+            circle at 20% 20%,
+            rgba(99, 102, 241, 0.18),
+            rgba(255, 255, 255, 0.03)
+        );
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+    }
+
+    :global([data-theme="light"]) .provider-card {
+        background: rgba(255, 255, 255, 0.75);
+    }
+
+    :global([data-theme="light"]) .provider-card:hover {
+        background: rgba(99, 102, 241, 0.06);
+    }
+
+    :global([data-theme="light"]) .provider-card.selected {
+        background: radial-gradient(
+            circle at 20% 20%,
+            rgba(99, 102, 241, 0.12),
+            rgba(255, 255, 255, 0.75)
+        );
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.08);
     }
 
     .p-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 8px;
-        background: var(--bg-tertiary);
+        width: 42px;
+        height: 42px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.06);
         color: var(--text-secondary);
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+        border: 1px solid var(--glass-border);
     }
     .selected .p-icon {
-        background: white;
-        color: var(--color-primary);
+        background: rgba(99, 102, 241, 0.16);
+        color: var(--text-primary);
+        border-color: rgba(99, 102, 241, 0.3);
     }
 
     .p-info {
         flex: 1;
         display: flex;
         flex-direction: column;
+        min-width: 0;
     }
     .p-name {
-        font-weight: 600;
+        font-weight: 750;
         color: var(--text-primary);
+        font-size: 0.95rem;
+        line-height: 1.2;
     }
     .p-desc {
-        font-size: 0.8rem;
+        font-size: 0.82rem;
         color: var(--text-secondary);
+        margin-top: 0.15rem;
     }
 
     .p-check {
-        color: var(--border-color);
+        color: rgba(255, 255, 255, 0.18);
     }
+
+    :global([data-theme="light"]) .p-check {
+        color: rgba(0, 0, 0, 0.18);
+    }
+
     .selected .p-check {
-        color: var(--color-primary);
+        color: rgba(99, 102, 241, 0.9);
     }
 
     .config-panel {
-        background: var(--bg-tertiary);
-        padding: 1.5rem;
-        border-radius: 12px;
-        border: 1px solid var(--border-color);
+        background: rgba(255, 255, 255, 0.02);
+        padding: 1.25rem;
+        border-radius: 16px;
+        border: 1px solid var(--glass-border);
     }
+
+    :global([data-theme="light"]) .config-panel {
+        background: rgba(255, 255, 255, 0.75);
+    }
+
     .config-panel h3 {
-        margin: 0 0 1.5rem 0;
+        margin: 0 0 1rem 0;
         font-size: 1rem;
+        font-weight: 800;
+        letter-spacing: 0.01em;
     }
     .config-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 1.5rem;
+        gap: 1.25rem;
     }
 
     .divider-line {
         height: 1px;
-        background: var(--border-color);
-        margin: 2rem 0;
+        background: var(--glass-border);
+        margin: 1.5rem 0;
     }
     .mb-6 {
         margin-bottom: 1.5rem;
@@ -1680,34 +1898,43 @@
 
     /* Test Email UI */
     .test-email-card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 1.5rem;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 1.1rem 1.25rem;
     }
+
+    :global([data-theme="light"]) .test-email-card {
+        background: rgba(255, 255, 255, 0.75);
+    }
+
     .test-header {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        color: var(--color-primary);
-        margin-bottom: 0.5rem;
+        gap: 0.6rem;
+        color: var(--text-primary);
+        margin-bottom: 0.35rem;
+        font-weight: 750;
     }
     .test-header h4 {
         margin: 0;
         font-size: 1rem;
-        font-weight: 600;
+        font-weight: 800;
     }
     .test-email-card p {
-        font-size: 0.85rem;
+        font-size: 0.88rem;
         color: var(--text-secondary);
-        margin-bottom: 1.25rem;
+        margin-bottom: 1rem;
     }
     .test-form {
         display: flex;
-        gap: 1rem;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        align-items: center;
     }
     .test-form :global(.input-wrapper) {
         flex: 1;
+        min-width: 220px;
     }
 
     @media (max-width: 640px) {
@@ -1716,61 +1943,88 @@
         }
         .test-form {
             flex-direction: column;
+            align-items: stretch;
+        }
+        .test-form :global(.input-wrapper) {
+            min-width: unset;
+        }
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+        .setting-item-row {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .setting-item-row .toggle {
+            align-self: flex-end;
         }
     }
 
     /* Payment UI */
     .method-card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
         overflow: hidden;
     }
+
+    :global([data-theme="light"]) .method-card {
+        background: rgba(255, 255, 255, 0.75);
+    }
+
     .method-header {
-        padding: 1.25rem;
+        padding: 1.1rem 1.25rem;
         display: flex;
         align-items: center;
         gap: 1rem;
-        background: var(--bg-surface);
+        border-bottom: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.015);
     }
     .m-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 8px;
+        width: 42px;
+        height: 42px;
+        border-radius: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 700;
-        font-size: 1.2rem;
         flex-shrink: 0;
+        border: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text-primary);
     }
     .m-icon.midtrans {
-        background: #002c5f;
+        background: linear-gradient(135deg, #002c5f, #0b1b39);
+        border-color: rgba(0, 44, 95, 0.45);
         color: white;
     }
     .m-icon.manual {
-        background: var(--bg-tertiary);
-        color: var(--text-secondary);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text-primary);
     }
 
     .m-info {
         flex: 1;
+        min-width: 180px;
     }
     .m-info h4 {
         margin: 0;
         font-size: 1rem;
         color: var(--text-primary);
+        font-weight: 800;
     }
     .m-info p {
-        margin: 0;
-        font-size: 0.85rem;
+        margin: 0.25rem 0 0;
+        font-size: 0.88rem;
         color: var(--text-secondary);
     }
 
     .method-config {
-        padding: 1.5rem;
-        background: var(--bg-tertiary);
-        border-top: 1px solid var(--border-color);
+        padding: 1.25rem;
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    :global([data-theme="light"]) .method-config {
+        background: rgba(0, 0, 0, 0.015);
     }
     .checkbox-row {
         display: flex;
@@ -1784,69 +2038,123 @@
         cursor: pointer;
         font-size: 0.9rem;
         color: var(--text-primary);
+        font-weight: 600;
     }
 
     .form-textarea {
         width: 100%;
-        padding: 0.75rem;
-        border-radius: 8px;
-        border: 1px solid var(--border-color);
-        background: var(--bg-surface);
+        padding: 0.75rem 0.9rem;
+        border-radius: 14px;
+        border: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.02);
         color: var(--text-primary);
         font-family: inherit;
-        font-size: 0.9rem;
+        font-size: 0.92rem;
         resize: vertical;
-        transition: border-color 0.2s;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    :global([data-theme="light"]) .form-textarea {
+        background: rgba(255, 255, 255, 0.75);
     }
     .form-textarea:focus {
         outline: none;
-        border-color: var(--color-primary);
+        border-color: rgba(99, 102, 241, 0.35);
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.14);
     }
 
     /* Bank Manager UI */
     .bank-accounts-manager {
         margin-top: 1.5rem;
-        border-top: 1px dashed var(--border-color);
-        padding-top: 1.5rem;
+        border-top: 1px dashed var(--glass-border);
+        padding-top: 1.25rem;
     }
     .bm-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 0.75rem;
         margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .label-text {
+        font-weight: 800;
+        color: var(--text-primary);
+        letter-spacing: 0.01em;
+    }
+
+    .add-bank-form {
+        display: grid;
+        gap: 0.75rem;
+        padding: 1rem;
+        border-radius: 16px;
+        border: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.02);
+        margin-bottom: 1rem;
+    }
+
+    :global([data-theme="light"]) .add-bank-form {
+        background: rgba(255, 255, 255, 0.75);
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        align-items: end;
+    }
+
+    .form-row :global(.btn) {
+        width: 100%;
+    }
+
+    .mt-2 {
+        margin-top: 0.5rem;
     }
 
     .bank-list-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
         gap: 1rem;
     }
 
     .bank-card-item {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 1.25rem;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 1.1rem 1.15rem;
         display: flex;
         flex-direction: column;
         gap: 0.75rem;
         position: relative;
         transition: all 0.2s;
     }
+
+    :global([data-theme="light"]) .bank-card-item {
+        background: rgba(255, 255, 255, 0.75);
+    }
+
     .bank-card-item:hover {
-        border-color: var(--color-primary);
-        box-shadow: var(--shadow-sm);
+        border-color: rgba(99, 102, 241, 0.25);
+        transform: translateY(-1px);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+    }
+
+    :global([data-theme="light"]) .bank-card-item:hover {
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
     }
 
     .bc-icon {
-        width: 36px;
-        height: 36px;
-        background: var(--bg-tertiary);
-        border-radius: 8px;
+        width: 38px;
+        height: 38px;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
         color: var(--text-secondary);
+        border: 1px solid var(--glass-border);
     }
     .bc-details {
         display: flex;
@@ -1854,50 +2162,78 @@
         gap: 0.25rem;
     }
     .bc-name {
-        font-weight: 700;
+        font-weight: 850;
         color: var(--text-primary);
-        font-size: 0.95rem;
+        font-size: 0.98rem;
     }
     .bc-number {
-        font-family: monospace;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+            "Liberation Mono", "Courier New", monospace;
         font-size: 1rem;
         letter-spacing: 0.05em;
         color: var(--text-primary);
     }
     .bc-holder {
-        font-size: 0.8rem;
+        font-size: 0.78rem;
         color: var(--text-secondary);
         text-transform: uppercase;
     }
 
     .bc-actions {
         position: absolute;
-        top: 1rem;
-        right: 1rem;
+        top: 0.9rem;
+        right: 0.9rem;
+    }
+
+    .btn-icon {
+        width: 34px;
+        height: 34px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        border: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-icon:hover {
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--text-primary);
+        border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-icon.delete:hover {
+        background: rgba(239, 68, 68, 0.12);
+        color: #ef4444;
+        border-color: rgba(239, 68, 68, 0.25);
     }
 
     .add-bank-card {
-        border: 2px dashed var(--border-color);
-        background: transparent;
-        border-radius: 12px;
+        border: 2px dashed var(--glass-border);
+        background: rgba(255, 255, 255, 0.01);
+        border-radius: 16px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 0.5rem;
-        min-height: 140px;
+        gap: 0.6rem;
+        min-height: 150px;
         color: var(--text-secondary);
         cursor: pointer;
         transition: all 0.2s;
     }
     .add-bank-card:hover {
-        border-color: var(--color-primary);
-        color: var(--color-primary);
-        background: var(--color-primary-subtle);
+        border-color: rgba(99, 102, 241, 0.35);
+        color: var(--text-primary);
+        background: rgba(99, 102, 241, 0.06);
+        transform: translateY(-1px);
     }
     .add-bank-card span {
-        font-weight: 600;
-        font-size: 0.9rem;
+        font-weight: 750;
+        font-size: 0.92rem;
     }
 
     .empty-state {
@@ -1906,19 +2242,25 @@
         flex-direction: column;
         align-items: center;
         padding: 2rem;
-        background: var(--bg-surface);
-        border-radius: 12px;
-        border: 1px solid var(--border-color);
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 16px;
+        border: 1px solid var(--glass-border);
+        color: var(--text-secondary);
+    }
+
+    :global([data-theme="light"]) .empty-state {
+        background: rgba(255, 255, 255, 0.75);
     }
     .icon-placeholder {
         width: 48px;
         height: 48px;
-        background: var(--bg-tertiary);
+        background: rgba(255, 255, 255, 0.06);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         margin-bottom: 1rem;
         color: var(--text-secondary);
+        border: 1px solid var(--glass-border);
     }
 </style>

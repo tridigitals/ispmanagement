@@ -151,6 +151,8 @@
                 <button
                     class="nav-item"
                     class:active={isActive(item)}
+                    aria-label={item.label}
+                    data-tooltip={item.label}
                     onclick={() => navigate(item.href)}
                 >
                     <Icon name={item.icon} size={18} />
@@ -167,6 +169,8 @@
                 class="context-btn super-admin"
                 onclick={() => goto("/superadmin")}
                 title="Super Admin Dashboard"
+                aria-label="Super Admin Dashboard"
+                data-tooltip="Super Admin"
             >
                 <Icon name="server" size={16} />
                 <span class="label">Super Admin</span>
@@ -185,6 +189,10 @@
                 title={isUrlAdmin
                     ? "Switch to User Dashboard"
                     : "Switch to Admin Panel"}
+                aria-label={isUrlAdmin
+                    ? "Switch to User Dashboard"
+                    : "Switch to Admin Panel"}
+                data-tooltip={isUrlAdmin ? $t("sidebar.user_view") : $t("sidebar.admin_panel")}
             >
                 <Icon name={isUrlAdmin ? "arrow-left" : "shield"} size={16} />
                 <span class="label"
@@ -256,7 +264,7 @@
     }
 
     /* Desktop styles */
-    @media (min-width: 768px) {
+    @media (min-width: 900px) {
         .sidebar {
             position: sticky;
             transform: none;
@@ -529,6 +537,30 @@
         bottom: 0;
         margin-left: 8px;
         margin-bottom: 0;
+    }
+
+    /* Tooltips shown only when sidebar is collapsed (desktop) */
+    @media (min-width: 900px) {
+        .sidebar.collapsed [data-tooltip] {
+            position: relative;
+        }
+
+        .sidebar.collapsed [data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: calc(100% + 8px);
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 6px 10px;
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            white-space: nowrap;
+            box-shadow: var(--shadow-md);
+            font-size: 0.85rem;
+            z-index: 200;
+        }
     }
 
     .menu-item {

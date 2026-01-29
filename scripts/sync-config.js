@@ -1,8 +1,15 @@
 import fs from 'fs';
 import path from 'path';
+import { URL } from 'url';
 
 const envPath = path.resolve(process.cwd(), '.env');
 const configPath = path.resolve(process.cwd(), 'src-tauri/tauri.conf.json');
+
+function getEnvValue(content, key) {
+    const regex = new RegExp(`^${key}=["']?([^"'\r\n]+)["']?`, 'm');
+    const match = content.match(regex);
+    return match ? match[1] : null;
+}
 
 function syncConfig() {
     try {
@@ -13,32 +20,52 @@ function syncConfig() {
 
         // Read .env
         const envContent = fs.readFileSync(envPath, 'utf8');
-        const match = envContent.match(/^APP_NAME=["']?([^"'\r\n]+)["']?/m);
-
-        if (!match || !match[1]) {
-            console.log('⚠ APP_NAME not found in .env, skipping sync.');
-            return;
-        }
-
-        const appName = match[1];
-        console.log(`ℹ Syncing APP_NAME: "${appName}" to tauri.conf.json...`);
+        const appName = getEnvValue(envContent, 'APP_NAME');
+        const apiUrl = getEnvValue(envContent, 'VITE_API_URL');
 
         // Read tauri.conf.json
         const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-
         let changed = false;
 
-        // Update productName
-        if (config.productName !== appName) {
-            config.productName = appName;
-            changed = true;
-        }
-
-        // Update window title
-        if (config.app && config.app.windows && config.app.windows[0]) {
-            if (config.app.windows[0].title !== appName) {
+        // Sync APP_NAME
+        if (appName) {
+            console.log(`ℹ Syncing APP_NAME: "${appName}"`);
+            if (config.productName !== appName) {
+                config.productName = appName;
+                changed = true;
+            }
+            if (config.app?.windows?.[0]?.title !== appName) {
+                if (!config.app) config.app = {};
+                if (!config.app.windows) config.app.windows = [{}];
                 config.app.windows[0].title = appName;
                 changed = true;
+            }
+        }
+
+        // Sync CSP based on VITE_API_URL
+        if (apiUrl) {
+            try {
+                const url = new URL(apiUrl);
+                const host = url.hostname;
+                const wssUrl = `wss://${host}`;
+                
+                console.log(`ℹ Syncing CSP for host: "${host}"`);
+
+                const baseCsp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: asset: https:;";
+                const connectSrcBase = "connect-src 'self' ipc: http://ipc.localhost http://localhost:3000 ws://localhost:3000 https:";
+                
+                // Construct new CSP with dynamic WSS URL
+                const newCsp = `${baseCsp} ${connectSrcBase} ${wssUrl};`;
+
+                if (config.app?.security?.csp !== newCsp) {
+                    if (!config.app) config.app = {};
+                    if (!config.app.security) config.app.security = {};
+                    
+                    config.app.security.csp = newCsp;
+                    changed = true;
+                }
+            } catch (e) {
+                console.warn(`⚠ Could not parse VITE_API_URL: "${apiUrl}", skipping CSP sync.`);
             }
         }
 

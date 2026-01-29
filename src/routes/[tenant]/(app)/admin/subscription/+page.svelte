@@ -116,11 +116,6 @@
 </script>
 
 <div class="subscription-page" in:fade>
-    <header class="page-header">
-        <h1>Subscription & Billing</h1>
-        <p class="subtitle">Manage your plan and monitor resource usage</p>
-    </header>
-
     <div class="tabs">
         <button
             class="tab-btn"
@@ -391,63 +386,65 @@
 
 <style>
     .subscription-page {
-        padding: 2rem;
-        max-width: 1200px;
+        padding: 1.5rem;
+        max-width: 1400px;
         margin: 0 auto;
-    }
-
-    .page-header {
-        margin-bottom: 2rem;
-    }
-    h1 {
-        font-size: 1.85rem;
-        font-weight: 700;
-        margin: 0 0 0.5rem 0;
-    }
-    .subtitle {
-        color: var(--text-secondary);
+        --glass: rgba(255, 255, 255, 0.04);
+        --glass-border: rgba(255, 255, 255, 0.08);
+        --accent-indigo: #6366f1;
+        --accent-emerald: #10b981;
     }
 
     /* Tabs */
     .tabs {
         display: flex;
-        gap: 1rem;
-        border-bottom: 1px solid var(--border-color);
-        margin-bottom: 2rem;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        padding: 0.4rem;
+        border-radius: 14px;
+        border: 1px solid var(--glass-border);
+        background: linear-gradient(145deg, var(--bg-surface), #0b0c10);
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+        flex-wrap: wrap;
     }
     .tab-btn {
-        padding: 0.75rem 1rem;
+        padding: 0.65rem 1rem;
         background: transparent;
-        border: none;
-        border-bottom: 2px solid transparent;
+        border: 1px solid transparent;
+        border-radius: 12px;
         color: var(--text-secondary);
-        font-weight: 600;
+        font-weight: 700;
         cursor: pointer;
         transition: all 0.2s;
+        white-space: nowrap;
     }
     .tab-btn:hover {
         color: var(--text-primary);
+        background: rgba(99, 102, 241, 0.08);
     }
     .tab-btn.active {
-        color: var(--color-primary);
-        border-bottom-color: var(--color-primary);
+        color: var(--text-primary);
+        background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.16), transparent 60%);
+        border-color: rgba(99, 102, 241, 0.35);
     }
 
     /* Plan Detail Card */
     .plan-detail-card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: 16px;
+        background: radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.14), transparent 60%),
+            linear-gradient(145deg, var(--bg-surface), #0b0c10);
+        border: 1px solid var(--glass-border);
+        border-radius: 18px;
         overflow: hidden;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
     }
 
     .detail-header {
-        padding: 2rem;
-        border-bottom: 1px solid var(--border-color);
+        padding: 1.75rem;
+        border-bottom: 1px solid var(--glass-border);
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background: var(--bg-surface);
+        background: rgba(255, 255, 255, 0.015);
     }
 
     .plan-title-row {
@@ -458,12 +455,14 @@
     .icon-box {
         width: 48px;
         height: 48px;
-        background: var(--color-primary-subtle);
-        color: var(--color-primary);
+        background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.22), transparent 60%),
+            rgba(255, 255, 255, 0.04);
+        color: var(--accent-indigo);
         border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
+        border: 1px solid rgba(99, 102, 241, 0.25);
     }
     .plan-title-row h2 {
         margin: 0;
@@ -506,8 +505,8 @@
 
     .detail-body {
         display: flex;
-        padding: 2rem;
-        gap: 3rem;
+        padding: 1.75rem;
+        gap: 2.5rem;
     }
 
     .usage-section,
@@ -527,7 +526,7 @@
 
     .vertical-divider {
         width: 1px;
-        background: var(--border-color);
+        background: var(--glass-border);
     }
 
     /* Usage Items */
@@ -552,7 +551,7 @@
 
     .progress-container {
         height: 8px;
-        background: var(--bg-tertiary);
+        background: rgba(255, 255, 255, 0.06);
         border-radius: 4px;
         overflow: hidden;
     }
@@ -617,17 +616,24 @@
         gap: 1.5rem;
     }
     .plan-option {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
+        background: linear-gradient(145deg, var(--bg-surface), #0b0c10);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
         padding: 1.5rem;
         display: flex;
         flex-direction: column;
         transition: all 0.2s;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+    }
+    .plan-option:hover {
+        transform: translateY(-2px);
+        border-color: rgba(99, 102, 241, 0.35);
+        box-shadow: 0 14px 32px rgba(99, 102, 241, 0.18);
     }
     .plan-option.active {
-        border-color: var(--color-primary);
-        background: var(--color-primary-subtle);
+        border-color: rgba(99, 102, 241, 0.35);
+        background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.14), transparent 60%),
+            linear-gradient(145deg, var(--bg-surface), #0b0c10);
     }
     .option-header {
         display: flex;
@@ -686,12 +692,12 @@
     }
     .btn-outline {
         background: transparent;
-        border: 1px solid var(--border-color);
+        border: 1px solid var(--glass-border);
         color: var(--text-primary);
     }
     .btn-outline:hover {
-        background: var(--bg-hover);
-        border-color: var(--color-primary);
+        background: rgba(99, 102, 241, 0.12);
+        border-color: rgba(99, 102, 241, 0.35);
     }
     .w-full {
         width: 100%;
@@ -701,6 +707,9 @@
         flex-direction: column;
         align-items: center;
         padding: 4rem;
+        background: var(--glass);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
     }
     .spinner {
         width: 32px;
@@ -722,15 +731,17 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        border: none;
-        background: transparent;
+        border: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.04);
         color: var(--text-secondary);
         cursor: pointer;
-        border-radius: 6px;
+        border-radius: 10px;
+        transition: all 0.2s;
     }
     .action-btn:hover {
-        background: var(--bg-hover);
+        background: rgba(99, 102, 241, 0.12);
         color: var(--text-primary);
+        border-color: rgba(99, 102, 241, 0.35);
     }
     .content-card {
         padding: 0;
@@ -744,6 +755,10 @@
     }
 
     @media (max-width: 768px) {
+        .subscription-page {
+            padding: 1rem;
+        }
+
         .detail-body {
             flex-direction: column;
             gap: 2rem;
@@ -752,5 +767,65 @@
             width: 100%;
             height: 1px;
         }
+    }
+
+    /* Light theme adjustments */
+    :global([data-theme="light"]) .tabs {
+        background: linear-gradient(135deg, #ffffff, #f7f7fb);
+        border-color: rgba(0, 0, 0, 0.06);
+        box-shadow:
+            0 10px 28px rgba(0, 0, 0, 0.08),
+            0 0 0 1px rgba(255, 255, 255, 0.8);
+    }
+    :global([data-theme="light"]) .tab-btn:hover {
+        background: rgba(99, 102, 241, 0.1);
+    }
+    :global([data-theme="light"]) .tab-btn.active {
+        background: rgba(99, 102, 241, 0.12);
+        border-color: rgba(99, 102, 241, 0.25);
+        color: #111827;
+    }
+    :global([data-theme="light"]) .plan-detail-card {
+        background: radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.08), transparent 60%),
+            linear-gradient(135deg, #ffffff, #f7f7fb);
+        border-color: rgba(0, 0, 0, 0.06);
+        box-shadow:
+            0 12px 32px rgba(0, 0, 0, 0.08),
+            0 0 0 1px rgba(255, 255, 255, 0.8);
+    }
+    :global([data-theme="light"]) .detail-header {
+        background: rgba(0, 0, 0, 0.02);
+        border-bottom-color: rgba(0, 0, 0, 0.06);
+    }
+    :global([data-theme="light"]) .icon-box {
+        background: rgba(99, 102, 241, 0.08);
+        border-color: rgba(99, 102, 241, 0.18);
+        color: #4f46e5;
+    }
+    :global([data-theme="light"]) .progress-container {
+        background: rgba(0, 0, 0, 0.06);
+    }
+    :global([data-theme="light"]) .plan-option {
+        background: linear-gradient(135deg, #ffffff, #f7f7fb);
+        border-color: rgba(0, 0, 0, 0.06);
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+    }
+    :global([data-theme="light"]) .plan-option.active {
+        background: rgba(99, 102, 241, 0.08);
+        border-color: rgba(99, 102, 241, 0.22);
+    }
+    :global([data-theme="light"]) .btn-outline {
+        border-color: rgba(0, 0, 0, 0.1);
+        color: #111827;
+    }
+    :global([data-theme="light"]) .action-btn {
+        background: rgba(0, 0, 0, 0.02);
+        border-color: rgba(0, 0, 0, 0.08);
+        color: #475569;
+    }
+    :global([data-theme="light"]) .action-btn:hover {
+        background: rgba(99, 102, 241, 0.12);
+        border-color: rgba(99, 102, 241, 0.25);
+        color: #111827;
     }
 </style>

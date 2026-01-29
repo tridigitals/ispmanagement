@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "A SaaS Boilerplate with Rust + Tauri"
 authors = ["Developer"]
 edition = "2021"
+default-run = "saas-tauri"
 
 [lints.rust]
 dependency_on_unit_never_type_fallback = "allow"

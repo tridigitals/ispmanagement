@@ -70,13 +70,21 @@
     .pagination-container {
         display: flex;
         align-items: center;
-        justify-content: flex-end;
-        padding: 0.75rem 1rem;
-        border-top: 1px solid var(--border-color);
+        justify-content: space-between;
+        padding: 0.9rem 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.015);
+        border-bottom-left-radius: var(--radius-md, 12px);
+        border-bottom-right-radius: var(--radius-md, 12px);
         color: var(--text-secondary);
         font-size: 0.85rem;
-        gap: 1.5rem;
+        gap: 1rem;
         flex-wrap: wrap; /* Wrap on small screens */
+    }
+
+    :global([data-theme="light"]) .pagination-container {
+        border-top-color: rgba(0, 0, 0, 0.06);
+        background: rgba(0, 0, 0, 0.015);
     }
 
     .rows-per-page {
@@ -85,14 +93,23 @@
         gap: 0.5rem;
     }
 
+    .rows-per-page label {
+        white-space: nowrap;
+        opacity: 0.85;
+    }
+
     .select-width {
-        width: 80px;
+        width: 92px;
     }
 
     .page-controls {
         display: flex;
         align-items: center;
         gap: 1rem;
+    }
+
+    .range-text {
+        white-space: nowrap;
     }
 
     .nav-buttons {
@@ -102,12 +119,14 @@
     }
 
     .icon-btn {
-        background: transparent;
-        border: none;
+        width: 36px;
+        height: 36px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         color: var(--text-secondary);
         cursor: pointer;
-        padding: 0.25rem;
-        border-radius: 50%;
+        padding: 0;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -115,8 +134,9 @@
     }
 
     .icon-btn:hover:not(:disabled) {
-        background: var(--bg-hover);
+        background: rgba(99, 102, 241, 0.12);
         color: var(--text-primary);
+        border-color: rgba(99, 102, 241, 0.35);
     }
 
     .icon-btn:disabled {
@@ -124,10 +144,49 @@
         cursor: not-allowed;
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: 768px) {
         .pagination-container {
-            justify-content: space-between;
+            flex-direction: column;
+            align-items: stretch;
             gap: 1rem;
+            padding: 0.9rem 1rem;
+        }
+
+        .rows-per-page {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .page-controls {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .nav-buttons {
+            justify-content: flex-end;
+        }
+    }
+
+    @media (max-width: 420px) {
+        .pagination-container {
+            padding: 0.75rem 0.85rem;
+            gap: 0.75rem;
+        }
+
+        .rows-per-page label {
+            font-size: 0.8rem;
+        }
+
+        .select-width {
+            width: 86px;
+        }
+
+        .page-controls {
+            gap: 0.75rem;
+        }
+
+        .range-text {
+            font-size: 0.8rem;
         }
     }
 </style>

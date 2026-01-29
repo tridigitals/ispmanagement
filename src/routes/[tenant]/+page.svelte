@@ -631,15 +631,15 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 2rem;
+        padding: clamp(1.25rem, 4vw, 2rem);
         width: 100%;
     }
 
     .form-wrapper {
         width: 100%;
-        max-width: 400px;
+        max-width: 480px;
         background: var(--bg-surface);
-        padding: 2.5rem;
+        padding: clamp(1.5rem, 4vw, 2.5rem);
         border-radius: var(--radius-lg);
         border: 1px solid var(--border-color);
         box-shadow: var(--shadow-md);
@@ -928,5 +928,15 @@
     .btn-link:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+    }
+
+    @media (max-width: 480px) {
+        .form-wrapper {
+            padding: 1.25rem;
+        }
+
+        .form-header h2 {
+            font-size: 1.4rem;
+        }
     }
 </style>

@@ -73,7 +73,7 @@
     {:else}
         <div class="stats-grid">
             <div
-                class="stat-card"
+                class="stat-card emerald"
                 onclick={() => goto(`${tenantPrefix}/admin/team`)}
                 role="button"
                 tabindex="0"
@@ -91,7 +91,7 @@
             </div>
 
             <div
-                class="stat-card"
+                class="stat-card cyan"
                 onclick={() => goto(`${tenantPrefix}/admin/settings`)}
                 role="button"
                 tabindex="0"
@@ -110,7 +110,7 @@
 
             <!-- Subscription Status Card -->
             <div
-                class="stat-card featured"
+                class="stat-card indigo"
                 onclick={() => goto(`${tenantPrefix}/admin/subscription`)}
                 role="button"
                 tabindex="0"
@@ -165,7 +165,9 @@
                     class="action-card"
                     onclick={() => goto(`${tenantPrefix}/admin/team`)}
                 >
-                    <div class="action-icon">👥</div>
+                    <div class="action-icon accent-emerald">
+                        <Icon name="users" size={18} />
+                    </div>
                     <h3>Manage Team</h3>
                     <p>View, edit, and invite team members.</p>
                 </button>
@@ -176,7 +178,9 @@
                     class="action-card"
                     onclick={() => goto(`${tenantPrefix}/admin/roles`)}
                 >
-                    <div class="action-icon">🔐</div>
+                    <div class="action-icon accent-amber">
+                        <Icon name="lock" size={18} />
+                    </div>
                     <h3>Roles & Permissions</h3>
                     <p>Manage roles and access control.</p>
                 </button>
@@ -187,7 +191,9 @@
                     class="action-card"
                     onclick={() => goto(`${tenantPrefix}/admin/settings`)}
                 >
-                    <div class="action-icon">⚙️</div>
+                    <div class="action-icon accent-cyan">
+                        <Icon name="settings" size={18} />
+                    </div>
                     <h3>Global Settings</h3>
                     <p>Configure application policies and defaults.</p>
                 </button>
@@ -197,7 +203,9 @@
                 class="action-card"
                 onclick={() => goto(`${tenantPrefix}/admin/subscription`)}
             >
-                <div class="action-icon">💳</div>
+                <div class="action-icon accent-indigo">
+                    <Icon name="credit-card" size={18} />
+                </div>
                 <h3>Billing</h3>
                 <p>Manage subscription and invoices.</p>
             </button>
@@ -206,11 +214,18 @@
 </div>
 
 <style>
-    .admin-content {
-        padding: 2rem;
-        max-width: 1400px;
-        margin: 0 auto;
-    }
+.admin-content {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    color: var(--text-primary);
+    --accent-emerald: #10b981;
+    --accent-cyan: #22d3ee;
+    --accent-indigo: #6366f1;
+    --accent-amber: #f59e0b;
+    --glass: rgba(255, 255, 255, 0.04);
+    --glass-border: rgba(255, 255, 255, 0.08);
+}
 
     .stats-grid {
         display: grid;
@@ -219,40 +234,117 @@
         margin-bottom: 3rem;
     }
 
-    .stat-card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 1.5rem;
-        display: flex;
-        align-items: center;
-        gap: 1.25rem;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
+.stat-card {
+    background: linear-gradient(145deg, var(--bg-surface), #0b0c10);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-primary);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
 
-    .stat-card:hover {
-        border-color: var(--color-primary);
-        transform: translateY(-2px);
-    }
+.stat-card:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-2px);
+}
 
-    .stat-card.featured {
-        border-color: var(--color-primary);
-        background: var(--color-primary-subtle);
-    }
+.stat-card.emerald {
+    background: radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.18), transparent 55%), #0c1411;
+    border-color: rgba(16, 185, 129, 0.25);
+}
 
-    .stat-icon {
-        font-size: 2rem;
-        width: 56px;
-        height: 56px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--bg-app);
-        border-radius: 12px;
-    }
+.stat-card.cyan {
+    background: radial-gradient(circle at 20% 20%, rgba(34, 211, 238, 0.2), transparent 55%), #0c1316;
+    border-color: rgba(34, 211, 238, 0.25);
+}
 
-    .stat-content {
+.stat-card.indigo {
+    background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.2), transparent 55%), #0e0c16;
+    border-color: rgba(99, 102, 241, 0.25);
+}
+
+.stat-icon {
+    font-size: 2rem;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+}
+
+.stat-card.emerald .stat-icon {
+    color: var(--accent-emerald);
+    background: radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.18), transparent 60%), rgba(255, 255, 255, 0.03);
+    border-color: rgba(16, 185, 129, 0.35);
+}
+
+.stat-card.cyan .stat-icon {
+    color: var(--accent-cyan);
+    background: radial-gradient(circle at 20% 20%, rgba(34, 211, 238, 0.2), transparent 60%), rgba(255, 255, 255, 0.03);
+    border-color: rgba(34, 211, 238, 0.35);
+}
+
+.stat-card.indigo .stat-icon {
+    color: var(--accent-indigo);
+    background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.2), transparent 60%), rgba(255, 255, 255, 0.03);
+    border-color: rgba(99, 102, 241, 0.35);
+}
+
+/* ---------- Light Theme Tweaks ---------- */
+:global([data-theme="light"]) .admin-content {
+    --glass: rgba(0, 0, 0, 0.03);
+    --glass-border: rgba(0, 0, 0, 0.08);
+}
+
+:global([data-theme="light"]) .stat-card {
+    background: linear-gradient(135deg, #ffffff, #f7f7fb);
+    border-color: rgba(0, 0, 0, 0.06);
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.08),
+        0 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
+:global([data-theme="light"]) .stat-card.emerald {
+    background: radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.08), transparent 55%), #ffffff;
+    border-color: rgba(16, 185, 129, 0.18);
+}
+
+:global([data-theme="light"]) .stat-card.cyan {
+    background: radial-gradient(circle at 20% 20%, rgba(34, 211, 238, 0.08), transparent 55%), #ffffff;
+    border-color: rgba(34, 211, 238, 0.18);
+}
+
+:global([data-theme="light"]) .stat-card.indigo {
+    background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.08), transparent 55%), #ffffff;
+    border-color: rgba(99, 102, 241, 0.18);
+}
+
+:global([data-theme="light"]) .stat-icon {
+    background: rgba(99, 102, 241, 0.06);
+}
+
+:global([data-theme="light"]) .action-card {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.06);
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.08),
+        0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+:global([data-theme="light"]) .action-icon {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+.stat-content {
         flex: 1;
         display: flex;
         flex-direction: column;
@@ -330,28 +422,62 @@
         gap: 1.5rem;
     }
 
-    .action-card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 1.5rem;
-        text-align: left;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
+.action-card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    padding: 1.5rem;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    color: var(--text-primary);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
 
-    .action-card:hover {
-        border-color: var(--color-primary);
-        box-shadow: var(--shadow-md);
-    }
+.action-card:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 14px 32px rgba(99, 102, 241, 0.25);
+    transform: translateY(-2px);
+}
 
-    .action-icon {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-    }
+.action-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--glass-border);
+}
+
+.accent-emerald {
+    color: var(--accent-emerald);
+    border-color: rgba(16, 185, 129, 0.35);
+    background: radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.12), transparent 55%);
+}
+
+.accent-amber {
+    color: var(--accent-amber);
+    border-color: rgba(245, 158, 11, 0.35);
+    background: radial-gradient(circle at 20% 20%, rgba(245, 158, 11, 0.12), transparent 55%);
+}
+
+.accent-cyan {
+    color: var(--accent-cyan);
+    border-color: rgba(34, 211, 238, 0.35);
+    background: radial-gradient(circle at 20% 20%, rgba(34, 211, 238, 0.12), transparent 55%);
+}
+
+.accent-indigo {
+    color: var(--accent-indigo);
+    border-color: rgba(99, 102, 241, 0.35);
+    background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.12), transparent 55%);
+}
 
     .action-card h3 {
         font-size: 1rem;

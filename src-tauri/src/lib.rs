@@ -3,12 +3,12 @@
 //! This is the core library for the Tauri application.
 //! It wires together all modules: database, services, and commands.
 
-mod commands;
-mod db;
-mod error;
-mod models;
-mod services;
-mod http;
+pub mod commands;
+pub mod db;
+pub mod error;
+pub mod models;
+pub mod services;
+pub mod http;
 
 use commands::*;
 use commands::audit::list_audit_logs;

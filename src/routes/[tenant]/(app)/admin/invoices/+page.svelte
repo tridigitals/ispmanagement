@@ -103,7 +103,7 @@
 
 <style>
     .page-container {
-        padding: 2rem;
+        padding: clamp(1rem, 3vw, 2rem);
         max-width: 1200px;
         margin: 0 auto;
     }
@@ -112,6 +112,8 @@
         justify-content: space-between;
         align-items: flex-start;
         margin-bottom: 2rem;
+        gap: 1rem;
+        flex-wrap: wrap;
     }
     .header-content h1 {
         font-size: 1.8rem;
@@ -193,5 +195,25 @@
     .btn-secondary {
         background: var(--bg-tertiary);
         color: var(--text-primary);
+    }
+
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .btn.btn-secondary {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .header-content h1 {
+            font-size: 1.35rem;
+        }
+
+        .content-card {
+            border-radius: 16px;
+        }
     }
 </style>

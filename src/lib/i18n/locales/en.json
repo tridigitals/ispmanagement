@@ -78,12 +78,20 @@
         "search_placeholder": "Search...",
         "notifications": "Notifications",
         "help": "Help",
+        "toggle_dark": "Switch to dark mode",
+        "toggle_light": "Switch to light mode",
         "titles": {
             "dashboard": "Dashboard",
             "profile": "My Profile",
             "admin_overview": "Admin Overview",
             "user_management": "User Management",
-            "global_settings": "Global Settings"
+            "global_settings": "Global Settings",
+            "team": "Team",
+            "roles": "Roles & Permissions",
+            "storage": "Storage",
+            "subscription": "Subscription",
+            "invoices": "Invoices",
+            "default": "Workspace"
         }
     },
     "dashboard": {

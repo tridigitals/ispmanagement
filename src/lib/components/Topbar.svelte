@@ -2,40 +2,76 @@
     import { page } from "$app/stores";
     import { user } from "$lib/stores/auth";
     import { isSidebarCollapsed } from "$lib/stores/ui";
+    import { theme } from "$lib/stores/theme";
     import { t } from "svelte-i18n";
     import Icon from "./Icon.svelte";
     import NotificationDropdown from "./NotificationDropdown.svelte";
 
     let { onMobileMenuClick }: { onMobileMenuClick: () => void } = $props();
+    const DESKTOP_BP = 900; // Keep in sync with --bp-lg
 
-    // Helper to get page title based on path
+    // Helper to get page title based on path (ordered by specificity)
     function getPageTitle(path: string) {
-        if (path.includes("/dashboard")) return $t("topbar.titles.dashboard");
-        if (path.includes("/profile")) return $t("topbar.titles.profile");
-        if (path.includes("/admin/users"))
-            return $t("topbar.titles.user_management");
-        if (path.includes("/admin/settings"))
-            return $t("topbar.titles.global_settings");
-        if (path.includes("/admin")) return $t("topbar.titles.admin_overview");
-        return "SaaS App";
+        const map: [string, string][] = [
+            ["/admin/team", $t("topbar.titles.team") || "Team"],
+            ["/admin/roles", $t("topbar.titles.roles") || "Roles"],
+            ["/admin/settings", $t("topbar.titles.global_settings") || "Settings"],
+            ["/admin/storage", $t("topbar.titles.storage") || "Storage"],
+            ["/admin/subscription", $t("topbar.titles.subscription") || "Subscription"],
+            ["/admin/invoices", $t("topbar.titles.invoices") || "Invoices"],
+            ["/admin", $t("topbar.titles.admin_overview") || "Admin"],
+            ["/profile", $t("topbar.titles.profile") || "Profile"],
+            ["/dashboard", $t("topbar.titles.dashboard") || "Dashboard"],
+        ];
+
+        for (const [route, label] of map) {
+            if (path.includes(route)) return label;
+        }
+        return $t("topbar.titles.default") || "SaaS App";
     }
 
     let title = $derived(getPageTitle($page.url.pathname));
+
+    function handleSidebarToggle() {
+        const isDesktop =
+            typeof window !== "undefined" && window.innerWidth >= DESKTOP_BP;
+        if (!isDesktop) {
+            onMobileMenuClick();
+            // Always keep desktop state expanded when coming from mobile
+            $isSidebarCollapsed = false;
+            return;
+        }
+        $isSidebarCollapsed = !$isSidebarCollapsed;
+    }
+
+    let toggleLabel = $derived(
+        $isSidebarCollapsed
+            ? $t("sidebar.expand") || "Expand sidebar"
+        : $t("sidebar.collapse") || "Collapse sidebar",
+    );
+
+    // Theme toggle
+    function toggleTheme() {
+        theme.toggle();
+    }
+
+    let themeLabel = $derived(
+        $theme === "light"
+            ? $t("topbar.toggle_dark") || "Switch to dark mode"
+            : $t("topbar.toggle_light") || "Switch to light mode",
+    );
+
+    let themeIcon = $derived($theme === "light" ? "moon" : "sun");
 </script>
 
 <header class="topbar">
     <div class="left-section">
-        <!-- Desktop Sidebar Toggle -->
         <button
-            class="icon-btn toggle-btn hide-mobile"
-            onclick={() => ($isSidebarCollapsed = !$isSidebarCollapsed)}
-        >
-            <Icon name="sidebar-toggle" size={20} />
-        </button>
-        <!-- Mobile Menu Toggle -->
-        <button
-            class="icon-btn toggle-btn hide-desktop"
-            onclick={onMobileMenuClick}
+            class="icon-btn toggle-btn"
+            onclick={handleSidebarToggle}
+            title={toggleLabel}
+            aria-label={toggleLabel}
+            data-tooltip={toggleLabel}
         >
             <Icon name="menu" size={20} />
         </button>
@@ -53,8 +89,13 @@
         <!-- Notification Dropdown -->
         <NotificationDropdown />
 
-        <button class="icon-btn" title={$t("topbar.help")}>
-            <Icon name="help-circle" size={18} />
+        <button
+            class="icon-btn"
+            title={themeLabel}
+            aria-label={themeLabel}
+            onclick={toggleTheme}
+        >
+            <Icon name={themeIcon} size={18} />
         </button>
     </div>
 </header>
@@ -67,7 +108,7 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 2rem;
+        padding: 0 clamp(12px, 4vw, 32px);
         flex-shrink: 0;
         z-index: 40;
     }
@@ -137,5 +178,39 @@
     .icon-btn:hover {
         background: var(--bg-tertiary);
         color: var(--text-primary);
+    }
+
+    /* Lightweight tooltip for desktop hover */
+    @media (min-width: 900px) {
+        .icon-btn[data-tooltip] {
+            position: relative;
+        }
+
+        .icon-btn[data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 6px 10px;
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            white-space: nowrap;
+            box-shadow: var(--shadow-md);
+            font-size: 0.85rem;
+            z-index: 10;
+        }
+    }
+
+    @media (max-width: 900px) {
+        .topbar {
+            padding: 0 clamp(12px, 5vw, 20px);
+        }
+
+        .search-bar {
+            margin-right: 0;
+        }
     }
 </style>

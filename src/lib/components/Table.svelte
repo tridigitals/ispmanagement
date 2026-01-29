@@ -286,7 +286,7 @@
     /* =========================================
        Mobile Responsive Card Transformation
        ========================================= */
-    @media (max-width: 768px) {
+    @media (max-width: 1024px) {
         .responsive-table.mobile-card,
         .responsive-table.mobile-card tbody,
         .responsive-table.mobile-card tr,
@@ -352,7 +352,8 @@
 
     .search-input-wrapper {
         position: relative;
-        max-width: 300px;
+        width: 100%;
+        max-width: 420px;
         display: flex;
         align-items: center;
         background: var(--bg-app, #f1f5f9);
@@ -361,6 +362,16 @@
         padding: 0.5rem 0.75rem;
         gap: 0.5rem;
         color: var(--text-secondary);
+    }
+
+    @media (max-width: 768px) {
+        .table-search {
+            padding: 0 0 0.75rem 0;
+        }
+
+        .search-input-wrapper {
+            max-width: none;
+        }
     }
 
     .search-input-wrapper:focus-within {

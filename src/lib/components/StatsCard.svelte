@@ -52,10 +52,14 @@
 
 <style>
     .stats-card {
-        background: var(--bg-surface, #1e293b);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 16px;
-        padding: 1.5rem;
+        background: linear-gradient(
+            145deg,
+            rgba(255, 255, 255, 0.06),
+            rgba(255, 255, 255, 0.02)
+        );
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        padding: 1.25rem 1.25rem;
         display: flex;
         align-items: flex-start;
         gap: 1rem;
@@ -66,7 +70,7 @@
 
     .stats-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 14px 36px rgba(0, 0, 0, 0.25);
     }
 
     .icon-wrapper {
@@ -112,5 +116,20 @@
     }
     .trend.neutral {
         color: var(--text-secondary, #94a3b8);
+    }
+
+    /* Light theme */
+    :global([data-theme="light"]) .stats-card {
+        background: linear-gradient(135deg, #ffffff, #f7f7fb);
+        border-color: rgba(0, 0, 0, 0.06);
+        box-shadow:
+            0 10px 28px rgba(0, 0, 0, 0.06),
+            0 0 0 1px rgba(255, 255, 255, 0.8);
+    }
+
+    :global([data-theme="light"]) .stats-card:hover {
+        box-shadow:
+            0 14px 36px rgba(0, 0, 0, 0.08),
+            0 0 0 1px rgba(255, 255, 255, 0.8);
     }
 </style>

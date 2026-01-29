@@ -49,6 +49,16 @@
         Download,
         CreditCard,
         Server,
+        Moon,
+        Sun,
+        Cloud,
+        Zap,
+        Send,
+        Landmark,
+        Circle,
+        TrendingUp,
+        TrendingDown,
+        Minus,
     } from "lucide-svelte";
 
     let {
@@ -81,6 +91,7 @@
         mail: Mail,
         lock: LockIcon,
         global: Globe,
+        globe: Globe,
         menu: Menu,
         "sidebar-toggle": PanelLeft,
         activity: Activity,
@@ -114,6 +125,16 @@
         download: Download,
         "credit-card": CreditCard,
         server: Server,
+        moon: Moon,
+        sun: Sun,
+        cloud: Cloud,
+        zap: Zap,
+        send: Send,
+        landmark: Landmark,
+        circle: Circle,
+        "trending-up": TrendingUp,
+        "trending-down": TrendingDown,
+        minus: Minus,
     };
 
     let IconComponent = $derived(icons[name] || HelpCircle);

@@ -2,4 +2,4 @@
     import FileManager from "$lib/components/FileManager.svelte";
 </script>
 
-<FileManager mode="tenant" />
+<FileManager mode="tenant" showHeader={false} />
