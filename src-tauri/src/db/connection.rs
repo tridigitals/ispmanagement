@@ -424,6 +424,7 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
             tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
             invoice_number TEXT UNIQUE NOT NULL,
             amount DECIMAL(10,2) NOT NULL,
+            currency_code TEXT NOT NULL DEFAULT 'IDR',
             status TEXT NOT NULL DEFAULT 'pending',
             description TEXT,
             due_date TIMESTAMPTZ NOT NULL,
@@ -481,6 +482,21 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
             END IF;
         END $$;
     "#)
+    .execute(pool)
+    .await?;
+
+    // Migration: Add currency_code to invoices if not exists
+    sqlx::query(
+        r#"
+        DO $$ 
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='invoices' AND column_name='currency_code') THEN
+                ALTER TABLE invoices ADD COLUMN currency_code TEXT NOT NULL DEFAULT 'IDR';
+            END IF;
+        END $$;
+    "#,
+    )
     .execute(pool)
     .await?;
 
@@ -962,6 +978,7 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
             tenant_id TEXT NOT NULL,
             invoice_number TEXT UNIQUE NOT NULL,
             amount REAL NOT NULL,
+            currency_code TEXT NOT NULL DEFAULT 'IDR',
             status TEXT NOT NULL DEFAULT 'pending',
             description TEXT,
             due_date TEXT NOT NULL,
@@ -1006,6 +1023,12 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     // Migration: Add merchant_id and proof_attachment to invoices (SQLite)
     let _ = sqlx::query(
         "ALTER TABLE invoices ADD COLUMN merchant_id TEXT REFERENCES tenants(id) ON DELETE CASCADE",
+    )
+    .execute(pool)
+    .await;
+
+    let _ = sqlx::query(
+        "ALTER TABLE invoices ADD COLUMN currency_code TEXT NOT NULL DEFAULT 'IDR'",
     )
     .execute(pool)
     .await;

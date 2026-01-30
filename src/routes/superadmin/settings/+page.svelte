@@ -25,6 +25,17 @@
 
     // General
     let appPublicUrl = "";
+    let currencyCode = "IDR";
+    const currencyCodeOptions = [
+        "IDR",
+        "USD",
+        "EUR",
+        "SGD",
+        "MYR",
+        "GBP",
+        "JPY",
+        "AUD",
+    ];
 
     // Authentication Settings
     let authAllowRegistration = false;
@@ -132,6 +143,7 @@
             // General
             appPublicUrl =
                 settingsMap["app_public_url"] || "http://localhost:3000";
+            currencyCode = (settingsMap["currency_code"] || "IDR").toUpperCase();
 
             // Authentication
             authAllowRegistration =
@@ -243,6 +255,11 @@
                     "app_public_url",
                     appPublicUrl,
                     "Public Application URL",
+                ),
+                api.settings.upsert(
+                    "currency_code",
+                    currencyCode.toUpperCase(),
+                    "Default currency code (ISO 4217)",
                 ),
                 api.settings.upsert(
                     "maintenance_mode",
@@ -572,6 +589,30 @@
                                         placeholder="https://..."
                                     />
                                 </div>
+                            </div>
+
+                            <div class="setting-row">
+                                <div class="setting-info">
+                                    <label
+                                        class="setting-label"
+                                        for="currency-code"
+                                        >Default Currency</label
+                                    >
+                                    <p class="setting-description">
+                                        Currency used for plan pricing and invoice
+                                        display (ISO 4217, e.g. IDR, USD).
+                                    </p>
+                                </div>
+                                <select
+                                    id="currency-code"
+                                    class="form-input"
+                                    bind:value={currencyCode}
+                                    on:change={handleChange}
+                                >
+                                    {#each currencyCodeOptions as opt}
+                                        <option value={opt}>{opt}</option>
+                                    {/each}
+                                </select>
                             </div>
 
                             <div class="setting-row">

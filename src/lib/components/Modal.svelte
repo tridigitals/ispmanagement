@@ -19,6 +19,7 @@
     }>();
 
     function close() {
+        show = false;
         if (onclose) onclose();
     }
 </script>

@@ -435,6 +435,9 @@ export const users = {
             email: data.email,
             name: data.name,
             role: data.role,
+            // HTTP handler expects camelCase `isActive`, Tauri command expects `is_active`.
+            // Send both to keep both runtimes working.
+            isActive: data.isActive,
             is_active: data.isActive,
         }),
 
@@ -516,6 +519,7 @@ export const settings = {
         app_name?: string,
         app_description?: string,
         default_locale?: string,
+        currency_code?: string,
         maintenance_mode?: boolean,
         maintenance_message?: string,
         payment_midtrans_enabled?: boolean,
@@ -706,13 +710,20 @@ export interface NotificationPreference {
 
 export interface Invoice {
     id: string;
+    tenant_id?: string;
     invoice_number: string;
     amount: number;
+    currency_code?: string;
     status: string; // "pending", "paid", "failed"
     description: string | null;
     due_date: string;
     paid_at: string | null;
     payment_method: string | null;
+    external_id?: string | null;
+    merchant_id?: string | null;
+    proof_attachment?: string | null;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export const payment = {

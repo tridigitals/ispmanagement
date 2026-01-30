@@ -1,23 +1,40 @@
 <script lang="ts">
     import { isSuperAdmin } from "$lib/stores/auth";
+    import { user as currentUser } from "$lib/stores/auth";
     import { api } from "$lib/api/client";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
-    import { fade, fly } from "svelte/transition";
+    import { fly } from "svelte/transition";
     import Icon from "$lib/components/Icon.svelte";
+    import Table from "$lib/components/Table.svelte";
+    import TableToolbar from "$lib/components/TableToolbar.svelte";
+    import StatsCard from "$lib/components/StatsCard.svelte";
+    import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
+    import Modal from "$lib/components/Modal.svelte";
+    import { toast } from "$lib/stores/toast";
     import type { User } from "$lib/api/client";
 
-    let allUsers: User[] = [];
-    let loading = true;
-    let searchQuery = "";
+    const columns = [
+        { key: "user", label: "User" },
+        { key: "email", label: "Email" },
+        { key: "role", label: "Role" },
+        { key: "tenant", label: "Tenant" },
+        { key: "status", label: "Status" },
+        { key: "joined", label: "Joined" },
+        { key: "actions", label: "", align: "right" as const },
+    ];
 
-    $: filteredUsers = searchQuery
-        ? allUsers.filter(
-              (u) =>
-                  u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  u.email.toLowerCase().includes(searchQuery.toLowerCase()),
-          )
-        : allUsers;
+    let allUsers = $state<User[]>([]);
+    let totalUsers = $state(0);
+    let loading = $state(true);
+    let error = $state("");
+
+    let tenantNameById = $state<Record<string, string>>({});
+    let tenantNameBySlug = $state<Record<string, string>>({});
+
+    let searchQuery = $state("");
+    let statusFilter = $state<"all" | "active" | "inactive">("all");
+    let roleFilter = $state<"all" | "superadmin" | "admin" | "user">("all");
 
     onMount(async () => {
         if (!$isSuperAdmin) {
@@ -26,290 +43,796 @@
         }
 
         try {
-            const usersRes = await api.users.list(1, 200);
-            allUsers = usersRes.data;
+            const [usersRes, tenantsRes] = await Promise.all([
+                api.users.list(1, 200),
+                api.superadmin.listTenants().catch(() => null),
+            ]);
+
+            allUsers = usersRes.data || [];
+            totalUsers = usersRes.total ?? allUsers.length;
+
+            const tenants: any[] = (tenantsRes as any)?.data || [];
+            const byId: Record<string, string> = {};
+            const bySlug: Record<string, string> = {};
+            for (const t of tenants) {
+                if (t?.id && t?.name) byId[String(t.id)] = String(t.name);
+                if (t?.slug && t?.name) bySlug[String(t.slug)] = String(t.name);
+            }
+            tenantNameById = byId;
+            tenantNameBySlug = bySlug;
         } catch (err) {
             console.error("Failed to load users:", err);
+            error = String(err);
         } finally {
             loading = false;
         }
     });
 
-    async function reset2FA(u: User) {
-        if (
-            !confirm(
-                `Are you sure you want to reset 2FA for ${u.name}? They will be able to login without a secondary code.`,
-            )
-        )
-            return;
+    function getRoleKey(u: User) {
+        if ((u as any).is_super_admin) return "superadmin";
+        const tenantRole = (u as any).tenant_role;
+        if (tenantRole) return String(tenantRole).toLowerCase();
+        return String((u as any).role || "user").toLowerCase();
+    }
 
+    function getTenantName(u: any) {
+        const id = u?.tenant_id ? String(u.tenant_id) : "";
+        const slug = u?.tenant_slug ? String(u.tenant_slug) : "";
+        return (
+            (id && tenantNameById[id]) ||
+            (slug && tenantNameBySlug[slug]) ||
+            ""
+        );
+    }
+
+    let stats = $derived({
+        total: allUsers.length,
+        active: allUsers.filter((u: any) => u.is_active).length,
+        inactive: allUsers.filter((u: any) => !u.is_active).length,
+        superadmins: allUsers.filter((u: any) => u.is_super_admin).length,
+    });
+
+    let filteredUsers = $derived(
+        allUsers.filter((u: any) => {
+            const q = searchQuery.trim().toLowerCase();
+            const matchesSearch =
+                !q ||
+                String(u.name || "")
+                    .toLowerCase()
+                    .includes(q) ||
+                String(u.email || "")
+                    .toLowerCase()
+                    .includes(q) ||
+                String(
+                    getTenantName(u) || u.tenant_slug || u.tenant_id || "",
+                )
+                    .toLowerCase()
+                    .includes(q);
+
+            const matchesStatus =
+                statusFilter === "all" ||
+                (statusFilter === "active" ? u.is_active : !u.is_active);
+
+            const roleKey = getRoleKey(u);
+            const matchesRole =
+                roleFilter === "all" || roleKey === roleFilter;
+
+            return matchesSearch && matchesStatus && matchesRole;
+        }),
+    );
+
+    let showResetConfirm = $state(false);
+    let confirmLoading = $state(false);
+    let userPending2FAReset = $state<User | null>(null);
+
+    function confirmReset2FA(u: User) {
+        userPending2FAReset = u;
+        showResetConfirm = true;
+    }
+
+    async function reset2FA() {
+        const u = userPending2FAReset;
+        if (!u) return;
+
+        confirmLoading = true;
         try {
             await api.auth.resetUser2FA(u.id);
             // Update local state
             allUsers = allUsers.map((user) =>
-                user.id === u.id ? { ...user, two_factor_enabled: false } : user,
+                user.id === u.id
+                    ? ({ ...user, two_factor_enabled: false } as any)
+                    : user,
             );
-            alert("Two-factor authentication has been reset.");
+            toast.success("Two-factor authentication has been reset");
+            showResetConfirm = false;
         } catch (err: any) {
-            alert("Failed to reset 2FA: " + err.message);
+            toast.error("Failed to reset 2FA: " + (err?.message || err));
+        } finally {
+            confirmLoading = false;
+            userPending2FAReset = null;
         }
+    }
+
+    let showStatusConfirm = $state(false);
+    let statusConfirmLoading = $state(false);
+    let userPendingStatus = $state<User | null>(null);
+    let pendingIsActive = $state<boolean>(false);
+
+    let statusConfirmTitle = $derived(
+        pendingIsActive ? "Activate User" : "Deactivate User",
+    );
+
+    let statusConfirmMessage = $derived.by(() => {
+        const u = userPendingStatus;
+        const name = u?.name || "this user";
+        if (pendingIsActive) {
+            return `Activate ${name}? They will be able to login again. Type ACTIVATE to confirm.`;
+        }
+        return `Deactivate ${name}? They will not be able to login. Type DEACTIVATE to confirm.`;
+    });
+
+    let statusConfirmKeyword = $derived(
+        pendingIsActive ? "ACTIVATE" : "DEACTIVATE",
+    );
+
+    let statusConfirmType = $derived<"danger" | "warning" | "info">(
+        pendingIsActive ? "info" : "danger",
+    );
+
+    function confirmToggleActive(u: User) {
+        if ((u as any).is_super_admin) {
+            toast.error("Super Admin accounts cannot be deactivated here");
+            return;
+        }
+        if (u.id === $currentUser?.id) {
+            toast.error("You cannot deactivate your own account");
+            return;
+        }
+        userPendingStatus = u;
+        pendingIsActive = !Boolean((u as any).is_active);
+        showStatusConfirm = true;
+    }
+
+    async function toggleActive() {
+        const u = userPendingStatus;
+        if (!u) return;
+
+        statusConfirmLoading = true;
+        try {
+            await api.users.update(u.id, { isActive: pendingIsActive });
+            allUsers = allUsers.map((x: any) =>
+                x.id === u.id ? { ...x, is_active: pendingIsActive } : x,
+            );
+            toast.success(
+                pendingIsActive ? "User activated" : "User deactivated",
+            );
+            showStatusConfirm = false;
+        } catch (e: any) {
+            toast.error(
+                "Failed to update user status: " + (e?.message || e),
+            );
+        } finally {
+            statusConfirmLoading = false;
+            userPendingStatus = null;
+        }
+    }
+
+    let showDetailsModal = $state(false);
+    let detailsUser = $state<User | null>(null);
+
+    function openDetails(u: User) {
+        detailsUser = u;
+        showDetailsModal = true;
+    }
+
+    function formatDateMaybe(value: any) {
+        if (!value) return "-";
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return "-";
+        return d.toLocaleString();
     }
 
     const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
 </script>
 
-<div class="content-card" in:fly={{ y: 20, delay: 100 }}>
-    <div class="card-header">
-        <div class="header-left">
-            <h2>All Users</h2>
-            <span class="count-badge">{allUsers.length} Total</span>
-        </div>
-        <div class="search-box">
-            <Icon name="search" size={18} />
-            <input
-                type="text"
-                placeholder="Search users..."
-                bind:value={searchQuery}
+<div class="superadmin-content fade-in">
+    <div class="stats-row" aria-label="User stats">
+        <button
+            class="stat-btn"
+            class:active={statusFilter === "all"}
+            onclick={() => {
+                statusFilter = "all";
+                roleFilter = "all";
+            }}
+            aria-label="Show all users"
+            title="Show all users"
+            type="button"
+        >
+            <StatsCard
+                title="All Users"
+                value={stats.total}
+                icon="users"
+                color="primary"
             />
-        </div>
+        </button>
+        <button
+            class="stat-btn"
+            class:active={statusFilter === "active"}
+            onclick={() => (statusFilter = "active")}
+            aria-label="Show active users"
+            title="Show active users"
+            type="button"
+        >
+            <StatsCard
+                title="Active Users"
+                value={stats.active}
+                icon="check-circle"
+                color="success"
+            />
+        </button>
+        <button
+            class="stat-btn"
+            class:active={statusFilter === "inactive"}
+            onclick={() => (statusFilter = "inactive")}
+            aria-label="Show inactive users"
+            title="Show inactive users"
+            type="button"
+        >
+            <StatsCard
+                title="Inactive Users"
+                value={stats.inactive}
+                icon="slash"
+                color="warning"
+            />
+        </button>
+        <button
+            class="stat-btn"
+            class:active={roleFilter === "superadmin"}
+            onclick={() => {
+                roleFilter = "superadmin";
+                statusFilter = "all";
+            }}
+            aria-label="Show super admins"
+            title="Show super admins"
+            type="button"
+        >
+            <StatsCard
+                title="Super Admins"
+                value={stats.superadmins}
+                icon="server"
+                color="danger"
+            />
+        </button>
     </div>
 
-    {#if loading}
-        <div class="loading-state">
-            <div class="spinner"></div>
-            <p>Loading users...</p>
+    <div class="glass-card" in:fly={{ y: 20, delay: 80 }}>
+        <div class="card-header glass">
+            <div>
+                <h3>Users</h3>
+                <span class="muted">Manage global users and access</span>
+            </div>
+            <span class="count-badge">{totalUsers || stats.total} users</span>
         </div>
-    {:else}
-        <div class="table-responsive">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>User</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Tenant ID</th>
-                        <th>Status</th>
-                        <th>Joined</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {#each filteredUsers as u}
-                        <tr class="fade-in-row">
-                            <td>
-                                <div class="user-info">
-                                    <div class="avatar">
-                                        {getInitials(u.name)}
-                                    </div>
-                                    <span class="user-name">{u.name}</span>
-                                </div>
-                            </td>
-                            <td>{u.email}</td>
-                            <td>
-                                {#if u.is_super_admin}
-                                    <span class="role-pill superadmin"
-                                        >Super Admin</span
-                                    >
-                                {:else if u.tenant_role}
-                                    <span
-                                        class="role-pill {u.tenant_role.toLowerCase()}"
-                                        >{u.tenant_role}</span
-                                    >
-                                    {#if u.role !== "user" && u.role !== "admin" && u.role !== u.tenant_role.toLowerCase()}
-                                        <span class="text-xs text-muted"
-                                            >({u.role})</span
-                                        >
-                                    {/if}
-                                {:else}
-                                    <span class="role-pill {u.role}"
-                                        >{u.role}</span
-                                    >
-                                {/if}
-                            </td>
-                            <td class="text-mono">
-                                {#if u.tenant_slug}
-                                    {u.tenant_slug}
-                                {:else}
-                                    <span class="text-muted">—</span>
-                                {/if}
-                            </td>
-                            <td>
-                                {#if u.is_active}
-                                    <span class="status-pill active">
-                                        <span class="dot"></span> Active
-                                    </span>
-                                {:else}
-                                    <span class="status-pill inactive">
-                                        <span class="dot"></span> Inactive
-                                    </span>
-                                {/if}
-                            </td>
-                            <td class="text-muted"
-                                >{new Date(
-                                    u.created_at,
-                                ).toLocaleDateString()}</td
+
+        <div class="toolbar-wrapper">
+            <TableToolbar bind:searchQuery placeholder="Search users...">
+                {#snippet filters()}
+                    <div class="filters-row">
+                        <div class="role-filter">
+                            <button
+                                type="button"
+                                class="filter-chip"
+                                class:active={roleFilter === "all"}
+                                onclick={() => (roleFilter = "all")}
                             >
-                            <td>
-                                <div class="actions">
-                                    {#if u.two_factor_enabled}
-                                        <button
-                                            class="btn-icon warning"
-                                            onclick={() => reset2FA(u)}
-                                            title="Reset 2FA"
-                                        >
-                                            <Icon name="shield-off" size={16} />
-                                        </button>
+                                All Roles
+                            </button>
+                            <button
+                                type="button"
+                                class="filter-chip"
+                                class:active={roleFilter === "admin"}
+                                onclick={() => (roleFilter = "admin")}
+                            >
+                                Admin
+                            </button>
+                            <button
+                                type="button"
+                                class="filter-chip"
+                                class:active={roleFilter === "user"}
+                                onclick={() => (roleFilter = "user")}
+                            >
+                                User
+                            </button>
+                            <button
+                                type="button"
+                                class="filter-chip"
+                                class:active={roleFilter === "superadmin"}
+                                onclick={() => (roleFilter = "superadmin")}
+                            >
+                                Super Admin
+                            </button>
+                        </div>
+
+                        <div class="status-filter">
+                            <button
+                                type="button"
+                                class="filter-chip"
+                                class:active={statusFilter === "all"}
+                                onclick={() => (statusFilter = "all")}
+                            >
+                                All
+                            </button>
+                            <button
+                                type="button"
+                                class="filter-chip"
+                                class:active={statusFilter === "active"}
+                                onclick={() => (statusFilter = "active")}
+                            >
+                                Active
+                            </button>
+                            <button
+                                type="button"
+                                class="filter-chip"
+                                class:active={statusFilter === "inactive"}
+                                onclick={() => (statusFilter = "inactive")}
+                            >
+                                Inactive
+                            </button>
+                        </div>
+                    </div>
+                {/snippet}
+            </TableToolbar>
+        </div>
+
+        {#if error}
+            <div class="error-state">
+                <Icon name="alert-circle" size={48} color="#ef4444" />
+                <p>{error}</p>
+            </div>
+        {:else}
+            <div class="table-wrapper">
+                <Table
+                    pagination={true}
+                    {columns}
+                    data={filteredUsers}
+                    {loading}
+                    emptyText="No users found"
+                >
+                    {#snippet empty()}
+                        <div class="empty-state-container">
+                            <div class="empty-icon">
+                                <Icon name="users" size={64} />
+                            </div>
+                            <h3>No users found</h3>
+                            <p>Try adjusting your search or filters.</p>
+                        </div>
+                    {/snippet}
+
+                    {#snippet cell({ item, key })}
+                        {#if key === "user"}
+                            <div class="user-info">
+                                <div class="avatar">
+                                    {getInitials(item.name)}
+                                </div>
+                                <div>
+                                    <div class="user-name">{item.name}</div>
+                                </div>
+                            </div>
+                        {:else if key === "email"}
+                            {item.email}
+                        {:else if key === "role"}
+                            {#if item.is_super_admin}
+                                <span class="role-pill superadmin">
+                                    Super Admin
+                                </span>
+                            {:else if item.tenant_role}
+                                <span
+                                    class="role-pill {item.tenant_role.toLowerCase()}"
+                                    >{item.tenant_role}</span
+                                >
+                                {#if item.role !== "user" && item.role !== "admin" && item.role !== item.tenant_role.toLowerCase()}
+                                    <span class="text-xs text-muted"
+                                        >({item.role})</span
+                                    >
+                                {/if}
+                            {:else}
+                                <span class="role-pill {item.role}"
+                                    >{item.role}</span
+                                >
+                            {/if}
+                        {:else if key === "tenant"}
+                            {#if getTenantName(item)}
+                                <div class="tenant-cell">
+                                    <div class="tenant-name">
+                                        {getTenantName(item)}
+                                    </div>
+                                    {#if item.tenant_slug}
+                                        <div class="tenant-meta text-mono">
+                                            {item.tenant_slug}
+                                        </div>
                                     {/if}
                                 </div>
-                            </td>
-                        </tr>
-                    {:else}
-                        <tr>
-                            <td colspan="6" class="empty-state">
-                                <Icon name="users" size={48} />
-                                <h3>No Users Found</h3>
-                                <p>No users match your search criteria.</p>
-                            </td>
-                        </tr>
-                    {/each}
-                </tbody>
-            </table>
-        </div>
-    {/if}
+                            {:else if item.tenant_slug}
+                                <div class="tenant-cell">
+                                    <div class="tenant-name">
+                                        {item.tenant_slug}
+                                    </div>
+                                </div>
+                            {:else}
+                                <span class="text-muted">-</span>
+                            {/if}
+                        {:else if key === "status"}
+                            {#if item.is_active}
+                                <span class="status-pill active">
+                                    <span class="dot"></span> Active
+                                </span>
+                            {:else}
+                                <span class="status-pill inactive">
+                                    <span class="dot"></span> Inactive
+                                </span>
+                            {/if}
+                        {:else if key === "joined"}
+                            <span class="text-muted">
+                                {new Date(item.created_at).toLocaleDateString()}
+                            </span>
+                        {:else if key === "actions"}
+                            <div class="actions">
+                                <button
+                                    class="btn-icon"
+                                    onclick={() => openDetails(item)}
+                                    title="View details"
+                                    aria-label="View details"
+                                >
+                                    <Icon name="eye" size={16} />
+                                </button>
+
+                                {#if item.two_factor_enabled}
+                                    <button
+                                        class="btn-icon warning"
+                                        onclick={() => confirmReset2FA(item)}
+                                        title="Reset 2FA"
+                                        aria-label="Reset 2FA"
+                                    >
+                                        <Icon name="shield-off" size={16} />
+                                    </button>
+                                {/if}
+
+                                <button
+                                    class="btn-icon {item.is_active ? 'danger' : 'success'}"
+                                    onclick={() => confirmToggleActive(item)}
+                                    title={item.is_active
+                                        ? "Deactivate user"
+                                        : "Activate user"}
+                                    aria-label={item.is_active
+                                        ? "Deactivate user"
+                                        : "Activate user"}
+                                    disabled={item.is_super_admin || item.id === $currentUser?.id}
+                                >
+                                    <Icon
+                                        name={item.is_active
+                                            ? "ban"
+                                            : "check-circle"}
+                                        size={16}
+                                    />
+                                </button>
+                            </div>
+                        {:else}
+                            {item[key]}
+                        {/if}
+                    {/snippet}
+                </Table>
+            </div>
+        {/if}
+    </div>
 </div>
 
+<ConfirmDialog
+    bind:show={showResetConfirm}
+    title="Reset Two-Factor Authentication"
+    message="Reset 2FA for this user? They will be able to login without a secondary code. Type RESET to confirm."
+    confirmText="Reset 2FA"
+    confirmationKeyword="RESET"
+    type="warning"
+    loading={confirmLoading}
+    onconfirm={reset2FA}
+/>
+
+<ConfirmDialog
+    bind:show={showStatusConfirm}
+    title={statusConfirmTitle}
+    message={statusConfirmMessage}
+    confirmText={pendingIsActive ? "Activate" : "Deactivate"}
+    confirmationKeyword={statusConfirmKeyword}
+    type={statusConfirmType}
+    loading={statusConfirmLoading}
+    onconfirm={toggleActive}
+/>
+
+<Modal
+    bind:show={showDetailsModal}
+    title={detailsUser ? `User Details — ${detailsUser.name}` : "User Details"}
+    width="640px"
+    onclose={() => {
+        showDetailsModal = false;
+        detailsUser = null;
+    }}
+>
+    {#if detailsUser}
+        <div class="details-grid">
+            <div class="detail-card">
+                <div class="detail-title">Account</div>
+                <div class="detail-row">
+                    <span class="detail-key">Name</span>
+                    <span class="detail-val">{detailsUser.name}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-key">Email</span>
+                    <span class="detail-val">{detailsUser.email}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-key">Role</span>
+                    <span class="detail-val">
+                        {#if detailsUser.is_super_admin}
+                            <span class="role-pill superadmin"
+                                >Super Admin</span
+                            >
+                        {:else}
+                            <span class="role-pill {detailsUser.role}"
+                                >{detailsUser.role}</span
+                            >
+                        {/if}
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-key">Status</span>
+                    <span class="detail-val">
+                        {#if detailsUser.is_active}
+                            <span class="status-pill active">
+                                <span class="dot"></span> Active
+                            </span>
+                        {:else}
+                            <span class="status-pill inactive">
+                                <span class="dot"></span> Inactive
+                            </span>
+                        {/if}
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-key">Created</span>
+                    <span class="detail-val"
+                        >{formatDateMaybe(detailsUser.created_at)}</span
+                    >
+                </div>
+                <div class="detail-row">
+                    <span class="detail-key">Last Login</span>
+                    <span class="detail-val">
+                        {formatDateMaybe(
+                            (detailsUser as any).last_login_at ||
+                                (detailsUser as any).last_login ||
+                                (detailsUser as any).last_login_date,
+                        )}
+                    </span>
+                </div>
+            </div>
+
+            <div class="detail-card">
+                <div class="detail-title">Tenant</div>
+                <div class="detail-row">
+                    <span class="detail-key">Tenant</span>
+                    <span class="detail-val">
+                        {#if getTenantName(detailsUser as any)}
+                            {getTenantName(detailsUser as any)}
+                        {:else}
+                            -
+                        {/if}
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-key">Slug</span>
+                    <span class="detail-val text-mono">
+                        {(detailsUser as any).tenant_slug || "-"}
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-key">Tenant Role</span>
+                    <span class="detail-val">
+                        {(detailsUser as any).tenant_role || "-"}
+                    </span>
+                </div>
+            </div>
+
+            <div class="detail-card">
+                <div class="detail-title">Security</div>
+                <div class="detail-row">
+                    <span class="detail-key">2FA Enabled</span>
+                    <span class="detail-val">
+                        {(detailsUser as any).two_factor_enabled
+                            ? "Yes"
+                            : "No"}
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-key">Preferred 2FA</span>
+                    <span class="detail-val">
+                        {(detailsUser as any).preferred_2fa_method || "-"}
+                    </span>
+                </div>
+            </div>
+        </div>
+    {/if}
+</Modal>
+
 <style>
-    .content-card {
-        background: var(--bg-surface);
+    .superadmin-content {
+        padding: clamp(16px, 3vw, 32px);
+        max-width: 1400px;
+        margin: 0 auto;
+        color: var(--text-primary);
+        --glass: rgba(255, 255, 255, 0.04);
+        --glass-border: rgba(255, 255, 255, 0.08);
+    }
+
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .stat-btn {
+        border: none;
+        padding: 0;
+        background: transparent;
+        cursor: pointer;
+        text-align: left;
+        border-radius: 18px;
+        transition: transform 0.15s ease;
+    }
+
+    .stat-btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .stat-btn.active :global(.stats-card) {
+        border-color: rgba(99, 102, 241, 0.35);
+        box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25);
+    }
+
+    .glass-card {
+        background: var(--glass);
+        border: 1px solid var(--glass-border);
         border-radius: var(--radius-lg);
-        border: 1px solid var(--border-color);
-        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(12px);
+    }
+
+    :global([data-theme="light"]) .glass-card {
+        background: rgba(255, 255, 255, 0.75);
+        border-color: rgba(0, 0, 0, 0.06);
+        box-shadow:
+            0 12px 28px rgba(0, 0, 0, 0.06),
+            0 0 0 1px rgba(255, 255, 255, 0.85);
     }
 
     .card-header {
-        padding: 1.5rem 2rem;
-        border-bottom: 1px solid var(--border-color);
+        padding: 1.25rem 1.25rem 1rem 1.25rem;
         display: flex;
+        align-items: flex-start;
         justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
         gap: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 
-    @media (max-width: 640px) {
-        .card-header {
-            padding: 1rem;
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .header-left {
-            width: 100%;
-            justify-content: space-between;
-        }
-
-        .search-box {
-            width: 100%;
-        }
-
-        .search-box input {
-            width: 100%;
-        }
+    :global([data-theme="light"]) .card-header {
+        border-bottom-color: rgba(0, 0, 0, 0.06);
     }
 
-    .header-left {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .card-header h2 {
-        font-size: 1.25rem;
-        font-weight: 700;
+    .card-header h3 {
         margin: 0;
+        font-size: 1.1rem;
+        font-weight: 800;
         color: var(--text-primary);
+        letter-spacing: -0.01em;
+    }
+
+    .muted {
+        display: block;
+        margin-top: 0.25rem;
+        color: var(--text-secondary);
+        font-size: 0.92rem;
     }
 
     .count-badge {
-        background: var(--bg-active);
-        color: var(--text-secondary);
-        padding: 0.2rem 0.6rem;
-        border-radius: 12px;
-        font-size: 0.8rem;
-        font-weight: 600;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: var(--text-primary);
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 650;
+        white-space: nowrap;
+        align-self: flex-start;
     }
 
-    .search-box {
+    :global([data-theme="light"]) .count-badge {
+        background: rgba(0, 0, 0, 0.03);
+        border-color: rgba(0, 0, 0, 0.06);
+    }
+
+    .toolbar-wrapper {
+        padding: 1rem 1.25rem 0.25rem 1.25rem;
+    }
+
+    .filters-row {
         display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
         align-items: center;
-        gap: 0.5rem;
-        background: var(--bg-app);
-        padding: 0.6rem 1rem;
-        border-radius: 8px;
-        border: 1px solid var(--border-color);
-        color: var(--text-secondary);
-        transition: border-color 0.2s;
+        width: 100%;
     }
 
-    .search-box:focus-within {
-        border-color: var(--color-primary);
-        color: var(--text-primary);
+    .status-filter,
+    .role-filter {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 0.35rem;
+        flex-wrap: wrap;
     }
 
-    .search-box input {
-        background: transparent;
+    :global([data-theme="light"]) .status-filter,
+    :global([data-theme="light"]) .role-filter {
+        background: rgba(0, 0, 0, 0.02);
+        border-color: rgba(0, 0, 0, 0.06);
+    }
+
+    .filter-chip {
         border: none;
-        color: var(--text-primary);
-        outline: none;
-        width: 200px;
-    }
-
-    .table-responsive {
-        width: 100%;
-        overflow-x: auto;
-    }
-
-    .data-table {
-        width: 100%;
-        border-collapse: collapse;
-        min-width: 900px; /* Ensure scroll on mobile */
-    }
-
-    .data-table th {
-        text-align: left;
-        padding: 1rem 2rem;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+        background: transparent;
         color: var(--text-secondary);
-        font-weight: 600;
-        border-bottom: 1px solid var(--border-color);
-        background: var(--bg-hover);
+        padding: 0.45rem 0.75rem;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 650;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+        white-space: nowrap;
     }
 
-    .data-table td {
-        padding: 1.25rem 2rem;
-        border-bottom: 1px solid var(--border-subtle);
-        vertical-align: middle;
+    .filter-chip:hover {
         color: var(--text-primary);
-        font-size: 0.95rem;
+        background: rgba(255, 255, 255, 0.05);
     }
 
-    .data-table tr:hover {
-        background: var(--bg-hover);
+    :global([data-theme="light"]) .filter-chip:hover {
+        background: rgba(0, 0, 0, 0.04);
+    }
+
+    .filter-chip.active {
+        background: rgba(99, 102, 241, 0.18);
+        border: 1px solid rgba(99, 102, 241, 0.25);
+        color: var(--text-primary);
+    }
+
+    .table-wrapper {
+        padding: 0 1.25rem 1rem 1.25rem;
     }
 
     .user-info {
         display: flex;
         align-items: center;
-        gap: 1rem;
+        gap: 0.85rem;
     }
 
     .avatar {
-        width: 40px;
-        height: 40px;
+        width: 42px;
+        height: 42px;
         background: linear-gradient(135deg, #475569, #334155);
-        border-radius: 10px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -321,6 +844,33 @@
     .user-name {
         font-weight: 600;
         color: var(--text-primary);
+    }
+
+    .text-xs {
+        font-size: 0.78rem;
+    }
+
+    .tenant-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        min-width: 0;
+    }
+
+    .tenant-name {
+        font-weight: 650;
+        color: var(--text-primary);
+        line-height: 1.15;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .tenant-meta {
+        opacity: 0.85;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .role-pill {
@@ -385,28 +935,6 @@
         color: var(--text-secondary);
     }
 
-    .loading-state {
-        padding: 4rem;
-        text-align: center;
-        color: var(--text-secondary);
-    }
-
-    .spinner {
-        width: 24px;
-        height: 24px;
-        border: 3px solid var(--border-color);
-        border-top-color: var(--color-primary);
-        border-radius: 50%;
-        margin: 0 auto 1rem auto;
-        animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
-    }
-
     .btn-icon:hover {
         background: var(--bg-hover);
         color: var(--text-primary);
@@ -417,19 +945,133 @@
         color: #f59e0b;
     }
 
+    .btn-icon.danger:hover {
+        background: rgba(239, 68, 68, 0.12);
+        color: #ef4444;
+    }
+
+    .btn-icon.success:hover {
+        background: rgba(16, 185, 129, 0.12);
+        color: #10b981;
+    }
+
     .actions {
         display: flex;
         gap: 0.5rem;
     }
 
-    .empty-state {
+    .empty-state-container {
+        padding: 2.25rem 1rem;
         text-align: center;
-        padding: 4rem;
         color: var(--text-secondary);
     }
 
-    .empty-state h3 {
+    .empty-icon {
+        opacity: 0.6;
+        margin-bottom: 0.75rem;
+    }
+
+    .empty-state-container h3 {
         color: var(--text-primary);
-        margin: 1rem 0 0.5rem 0;
+        margin: 0.25rem 0 0.35rem 0;
+    }
+
+    .error-state {
+        padding: 2rem 1.25rem;
+        text-align: center;
+        color: var(--text-secondary);
+    }
+
+    .error-state p {
+        margin: 0.75rem 0 0 0;
+        color: var(--text-secondary);
+    }
+
+    .details-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.9rem;
+    }
+
+    @media (min-width: 720px) {
+        .details-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .details-grid :global(.detail-card:nth-child(3)) {
+            grid-column: 1 / -1;
+        }
+    }
+
+    .detail-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        padding: 1rem;
+    }
+
+    :global([data-theme="light"]) .detail-card {
+        background: rgba(0, 0, 0, 0.02);
+        border-color: rgba(0, 0, 0, 0.06);
+    }
+
+    .detail-title {
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 0.75rem;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 0.5rem 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    :global([data-theme="light"]) .detail-row {
+        border-top-color: rgba(0, 0, 0, 0.06);
+    }
+
+    .detail-row:first-of-type {
+        border-top: none;
+        padding-top: 0;
+    }
+
+    .detail-key {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+
+    .detail-val {
+        color: var(--text-primary);
+        font-weight: 650;
+        text-align: right;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    @media (max-width: 900px) {
+        .stats-row {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 768px) {
+        .stats-row {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+
+        .toolbar-wrapper {
+            padding: 0.9rem 1rem 0 1rem;
+        }
+
+        .table-wrapper {
+            padding: 0 1rem 1rem 1rem;
+        }
     }
 </style>

@@ -46,7 +46,7 @@ impl AuditService {
     ) {
         // We spawn this to not block the main request flow, or just await it.
         // For safety/reliability in this context, we'll await it but ignore errors to not fail the main action.
-        let id = uuid::Uuid::new_v4().to_string();
+        let id = uuid::Uuid::new_v4();
         let now = Utc::now();
 
         // Ensure table exists (Quick fix for no migration runner)
@@ -59,10 +59,14 @@ impl AuditService {
         "#;
 
         #[cfg(feature = "postgres")]
+        let user_uuid = user_id.and_then(|v| uuid::Uuid::parse_str(v).ok());
+        #[cfg(feature = "postgres")]
+        let tenant_uuid = tenant_id.and_then(|v| uuid::Uuid::parse_str(v).ok());
+        #[cfg(feature = "postgres")]
         let res = sqlx::query(query)
-            .bind(&id)
-            .bind(user_id)
-            .bind(tenant_id)
+            .bind(id)
+            .bind(user_uuid)
+            .bind(tenant_uuid)
             .bind(action)
             .bind(resource)
             .bind(resource_id)
@@ -72,7 +76,7 @@ impl AuditService {
 
         #[cfg(feature = "sqlite")]
         let res = sqlx::query(query)
-            .bind(&id)
+            .bind(id.to_string())
             .bind(user_id)
             .bind(tenant_id)
             .bind(action)
@@ -106,9 +110,9 @@ impl AuditService {
         #[cfg(feature = "postgres")]
         sqlx::query(
             r#"CREATE TABLE IF NOT EXISTS audit_logs (
-                id TEXT PRIMARY KEY,
-                user_id TEXT,
-                tenant_id TEXT,
+                id UUID PRIMARY KEY,
+                user_id UUID,
+                tenant_id UUID,
                 action VARCHAR(255) NOT NULL,
                 resource VARCHAR(255) NOT NULL,
                 resource_id TEXT,

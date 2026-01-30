@@ -289,7 +289,7 @@ impl AuthService {
 
         let secret = self.jwt_secret.read().await;
 
-        decode::<Claims>(
+        let claims = decode::<Claims>(
             token,
             &DecodingKey::from_secret(secret.as_bytes()),
             &Validation::default(),
@@ -298,7 +298,40 @@ impl AuthService {
         .map_err(|e| match e.kind() {
             jsonwebtoken::errors::ErrorKind::ExpiredSignature => AppError::TokenExpired,
             _ => AppError::InvalidToken,
-        })
+        })?;
+
+        // Enforce tenant suspension for non-superadmin sessions.
+        if !claims.is_super_admin {
+            if let Some(ref tenant_id) = claims.tenant_id {
+                #[cfg(feature = "postgres")]
+                let is_active: Option<bool> =
+                    sqlx::query_scalar("SELECT is_active FROM tenants WHERE id = $1")
+                        .bind(tenant_id)
+                        .fetch_optional(&self.pool)
+                        .await
+                        .unwrap_or(None);
+
+                #[cfg(feature = "sqlite")]
+                let is_active: Option<i64> =
+                    sqlx::query_scalar("SELECT is_active FROM tenants WHERE id = $1")
+                        .bind(tenant_id)
+                        .fetch_optional(&self.pool)
+                        .await
+                        .unwrap_or(None);
+
+                #[cfg(feature = "postgres")]
+                let tenant_is_active = is_active.unwrap_or(false);
+
+                #[cfg(feature = "sqlite")]
+                let tenant_is_active = is_active.unwrap_or(0) != 0;
+
+                if !tenant_is_active {
+                    return Err(AppError::Forbidden("Tenant is suspended".to_string()));
+                }
+            }
+        }
+
+        Ok(claims)
     }
 
     /// Validate 2FA temp token (does not check sessions table)
@@ -1190,12 +1223,14 @@ impl AuthService {
 
     /// Complete Login Flow (Tenant resolution, Token generation)
     pub async fn complete_login(&self, user: crate::models::user::User) -> AppResult<AuthResponse> {
-        // Get user's primary tenant (oldest one they joined)
+        // Get user's primary ACTIVE tenant (oldest one they joined).
+        // If user belongs only to suspended tenants, block login (except superadmin).
         let tenant: Option<crate::models::tenant::Tenant> = sqlx::query_as(
             r#"
             SELECT t.* FROM tenants t
             JOIN tenant_members tm ON t.id = tm.tenant_id
             WHERE tm.user_id = $1
+              AND t.is_active = true
             ORDER BY tm.created_at ASC
             LIMIT 1
             "#,
@@ -1204,9 +1239,50 @@ impl AuthService {
         .fetch_optional(&self.pool)
         .await?;
 
+        // If no ACTIVE tenant is found but membership exists, do not self-heal into a new tenant.
+        // This prevents bypassing tenant suspension by auto-creating a new tenant.
+        if tenant.is_none() && !user.is_super_admin {
+            let has_any_membership: bool =
+                sqlx::query_scalar::<_, i64>("SELECT count(*) FROM tenant_members WHERE user_id = $1")
+                    .bind(&user.id)
+                    .fetch_one(&self.pool)
+                    .await
+                    .map(|count| count > 0)
+                    .unwrap_or(false);
+
+            if has_any_membership {
+                return Err(AppError::Validation(
+                    "Tenant is suspended. Please contact support.".to_string(),
+                ));
+            }
+        }
+
         // Self-healing: Create default tenant if none exists
         let mut tenant = tenant;
         if tenant.is_none() {
+            // Superadmins can login without an active tenant.
+            if user.is_super_admin {
+                let tenant_id = None;
+                let permissions = vec![];
+                let (token, expires_at) = self.generate_token(&user, tenant_id.clone()).await?;
+
+                let mut user_response: crate::models::user::UserResponse = user.into();
+                user_response.permissions = permissions;
+                user_response.tenant_slug = None;
+                user_response.tenant_custom_domain = None;
+
+                return Ok(AuthResponse {
+                    user: user_response,
+                    tenant: None,
+                    token: Some(token),
+                    expires_at: Some(expires_at),
+                    message: None,
+                    requires_2fa: None,
+                    temp_token: None,
+                    available_2fa_methods: None,
+                });
+            }
+
             info!("User {} has no tenant. Creating default tenant.", user.id);
             let tenant_name = format!("{}'s Team", user.name);
             let slug = uuid::Uuid::new_v4().to_string(); // Simple slug

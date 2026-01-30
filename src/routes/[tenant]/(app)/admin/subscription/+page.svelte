@@ -11,6 +11,7 @@
     import { fade } from "svelte/transition";
     import { toast } from "svelte-sonner";
     import Table from "$lib/components/Table.svelte";
+    import { formatMoney } from "$lib/utils/money";
 
     let loading = $state(true);
     let subscription = $state<TenantSubscriptionDetails | null>(null);
@@ -69,11 +70,8 @@
         return Math.min(100, (used / limit) * 100);
     }
 
-    function formatCurrency(amount: number) {
-        return new Intl.NumberFormat("id-ID", {
-            style: "currency",
-            currency: "IDR",
-        }).format(amount);
+    function formatCurrency(amount: number, currency?: string) {
+        return formatMoney(amount, { currency });
     }
 
     // Helper to get feature highlights based on slug (Mocking feature list for UI)
@@ -345,7 +343,7 @@
                     >
                         {#snippet cell({ item, column })}
                             {#if column.key === "amount"}
-                                {formatCurrency(item.amount)}
+                                {formatCurrency(item.amount, item.currency_code)}
                             {:else if column.key === "status"}
                                 <span class="status-pill {item.status}"
                                     >{item.status}</span

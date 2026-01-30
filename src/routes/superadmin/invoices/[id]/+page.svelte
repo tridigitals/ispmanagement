@@ -6,6 +6,7 @@
     import { toast } from "svelte-sonner";
     import { goto } from "$app/navigation";
     import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
+    import { formatMoney } from "$lib/utils/money";
 
     let invoiceId = $page.params.id;
     let invoice = $state<Invoice | null>(null);
@@ -69,11 +70,8 @@
         }
     }
 
-    function formatCurrency(amount: number) {
-        return new Intl.NumberFormat("id-ID", {
-            style: "currency",
-            currency: "IDR",
-        }).format(amount);
+    function formatCurrency(amount: number, currency?: string) {
+        return formatMoney(amount, { currency });
     }
 
     function getProofUrl(fileId: string) {
@@ -130,7 +128,10 @@
                     <div class="row">
                         <span class="label">Amount</span>
                         <span class="value highlight"
-                            >{formatCurrency(invoice.amount)}</span
+                            >{formatCurrency(
+                                invoice.amount,
+                                invoice.currency_code,
+                            )}</span
                         >
                     </div>
                     <div class="row">

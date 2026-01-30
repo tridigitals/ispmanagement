@@ -1,28 +1,30 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { api } from "$lib/api/client";
-    import { user } from "$lib/stores/auth";
     import { goto } from "$app/navigation";
-    import { fade } from "svelte/transition";
+    import { fly } from "svelte/transition";
     import Icon from "$lib/components/Icon.svelte";
     import Table from "$lib/components/Table.svelte";
+    import TableToolbar from "$lib/components/TableToolbar.svelte";
+    import StatsCard from "$lib/components/StatsCard.svelte";
     import Modal from "$lib/components/Modal.svelte";
     import Input from "$lib/components/Input.svelte";
     import Select from "$lib/components/Select.svelte";
     import { toast } from "$lib/stores/toast";
+    import { formatMoney } from "$lib/utils/money";
 
     import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
 
-    let tenants: any[] = [];
-    let plans: any[] = [];
-    let loading = true;
-    let error = "";
+    let tenants = $state<any[]>([]);
+    let plans = $state<any[]>([]);
+    let loading = $state(true);
+    let error = $state("");
 
     // Modal state
-    let isEditing = false;
-    let editingId = "";
-    let showCreateModal = false;
-    let newTenant = {
+    let isEditing = $state(false);
+    let editingId = $state("");
+    let showCreateModal = $state(false);
+    let newTenant = $state({
         name: "",
         slug: "",
         customDomain: "",
@@ -30,14 +32,51 @@
         ownerPassword: "",
         isActive: true,
         planId: "",
-    };
-    let creating = false;
-    let showPassword = false;
+    });
+    let creating = $state(false);
+    let showPassword = $state(false);
 
     // Confirm Dialog State
-    let showConfirm = false;
-    let confirmLoading = false;
-    let pendingDeleteId = "";
+    let showConfirm = $state(false);
+    let confirmLoading = $state(false);
+    let pendingDeleteId = $state("");
+
+    // Activate/Deactivate Tenant dialog
+    let showToggleConfirm = $state(false);
+    let toggleLoading = $state(false);
+    let pendingToggleTenant = $state<any | null>(null);
+
+    let searchQuery = $state("");
+    let statusFilter = $state<"all" | "active" | "inactive">("all");
+
+    let stats = $derived({
+        total: tenants.length,
+        active: tenants.filter((t) => t.is_active).length,
+        inactive: tenants.filter((t) => !t.is_active).length,
+    });
+
+    let filteredTenants = $derived(
+        tenants.filter((t) => {
+            const q = searchQuery.trim().toLowerCase();
+            const matchesSearch =
+                !q ||
+                String(t.name || "")
+                    .toLowerCase()
+                    .includes(q) ||
+                String(t.slug || "")
+                    .toLowerCase()
+                    .includes(q) ||
+                String(t.custom_domain || "")
+                    .toLowerCase()
+                    .includes(q);
+
+            const matchesStatus =
+                statusFilter === "all" ||
+                (statusFilter === "active" ? t.is_active : !t.is_active);
+
+            return matchesSearch && matchesStatus;
+        }),
+    );
 
     // Table columns
     const columns = [
@@ -58,7 +97,7 @@
         try {
             const [tenantsRes, plansRes] = await Promise.all([
                 api.superadmin.listTenants(),
-                api.plans.list()
+                api.plans.list(),
             ]);
 
             if (Array.isArray(tenantsRes)) {
@@ -71,18 +110,17 @@
 
             // Map plans for Select component
             plans = plansRes
-                .filter(p => p.is_active)
-                .map(p => ({
-                    label: `${p.name} - ${p.price_monthly > 0 ? '$' + p.price_monthly + '/mo' : 'Free'}`,
-                    value: p.id
+                .filter((p) => p.is_active)
+                .map((p) => ({
+                    label: `${p.name} - ${p.price_monthly > 0 ? `${formatMoney(p.price_monthly)}/mo` : 'Free'}`,
+                    value: p.id,
                 }));
-            
+
             // Set default plan if needed
-            const defaultPlan = plansRes.find(p => p.is_default);
+            const defaultPlan = plansRes.find((p) => p.is_default);
             if (defaultPlan) {
                 newTenant.planId = defaultPlan.id;
             }
-
         } catch (e: any) {
             console.error("Load data error:", e);
             error = e.toString();
@@ -110,11 +148,8 @@
     function openCreateModal() {
         isEditing = false;
         editingId = "";
-        
-        // Find default plan again to reset
-        // We need to keep plans state
-        
-        newTenant = {
+
+        Object.assign(newTenant, {
             name: "",
             slug: "",
             customDomain: "",
@@ -122,14 +157,14 @@
             ownerPassword: "",
             isActive: true,
             planId: plans.length > 0 ? plans[0].value : "",
-        };
+        });
         showCreateModal = true;
     }
 
     function openEditModal(tenant: any) {
         isEditing = true;
         editingId = tenant.id;
-        newTenant = {
+        Object.assign(newTenant, {
             name: tenant.name,
             slug: tenant.slug,
             customDomain: tenant.custom_domain || "",
@@ -137,7 +172,7 @@
             ownerPassword: "", // Password not needed for update
             isActive: tenant.is_active,
             planId: "", // Plan cannot be changed here for now (use subscription page)
-        };
+        });
         showCreateModal = true;
     }
 
@@ -186,7 +221,7 @@
                 newTenant.customDomain || null,
                 newTenant.ownerEmail,
                 newTenant.ownerPassword,
-                newTenant.planId || undefined // Pass planId
+                newTenant.planId || undefined, // Pass planId
             );
 
             showCreateModal = false;
@@ -212,6 +247,11 @@
         showConfirm = true;
     }
 
+    function confirmToggleTenant(tenant: any) {
+        pendingToggleTenant = tenant;
+        showToggleConfirm = true;
+    }
+
     async function handleDelete() {
         if (!pendingDeleteId) return;
         confirmLoading = true;
@@ -227,73 +267,243 @@
             pendingDeleteId = "";
         }
     }
+
+    let toggleKeyword = $derived.by(() =>
+        pendingToggleTenant?.is_active ? "DEACTIVATE" : "ACTIVATE",
+    );
+
+    let toggleTitle = $derived.by(() =>
+        pendingToggleTenant?.is_active ? "Deactivate Tenant" : "Activate Tenant",
+    );
+
+    let toggleType = $derived.by(() =>
+        pendingToggleTenant?.is_active ? "danger" : "info",
+    );
+
+    let toggleMessage = $derived.by(() => {
+        const name = pendingToggleTenant?.name || "this tenant";
+        if (pendingToggleTenant?.is_active) {
+            return `Deactivate ${name}? Users in this tenant will be blocked from accessing the app. Type ${toggleKeyword} to confirm.`;
+        }
+        return `Activate ${name}? Users in this tenant will regain access. Type ${toggleKeyword} to confirm.`;
+    });
+
+    let toggleConfirmText = $derived.by(() =>
+        pendingToggleTenant?.is_active ? "Deactivate" : "Activate",
+    );
+
+    async function handleToggleTenant() {
+        if (!pendingToggleTenant) return;
+        toggleLoading = true;
+        try {
+            await api.superadmin.updateTenant(
+                pendingToggleTenant.id,
+                pendingToggleTenant.name,
+                pendingToggleTenant.slug,
+                pendingToggleTenant.custom_domain || null,
+                !pendingToggleTenant.is_active,
+            );
+            toast.success(
+                pendingToggleTenant.is_active
+                    ? "Tenant deactivated"
+                    : "Tenant activated",
+            );
+            showToggleConfirm = false;
+            pendingToggleTenant = null;
+            await loadTenants();
+        } catch (e: any) {
+            toast.error("Failed to update tenant: " + e);
+        } finally {
+            toggleLoading = false;
+        }
+    }
 </script>
 
-<div class="page-container fade-in">
-    <div class="page-header">
-        <div class="header-content">
-            <h1>Tenants</h1>
-            <p class="subtitle">Manage all organizations in the platform</p>
-        </div>
-        <button class="btn btn-primary" on:click={openCreateModal}>
-            <Icon name="plus" size={20} />
-            <span>New Tenant</span>
+<div class="superadmin-content fade-in">
+    <div class="stats-row" aria-label="Tenant stats">
+        <button
+            class="stat-btn"
+            class:active={statusFilter === "all"}
+            onclick={() => (statusFilter = "all")}
+            aria-label="Show all tenants"
+            title="Show all tenants"
+            type="button"
+        >
+            <StatsCard
+                title="All Tenants"
+                value={stats.total}
+                icon="database"
+                color="primary"
+            />
+        </button>
+        <button
+            class="stat-btn"
+            class:active={statusFilter === "active"}
+            onclick={() => (statusFilter = "active")}
+            aria-label="Show active tenants"
+            title="Show active tenants"
+            type="button"
+        >
+            <StatsCard
+                title="Active Tenants"
+                value={stats.active}
+                icon="check-circle"
+                color="success"
+            />
+        </button>
+        <button
+            class="stat-btn"
+            class:active={statusFilter === "inactive"}
+            onclick={() => (statusFilter = "inactive")}
+            aria-label="Show inactive tenants"
+            title="Show inactive tenants"
+            type="button"
+        >
+            <StatsCard
+                title="Inactive Tenants"
+                value={stats.inactive}
+                icon="slash"
+                color="warning"
+            />
         </button>
     </div>
 
-    <div class="card content-card">
-        {#if error}
-            <div class="alert alert-error">
-                {error}
+    <div class="glass-card" in:fly={{ y: 20, delay: 80 }}>
+        <div class="card-header glass">
+            <div>
+                <h3>Tenants</h3>
+                <span class="muted"
+                    >Manage all organizations in the platform</span
+                >
             </div>
-        {/if}
+            <span class="count-badge">{stats.total} tenants</span>
+        </div>
 
-        <Table
-            {loading}
-            data={tenants}
-            {columns}
-            searchable={true}
-            searchPlaceholder="Search tenants..."
-        >
-            {#snippet cell({ item, column })}
-                {#if column.key === "custom_domain"}
-                    {#if item.custom_domain}
-                        <code class="domain-badge">{item.custom_domain}</code>
-                    {:else}
-                        <span class="text-muted">-</span>
-                    {/if}
-                {:else if column.key === "is_active"}
-                    <span
-                        class="status-badge {item.is_active
-                            ? 'success'
-                            : 'error'}"
-                    >
-                        {item.is_active ? "Active" : "Inactive"}
-                    </span>
-                {:else if column.key === "created_at"}
-                    {new Date(item.created_at).toLocaleDateString()}
-                {:else if column.key === "actions"}
-                    <div class="actions">
+        <div class="toolbar-wrapper">
+            <TableToolbar bind:searchQuery placeholder="Search tenants...">
+                {#snippet filters()}
+                    <div class="status-filter">
                         <button
-                            class="action-btn"
-                            title="Edit"
-                            on:click={() => openEditModal(item)}
+                            type="button"
+                            class="filter-chip"
+                            class:active={statusFilter === "all"}
+                            onclick={() => (statusFilter = "all")}
                         >
-                            <Icon name="edit" size={18} />
+                            All
                         </button>
                         <button
-                            class="action-btn delete"
-                            title="Delete"
-                            on:click={() => confirmDelete(item.id)}
+                            type="button"
+                            class="filter-chip"
+                            class:active={statusFilter === "active"}
+                            onclick={() => (statusFilter = "active")}
                         >
-                            <Icon name="trash" size={18} />
+                            Active
+                        </button>
+                        <button
+                            type="button"
+                            class="filter-chip"
+                            class:active={statusFilter === "inactive"}
+                            onclick={() => (statusFilter = "inactive")}
+                        >
+                            Inactive
                         </button>
                     </div>
-                {:else}
-                    {item[column.key]}
-                {/if}
-            {/snippet}
-        </Table>
+                {/snippet}
+                {#snippet actions()}
+                    <button class="btn btn-primary" onclick={openCreateModal}>
+                        <Icon name="plus" size={18} />
+                        <span>New Tenant</span>
+                    </button>
+                {/snippet}
+            </TableToolbar>
+        </div>
+
+        {#if error}
+            <div class="error-state">
+                <Icon name="alert-circle" size={48} color="#ef4444" />
+                <p>{error}</p>
+                <button class="btn btn-secondary" onclick={loadData}>
+                    Retry
+                </button>
+            </div>
+        {:else}
+            <div class="table-wrapper">
+                <Table
+                    pagination={true}
+                    {loading}
+                    data={filteredTenants}
+                    {columns}
+                    emptyText="No tenants found"
+                >
+                    {#snippet empty()}
+                        <div class="empty-state-container">
+                            <div class="empty-icon">
+                                <Icon name="database" size={64} />
+                            </div>
+                            <h3>No tenants found</h3>
+                            <p>Try adjusting your search or filters.</p>
+                        </div>
+                    {/snippet}
+
+                    {#snippet cell({ item, key })}
+                        {#if key === "custom_domain"}
+                            {#if item.custom_domain}
+                                <code class="domain-badge"
+                                    >{item.custom_domain}</code
+                                >
+                            {:else}
+                                <span class="text-muted">-</span>
+                            {/if}
+                        {:else if key === "is_active"}
+                            <span
+                                class="status-badge {item.is_active
+                                    ? 'success'
+                                    : 'error'}"
+                            >
+                                {item.is_active ? "Active" : "Inactive"}
+                            </span>
+                        {:else if key === "created_at"}
+                            {new Date(item.created_at).toLocaleDateString()}
+                        {:else if key === "actions"}
+                            <div class="actions">
+                                <button
+                                    class="btn-icon {item.is_active
+                                        ? 'warn'
+                                        : 'success'}"
+                                    title={item.is_active
+                                        ? "Deactivate"
+                                        : "Activate"}
+                                    onclick={() => confirmToggleTenant(item)}
+                                >
+                                    <Icon
+                                        name={item.is_active
+                                            ? "ban"
+                                            : "check-circle"}
+                                        size={18}
+                                    />
+                                </button>
+                                <button
+                                    class="btn-icon"
+                                    title="Edit"
+                                    onclick={() => openEditModal(item)}
+                                >
+                                    <Icon name="edit" size={18} />
+                                </button>
+                                <button
+                                    class="btn-icon danger"
+                                    title="Delete"
+                                    onclick={() => confirmDelete(item.id)}
+                                >
+                                    <Icon name="trash" size={18} />
+                                </button>
+                            </div>
+                        {:else}
+                            {item[key]}
+                        {/if}
+                    {/snippet}
+                </Table>
+            </div>
+        {/if}
     </div>
 </div>
 
@@ -305,7 +515,7 @@
         <Input
             label="Tenant Name"
             bind:value={newTenant.name}
-            on:input={generateSlug}
+            oninput={generateSlug}
             placeholder="e.g. Acme Corp"
         />
 
@@ -354,7 +564,7 @@
                 />
                 <button
                     class="toggle-password"
-                    on:click={() => (showPassword = !showPassword)}
+                    onclick={() => (showPassword = !showPassword)}
                     type="button"
                 >
                     <Icon name={showPassword ? "eye-off" : "eye"} size={18} />
@@ -372,14 +582,14 @@
         <div class="modal-actions">
             <button
                 class="btn btn-secondary"
-                on:click={() => (showCreateModal = false)}
+                onclick={() => (showCreateModal = false)}
                 disabled={creating}
             >
                 Cancel
             </button>
             <button
                 class="btn btn-primary"
-                on:click={handleSubmit}
+                onclick={handleSubmit}
                 disabled={creating}
             >
                 {#if creating}
@@ -402,38 +612,163 @@
     onconfirm={handleDelete}
 />
 
+<ConfirmDialog
+    bind:show={showToggleConfirm}
+    title={toggleTitle}
+    message={toggleMessage}
+    confirmText={toggleConfirmText}
+    confirmationKeyword={toggleKeyword}
+    type={toggleType}
+    loading={toggleLoading}
+    onconfirm={handleToggleTenant}
+/>
+
 <style>
-    .page-container {
-        padding: 2rem;
+    .superadmin-content {
+        padding: clamp(16px, 3vw, 32px);
         max-width: 1400px;
         margin: 0 auto;
+        color: var(--text-primary);
+        --glass: rgba(255, 255, 255, 0.04);
+        --glass-border: rgba(255, 255, 255, 0.08);
     }
 
-    .page-header {
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .stat-btn {
+        border: none;
+        padding: 0;
+        background: transparent;
+        cursor: pointer;
+        text-align: left;
+        border-radius: 18px;
+        transition: transform 0.15s ease;
+    }
+
+    .stat-btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .stat-btn.active :global(.stats-card) {
+        border-color: rgba(99, 102, 241, 0.35);
+        box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25);
+    }
+
+    .glass-card {
+        background: var(--glass);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(12px);
+    }
+
+    :global([data-theme="light"]) .glass-card {
+        background: rgba(255, 255, 255, 0.75);
+        border-color: rgba(0, 0, 0, 0.06);
+        box-shadow:
+            0 12px 28px rgba(0, 0, 0, 0.06),
+            0 0 0 1px rgba(255, 255, 255, 0.85);
+    }
+
+    .card-header {
+        padding: 1.25rem 1.25rem 1rem 1.25rem;
         display: flex;
-        justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 2rem;
+        justify-content: space-between;
+        gap: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 
-    .header-content h1 {
-        font-size: 1.8rem;
-        font-weight: 700;
-        margin: 0 0 0.5rem 0;
+    :global([data-theme="light"]) .card-header {
+        border-bottom-color: rgba(0, 0, 0, 0.06);
+    }
+
+    .card-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        letter-spacing: -0.01em;
+    }
+
+    .muted {
+        display: block;
+        margin-top: 0.25rem;
+        color: var(--text-secondary);
+        font-size: 0.92rem;
+    }
+
+    .count-badge {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: var(--text-primary);
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 650;
+        white-space: nowrap;
+        align-self: flex-start;
+    }
+
+    :global([data-theme="light"]) .count-badge {
+        background: rgba(0, 0, 0, 0.03);
+        border-color: rgba(0, 0, 0, 0.06);
+    }
+
+    .toolbar-wrapper {
+        padding: 1rem 1.25rem 0.25rem 1.25rem;
+    }
+
+    .status-filter {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 0.35rem;
+    }
+
+    :global([data-theme="light"]) .status-filter {
+        background: rgba(0, 0, 0, 0.02);
+        border-color: rgba(0, 0, 0, 0.06);
+    }
+
+    .filter-chip {
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        padding: 0.45rem 0.75rem;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 650;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+
+    .filter-chip:hover {
+        color: var(--text-primary);
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    :global([data-theme="light"]) .filter-chip:hover {
+        background: rgba(0, 0, 0, 0.04);
+    }
+
+    .filter-chip.active {
+        background: rgba(99, 102, 241, 0.18);
+        border: 1px solid rgba(99, 102, 241, 0.25);
         color: var(--text-primary);
     }
 
-    .subtitle {
-        color: var(--text-secondary);
-        font-size: 0.95rem;
-        margin: 0;
-    }
-
-    .content-card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
-        overflow: hidden;
+    .table-wrapper {
+        padding: 0 1.25rem 1rem 1.25rem;
     }
 
     .status-badge {
@@ -475,28 +810,22 @@
         gap: 0.5rem;
     }
 
-    .action-btn {
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: none;
-        background: transparent;
-        color: var(--text-secondary);
-        border-radius: var(--radius-md);
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .action-btn:hover {
-        background: var(--bg-hover);
-        color: var(--text-primary);
-    }
-
-    .action-btn.delete:hover {
+    :global(.btn-icon.danger:hover:not(:disabled)) {
         background: rgba(239, 68, 68, 0.1);
+        border-color: rgba(239, 68, 68, 0.35);
         color: #ef4444;
+    }
+
+    :global(.btn-icon.warn:hover:not(:disabled)) {
+        background: rgba(245, 158, 11, 0.12);
+        border-color: rgba(245, 158, 11, 0.35);
+        color: #f59e0b;
+    }
+
+    :global(.btn-icon.success:hover:not(:disabled)) {
+        background: rgba(16, 185, 129, 0.12);
+        border-color: rgba(16, 185, 129, 0.35);
+        color: #10b981;
     }
 
     .btn {
@@ -606,14 +935,17 @@
     }
 
     @media (max-width: 768px) {
-        .page-container {
-            padding: 1rem;
+        .stats-row {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
         }
 
-        .page-header {
-            flex-direction: column;
-            gap: 1rem;
-            align-items: stretch;
+        .toolbar-wrapper {
+            padding: 0.9rem 1rem 0 1rem;
+        }
+
+        .table-wrapper {
+            padding: 0 1rem 1rem 1rem;
         }
 
         .btn {

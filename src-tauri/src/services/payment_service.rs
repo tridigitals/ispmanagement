@@ -42,18 +42,64 @@ impl PaymentService {
         let now = Utc::now();
         let invoice_number = format!("INV-{}", now.format("%Y%m%d-%H%M%S"));
 
+        // Determine currency (tenant override -> global -> IDR)
+        #[cfg(feature = "postgres")]
+        let currency_code: String = {
+            let tenant_cc: Option<String> = sqlx::query_scalar(
+                "SELECT value FROM settings WHERE key = 'currency_code' AND tenant_id = $1",
+            )
+            .bind(tenant_id)
+            .fetch_optional(&self.pool)
+            .await
+            .unwrap_or(None);
+
+            let global_cc: Option<String> = sqlx::query_scalar(
+                "SELECT value FROM settings WHERE key = 'currency_code' AND tenant_id IS NULL",
+            )
+            .fetch_optional(&self.pool)
+            .await
+            .unwrap_or(None);
+
+            tenant_cc
+                .or(global_cc)
+                .unwrap_or_else(|| "IDR".to_string())
+        };
+
+        #[cfg(feature = "sqlite")]
+        let currency_code: String = {
+            let tenant_cc: Option<String> = sqlx::query_scalar(
+                "SELECT value FROM settings WHERE key = 'currency_code' AND tenant_id = ?",
+            )
+            .bind(tenant_id)
+            .fetch_optional(&self.pool)
+            .await
+            .unwrap_or(None);
+
+            let global_cc: Option<String> = sqlx::query_scalar(
+                "SELECT value FROM settings WHERE key = 'currency_code' AND tenant_id IS NULL",
+            )
+            .fetch_optional(&self.pool)
+            .await
+            .unwrap_or(None);
+
+            tenant_cc
+                .or(global_cc)
+                .unwrap_or_else(|| "IDR".to_string())
+        };
+
         #[cfg(feature = "postgres")]
         let invoice = sqlx::query_as::<_, Invoice>(
             r#"
-            INSERT INTO invoices (id, tenant_id, invoice_number, amount, status, description, due_date, external_id, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8, $8)
-            RETURNING id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
+            INSERT INTO invoices (id, tenant_id, invoice_number, amount, currency_code, status, description, due_date, external_id, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, $9)
+            RETURNING id, tenant_id, invoice_number, amount::FLOAT8 as amount, currency_code, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
             "#
         )
         .bind(&id)
         .bind(tenant_id)
         .bind(&invoice_number)
         .bind(amount)
+        .bind(&currency_code)
         .bind(&description)
         .bind(now + chrono::Duration::days(1))
         .bind(&external_id)
@@ -66,11 +112,11 @@ impl PaymentService {
         let invoice = {
             sqlx::query(
                 r#"
-                INSERT INTO invoices (id, tenant_id, invoice_number, amount, status, description, due_date, external_id, created_at, updated_at)
-                VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
+                INSERT INTO invoices (id, tenant_id, invoice_number, amount, currency_code, status, description, due_date, external_id, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
                 "#
             )
-            .bind(&id).bind(tenant_id).bind(&invoice_number).bind(amount).bind(&description)
+            .bind(&id).bind(tenant_id).bind(&invoice_number).bind(amount).bind(&currency_code).bind(&description)
             .bind((now + chrono::Duration::days(1)).to_rfc3339())
             .bind(&external_id)
             .bind(now.to_rfc3339()).bind(now.to_rfc3339())
@@ -89,7 +135,7 @@ impl PaymentService {
         #[cfg(feature = "postgres")]
         let invoice = sqlx::query_as::<_, Invoice>(
             r#"
-            SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at 
+            SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, currency_code, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at 
             FROM invoices WHERE id = $1
             "#
         )
@@ -114,7 +160,7 @@ impl PaymentService {
         let invoices = if let Some(tid) = tenant_id {
             sqlx::query_as::<_, Invoice>(
                 r#"
-                SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at 
+                SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, currency_code, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at 
                 FROM invoices WHERE tenant_id = $1 ORDER BY created_at DESC
                 "#
             )
@@ -123,7 +169,7 @@ impl PaymentService {
         } else {
             sqlx::query_as::<_, Invoice>(
                 r#"
-                SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at 
+                SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, currency_code, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at 
                 FROM invoices ORDER BY created_at DESC
                 "#
             )
@@ -151,6 +197,13 @@ impl PaymentService {
     /// Initiate Midtrans Payment (Get Snap Token)
     pub async fn initiate_midtrans(&self, invoice_id: &str) -> AppResult<String> {
         let invoice = self.get_invoice(invoice_id).await?;
+
+        if invoice.currency_code.to_uppercase() != "IDR" {
+            return Err(AppError::Configuration(format!(
+                "Midtrans only supports IDR in this implementation (invoice currency: {}).",
+                invoice.currency_code
+            )));
+        }
 
         // 1. Fetch Settings (Context Aware)
         // If merchant_id is present, use Tenant's keys. Otherwise, use Global (System) keys.
@@ -463,7 +516,7 @@ impl PaymentService {
         #[cfg(feature = "postgres")]
         let invoice: Option<Invoice> = sqlx::query_as::<_, Invoice>(
             r#"
-            SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at 
+            SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, currency_code, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at 
             FROM invoices WHERE invoice_number = $1
             "#
         )

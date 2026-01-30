@@ -1,223 +1,390 @@
 <script lang="ts">
-    import { onMount } from "svelte";
     import { api } from "$lib/api/client";
     import Icon from "$lib/components/Icon.svelte";
-    import StatsCard from "$lib/components/StatsCard.svelte";
-    import { fade } from "svelte/transition";
+    import { goto } from "$app/navigation";
+    import { onMount } from "svelte";
 
-    let stats = {
-        totalTenants: 0,
-        activeTenants: 0,
-        totalUsers: 0,
-        activeUsers: 0,
-    };
-    let loading = true;
+    let tenantTotal = $state(0);
+    let tenantActive = $state(0);
+    let userTotal = $state(0);
+    let healthText = $state("OK");
+    let loading = $state(true);
 
     onMount(async () => {
-        loadStats();
+        await loadStats();
     });
 
     async function loadStats() {
         loading = true;
         try {
-            // In a real app, you might have a specific stats endpoint
-            // For now, we can derive some stats from lists or use existing endpoints
-            const tenantsRes = await api.superadmin.listTenants();
+            const [tenantsRes, usersRes, healthRes] = await Promise.all([
+                api.superadmin.listTenants(),
+                api.users.list(1, 1),
+                api.superadmin.getSystemHealth().catch(() => null),
+            ]);
+
             const tenants = tenantsRes.data || [];
 
-            // Basic approximation if no dedicated stats endpoint exists yet
-            stats.totalTenants = tenants.length;
-            stats.activeTenants = tenants.filter(
-                (t: any) => t.is_active,
-            ).length;
+            tenantTotal = tenantsRes.total ?? tenants.length;
+            tenantActive = tenants.filter((t: any) => t.is_active).length;
 
-            // If there's a user list endpoint, fetch it too, else mock or leave 0
-            // const usersRes = await api.users.list();
-            // stats.totalUsers = usersRes.data.length;
+            userTotal = usersRes?.total ?? 0;
+            healthText = healthRes?.status || healthRes?.health || "OK";
         } catch (e) {
             console.error("Failed to load stats", e);
+            healthText = "—";
         } finally {
             loading = false;
         }
     }
 </script>
 
-<div class="page-container fade-in">
-    <div class="header">
-        <div class="header-content">
-            <h1>Dashboard</h1>
-            <p class="subtitle">Platform overview and statistics</p>
+<div class="superadmin-content fade-in">
+    {#if loading}
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Loading system data...</p>
         </div>
-    </div>
+    {:else}
+        <div class="stats-grid" aria-label="Superadmin stats">
+            <button
+                class="stat-card cyan"
+                onclick={() => goto("/superadmin/tenants")}
+            >
+                <div class="stat-icon">
+                    <Icon name="database" size={32} />
+                </div>
+                <div class="stat-content">
+                    <span class="stat-value">{tenantTotal}</span>
+                    <span class="stat-label">Tenants</span>
+                </div>
+            </button>
 
-    <!-- Stats Grid -->
-    <div class="stats-grid">
-        <StatsCard
-            title="Total Tenants"
-            value={stats.totalTenants}
-            icon="building"
-            trend="0%"
-            color="primary"
-        />
-        <StatsCard
-            title="Active Tenants"
-            value={stats.activeTenants}
-            icon="check-circle"
-            color="success"
-        />
-        <StatsCard
-            title="Total Users"
-            value={stats.totalUsers}
-            icon="users"
-            color="info"
-        />
-        <StatsCard
-            title="System Health"
-            value="100%"
-            icon="activity"
-            color="warning"
-        />
-    </div>
+            <button
+                class="stat-card emerald"
+                onclick={() => goto("/superadmin/tenants")}
+            >
+                <div class="stat-icon">
+                    <Icon name="check-circle" size={32} />
+                </div>
+                <div class="stat-content">
+                    <span class="stat-value">{tenantActive}</span>
+                    <span class="stat-label">Active Tenants</span>
+                </div>
+            </button>
 
-    <div class="quick-actions card">
-        <h3>Quick Actions</h3>
-        <div class="action-buttons">
-            <a href="/superadmin/tenants" class="action-card">
-                <div class="icon-bg primary">
-                    <Icon name="building" size={24} />
+            <button
+                class="stat-card indigo"
+                onclick={() => goto("/superadmin/users")}
+            >
+                <div class="stat-icon">
+                    <Icon name="users" size={32} />
                 </div>
-                <div class="action-text">
-                    <h4>Manage Tenants</h4>
-                    <p>Create, edit, or remove organizations</p>
+                <div class="stat-content">
+                    <span class="stat-value">{userTotal}</span>
+                    <span class="stat-label">Users</span>
                 </div>
-                <Icon name="arrow-right" size={20} class="arrow" />
-            </a>
+            </button>
 
-            <a href="/superadmin/users" class="action-card">
-                <div class="icon-bg info">
-                    <Icon name="users" size={24} />
+            <button
+                class="stat-card amber"
+                onclick={() => goto("/superadmin/system")}
+            >
+                <div class="stat-icon">
+                    <Icon name="activity" size={32} />
                 </div>
-                <div class="action-text">
-                    <h4>Manage Users</h4>
-                    <p>View global user base and roles</p>
+                <div class="stat-content">
+                    <span class="stat-value">{healthText}</span>
+                    <span class="stat-label">System Health</span>
                 </div>
-                <Icon name="arrow-right" size={20} class="arrow" />
-            </a>
-
-            <a href="/superadmin/settings" class="action-card">
-                <div class="icon-bg warning">
-                    <Icon name="settings" size={24} />
-                </div>
-                <div class="action-text">
-                    <h4>Platform Settings</h4>
-                    <p>Configure global system policies</p>
-                </div>
-                <Icon name="arrow-right" size={20} class="arrow" />
-            </a>
+            </button>
         </div>
-    </div>
+
+        <div class="section-header">
+            <h2>Quick Actions</h2>
+        </div>
+
+        <div class="actions-grid">
+            <button
+                class="action-card"
+                onclick={() => goto("/superadmin/tenants")}
+            >
+                <div class="action-icon accent-cyan">
+                    <Icon name="database" size={18} />
+                </div>
+                <h3>Manage Tenants</h3>
+                <p>Create, edit, and maintain organizations.</p>
+            </button>
+
+            <button
+                class="action-card"
+                onclick={() => goto("/superadmin/users")}
+            >
+                <div class="action-icon accent-indigo">
+                    <Icon name="users" size={18} />
+                </div>
+                <h3>Manage Users</h3>
+                <p>View global users, roles, and access.</p>
+            </button>
+
+            <button
+                class="action-card"
+                onclick={() => goto("/superadmin/audit-logs")}
+            >
+                <div class="action-icon accent-emerald">
+                    <Icon name="activity" size={18} />
+                </div>
+                <h3>Audit Logs</h3>
+                <p>Track activity and security events.</p>
+            </button>
+
+            <button
+                class="action-card"
+                onclick={() => goto("/superadmin/settings")}
+            >
+                <div class="action-icon accent-amber">
+                    <Icon name="settings" size={18} />
+                </div>
+                <h3>Platform Settings</h3>
+                <p>Configure policies and system defaults.</p>
+            </button>
+        </div>
+    {/if}
 </div>
 
 <style>
-    .page-container {
-        padding: 2rem;
+    .superadmin-content {
+        padding: clamp(16px, 3vw, 32px);
         max-width: 1400px;
         margin: 0 auto;
-    }
-
-    .header {
-        margin-bottom: 2rem;
-    }
-
-    h1 {
-        font-size: 1.8rem;
-        font-weight: 700;
-        margin: 0 0 0.5rem 0;
         color: var(--text-primary);
+        --accent-emerald: #10b981;
+        --accent-cyan: #22d3ee;
+        --accent-indigo: #6366f1;
+        --accent-amber: #f59e0b;
+        --glass: rgba(255, 255, 255, 0.04);
+        --glass-border: rgba(255, 255, 255, 0.08);
     }
 
-    .subtitle {
+    .loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2.5rem 1rem;
+        gap: 0.75rem;
         color: var(--text-secondary);
-        font-size: 0.95rem;
-        margin: 0;
+    }
+
+    .spinner {
+        width: 28px;
+        height: 28px;
+        border: 2px solid var(--border-color);
+        border-top-color: var(--color-primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
     }
 
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 1.25rem;
         margin-bottom: 2rem;
     }
 
-    .quick-actions {
-        padding: 1.5rem;
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
+    .stat-card {
+        background: linear-gradient(145deg, var(--bg-surface), #0b0c10);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 1.35rem;
+        display: flex;
+        align-items: center;
+        gap: 1.1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: var(--text-primary);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+        text-align: left;
     }
 
-    .quick-actions h3 {
-        margin: 0 0 1.5rem 0;
-        font-size: 1.1rem;
-        font-weight: 600;
+    .stat-card:hover {
+        border-color: var(--color-primary);
+        transform: translateY(-2px);
+    }
+
+    .stat-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .stat-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        min-width: 0;
+    }
+
+    .stat-value {
+        font-size: 1.55rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+    }
+
+    .stat-label {
+        color: var(--text-secondary);
+        font-size: 0.92rem;
+    }
+
+    .stat-card.emerald {
+        background: radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.18), transparent 55%), #0c1411;
+        border-color: rgba(16, 185, 129, 0.25);
+    }
+
+    .stat-card.cyan {
+        background: radial-gradient(circle at 20% 20%, rgba(34, 211, 238, 0.18), transparent 55%), #081216;
+        border-color: rgba(34, 211, 238, 0.25);
+    }
+
+    .stat-card.indigo {
+        background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.18), transparent 55%), #0b0c17;
+        border-color: rgba(99, 102, 241, 0.25);
+    }
+
+    .stat-card.amber {
+        background: radial-gradient(circle at 20% 20%, rgba(245, 158, 11, 0.18), transparent 55%), #141009;
+        border-color: rgba(245, 158, 11, 0.25);
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 0 0 1rem 0;
+    }
+
+    .section-header h2 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 800;
+        letter-spacing: -0.01em;
         color: var(--text-primary);
     }
 
-    .action-buttons {
+    .actions-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1rem;
     }
 
     .action-card {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
+        background: var(--glass);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
         padding: 1.25rem;
-        background: var(--bg-app);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-md);
-        text-decoration: none;
+        text-align: left;
+        cursor: pointer;
         transition: all 0.2s;
-        color: inherit;
+        color: var(--text-primary);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
     }
 
     .action-card:hover {
-        border-color: var(--color-primary);
         transform: translateY(-2px);
-        box-shadow: var(--shadow-sm);
+        border-color: rgba(99, 102, 241, 0.35);
     }
 
-    .icon-bg {
-        width: 48px;
-        height: 48px;
+    .action-icon {
+        width: 40px;
+        height: 40px;
         border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: var(--bg-surface);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        margin-bottom: 0.85rem;
+        background: rgba(255, 255, 255, 0.03);
     }
 
-    .icon-bg.primary {
-        background: rgba(var(--color-primary-rgb), 0.1);
-        color: var(--color-primary);
-    }
-    .icon-bg.info {
-        background: rgba(59, 130, 246, 0.1);
-        color: #3b82f6;
-    }
-    .icon-bg.warning {
-        background: rgba(245, 158, 11, 0.1);
-        color: #f59e0b;
+    .accent-emerald {
+        color: var(--accent-emerald);
+        background: rgba(16, 185, 129, 0.12);
+        border-color: rgba(16, 185, 129, 0.25);
     }
 
-    .action-text {
-        flex: 1;
+    .accent-cyan {
+        color: var(--accent-cyan);
+        background: rgba(34, 211, 238, 0.12);
+        border-color: rgba(34, 211, 238, 0.25);
     }
 
-    .action-text h4 {
-        margin: 0 0 0.25rem 0;
+    .accent-indigo {
+        color: var(--accent-indigo);
+        background: rgba(99, 102, 241, 0.12);
+        border-color: rgba(99, 102, 241, 0.25);
+    }
+
+    .accent-amber {
+        color: var(--accent-amber);
+        background: rgba(245, 158, 11, 0.12);
+        border-color: rgba(245, 158, 11, 0.25);
+    }
+
+    .action-card h3 {
+        margin: 0 0 0.35rem 0;
         font-size: 1rem;
-        color: var(--text-primary);
+        font-weight: 750;
+    }
+
+    .action-card p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 0.92rem;
+        line-height: 1.35;
+    }
+
+    :global([data-theme="light"]) .stat-card,
+    :global([data-theme="light"]) .action-card {
+        box-shadow:
+            0 10px 24px rgba(0, 0, 0, 0.06),
+            0 0 0 1px rgba(255, 255, 255, 0.85);
+    }
+
+    :global([data-theme="light"]) .stat-card {
+        background: linear-gradient(135deg, #ffffff, #f7f7fb);
+        border-color: rgba(0, 0, 0, 0.06);
+    }
+
+    :global([data-theme="light"]) .stat-icon {
+        background: rgba(0, 0, 0, 0.03);
+        border-color: rgba(0, 0, 0, 0.06);
+    }
+
+    :global([data-theme="light"]) .action-card {
+        background: #ffffff;
+        border-color: rgba(0, 0, 0, 0.06);
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+            gap: 0.9rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .actions-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>

@@ -37,6 +37,54 @@
         },
     ]);
 
+    let superAdminMenu = $derived([
+        {
+            label: $t("sidebar.dashboard") || "Dashboard",
+            icon: "grid",
+            href: "/superadmin",
+        },
+        {
+            label: $t("sidebar.tenants") || "Tenants",
+            icon: "database",
+            href: "/superadmin/tenants",
+        },
+        {
+            label: $t("sidebar.users") || "Users",
+            icon: "users",
+            href: "/superadmin/users",
+        },
+        {
+            label: $t("sidebar.plans") || "Plans",
+            icon: "credit-card",
+            href: "/superadmin/plans",
+        },
+        {
+            label: $t("sidebar.invoices") || "Invoices",
+            icon: "credit-card",
+            href: "/superadmin/invoices",
+        },
+        {
+            label: $t("sidebar.storage") || "Storage",
+            icon: "folder",
+            href: "/superadmin/storage",
+        },
+        {
+            label: $t("sidebar.audit_logs") || "Audit Logs",
+            icon: "activity",
+            href: "/superadmin/audit-logs",
+        },
+        {
+            label: $t("sidebar.settings") || "Settings",
+            icon: "settings",
+            href: "/superadmin/settings",
+        },
+        {
+            label: $t("sidebar.system") || "System",
+            icon: "server",
+            href: "/superadmin/system",
+        },
+    ]);
+
     // Add $user as explicit dependency to force reactivity when user permissions change
     let adminMenu = $derived.by(() => {
         // Access $user to create dependency
@@ -61,7 +109,7 @@
                 show: $can("read", "roles"),
             },
             {
-                label: "Subscription",
+                label: $t("sidebar.subscription") || "Subscription",
                 icon: "credit-card",
                 href: `${tenantPrefix}/admin/subscription`,
                 show: true,
@@ -73,7 +121,7 @@
                 show: $can("read", "settings"),
             },
             {
-                label: "Storage",
+                label: $t("sidebar.storage") || "Storage",
                 icon: "folder",
                 href: `${tenantPrefix}/admin/storage`,
                 show: true,
@@ -83,8 +131,11 @@
 
     let isDropdownOpen = $state(false);
 
+    let isUrlSuperadmin = $derived($page.url.pathname.startsWith("/superadmin"));
     let isUrlAdmin = $derived($page.url.pathname.includes("/admin"));
-    let currentMenu = $derived(isUrlAdmin ? adminMenu : appMenu);
+    let currentMenu = $derived(
+        isUrlSuperadmin ? superAdminMenu : isUrlAdmin ? adminMenu : appMenu,
+    );
 
     function handleLogout() {
         logout();
@@ -107,7 +158,17 @@
     }
 
     function isActive(item: { href: string }) {
-        return $page.url.pathname === item.href;
+        const path = $page.url.pathname;
+
+        if (isUrlSuperadmin) {
+            if (item.href === "/superadmin") return path === "/superadmin";
+            return path.startsWith(item.href);
+        }
+
+        if (item.href === `${tenantPrefix}/admin`) return path === item.href;
+        if (item.href === `${tenantPrefix}/dashboard`) return path === item.href;
+
+        return path === item.href || path.startsWith(`${item.href}/`);
     }
 </script>
 
@@ -164,20 +225,34 @@
 
     <!-- Footer / Profile -->
     <div class="sidebar-footer">
-        {#if $isSuperAdmin}
+        {#if isUrlSuperadmin}
+            <button
+                class="context-btn"
+                onclick={() =>
+                    goto(tenantPrefix ? `${tenantPrefix}/dashboard` : "/dashboard")}
+                title={$t("sidebar.exit") || "Exit"}
+                aria-label={$t("sidebar.exit") || "Exit"}
+                data-tooltip={$t("sidebar.exit") || "Exit"}
+            >
+                <Icon name="arrow-left" size={16} />
+                <span class="label">{$t("sidebar.exit") || "Exit"}</span>
+            </button>
+        {/if}
+
+        {#if $isSuperAdmin && !isUrlSuperadmin}
             <button
                 class="context-btn super-admin"
                 onclick={() => goto("/superadmin")}
                 title="Super Admin Dashboard"
                 aria-label="Super Admin Dashboard"
-                data-tooltip="Super Admin"
+                data-tooltip={$t("sidebar.super_admin") || "Super Admin"}
             >
                 <Icon name="server" size={16} />
-                <span class="label">Super Admin</span>
+                <span class="label">{$t("sidebar.super_admin") || "Super Admin"}</span>
             </button>
         {/if}
 
-        {#if $isAdmin}
+        {#if $isAdmin && !isUrlSuperadmin}
             <button
                 class="context-btn"
                 onclick={() =>

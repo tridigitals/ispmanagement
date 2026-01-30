@@ -4,6 +4,7 @@
     import Icon from "$lib/components/Icon.svelte";
     import Table from "$lib/components/Table.svelte";
     import { toast } from "$lib/stores/toast";
+    import { formatMoney } from "$lib/utils/money";
 
     let invoices: Invoice[] = [];
     let loading = true;
@@ -34,11 +35,8 @@
         }
     }
 
-    function formatCurrency(amount: number) {
-        return new Intl.NumberFormat("id-ID", {
-            style: "currency",
-            currency: "IDR",
-        }).format(amount);
+    function formatCurrency(amount: number, currency?: string) {
+        return formatMoney(amount, { currency });
     }
 </script>
 
@@ -48,7 +46,7 @@
             <h1>Billing & Invoices</h1>
             <p class="subtitle">View and manage your subscription payments</p>
         </div>
-        <button class="btn btn-secondary" on:click={loadInvoices}>
+        <button class="btn btn-secondary" onclick={loadInvoices}>
             <Icon name="refresh-cw" size={18} />
             <span>Refresh</span>
         </button>
@@ -68,7 +66,7 @@
         >
             {#snippet cell({ item, column })}
                 {#if column.key === "amount"}
-                    {formatCurrency(item.amount)}
+                    {formatCurrency(item.amount, item.currency_code)}
                 {:else if column.key === "status"}
                     <span class="status-pill {item.status}">{item.status}</span>
                 {:else if column.key === "due_date"}

@@ -15,6 +15,7 @@ export interface AppSettings {
     maintenance_mode: boolean;
     maintenance_message?: string;
     default_locale: string;
+    currency_code: string;
     currency_symbol: string;
     auth?: AuthSettings; // Dynamic auth settings
     [key: string]: any; // Allow indexing
@@ -29,6 +30,7 @@ const defaults: AppSettings = {
     support_email: 'support@example.com',
     maintenance_mode: false,
     default_locale: 'en-US',
+    currency_code: 'USD',
     currency_symbol: '$',
     auth: undefined
 };

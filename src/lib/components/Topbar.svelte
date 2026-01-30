@@ -13,6 +13,21 @@
     // Helper to get page title based on path (ordered by specificity)
     function getPageTitle(path: string) {
         const map: [string, string][] = [
+            ["/superadmin/tenants", $t("topbar.titles.tenants") || "Tenants"],
+            ["/superadmin/users", $t("topbar.titles.users") || "Users"],
+            ["/superadmin/plans", $t("topbar.titles.plans") || "Plans"],
+            ["/superadmin/invoices", $t("topbar.titles.invoices") || "Invoices"],
+            ["/superadmin/storage", $t("topbar.titles.storage") || "Storage"],
+            [
+                "/superadmin/audit-logs",
+                $t("topbar.titles.audit_logs") || "Audit Logs",
+            ],
+            ["/superadmin/settings", $t("topbar.titles.settings") || "Settings"],
+            ["/superadmin/system", $t("topbar.titles.system") || "System"],
+            [
+                "/superadmin",
+                $t("topbar.titles.superadmin_dashboard") || "Super Admin",
+            ],
             ["/admin/team", $t("topbar.titles.team") || "Team"],
             ["/admin/roles", $t("topbar.titles.roles") || "Roles"],
             ["/admin/settings", $t("topbar.titles.global_settings") || "Settings"],

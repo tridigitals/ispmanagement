@@ -36,6 +36,7 @@
                 "app_description",
                 "support_email",
                 "default_locale",
+                "currency_code",
                 "currency_symbol",
                 "app_logo_path",
             ],
@@ -291,6 +292,16 @@
     const currencyOptions = [
         { value: "Rp", label: "IDR (Rp)" },
         { value: "$", label: "USD ($)" },
+    ];
+    const currencyCodeOptions = [
+        { value: "IDR", label: "IDR (Indonesian Rupiah)" },
+        { value: "USD", label: "USD (US Dollar)" },
+        { value: "EUR", label: "EUR (Euro)" },
+        { value: "SGD", label: "SGD (Singapore Dollar)" },
+        { value: "MYR", label: "MYR (Malaysian Ringgit)" },
+        { value: "GBP", label: "GBP (British Pound)" },
+        { value: "JPY", label: "JPY (Japanese Yen)" },
+        { value: "AUD", label: "AUD (Australian Dollar)" },
     ];
     const storageOptions = [
         { value: "system", label: "System Default (Managed)" },
@@ -1284,6 +1295,17 @@
                                                 <Select
                                                     id={key}
                                                     options={localeOptions}
+                                                    value={localSettings[key]}
+                                                    onchange={(e: any) =>
+                                                        handleChange(
+                                                            key,
+                                                            e.detail,
+                                                        )}
+                                                />
+                                            {:else if key === "currency_code"}
+                                                <Select
+                                                    id={key}
+                                                    options={currencyCodeOptions}
                                                     value={localSettings[key]}
                                                     onchange={(e: any) =>
                                                         handleChange(

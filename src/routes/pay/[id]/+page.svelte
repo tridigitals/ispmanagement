@@ -16,11 +16,12 @@
     let manualEnabled = $state(true);
     let snapToken = $state("");
     let manualInstructions = $state("");
+    let publicSettings = $state<any>({});
 
     onMount(async () => {
         try {
             // Load Public Settings (contains payment config)
-            const publicSettings = await api.settings.getPublicSettings();
+            publicSettings = await api.settings.getPublicSettings();
 
             midtransEnabled = !!publicSettings.payment_midtrans_enabled;
             manualEnabled = publicSettings.payment_manual_enabled ?? true; // Default true
@@ -31,6 +32,15 @@
 
             // Load Invoice
             invoice = await api.payment.getInvoice(invoiceId);
+
+            // If invoice currency is not IDR, disable Midtrans (backend also enforces this)
+            if (
+                invoice?.currency_code &&
+                String(invoice.currency_code).toUpperCase() !== "IDR"
+            ) {
+                midtransEnabled = false;
+                if (paymentMethod === "online") paymentMethod = "manual";
+            }
 
             // Load Manual Bank Accounts & Instructions
             if (manualEnabled) {
@@ -103,9 +113,13 @@
     }
 
     function formatCurrency(amount: number) {
-        return new Intl.NumberFormat("en-US", {
+        const locale = publicSettings?.default_locale || "id-ID";
+        const currency =
+            invoice?.currency_code || publicSettings?.currency_code || "IDR";
+
+        return new Intl.NumberFormat(locale, {
             style: "currency",
-            currency: "IDR", // Or dynamic
+            currency,
         }).format(amount);
     }
     let fileInput: HTMLInputElement;

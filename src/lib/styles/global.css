@@ -267,9 +267,47 @@ body {
 
 /* Icon Buttons (Square) */
 .btn-icon {
-    padding: 0.5rem;
+    width: 36px;
+    height: 36px;
+    padding: 0;
     aspect-ratio: 1;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition:
+        background 0.2s,
+        border-color 0.2s,
+        color 0.2s,
+        transform 0.2s;
+}
+
+.btn-icon:hover:not(:disabled) {
+    background: rgba(99, 102, 241, 0.12);
+    border-color: rgba(99, 102, 241, 0.35);
+    color: var(--text-primary);
+}
+
+.btn-icon:active:not(:disabled) {
+    transform: translateY(0.5px);
+}
+
+.btn-icon:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(0.5);
+}
+
+:global([data-theme="light"]) .btn-icon {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+:global([data-theme="light"]) .btn-icon:hover:not(:disabled) {
+    background: rgba(99, 102, 241, 0.12);
+    border-color: rgba(99, 102, 241, 0.35);
 }
