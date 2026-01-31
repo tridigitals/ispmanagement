@@ -1,7 +1,7 @@
 //! Payment HTTP Handlers (Webhooks)
 
 use axum::{
-    extract::{State, Path},
+    extract::{Query, State, Path},
     http::{StatusCode, HeaderMap},
     response::IntoResponse,
     Json, 
@@ -18,6 +18,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/invoices", get(list_invoices))
         .route("/invoices/all", get(list_all_invoices))
+        .route("/fx-rate", get(get_fx_rate))
         .route("/invoices/plan", post(create_invoice_for_plan))
         .route("/invoices/{id}", get(get_invoice))
         .route("/invoices/{id}/midtrans", post(pay_invoice_midtrans))
@@ -30,6 +31,21 @@ pub fn router() -> Router<AppState> {
 #[derive(Serialize)]
 struct ErrorResponse {
     error: String,
+}
+
+#[derive(Deserialize)]
+struct FxRateQuery {
+    base_currency: String,
+    quote_currency: String,
+}
+
+#[derive(Serialize)]
+struct FxRateResponse {
+    base_currency: String,
+    quote_currency: String,
+    rate: f64,
+    source: String,
+    fetched_at: chrono::DateTime<chrono::Utc>,
 }
 
 // Helper to extract and validate token from headers
@@ -54,6 +70,38 @@ fn require_superadmin(claims: &Claims) -> Result<(), (StatusCode, Json<ErrorResp
         })));
     }
     Ok(())
+}
+
+async fn get_fx_rate(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<FxRateQuery>,
+) -> Result<Json<FxRateResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+
+    let base = q.base_currency.trim().to_uppercase();
+    let quote = q.quote_currency.trim().to_uppercase();
+
+    let (rate, fetched_at, source) = state
+        .payment_service
+        .get_fx_rate(&base, &quote, claims.tenant_id.as_deref())
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })?;
+
+    Ok(Json(FxRateResponse {
+        base_currency: base,
+        quote_currency: quote,
+        rate,
+        source,
+        fetched_at,
+    }))
 }
 
 async fn list_invoices(

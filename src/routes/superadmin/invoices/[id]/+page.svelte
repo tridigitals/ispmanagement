@@ -7,8 +7,9 @@
     import { goto } from "$app/navigation";
     import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
     import { formatMoney } from "$lib/utils/money";
+    import Lightbox from "$lib/components/Lightbox.svelte";
 
-    let invoiceId = $page.params.id;
+    let invoiceId = $state("");
     let invoice = $state<Invoice | null>(null);
     let loading = $state(true);
     let processing = $state(false);
@@ -27,11 +28,21 @@
         onConfirm: async () => {},
     });
 
-    onMount(async () => {
-        loadInvoice();
+    $effect(() => {
+        invoiceId = $page.params.id ?? "";
+    });
+
+    onMount(() => {
+        void loadInvoice();
     });
 
     async function loadInvoice() {
+        if (!invoiceId) {
+            invoice = null;
+            loading = false;
+            toast.error("Missing invoice id");
+            return;
+        }
         loading = true;
         try {
             invoice = await api.payment.getInvoice(invoiceId);
@@ -57,11 +68,12 @@
     }
 
     async function handleVerify(status: "paid" | "failed") {
+        if (!invoiceId) return;
         processing = true;
         try {
             await api.payment.verifyPayment(invoiceId, status);
             toast.success(`Invoice marked as ${status}`);
-            loadInvoice();
+            void loadInvoice();
             showConfirm = false;
         } catch (e: any) {
             toast.error("Verification failed: " + e.message);
@@ -137,17 +149,17 @@
                     <div class="row">
                         <span class="label">Created At</span>
                         <span class="value"
-                            >{new Date(
-                                invoice.created_at,
-                            ).toLocaleString()}</span
+                            >{invoice.created_at
+                                ? new Date(invoice.created_at).toLocaleString()
+                                : "-"}</span
                         >
                     </div>
                     <div class="row">
                         <span class="label">Updated At</span>
                         <span class="value"
-                            >{new Date(
-                                invoice.updated_at,
-                            ).toLocaleString()}</span
+                            >{invoice.updated_at
+                                ? new Date(invoice.updated_at).toLocaleString()
+                                : "-"}</span
                         >
                     </div>
                 </div>

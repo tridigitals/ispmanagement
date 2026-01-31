@@ -78,7 +78,7 @@
             .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
     );
 
-    onMount(async () => {
+    onMount(() => {
         let cleanup: (() => void) | undefined;
 
         if (typeof window !== "undefined") {
@@ -100,7 +100,7 @@
             }
         }
 
-        await loadData();
+        void loadData();
         return cleanup;
     });
 

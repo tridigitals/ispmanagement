@@ -272,6 +272,7 @@
             }
 
             await loadSettings();
+            await appSettings.refresh();
             toast.success("Settings saved");
         } catch (error: any) {
             toast.error(error.message || "Failed to save settings");

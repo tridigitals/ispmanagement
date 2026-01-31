@@ -205,7 +205,8 @@ pub async fn upsert_setting(
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
-    if claims.role != "admin" {
+    // Allow superadmin, and tenant admins that have admin role
+    if !claims.is_super_admin && claims.role != "admin" {
         return Err("Unauthorized".to_string());
     }
 

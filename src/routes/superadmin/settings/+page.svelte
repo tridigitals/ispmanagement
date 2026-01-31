@@ -7,6 +7,7 @@
     import Icon from "$lib/components/Icon.svelte";
     import MobileFabMenu from "$lib/components/MobileFabMenu.svelte";
     import { toast } from "$lib/stores/toast";
+    import { appSettings } from "$lib/stores/settings";
 
     let loading = true;
     let saving = false;
@@ -449,6 +450,9 @@
 
             toast.success("Settings saved successfully");
             hasChanges = false;
+
+            // Refresh global settings store so currency/locale update immediately
+            await appSettings.refresh();
         } catch (err) {
             console.error("Failed to save settings:", err);
             toast.error("Failed to save settings");

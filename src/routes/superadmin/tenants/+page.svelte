@@ -276,8 +276,9 @@
         pendingToggleTenant?.is_active ? "Deactivate Tenant" : "Activate Tenant",
     );
 
-    let toggleType = $derived.by(() =>
-        pendingToggleTenant?.is_active ? "danger" : "info",
+    let toggleType = $derived.by(
+        (): "danger" | "warning" | "info" =>
+            pendingToggleTenant?.is_active ? "danger" : "info",
     );
 
     let toggleMessage = $derived.by(() => {

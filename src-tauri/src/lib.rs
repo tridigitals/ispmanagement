@@ -349,6 +349,7 @@ pub fn run() {
                                     create_bank_account,
                                     delete_bank_account,
                                     create_invoice_for_plan,
+                                    get_fx_rate,
                                     get_invoice,
                                     pay_invoice_midtrans,
                                     check_payment_status,

@@ -42,64 +42,64 @@ impl PaymentService {
         let now = Utc::now();
         let invoice_number = format!("INV-{}", now.format("%Y%m%d-%H%M%S"));
 
-        // Determine currency (tenant override -> global -> IDR)
-        #[cfg(feature = "postgres")]
-        let currency_code: String = {
-            let tenant_cc: Option<String> = sqlx::query_scalar(
-                "SELECT value FROM settings WHERE key = 'currency_code' AND tenant_id = $1",
-            )
-            .bind(tenant_id)
-            .fetch_optional(&self.pool)
+        // Base currency for pricing (global) and tenant display currency.
+        let base_currency_code = self
+            .get_setting_value(None, "currency_code")
             .await
-            .unwrap_or(None);
+            .unwrap_or_else(|| "IDR".to_string())
+            .to_uppercase();
 
-            let global_cc: Option<String> = sqlx::query_scalar(
-                "SELECT value FROM settings WHERE key = 'currency_code' AND tenant_id IS NULL",
-            )
-            .fetch_optional(&self.pool)
+        let currency_code = self
+            .get_setting_value(Some(tenant_id), "currency_code")
             .await
-            .unwrap_or(None);
+            .unwrap_or_else(|| base_currency_code.clone())
+            .to_uppercase();
 
-            tenant_cc
-                .or(global_cc)
-                .unwrap_or_else(|| "IDR".to_string())
-        };
-
-        #[cfg(feature = "sqlite")]
-        let currency_code: String = {
-            let tenant_cc: Option<String> = sqlx::query_scalar(
-                "SELECT value FROM settings WHERE key = 'currency_code' AND tenant_id = ?",
-            )
-            .bind(tenant_id)
-            .fetch_optional(&self.pool)
-            .await
-            .unwrap_or(None);
-
-            let global_cc: Option<String> = sqlx::query_scalar(
-                "SELECT value FROM settings WHERE key = 'currency_code' AND tenant_id IS NULL",
-            )
-            .fetch_optional(&self.pool)
-            .await
-            .unwrap_or(None);
-
-            tenant_cc
-                .or(global_cc)
-                .unwrap_or_else(|| "IDR".to_string())
-        };
+        let (final_amount, fx_rate, fx_source, fx_fetched_at) =
+            if currency_code != base_currency_code {
+                let (rate, fetched_at, source) =
+                    self.get_fx_rate(&base_currency_code, &currency_code, Some(tenant_id)).await?;
+                let converted = amount * rate;
+                (
+                    self.round_amount(converted, &currency_code),
+                    Some(rate),
+                    Some(source),
+                    Some(fetched_at),
+                )
+            } else {
+                (
+                    self.round_amount(amount, &currency_code),
+                    None,
+                    None,
+                    None,
+                )
+            };
 
         #[cfg(feature = "postgres")]
         let invoice = sqlx::query_as::<_, Invoice>(
             r#"
-            INSERT INTO invoices (id, tenant_id, invoice_number, amount, currency_code, status, description, due_date, external_id, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, $9)
-            RETURNING id, tenant_id, invoice_number, amount::FLOAT8 as amount, currency_code, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
+            INSERT INTO invoices (
+                id, tenant_id, invoice_number, amount, currency_code, base_currency_code, fx_rate, fx_source, fx_fetched_at,
+                status, description, due_date, external_id, created_at, updated_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', $10, $11, $12, $13, $13)
+            RETURNING
+                id, tenant_id, invoice_number,
+                amount::FLOAT8 as amount,
+                currency_code, base_currency_code,
+                fx_rate::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
+                status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
             "#
         )
         .bind(&id)
         .bind(tenant_id)
         .bind(&invoice_number)
-        .bind(amount)
+        .bind(final_amount)
         .bind(&currency_code)
+        .bind(&base_currency_code)
+        .bind(fx_rate)
+        .bind(&fx_source)
+        .bind(fx_fetched_at)
         .bind(&description)
         .bind(now + chrono::Duration::days(1))
         .bind(&external_id)
@@ -112,11 +112,23 @@ impl PaymentService {
         let invoice = {
             sqlx::query(
                 r#"
-                INSERT INTO invoices (id, tenant_id, invoice_number, amount, currency_code, status, description, due_date, external_id, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
+                INSERT INTO invoices (
+                    id, tenant_id, invoice_number, amount, currency_code, base_currency_code, fx_rate, fx_source, fx_fetched_at,
+                    status, description, due_date, external_id, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
                 "#
             )
-            .bind(&id).bind(tenant_id).bind(&invoice_number).bind(amount).bind(&currency_code).bind(&description)
+            .bind(&id)
+            .bind(tenant_id)
+            .bind(&invoice_number)
+            .bind(final_amount)
+            .bind(&currency_code)
+            .bind(&base_currency_code)
+            .bind(fx_rate)
+            .bind(&fx_source)
+            .bind(fx_fetched_at.map(|d| d.to_rfc3339()))
+            .bind(&description)
             .bind((now + chrono::Duration::days(1)).to_rfc3339())
             .bind(&external_id)
             .bind(now.to_rfc3339()).bind(now.to_rfc3339())
@@ -135,7 +147,12 @@ impl PaymentService {
         #[cfg(feature = "postgres")]
         let invoice = sqlx::query_as::<_, Invoice>(
             r#"
-            SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, currency_code, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at 
+            SELECT
+                id, tenant_id, invoice_number,
+                amount::FLOAT8 as amount,
+                currency_code, base_currency_code,
+                fx_rate::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
+                status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
             FROM invoices WHERE id = $1
             "#
         )
@@ -160,7 +177,12 @@ impl PaymentService {
         let invoices = if let Some(tid) = tenant_id {
             sqlx::query_as::<_, Invoice>(
                 r#"
-                SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, currency_code, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at 
+                SELECT
+                    id, tenant_id, invoice_number,
+                    amount::FLOAT8 as amount,
+                    currency_code, base_currency_code,
+                    fx_rate::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
+                    status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
                 FROM invoices WHERE tenant_id = $1 ORDER BY created_at DESC
                 "#
             )
@@ -169,7 +191,12 @@ impl PaymentService {
         } else {
             sqlx::query_as::<_, Invoice>(
                 r#"
-                SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, currency_code, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at 
+                SELECT
+                    id, tenant_id, invoice_number,
+                    amount::FLOAT8 as amount,
+                    currency_code, base_currency_code,
+                    fx_rate::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
+                    status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
                 FROM invoices ORDER BY created_at DESC
                 "#
             )
@@ -516,7 +543,12 @@ impl PaymentService {
         #[cfg(feature = "postgres")]
         let invoice: Option<Invoice> = sqlx::query_as::<_, Invoice>(
             r#"
-            SELECT id, tenant_id, invoice_number, amount::FLOAT8 as amount, currency_code, status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at 
+            SELECT
+                id, tenant_id, invoice_number,
+                amount::FLOAT8 as amount,
+                currency_code, base_currency_code,
+                fx_rate::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
+                status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
             FROM invoices WHERE invoice_number = $1
             "#
         )
@@ -865,5 +897,171 @@ impl PaymentService {
             .await?;
 
         Ok(())
+    }
+
+    async fn get_setting_value(&self, tenant_id: Option<&str>, key: &str) -> Option<String> {
+        #[cfg(feature = "postgres")]
+        let q = if tenant_id.is_some() {
+            sqlx::query_scalar(
+                "SELECT value FROM settings WHERE key = $1 AND tenant_id = $2",
+            )
+            .bind(key)
+            .bind(tenant_id.unwrap())
+        } else {
+            sqlx::query_scalar("SELECT value FROM settings WHERE key = $1 AND tenant_id IS NULL")
+                .bind(key)
+        };
+
+        #[cfg(feature = "sqlite")]
+        let q = if tenant_id.is_some() {
+            sqlx::query_scalar(
+                "SELECT value FROM settings WHERE key = ? AND tenant_id = ?",
+            )
+            .bind(key)
+            .bind(tenant_id.unwrap())
+        } else {
+            sqlx::query_scalar("SELECT value FROM settings WHERE key = ? AND tenant_id IS NULL")
+                .bind(key)
+        };
+
+        q.fetch_optional(&self.pool).await.ok().flatten()
+    }
+
+    fn currency_decimals(&self, currency: &str) -> i32 {
+        match currency.to_uppercase().as_str() {
+            "IDR" | "JPY" | "KRW" => 0,
+            _ => 2,
+        }
+    }
+
+    fn round_amount(&self, amount: f64, currency: &str) -> f64 {
+        let d = self.currency_decimals(currency);
+        let factor = 10_f64.powi(d);
+        (amount * factor).round() / factor
+    }
+
+    pub async fn get_fx_rate(
+        &self,
+        base: &str,
+        quote: &str,
+        tenant_id: Option<&str>,
+    ) -> AppResult<(f64, chrono::DateTime<chrono::Utc>, String)> {
+        let now = chrono::Utc::now();
+        let ttl_minutes: i64 = self
+            .get_setting_value(None, "fx_cache_minutes")
+            .await
+            .and_then(|v| v.parse::<i64>().ok())
+            .unwrap_or(1440);
+
+        // Check cached rate
+        #[cfg(feature = "postgres")]
+        let cached: Option<(f64, chrono::DateTime<chrono::Utc>, String)> = sqlx::query_as(
+            "SELECT rate::FLOAT8 as rate, fetched_at, source FROM fx_rates WHERE base_currency = $1 AND quote_currency = $2",
+        )
+        .bind(base)
+        .bind(quote)
+        .fetch_optional(&self.pool)
+        .await
+        .unwrap_or(None);
+
+        #[cfg(feature = "sqlite")]
+        let cached: Option<(f64, String, String)> = sqlx::query_as(
+            "SELECT rate as rate, fetched_at, source FROM fx_rates WHERE base_currency = ? AND quote_currency = ?",
+        )
+        .bind(base)
+        .bind(quote)
+        .fetch_optional(&self.pool)
+        .await
+        .unwrap_or(None);
+
+        #[cfg(feature = "sqlite")]
+        let cached: Option<(f64, chrono::DateTime<chrono::Utc>, String)> = cached
+            .and_then(|(rate, fetched_at, source)| {
+                chrono::DateTime::parse_from_rfc3339(&fetched_at)
+                    .ok()
+                    .map(|dt| (rate, dt.with_timezone(&chrono::Utc), source))
+            });
+
+        if let Some((rate, fetched_at, source)) = cached {
+            if (now - fetched_at).num_minutes() < ttl_minutes {
+                return Ok((rate, fetched_at, source));
+            }
+        }
+
+        // Fetch from provider (Frankfurter)
+        let url = format!(
+            "https://api.frankfurter.app/latest?from={}&to={}",
+            base, quote
+        );
+
+        let resp: serde_json::Value = self
+            .http_client
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("FX fetch failed: {}", e)))?
+            .json()
+            .await
+            .map_err(|e| AppError::Internal(format!("FX parse failed: {}", e)))?;
+
+        let raw_rate = resp
+            .get("rates")
+            .and_then(|r| r.get(quote))
+            .and_then(|v| v.as_f64())
+            .ok_or_else(|| AppError::Internal("FX rate missing in response".to_string()))?;
+
+        let markup_setting = match self
+            .get_setting_value(tenant_id, "fx_markup_bps")
+            .await
+        {
+            Some(v) => Some(v),
+            None => self.get_setting_value(None, "fx_markup_bps").await,
+        };
+
+        let markup_bps: f64 = markup_setting
+            .and_then(|v| v.parse::<f64>().ok())
+            .unwrap_or(0.0);
+
+        let effective_rate = raw_rate * (1.0 + (markup_bps / 10_000.0));
+        let source = "frankfurter".to_string();
+
+        // Upsert cache
+        #[cfg(feature = "postgres")]
+        {
+            let _ = sqlx::query(
+                r#"
+                INSERT INTO fx_rates (base_currency, quote_currency, rate, fetched_at, source)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (base_currency, quote_currency)
+                DO UPDATE SET rate = EXCLUDED.rate, fetched_at = EXCLUDED.fetched_at, source = EXCLUDED.source
+            "#,
+            )
+            .bind(base)
+            .bind(quote)
+            .bind(effective_rate)
+            .bind(now)
+            .bind(&source)
+            .execute(&self.pool)
+            .await;
+        }
+
+        #[cfg(feature = "sqlite")]
+        {
+            let _ = sqlx::query(
+                r#"
+                INSERT OR REPLACE INTO fx_rates (base_currency, quote_currency, rate, fetched_at, source)
+                VALUES (?, ?, ?, ?, ?)
+            "#,
+            )
+            .bind(base)
+            .bind(quote)
+            .bind(effective_rate)
+            .bind(now.to_rfc3339())
+            .bind(&source)
+            .execute(&self.pool)
+            .await;
+        }
+
+        Ok((effective_rate, now, source))
     }
 }

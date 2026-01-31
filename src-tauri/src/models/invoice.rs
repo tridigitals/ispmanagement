@@ -11,6 +11,10 @@ pub struct Invoice {
     #[sqlx(try_from = "f64")]
     pub amount: f64,
     pub currency_code: String,
+    pub base_currency_code: String,
+    pub fx_rate: Option<f64>,
+    pub fx_source: Option<String>,
+    pub fx_fetched_at: Option<DateTime<Utc>>,
     pub status: String, // pending, paid, cancelled, failed
     pub description: Option<String>,
     pub due_date: DateTime<Utc>,

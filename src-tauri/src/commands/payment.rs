@@ -2,7 +2,48 @@
 
 use crate::models::{BankAccount, CreateBankAccountRequest, Invoice};
 use crate::services::{AuthService, PaymentService, PlanService};
+use chrono::{DateTime, Utc};
+use serde::Serialize;
 use tauri::State;
+
+#[derive(Debug, Serialize)]
+pub struct FxRateResponse {
+    pub base_currency: String,
+    pub quote_currency: String,
+    pub rate: f64,
+    pub source: String,
+    pub fetched_at: DateTime<Utc>,
+}
+
+#[tauri::command]
+pub async fn get_fx_rate(
+    token: String,
+    base_currency: String,
+    quote_currency: String,
+    auth_service: State<'_, AuthService>,
+    payment_service: State<'_, PaymentService>,
+) -> Result<FxRateResponse, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let base = base_currency.trim().to_uppercase();
+    let quote = quote_currency.trim().to_uppercase();
+
+    let (rate, fetched_at, source) = payment_service
+        .get_fx_rate(&base, &quote, claims.tenant_id.as_deref())
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(FxRateResponse {
+        base_currency: base,
+        quote_currency: quote,
+        rate,
+        source,
+        fetched_at,
+    })
+}
 
 #[tauri::command]
 pub async fn create_invoice_for_plan(

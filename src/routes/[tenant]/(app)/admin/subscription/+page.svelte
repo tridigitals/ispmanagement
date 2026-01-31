@@ -12,6 +12,7 @@
     import { toast } from "svelte-sonner";
     import Table from "$lib/components/Table.svelte";
     import { formatMoney } from "$lib/utils/money";
+    import { appSettings } from "$lib/stores/settings";
 
     let loading = $state(true);
     let subscription = $state<TenantSubscriptionDetails | null>(null);
@@ -19,6 +20,16 @@
     let invoices = $state<Invoice[]>([]);
     let upgrading = $state(false);
     let activeTab = $state<"overview" | "plans" | "history">("overview");
+    let baseCurrencyCode = $state("IDR");
+    let baseLocale = $state("en-US");
+    let fxRate = $state<number | null>(null);
+    let fxSource = $state<string | null>(null);
+    let fxLoading = $state(false);
+    let fxError = $state<string | null>(null);
+
+    let tenantCurrencyCode = $derived.by(() =>
+        String($appSettings?.currency_code || baseCurrencyCode).toUpperCase(),
+    );
 
     // Derived state for current plan details (price, description)
     let currentPlanInfo = $derived(
@@ -27,19 +38,53 @@
 
     onMount(async () => {
         try {
-            const [subRes, plansRes, invoicesRes] = await Promise.all([
-                api.plans.getSubscriptionDetails(),
-                api.plans.list(),
-                api.payment.listInvoices(),
-            ]);
+            const [subRes, plansRes, invoicesRes, publicSettings] =
+                await Promise.all([
+                    api.plans.getSubscriptionDetails(),
+                    api.plans.list(),
+                    api.payment.listInvoices(),
+                    api.settings.getPublicSettings(),
+                ]);
             subscription = subRes;
             availablePlans = plansRes.filter((p) => p.is_active);
             invoices = invoicesRes;
+
+            if (publicSettings?.currency_code) {
+                baseCurrencyCode = String(publicSettings.currency_code).toUpperCase();
+            }
+            if (publicSettings?.default_locale) {
+                baseLocale = String(publicSettings.default_locale);
+            }
         } catch (e: any) {
             toast.error("Failed to load subscription details");
         } finally {
             loading = false;
         }
+    });
+
+    $effect(() => {
+        fxError = null;
+        fxRate = null;
+        fxSource = null;
+
+        if (!baseCurrencyCode || !tenantCurrencyCode) return;
+        if (baseCurrencyCode === tenantCurrencyCode) return;
+
+        fxLoading = true;
+        api.payment
+            .getFxRate(baseCurrencyCode, tenantCurrencyCode)
+            .then((res) => {
+                fxRate = Number(res.rate) || null;
+                fxSource = res.source || null;
+            })
+            .catch((e: any) => {
+                fxError = e?.message || String(e);
+                fxRate = null;
+                fxSource = null;
+            })
+            .finally(() => {
+                fxLoading = false;
+            });
     });
 
     async function handleUpgrade(plan: any) {
@@ -72,6 +117,30 @@
 
     function formatCurrency(amount: number, currency?: string) {
         return formatMoney(amount, { currency });
+    }
+
+    function roundForCurrency(amount: number, currencyCode: string): number {
+        const c = currencyCode.toUpperCase();
+        const digits = c === "IDR" || c === "JPY" || c === "KRW" ? 0 : 2;
+        const factor = Math.pow(10, digits);
+        return Math.round(amount * factor) / factor;
+    }
+
+    function formatBasePrice(amount: number): string {
+        return formatMoney(amount, { currency: baseCurrencyCode, locale: baseLocale });
+    }
+
+    function formatPlanPrice(amount: number): string {
+        if (tenantCurrencyCode === baseCurrencyCode) {
+            return formatMoney(amount, { currency: baseCurrencyCode, locale: baseLocale });
+        }
+
+        if (!fxRate) {
+            return formatMoney(amount, { currency: baseCurrencyCode, locale: baseLocale });
+        }
+
+        const converted = roundForCurrency(amount * fxRate, tenantCurrencyCode);
+        return formatMoney(converted, { currency: tenantCurrencyCode, locale: baseLocale });
     }
 
     // Helper to get feature highlights based on slug (Mocking feature list for UI)
@@ -164,12 +233,31 @@
                         <div class="plan-meta">
                             {#if currentPlanInfo && currentPlanInfo.price_monthly > 0}
                                 <div class="price-tag">
-                                    <span class="currency">$</span>
                                     <span class="amount"
-                                        >{currentPlanInfo.price_monthly}</span
+                                        >{formatPlanPrice(
+                                            currentPlanInfo.price_monthly,
+                                        )}</span
                                     >
                                     <span class="period">/ month</span>
                                 </div>
+                                {#if tenantCurrencyCode !== baseCurrencyCode}
+                                    <div class="base-hint">
+                                        Base: {formatBasePrice(
+                                            currentPlanInfo.price_monthly,
+                                        )}
+                                        {#if fxLoading}
+                                            <span class="fx-pill">Updating FX…</span>
+                                        {:else if fxSource}
+                                            <span class="fx-pill"
+                                                >FX: {fxSource}</span
+                                            >
+                                        {:else if fxError}
+                                            <span class="fx-pill warn"
+                                                >FX unavailable</span
+                                            >
+                                        {/if}
+                                    </div>
+                                {/if}
                             {:else}
                                 <div class="price-tag free">Free</div>
                             {/if}
@@ -297,14 +385,31 @@
                         >
                             <div class="option-header">
                                 <h4>{plan.name}</h4>
-                                <div class="price">
-                                    <span class="currency">$</span>
-                                    <span class="amount"
-                                        >{plan.price_monthly}</span
-                                    >
-                                    <span class="period">/mo</span>
-                                </div>
+                                {#if plan.price_monthly > 0}
+                                    <div class="price-tag">
+                                        <span class="amount"
+                                            >{formatPlanPrice(
+                                                plan.price_monthly,
+                                            )}</span
+                                        >
+                                        <span class="period">/mo</span>
+                                    </div>
+                                {:else}
+                                    <div class="price-tag free">Free</div>
+                                {/if}
                             </div>
+                            {#if plan.price_monthly > 0 && tenantCurrencyCode !== baseCurrencyCode}
+                                <div class="base-hint">
+                                    Base: {formatBasePrice(plan.price_monthly)}
+                                    {#if fxLoading}
+                                        <span class="fx-pill">Updating FX…</span>
+                                    {:else if fxSource}
+                                        <span class="fx-pill">FX: {fxSource}</span>
+                                    {:else if fxError}
+                                        <span class="fx-pill warn">FX unavailable</span>
+                                    {/if}
+                                </div>
+                            {/if}
                             <p class="desc">{plan.description || ""}</p>
 
                             <ul class="mini-features">
@@ -486,10 +591,6 @@
         font-weight: 700;
         color: var(--text-primary);
     }
-    .price-tag .currency {
-        font-size: 1rem;
-        margin-right: 2px;
-    }
     .price-tag .period {
         font-size: 0.85rem;
         color: var(--text-secondary);
@@ -499,6 +600,35 @@
         font-size: 1.5rem;
         font-weight: 700;
         color: var(--color-success, #10b981);
+    }
+
+    .base-hint {
+        margin-top: 0.35rem;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        text-align: right;
+    }
+
+    .fx-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.15rem 0.45rem;
+        border-radius: 999px;
+        border: 1px solid rgba(99, 102, 241, 0.25);
+        background: rgba(99, 102, 241, 0.08);
+        color: var(--text-primary);
+        font-weight: 650;
+        font-size: 0.72rem;
+    }
+
+    .fx-pill.warn {
+        border-color: rgba(245, 158, 11, 0.3);
+        background: rgba(245, 158, 11, 0.12);
     }
 
     .detail-body {

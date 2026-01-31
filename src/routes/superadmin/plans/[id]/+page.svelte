@@ -5,6 +5,8 @@
     import { api } from "$lib/api/client";
     import Icon from "$lib/components/Icon.svelte";
     import { toast } from "$lib/stores/toast";
+    import { appSettings } from "$lib/stores/settings";
+    import { formatMoney } from "$lib/utils/money";
 
     let id = $page.params.id as string;
     let isNew = id === "new";
@@ -126,6 +128,11 @@
                 .replace(/(^-|-$)/g, "");
         }
     }
+
+    function moneyStep() {
+        const code = String($appSettings?.currency_code || "USD").toUpperCase();
+        return code === "IDR" || code === "JPY" || code === "KRW" ? "1" : "0.01";
+    }
 </script>
 
 <svelte:head>
@@ -134,21 +141,21 @@
 
 <div class="plan-detail-page">
     <div class="page-header">
-        <button class="btn-back" onclick={() => goto("/superadmin/plans")}>
-            <Icon name="arrow-left" size={20} />
-            Back
-        </button>
         <div class="header-content">
             <h1>{isNew ? "Create New Plan" : `Edit ${planData.name}`}</h1>
-            <div class="actions">
+            <div class="actions" aria-label="Plan actions">
                 <button
                     class="btn btn-secondary"
-                    onclick={() => goto("/superadmin/plans")}>Cancel</button
+                    type="button"
+                    onclick={() => goto("/superadmin/plans")}
                 >
+                    Cancel
+                </button>
                 <button
                     class="btn btn-primary"
                     onclick={savePlan}
                     disabled={saving}
+                    type="button"
                 >
                     {#if saving}Saving...{:else}Save Plan{/if}
                 </button>
@@ -159,22 +166,28 @@
     {#if loading}
         <div class="loading">Loading...</div>
     {:else}
-        <div class="tabs">
+        <div class="tabs" role="tablist" aria-label="Plan editor tabs">
             <button
                 class="tab {activeTab === 'general' ? 'active' : ''}"
                 onclick={() => (activeTab = "general")}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "general"}
             >
                 General
             </button>
             <button
                 class="tab {activeTab === 'features' ? 'active' : ''}"
                 onclick={() => (activeTab = "features")}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === "features"}
             >
                 Features & Limits
             </button>
         </div>
 
-        <div class="content-card">
+        <div class="glass-card" role="tabpanel">
             {#if activeTab === "general"}
                 <div class="form-grid fade-in">
                     <div class="form-group">
@@ -210,23 +223,45 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="price_m">Monthly Price ($)</label>
-                        <input
-                            id="price_m"
-                            type="number"
-                            step="0.01"
-                            bind:value={planData.price_monthly}
-                        />
+                        <label for="price_m">
+                            Monthly Price ({$appSettings.currency_code})
+                        </label>
+                        <div class="money-input">
+                            <input
+                                id="price_m"
+                                type="number"
+                                step={moneyStep()}
+                                bind:value={planData.price_monthly}
+                            />
+                            <span class="money-suffix"
+                                >{$appSettings.currency_code}</span
+                            >
+                        </div>
+                        <small class="hint"
+                            >Preview: {formatMoney(planData.price_monthly)}
+                            /mo</small
+                        >
                     </div>
 
                     <div class="form-group">
-                        <label for="price_y">Yearly Price ($)</label>
-                        <input
-                            id="price_y"
-                            type="number"
-                            step="0.01"
-                            bind:value={planData.price_yearly}
-                        />
+                        <label for="price_y">
+                            Yearly Price ({$appSettings.currency_code})
+                        </label>
+                        <div class="money-input">
+                            <input
+                                id="price_y"
+                                type="number"
+                                step={moneyStep()}
+                                bind:value={planData.price_yearly}
+                            />
+                            <span class="money-suffix"
+                                >{$appSettings.currency_code}</span
+                            >
+                        </div>
+                        <small class="hint"
+                            >Preview: {formatMoney(planData.price_yearly)}
+                            /yr</small
+                        >
                     </div>
 
                     <div class="form-group">
@@ -253,6 +288,16 @@
                             />
                             Default Plan (for new tenants)
                         </label>
+                    </div>
+
+                    <div class="form-group full-width note" role="note">
+                        <Icon name="info" size={16} />
+                        <span>
+                            Plan prices are stored in the base currency (
+                            {$appSettings.currency_code}). If a tenant uses a
+                            different currency, invoices will be auto-converted
+                            using the configured FX provider.
+                        </span>
                     </div>
                 </div>
             {:else if activeTab === "features"}
@@ -319,27 +364,11 @@
         margin-bottom: 2rem;
     }
 
-    .btn-back {
-        background: none;
-        border: none;
-        color: var(--text-secondary);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        cursor: pointer;
-        margin-bottom: 1rem;
-        padding: 0;
-        font-size: 0.9rem;
-    }
-
-    .btn-back:hover {
-        color: var(--text-primary);
-    }
-
     .header-content {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 1rem;
     }
 
     h1 {
@@ -354,42 +383,18 @@
         gap: 1rem;
     }
 
-    .btn {
-        padding: 0.6rem 1.2rem;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        border: none;
-        font-size: 0.9rem;
-        transition: all 0.2s;
-    }
-
-    .btn-primary {
-        background: var(--color-primary);
-        color: white;
-    }
-    .btn-primary:hover {
-        filter: brightness(1.1);
-    }
-    .btn-primary:disabled {
-        opacity: 0.7;
-        cursor: not-allowed;
-    }
-
-    .btn-secondary {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        color: var(--text-primary);
-    }
-    .btn-secondary:hover {
-        background: var(--bg-hover);
-    }
-
     .tabs {
         display: flex;
         gap: 1rem;
         margin-bottom: 1.5rem;
         border-bottom: 1px solid var(--border-color);
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .tabs::-webkit-scrollbar {
+        height: 0;
     }
 
     .tab {
@@ -401,6 +406,7 @@
         cursor: pointer;
         border-bottom: 2px solid transparent;
         transition: all 0.2s;
+        white-space: nowrap;
     }
 
     .tab.active {
@@ -408,12 +414,20 @@
         border-bottom-color: var(--color-primary);
     }
 
-    .content-card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
+    .glass-card {
+        background: linear-gradient(145deg, var(--bg-surface), #0b0c10);
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
         padding: 2rem;
-        box-shadow: var(--shadow-sm);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+    }
+
+    :global([data-theme="light"]) .glass-card {
+        background: linear-gradient(135deg, #ffffff, #f7f7fb);
+        border-color: rgba(0, 0, 0, 0.06);
+        box-shadow:
+            0 12px 32px rgba(0, 0, 0, 0.08),
+            0 0 0 1px rgba(255, 255, 255, 0.8);
     }
 
     .form-grid {
@@ -424,6 +438,47 @@
 
     .full-width {
         grid-column: 1 / -1;
+    }
+
+    .money-input {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .money-input input {
+        width: 100%;
+        padding-right: 5.25rem;
+    }
+
+    .money-suffix {
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.85rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        color: var(--text-secondary);
+        opacity: 0.9;
+        pointer-events: none;
+    }
+
+    .hint {
+        display: block;
+        margin-top: 0.4rem;
+        color: var(--text-secondary);
+    }
+
+    .note {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.6rem;
+        padding: 0.9rem 1rem;
+        border-radius: 12px;
+        background: rgba(99, 102, 241, 0.08);
+        border: 1px solid rgba(99, 102, 241, 0.22);
+        color: var(--text-primary);
     }
 
     .form-group {
@@ -447,6 +502,7 @@
         padding: 0.7rem;
         color: var(--text-primary);
         font-size: 0.95rem;
+        width: 100%;
     }
 
     input:focus,
@@ -490,6 +546,66 @@
         background: var(--bg-app);
         border: 1px solid var(--border-color);
         border-radius: 8px;
+        gap: 1rem;
+    }
+
+    @media (max-width: 720px) {
+        .plan-detail-page {
+            padding: 1rem;
+        }
+
+        .page-header {
+            margin-bottom: 1.25rem;
+        }
+
+        .header-content {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        h1 {
+            font-size: 1.35rem;
+        }
+
+        .actions {
+            width: 100%;
+        }
+
+        .actions :global(.btn) {
+            flex: 1;
+            width: 100%;
+        }
+
+        .glass-card {
+            padding: 1.25rem;
+            border-radius: 14px;
+        }
+
+        .form-grid {
+            grid-template-columns: 1fr;
+            gap: 1.1rem;
+        }
+
+        .toggle-group {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding-top: 0.25rem;
+        }
+
+        .feature-item {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .feature-control {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .input-sm {
+            width: 100%;
+        }
     }
 
     .feature-info {

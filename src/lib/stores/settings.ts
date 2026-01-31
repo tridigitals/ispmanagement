@@ -30,8 +30,8 @@ const defaults: AppSettings = {
     support_email: 'support@example.com',
     maintenance_mode: false,
     default_locale: 'en-US',
-    currency_code: 'USD',
-    currency_symbol: '$',
+    currency_code: 'IDR',
+    currency_symbol: 'Rp',
     auth: undefined
 };
 

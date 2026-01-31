@@ -16,7 +16,7 @@ export function formatMoney(
     const currency =
         options.currency ||
         (settings as any).currency_code ||
-        "USD";
+        "IDR";
     const locale = options.locale || settings.default_locale || "en-US";
 
     const safeAmount = Number.isFinite(amount) ? amount : 0;

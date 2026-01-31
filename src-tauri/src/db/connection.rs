@@ -425,6 +425,10 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
             invoice_number TEXT UNIQUE NOT NULL,
             amount DECIMAL(10,2) NOT NULL,
             currency_code TEXT NOT NULL DEFAULT 'IDR',
+            base_currency_code TEXT NOT NULL DEFAULT 'IDR',
+            fx_rate DECIMAL(18,8),
+            fx_source TEXT,
+            fx_fetched_at TIMESTAMPTZ,
             status TEXT NOT NULL DEFAULT 'pending',
             description TEXT,
             due_date TIMESTAMPTZ NOT NULL,
@@ -500,6 +504,33 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
+    // Migration: Add FX metadata to invoices if not exists
+    sqlx::query(
+        r#"
+        DO $$ 
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='invoices' AND column_name='base_currency_code') THEN
+                ALTER TABLE invoices ADD COLUMN base_currency_code TEXT NOT NULL DEFAULT 'IDR';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='invoices' AND column_name='fx_rate') THEN
+                ALTER TABLE invoices ADD COLUMN fx_rate DECIMAL(18,8);
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='invoices' AND column_name='fx_source') THEN
+                ALTER TABLE invoices ADD COLUMN fx_source TEXT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='invoices' AND column_name='fx_fetched_at') THEN
+                ALTER TABLE invoices ADD COLUMN fx_fetched_at TIMESTAMPTZ;
+            END IF;
+        END $$;
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
     // Migration: Add proof_attachment to invoices if not exists
     sqlx::query(
         r#"
@@ -510,6 +541,22 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
                 ALTER TABLE invoices ADD COLUMN proof_attachment TEXT;
             END IF;
         END $$;
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // FX cache table
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS fx_rates (
+            base_currency TEXT NOT NULL,
+            quote_currency TEXT NOT NULL,
+            rate DECIMAL(18,8) NOT NULL,
+            fetched_at TIMESTAMPTZ NOT NULL,
+            source TEXT NOT NULL,
+            PRIMARY KEY (base_currency, quote_currency)
+        )
     "#,
     )
     .execute(pool)
@@ -979,6 +1026,10 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
             invoice_number TEXT UNIQUE NOT NULL,
             amount REAL NOT NULL,
             currency_code TEXT NOT NULL DEFAULT 'IDR',
+            base_currency_code TEXT NOT NULL DEFAULT 'IDR',
+            fx_rate REAL,
+            fx_source TEXT,
+            fx_fetched_at TEXT,
             status TEXT NOT NULL DEFAULT 'pending',
             description TEXT,
             due_date TEXT NOT NULL,
@@ -1033,9 +1084,40 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await;
 
+    let _ = sqlx::query(
+        "ALTER TABLE invoices ADD COLUMN base_currency_code TEXT NOT NULL DEFAULT 'IDR'",
+    )
+    .execute(pool)
+    .await;
+    let _ = sqlx::query("ALTER TABLE invoices ADD COLUMN fx_rate REAL")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("ALTER TABLE invoices ADD COLUMN fx_source TEXT")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("ALTER TABLE invoices ADD COLUMN fx_fetched_at TEXT")
+        .execute(pool)
+        .await;
+
     let _ = sqlx::query("ALTER TABLE invoices ADD COLUMN proof_attachment TEXT")
         .execute(pool)
         .await;
+
+    // FX cache table
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS fx_rates (
+            base_currency TEXT NOT NULL,
+            quote_currency TEXT NOT NULL,
+            rate REAL NOT NULL,
+            fetched_at TEXT NOT NULL,
+            source TEXT NOT NULL,
+            PRIMARY KEY (base_currency, quote_currency)
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
 
     // Create indexes for plans (SQLite)
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_plans_slug ON plans(slug)")

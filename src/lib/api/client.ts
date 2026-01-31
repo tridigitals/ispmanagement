@@ -10,14 +10,32 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         // Check if we should force remote API usage (for secure client-server deployment)
         const forceRemote = import.meta.env.VITE_USE_REMOTE_API === 'true';
 
-        // Check if running in Tauri AND not forced to use remote
-        // @ts-ignore
-        if (!forceRemote && typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
-            // console.log(`[Tauri] Invoking ${command}`, args); 
-            // if (command === 'get_logo') {
-            //    console.log(`[Tauri] get_logo called with token:`, args?.token ? 'YES (Hidden)' : 'NO');
-            // }
-            return await invoke(command, args);
+        // Prefer Tauri IPC when available (prevents hanging HTTP fetch when no server is running)
+        if (!forceRemote && typeof window !== 'undefined') {
+            const w = window as any;
+            const looksLikeTauri =
+                !!w.__TAURI_INTERNALS__ ||
+                !!w.__TAURI__ ||
+                (typeof navigator !== 'undefined' &&
+                    typeof navigator.userAgent === 'string' &&
+                    navigator.userAgent.toLowerCase().includes('tauri'));
+
+            if (looksLikeTauri) {
+                try {
+                    return await invoke(command, args);
+                } catch (e: any) {
+                    // If IPC isn't actually available (e.g. running in web), fall back to HTTP
+                    const msg = String(e?.message || e || '');
+                    const canFallback =
+                        msg.includes('ipc') ||
+                        msg.includes('tauri') ||
+                        msg.includes('not implemented') ||
+                        msg.includes('undefined') ||
+                        msg.includes('not allowed') ||
+                        msg.includes('not available');
+                    if (!canFallback) throw e;
+                }
+            }
         }
 
         // Web Environment (HTTP)
@@ -116,6 +134,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             'get_invoice': { method: 'GET', path: '/payment/invoices/:id' },
             'list_invoices': { method: 'GET', path: '/payment/invoices' },
             'list_all_invoices': { method: 'GET', path: '/payment/invoices/all' },
+            'get_fx_rate': { method: 'GET', path: '/payment/fx-rate' },
             'pay_invoice_midtrans': { method: 'POST', path: '/payment/invoices/:id/midtrans' },
             'check_payment_status': { method: 'GET', path: '/payment/invoices/:id/status' },
 
@@ -178,11 +197,26 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
                 headers['Authorization'] = `Bearer ${token}`;
             }
 
-            const response = await fetch(`${API_BASE}${path}${queryString}`, {
-                method: route.method,
-                headers,
-                body: route.method !== 'GET' ? JSON.stringify(args || {}) : undefined,
-            });
+            const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            const timeout = setTimeout(() => controller?.abort(), 15000);
+
+            let response: Response;
+            try {
+                response = await fetch(`${API_BASE}${path}${queryString}`, {
+                    method: route.method,
+                    headers,
+                    body: route.method !== 'GET' ? JSON.stringify(args || {}) : undefined,
+                    signal: controller?.signal,
+                });
+            } catch (e: any) {
+                const name = String(e?.name || '');
+                if (name === 'AbortError') {
+                    throw new Error('Remote API request timed out. Is the server running?');
+                }
+                throw e;
+            } finally {
+                clearTimeout(timeout);
+            }
 
             if (!response.ok) {
                 const errorBody = await response.json().catch(() => ({}));
@@ -243,6 +277,7 @@ export interface User {
     is_super_admin: boolean;
     avatar_url: string | null;
     is_active: boolean;
+    two_factor_enabled?: boolean;
     created_at: string;
     permissions: string[];
     tenant_slug?: string;
@@ -714,6 +749,10 @@ export interface Invoice {
     invoice_number: string;
     amount: number;
     currency_code?: string;
+    base_currency_code?: string;
+    fx_rate?: number | null;
+    fx_source?: string | null;
+    fx_fetched_at?: string | null;
     status: string; // "pending", "paid", "failed"
     description: string | null;
     due_date: string;
@@ -724,6 +763,14 @@ export interface Invoice {
     proof_attachment?: string | null;
     created_at?: string;
     updated_at?: string;
+}
+
+export interface FxRate {
+    base_currency: string;
+    quote_currency: string;
+    rate: number;
+    source: string;
+    fetched_at: string;
 }
 
 export const payment = {
@@ -748,6 +795,9 @@ export const payment = {
 
     listAllInvoices: (): Promise<Invoice[]> =>
         safeInvoke('list_all_invoices', { token: getTokenOrThrow() }),
+
+    getFxRate: (baseCurrency: string, quoteCurrency: string): Promise<FxRate> =>
+        safeInvoke('get_fx_rate', { token: getTokenOrThrow(), baseCurrency, quoteCurrency }),
 
     payMidtrans: (id: string): Promise<string> => // Returns Snap Token
         safeInvoke('pay_invoice_midtrans', { token: getTokenOrThrow(), id }),
