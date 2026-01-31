@@ -16,30 +16,33 @@
         unsubscribePush,
         sendTestNotification,
         checkSubscription,
-        pushEnabled,
-    } from "$lib/stores/notifications";
+         pushEnabled,
+     } from "$lib/stores/notifications";
 
-    let activeTab = "general";
-    let loading = false;
-    let message = { type: "", text: "" };
+    let activeTab = $state("general");
+    let loading = $state(false);
+    let message = $state<{ type: "" | "success" | "error"; text: string }>({
+        type: "",
+        text: "",
+    });
 
     // User Data State (for editing)
-    let profileData = {
+    let profileData = $state({
         id: "",
         name: "",
         email: "",
         role: "",
-    };
+    });
 
     // Password State
-    let passwordData = {
+    let passwordData = $state({
         current: "",
         new: "",
         confirm: "",
-    };
+    });
 
     // 2FA State
-    let twoFactorData = {
+    let twoFactorData = $state({
         enabled: false,
         secret: "",
         qr: "",
@@ -48,13 +51,13 @@
         showSetup: false,
         showRecovery: false,
         disableCode: "",
-    };
+    });
 
     // Visibility States
-    let showCurrentPassword = false;
-    let showNewPassword = false;
-    let showConfirmPassword = false;
-    let isDesktop = false;
+    let showCurrentPassword = $state(false);
+    let showNewPassword = $state(false);
+    let showConfirmPassword = $state(false);
+    let isDesktop = $state(false);
 
     // UI Configuration
     const notificationCategories = [
@@ -71,7 +74,8 @@
             desc: "Member changes & invites",
         },
         {
-            id: "billing",
+            // aligns with backend/category enum: 'payment'
+            id: "payment",
             icon: "credit-card",
             label: "Billing",
             desc: "Invoices & subscriptions",
@@ -84,19 +88,23 @@
         },
     ];
 
-    let pushPermission = "default"; // 'default', 'granted', 'denied'
-    $: policy = $appSettings.auth || {
+    let pushPermission = $state<"default" | "granted" | "denied">("default");
+
+    let policy = $derived(
+        $appSettings.auth || {
         password_min_length: 8,
         password_require_uppercase: true,
         password_require_number: true,
         password_require_special: false,
-    };
+        },
+    );
 
     // Load initial data
     onMount(async () => {
         // Auth handled by layout
 
-        await appSettings.init();
+        // Don’t block first paint; load settings in background.
+        void appSettings.init();
 
         // Check if running in Tauri Desktop
         isDesktop = !!(window as any).__TAURI_INTERNALS__;
@@ -121,7 +129,11 @@
         
         if (urlParams.get("2fa_required") === "true") {
             activeTab = "security";
-            showMessage("error", "Your organization requires Two-Factor Authentication. Please enable it to continue.");
+            showMessage(
+                "error",
+                $t("profile.messages.twofa_required") ||
+                    "Your organization requires Two-Factor Authentication. Please enable it to continue.",
+            );
         } else {
             const tab = urlParams.get("tab");
             if (
@@ -131,8 +143,24 @@
                 )
             ) {
                 activeTab = tab;
+            } else {
+                // Restore last active tab if no explicit tab in URL.
+                const saved = localStorage.getItem("profile.activeTab");
+                if (
+                    saved &&
+                    ["general", "security", "preferences", "notifications"].includes(
+                        saved,
+                    )
+                ) {
+                    activeTab = saved;
+                }
             }
         }
+    });
+
+    $effect(() => {
+        if (typeof window === "undefined") return;
+        localStorage.setItem("profile.activeTab", activeTab);
     });
 
     // Helper to show messages
@@ -227,7 +255,7 @@
     }
 
     // 2FA Methods
-    let setupMethod = "totp"; // 'totp' | 'email'
+    let setupMethod = $state<"totp" | "email">("totp");
 
     async function start2FA(method: "totp" | "email") {
         setupMethod = method;
@@ -308,8 +336,8 @@
         }
     }
 
-    let disableOtpSending = false;
-    let disableOtpSent = false;
+    let disableOtpSending = $state(false);
+    let disableOtpSent = $state(false);
 
     async function sendDisableEmailOtp() {
         disableOtpSending = true;
@@ -334,7 +362,11 @@
             );
             showMessage(
                 "success",
-                `2FA method changed to ${method === "totp" ? "Authenticator App" : "Email"}`,
+                method === "totp"
+                    ? $t("profile.messages.2fa_method_totp") ||
+                          "2FA method changed to Authenticator App"
+                    : $t("profile.messages.2fa_method_email") ||
+                          "2FA method changed to Email",
             );
         } catch (error: any) {
             showMessage("error", error.toString());
@@ -344,29 +376,31 @@
     }
 
     // Get initials for avatar
-    $: initials = profileData.name
-        ? profileData.name
-              .split(" ")
-              .map((n) => n[0])
-              .slice(0, 2)
-              .join("")
-              .toUpperCase()
-        : "U";
+    let initials = $derived(
+        profileData.name
+            ? profileData.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .slice(0, 2)
+                  .join("")
+                  .toUpperCase()
+            : "U",
+    );
 
-    $: tabs = [
+    let tabs = $derived([
         { id: "general", label: $t("profile.tabs.general"), icon: "profile" },
         { id: "security", label: $t("profile.tabs.security"), icon: "lock" },
         {
             id: "preferences",
-            label: $t("profile.tabs.preferences"), // "App Preferences" or "Appearance"
+            label: $t("profile.tabs.preferences"),
             icon: "settings",
         },
         {
             id: "notifications",
-            label: "Notifications", // TODO: i18n
+            label: $t("profile.tabs.notifications") || "Notifications",
             icon: "bell",
         },
-    ];
+    ]);
 </script>
 
 <div class="page-container fade-in">

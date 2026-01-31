@@ -3,7 +3,7 @@
     import { onMount } from "svelte";
     import { api, type Invoice } from "$lib/api/client";
     import Icon from "$lib/components/Icon.svelte";
-    import { toast } from "svelte-sonner";
+    import { toast } from "$lib/stores/toast";
     import { goto } from "$app/navigation";
     import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
     import { formatMoney } from "$lib/utils/money";
@@ -13,6 +13,8 @@
     let invoice = $state<Invoice | null>(null);
     let loading = $state(true);
     let processing = $state(false);
+    let tenantName = $state<string | null>(null);
+    let tenantSlug = $state<string | null>(null);
 
     // For Lightbox
     let showLightbox = $state(false);
@@ -45,7 +47,24 @@
         }
         loading = true;
         try {
-            invoice = await api.payment.getInvoice(invoiceId);
+            tenantName = null;
+            tenantSlug = null;
+
+            const [inv, tenantsRes] = await Promise.all([
+                api.payment.getInvoice(invoiceId),
+                api.superadmin.listTenants().catch(() => ({ data: [], total: 0 })),
+            ]);
+            invoice = inv;
+
+            if (inv?.tenant_id) {
+                const t = (tenantsRes.data || []).find(
+                    (x: any) => x.id === inv.tenant_id,
+                );
+                if (t) {
+                    tenantName = t.name ?? null;
+                    tenantSlug = t.slug ?? null;
+                }
+            }
         } catch (e: any) {
             toast.error("Failed to load invoice: " + e.message);
         } finally {
@@ -130,8 +149,17 @@
 
                 <div class="info-rows">
                     <div class="row">
-                        <span class="label">Tenant ID</span>
-                        <span class="value">{invoice.tenant_id}</span>
+                        <span class="label">Tenant</span>
+                        <span class="value">
+                            {#if tenantName}
+                                {tenantName}
+                                {#if tenantSlug}
+                                    <span class="value-sub">{tenantSlug}</span>
+                                {/if}
+                            {:else}
+                                —
+                            {/if}
+                        </span>
                     </div>
                     <div class="row">
                         <span class="label">Description</span>
@@ -330,6 +358,17 @@
     .value {
         font-weight: 600;
         color: var(--text-primary);
+    }
+    .value-sub {
+        display: inline-block;
+        margin-left: 0.5rem;
+        padding: 0.15rem 0.5rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+        background: rgba(255, 255, 255, 0.04);
     }
     .value.highlight {
         font-size: 1.1em;

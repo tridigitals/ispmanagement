@@ -50,7 +50,7 @@
     } = $props();
 
     let currentPage = $state(0);
-    let currentSize = $state(pageSize);
+    let currentSize = $state(10);
     let searchQuery = $state("");
 
     // Reset page when data changes length significantly (optional but good UX)

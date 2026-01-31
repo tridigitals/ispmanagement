@@ -1,6 +1,7 @@
 <script lang="ts">
     import { api } from "$lib/api/client";
     import Icon from "$lib/components/Icon.svelte";
+    import { systemHealthCache } from "$lib/stores/systemHealth";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
 
@@ -29,7 +30,10 @@
             tenantActive = tenants.filter((t: any) => t.is_active).length;
 
             userTotal = usersRes?.total ?? 0;
-            healthText = healthRes?.status || healthRes?.health || "OK";
+            if (healthRes) {
+                systemHealthCache.set({ health: healthRes, fetchedAt: Date.now() });
+            }
+            healthText = healthRes?.database?.is_connected ? "OK" : "DB Down";
         } catch (e) {
             console.error("Failed to load stats", e);
             healthText = "—";

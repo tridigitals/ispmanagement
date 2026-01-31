@@ -12,6 +12,8 @@
     import Select from "$lib/components/Select.svelte";
     import type { Setting } from "$lib/api/client";
     import { toast } from "svelte-sonner";
+    import { get } from "svelte/store";
+    import { adminSettingsCache } from "$lib/stores/adminSettingsCache";
 
     let loading = $state(true);
     let saving = $state(false);
@@ -20,11 +22,18 @@
     let logoBase64 = $state<string | null>(null);
     let activeTab = $state("general");
     let hasChanges = $state(false);
+    let isMobile = $state(false);
 
     // Tenant specific state
     let tenantInfo = $state<any>(null);
     let tenantChanges = $state<{ name?: string; customDomain?: string }>({});
     let customDomainAccess = $state(false);
+
+    // Baseline snapshot for local reset (no network)
+    let baselineLocalSettings = $state<Record<string, string>>({});
+    let baselineLogoBase64 = $state<string | null>(null);
+    let baselineTenantInfo = $state<any>(null);
+    let baselineCustomDomainAccess = $state(false);
 
     // Categories configuration
     const categories = {
@@ -110,6 +119,38 @@
             goto("/unauthorized");
             return;
         }
+
+        if (typeof window !== "undefined") {
+            const mq = window.matchMedia("(max-width: 900px)");
+            const sync = () => {
+                isMobile = mq.matches;
+            };
+            sync();
+            try {
+                mq.addEventListener("change", sync);
+            } catch {
+                // @ts-ignore
+                mq.addListener?.(sync);
+            }
+        }
+
+        // Hydrate from cache to avoid loading flash
+        const cacheKey = String($user?.tenant_id || $user?.tenant_slug || "");
+        if (cacheKey) {
+            const cached = get(adminSettingsCache)[cacheKey];
+            if (cached?.fetchedAt) {
+                loading = false;
+                buildLocalSettingsFromData(
+                    cached.settings,
+                    cached.tenantInfo,
+                    cached.customDomainAccess,
+                    cached.logoBase64,
+                );
+                void loadSettings({ silent: true });
+                return;
+            }
+        }
+
         await loadSettings();
     });
 
@@ -117,62 +158,130 @@
         categories[activeTab as keyof typeof categories],
     );
 
-    async function loadSettings() {
-        try {
-            await appLogo.refresh(getToken() || undefined);
+    function buildLocalSettingsFromData(
+        data: Setting[],
+        tenant: any,
+        access: boolean,
+        logo: string | null,
+    ) {
+        // Map settings
+        settings = data.reduce(
+            (acc, curr) => {
+                acc[curr.key] = curr;
+                return acc;
+            },
+            {} as Record<string, Setting>,
+        );
 
-            // 1. Fetch App Settings
-            const data = await api.settings.getAll();
+        tenantInfo = tenant;
+        tenantChanges = {};
+        customDomainAccess = access;
 
-            // 2. Fetch Tenant Info
-            tenantInfo = await api.tenant.getSelf();
-            tenantChanges = {}; // Reset changes
-
-            // 3. Check Custom Domain Access
-            const access = await api.plans.checkAccess(
-                tenantInfo.id,
-                "custom_domain",
-            );
-            customDomainAccess = access.has_access;
-
-            // Map settings
-            settings = data.reduce(
-                (acc, curr) => {
-                    acc[curr.key] = curr;
-                    return acc;
-                },
-                {} as Record<string, Setting>,
-            );
-
-            localSettings = {};
-            // Populate defaults
-            Object.values(categories).forEach((cat) => {
-                cat.keys.forEach((key) => {
-                    let val = settings[key]?.value ?? "";
-                    if (key === "storage_driver" && !val) val = "system";
-                    localSettings[key] = val;
-                });
+        localSettings = {};
+        Object.values(categories).forEach((cat) => {
+            cat.keys.forEach((key) => {
+                let val = settings[key]?.value ?? "";
+                if (key === "storage_driver" && !val) val = "system";
+                localSettings[key] = val;
             });
+        });
 
-            // Init Tenant local values
-            localSettings["tenant_name"] = tenantInfo.name;
-            localSettings["custom_domain"] = tenantInfo.custom_domain || "";
-            localSettings["enforce_2fa"] = String(tenantInfo.enforce_2fa);
+        // Tenant locals
+        localSettings["tenant_name"] = tenantInfo?.name || "";
+        localSettings["custom_domain"] = tenantInfo?.custom_domain || "";
+        localSettings["enforce_2fa"] = String(tenantInfo?.enforce_2fa ?? false);
 
-            // Init Bank Accounts
-            loadBankAccounts();
+        // Init Bank Accounts (from JSON string)
+        loadBankAccounts();
 
-            // Use current logo from store
-            let logoStoreValue;
+        logoBase64 = logo;
+
+        // Baseline snapshot for reset
+        baselineLocalSettings = { ...localSettings };
+        baselineLogoBase64 = logoBase64;
+        baselineTenantInfo = tenantInfo ? { ...tenantInfo } : null;
+        baselineCustomDomainAccess = customDomainAccess;
+
+        hasChanges = false;
+    }
+
+    function recomputeHasChanges() {
+        // Tenant changes
+        const nameChanged =
+            (localSettings["tenant_name"] || "") !== (baselineTenantInfo?.name || "");
+        const domainChanged =
+            (localSettings["custom_domain"] || "") !==
+            (baselineTenantInfo?.custom_domain || "");
+        const enforceChanged =
+            String(localSettings["enforce_2fa"] || "false") !==
+            String(baselineTenantInfo?.enforce_2fa ?? false);
+
+        // Setting changes (all keys across categories)
+        const keys = new Set<string>();
+        Object.values(categories).forEach((cat) => cat.keys.forEach((k) => keys.add(k)));
+
+        let settingsChanged = false;
+        for (const key of keys) {
+            const baseVal = baselineLocalSettings[key] ?? "";
+            const curVal = localSettings[key] ?? "";
+            if (curVal !== baseVal) {
+                settingsChanged = true;
+                break;
+            }
+        }
+
+        const logoChanged = (logoBase64 || "") !== (baselineLogoBase64 || "");
+
+        hasChanges = nameChanged || domainChanged || enforceChanged || settingsChanged || logoChanged;
+    }
+
+    async function loadSettings(opts: { silent?: boolean } = {}) {
+        try {
+            if (!opts.silent) loading = true;
+
+            const token = getToken() || undefined;
+
+            // Use current logo from store (fast) while refreshing in background
+            let logoStoreValue: string | null = null;
             appLogo.subscribe((v) => (logoStoreValue = v))();
-            logoBase64 = logoStoreValue || null;
 
-            hasChanges = false;
+            const [_, data, tenant] = await Promise.all([
+                appLogo.refresh(token).catch(() => null),
+                api.settings.getAll(),
+                api.tenant.getSelf(),
+            ]);
+
+            const access = await api.plans
+                .checkAccess(tenant.id, "custom_domain")
+                .catch(() => ({ has_access: false } as any));
+
+            // Pull refreshed logo again if available
+            let logoAfter: string | null = null;
+            appLogo.subscribe((v) => (logoAfter = v))();
+
+            buildLocalSettingsFromData(
+                data,
+                tenant,
+                Boolean(access?.has_access),
+                logoAfter || logoStoreValue || null,
+            );
+
+            const key = String(tenant?.id || tenant?.slug || $user?.tenant_id || $user?.tenant_slug || "default");
+            adminSettingsCache.update((m) => ({
+                ...m,
+                [key]: {
+                    settings: data,
+                    tenantInfo: tenant,
+                    customDomainAccess: Boolean(access?.has_access),
+                    logoBase64: logoAfter || logoStoreValue || null,
+                    fetchedAt: Date.now(),
+                },
+            }));
         } catch (error) {
             console.error(error);
             toast.error("Failed to load settings");
         } finally {
-            loading = false;
+            if (!opts.silent) loading = false;
         }
     }
 
@@ -200,14 +309,13 @@
             if (key === "enforce_2fa" && Boolean(value) === originalEnforce)
                 delete (tenantChanges as any).enforce2fa;
 
-            hasChanges = Object.keys(tenantChanges).length > 0;
+            // keep tenantChanges for save payload, but use full recompute for UI state
         } else {
-            const original = settings[key]?.value || "";
-            hasChanges = String(value) !== original;
-            // Simple check for now, can be improved to check all fields
+            // handled by recomputeHasChanges
         }
 
         localSettings = { ...localSettings };
+        recomputeHasChanges();
     }
 
     async function handleFileUpload(e: Event) {
@@ -225,7 +333,7 @@
                 localSettings["app_logo_path"] = path;
                 appLogo.set(base64);
                 logoBase64 = base64;
-                hasChanges = true;
+                recomputeHasChanges();
                 toast.success("Logo uploaded");
             };
             reader.readAsDataURL(file);
@@ -282,7 +390,14 @@
     }
 
     function discardChanges() {
-        loadSettings();
+        // Reset to baseline snapshot (no network)
+        localSettings = { ...baselineLocalSettings };
+        tenantChanges = {};
+        customDomainAccess = baselineCustomDomainAccess;
+        tenantInfo = baselineTenantInfo ? { ...baselineTenantInfo } : tenantInfo;
+        logoBase64 = baselineLogoBase64;
+        loadBankAccounts();
+        recomputeHasChanges();
     }
 
     // Input Helpers
@@ -1401,7 +1516,7 @@
         title="Settings"
         on:change={(e) => {
             activeTab = e.detail;
-            discardChanges();
+            // Keep unsaved edits when switching tabs (avoid refetch/reset).
         }}
     />
 </div>

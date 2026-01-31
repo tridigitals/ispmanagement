@@ -8,10 +8,13 @@
     import MobileFabMenu from "$lib/components/MobileFabMenu.svelte";
     import { toast } from "$lib/stores/toast";
     import { appSettings } from "$lib/stores/settings";
+    import { superadminPlatformSettingsCache } from "$lib/stores/superadminPlatformSettings";
+    import { get } from "svelte/store";
 
     let loading = true;
     let saving = false;
     let activeTab = "general";
+    let isMobile = false;
 
     // Bank Account Data Models
     let bankAccounts: BankAccount[] = [];
@@ -123,11 +126,125 @@
             goto("/dashboard");
             return;
         }
+
+        // Media query for responsive tweaks
+        if (typeof window !== "undefined") {
+            const mq = window.matchMedia("(max-width: 900px)");
+            const sync = () => {
+                isMobile = mq.matches;
+            };
+            sync();
+            try {
+                mq.addEventListener("change", sync);
+            } catch {
+                // @ts-ignore
+                mq.addListener?.(sync);
+            }
+        }
+
+        // Hydrate from cache to avoid spinner flash
+        const cached = get(superadminPlatformSettingsCache);
+        if (cached?.fetchedAt && Object.keys(cached.settingsMap || {}).length) {
+            applySettingsMap(cached.settingsMap);
+            bankAccounts = cached.bankAccounts || [];
+            loading = false;
+            // Background refresh (don’t block UI)
+            void loadSettings({ silent: true });
+            return;
+        }
+
         await loadSettings();
     });
 
-    async function loadSettings() {
-        loading = true;
+    function applySettingsMap(settingsMap: Record<string, string>) {
+        // Maintenance
+        maintenanceMode = settingsMap["maintenance_mode"] === "true";
+        maintenanceMessage =
+            settingsMap["maintenance_message"] ||
+            "The system is currently under maintenance. Please try again later.";
+
+        // General
+        appPublicUrl = settingsMap["app_public_url"] || "http://localhost:3000";
+        currencyCode = (settingsMap["currency_code"] || "IDR").toUpperCase();
+
+        // Authentication
+        authAllowRegistration = settingsMap["auth_allow_registration"] === "true";
+        authRequireEmailVerification =
+            settingsMap["auth_require_email_verification"] === "true";
+        authJwtExpiryHours = parseInt(settingsMap["auth_jwt_expiry_hours"] || "24");
+        authSessionTimeoutMinutes = parseInt(
+            settingsMap["auth_session_timeout_minutes"] || "60",
+        );
+
+        // Password Policy
+        authPasswordMinLength = parseInt(
+            settingsMap["auth_password_min_length"] || "8",
+        );
+        authPasswordRequireUppercase =
+            settingsMap["auth_password_require_uppercase"] === "true";
+        authPasswordRequireNumber =
+            settingsMap["auth_password_require_number"] === "true";
+        authPasswordRequireSpecial =
+            settingsMap["auth_password_require_special"] === "true";
+        authLogoutAllOnPasswordChange =
+            settingsMap["auth_logout_all_on_password_change"] !== "false";
+
+        // Security & Rate Limiting
+        maxLoginAttempts = parseInt(
+            settingsMap["auth_max_login_attempts"] ||
+                settingsMap["max_login_attempts"] ||
+                "5",
+        );
+        lockoutDurationMinutes = parseInt(
+            settingsMap["auth_lockout_duration_minutes"] ||
+                settingsMap["lockout_duration_minutes"] ||
+                "15",
+        );
+        apiRateLimitPerMinute = parseInt(
+            settingsMap["api_rate_limit_per_minute"] || "100",
+        );
+        enableIpBlocking = settingsMap["enable_ip_blocking"] === "true";
+
+        // 2FA Configuration
+        twoFAEnabled = settingsMap["2fa_enabled"] !== "false"; // Default true
+        const methods = settingsMap["2fa_methods"] || "totp";
+        twoFAMethodTotp = methods.includes("totp");
+        twoFAMethodEmail = methods.includes("email");
+        twoFAEmailOtpExpiryMinutes = parseInt(
+            settingsMap["2fa_email_otp_expiry_minutes"] || "5",
+        );
+
+        // Storage
+        storageMaxFileSizeMb = parseInt(
+            settingsMap["storage_max_file_size_mb"] || "500",
+        );
+        storageAllowedExtensions =
+            settingsMap["storage_allowed_extensions"] ||
+            "jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,zip,mp4,mov";
+
+        storageDriver = settingsMap["storage_driver"] || "local";
+        storageS3Bucket = settingsMap["storage_s3_bucket"] || "";
+        storageS3Region = settingsMap["storage_s3_region"] || "auto";
+        storageS3Endpoint = settingsMap["storage_s3_endpoint"] || "";
+        storageS3AccessKey = settingsMap["storage_s3_access_key"] || "";
+        storageS3SecretKey = settingsMap["storage_s3_secret_key"] || "";
+        storageS3PublicUrl = settingsMap["storage_s3_public_url"] || "";
+
+        // Payment
+        paymentMidtransEnabled = settingsMap["payment_midtrans_enabled"] === "true";
+        paymentMidtransMerchantId = settingsMap["payment_midtrans_merchant_id"] || "";
+        paymentMidtransServerKey = settingsMap["payment_midtrans_server_key"] || "";
+        paymentMidtransClientKey = settingsMap["payment_midtrans_client_key"] || "";
+        paymentMidtransIsProduction =
+            settingsMap["payment_midtrans_is_production"] === "true";
+        paymentManualEnabled = settingsMap["payment_manual_enabled"] !== "false"; // Default true
+        paymentManualInstructions =
+            settingsMap["payment_manual_instructions"] ||
+            "Please transfer to our bank account.";
+    }
+
+    async function loadSettings(opts: { silent?: boolean } = {}) {
+        if (!opts.silent) loading = true;
         try {
             const data = await api.settings.getAll();
             const settingsMap: Record<string, string> = {};
@@ -135,99 +252,7 @@
                 settingsMap[s.key] = s.value;
             });
 
-            // Maintenance
-            maintenanceMode = settingsMap["maintenance_mode"] === "true";
-            maintenanceMessage =
-                settingsMap["maintenance_message"] ||
-                "The system is currently under maintenance. Please try again later.";
-
-            // General
-            appPublicUrl =
-                settingsMap["app_public_url"] || "http://localhost:3000";
-            currencyCode = (settingsMap["currency_code"] || "IDR").toUpperCase();
-
-            // Authentication
-            authAllowRegistration =
-                settingsMap["auth_allow_registration"] === "true";
-            authRequireEmailVerification =
-                settingsMap["auth_require_email_verification"] === "true";
-            authJwtExpiryHours = parseInt(
-                settingsMap["auth_jwt_expiry_hours"] || "24",
-            );
-            authSessionTimeoutMinutes = parseInt(
-                settingsMap["auth_session_timeout_minutes"] || "60",
-            );
-
-            // Password Policy
-            authPasswordMinLength = parseInt(
-                settingsMap["auth_password_min_length"] || "8",
-            );
-            authPasswordRequireUppercase =
-                settingsMap["auth_password_require_uppercase"] === "true";
-            authPasswordRequireNumber =
-                settingsMap["auth_password_require_number"] === "true";
-            authPasswordRequireSpecial =
-                settingsMap["auth_password_require_special"] === "true";
-            authLogoutAllOnPasswordChange =
-                settingsMap["auth_logout_all_on_password_change"] !== "false";
-
-            // Security & Rate Limiting
-            maxLoginAttempts = parseInt(
-                settingsMap["auth_max_login_attempts"] ||
-                    settingsMap["max_login_attempts"] ||
-                    "5",
-            );
-            lockoutDurationMinutes = parseInt(
-                settingsMap["auth_lockout_duration_minutes"] ||
-                    settingsMap["lockout_duration_minutes"] ||
-                    "15",
-            );
-            apiRateLimitPerMinute = parseInt(
-                settingsMap["api_rate_limit_per_minute"] || "100",
-            );
-            enableIpBlocking = settingsMap["enable_ip_blocking"] === "true";
-
-            // 2FA Configuration
-            twoFAEnabled = settingsMap["2fa_enabled"] !== "false"; // Default true
-            const methods = settingsMap["2fa_methods"] || "totp";
-            twoFAMethodTotp = methods.includes("totp");
-            twoFAMethodEmail = methods.includes("email");
-            twoFAEmailOtpExpiryMinutes = parseInt(
-                settingsMap["2fa_email_otp_expiry_minutes"] || "5",
-            );
-
-            // Storage
-            storageMaxFileSizeMb = parseInt(
-                settingsMap["storage_max_file_size_mb"] || "500",
-            );
-            storageAllowedExtensions =
-                settingsMap["storage_allowed_extensions"] ||
-                "jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,zip,mp4,mov";
-
-            storageDriver = settingsMap["storage_driver"] || "local";
-            storageS3Bucket = settingsMap["storage_s3_bucket"] || "";
-            storageS3Region = settingsMap["storage_s3_region"] || "auto";
-            storageS3Endpoint = settingsMap["storage_s3_endpoint"] || "";
-            storageS3AccessKey = settingsMap["storage_s3_access_key"] || "";
-            storageS3SecretKey = settingsMap["storage_s3_secret_key"] || "";
-            storageS3PublicUrl = settingsMap["storage_s3_public_url"] || "";
-
-            // Payment
-            paymentMidtransEnabled =
-                settingsMap["payment_midtrans_enabled"] === "true";
-            paymentMidtransMerchantId =
-                settingsMap["payment_midtrans_merchant_id"] || "";
-            paymentMidtransServerKey =
-                settingsMap["payment_midtrans_server_key"] || "";
-            paymentMidtransClientKey =
-                settingsMap["payment_midtrans_client_key"] || "";
-            paymentMidtransIsProduction =
-                settingsMap["payment_midtrans_is_production"] === "true";
-            paymentManualEnabled =
-                settingsMap["payment_manual_enabled"] !== "false"; // Default true
-            paymentManualInstructions =
-                settingsMap["payment_manual_instructions"] ||
-                "Please transfer to our bank account.";
+            applySettingsMap(settingsMap);
 
             // Load banks (always load to ensure availability)
             try {
@@ -235,11 +260,17 @@
             } catch (e) {
                 console.error("Failed to load banks:", e);
             }
+
+            superadminPlatformSettingsCache.set({
+                settingsMap,
+                bankAccounts,
+                fetchedAt: Date.now(),
+            });
         } catch (err) {
             console.error("Failed to load settings:", err);
             toast.error("Failed to load settings");
         } finally {
-            loading = false;
+            if (!opts.silent) loading = false;
         }
     }
 
@@ -453,6 +484,70 @@
 
             // Refresh global settings store so currency/locale update immediately
             await appSettings.refresh();
+
+            // Refresh cache with latest values
+            const settingsMap: Record<string, string> = {
+                app_public_url: appPublicUrl,
+                currency_code: currencyCode.toUpperCase(),
+                maintenance_mode: maintenanceMode ? "true" : "false",
+                maintenance_message: maintenanceMessage,
+                auth_allow_registration: authAllowRegistration ? "true" : "false",
+                auth_require_email_verification: authRequireEmailVerification
+                    ? "true"
+                    : "false",
+                auth_jwt_expiry_hours: authJwtExpiryHours.toString(),
+                auth_session_timeout_minutes: authSessionTimeoutMinutes.toString(),
+                auth_password_min_length: authPasswordMinLength.toString(),
+                auth_password_require_uppercase: authPasswordRequireUppercase
+                    ? "true"
+                    : "false",
+                auth_password_require_number: authPasswordRequireNumber
+                    ? "true"
+                    : "false",
+                auth_password_require_special: authPasswordRequireSpecial
+                    ? "true"
+                    : "false",
+                auth_logout_all_on_password_change: authLogoutAllOnPasswordChange
+                    ? "true"
+                    : "false",
+                auth_max_login_attempts: maxLoginAttempts.toString(),
+                auth_lockout_duration_minutes: lockoutDurationMinutes.toString(),
+                api_rate_limit_per_minute: apiRateLimitPerMinute.toString(),
+                enable_ip_blocking: enableIpBlocking ? "true" : "false",
+                "2fa_enabled": twoFAEnabled ? "true" : "false",
+                "2fa_methods": [
+                    twoFAMethodTotp ? "totp" : null,
+                    twoFAMethodEmail ? "email" : null,
+                ]
+                    .filter(Boolean)
+                    .join(","),
+                "2fa_email_otp_expiry_minutes":
+                    twoFAEmailOtpExpiryMinutes.toString(),
+                storage_max_file_size_mb: storageMaxFileSizeMb.toString(),
+                storage_allowed_extensions: storageAllowedExtensions,
+                storage_driver: storageDriver,
+                storage_s3_bucket: storageS3Bucket,
+                storage_s3_region: storageS3Region,
+                storage_s3_endpoint: storageS3Endpoint,
+                storage_s3_access_key: storageS3AccessKey,
+                storage_s3_secret_key: storageS3SecretKey,
+                storage_s3_public_url: storageS3PublicUrl,
+                payment_midtrans_enabled: paymentMidtransEnabled ? "true" : "false",
+                payment_midtrans_merchant_id: paymentMidtransMerchantId,
+                payment_midtrans_server_key: paymentMidtransServerKey,
+                payment_midtrans_client_key: paymentMidtransClientKey,
+                payment_midtrans_is_production: paymentMidtransIsProduction
+                    ? "true"
+                    : "false",
+                payment_manual_enabled: paymentManualEnabled ? "true" : "false",
+                payment_manual_instructions: paymentManualInstructions,
+            };
+
+            superadminPlatformSettingsCache.set({
+                settingsMap,
+                bankAccounts,
+                fetchedAt: Date.now(),
+            });
         } catch (err) {
             console.error("Failed to save settings:", err);
             toast.error("Failed to save settings");
@@ -462,7 +557,7 @@
     }
 
     function discardChanges() {
-        loadSettings();
+        void loadSettings();
         hasChanges = false;
     }
 
@@ -1437,30 +1532,23 @@
                                             Bank Accounts
                                         </h4>
                                         {#if bankAccounts.length > 0}
-                                            <table class="simple-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Bank</th>
-                                                        <th>Number</th>
-                                                        <th>Holder</th>
-                                                        <th>Action</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
+                                            {#if isMobile}
+                                                <div class="bank-cards">
                                                     {#each bankAccounts as bank}
-                                                        <tr>
-                                                            <td
-                                                                >{bank.bank_name}</td
-                                                            >
-                                                            <td
-                                                                >{bank.account_number}</td
-                                                            >
-                                                            <td
-                                                                >{bank.account_holder}</td
-                                                            >
-                                                            <td>
+                                                        <div class="bank-card">
+                                                            <div class="bank-card-top">
+                                                                <div>
+                                                                    <div class="bank-name">
+                                                                        {bank.bank_name}
+                                                                    </div>
+                                                                    <div class="bank-sub">
+                                                                        {bank.account_holder}
+                                                                    </div>
+                                                                </div>
                                                                 <button
                                                                     class="btn-icon danger"
+                                                                    type="button"
+                                                                    title="Remove"
                                                                     on:click={() =>
                                                                         deleteBank(
                                                                             bank.id,
@@ -1471,11 +1559,55 @@
                                                                         size={16}
                                                                     />
                                                                 </button>
-                                                            </td>
-                                                        </tr>
+                                                            </div>
+                                                            <div class="bank-number mono">
+                                                                {bank.account_number}
+                                                            </div>
+                                                        </div>
                                                     {/each}
-                                                </tbody>
-                                            </table>
+                                                </div>
+                                            {:else}
+                                                <table class="simple-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Bank</th>
+                                                            <th>Number</th>
+                                                            <th>Holder</th>
+                                                            <th>Action</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {#each bankAccounts as bank}
+                                                            <tr>
+                                                                <td
+                                                                    >{bank.bank_name}</td
+                                                                >
+                                                                <td
+                                                                    >{bank.account_number}</td
+                                                                >
+                                                                <td
+                                                                    >{bank.account_holder}</td
+                                                                >
+                                                                <td>
+                                                                    <button
+                                                                        class="btn-icon danger"
+                                                                        type="button"
+                                                                        on:click={() =>
+                                                                            deleteBank(
+                                                                                bank.id,
+                                                                            )}
+                                                                    >
+                                                                        <Icon
+                                                                            name="trash"
+                                                                            size={16}
+                                                                        />
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        {/each}
+                                                    </tbody>
+                                                </table>
+                                            {/if}
                                         {:else}
                                             <p class="text-muted">
                                                 No bank accounts added yet.
@@ -1969,6 +2101,55 @@
         min-width: 150px;
     }
 
+    .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+            "Liberation Mono", "Courier New", monospace;
+    }
+
+    .bank-cards {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .bank-card {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: var(--radius-md);
+        padding: 0.9rem;
+    }
+
+    .bank-card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .bank-name {
+        font-weight: 800;
+        color: var(--text-primary);
+    }
+
+    .bank-sub {
+        margin-top: 0.15rem;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .bank-number {
+        margin-top: 0.75rem;
+        padding: 0.55rem 0.75rem;
+        border-radius: var(--radius-sm);
+        background: rgba(0, 0, 0, 0.12);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        font-weight: 700;
+        overflow-wrap: anywhere;
+    }
+
     .btn-icon {
         padding: 0.4rem;
         border-radius: var(--radius-sm);
@@ -1989,6 +2170,19 @@
         color: #ef4444;
     }
 
+    :global([data-theme="light"]) .bank-card {
+        background: linear-gradient(135deg, #ffffff, #f7f7fb);
+        border-color: rgba(0, 0, 0, 0.06);
+        box-shadow:
+            0 10px 28px rgba(0, 0, 0, 0.06),
+            0 0 0 1px rgba(255, 255, 255, 0.8);
+    }
+
+    :global([data-theme="light"]) .bank-number {
+        background: rgba(0, 0, 0, 0.03);
+        border-color: rgba(0, 0, 0, 0.06);
+    }
+
     /* Mobile Responsive */
     @media (max-width: 900px) {
         .layout-grid {
@@ -2006,6 +2200,24 @@
 
         .header-mobile h1 {
             font-size: 1.5rem;
+        }
+
+        .card-body {
+            padding: 1.1rem;
+        }
+
+        .setting-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.75rem;
+        }
+
+        .setting-info {
+            padding-right: 0;
+        }
+
+        .form-input {
+            max-width: none;
         }
     }
 </style>

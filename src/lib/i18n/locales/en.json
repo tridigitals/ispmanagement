@@ -145,14 +145,15 @@
             "contact_support": "Contact Support"
         }
     },
-    "profile": {
-        "title": "Settings",
-        "subtitle": "Manage your account settings and preferences.",
-        "tabs": {
-            "general": "General",
-            "security": "Security",
-            "preferences": "Preferences"
-        },
+  "profile": {
+    "title": "Settings",
+    "subtitle": "Manage your account settings and preferences.",
+    "tabs": {
+      "general": "General",
+      "security": "Security",
+      "preferences": "Preferences",
+      "notifications": "Notifications"
+    },
         "general": {
             "title": "Profile Information",
             "subtitle": "Update your account details and public profile.",
@@ -184,14 +185,17 @@
             "dark_mode": "Dark Mode",
             "dark_mode_desc": "Toggle between dark and light themes."
         },
-        "messages": {
-            "profile_updated": "Profile updated successfully!",
-            "password_changed": "Password changed successfully!",
-            "password_mismatch": "New passwords do not match",
-            "update_failed": "Failed to update profile",
-            "change_password_failed": "Failed to change password"
-        }
-    },
+    "messages": {
+      "profile_updated": "Profile updated successfully!",
+      "password_changed": "Password changed successfully!",
+      "password_mismatch": "New passwords do not match",
+      "update_failed": "Failed to update profile",
+      "change_password_failed": "Failed to change password",
+      "twofa_required": "Your organization requires Two-Factor Authentication. Please enable it to continue.",
+      "2fa_method_totp": "2FA method changed to Authenticator App",
+      "2fa_method_email": "2FA method changed to Email"
+    }
+  },
     "admin": {
         "settings": {
             "title": "Global Settings",

@@ -1,9 +1,14 @@
 //! System Health & Monitoring Service
 
 use sqlx::{Pool, Postgres};
+#[cfg(feature = "sqlite")]
+use sqlx::Sqlite;
 use serde::Serialize;
 use chrono::{DateTime, Utc};
 use sysinfo::System;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use tokio::sync::RwLock;
 
 #[derive(Debug, Serialize, Clone)]
 pub struct DatabaseStats {
@@ -58,7 +63,8 @@ pub struct SystemService {
     pub pool: Pool<Postgres>,
     #[cfg(feature = "sqlite")]
     pub pool: Pool<Sqlite>,
-    start_time: std::time::Instant,
+    start_time: Instant,
+    cache: Arc<RwLock<Option<(SystemHealth, Instant)>>>,
 }
 
 impl SystemService {
@@ -66,7 +72,8 @@ impl SystemService {
     pub fn new(pool: Pool<Postgres>) -> Self {
         Self { 
             pool,
-            start_time: std::time::Instant::now(),
+            start_time: Instant::now(),
+            cache: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -74,18 +81,29 @@ impl SystemService {
     pub fn new(pool: Pool<Sqlite>) -> Self {
         Self { 
             pool,
-            start_time: std::time::Instant::now(),
+            start_time: Instant::now(),
+            cache: Arc::new(RwLock::new(None)),
         }
     }
 
     pub async fn get_system_health(&self) -> Result<SystemHealth, sqlx::Error> {
-        let database = self.get_database_stats().await?;
-        let resources = self.get_system_resources().await;
-        let tables = self.get_table_info().await?;
-        let active_sessions = self.get_active_sessions().await?;
-        let recent_activity = self.get_recent_activity(10).await?;
-        
-        Ok(SystemHealth {
+        const CACHE_TTL: Duration = Duration::from_secs(10);
+
+        if let Some((cached, at)) = self.cache.read().await.clone() {
+            if at.elapsed() < CACHE_TTL {
+                return Ok(cached);
+            }
+        }
+
+        let (database, tables, active_sessions, recent_activity, resources) = tokio::try_join!(
+            self.get_database_stats(),
+            self.get_table_info(),
+            self.get_active_sessions(),
+            self.get_recent_activity(10),
+            async { Ok::<_, sqlx::Error>(self.get_system_resources().await) },
+        )?;
+
+        let health = SystemHealth {
             database,
             resources,
             tables,
@@ -94,7 +112,10 @@ impl SystemService {
             uptime_seconds: self.start_time.elapsed().as_secs(),
             app_version: env!("CARGO_PKG_VERSION").to_string(),
             collected_at: Utc::now(),
-        })
+        };
+
+        *self.cache.write().await = Some((health.clone(), Instant::now()));
+        Ok(health)
     }
 
     async fn get_database_stats(&self) -> Result<DatabaseStats, sqlx::Error> {
@@ -104,21 +125,19 @@ impl SystemService {
             .await
             .is_ok();
 
-        // Get counts
-        let tenants_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM tenants")
+        let (tenants_count, users_count, audit_logs_count) = if is_connected {
+            sqlx::query_as::<_, (i64, i64, i64)>(
+                "SELECT \
+                    (SELECT COUNT(*) FROM tenants) AS tenants_count, \
+                    (SELECT COUNT(*) FROM users) AS users_count, \
+                    (SELECT COUNT(*) FROM audit_logs) AS audit_logs_count",
+            )
             .fetch_one(&self.pool)
             .await
-            .unwrap_or(0);
-
-        let users_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users")
-            .fetch_one(&self.pool)
-            .await
-            .unwrap_or(0);
-
-        let audit_logs_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM audit_logs")
-            .fetch_one(&self.pool)
-            .await
-            .unwrap_or(0);
+            .unwrap_or((0, 0, 0))
+        } else {
+            (0, 0, 0)
+        };
 
         let database_type = if cfg!(feature = "postgres") {
             "PostgreSQL".to_string()
@@ -126,10 +145,11 @@ impl SystemService {
             "SQLite".to_string()
         };
 
-        // Get database size
-        let database_size_bytes = self.get_database_size().await;
-
-        let total_tables = self.get_total_tables().await?;
+        let (database_size_bytes, total_tables) = if is_connected {
+            tokio::join!(self.get_database_size(), self.get_total_tables())
+        } else {
+            (0, 0)
+        };
 
         Ok(DatabaseStats {
             is_connected,
@@ -143,27 +163,59 @@ impl SystemService {
     }
 
     async fn get_table_info(&self) -> Result<Vec<TableInfo>, sqlx::Error> {
-        let mut tables = Vec::new();
-
-        // Core tables to check
-        let table_names = vec![
-            "users", "tenants", "tenant_members", "roles", 
-            "role_permissions", "permissions", "settings", "audit_logs"
-        ];
-
-        for name in table_names {
-            let count: i64 = sqlx::query_scalar(&format!("SELECT COUNT(*) FROM {}", name))
-                .fetch_one(&self.pool)
-                .await
-                .unwrap_or(0);
-            
-            tables.push(TableInfo {
-                name: name.to_string(),
-                row_count: count,
-            });
+        #[derive(sqlx::FromRow)]
+        struct TableRow {
+            name: String,
+            row_count: i64,
         }
 
-        Ok(tables)
+        // Single query (fast) + fallback (tolerant) if any table is missing.
+        let union_query = "\
+            SELECT 'users' AS name, (SELECT COUNT(*) FROM users) AS row_count \
+            UNION ALL SELECT 'tenants', (SELECT COUNT(*) FROM tenants) \
+            UNION ALL SELECT 'tenant_members', (SELECT COUNT(*) FROM tenant_members) \
+            UNION ALL SELECT 'roles', (SELECT COUNT(*) FROM roles) \
+            UNION ALL SELECT 'role_permissions', (SELECT COUNT(*) FROM role_permissions) \
+            UNION ALL SELECT 'permissions', (SELECT COUNT(*) FROM permissions) \
+            UNION ALL SELECT 'settings', (SELECT COUNT(*) FROM settings) \
+            UNION ALL SELECT 'audit_logs', (SELECT COUNT(*) FROM audit_logs)";
+
+        match sqlx::query_as::<_, TableRow>(union_query).fetch_all(&self.pool).await {
+            Ok(rows) => Ok(rows
+                .into_iter()
+                .map(|r| TableInfo {
+                    name: r.name,
+                    row_count: r.row_count,
+                })
+                .collect()),
+            Err(_) => {
+                let mut tables = Vec::new();
+                let table_names = vec![
+                    "users",
+                    "tenants",
+                    "tenant_members",
+                    "roles",
+                    "role_permissions",
+                    "permissions",
+                    "settings",
+                    "audit_logs",
+                ];
+
+                for name in table_names {
+                    let count: i64 = sqlx::query_scalar(&format!("SELECT COUNT(*) FROM {}", name))
+                        .fetch_one(&self.pool)
+                        .await
+                        .unwrap_or(0);
+
+                    tables.push(TableInfo {
+                        name: name.to_string(),
+                        row_count: count,
+                    });
+                }
+
+                Ok(tables)
+            }
+        }
     }
 
     async fn get_active_sessions(&self) -> Result<i64, sqlx::Error> {
@@ -187,40 +239,31 @@ impl SystemService {
                 id: uuid::Uuid,
                 action: String,
                 resource: String,
-                user_id: Option<uuid::Uuid>,
+                user_email: Option<String>,
                 created_at: DateTime<Utc>,
             }
 
             let rows: Vec<ActivityRow> = sqlx::query_as(
-                "SELECT id, action, resource, user_id, created_at FROM audit_logs ORDER BY created_at DESC LIMIT $1"
+                "SELECT a.id, a.action, a.resource, u.email as user_email, a.created_at \
+                 FROM audit_logs a \
+                 LEFT JOIN users u ON u.id = a.user_id \
+                 ORDER BY a.created_at DESC LIMIT $1",
             )
             .bind(limit)
             .fetch_all(&self.pool)
-            .await?;
+            .await
+            .unwrap_or_default();
 
-            let mut activities = Vec::new();
-            for row in rows {
-                // Get user email if available
-                let user_email: Option<String> = if let Some(uid) = row.user_id {
-                    sqlx::query_scalar("SELECT email FROM users WHERE id = $1")
-                        .bind(uid)
-                        .fetch_optional(&self.pool)
-                        .await
-                        .unwrap_or(None)
-                } else {
-                    None
-                };
-
-                activities.push(RecentActivity {
+            Ok(rows
+                .into_iter()
+                .map(|row| RecentActivity {
                     id: row.id.to_string(),
                     action: row.action,
                     resource: row.resource,
-                    user_email,
+                    user_email: row.user_email,
                     created_at: row.created_at,
-                });
-            }
-
-            Ok(activities)
+                })
+                .collect())
         }
 
         #[cfg(feature = "sqlite")]
@@ -230,30 +273,23 @@ impl SystemService {
                 id: String,
                 action: String,
                 resource: String,
-                user_id: Option<String>,
+                user_email: Option<String>,
                 created_at: String,
             }
 
             let rows: Vec<ActivityRow> = sqlx::query_as(
-                "SELECT id, action, resource, user_id, created_at FROM audit_logs ORDER BY created_at DESC LIMIT $1"
+                "SELECT a.id, a.action, a.resource, u.email as user_email, a.created_at \
+                 FROM audit_logs a \
+                 LEFT JOIN users u ON u.id = a.user_id \
+                 ORDER BY a.created_at DESC LIMIT $1",
             )
             .bind(limit)
             .fetch_all(&self.pool)
-            .await?;
+            .await
+            .unwrap_or_default();
 
             let mut activities = Vec::new();
             for row in rows {
-                // Get user email if available
-                let user_email: Option<String> = if let Some(ref uid) = row.user_id {
-                    sqlx::query_scalar("SELECT email FROM users WHERE id = $1")
-                        .bind(uid)
-                        .fetch_optional(&self.pool)
-                        .await
-                        .unwrap_or(None)
-                } else {
-                    None
-                };
-
                 let created_at = DateTime::parse_from_rfc3339(&row.created_at)
                     .map(|dt| dt.with_timezone(&Utc))
                     .unwrap_or_else(|_| Utc::now());
@@ -262,7 +298,7 @@ impl SystemService {
                     id: row.id,
                     action: row.action,
                     resource: row.resource,
-                    user_email,
+                    user_email: row.user_email,
                     created_at,
                 });
             }
@@ -299,7 +335,7 @@ impl SystemService {
         sys.refresh_all();
         
         // Brief sleep to get accurate CPU usage
-        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
         sys.refresh_all();
 
         SystemResources {
@@ -311,12 +347,13 @@ impl SystemService {
         }
     }
 
-    async fn get_total_tables(&self) -> Result<i64, sqlx::Error> {
+    async fn get_total_tables(&self) -> i64 {
         #[cfg(feature = "postgres")]
         {
             sqlx::query_scalar("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'")
                 .fetch_one(&self.pool)
                 .await
+                .unwrap_or(0)
         }
 
         #[cfg(feature = "sqlite")]
@@ -324,6 +361,7 @@ impl SystemService {
             sqlx::query_scalar("SELECT COUNT(*) FROM sqlite_master WHERE type='table'")
                 .fetch_one(&self.pool)
                 .await
+                .unwrap_or(0)
         }
     }
 }

@@ -12,13 +12,19 @@
     import Select from "$lib/components/Select.svelte";
     import { toast } from "$lib/stores/toast";
     import { formatMoney } from "$lib/utils/money";
+    import { get } from "svelte/store";
+    import { superadminTenantsCache } from "$lib/stores/superadminTenants";
+    import { superadminPlansCache } from "$lib/stores/superadminPlans";
 
     import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
 
     let tenants = $state<any[]>([]);
     let plans = $state<any[]>([]);
     let loading = $state(true);
+    let isRefreshing = $state(false);
     let error = $state("");
+    let isMobile = $state(false);
+    let viewMode = $state<"cards" | "table">("table");
 
     // Modal state
     let isEditing = $state(false);
@@ -88,16 +94,73 @@
         { key: "actions", label: "Actions", align: "right" },
     ];
 
-    onMount(async () => {
-        loadData();
+    onMount(() => {
+        let cleanup: (() => void) | undefined;
+
+        if (typeof window !== "undefined") {
+            const mq = window.matchMedia("(max-width: 720px)");
+            const sync = () => {
+                isMobile = mq.matches;
+                if (mq.matches) viewMode = "cards";
+            };
+            sync();
+
+            try {
+                mq.addEventListener("change", sync);
+                cleanup = () => mq.removeEventListener("change", sync);
+            } catch {
+                // Safari/older WebView fallback
+                // @ts-ignore
+                mq.addListener?.(sync);
+                // @ts-ignore
+                cleanup = () => mq.removeListener?.(sync);
+            }
+        }
+
+        const cachedTenants = get(superadminTenantsCache);
+        if (cachedTenants?.fetchedAt && cachedTenants.tenants?.length) {
+            tenants = cachedTenants.tenants as any[];
+            loading = false;
+            void loadData({ silent: true });
+        } else {
+            void loadData();
+        }
+
+        return cleanup;
     });
 
-    async function loadData() {
-        loading = true;
+    $effect(() => {
+        if (isMobile && viewMode === "table") viewMode = "cards";
+    });
+
+    function mapPlansToSelect(plansRes: any[]) {
+        plans = (plansRes || [])
+            .filter((p) => p.is_active)
+            .map((p) => ({
+                label: `${p.name} - ${p.price_monthly > 0 ? `${formatMoney(p.price_monthly)}/mo` : "Free"}`,
+                value: p.id,
+            }));
+
+        const defaultPlan = (plansRes || []).find((p) => p.is_default);
+        if (defaultPlan) {
+            newTenant.planId = defaultPlan.id;
+        } else if (!newTenant.planId && plans.length > 0) {
+            newTenant.planId = plans[0].value;
+        }
+    }
+
+    async function loadData(opts: { silent?: boolean } = {}) {
+        if (opts.silent) isRefreshing = true;
+        else loading = true;
         try {
+            const cachedPlans = get(superadminPlansCache);
+            if (cachedPlans?.fetchedAt && cachedPlans.plans?.length) {
+                mapPlansToSelect(cachedPlans.plans as any[]);
+            }
+
             const [tenantsRes, plansRes] = await Promise.all([
                 api.superadmin.listTenants(),
-                api.plans.list(),
+                api.plans.list().catch(() => null),
             ]);
 
             if (Array.isArray(tenantsRes)) {
@@ -108,18 +171,14 @@
                 tenants = [];
             }
 
-            // Map plans for Select component
-            plans = plansRes
-                .filter((p) => p.is_active)
-                .map((p) => ({
-                    label: `${p.name} - ${p.price_monthly > 0 ? `${formatMoney(p.price_monthly)}/mo` : 'Free'}`,
-                    value: p.id,
-                }));
+            superadminTenantsCache.set({ tenants, fetchedAt: Date.now() });
 
-            // Set default plan if needed
-            const defaultPlan = plansRes.find((p) => p.is_default);
-            if (defaultPlan) {
-                newTenant.planId = defaultPlan.id;
+            if (plansRes) {
+                mapPlansToSelect(plansRes as any[]);
+                superadminPlansCache.set({
+                    plans: plansRes as any[],
+                    fetchedAt: Date.now(),
+                });
             }
         } catch (e: any) {
             console.error("Load data error:", e);
@@ -129,6 +188,7 @@
             }
         } finally {
             loading = false;
+            isRefreshing = false;
         }
     }
 
@@ -140,6 +200,7 @@
             } else if (res && Array.isArray(res.data)) {
                 tenants = res.data;
             }
+            superadminTenantsCache.set({ tenants, fetchedAt: Date.now() });
         } catch (e) {
             console.error("Reload error", e);
         }
@@ -377,7 +438,15 @@
                     >Manage all organizations in the platform</span
                 >
             </div>
-            <span class="count-badge">{stats.total} tenants</span>
+            <div class="header-actions">
+                {#if isRefreshing}
+                    <span class="refresh-pill" title="Refreshing...">
+                        <span class="spinner-xs"></span>
+                        Refreshing
+                    </span>
+                {/if}
+                <span class="count-badge">{stats.total} tenants</span>
+            </div>
         </div>
 
         <div class="toolbar-wrapper">
@@ -409,6 +478,27 @@
                             Inactive
                         </button>
                     </div>
+
+                    {#if !isMobile}
+                        <button
+                            type="button"
+                            class="btn-icon view-btn"
+                            class:active={viewMode === "table"}
+                            title="Table view"
+                            onclick={() => (viewMode = "table")}
+                        >
+                            <Icon name="list" size={18} />
+                        </button>
+                        <button
+                            type="button"
+                            class="btn-icon view-btn"
+                            class:active={viewMode === "cards"}
+                            title="Cards view"
+                            onclick={() => (viewMode = "cards")}
+                        >
+                            <Icon name="grid" size={18} />
+                        </button>
+                    {/if}
                 {/snippet}
                 {#snippet actions()}
                     <button class="btn btn-primary" onclick={openCreateModal}>
@@ -423,20 +513,79 @@
             <div class="error-state">
                 <Icon name="alert-circle" size={48} color="#ef4444" />
                 <p>{error}</p>
-                <button class="btn btn-secondary" onclick={loadData}>
+                <button class="btn btn-secondary" onclick={() => loadData()}>
                     Retry
                 </button>
             </div>
         {:else}
-            <div class="table-wrapper">
-                <Table
-                    pagination={true}
-                    {loading}
-                    data={filteredTenants}
-                    {columns}
-                    emptyText="No tenants found"
-                >
-                    {#snippet empty()}
+            {#if viewMode === "cards" || isMobile}
+                <div class="tenants-grid" aria-label="Tenant cards">
+                    {#each filteredTenants as tenant (tenant.id)}
+                        <div class="tenant-card" in:fly={{ y: 6, duration: 150 }}>
+                            <div class="tenant-top">
+                                <div>
+                                    <div class="tenant-name">{tenant.name}</div>
+                                    <div class="tenant-sub">
+                                        <span class="tenant-slug">{tenant.slug}</span>
+                                        {#if tenant.custom_domain}
+                                            <span class="dot">•</span>
+                                            <span class="tenant-domain mono">
+                                                {tenant.custom_domain}
+                                            </span>
+                                        {/if}
+                                    </div>
+                                </div>
+                                <span
+                                    class="status-badge {tenant.is_active
+                                        ? 'success'
+                                        : 'error'}"
+                                >
+                                    {tenant.is_active ? "Active" : "Inactive"}
+                                </span>
+                            </div>
+
+                            <div class="tenant-meta">
+                                <span class="meta-label">Created</span>
+                                <span class="meta-value">
+                                    {tenant.created_at
+                                        ? new Date(tenant.created_at).toLocaleDateString()
+                                        : "—"}
+                                </span>
+                            </div>
+
+                            <div class="tenant-actions">
+                                <button
+                                    class="btn-icon {tenant.is_active ? 'warn' : 'success'}"
+                                    title={tenant.is_active ? "Deactivate" : "Activate"}
+                                    type="button"
+                                    onclick={() => confirmToggleTenant(tenant)}
+                                >
+                                    <Icon
+                                        name={tenant.is_active ? "ban" : "check-circle"}
+                                        size={18}
+                                    />
+                                </button>
+                                <button
+                                    class="btn-icon"
+                                    title="Edit"
+                                    type="button"
+                                    onclick={() => openEditModal(tenant)}
+                                >
+                                    <Icon name="edit" size={18} />
+                                </button>
+                                <button
+                                    class="btn-icon danger"
+                                    title="Delete"
+                                    type="button"
+                                    onclick={() => confirmDelete(tenant.id)}
+                                >
+                                    <Icon name="trash" size={18} />
+                                </button>
+                            </div>
+                        </div>
+                    {/each}
+
+                    {#if filteredTenants.length === 0}
                         <div class="empty-state-container">
                             <div class="empty-icon">
                                 <Icon name="database" size={64} />
@@ -444,66 +593,90 @@
                             <h3>No tenants found</h3>
                             <p>Try adjusting your search or filters.</p>
                         </div>
-                    {/snippet}
-
-                    {#snippet cell({ item, key })}
-                        {#if key === "custom_domain"}
-                            {#if item.custom_domain}
-                                <code class="domain-badge"
-                                    >{item.custom_domain}</code
-                                >
-                            {:else}
-                                <span class="text-muted">-</span>
-                            {/if}
-                        {:else if key === "is_active"}
-                            <span
-                                class="status-badge {item.is_active
-                                    ? 'success'
-                                    : 'error'}"
-                            >
-                                {item.is_active ? "Active" : "Inactive"}
-                            </span>
-                        {:else if key === "created_at"}
-                            {new Date(item.created_at).toLocaleDateString()}
-                        {:else if key === "actions"}
-                            <div class="actions">
-                                <button
-                                    class="btn-icon {item.is_active
-                                        ? 'warn'
-                                        : 'success'}"
-                                    title={item.is_active
-                                        ? "Deactivate"
-                                        : "Activate"}
-                                    onclick={() => confirmToggleTenant(item)}
-                                >
-                                    <Icon
-                                        name={item.is_active
-                                            ? "ban"
-                                            : "check-circle"}
-                                        size={18}
-                                    />
-                                </button>
-                                <button
-                                    class="btn-icon"
-                                    title="Edit"
-                                    onclick={() => openEditModal(item)}
-                                >
-                                    <Icon name="edit" size={18} />
-                                </button>
-                                <button
-                                    class="btn-icon danger"
-                                    title="Delete"
-                                    onclick={() => confirmDelete(item.id)}
-                                >
-                                    <Icon name="trash" size={18} />
-                                </button>
+                    {/if}
+                </div>
+            {:else if viewMode === "table" && !isMobile}
+                <div class="table-wrapper">
+                    <Table
+                        pagination={true}
+                        {loading}
+                        data={filteredTenants}
+                        {columns}
+                        emptyText="No tenants found"
+                        mobileView="scroll"
+                    >
+                        {#snippet empty()}
+                            <div class="empty-state-container">
+                                <div class="empty-icon">
+                                    <Icon name="database" size={64} />
+                                </div>
+                                <h3>No tenants found</h3>
+                                <p>Try adjusting your search or filters.</p>
                             </div>
-                        {:else}
-                            {item[key]}
-                        {/if}
-                    {/snippet}
-                </Table>
-            </div>
+                        {/snippet}
+
+                        {#snippet cell({ item, key })}
+                            {#if key === "custom_domain"}
+                                {#if item.custom_domain}
+                                    <code class="domain-badge"
+                                        >{item.custom_domain}</code
+                                    >
+                                {:else}
+                                    <span class="text-muted">-</span>
+                                {/if}
+                            {:else if key === "is_active"}
+                                <span
+                                    class="status-badge {item.is_active
+                                        ? 'success'
+                                        : 'error'}"
+                                >
+                                    {item.is_active ? "Active" : "Inactive"}
+                                </span>
+                            {:else if key === "created_at"}
+                                {new Date(item.created_at).toLocaleDateString()}
+                            {:else if key === "actions"}
+                                <div class="actions">
+                                    <button
+                                        class="btn-icon {item.is_active
+                                            ? 'warn'
+                                            : 'success'}"
+                                        title={item.is_active
+                                            ? "Deactivate"
+                                            : "Activate"}
+                                        type="button"
+                                        onclick={() => confirmToggleTenant(item)}
+                                    >
+                                        <Icon
+                                            name={item.is_active
+                                                ? "ban"
+                                                : "check-circle"}
+                                            size={18}
+                                        />
+                                    </button>
+                                    <button
+                                        class="btn-icon"
+                                        title="Edit"
+                                        type="button"
+                                        onclick={() => openEditModal(item)}
+                                    >
+                                        <Icon name="edit" size={18} />
+                                    </button>
+                                    <button
+                                        class="btn-icon danger"
+                                        title="Delete"
+                                        type="button"
+                                        onclick={() => confirmDelete(item.id)}
+                                    >
+                                        <Icon name="trash" size={18} />
+                                    </button>
+                                </div>
+                            {:else}
+                                {item[key]}
+                            {/if}
+                        {/snippet}
+                    </Table>
+                </div>
+            {/if}
         {/if}
     </div>
 </div>
@@ -686,6 +859,37 @@
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 
+    .header-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .refresh-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text-secondary);
+        font-weight: 750;
+        font-size: 0.85rem;
+        user-select: none;
+    }
+
+    .spinner-xs {
+        width: 14px;
+        height: 14px;
+        border-radius: 999px;
+        border: 2px solid rgba(255, 255, 255, 0.14);
+        border-top-color: rgba(99, 102, 241, 0.95);
+        animation: spin 0.9s linear infinite;
+    }
+
     :global([data-theme="light"]) .card-header {
         border-bottom-color: rgba(0, 0, 0, 0.06);
     }
@@ -768,8 +972,119 @@
         color: var(--text-primary);
     }
 
+    :global(.btn-icon.view-btn.active) {
+        background: rgba(99, 102, 241, 0.14);
+        border-color: rgba(99, 102, 241, 0.35);
+        color: var(--text-primary);
+    }
+
     .table-wrapper {
         padding: 0 1.25rem 1rem 1.25rem;
+    }
+
+    .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+            "Liberation Mono", "Courier New", monospace;
+    }
+
+    .tenants-grid {
+        padding: 0 1.25rem 1.25rem 1.25rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1rem;
+    }
+
+    .tenant-card {
+        background: linear-gradient(
+            145deg,
+            rgba(255, 255, 255, 0.06),
+            rgba(255, 255, 255, 0.02)
+        );
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        padding: 1rem;
+        box-shadow: 0 14px 36px rgba(0, 0, 0, 0.25);
+    }
+
+    :global([data-theme="light"]) .tenant-card {
+        background: linear-gradient(135deg, #ffffff, #f7f7fb);
+        border-color: rgba(0, 0, 0, 0.06);
+        box-shadow:
+            0 12px 28px rgba(0, 0, 0, 0.06),
+            0 0 0 1px rgba(255, 255, 255, 0.85);
+    }
+
+    .tenant-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
+    .tenant-name {
+        font-weight: 900;
+        color: var(--text-primary);
+        letter-spacing: -0.02em;
+        line-height: 1.15;
+    }
+
+    .tenant-sub {
+        margin-top: 0.35rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        color: var(--text-secondary);
+        font-weight: 650;
+        font-size: 0.9rem;
+    }
+
+    .tenant-slug {
+        padding: 0.15rem 0.5rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .dot {
+        opacity: 0.6;
+    }
+
+    .tenant-domain {
+        opacity: 0.9;
+    }
+
+    .tenant-meta {
+        margin-top: 0.9rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 0.75rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        color: var(--text-secondary);
+    }
+
+    :global([data-theme="light"]) .tenant-meta {
+        border-top-color: rgba(0, 0, 0, 0.06);
+    }
+
+    .meta-label {
+        font-size: 0.8rem;
+        font-weight: 750;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .meta-value {
+        font-weight: 750;
+        color: var(--text-primary);
+    }
+
+    .tenant-actions {
+        margin-top: 0.9rem;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
     }
 
     .status-badge {
@@ -947,6 +1262,11 @@
 
         .table-wrapper {
             padding: 0 1rem 1rem 1rem;
+        }
+
+        .tenants-grid {
+            padding: 0 1rem 1rem 1rem;
+            grid-template-columns: 1fr;
         }
 
         .btn {

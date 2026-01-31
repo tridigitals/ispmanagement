@@ -9,21 +9,15 @@
     import StatsCard from "$lib/components/StatsCard.svelte";
     import { toast } from "$lib/stores/toast";
     import { formatMoney } from "$lib/utils/money";
+    import {
+        superadminPlansCache,
+        type SuperadminPlan,
+    } from "$lib/stores/superadminPlans";
+    import { get } from "svelte/store";
 
-    interface Plan {
-        id: string;
-        name: string;
-        slug: string;
-        description: string | null;
-        price_monthly: number;
-        price_yearly: number;
-        is_active: boolean;
-        is_default: boolean;
-        sort_order: number;
-    }
-
-    let plans = $state<Plan[]>([]);
+    let plans = $state<SuperadminPlan[]>([]);
     let loading = $state(true);
+    let isRefreshing = $state(false);
 
     // Confirm Dialog State
     let showConfirm = $state(false);
@@ -81,6 +75,15 @@
     onMount(() => {
         let cleanup: (() => void) | undefined;
 
+        const cached = get(superadminPlansCache);
+        if (cached?.fetchedAt && cached.plans?.length) {
+            plans = cached.plans;
+            loading = false;
+            void loadData({ silent: true });
+        } else {
+            void loadData();
+        }
+
         if (typeof window !== "undefined") {
             const mq = window.matchMedia("(max-width: 720px)");
             const sync = () => {
@@ -100,7 +103,6 @@
             }
         }
 
-        void loadData();
         return cleanup;
     });
 
@@ -108,21 +110,24 @@
         if (isMobile && viewMode === "table") viewMode = "cards";
     });
 
-    async function loadData() {
-        loading = true;
+    async function loadData(opts: { silent?: boolean } = {}) {
+        if (opts.silent) isRefreshing = true;
+        else loading = true;
         try {
             plans = await api.plans.list();
+            superadminPlansCache.set({ plans, fetchedAt: Date.now() });
         } catch (e: any) {
             toast.error(e.message || "Failed to load data");
         }
         loading = false;
+        isRefreshing = false;
     }
 
     function createPlan() {
         goto("/superadmin/plans/new");
     }
 
-    function editPlan(plan: Plan) {
+    function editPlan(plan: SuperadminPlan) {
         goto(`/superadmin/plans/${plan.id}`);
     }
 
@@ -162,7 +167,7 @@
         confirmKeyword = "";
     }
 
-    function confirmDeletePlan(plan: Plan) {
+    function confirmDeletePlan(plan: SuperadminPlan) {
         openConfirmDialog(
             "Delete Plan",
             `Delete "${plan.name}"? This action cannot be undone. Type DELETE to confirm.`,
@@ -176,7 +181,7 @@
         );
     }
 
-    function confirmToggleActive(plan: Plan) {
+    function confirmToggleActive(plan: SuperadminPlan) {
         if (plan.is_default && plan.is_active) {
             toast.error(
                 "Default plan cannot be deactivated. Set another default first.",
@@ -210,7 +215,7 @@
         );
     }
 
-    function confirmSetDefault(plan: Plan) {
+    function confirmSetDefault(plan: SuperadminPlan) {
         if (plan.is_default) return;
 
         openConfirmDialog(
@@ -327,10 +332,18 @@
                 <h3>Subscription Plans</h3>
                 <span class="muted">Manage pricing tiers and plan status</span>
             </div>
-            <button class="btn btn-primary" onclick={createPlan} type="button">
-                <Icon name="plus" size={18} />
-                <span>New Plan</span>
-            </button>
+            <div class="header-actions">
+                {#if isRefreshing}
+                    <span class="refresh-pill" title="Refreshing...">
+                        <span class="spinner-sm"></span>
+                        Refreshing
+                    </span>
+                {/if}
+                <button class="btn btn-primary" onclick={createPlan} type="button">
+                    <Icon name="plus" size={18} />
+                    <span>New Plan</span>
+                </button>
+            </div>
         </div>
 
         {#if loading}
@@ -538,7 +551,7 @@
                         </div>
                     {/if}
                 </div>
-            {:else}
+            {:else if viewMode === "table" && !isMobile}
                 <div class="table-wrapper" aria-label="Plans table">
                     <Table
                         columns={planColumns}
@@ -721,6 +734,35 @@
         justify-content: space-between;
         gap: 1rem;
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .header-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .refresh-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text-secondary);
+        font-weight: 750;
+        font-size: 0.85rem;
+        user-select: none;
+    }
+
+    .spinner-sm {
+        width: 14px;
+        height: 14px;
+        border-radius: 999px;
+        border: 2px solid rgba(255, 255, 255, 0.14);
+        border-top-color: rgba(99, 102, 241, 0.95);
+        animation: spin 0.9s linear infinite;
     }
 
     :global([data-theme="light"]) .card-header {

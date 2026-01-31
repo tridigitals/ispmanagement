@@ -11,6 +11,7 @@
     import StatsCard from "$lib/components/StatsCard.svelte";
     import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
     import Modal from "$lib/components/Modal.svelte";
+    import Pagination from "$lib/components/Pagination.svelte";
     import { toast } from "$lib/stores/toast";
     import type { User } from "$lib/api/client";
 
@@ -36,11 +37,15 @@
     let statusFilter = $state<"all" | "active" | "inactive">("all");
     let roleFilter = $state<"all" | "superadmin" | "admin" | "user">("all");
 
-    onMount(async () => {
-        if (!$isSuperAdmin) {
-            goto("/dashboard");
-            return;
-        }
+    let isMobile = $state(false);
+    let viewMode = $state<"table" | "cards">("table");
+
+    let cardPage = $state(0);
+    let cardPageSize = $state(10);
+
+    async function loadData() {
+        loading = true;
+        error = "";
 
         try {
             const [usersRes, tenantsRes] = await Promise.all([
@@ -60,12 +65,41 @@
             }
             tenantNameById = byId;
             tenantNameBySlug = bySlug;
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to load users:", err);
-            error = String(err);
+            error = err?.message || String(err);
         } finally {
             loading = false;
         }
+    }
+
+    onMount(() => {
+        let cleanup: (() => void) | undefined;
+
+        if (!$isSuperAdmin) {
+            goto("/dashboard");
+            return cleanup;
+        }
+
+        if (typeof window !== "undefined") {
+            const mq = window.matchMedia("(max-width: 720px)");
+            const sync = () => (isMobile = mq.matches);
+            sync();
+
+            try {
+                mq.addEventListener("change", sync);
+                cleanup = () => mq.removeEventListener("change", sync);
+            } catch {
+                // Safari/older WebView fallback
+                // @ts-ignore
+                mq.addListener?.(sync);
+                // @ts-ignore
+                cleanup = () => mq.removeListener?.(sync);
+            }
+        }
+
+        void loadData();
+        return cleanup;
     });
 
     function getRoleKey(u: User) {
@@ -120,6 +154,25 @@
             return matchesSearch && matchesStatus && matchesRole;
         }),
     );
+
+    let filterKey = $derived(
+        `${searchQuery.trim().toLowerCase()}|${statusFilter}|${roleFilter}`,
+    );
+
+    $effect(() => {
+        filterKey;
+        cardPage = 0;
+    });
+
+    $effect(() => {
+        if (isMobile) viewMode = "cards";
+    });
+
+    let pagedUsers = $derived.by((): User[] => {
+        const start = cardPage * cardPageSize;
+        const end = start + cardPageSize;
+        return filteredUsers.slice(start, end) as User[];
+    });
 
     let showResetConfirm = $state(false);
     let confirmLoading = $state(false);
@@ -381,6 +434,33 @@
                         </div>
                     </div>
                 {/snippet}
+
+                {#snippet actions()}
+                    {#if !isMobile}
+                        <div class="view-toggle" aria-label="View mode">
+                            <button
+                                type="button"
+                                class="view-btn"
+                                class:active={viewMode === "table"}
+                                onclick={() => (viewMode = "table")}
+                                title="Table view"
+                                aria-label="Table view"
+                            >
+                                <Icon name="list" size={18} />
+                            </button>
+                            <button
+                                type="button"
+                                class="view-btn"
+                                class:active={viewMode === "cards"}
+                                onclick={() => (viewMode = "cards")}
+                                title="Card view"
+                                aria-label="Card view"
+                            >
+                                <Icon name="grid" size={18} />
+                            </button>
+                        </div>
+                    {/if}
+                {/snippet}
             </TableToolbar>
         </div>
 
@@ -388,6 +468,151 @@
             <div class="error-state">
                 <Icon name="alert-circle" size={48} color="#ef4444" />
                 <p>{error}</p>
+            </div>
+        {:else if viewMode === "cards" || isMobile}
+            <div class="cards-wrapper">
+                {#if filteredUsers.length === 0}
+                    <div class="empty-state-container">
+                        <div class="empty-icon">
+                            <Icon name="users" size={64} />
+                        </div>
+                        <h3>No users found</h3>
+                        <p>Try adjusting your search or filters.</p>
+                    </div>
+                {:else}
+                    <div class="user-cards" aria-label="Users list">
+                        {#each pagedUsers as u (u.id)}
+                            <div class="user-card">
+                                <div class="card-top">
+                                    <div class="user-info">
+                                        <div class="avatar">
+                                            {getInitials(u.name)}
+                                        </div>
+                                        <div class="user-meta">
+                                            <div class="user-name">{u.name}</div>
+                                            <div class="user-email text-muted">
+                                                {u.email}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="actions">
+                                        <button
+                                            class="btn-icon"
+                                            onclick={() => openDetails(u)}
+                                            title="View details"
+                                            aria-label="View details"
+                                            type="button"
+                                        >
+                                            <Icon name="eye" size={16} />
+                                        </button>
+
+                                        {#if (u as any).two_factor_enabled}
+                                            <button
+                                                class="btn-icon warning"
+                                                onclick={() => confirmReset2FA(u)}
+                                                title="Reset 2FA"
+                                                aria-label="Reset 2FA"
+                                                type="button"
+                                            >
+                                                <Icon name="shield-off" size={16} />
+                                            </button>
+                                        {/if}
+
+                                        <button
+                                            class="btn-icon {u.is_active ? 'danger' : 'success'}"
+                                            onclick={() => confirmToggleActive(u)}
+                                            title={u.is_active
+                                                ? "Deactivate user"
+                                                : "Activate user"}
+                                            aria-label={u.is_active
+                                                ? "Deactivate user"
+                                                : "Activate user"}
+                                            disabled={u.is_super_admin || u.id === $currentUser?.id}
+                                            type="button"
+                                        >
+                                            <Icon
+                                                name={u.is_active
+                                                    ? "ban"
+                                                    : "check-circle"}
+                                                size={16}
+                                            />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="card-bottom">
+                                    <div class="meta-grid">
+                                        <div class="meta-item">
+                                            <span class="meta-label">Role</span>
+                                            <span class="meta-value">
+                                                {#if u.is_super_admin}
+                                                    <span class="role-pill superadmin">
+                                                        Super Admin
+                                                    </span>
+                                                {:else if (u as any).tenant_role}
+                                                    <span
+                                                        class="role-pill {(u as any).tenant_role.toLowerCase()}"
+                                                        >{(u as any).tenant_role}</span
+                                                    >
+                                                {:else}
+                                                    <span class="role-pill {u.role}"
+                                                        >{u.role}</span
+                                                    >
+                                                {/if}
+                                            </span>
+                                        </div>
+
+                                        <div class="meta-item">
+                                            <span class="meta-label">Tenant</span>
+                                            <span class="meta-value">
+                                                {#if getTenantName(u as any)}
+                                                    {getTenantName(u as any)}
+                                                {:else if (u as any).tenant_slug}
+                                                    {(u as any).tenant_slug}
+                                                {:else}
+                                                    -
+                                                {/if}
+                                            </span>
+                                        </div>
+
+                                        <div class="meta-item">
+                                            <span class="meta-label">Status</span>
+                                            <span class="meta-value">
+                                                {#if u.is_active}
+                                                    <span class="status-pill active">
+                                                        <span class="dot"></span> Active
+                                                    </span>
+                                                {:else}
+                                                    <span class="status-pill inactive">
+                                                        <span class="dot"></span> Inactive
+                                                    </span>
+                                                {/if}
+                                            </span>
+                                        </div>
+
+                                        <div class="meta-item">
+                                            <span class="meta-label">Joined</span>
+                                            <span class="meta-value text-muted">
+                                                {new Date(u.created_at).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
+
+                    <div class="cards-pagination">
+                        <Pagination
+                            count={filteredUsers.length}
+                            page={cardPage}
+                            pageSize={cardPageSize}
+                            onchange={(p: number) => (cardPage = p)}
+                            onpageSizeChange={(s: number) => (cardPageSize = s)}
+                        />
+                    </div>
+                {/if}
             </div>
         {:else}
             <div class="table-wrapper">
@@ -482,6 +707,7 @@
                                     onclick={() => openDetails(item)}
                                     title="View details"
                                     aria-label="View details"
+                                    type="button"
                                 >
                                     <Icon name="eye" size={16} />
                                 </button>
@@ -492,6 +718,7 @@
                                         onclick={() => confirmReset2FA(item)}
                                         title="Reset 2FA"
                                         aria-label="Reset 2FA"
+                                        type="button"
                                     >
                                         <Icon name="shield-off" size={16} />
                                     </button>
@@ -507,6 +734,7 @@
                                         ? "Deactivate user"
                                         : "Activate user"}
                                     disabled={item.is_super_admin || item.id === $currentUser?.id}
+                                    type="button"
                                 >
                                     <Icon
                                         name={item.is_active
@@ -822,6 +1050,51 @@
         padding: 0 1.25rem 1rem 1.25rem;
     }
 
+    .view-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    :global([data-theme="light"]) .view-toggle {
+        border-color: rgba(0, 0, 0, 0.06);
+        background: rgba(0, 0, 0, 0.02);
+    }
+
+    .view-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        padding: 0;
+    }
+
+    .view-btn:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-primary);
+    }
+
+    :global([data-theme="light"]) .view-btn:hover {
+        background: rgba(0, 0, 0, 0.04);
+    }
+
+    .view-btn.active {
+        background: rgba(99, 102, 241, 0.18);
+        border: 1px solid rgba(99, 102, 241, 0.25);
+        color: var(--text-primary);
+    }
+
     .user-info {
         display: flex;
         align-items: center;
@@ -940,6 +1213,27 @@
         color: var(--text-primary);
     }
 
+    .btn-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.02);
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    :global([data-theme="light"]) .btn-icon {
+        border-color: rgba(0, 0, 0, 0.06);
+        background: rgba(0, 0, 0, 0.02);
+        color: var(--text-secondary);
+    }
+
     .btn-icon.warning:hover {
         background: rgba(245, 158, 11, 0.15);
         color: #f59e0b;
@@ -958,6 +1252,97 @@
     .actions {
         display: flex;
         gap: 0.5rem;
+    }
+
+    .cards-wrapper {
+        padding: 0 1.25rem 1rem 1.25rem;
+    }
+
+    .user-cards {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.9rem;
+        margin-top: 0.25rem;
+    }
+
+    .user-card {
+        background: linear-gradient(145deg, var(--bg-surface), #0b0c10);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+    }
+
+    :global([data-theme="light"]) .user-card {
+        background: linear-gradient(135deg, #ffffff, #f7f7fb);
+        border-color: rgba(0, 0, 0, 0.06);
+        box-shadow:
+            0 12px 32px rgba(0, 0, 0, 0.08),
+            0 0 0 1px rgba(255, 255, 255, 0.8);
+    }
+
+    .card-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        align-items: flex-start;
+        padding: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(255, 255, 255, 0.015);
+    }
+
+    :global([data-theme="light"]) .card-top {
+        border-bottom-color: rgba(0, 0, 0, 0.06);
+        background: rgba(0, 0, 0, 0.01);
+    }
+
+    .user-meta {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+    }
+
+    .user-email {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 220px;
+    }
+
+    .card-bottom {
+        padding: 1rem;
+    }
+
+    .meta-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.85rem 0.9rem;
+    }
+
+    .meta-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        min-width: 0;
+    }
+
+    .meta-label {
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+    }
+
+    .meta-value {
+        font-weight: 650;
+        color: var(--text-primary);
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .cards-pagination {
+        margin-top: 0.75rem;
     }
 
     .empty-state-container {
@@ -1072,6 +1457,22 @@
 
         .table-wrapper {
             padding: 0 1rem 1rem 1rem;
+        }
+
+        .cards-wrapper {
+            padding: 0 1rem 1rem 1rem;
+        }
+
+        .user-cards {
+            grid-template-columns: 1fr;
+        }
+
+        .meta-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .user-email {
+            max-width: 180px;
         }
     }
 </style>

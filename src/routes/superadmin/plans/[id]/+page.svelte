@@ -7,14 +7,16 @@
     import { toast } from "$lib/stores/toast";
     import { appSettings } from "$lib/stores/settings";
     import { formatMoney } from "$lib/utils/money";
+    import { superadminPlansCache } from "$lib/stores/superadminPlans";
+    import { get } from "svelte/store";
 
-    let id = $page.params.id as string;
-    let isNew = id === "new";
-    let loading = true;
-    let saving = false;
+    let id = $state("");
+    let isNew = $state(true);
+    let loading = $state(true);
+    let saving = $state(false);
 
     // Data Models
-    let planData: any = {
+    let planData = $state<any>({
         name: "",
         slug: "",
         description: "",
@@ -23,12 +25,17 @@
         is_active: true,
         is_default: false,
         sort_order: 0,
-    };
+    });
 
-    let features: any[] = [];
-    let planFeatures: Record<string, string> = {}; // feature_id -> value
+    let features = $state<any[]>([]);
+    let planFeatures = $state<Record<string, string>>({}); // feature_id -> value
 
-    let activeTab = "general";
+    let activeTab = $state("general");
+
+    $effect(() => {
+        id = $page.params.id as string;
+        isNew = id === "new";
+    });
 
     onMount(async () => {
         try {
@@ -59,6 +66,15 @@
         }
     });
 
+    function upsertPlanCache(savedPlan: any) {
+        const cached = get(superadminPlansCache);
+        const existing = cached?.plans || [];
+        const next = existing.some((p) => p.id === savedPlan.id)
+            ? existing.map((p) => (p.id === savedPlan.id ? savedPlan : p))
+            : [savedPlan, ...existing];
+        superadminPlansCache.set({ plans: next, fetchedAt: Date.now() });
+    }
+
     async function savePlan() {
         saving = true;
         try {
@@ -80,6 +96,7 @@
                 // Save features
                 await saveFeatures(created.id);
 
+                upsertPlanCache(created);
                 toast.success("Plan created successfully");
                 goto("/superadmin/plans");
             } else {
@@ -97,6 +114,7 @@
                 );
                 await saveFeatures(id);
 
+                upsertPlanCache({ ...planData, id });
                 toast.success("Plan updated successfully");
             }
         } catch (e: any) {

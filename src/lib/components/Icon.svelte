@@ -39,6 +39,8 @@
         X,
         Slash,
         Info,
+        Key,
+        Save,
         Image,
         FileText,
         Film,
@@ -53,6 +55,10 @@
         Download,
         CreditCard,
         Server,
+        Cpu,
+        Building2,
+        UserCheck,
+        XCircle,
         Moon,
         Sun,
         Cloud,
@@ -63,6 +69,7 @@
         TrendingUp,
         TrendingDown,
         Minus,
+        ExternalLink,
     } from "lucide-svelte";
 
     let {
@@ -133,6 +140,11 @@
         download: Download,
         "credit-card": CreditCard,
         server: Server,
+        cpu: Cpu,
+        building: Building2,
+        "building-2": Building2,
+        "user-check": UserCheck,
+        "x-circle": XCircle,
         moon: Moon,
         sun: Sun,
         cloud: Cloud,
@@ -143,6 +155,9 @@
         "trending-up": TrendingUp,
         "trending-down": TrendingDown,
         minus: Minus,
+        "external-link": ExternalLink,
+        key: Key,
+        save: Save,
     };
 
     let IconComponent = $derived(icons[name] || HelpCircle);

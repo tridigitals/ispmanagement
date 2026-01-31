@@ -145,14 +145,15 @@
             "contact_support": "Hubungi Dukungan"
         }
     },
-    "profile": {
-        "title": "Pengaturan",
-        "subtitle": "Kelola pengaturan dan preferensi akun Anda.",
-        "tabs": {
-            "general": "Umum",
-            "security": "Keamanan",
-            "preferences": "Preferensi"
-        },
+  "profile": {
+    "title": "Pengaturan",
+    "subtitle": "Kelola pengaturan dan preferensi akun Anda.",
+    "tabs": {
+      "general": "Umum",
+      "security": "Keamanan",
+      "preferences": "Preferensi",
+      "notifications": "Notifikasi"
+    },
         "general": {
             "title": "Informasi Profil",
             "subtitle": "Perbarui detail akun dan profil publik Anda.",
@@ -184,14 +185,17 @@
             "dark_mode": "Mode Gelap",
             "dark_mode_desc": "Beralih antara tema gelap dan terang."
         },
-        "messages": {
-            "profile_updated": "Profil berhasil diperbarui!",
-            "password_changed": "Kata sandi berhasil diubah!",
-            "password_mismatch": "Kata sandi baru tidak cocok",
-            "update_failed": "Gagal memperbarui profil",
-            "change_password_failed": "Gagal mengubah kata sandi"
-        }
-    },
+    "messages": {
+      "profile_updated": "Profil berhasil diperbarui!",
+      "password_changed": "Kata sandi berhasil diubah!",
+      "password_mismatch": "Kata sandi baru tidak cocok",
+      "update_failed": "Gagal memperbarui profil",
+      "change_password_failed": "Gagal mengubah kata sandi",
+      "twofa_required": "Organisasi Anda mewajibkan Autentikasi Dua Faktor (2FA). Silakan aktifkan untuk melanjutkan.",
+      "2fa_method_totp": "Metode 2FA diubah ke Aplikasi Authenticator",
+      "2fa_method_email": "Metode 2FA diubah ke Email"
+    }
+  },
     "admin": {
         "settings": {
             "title": "Pengaturan Global",

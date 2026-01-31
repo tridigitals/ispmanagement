@@ -5,45 +5,8 @@
     import { goto } from "$app/navigation";
     import Icon from "$lib/components/Icon.svelte";
     import StatsCard from "$lib/components/StatsCard.svelte";
+    import { systemHealthCache, type SystemHealth } from "$lib/stores/systemHealth";
     import { fade } from "svelte/transition";
-
-    interface TableInfo {
-        name: string;
-        row_count: number;
-    }
-
-    interface RecentActivity {
-        id: string;
-        action: string;
-        resource: string;
-        user_email: string | null;
-        created_at: string;
-    }
-
-    interface SystemHealth {
-        database: {
-            is_connected: boolean;
-            database_type: string;
-            database_size_bytes: number;
-            total_tables: number;
-            tenants_count: number;
-            users_count: number;
-            audit_logs_count: number;
-        };
-        resources: {
-            cpu_usage: number;
-            memory_used_bytes: number;
-            memory_total_bytes: number;
-            os_name: string;
-            os_version: string;
-        };
-        tables: TableInfo[];
-        active_sessions: number;
-        recent_activity: RecentActivity[];
-        uptime_seconds: number;
-        app_version: string;
-        collected_at: string;
-    }
 
     let health: SystemHealth | null = null;
     let loading = true;
@@ -55,6 +18,12 @@
             goto("/dashboard");
             return;
         }
+
+        if ($systemHealthCache.health) {
+            health = $systemHealthCache.health;
+            loading = false;
+        }
+
         await loadHealth();
         // Auto-refresh every 30 seconds
         refreshInterval = setInterval(loadHealth, 30000);
@@ -67,6 +36,7 @@
     async function loadHealth() {
         try {
             health = await api.superadmin.getSystemHealth();
+            systemHealthCache.set({ health, fetchedAt: Date.now() });
             error = "";
         } catch (e: any) {
             console.error("Failed to load system health:", e);

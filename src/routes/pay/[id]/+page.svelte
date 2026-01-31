@@ -122,7 +122,7 @@
             currency,
         }).format(amount);
     }
-    let fileInput: HTMLInputElement;
+    let fileInput = $state<HTMLInputElement | null>(null);
     let uploading = $state(false);
 
     async function handleFileUpload(e: Event) {

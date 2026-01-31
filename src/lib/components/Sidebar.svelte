@@ -250,6 +250,16 @@
                 <Icon name="server" size={16} />
                 <span class="label">{$t("sidebar.super_admin") || "Super Admin"}</span>
             </button>
+            <button
+                class="context-btn"
+                onclick={() => goto("/superadmin/tenants")}
+                title={$t("sidebar.tenants") || "Tenants"}
+                aria-label={$t("sidebar.tenants") || "Tenants"}
+                data-tooltip={$t("sidebar.tenants") || "Tenants"}
+            >
+                <Icon name="database" size={16} />
+                <span class="label">{$t("sidebar.tenants") || "Tenants"}</span>
+            </button>
         {/if}
 
         {#if $isAdmin && !isUrlSuperadmin}
