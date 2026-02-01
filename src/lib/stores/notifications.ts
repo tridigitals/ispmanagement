@@ -1,8 +1,11 @@
 import { writable, get } from 'svelte/store';
 import { notifications as api, type Notification, type NotificationPreference } from '$lib/api/client';
-import { toast } from '@zerodevx/svelte-toast';
+import { toast } from 'svelte-sonner';
 import { sendNotification } from '@tauri-apps/plugin-notification';
 import { isTauri } from '@tauri-apps/api/core';
+
+const UNREAD_REFRESH_MIN_INTERVAL_MS = 15_000;
+let lastUnreadRefreshAt = 0;
 
 // Helper to convert VAPID key
 function urlBase64ToUint8Array(base64String: string) {
@@ -57,12 +60,11 @@ export async function loadNotifications(page: number = 1, append: boolean = fals
             hasMore: res.data.length === perPage, // Simple check, could be better
         });
 
-        // Also refresh count
+        // Also refresh count (throttled to avoid extra calls on frequent dropdown opens)
         refreshUnreadCount();
 
     } catch (e) {
         console.error('Failed to load notifications:', e);
-        // toast.push('Failed to load notifications');
     } finally {
         loading.set(false);
     }
@@ -71,10 +73,14 @@ export async function loadNotifications(page: number = 1, append: boolean = fals
 /**
  * Refresh unread count
  */
-export async function refreshUnreadCount() {
+export async function refreshUnreadCount(force: boolean = false) {
+    const now = Date.now();
+    if (!force && now - lastUnreadRefreshAt < UNREAD_REFRESH_MIN_INTERVAL_MS) return;
+
     try {
         const res = await api.getUnreadCount();
         unreadCount.set(res.count);
+        lastUnreadRefreshAt = now;
     } catch (e) {
         console.error('Failed to get unread count:', e);
     }
@@ -121,8 +127,13 @@ export async function markAllAsRead() {
  * Delete a notification
  */
 export async function deleteNotification(id: string) {
-    // Optimistic remove
-    notifications.update(items => items.filter(n => n.id !== id));
+    // Optimistic remove + keep unread count in sync
+    const current = get(notifications);
+    const deleted = current.find((n) => n.id === id);
+    notifications.set(current.filter((n) => n.id !== id));
+    if (deleted && !deleted.is_read) {
+        unreadCount.update((c) => Math.max(0, c - 1));
+    }
 
     try {
         await api.delete(id);
@@ -191,16 +202,13 @@ export async function checkSubscription() {
  */
 export async function subscribePush() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        toast.push({ msg: 'Push notifications not supported', theme: { '--toastBackground': 'var(--color-danger)' } });
+        toast.error('Push notifications not supported');
         return;
     }
 
     // 1. Check if blocked
     if (Notification.permission === 'denied') {
-        toast.push({
-            msg: 'Notifications are blocked! Please click the lock icon in your URL bar and "Reset Permission".',
-            theme: { '--toastBackground': 'var(--color-danger)' }
-        });
+        toast.error('Notifications are blocked. Please allow notifications in your browser settings.');
         return;
     }
 
@@ -208,7 +216,7 @@ export async function subscribePush() {
         // 2. Request permission explicitly
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') {
-            toast.push({ msg: 'Permission denied. You need to allow notifications.', theme: { '--toastBackground': 'var(--color-warning)' } });
+            toast.warning('Permission denied. You need to allow notifications.');
             return;
         }
 
@@ -217,7 +225,7 @@ export async function subscribePush() {
 
         if (!vapidPublicKey) {
             console.error('VAPID public key not found');
-            toast.push({ msg: 'Configuration error: Missing VAPID key', theme: { '--toastBackground': 'var(--color-danger)' } });
+            toast.error('Configuration error: Missing VAPID key');
             return;
         }
 
@@ -245,14 +253,14 @@ export async function subscribePush() {
                 toBase64Url(auth)
             );
             pushEnabled.set(true);
-            toast.push({ msg: 'Push notifications enabled successfully!' });
+            toast.success('Push notifications enabled successfully!');
         } else {
             console.warn('Push subscription missing keys');
         }
 
     } catch (e) {
         console.error('Failed to subscribe to push:', e);
-        toast.push({ msg: `Error: ${e instanceof Error ? e.message : 'Unknown error'}`, theme: { '--toastBackground': 'var(--color-danger)' } });
+        toast.error(`Error: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
 }
 
@@ -270,7 +278,7 @@ export async function unsubscribePush() {
             await subscription.unsubscribe();
             await api.unsubscribePush(subscription.endpoint);
             pushEnabled.set(false);
-            toast.push({ msg: 'Push notifications disabled' });
+            toast.success('Push notifications disabled');
         }
     } catch (e) {
         console.error('Failed to unsubscribe push:', e);
@@ -283,10 +291,10 @@ export async function unsubscribePush() {
 export async function sendTestNotification() {
     try {
         await api.sendTest();
-        toast.push({ msg: 'Test notification sent!' });
+        toast.success('Test notification sent!');
     } catch (e) {
         console.error('Failed to send test notification:', e);
-        toast.push({ msg: 'Failed to send test notification', theme: { '--toastBackground': 'var(--color-danger)' } });
+        toast.error('Failed to send test notification');
     }
 }
 
@@ -299,10 +307,10 @@ export function handleNotificationReceived(notification: Notification) {
     unreadCount.update(c => c + 1);
 
     // Show toast for in-app feedback
-    toast.push({
-        msg: notification.title,
-        // TODO: Custom component for toast with action
-    });
+    if (notification.notification_type === 'success') toast.success(notification.title);
+    else if (notification.notification_type === 'warning') toast.warning(notification.title);
+    else if (notification.notification_type === 'error') toast.error(notification.title);
+    else toast.info(notification.title);
 
     // If Desktop, also trigger system notification
     // If Desktop, also trigger system notification

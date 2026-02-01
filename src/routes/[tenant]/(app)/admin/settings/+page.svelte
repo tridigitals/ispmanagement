@@ -35,10 +35,10 @@
     let baselineTenantInfo = $state<any>(null);
     let baselineCustomDomainAccess = $state(false);
 
-    // Categories configuration
-    const categories = {
+    // Categories configuration (i18n-aware)
+    let categories = $derived.by(() => ({
         general: {
-            label: "General",
+            label: $t("admin.settings.categories.general") || "General",
             icon: "app",
             keys: [
                 "app_name",
@@ -52,17 +52,17 @@
         },
         branding: {
             // New Branding & Domain Tab
-            label: "Branding & Domain",
+            label: $t("admin.settings.categories.branding") || "Branding & Domain",
             icon: "globe",
             keys: [], // Managed manually
         },
         security: {
-            label: "Security",
+            label: $t("admin.settings.categories.security") || "Security",
             icon: "shield",
             keys: [], // Managed manually
         },
         storage: {
-            label: "Storage",
+            label: $t("admin.settings.categories.storage") || "Storage",
             icon: "database",
             keys: [
                 "storage_driver",
@@ -75,7 +75,7 @@
             ],
         },
         email: {
-            label: "Email",
+            label: $t("admin.settings.categories.email") || "Email",
             icon: "mail",
             keys: [
                 "email_provider",
@@ -91,7 +91,7 @@
             ],
         },
         payment: {
-            label: "Payments",
+            label: $t("admin.settings.categories.payment") || "Payments",
             icon: "credit-card",
             keys: [
                 "payment_midtrans_enabled",
@@ -104,7 +104,7 @@
                 "payment_manual_accounts",
             ],
         },
-    };
+    }));
 
     let mobileMenuItems = $derived(
         Object.entries(categories).map(([id, cat]) => ({

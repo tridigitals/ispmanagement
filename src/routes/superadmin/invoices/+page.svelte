@@ -6,6 +6,8 @@
     import TableToolbar from "$lib/components/TableToolbar.svelte";
     import { toast } from "$lib/stores/toast";
     import { formatMoney } from "$lib/utils/money";
+    import { goto } from "$app/navigation";
+    import { getTenantsCached } from "$lib/stores/superadminTenantsCache";
 
     type InvoiceStatus =
         | "all"
@@ -104,7 +106,7 @@
             error = "";
             const [invoicesRes, tenantsRes] = await Promise.all([
                 api.payment.listAllInvoices(),
-                api.superadmin.listTenants().catch(() => ({ data: [], total: 0 })),
+                getTenantsCached().then((data) => ({ data, total: data.length })).catch(() => ({ data: [], total: 0 })),
             ]);
 
             invoices = invoicesRes || [];
@@ -331,13 +333,15 @@
                                 >
                                     <Icon name="refresh-cw" size={18} />
                                 </button>
-                                <a
+                                <button
                                     class="btn-icon"
-                                    href="/superadmin/invoices/{inv.id}"
+                                    type="button"
                                     title="View Details"
+                                    onclick={() =>
+                                        goto(`/superadmin/invoices/${inv.id}`)}
                                 >
                                     <Icon name="eye" size={18} />
-                                </a>
+                                </button>
                             </div>
                         </div>
                     {/each}
@@ -391,13 +395,17 @@
                                     >
                                         <Icon name="refresh-cw" size={18} />
                                     </button>
-                                    <a
-                                        href="/superadmin/invoices/{item.id}"
+                                    <button
+                                        type="button"
                                         class="action-btn"
                                         title="View Details"
+                                        onclick={() =>
+                                            goto(
+                                                `/superadmin/invoices/${item.id}`,
+                                            )}
                                     >
                                         <Icon name="eye" size={18} />
-                                    </a>
+                                    </button>
                                 </div>
                             {:else}
                                 {item[column.key]}

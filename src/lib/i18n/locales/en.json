@@ -59,6 +59,8 @@
     "common": {
         "back": "Back",
         "cancel": "Cancel",
+        "clear": "Clear",
+        "refresh": "Refresh",
         "save": "Save",
         "loading": "Loading..."
     },
@@ -75,7 +77,10 @@
         "subscription": "Subscription",
         "audit_logs": "Audit Logs",
         "system": "System",
+        "expand": "Expand sidebar",
+        "collapse": "Collapse sidebar",
         "exit": "Exit",
+        "close_menu": "Close menu",
         "super_admin": "Super Admin",
         "settings": "Settings",
         "user_view": "User View",
@@ -87,11 +92,20 @@
         "search_placeholder": "Search...",
         "notifications": "Notifications",
         "help": "Help",
+        "notifications_menu": {
+            "mark_all_read": "Mark all read",
+            "settings": "Notification settings",
+            "empty": "No notifications yet",
+            "mark_read": "Mark as read",
+            "delete": "Delete",
+            "view_all": "View all"
+        },
         "toggle_dark": "Switch to dark mode",
         "toggle_light": "Switch to light mode",
         "titles": {
             "dashboard": "Dashboard",
             "profile": "My Profile",
+            "notifications": "Notifications",
             "admin_overview": "Admin Overview",
             "user_management": "User Management",
             "global_settings": "Global Settings",
@@ -110,6 +124,159 @@
             "default": "Workspace"
         }
     },
+    "notifications_page": {
+        "title": "Notifications",
+        "subtitle": "Updates, alerts, and system messages.",
+        "search_placeholder": "Search notifications...",
+        "loading": "Loading notifications...",
+        "load_more": "Load more",
+        "confirm_delete": {
+            "title": "Delete notification",
+            "message": "Delete this notification? This action cannot be undone."
+        },
+        "confirm_mark_all": {
+            "title": "Mark all as read",
+            "message": "Mark all notifications as read?"
+        },
+        "filters": {
+            "all": "All",
+            "unread": "Unread"
+        },
+        "empty": {
+            "title": "You're all caught up",
+            "subtitle": "No notifications to show."
+        }
+    },
+    "superadmin": {
+        "invoices": {
+            "detail": {
+                "title": "Invoice Details",
+                "back": "Back to Invoices",
+                "loading": "Loading details...",
+                "missing_id": "Missing invoice id",
+                "load_failed": "Failed to load invoice",
+                "invoice": "Invoice",
+                "tenant": "Tenant",
+                "description": "Description",
+                "amount": "Amount",
+                "created_at": "Created At",
+                "updated_at": "Updated At",
+                "manual_verification": "Manual Verification",
+                "approve_title": "Approve Payment",
+                "reject_title": "Reject Payment",
+                "approve_message": "Are you sure you want to approve this payment? This will activate the subscription immediately.",
+                "reject_message": "Are you sure you want to reject this payment? The user will be notified.",
+                "approve": "Approve",
+                "reject": "Reject",
+                "marked_as": "Invoice marked as",
+                "verify_failed": "Verification failed",
+                "already_status": "This invoice is already",
+                "payment_proof": "Payment Proof",
+                "click_enlarge": "Click to enlarge",
+                "no_proof": "No proof uploaded yet.",
+                "not_found": "Invoice not found"
+            }
+        },
+        "system": {
+            "title": "System Health",
+            "subtitle": "Monitor platform status and metrics",
+            "loading": "Loading system health...",
+            "retry": "Retry",
+            "db_connected": "Database Connected",
+            "db_disconnected": "Database Disconnected",
+            "tables": "tables",
+            "uptime": "Uptime:",
+            "cpu_usage": "CPU Usage",
+            "memory_usage": "Memory Usage",
+            "database_tables": "Database Tables",
+            "recent_activity": "Recent Activity",
+            "no_recent_activity": "No recent activity",
+            "last_updated": "Last updated:",
+            "stats": {
+                "total_tenants": "Total Tenants",
+                "total_users": "Total Users",
+                "active_users": "Active Users",
+                "audit_logs": "Audit Logs"
+            },
+            "table_headers": {
+                "table": "Table",
+                "rows": "Rows"
+            }
+        },
+        "settings": {
+            "title": "Platform Settings",
+            "subtitle": "Global Configuration",
+            "loading": "Loading settings...",
+            "errors": {
+                "load_failed": "Failed to load settings",
+                "save_failed": "Failed to save settings",
+                "missing_test_email": "Please enter an email address",
+                "test_email_failed": "Failed to send test email: ",
+                "bank_add_failed": "Failed to add bank",
+                "bank_remove_failed": "Failed to delete bank"
+            },
+            "toasts": {
+                "saved": "Settings saved successfully",
+                "bank_added": "Bank account added",
+                "bank_removed": "Bank account removed"
+            },
+            "confirm": {
+                "are_you_sure": "Are you sure?"
+            },
+            "sections": {
+                "general": "General Settings",
+                "auth": "Authentication Policy",
+                "password": "Password Policy",
+                "security": "Security & Rate Limiting",
+                "storage": "Storage Configuration",
+                "payment": "Payment Gateway (Midtrans)",
+                "manual_bank_transfer": "Manual Bank Transfer"
+            },
+            "fields": {
+                "public_url": "Public Application URL",
+                "currency": "Default Currency",
+                "maintenance_mode": "Enable Maintenance Mode",
+                "maintenance_message": "Maintenance Message"
+            },
+            "placeholders": {
+                "url": "https://...",
+                "public_url": "https://cdn.example.com",
+                "maintenance_message": "Enter maintenance message...",
+                "manual_instructions": "Please transfer to one of the bank accounts below and upload proof.",
+                "s3_bucket": "e.g. my-app-uploads",
+                "s3_region": "us-east-1",
+                "extensions": "jpg, png, pdf...",
+                "bank_name": "Bank Name (e.g. BCA)",
+                "bank_account_number": "Account Number",
+                "bank_account_holder": "Account Holder"
+            },
+            "actions": {
+                "remove": "Remove",
+                "add": "Add",
+                "reset": "Reset",
+                "save": "Save Changes",
+                "saving": "Saving..."
+            },
+            "bank": {
+                "add_new_account": "Add New Account",
+                "empty": "No bank accounts added yet.",
+                "table": {
+                    "bank": "Bank",
+                    "number": "Number",
+                    "holder": "Holder",
+                    "action": "Action"
+                }
+            },
+            "categories": {
+                "general": "General & Maintenance",
+                "auth": "Authentication",
+                "password": "Password Policy",
+                "security": "Security & Rate Limiting",
+                "storage": "Storage Configuration",
+                "payment": "Payment Gateway"
+            }
+        }
+    },
     "dashboard": {
         "greeting": {
             "morning": "Good Morning",
@@ -117,6 +284,7 @@
             "evening": "Good Evening",
             "welcome_message": "Here's what's happening with your account today."
         },
+        "manage_files": "Manage Files",
         "generate_report": "Generate Report",
         "admin_mode": {
             "title": "Administrator Mode",
@@ -131,6 +299,7 @@
         "recent_activity": {
             "title": "Recent Activity",
             "view_all": "View All",
+            "loading": "Loading activity...",
             "empty": {
                 "title": "No activity yet",
                 "description": "When you start using the app, your activity will appear here.",
@@ -148,6 +317,10 @@
   "profile": {
     "title": "Settings",
     "subtitle": "Manage your account settings and preferences.",
+    "fallback": {
+      "user": "User",
+      "member": "Member"
+    },
     "tabs": {
       "general": "General",
       "security": "Security",
@@ -157,6 +330,9 @@
         "general": {
             "title": "Profile Information",
             "subtitle": "Update your account details and public profile.",
+            "change_avatar": "Change Avatar",
+            "your_name": "Your Name",
+            "role_label": "Role",
             "display_name": "Display Name",
             "display_name_placeholder": "Enter your full name",
             "email_address": "Email Address",
@@ -185,6 +361,32 @@
             "dark_mode": "Dark Mode",
             "dark_mode_desc": "Toggle between dark and light themes."
         },
+        "notifications": {
+            "title": "Notification Preferences",
+            "subtitle": "Customize how and when you want to be notified.",
+            "view_all": "View all",
+            "test": "Test Notification",
+            "push": {
+                "active_title": "Push Notifications Active",
+                "active_desc": "You are subscribed to real-time updates on this device.",
+                "disable": "Disable",
+                "enable_title": "Enable Push Notifications",
+                "enable_desc": "Get real-time updates even when the app is closed.",
+                "enable": "Enable Push"
+            },
+            "channels": {
+                "in_app": "In-App",
+                "email": "Email",
+                "push": "Push",
+                "required": "Required"
+            },
+            "categories": {
+                "system": { "label": "System Updates", "desc": "Maintenance & announcements" },
+                "team": { "label": "Team Activity", "desc": "Member changes & invites" },
+                "payment": { "label": "Billing", "desc": "Invoices & subscriptions" },
+                "security": { "label": "Security", "desc": "Login alerts & password changes" }
+            }
+        },
     "messages": {
       "profile_updated": "Profile updated successfully!",
       "password_changed": "Password changed successfully!",
@@ -197,6 +399,87 @@
     }
   },
     "admin": {
+        "subscription": {
+            "tabs": {
+                "overview": "Overview",
+                "plans": "Available Plans",
+                "history": "Payment History"
+            },
+            "loading": "Loading details...",
+            "errors": {
+                "load_failed": "Failed to load subscription details",
+                "create_invoice_failed": "Failed to create invoice"
+            },
+            "toasts": {
+                "invoice_created": "Invoice created"
+            },
+            "common": {
+                "free": "Free",
+                "unlimited": "Unlimited",
+                "base": "Base:",
+                "fx": "FX:",
+                "fx_updating": "Updating FX…",
+                "fx_unavailable": "FX unavailable",
+                "per_month": "/ month"
+            },
+            "overview": {
+                "plan_suffix": "Plan",
+                "current_active": "Current active subscription",
+                "usage_title": "Resource Usage",
+                "storage": "Storage",
+                "team_members": "Team Members",
+                "billing_details": "Billing Details",
+                "active_until": "Active Until",
+                "lifetime": "Lifetime",
+                "billing_cycle": "Billing Cycle",
+                "billing_cycle_paid": "Monthly / Yearly",
+                "billing_cycle_free": "Free Tier",
+                "includes": "Includes"
+            },
+            "plans": {
+                "select_title": "Select a Plan",
+                "current": "Current Plan",
+                "upgrade": "Upgrade"
+            },
+            "features": {
+                "free": {
+                    "community_support": "Community Support",
+                    "basic_analytics": "Basic Analytics",
+                    "subdomain_only": "Subdomain Only"
+                },
+                "pro": {
+                    "priority_support": "Priority Support",
+                    "advanced_analytics": "Advanced Analytics",
+                    "custom_domain": "Custom Domain",
+                    "remove_branding": "Remove Branding"
+                },
+                "enterprise": {
+                    "dedicated_support": "24/7 Dedicated Support",
+                    "audit_logs": "Audit Logs",
+                    "custom_domain": "Custom Domain",
+                    "sso_security": "SSO & Security",
+                    "api_access": "API Access"
+                }
+            },
+            "invoices": {
+                "invoice_number": "Invoice #",
+                "description": "Description",
+                "amount": "Amount",
+                "status": "Status",
+                "due_date": "Due Date",
+                "actions": "Actions",
+                "search_placeholder": "Search invoices...",
+                "pay": "Pay",
+                "view_details": "View Details"
+            }
+        },
+        "invoices": {
+            "title": "Billing & Invoices",
+            "subtitle": "View and manage your subscription payments",
+            "search_placeholder": "Search invoices...",
+            "pay_now": "Pay Now",
+            "view_details": "View Details"
+        },
         "settings": {
             "title": "Global Settings",
             "subtitle": "Manage application configuration, security, and integrations.",
@@ -211,7 +494,9 @@
                 "storage": "Storage",
                 "auth": "Authentication",
                 "security": "Security",
-                "email": "Email"
+                "email": "Email",
+                "branding": "Branding & Domain",
+                "payment": "Payments"
             },
             "keys": {
                 "app_name": "App Name",

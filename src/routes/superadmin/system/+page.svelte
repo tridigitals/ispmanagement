@@ -7,13 +7,14 @@
     import StatsCard from "$lib/components/StatsCard.svelte";
     import { systemHealthCache, type SystemHealth } from "$lib/stores/systemHealth";
     import { fade } from "svelte/transition";
+    import { t } from "svelte-i18n";
 
     let health: SystemHealth | null = null;
     let loading = true;
     let error = "";
     let refreshInterval: ReturnType<typeof setInterval>;
 
-    onMount(async () => {
+    onMount(() => {
         if (!$isSuperAdmin) {
             goto("/dashboard");
             return;
@@ -22,9 +23,11 @@
         if ($systemHealthCache.health) {
             health = $systemHealthCache.health;
             loading = false;
+            // Refresh in background to avoid UI flash
+            void loadHealth();
+        } else {
+            void loadHealth();
         }
-
-        await loadHealth();
         // Auto-refresh every 30 seconds
         refreshInterval = setInterval(loadHealth, 30000);
     });
@@ -91,10 +94,18 @@
 <div class="page-container fade-in">
     <div class="page-header">
         <div class="header-content">
-            <h1>System Health</h1>
-            <p class="subtitle">Monitor platform status and metrics</p>
+            <h1>{$t("superadmin.system.title") || "System Health"}</h1>
+            <p class="subtitle">
+                {$t("superadmin.system.subtitle") ||
+                    "Monitor platform status and metrics"}
+            </p>
         </div>
-        <button class="btn-refresh" on:click={loadHealth} title="Refresh">
+        <button
+            class="btn-refresh"
+            on:click={loadHealth}
+            title={$t("common.refresh") || "Refresh"}
+            aria-label={$t("common.refresh") || "Refresh"}
+        >
             <Icon name="refresh-cw" size={18} />
         </button>
     </div>
@@ -102,13 +113,18 @@
     {#if loading}
         <div class="loading-state">
             <div class="spinner"></div>
-            <p>Loading system health...</p>
+            <p>
+                {$t("superadmin.system.loading") ||
+                    "Loading system health..."}
+            </p>
         </div>
     {:else if error}
         <div class="error-card">
             <Icon name="alert-circle" size={24} />
             <p>{error}</p>
-            <button class="btn btn-primary" on:click={loadHealth}>Retry</button>
+            <button class="btn btn-primary" on:click={loadHealth}>
+                {$t("superadmin.system.retry") || "Retry"}
+            </button>
         </div>
     {:else if health}
         <!-- Database Status Banner -->
@@ -128,12 +144,14 @@
             <div class="status-info">
                 <h3>
                     {health.database.is_connected
-                        ? "Database Connected"
-                        : "Database Disconnected"}
+                        ? $t("superadmin.system.db_connected") ||
+                          "Database Connected"
+                        : $t("superadmin.system.db_disconnected") ||
+                          "Database Disconnected"}
                 </h3>
                 <p>
                     {health.database.database_type} • {health.database
-                        .total_tables} tables • {formatBytes(
+                        .total_tables} {$t("superadmin.system.tables") || "tables"} • {formatBytes(
                         health.database.database_size_bytes,
                     )}
                 </p>
@@ -145,7 +163,8 @@
                     {health.resources.os_version}</span
                 >
                 <span class="uptime"
-                    >Uptime: {formatUptime(health.uptime_seconds)}</span
+                    >{$t("superadmin.system.uptime") || "Uptime:"}
+                    {formatUptime(health.uptime_seconds)}</span
                 >
             </div>
         </div>
@@ -154,7 +173,7 @@
             <div class="card resource-card">
                 <div class="card-header">
                     <Icon name="cpu" size={20} />
-                    <h3>CPU Usage</h3>
+                    <h3>{$t("superadmin.system.cpu_usage") || "CPU Usage"}</h3>
                 </div>
                 <div class="card-body">
                     <div class="resource-header">
@@ -173,7 +192,9 @@
             <div class="card resource-card">
                 <div class="card-header">
                     <Icon name="activity" size={20} />
-                    <h3>Memory Usage</h3>
+                    <h3>
+                        {$t("superadmin.system.memory_usage") || "Memory Usage"}
+                    </h3>
                 </div>
                 <div class="card-body">
                     <div class="resource-header">
@@ -198,25 +219,25 @@
         <!-- Stats Grid -->
         <div class="stats-grid">
             <StatsCard
-                title="Total Tenants"
+                title={$t("superadmin.system.stats.total_tenants") || "Total Tenants"}
                 value={health.database.tenants_count}
                 icon="building"
                 color="primary"
             />
             <StatsCard
-                title="Total Users"
+                title={$t("superadmin.system.stats.total_users") || "Total Users"}
                 value={health.database.users_count}
                 icon="users"
                 color="info"
             />
             <StatsCard
-                title="Active Users"
+                title={$t("superadmin.system.stats.active_users") || "Active Users"}
                 value={health.active_sessions}
                 icon="user-check"
                 color="success"
             />
             <StatsCard
-                title="Audit Logs"
+                title={$t("superadmin.system.stats.audit_logs") || "Audit Logs"}
                 value={health.database.audit_logs_count}
                 icon="activity"
                 color="warning"
@@ -228,14 +249,23 @@
             <div class="card">
                 <div class="card-header">
                     <Icon name="database" size={20} />
-                    <h3>Database Tables</h3>
+                    <h3>
+                        {$t("superadmin.system.database_tables") ||
+                            "Database Tables"}
+                    </h3>
                 </div>
                 <div class="card-body">
                     <table class="mini-table">
                         <thead>
                             <tr>
-                                <th>Table</th>
-                                <th class="text-right">Rows</th>
+                                <th>
+                                    {$t("superadmin.system.table_headers.table") ||
+                                        "Table"}
+                                </th>
+                                <th class="text-right">
+                                    {$t("superadmin.system.table_headers.rows") ||
+                                        "Rows"}
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -260,12 +290,18 @@
             <div class="card">
                 <div class="card-header">
                     <Icon name="clock" size={20} />
-                    <h3>Recent Activity</h3>
+                    <h3>
+                        {$t("superadmin.system.recent_activity") ||
+                            "Recent Activity"}
+                    </h3>
                 </div>
                 <div class="card-body">
                     {#if health.recent_activity.length === 0}
                         <div class="empty-mini">
-                            <p>No recent activity</p>
+                            <p>
+                                {$t("superadmin.system.no_recent_activity") ||
+                                    "No recent activity"}
+                            </p>
                         </div>
                     {:else}
                         <div class="activity-list">
@@ -307,7 +343,8 @@
         <!-- Last Updated -->
         <div class="last-updated">
             <Icon name="clock" size={14} />
-            Last updated: {new Date(health.collected_at).toLocaleString()}
+            {$t("superadmin.system.last_updated") || "Last updated:"}
+            {new Date(health.collected_at).toLocaleString()}
         </div>
     {/if}
 </div>

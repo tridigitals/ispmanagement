@@ -118,9 +118,10 @@
             superadminPlansCache.set({ plans, fetchedAt: Date.now() });
         } catch (e: any) {
             toast.error(e.message || "Failed to load data");
+        } finally {
+            loading = false;
+            isRefreshing = false;
         }
-        loading = false;
-        isRefreshing = false;
     }
 
     function createPlan() {

@@ -176,14 +176,13 @@
 
 <!-- Mobile Overlay Backdrop -->
 {#if isMobileOpen}
-    <div
+    <button
+        type="button"
         class="sidebar-overlay"
         onclick={() => (isMobileOpen = false)}
-        onkeydown={(e) => e.key === "Escape" && (isMobileOpen = false)}
-        role="button"
-        tabindex="0"
-        aria-label="Close menu"
-    ></div>
+        aria-label={$t("sidebar.close_menu") || "Close menu"}
+        title={$t("sidebar.close_menu") || "Close menu"}
+    ></button>
 {/if}
 
 <aside
@@ -230,7 +229,6 @@
                 class="context-btn"
                 onclick={() =>
                     goto(tenantPrefix ? `${tenantPrefix}/dashboard` : "/dashboard")}
-                title={$t("sidebar.exit") || "Exit"}
                 aria-label={$t("sidebar.exit") || "Exit"}
                 data-tooltip={$t("sidebar.exit") || "Exit"}
             >
@@ -243,22 +241,11 @@
             <button
                 class="context-btn super-admin"
                 onclick={() => goto("/superadmin")}
-                title="Super Admin Dashboard"
-                aria-label="Super Admin Dashboard"
+                aria-label={$t("sidebar.super_admin") || "Super Admin"}
                 data-tooltip={$t("sidebar.super_admin") || "Super Admin"}
             >
                 <Icon name="server" size={16} />
                 <span class="label">{$t("sidebar.super_admin") || "Super Admin"}</span>
-            </button>
-            <button
-                class="context-btn"
-                onclick={() => goto("/superadmin/tenants")}
-                title={$t("sidebar.tenants") || "Tenants"}
-                aria-label={$t("sidebar.tenants") || "Tenants"}
-                data-tooltip={$t("sidebar.tenants") || "Tenants"}
-            >
-                <Icon name="database" size={16} />
-                <span class="label">{$t("sidebar.tenants") || "Tenants"}</span>
             </button>
         {/if}
 
@@ -271,13 +258,12 @@
                             ? `${tenantPrefix}/dashboard`
                             : `${tenantPrefix}/admin`,
                     )}
-                title={isUrlAdmin
-                    ? "Switch to User Dashboard"
-                    : "Switch to Admin Panel"}
                 aria-label={isUrlAdmin
-                    ? "Switch to User Dashboard"
-                    : "Switch to Admin Panel"}
-                data-tooltip={isUrlAdmin ? $t("sidebar.user_view") : $t("sidebar.admin_panel")}
+                    ? $t("sidebar.user_view") || "User View"
+                    : $t("sidebar.admin_panel") || "Admin Panel"}
+                data-tooltip={isUrlAdmin
+                    ? $t("sidebar.user_view") || "User View"
+                    : $t("sidebar.admin_panel") || "Admin Panel"}
             >
                 <Icon name={isUrlAdmin ? "arrow-left" : "shield"} size={16} />
                 <span class="label"
@@ -374,6 +360,8 @@
         z-index: 40;
         backdrop-filter: blur(2px);
         animation: fadeIn 0.2s ease-out;
+        border: 0;
+        padding: 0;
     }
 
     @keyframes fadeIn {

@@ -10,6 +10,7 @@
     import { appSettings } from "$lib/stores/settings";
     import { superadminPlatformSettingsCache } from "$lib/stores/superadminPlatformSettings";
     import { get } from "svelte/store";
+    import { t } from "svelte-i18n";
 
     let loading = true;
     let saving = false;
@@ -96,30 +97,49 @@
 
     const categories = {
         general: {
-            label: "General & Maintenance",
+            labelKey: "superadmin.settings.categories.general",
+            labelFallback: "General & Maintenance",
             icon: "settings",
         },
         auth: {
-            label: "Authentication",
+            labelKey: "superadmin.settings.categories.auth",
+            labelFallback: "Authentication",
             icon: "lock",
         },
         password: {
-            label: "Password Policy",
+            labelKey: "superadmin.settings.categories.password",
+            labelFallback: "Password Policy",
             icon: "key",
         },
         security: {
-            label: "Security & Rate Limiting",
+            labelKey: "superadmin.settings.categories.security",
+            labelFallback: "Security & Rate Limiting",
             icon: "shield",
         },
         storage: {
-            label: "Storage Configuration",
+            labelKey: "superadmin.settings.categories.storage",
+            labelFallback: "Storage Configuration",
             icon: "hard-drive",
         },
         payment: {
-            label: "Payment Gateway",
+            labelKey: "superadmin.settings.categories.payment",
+            labelFallback: "Payment Gateway",
             icon: "credit-card",
         },
     };
+
+    let pageTitle = "Platform Settings";
+    let pageSubtitle = "Global Configuration";
+    let categoryEntries: { id: string; icon: string; label: string }[] = [];
+
+    $: pageTitle = $t("superadmin.settings.title") || "Platform Settings";
+    $: pageSubtitle =
+        $t("superadmin.settings.subtitle") || "Global Configuration";
+    $: categoryEntries = Object.entries(categories).map(([id, cat]) => ({
+        id,
+        icon: cat.icon,
+        label: $t(cat.labelKey) || cat.labelFallback,
+    }));
 
     onMount(async () => {
         if (!$isSuperAdmin) {
@@ -268,7 +288,10 @@
             });
         } catch (err) {
             console.error("Failed to load settings:", err);
-            toast.error("Failed to load settings");
+            toast.error(
+                get(t)("superadmin.settings.errors.load_failed") ||
+                    "Failed to load settings",
+            );
         } finally {
             if (!opts.silent) loading = false;
         }
@@ -479,7 +502,10 @@
 
             await Promise.all(updates);
 
-            toast.success("Settings saved successfully");
+            toast.success(
+                get(t)("superadmin.settings.toasts.saved") ||
+                    "Settings saved successfully",
+            );
             hasChanges = false;
 
             // Refresh global settings store so currency/locale update immediately
@@ -550,7 +576,10 @@
             });
         } catch (err) {
             console.error("Failed to save settings:", err);
-            toast.error("Failed to save settings");
+            toast.error(
+                get(t)("superadmin.settings.errors.save_failed") ||
+                    "Failed to save settings",
+            );
         } finally {
             saving = false;
         }
@@ -563,16 +592,22 @@
 
     async function sendTestEmail() {
         if (!testEmailAddress) {
-            toast.error("Please enter an email address");
+            toast.error(
+                get(t)("superadmin.settings.errors.missing_test_email") ||
+                    "Please enter an email address",
+            );
             return;
         }
         sendingTestEmail = true;
         try {
             const result = await api.settings.sendTestEmail(testEmailAddress);
-            toast.success(result);
+            toast.success(String(result));
         } catch (error) {
             console.error(error);
-            toast.error("Failed to send test email: " + String(error));
+            toast.error(
+                (get(t)("superadmin.settings.errors.test_email_failed") ||
+                    "Failed to send test email: ") + String(error),
+            );
         } finally {
             sendingTestEmail = false;
         }
@@ -591,22 +626,42 @@
             newBankName = "";
             newAccountNumber = "";
             newAccountHolder = "";
-            toast.success("Bank account added");
+            toast.success(
+                get(t)("superadmin.settings.toasts.bank_added") ||
+                    "Bank account added",
+            );
         } catch (e: any) {
-            toast.error(e.message || "Failed to add bank");
+            toast.error(
+                e.message ||
+                    get(t)("superadmin.settings.errors.bank_add_failed") ||
+                    "Failed to add bank",
+            );
         } finally {
             addingBank = false;
         }
     }
 
     async function deleteBank(id: string) {
-        if (!confirm("Are you sure?")) return;
+        if (
+            !confirm(
+                get(t)("superadmin.settings.confirm.are_you_sure") ||
+                    "Are you sure?",
+            )
+        )
+            return;
         try {
             await api.payment.deleteBank(id);
             bankAccounts = bankAccounts.filter((b) => b.id !== id);
-            toast.success("Bank account removed");
+            toast.success(
+                get(t)("superadmin.settings.toasts.bank_removed") ||
+                    "Bank account removed",
+            );
         } catch (e: any) {
-            toast.error(e.message || "Failed to delete bank");
+            toast.error(
+                e.message ||
+                    get(t)("superadmin.settings.errors.bank_remove_failed") ||
+                    "Failed to delete bank",
+            );
         }
     }
 
@@ -621,11 +676,11 @@
         <!-- Desktop Sidebar -->
         <aside class="sidebar card desktop-sidebar">
             <nav>
-                {#each Object.entries(categories) as [id, cat]}
+                {#each categoryEntries as cat}
                     <button
-                        class="nav-item {activeTab === id ? 'active' : ''}"
+                        class="nav-item {activeTab === cat.id ? 'active' : ''}"
                         on:click={() => {
-                            activeTab = id;
+                            activeTab = cat.id;
                         }}
                     >
                         <span class="icon">
@@ -639,32 +694,38 @@
 
         <!-- Mobile FAB & Menu -->
         <MobileFabMenu
-            items={Object.entries(categories).map(([id, cat]) => ({
-                id,
+            items={categoryEntries.map((cat) => ({
+                id: cat.id,
                 label: cat.label,
                 icon: cat.icon,
             }))}
             bind:activeTab
-            title="Platform Settings"
+            title={pageTitle}
         />
 
         <main class="content">
             <div class="header-mobile">
-                <h1>Platform Settings</h1>
-                <p class="subtitle">Global Configuration</p>
+                <h1>{pageTitle}</h1>
+                <p class="subtitle">{pageSubtitle}</p>
             </div>
 
             {#if loading}
                 <div class="loading-state">
                     <div class="spinner"></div>
-                    <p>Loading settings...</p>
+                    <p>
+                        {$t("superadmin.settings.loading") ||
+                            "Loading settings..."}
+                    </p>
                 </div>
             {:else}
                 <!-- General & Maintenance Tab -->
                 {#if activeTab === "general"}
                     <div class="card section fade-in">
                         <div class="card-header">
-                            <h3>General Settings</h3>
+                            <h3>
+                                {$t("superadmin.settings.sections.general") ||
+                                    "General Settings"}
+                            </h3>
                         </div>
                         <div class="card-body">
                             <div class="setting-row">
@@ -672,7 +733,9 @@
                                     <label
                                         class="setting-label"
                                         for="public-url"
-                                        >Public Application URL</label
+                                        >{$t(
+                                            "superadmin.settings.fields.public_url",
+                                        ) || "Public Application URL"}</label
                                     >
                                     <p class="setting-description">
                                         Base URL for redirects, emails, and
@@ -685,7 +748,9 @@
                                         bind:value={appPublicUrl}
                                         on:input={handleChange}
                                         class="form-input"
-                                        placeholder="https://..."
+                                        placeholder={$t(
+                                            "superadmin.settings.placeholders.url",
+                                        ) || "https://..."}
                                     />
                                 </div>
                             </div>
@@ -695,7 +760,9 @@
                                     <label
                                         class="setting-label"
                                         for="currency-code"
-                                        >Default Currency</label
+                                        >{$t(
+                                            "superadmin.settings.fields.currency",
+                                        ) || "Default Currency"}</label
                                     >
                                     <p class="setting-description">
                                         Currency used for plan pricing and invoice
@@ -719,7 +786,9 @@
                                     <label
                                         class="setting-label"
                                         for="maintenance-mode"
-                                        >Enable Maintenance Mode</label
+                                        >{$t(
+                                            "superadmin.settings.fields.maintenance_mode",
+                                        ) || "Enable Maintenance Mode"}</label
                                     >
                                     <p class="setting-description">
                                         When enabled, all users except
@@ -742,7 +811,9 @@
                                     <label
                                         class="setting-label"
                                         for="maintenance-message"
-                                        >Maintenance Message</label
+                                        >{$t(
+                                            "superadmin.settings.fields.maintenance_message",
+                                        ) || "Maintenance Message"}</label
                                     >
                                     <p class="setting-description">
                                         Message displayed to users during
@@ -753,7 +824,9 @@
                                         bind:value={maintenanceMessage}
                                         on:input={handleChange}
                                         rows="3"
-                                        placeholder="Enter maintenance message..."
+                                        placeholder={$t(
+                                            "superadmin.settings.placeholders.maintenance_message",
+                                        ) || "Enter maintenance message..."}
                                     ></textarea>
                                 </div>
                             </div>
@@ -765,7 +838,10 @@
                 {#if activeTab === "auth"}
                     <div class="card section fade-in">
                         <div class="card-header">
-                            <h3>Authentication Policy</h3>
+                            <h3>
+                                {$t("superadmin.settings.sections.auth") ||
+                                    "Authentication Policy"}
+                            </h3>
                         </div>
                         <div class="card-body">
                             <div class="setting-row">
@@ -865,7 +941,10 @@
                 {#if activeTab === "password"}
                     <div class="card section fade-in">
                         <div class="card-header">
-                            <h3>Password Policy</h3>
+                            <h3>
+                                {$t("superadmin.settings.sections.password") ||
+                                    "Password Policy"}
+                            </h3>
                         </div>
                         <div class="card-body">
                             <div class="setting-row">
@@ -953,7 +1032,10 @@
                 {#if activeTab === "security"}
                     <div class="card section fade-in">
                         <div class="card-header">
-                            <h3>Security & Rate Limiting</h3>
+                            <h3>
+                                {$t("superadmin.settings.sections.security") ||
+                                    "Security & Rate Limiting"}
+                            </h3>
                         </div>
                         <div class="card-body">
                             <div class="setting-row">
@@ -1159,7 +1241,10 @@
                 {#if activeTab === "storage"}
                     <div class="card section fade-in">
                         <div class="card-header">
-                            <h3>Storage Configuration</h3>
+                            <h3>
+                                {$t("superadmin.settings.sections.storage") ||
+                                    "Storage Configuration"}
+                            </h3>
                         </div>
                         <div class="card-body">
                             <!-- Driver Selection -->
@@ -1208,7 +1293,9 @@
                                             id="bucket-name"
                                             bind:value={storageS3Bucket}
                                             on:input={handleChange}
-                                            placeholder="e.g. my-app-uploads"
+                                            placeholder={$t(
+                                                "superadmin.settings.placeholders.s3_bucket",
+                                            ) || "e.g. my-app-uploads"}
                                         />
                                     </div>
                                     <div class="setting-row">
@@ -1227,7 +1314,9 @@
                                             id="bucket-region"
                                             bind:value={storageS3Region}
                                             on:input={handleChange}
-                                            placeholder="us-east-1"
+                                            placeholder={$t(
+                                                "superadmin.settings.placeholders.s3_region",
+                                            ) || "us-east-1"}
                                         />
                                     </div>
                                     <div class="setting-row">
@@ -1248,7 +1337,9 @@
                                             id="bucket-endpoint"
                                             bind:value={storageS3Endpoint}
                                             on:input={handleChange}
-                                            placeholder="https://..."
+                                            placeholder={$t(
+                                                "superadmin.settings.placeholders.url",
+                                            ) || "https://..."}
                                         />
                                     </div>
                                     <div class="setting-row">
@@ -1298,7 +1389,9 @@
                                             id="public-access-url"
                                             bind:value={storageS3PublicUrl}
                                             on:input={handleChange}
-                                            placeholder="https://cdn.example.com"
+                                            placeholder={$t(
+                                                "superadmin.settings.placeholders.public_url",
+                                            ) || "https://cdn.example.com"}
                                         />
                                     </div>
                                 </div>
@@ -1345,7 +1438,9 @@
                                         bind:value={storageAllowedExtensions}
                                         on:input={handleChange}
                                         rows="3"
-                                        placeholder="jpg, png, pdf..."
+                                        placeholder={$t(
+                                            "superadmin.settings.placeholders.extensions",
+                                        ) || "jpg, png, pdf..."}
                                     ></textarea>
                                 </div>
                             </div>
@@ -1357,7 +1452,10 @@
                 {#if activeTab === "payment"}
                     <div class="card section fade-in">
                         <div class="card-header">
-                            <h3>Payment Gateway (Midtrans)</h3>
+                            <h3>
+                                {$t("superadmin.settings.sections.payment") ||
+                                    "Payment Gateway (Midtrans)"}
+                            </h3>
                         </div>
                         <div class="card-body">
                             <div class="setting-row">
@@ -1476,7 +1574,11 @@
 
                     <div class="card section fade-in">
                         <div class="card-header">
-                            <h3>Manual Bank Transfer</h3>
+                            <h3>
+                                {$t(
+                                    "superadmin.settings.sections.manual_bank_transfer",
+                                ) || "Manual Bank Transfer"}
+                            </h3>
                         </div>
                         <div class="card-body">
                             <div class="setting-row">
@@ -1522,7 +1624,10 @@
                                                 }
                                                 on:input={handleChange}
                                                 rows="3"
-                                                placeholder="Please transfer to one of the bank accounts below and upload proof."
+                                                placeholder={$t(
+                                                    "superadmin.settings.placeholders.manual_instructions",
+                                                ) ||
+                                                    "Please transfer to one of the bank accounts below and upload proof."}
                                             ></textarea>
                                         </div>
                                     </div>
@@ -1548,7 +1653,10 @@
                                                                 <button
                                                                     class="btn-icon danger"
                                                                     type="button"
-                                                                    title="Remove"
+                                                                    title={$t(
+                                                                        "superadmin.settings.actions.remove",
+                                                                    ) ||
+                                                                        "Remove"}
                                                                     on:click={() =>
                                                                         deleteBank(
                                                                             bank.id,
@@ -1570,10 +1678,26 @@
                                                 <table class="simple-table">
                                                     <thead>
                                                         <tr>
-                                                            <th>Bank</th>
-                                                            <th>Number</th>
-                                                            <th>Holder</th>
-                                                            <th>Action</th>
+                                                            <th>
+                                                                {$t(
+                                                                    "superadmin.settings.bank.table.bank",
+                                                                ) || "Bank"}
+                                                            </th>
+                                                            <th>
+                                                                {$t(
+                                                                    "superadmin.settings.bank.table.number",
+                                                                ) || "Number"}
+                                                            </th>
+                                                            <th>
+                                                                {$t(
+                                                                    "superadmin.settings.bank.table.holder",
+                                                                ) || "Holder"}
+                                                            </th>
+                                                            <th>
+                                                                {$t(
+                                                                    "superadmin.settings.bank.table.action",
+                                                                ) || "Action"}
+                                                            </th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -1610,30 +1734,43 @@
                                             {/if}
                                         {:else}
                                             <p class="text-muted">
-                                                No bank accounts added yet.
+                                                {$t(
+                                                    "superadmin.settings.bank.empty",
+                                                ) || "No bank accounts added yet."}
                                             </p>
                                         {/if}
                                     </div>
 
                                     <div class="add-bank-form">
-                                        <h4>Add New Account</h4>
+                                        <h4>
+                                            {$t(
+                                                "superadmin.settings.bank.add_new_account",
+                                            ) || "Add New Account"}
+                                        </h4>
                                         <div class="form-row-inline">
                                             <input
                                                 type="text"
                                                 bind:value={newBankName}
-                                                placeholder="Bank Name (e.g. BCA)"
+                                                placeholder={$t(
+                                                    "superadmin.settings.placeholders.bank_name",
+                                                ) ||
+                                                    "Bank Name (e.g. BCA)"}
                                                 class="form-input"
                                             />
                                             <input
                                                 type="text"
                                                 bind:value={newAccountNumber}
-                                                placeholder="Account Number"
+                                                placeholder={$t(
+                                                    "superadmin.settings.placeholders.bank_account_number",
+                                                ) || "Account Number"}
                                                 class="form-input"
                                             />
                                             <input
                                                 type="text"
                                                 bind:value={newAccountHolder}
-                                                placeholder="Account Holder"
+                                                placeholder={$t(
+                                                    "superadmin.settings.placeholders.bank_account_holder",
+                                                ) || "Account Holder"}
                                                 class="form-input"
                                             />
                                             <button
@@ -1641,7 +1778,10 @@
                                                 on:click={addBank}
                                                 disabled={addingBank}
                                             >
-                                                <Icon name="plus" size={16} /> Add
+                                                <Icon name="plus" size={16} />
+                                                {$t(
+                                                    "superadmin.settings.actions.add",
+                                                ) || "Add"}
                                             </button>
                                         </div>
                                     </div>
@@ -1658,7 +1798,7 @@
                         disabled={!hasChanges || saving}
                         on:click={discardChanges}
                     >
-                        Reset
+                        {$t("superadmin.settings.actions.reset") || "Reset"}
                     </button>
                     <button
                         class="btn btn-primary"
@@ -1667,10 +1807,12 @@
                     >
                         {#if saving}
                             <div class="spinner-sm"></div>
-                            Saving...
+                            {$t("superadmin.settings.actions.saving") ||
+                                "Saving..."}
                         {:else}
                             <Icon name="save" size={18} />
-                            Save Changes
+                            {$t("superadmin.settings.actions.save") ||
+                                "Save Changes"}
                         {/if}
                     </button>
                 </div>

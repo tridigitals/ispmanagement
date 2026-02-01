@@ -1,8 +1,9 @@
 <script lang="ts">
-    import { onMount } from "svelte";
     import { fly, fade } from "svelte/transition";
     import { clickOutside } from "$lib/actions/clickOutside";
+    import { t } from "svelte-i18n";
     import Icon from "./Icon.svelte";
+    import { page } from "$app/stores";
     import {
         notifications,
         unreadCount,
@@ -15,15 +16,35 @@
     import { timeAgo } from "$lib/utils/date";
     import { goto } from "$app/navigation";
     import { user } from "$lib/stores/auth";
+    import { getSlugFromDomain } from "$lib/utils/domain";
 
     let isOpen = $state(false);
+    const OPEN_REFRESH_MIN_INTERVAL_MS = 10_000;
+    let lastOpenRefreshAt = 0;
+
+    let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
+    let isCustomDomain = $derived(domainSlug && domainSlug === $user?.tenant_slug);
+    let tenantPrefix = $derived(
+        $user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : "",
+    );
+    let isSuperadminUrl = $derived($page.url.pathname.startsWith("/superadmin"));
+
+    async function open() {
+        isOpen = true;
+        const now = Date.now();
+        const shouldRefresh =
+            $notifications.length === 0 ||
+            ($unreadCount > 0 && now - lastOpenRefreshAt > OPEN_REFRESH_MIN_INTERVAL_MS);
+
+        if (shouldRefresh) {
+            lastOpenRefreshAt = now;
+            await loadNotifications(1);
+        }
+    }
 
     function toggle() {
-        isOpen = !isOpen;
-        if (isOpen) {
-            // Refresh on open
-            loadNotifications(1);
-        }
+        if (isOpen) close();
+        else open();
     }
 
     function close() {
@@ -67,25 +88,53 @@
     }
 </script>
 
+<svelte:window
+    onkeydown={(e) => {
+        if (!isOpen) return;
+        if (e.key === "Escape") close();
+    }}
+/>
+
 <div class="notification-dropdown" use:clickOutside={{ callback: close }}>
-    <button class="icon-btn" onclick={toggle} title="Notifications">
+    <button
+        class="icon-btn"
+        onclick={toggle}
+        title={$t("topbar.notifications")}
+        aria-label={$t("topbar.notifications")}
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
+    >
         <Icon name="bell" size={18} />
         {#if $unreadCount > 0}
-            <span class="badge-dot" transition:fade></span>
+            <span class="badge-count" transition:fade>
+                {$unreadCount > 99 ? "99+" : $unreadCount}
+            </span>
         {/if}
     </button>
 
     {#if isOpen}
-        <div class="dropdown-panel" transition:fly={{ y: 10, duration: 200 }}>
+        <button
+            type="button"
+            class="backdrop"
+            onclick={close}
+            aria-label={$t("common.cancel") || "Close"}
+        ></button>
+        <div
+            class="dropdown-panel"
+            transition:fly={{ y: 10, duration: 200 }}
+            role="dialog"
+            aria-label={$t("topbar.notifications")}
+        >
             <div class="header">
-                <h3>Notifications</h3>
+                <h3>{$t("topbar.notifications")}</h3>
                 <div class="actions">
                     {#if $unreadCount > 0}
                         <button
                             class="text-btn"
                             onclick={() => markAllAsRead()}
                         >
-                            Mark all read
+                            {$t("topbar.notifications_menu.mark_all_read") ||
+                                "Mark all read"}
                         </button>
                     {/if}
                     <button
@@ -95,7 +144,10 @@
                             goto(`/${slug}/profile?tab=notifications`);
                             close();
                         }}
-                        title="Settings"
+                        title={$t("topbar.notifications_menu.settings") ||
+                            "Settings"}
+                        aria-label={$t("topbar.notifications_menu.settings") ||
+                            "Settings"}
                     >
                         <Icon name="settings" size={14} />
                     </button>
@@ -116,7 +168,10 @@
                                 color="var(--text-tertiary)"
                             />
                         </div>
-                        <p>No notifications yet</p>
+                        <p>
+                            {$t("topbar.notifications_menu.empty") ||
+                                "No notifications yet"}
+                        </p>
                     </div>
                 {:else}
                     <div class="list">
@@ -157,7 +212,12 @@
                                                 e.stopPropagation();
                                                 markAsRead(n.id);
                                             }}
-                                            title="Mark as read"
+                                            title={$t(
+                                                "topbar.notifications_menu.mark_read",
+                                            ) || "Mark as read"}
+                                            aria-label={$t(
+                                                "topbar.notifications_menu.mark_read",
+                                            ) || "Mark as read"}
                                         >
                                             <div class="dot"></div>
                                         </button>
@@ -168,7 +228,12 @@
                                             e.stopPropagation();
                                             deleteNotification(n.id);
                                         }}
-                                        title="Delete"
+                                        title={$t(
+                                            "topbar.notifications_menu.delete",
+                                        ) || "Delete"}
+                                        aria-label={$t(
+                                            "topbar.notifications_menu.delete",
+                                        ) || "Delete"}
                                     >
                                         <Icon name="x" size={12} />
                                     </button>
@@ -180,7 +245,16 @@
             </div>
 
             <div class="footer">
-                <!-- <a href="/notifications" onclick={close}>View all</a> -->
+                <button
+                    class="footer-link"
+                    onclick={() => {
+                        if (isSuperadminUrl) goto("/profile?tab=notifications");
+                        else goto(`${tenantPrefix}/notifications`);
+                        close();
+                    }}
+                >
+                    {$t("topbar.notifications_menu.view_all") || "View all"}
+                </button>
             </div>
         </div>
     {/if}
@@ -212,15 +286,32 @@
         color: var(--text-primary);
     }
 
-    .badge-dot {
+    .badge-count {
         position: absolute;
-        top: 6px;
-        right: 6px;
-        width: 8px;
-        height: 8px;
+        top: -4px;
+        right: -4px;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         background: var(--color-danger);
-        border-radius: 50%;
+        color: white;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        font-weight: 800;
         border: 2px solid var(--bg-primary);
+        line-height: 1;
+    }
+
+    .backdrop {
+        position: fixed;
+        inset: 0;
+        background: transparent;
+        z-index: 999;
+        border: 0;
+        padding: 0;
     }
 
     .dropdown-panel {
@@ -294,7 +385,7 @@
         flex: 1;
         overflow-y: auto;
         min-height: 100px;
-        max-height: 400px;
+        max-height: 420px;
         background: var(--bg-surface);
     }
 
@@ -425,11 +516,20 @@
         opacity: 1;
     }
 
-    .action-btn {
-        background: none;
-        border: none;
+    .action-btn,
+    .delete-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-tertiary);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         cursor: pointer;
-        padding: 4px;
+        padding: 0;
+        transition: all 0.15s;
+        color: var(--text-secondary);
     }
 
     .dot {
@@ -439,18 +539,68 @@
         border-radius: 50%;
     }
 
-    .delete-btn {
-        background: none;
-        border: none;
-        color: var(--text-tertiary);
-        cursor: pointer;
-        padding: 4px;
-        border-radius: 4px;
-        display: flex;
+    .delete-btn:hover {
+        background: var(--bg-hover);
+        color: var(--color-danger);
     }
 
-    .delete-btn:hover {
+    .action-btn:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+    }
+
+    .footer {
+        padding: 0.6rem 1rem;
+        border-top: 1px solid var(--border-color);
+        background: var(--bg-hover);
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .footer-link {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        padding: 0.4rem 0.65rem;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .footer-link:hover {
         background: var(--bg-tertiary);
-        color: var(--color-danger);
+        color: var(--text-primary);
+    }
+
+    @media (max-width: 520px) {
+        .backdrop {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(2px);
+        }
+
+        .dropdown-panel {
+            position: fixed;
+            top: 72px;
+            left: 12px;
+            right: 12px;
+            width: auto;
+            margin-top: 0;
+            max-height: calc(100vh - 88px);
+        }
+
+        .content {
+            max-height: none;
+        }
+
+        .actions-col {
+            opacity: 1;
+            flex-direction: row;
+            align-items: center;
+        }
+
+        .text-btn {
+            display: none;
+        }
     }
 </style>

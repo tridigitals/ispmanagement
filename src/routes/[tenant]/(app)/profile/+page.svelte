@@ -5,9 +5,11 @@
     import { theme } from "$lib/stores/theme";
     import { appSettings } from "$lib/stores/settings";
     import { goto } from "$app/navigation";
+    import { page } from "$app/stores";
     import { t } from "svelte-i18n";
     import Icon from "$lib/components/Icon.svelte";
     import MobileFabMenu from "$lib/components/MobileFabMenu.svelte";
+    import { getSlugFromDomain } from "$lib/utils/domain";
     import {
         preferences,
         loadPreferences,
@@ -59,34 +61,41 @@
     let showConfirmPassword = $state(false);
     let isDesktop = $state(false);
 
+    // Tenant prefix helper (supports custom domain mode)
+    let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
+    let isCustomDomain = $derived(domainSlug && domainSlug === $user?.tenant_slug);
+    let tenantPrefix = $derived(
+        $user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : "",
+    );
+
     // UI Configuration
-    const notificationCategories = [
+    let notificationCategories = $derived([
         {
             id: "system",
             icon: "server",
-            label: "System Updates",
-            desc: "Maintenance & announcements",
+            label: $t("profile.notifications.categories.system.label") || "System Updates",
+            desc: $t("profile.notifications.categories.system.desc") || "Maintenance & announcements",
         },
         {
             id: "team",
             icon: "users",
-            label: "Team Activity",
-            desc: "Member changes & invites",
+            label: $t("profile.notifications.categories.team.label") || "Team Activity",
+            desc: $t("profile.notifications.categories.team.desc") || "Member changes & invites",
         },
         {
             // aligns with backend/category enum: 'payment'
             id: "payment",
             icon: "credit-card",
-            label: "Billing",
-            desc: "Invoices & subscriptions",
+            label: $t("profile.notifications.categories.payment.label") || "Billing",
+            desc: $t("profile.notifications.categories.payment.desc") || "Invoices & subscriptions",
         },
         {
             id: "security",
             icon: "shield",
-            label: "Security",
-            desc: "Login alerts & password changes",
+            label: $t("profile.notifications.categories.security.label") || "Security",
+            desc: $t("profile.notifications.categories.security.desc") || "Login alerts & password changes",
         },
-    ];
+    ]);
 
     let pushPermission = $state<"default" | "granted" | "denied">("default");
 
@@ -425,8 +434,14 @@
             <div class="user-mini-profile">
                 <div class="avatar-circle">{initials}</div>
                 <div class="user-info">
-                    <span class="name">{profileData.name || "User"}</span>
-                    <span class="role">{profileData.role || "Member"}</span>
+                    <span class="name"
+                        >{profileData.name ||
+                            ($t("profile.fallback.user") || "User")}</span
+                    >
+                    <span class="role"
+                        >{profileData.role ||
+                            ($t("profile.fallback.member") || "Member")}</span
+                    >
                 </div>
             </div>
 
@@ -473,14 +488,23 @@
                             <div class="avatar-large">{initials}</div>
                             <button
                                 class="avatar-edit-btn"
-                                title="Change Avatar"
+                                title={$t("profile.general.change_avatar") ||
+                                    "Change Avatar"}
                             >
                                 <Icon name="camera" size={16} />
                             </button>
                         </div>
                         <div class="profile-header-text">
-                            <h3>{profileData.name || "Your Name"}</h3>
-                            <p>{profileData.role || "Role"}</p>
+                            <h3>
+                                {profileData.name ||
+                                    ($t("profile.general.your_name") ||
+                                        "Your Name")}
+                            </h3>
+                            <p>
+                                {profileData.role ||
+                                    ($t("profile.general.role_label") ||
+                                        "Role")}
+                            </p>
                         </div>
                     </div>
 
@@ -1098,23 +1122,39 @@
             {/if}
 
             {#if activeTab === "notifications"}
-                <div class="section fade-in-up">
+                <div class="card section fade-in-up">
                     <div class="notifications-header">
                         <div>
                             <h2 class="section-title">
-                                Notification Preferences
+                                {$t("profile.notifications.title") ||
+                                    "Notification Preferences"}
                             </h2>
                             <p class="section-subtitle">
-                                Customize how and when you want to be notified.
+                                {$t("profile.notifications.subtitle") ||
+                                    "Customize how and when you want to be notified."}
                             </p>
                         </div>
                         <div class="header-actions">
                             <button
                                 class="btn btn-outline btn-sm"
+                                onclick={() =>
+                                    goto(`${tenantPrefix}/notifications`)}
+                            >
+                                <Icon name="bell" size={14} />
+                                <span
+                                    >{$t("profile.notifications.view_all") ||
+                                        "View all"}</span
+                                >
+                            </button>
+                            <button
+                                class="btn btn-outline btn-sm"
                                 onclick={sendTestNotification}
                             >
                                 <Icon name="bell" size={14} />
-                                <span>Test Notification</span>
+                                <span
+                                    >{$t("profile.notifications.test") ||
+                                        "Test Notification"}</span
+                                >
                             </button>
                         </div>
                     </div>
@@ -1128,10 +1168,13 @@
                                         <Icon name="check" size={20} />
                                     </div>
                                     <div class="push-text">
-                                        <h4>Push Notifications Active</h4>
+                                        <h4>
+                                            {$t("profile.notifications.push.active_title") ||
+                                                "Push Notifications Active"}
+                                        </h4>
                                         <p>
-                                            You are subscribed to real-time
-                                            updates on this device.
+                                            {$t("profile.notifications.push.active_desc") ||
+                                                "You are subscribed to real-time updates on this device."}
                                         </p>
                                     </div>
                                 </div>
@@ -1139,7 +1182,8 @@
                                     class="btn btn-outline btn-sm"
                                     onclick={unsubscribePush}
                                 >
-                                    Disable
+                                    {$t("profile.notifications.push.disable") ||
+                                        "Disable"}
                                 </button>
                             </div>
                         {:else if pushPermission !== "granted" || !$pushEnabled}
@@ -1150,10 +1194,13 @@
                                         <Icon name="bell" size={20} />
                                     </div>
                                     <div class="push-text">
-                                        <h4>Enable Push Notifications</h4>
+                                        <h4>
+                                            {$t("profile.notifications.push.enable_title") ||
+                                                "Enable Push Notifications"}
+                                        </h4>
                                         <p>
-                                            Get real-time updates even when the
-                                            app is closed.
+                                            {$t("profile.notifications.push.enable_desc") ||
+                                                "Get real-time updates even when the app is closed."}
                                         </p>
                                     </div>
                                 </div>
@@ -1165,7 +1212,8 @@
                                             Notification.permission;
                                     }}
                                 >
-                                    Enable Push
+                                    {$t("profile.notifications.push.enable") ||
+                                        "Enable Push"}
                                 </button>
                             </div>
                         {/if}
@@ -1208,11 +1256,24 @@
                                             <div class="channel-info">
                                                 <span class="channel-name">
                                                     {channel === "in_app"
-                                                        ? "In-App"
+                                                        ? $t(
+                                                              "profile.notifications.channels.in_app",
+                                                          ) || "In-App"
                                                         : channel === "email"
-                                                          ? "Email"
-                                                          : "Push"}
+                                                          ? $t(
+                                                                "profile.notifications.channels.email",
+                                                            ) || "Email"
+                                                          : $t(
+                                                                "profile.notifications.channels.push",
+                                                            ) || "Push"}
                                                 </span>
+                                                {#if isDisabled}
+                                                    <span class="channel-note"
+                                                        >{$t(
+                                                            "profile.notifications.channels.required",
+                                                        ) || "Required"}</span
+                                                    >
+                                                {/if}
                                             </div>
 
                                             <div class="switch">
@@ -1760,6 +1821,15 @@
         justify-content: space-between;
         align-items: flex-start;
         margin-bottom: 2rem;
+        gap: 1rem;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        flex-wrap: wrap;
+        justify-content: flex-end;
     }
 
     .section-title {
@@ -1906,10 +1976,28 @@
         cursor: not-allowed;
     }
 
+    .channel-info {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        min-width: 0;
+    }
+
     .channel-name {
         font-weight: 500;
         font-size: 0.9rem;
         color: var(--text-secondary);
+    }
+
+    .channel-note {
+        font-size: 0.75rem;
+        font-weight: 800;
+        padding: 0.15rem 0.5rem;
+        border-radius: 999px;
+        border: 1px solid rgba(99, 102, 241, 0.35);
+        background: rgba(99, 102, 241, 0.12);
+        color: var(--text-primary);
+        white-space: nowrap;
     }
 
     /* Modern Switch */
@@ -2001,6 +2089,33 @@
     .push-icon.success {
         background: rgba(16, 185, 129, 0.1);
         color: var(--color-success);
+    }
+
+    @media (max-width: 600px) {
+        .notifications-header {
+            flex-direction: column;
+            align-items: flex-start;
+            margin-bottom: 1.25rem;
+        }
+
+        .header-actions {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        .prefs-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .push-banner {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .push-content {
+            gap: 1rem;
+        }
     }
 
     /* QR Code Styles */

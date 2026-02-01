@@ -59,6 +59,8 @@
     "common": {
         "back": "Kembali",
         "cancel": "Batal",
+        "clear": "Bersihkan",
+        "refresh": "Muat ulang",
         "save": "Simpan",
         "loading": "Memuat..."
     },
@@ -75,7 +77,10 @@
         "subscription": "Langganan",
         "audit_logs": "Log Audit",
         "system": "Sistem",
+        "expand": "Perluas sidebar",
+        "collapse": "Ciutkan sidebar",
         "exit": "Keluar",
+        "close_menu": "Tutup menu",
         "super_admin": "Super Admin",
         "settings": "Pengaturan",
         "user_view": "Tampilan Pengguna",
@@ -87,11 +92,20 @@
         "search_placeholder": "Cari...",
         "notifications": "Notifikasi",
         "help": "Bantuan",
+        "notifications_menu": {
+            "mark_all_read": "Tandai semua dibaca",
+            "settings": "Pengaturan notifikasi",
+            "empty": "Belum ada notifikasi",
+            "mark_read": "Tandai sudah dibaca",
+            "delete": "Hapus",
+            "view_all": "Lihat semua"
+        },
         "toggle_dark": "Ganti ke mode gelap",
         "toggle_light": "Ganti ke mode terang",
         "titles": {
             "dashboard": "Dasbor",
             "profile": "Profil Saya",
+            "notifications": "Notifikasi",
             "admin_overview": "Ringkasan Admin",
             "user_management": "Manajemen Pengguna",
             "global_settings": "Pengaturan Global",
@@ -110,6 +124,159 @@
             "default": "Ruang Kerja"
         }
     },
+    "notifications_page": {
+        "title": "Notifikasi",
+        "subtitle": "Pembaruan, peringatan, dan pesan sistem.",
+        "search_placeholder": "Cari notifikasi...",
+        "loading": "Memuat notifikasi...",
+        "load_more": "Muat lagi",
+        "confirm_delete": {
+            "title": "Hapus notifikasi",
+            "message": "Hapus notifikasi ini? Tindakan ini tidak dapat dibatalkan."
+        },
+        "confirm_mark_all": {
+            "title": "Tandai semua dibaca",
+            "message": "Tandai semua notifikasi sebagai sudah dibaca?"
+        },
+        "filters": {
+            "all": "Semua",
+            "unread": "Belum dibaca"
+        },
+        "empty": {
+            "title": "Semua sudah beres",
+            "subtitle": "Tidak ada notifikasi untuk ditampilkan."
+        }
+    },
+    "superadmin": {
+        "invoices": {
+            "detail": {
+                "title": "Detail Invoice",
+                "back": "Kembali ke Invoice",
+                "loading": "Memuat detail...",
+                "missing_id": "ID invoice tidak ditemukan",
+                "load_failed": "Gagal memuat invoice",
+                "invoice": "Invoice",
+                "tenant": "Tenant",
+                "description": "Deskripsi",
+                "amount": "Jumlah",
+                "created_at": "Dibuat",
+                "updated_at": "Diperbarui",
+                "manual_verification": "Verifikasi Manual",
+                "approve_title": "Setujui Pembayaran",
+                "reject_title": "Tolak Pembayaran",
+                "approve_message": "Yakin ingin menyetujui pembayaran ini? Langganan akan aktif segera.",
+                "reject_message": "Yakin ingin menolak pembayaran ini? Pengguna akan diberi notifikasi.",
+                "approve": "Setujui",
+                "reject": "Tolak",
+                "marked_as": "Invoice diubah menjadi",
+                "verify_failed": "Verifikasi gagal",
+                "already_status": "Status invoice sudah",
+                "payment_proof": "Bukti Pembayaran",
+                "click_enlarge": "Klik untuk memperbesar",
+                "no_proof": "Belum ada bukti yang diunggah.",
+                "not_found": "Invoice tidak ditemukan"
+            }
+        },
+        "system": {
+            "title": "Kesehatan Sistem",
+            "subtitle": "Pantau status platform dan metrik",
+            "loading": "Memuat kesehatan sistem...",
+            "retry": "Coba Lagi",
+            "db_connected": "Database Terhubung",
+            "db_disconnected": "Database Terputus",
+            "tables": "tabel",
+            "uptime": "Uptime:",
+            "cpu_usage": "Penggunaan CPU",
+            "memory_usage": "Penggunaan Memori",
+            "database_tables": "Tabel Database",
+            "recent_activity": "Aktivitas Terbaru",
+            "no_recent_activity": "Tidak ada aktivitas terbaru",
+            "last_updated": "Terakhir diperbarui:",
+            "stats": {
+                "total_tenants": "Total Tenant",
+                "total_users": "Total Pengguna",
+                "active_users": "Pengguna Aktif",
+                "audit_logs": "Audit Log"
+            },
+            "table_headers": {
+                "table": "Tabel",
+                "rows": "Baris"
+            }
+        },
+        "settings": {
+            "title": "Pengaturan Platform",
+            "subtitle": "Konfigurasi Global",
+            "loading": "Memuat pengaturan...",
+            "errors": {
+                "load_failed": "Gagal memuat pengaturan",
+                "save_failed": "Gagal menyimpan pengaturan",
+                "missing_test_email": "Silakan masukkan alamat email",
+                "test_email_failed": "Gagal mengirim email tes: ",
+                "bank_add_failed": "Gagal menambahkan bank",
+                "bank_remove_failed": "Gagal menghapus bank"
+            },
+            "toasts": {
+                "saved": "Pengaturan berhasil disimpan",
+                "bank_added": "Akun bank berhasil ditambahkan",
+                "bank_removed": "Akun bank berhasil dihapus"
+            },
+            "confirm": {
+                "are_you_sure": "Yakin?"
+            },
+            "sections": {
+                "general": "Pengaturan Umum",
+                "auth": "Kebijakan Autentikasi",
+                "password": "Kebijakan Password",
+                "security": "Keamanan & Rate Limit",
+                "storage": "Konfigurasi Storage",
+                "payment": "Payment Gateway (Midtrans)",
+                "manual_bank_transfer": "Transfer Bank Manual"
+            },
+            "fields": {
+                "public_url": "URL Aplikasi Publik",
+                "currency": "Mata Uang Default",
+                "maintenance_mode": "Aktifkan Mode Maintenance",
+                "maintenance_message": "Pesan Maintenance"
+            },
+            "placeholders": {
+                "url": "https://...",
+                "public_url": "https://cdn.example.com",
+                "maintenance_message": "Masukkan pesan maintenance...",
+                "manual_instructions": "Silakan transfer ke salah satu rekening di bawah dan unggah bukti.",
+                "s3_bucket": "contoh: my-app-uploads",
+                "s3_region": "us-east-1",
+                "extensions": "jpg, png, pdf...",
+                "bank_name": "Nama Bank (contoh: BCA)",
+                "bank_account_number": "Nomor Rekening",
+                "bank_account_holder": "Nama Pemilik Rekening"
+            },
+            "actions": {
+                "remove": "Hapus",
+                "add": "Tambah",
+                "reset": "Reset",
+                "save": "Simpan Perubahan",
+                "saving": "Menyimpan..."
+            },
+            "bank": {
+                "add_new_account": "Tambah Akun Baru",
+                "empty": "Belum ada akun bank yang ditambahkan.",
+                "table": {
+                    "bank": "Bank",
+                    "number": "Nomor",
+                    "holder": "Pemilik",
+                    "action": "Aksi"
+                }
+            },
+            "categories": {
+                "general": "Umum & Maintenance",
+                "auth": "Autentikasi",
+                "password": "Kebijakan Password",
+                "security": "Keamanan & Rate Limit",
+                "storage": "Konfigurasi Storage",
+                "payment": "Payment Gateway"
+            }
+        }
+    },
     "dashboard": {
         "greeting": {
             "morning": "Selamat Pagi",
@@ -117,6 +284,7 @@
             "evening": "Selamat Malam",
             "welcome_message": "Berikut aktivitas akun Anda hari ini."
         },
+        "manage_files": "Kelola File",
         "generate_report": "Buat Laporan",
         "admin_mode": {
             "title": "Mode Administrator",
@@ -131,6 +299,7 @@
         "recent_activity": {
             "title": "Aktivitas Terbaru",
             "view_all": "Lihat Semua",
+            "loading": "Memuat aktivitas...",
             "empty": {
                 "title": "Belum ada aktivitas",
                 "description": "Saat Anda menggunakan aplikasi, aktivitas akan muncul di sini.",
@@ -148,6 +317,10 @@
   "profile": {
     "title": "Pengaturan",
     "subtitle": "Kelola pengaturan dan preferensi akun Anda.",
+    "fallback": {
+      "user": "Pengguna",
+      "member": "Anggota"
+    },
     "tabs": {
       "general": "Umum",
       "security": "Keamanan",
@@ -157,6 +330,9 @@
         "general": {
             "title": "Informasi Profil",
             "subtitle": "Perbarui detail akun dan profil publik Anda.",
+            "change_avatar": "Ubah Avatar",
+            "your_name": "Nama Anda",
+            "role_label": "Peran",
             "display_name": "Nama Tampilan",
             "display_name_placeholder": "Masukkan nama lengkap",
             "email_address": "Alamat Email",
@@ -185,6 +361,32 @@
             "dark_mode": "Mode Gelap",
             "dark_mode_desc": "Beralih antara tema gelap dan terang."
         },
+        "notifications": {
+            "title": "Preferensi Notifikasi",
+            "subtitle": "Atur cara dan kapan kamu ingin menerima notifikasi.",
+            "view_all": "Lihat semua",
+            "test": "Tes Notifikasi",
+            "push": {
+                "active_title": "Push Notifikasi Aktif",
+                "active_desc": "Perangkat ini sudah berlangganan update real-time.",
+                "disable": "Nonaktifkan",
+                "enable_title": "Aktifkan Push Notifikasi",
+                "enable_desc": "Dapatkan update real-time meski aplikasi ditutup.",
+                "enable": "Aktifkan Push"
+            },
+            "channels": {
+                "in_app": "Di Aplikasi",
+                "email": "Email",
+                "push": "Push",
+                "required": "Wajib"
+            },
+            "categories": {
+                "system": { "label": "Pembaruan Sistem", "desc": "Pemeliharaan & pengumuman" },
+                "team": { "label": "Aktivitas Tim", "desc": "Perubahan anggota & undangan" },
+                "payment": { "label": "Penagihan", "desc": "Invoice & langganan" },
+                "security": { "label": "Keamanan", "desc": "Peringatan login & perubahan kata sandi" }
+            }
+        },
     "messages": {
       "profile_updated": "Profil berhasil diperbarui!",
       "password_changed": "Kata sandi berhasil diubah!",
@@ -197,6 +399,87 @@
     }
   },
     "admin": {
+        "subscription": {
+            "tabs": {
+                "overview": "Ringkasan",
+                "plans": "Paket Tersedia",
+                "history": "Riwayat Pembayaran"
+            },
+            "loading": "Memuat detail...",
+            "errors": {
+                "load_failed": "Gagal memuat detail langganan",
+                "create_invoice_failed": "Gagal membuat invoice"
+            },
+            "toasts": {
+                "invoice_created": "Invoice berhasil dibuat"
+            },
+            "common": {
+                "free": "Gratis",
+                "unlimited": "Tanpa batas",
+                "base": "Dasar:",
+                "fx": "Kurs:",
+                "fx_updating": "Memperbarui kurs…",
+                "fx_unavailable": "Kurs tidak tersedia",
+                "per_month": "/ bulan"
+            },
+            "overview": {
+                "plan_suffix": "Paket",
+                "current_active": "Langganan aktif saat ini",
+                "usage_title": "Pemakaian Resource",
+                "storage": "Penyimpanan",
+                "team_members": "Anggota Tim",
+                "billing_details": "Detail Tagihan",
+                "active_until": "Aktif Sampai",
+                "lifetime": "Selamanya",
+                "billing_cycle": "Siklus Tagihan",
+                "billing_cycle_paid": "Bulanan / Tahunan",
+                "billing_cycle_free": "Paket Gratis",
+                "includes": "Termasuk"
+            },
+            "plans": {
+                "select_title": "Pilih Paket",
+                "current": "Paket Saat Ini",
+                "upgrade": "Upgrade"
+            },
+            "features": {
+                "free": {
+                    "community_support": "Dukungan Komunitas",
+                    "basic_analytics": "Analitik Dasar",
+                    "subdomain_only": "Hanya Subdomain"
+                },
+                "pro": {
+                    "priority_support": "Dukungan Prioritas",
+                    "advanced_analytics": "Analitik Lanjutan",
+                    "custom_domain": "Domain Kustom",
+                    "remove_branding": "Hapus Branding"
+                },
+                "enterprise": {
+                    "dedicated_support": "Dukungan Dedicated 24/7",
+                    "audit_logs": "Audit Log",
+                    "custom_domain": "Domain Kustom",
+                    "sso_security": "SSO & Keamanan",
+                    "api_access": "Akses API"
+                }
+            },
+            "invoices": {
+                "invoice_number": "Invoice #",
+                "description": "Deskripsi",
+                "amount": "Jumlah",
+                "status": "Status",
+                "due_date": "Jatuh Tempo",
+                "actions": "Aksi",
+                "search_placeholder": "Cari invoice...",
+                "pay": "Bayar",
+                "view_details": "Lihat detail"
+            }
+        },
+        "invoices": {
+            "title": "Tagihan & Invoice",
+            "subtitle": "Lihat dan kelola pembayaran langganan",
+            "search_placeholder": "Cari invoice...",
+            "pay_now": "Bayar sekarang",
+            "view_details": "Lihat detail"
+        },
         "settings": {
             "title": "Pengaturan Global",
             "subtitle": "Kelola konfigurasi aplikasi, keamanan, dan integrasi.",
@@ -211,7 +494,9 @@
                 "storage": "Penyimpanan",
                 "auth": "Autentikasi",
                 "security": "Keamanan",
-                "email": "Email"
+                "email": "Email",
+                "branding": "Branding & Domain",
+                "payment": "Pembayaran"
             },
             "keys": {
                 "app_name": "Nama Aplikasi",

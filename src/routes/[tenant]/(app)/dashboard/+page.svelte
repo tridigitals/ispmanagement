@@ -1,12 +1,22 @@
 <script lang="ts">
-    import { user, isAuthenticated, isAdmin, can } from "$lib/stores/auth";
+    import { user, isAdmin, can } from "$lib/stores/auth";
     import { goto } from "$app/navigation";
+    import { page } from "$app/stores";
     import { onMount } from "svelte";
     import { t } from "svelte-i18n";
     import Icon from "$lib/components/Icon.svelte";
+    import { getSlugFromDomain } from "$lib/utils/domain";
+    import { timeAgo } from "$lib/utils/date";
+    import {
+        notifications,
+        loading as notificationsLoading,
+        loadNotifications,
+    } from "$lib/stores/notifications";
 
     onMount(() => {
         // Auth handled by layout
+        // Load a small slice of activity without blocking first paint.
+        void loadNotifications(1);
     });
 
     const greeting = () => {
@@ -15,6 +25,27 @@
         if (hour < 17) return $t("dashboard.greeting.afternoon");
         return $t("dashboard.greeting.evening");
     };
+
+    // Tenant prefix helper (supports custom domain mode)
+    let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
+    let isCustomDomain = $derived(domainSlug && domainSlug === $user?.tenant_slug);
+    let tenantPrefix = $derived(
+        $user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : "",
+    );
+
+    let recent = $derived($notifications.slice(0, 6));
+
+    function openNotification(n: any) {
+        if (n?.action_url) goto(n.action_url);
+        else goto(`${tenantPrefix}/notifications`);
+    }
+
+    function iconForType(type: string) {
+        if (type === "success") return "check-circle";
+        if (type === "warning") return "alert-triangle";
+        if (type === "error") return "alert-circle";
+        return "info";
+    }
 </script>
 
 <div class="dashboard-content fade-in">
@@ -25,9 +56,12 @@
         </div>
         <div class="header-actions">
             {#if $can("upload", "storage")}
-                <button class="btn btn-primary" onclick={() => goto(`/${$user?.tenant_slug}/storage`)}>
+                <button
+                    class="btn btn-primary"
+                    onclick={() => goto(`${tenantPrefix}/storage`)}
+                >
                     <Icon name="hard-drive" size={16} />
-                    Manage Files
+                    {$t("dashboard.manage_files") || "Manage Files"}
                 </button>
             {/if}
         </div>
@@ -36,8 +70,8 @@
     {#if $isAdmin}
         <div
             class="admin-banner"
-            onclick={() => goto(`/${$user?.tenant_slug}/admin`)}
-            onkeydown={(e) => e.key === "Enter" && goto(`/${$user?.tenant_slug}/admin`)}
+            onclick={() => goto(`${tenantPrefix}/admin`)}
+            onkeydown={(e) => e.key === "Enter" && goto(`${tenantPrefix}/admin`)}
             role="button"
             tabindex="0"
         >
@@ -61,7 +95,6 @@
                 <div class="icon-wrapper primary">
                     <Icon name="profile" size={20} />
                 </div>
-                <span class="trend positive">+2.4%</span>
             </div>
             <div class="stat-body">
                 <span class="stat-value">{$user?.role}</span>
@@ -98,18 +131,76 @@
         <section class="activity-section">
             <div class="section-header">
                 <h2>{$t("dashboard.recent_activity.title")}</h2>
-                <button class="text-btn">{$t("dashboard.recent_activity.view_all")}</button>
+                <button
+                    class="text-btn"
+                    onclick={() => goto(`${tenantPrefix}/notifications`)}
+                >
+                    {$t("dashboard.recent_activity.view_all")}
+                </button>
             </div>
 
             <div class="card activity-card">
-                <div class="empty-state">
-                    <div class="empty-icon-circle">
-                        <Icon name="activity" size={32} />
+                {#if $notificationsLoading && recent.length === 0}
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <p class="muted">
+                            {$t("dashboard.recent_activity.loading") ||
+                                ($t("common.loading") || "Loading...")}
+                        </p>
                     </div>
-                    <h3>{$t("dashboard.recent_activity.empty.title")}</h3>
-                    <p>{$t("dashboard.recent_activity.empty.description")}</p>
-                    <button class="btn btn-secondary mt-4">{$t("dashboard.recent_activity.empty.learn_more")}</button>
-                </div>
+                {:else if recent.length === 0}
+                    <div class="empty-state">
+                        <div class="empty-icon-circle">
+                            <Icon name="bell" size={32} />
+                        </div>
+                        <h3>{$t("dashboard.recent_activity.empty.title")}</h3>
+                        <p>{$t("dashboard.recent_activity.empty.description")}</p>
+                        <button
+                            class="btn btn-secondary mt-4"
+                            onclick={() => goto(`${tenantPrefix}/notifications`)}
+                        >
+                            {$t("dashboard.recent_activity.empty.learn_more")}
+                        </button>
+                    </div>
+                {:else}
+                    <ul class="activity-list">
+                        {#each recent as n (n.id)}
+                            <li class="activity-li">
+                                <button
+                                    type="button"
+                                    class="activity-item"
+                                    onclick={() => openNotification(n)}
+                                >
+                                    <div
+                                        class="activity-icon {n.notification_type}"
+                                    >
+                                        <Icon
+                                            name={iconForType(
+                                                n.notification_type,
+                                            )}
+                                            size={16}
+                                        />
+                                    </div>
+                                    <div class="activity-text">
+                                        <div class="activity-row">
+                                            <span class="activity-title"
+                                                >{n.title}</span
+                                            >
+                                            <span class="activity-time"
+                                                >{timeAgo(n.created_at)}</span
+                                            >
+                                        </div>
+                                        {#if n.message}
+                                            <div class="activity-msg">
+                                                {n.message}
+                                            </div>
+                                        {/if}
+                                    </div>
+                                </button>
+                            </li>
+                        {/each}
+                    </ul>
+                {/if}
             </div>
         </section>
 
@@ -118,19 +209,32 @@
                 <h2>{$t("dashboard.quick_actions.title")}</h2>
             </div>
             <div class="actions-list">
-                <button class="action-item" onclick={() => goto(`/${$user?.tenant_slug}/profile`)}>
+                <button
+                    class="action-item"
+                    onclick={() => goto(`${tenantPrefix}/profile`)}
+                >
                     <Icon name="profile" size={18} />
                     {$t("dashboard.quick_actions.update_profile")}
                 </button>
-                <button class="action-item">
+                <button
+                    class="action-item"
+                    onclick={() => goto(`${tenantPrefix}/notifications`)}
+                >
                     <Icon name="mail" size={18} />
                     {$t("dashboard.quick_actions.check_messages")}
                 </button>
-                <button class="action-item">
+                <button
+                    class="action-item"
+                    onclick={() => goto(`${tenantPrefix}/profile?tab=security`)}
+                >
                     <Icon name="lock" size={18} />
                     {$t("dashboard.quick_actions.security_settings")}
                 </button>
-                <button class="action-item">
+                <button
+                    class="action-item"
+                    onclick={() =>
+                        goto(`${tenantPrefix}/profile?tab=notifications`)}
+                >
                     <Icon name="help-circle" size={18} />
                     {$t("dashboard.quick_actions.contact_support")}
                 </button>
@@ -296,18 +400,6 @@
         color: #3b82f6;
     }
 
-    .trend {
-        font-size: 0.75rem;
-        font-weight: 600;
-        padding: 0.25rem 0.5rem;
-        border-radius: 20px;
-    }
-
-    .trend.positive {
-        background: rgba(34, 197, 94, 0.1);
-        color: #22c55e;
-    }
-
     .stat-body {
         display: flex;
         flex-direction: column;
@@ -368,15 +460,14 @@
         border: 1px solid var(--border-color);
         border-radius: var(--radius-lg);
         min-height: 300px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        overflow: hidden;
     }
 
     .empty-state {
         text-align: center;
         padding: 2rem;
         max-width: 320px;
+        margin: 0 auto;
     }
 
     .empty-icon-circle {
@@ -402,6 +493,124 @@
         color: var(--text-secondary);
         font-size: 0.9rem;
         line-height: 1.5;
+    }
+
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 300px;
+        gap: 0.75rem;
+        padding: 2rem;
+    }
+
+    .muted {
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    .activity-list {
+        display: flex;
+        flex-direction: column;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .activity-li {
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .activity-li:last-child {
+        border-bottom: 0;
+    }
+
+    .activity-item {
+        width: 100%;
+        background: transparent;
+        border: 0;
+        padding: 1rem;
+        display: flex;
+        gap: 0.9rem;
+        align-items: flex-start;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.15s;
+        color: inherit;
+    }
+
+    .activity-item:hover {
+        background: var(--bg-hover);
+    }
+
+    .activity-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text-secondary);
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .activity-icon.success {
+        color: var(--color-success);
+        background: rgba(16, 185, 129, 0.12);
+        border-color: rgba(16, 185, 129, 0.25);
+    }
+
+    .activity-icon.warning {
+        color: var(--color-warning);
+        background: rgba(245, 158, 11, 0.12);
+        border-color: rgba(245, 158, 11, 0.25);
+    }
+
+    .activity-icon.error {
+        color: var(--color-danger);
+        background: rgba(239, 68, 68, 0.12);
+        border-color: rgba(239, 68, 68, 0.25);
+    }
+
+    .activity-text {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .activity-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
+    .activity-title {
+        font-weight: 700;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .activity-time {
+        font-size: 0.8rem;
+        color: var(--text-tertiary);
+        flex-shrink: 0;
+    }
+
+    .activity-msg {
+        margin-top: 0.25rem;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
 
     /* Quick Actions */
@@ -461,12 +670,25 @@
         color: var(--text-primary);
     }
 
+    .btn-secondary:hover {
+        background: var(--bg-hover);
+    }
+
     .mt-4 {
         margin-top: 1rem;
     }
 
     .fade-in {
         animation: fadeIn 0.4s ease-out;
+    }
+
+    .spinner {
+        width: 18px;
+        height: 18px;
+        border: 2px solid var(--border-color);
+        border-top-color: var(--color-primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
     }
 
     @keyframes fadeIn {
@@ -477,6 +699,12 @@
         to {
             opacity: 1;
             transform: translateY(0);
+        }
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
         }
     }
 </style>

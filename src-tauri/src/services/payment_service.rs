@@ -151,7 +151,7 @@ impl PaymentService {
                 id, tenant_id, invoice_number,
                 amount::FLOAT8 as amount,
                 currency_code, base_currency_code,
-                fx_rate::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
+                COALESCE(fx_rate, 1.0)::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
                 status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
             FROM invoices WHERE id = $1
             "#
@@ -181,7 +181,7 @@ impl PaymentService {
                     id, tenant_id, invoice_number,
                     amount::FLOAT8 as amount,
                     currency_code, base_currency_code,
-                    fx_rate::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
+                    COALESCE(fx_rate, 1.0)::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
                     status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
                 FROM invoices WHERE tenant_id = $1 ORDER BY created_at DESC
                 "#
@@ -195,7 +195,7 @@ impl PaymentService {
                     id, tenant_id, invoice_number,
                     amount::FLOAT8 as amount,
                     currency_code, base_currency_code,
-                    fx_rate::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
+                    COALESCE(fx_rate, 1.0)::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
                     status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
                 FROM invoices ORDER BY created_at DESC
                 "#

@@ -13,6 +13,7 @@
     import Table from "$lib/components/Table.svelte";
     import { formatMoney } from "$lib/utils/money";
     import { appSettings } from "$lib/stores/settings";
+    import { t } from "svelte-i18n";
 
     let loading = $state(true);
     let subscription = $state<TenantSubscriptionDetails | null>(null);
@@ -56,7 +57,10 @@
                 baseLocale = String(publicSettings.default_locale);
             }
         } catch (e: any) {
-            toast.error("Failed to load subscription details");
+            toast.error(
+                $t("admin.subscription.errors.load_failed") ||
+                    "Failed to load subscription details",
+            );
         } finally {
             loading = false;
         }
@@ -94,10 +98,17 @@
                 plan.id,
                 "monthly",
             );
-            toast.success("Invoice created");
+            toast.success(
+                $t("admin.subscription.toasts.invoice_created") ||
+                    "Invoice created",
+            );
             goto(`/pay/${invoice.id}`);
         } catch (e: any) {
-            toast.error(e.message || "Failed to create invoice");
+            toast.error(
+                e.message ||
+                    $t("admin.subscription.errors.create_invoice_failed") ||
+                    "Failed to create invoice",
+            );
             upgrading = false;
         }
     }
@@ -143,29 +154,65 @@
         return formatMoney(converted, { currency: tenantCurrencyCode, locale: baseLocale });
     }
 
-    // Helper to get feature highlights based on slug (Mocking feature list for UI)
+    // Helper to get feature highlights based on slug (UI only)
     function getPlanFeatures(slug: string) {
         switch (slug) {
             case "free":
                 return [
-                    "Community Support",
-                    "Basic Analytics",
-                    "Subdomain Only",
+                    {
+                        key: "admin.subscription.features.free.community_support",
+                        fallback: "Community Support",
+                    },
+                    {
+                        key: "admin.subscription.features.free.basic_analytics",
+                        fallback: "Basic Analytics",
+                    },
+                    {
+                        key: "admin.subscription.features.free.subdomain_only",
+                        fallback: "Subdomain Only",
+                    },
                 ];
             case "pro":
                 return [
-                    "Priority Support",
-                    "Advanced Analytics",
-                    "Custom Domain",
-                    "Remove Branding",
+                    {
+                        key: "admin.subscription.features.pro.priority_support",
+                        fallback: "Priority Support",
+                    },
+                    {
+                        key: "admin.subscription.features.pro.advanced_analytics",
+                        fallback: "Advanced Analytics",
+                    },
+                    {
+                        key: "admin.subscription.features.pro.custom_domain",
+                        fallback: "Custom Domain",
+                    },
+                    {
+                        key: "admin.subscription.features.pro.remove_branding",
+                        fallback: "Remove Branding",
+                    },
                 ];
             case "enterprise":
                 return [
-                    "24/7 Dedicated Support",
-                    "Audit Logs",
-                    "Custom Domain",
-                    "SSO & Security",
-                    "API Access",
+                    {
+                        key: "admin.subscription.features.enterprise.dedicated_support",
+                        fallback: "24/7 Dedicated Support",
+                    },
+                    {
+                        key: "admin.subscription.features.enterprise.audit_logs",
+                        fallback: "Audit Logs",
+                    },
+                    {
+                        key: "admin.subscription.features.enterprise.custom_domain",
+                        fallback: "Custom Domain",
+                    },
+                    {
+                        key: "admin.subscription.features.enterprise.sso_security",
+                        fallback: "SSO & Security",
+                    },
+                    {
+                        key: "admin.subscription.features.enterprise.api_access",
+                        fallback: "API Access",
+                    },
                 ];
             default:
                 return [];
@@ -173,12 +220,36 @@
     }
 
     const invoiceColumns = [
-        { key: "invoice_number", label: "Invoice #", sortable: true },
-        { key: "description", label: "Description", sortable: true },
-        { key: "amount", label: "Amount", sortable: true },
-        { key: "status", label: "Status", sortable: true },
-        { key: "due_date", label: "Due Date", sortable: true },
-        { key: "actions", label: "Actions", align: "right" },
+        {
+            key: "invoice_number",
+            label: $t("admin.subscription.invoices.invoice_number") || "Invoice #",
+            sortable: true,
+        },
+        {
+            key: "description",
+            label: $t("admin.subscription.invoices.description") || "Description",
+            sortable: true,
+        },
+        {
+            key: "amount",
+            label: $t("admin.subscription.invoices.amount") || "Amount",
+            sortable: true,
+        },
+        {
+            key: "status",
+            label: $t("admin.subscription.invoices.status") || "Status",
+            sortable: true,
+        },
+        {
+            key: "due_date",
+            label: $t("admin.subscription.invoices.due_date") || "Due Date",
+            sortable: true,
+        },
+        {
+            key: "actions",
+            label: $t("admin.subscription.invoices.actions") || "Actions",
+            align: "right",
+        },
     ];
 </script>
 
@@ -189,28 +260,28 @@
             class:active={activeTab === "overview"}
             onclick={() => (activeTab = "overview")}
         >
-            Overview
+            {$t("admin.subscription.tabs.overview") || "Overview"}
         </button>
         <button
             class="tab-btn"
             class:active={activeTab === "plans"}
             onclick={() => (activeTab = "plans")}
         >
-            Available Plans
+            {$t("admin.subscription.tabs.plans") || "Available Plans"}
         </button>
         <button
             class="tab-btn"
             class:active={activeTab === "history"}
             onclick={() => (activeTab = "history")}
         >
-            Payment History
+            {$t("admin.subscription.tabs.history") || "Payment History"}
         </button>
     </div>
 
     {#if loading}
         <div class="loading-state">
             <div class="spinner"></div>
-            <p>Loading details...</p>
+            <p>{$t("admin.subscription.loading") || "Loading details..."}</p>
         </div>
     {:else if subscription}
         {#if activeTab === "overview"}
@@ -223,10 +294,16 @@
                                 <Icon name="credit-card" size={24} />
                             </div>
                             <div>
-                                <h2>{subscription.plan_name} Plan</h2>
+                                <h2>
+                                    {subscription.plan_name}
+                                    {$t("admin.subscription.overview.plan_suffix") ||
+                                        "Plan"}
+                                </h2>
                                 <p class="plan-desc">
                                     {currentPlanInfo?.description ||
-                                        "Current active subscription"}
+                                        ($t(
+                                            "admin.subscription.overview.current_active",
+                                        ) || "Current active subscription")}
                                 </p>
                             </div>
                         </div>
@@ -238,28 +315,46 @@
                                             currentPlanInfo.price_monthly,
                                         )}</span
                                     >
-                                    <span class="period">/ month</span>
+                                    <span class="period"
+                                        >{$t(
+                                            "admin.subscription.common.per_month",
+                                        ) || "/ month"}</span
+                                    >
                                 </div>
                                 {#if tenantCurrencyCode !== baseCurrencyCode}
                                     <div class="base-hint">
-                                        Base: {formatBasePrice(
+                                        {$t(
+                                            "admin.subscription.common.base",
+                                        ) || "Base:"}
+                                        {formatBasePrice(
                                             currentPlanInfo.price_monthly,
                                         )}
                                         {#if fxLoading}
-                                            <span class="fx-pill">Updating FX…</span>
+                                            <span class="fx-pill"
+                                                >{$t(
+                                                    "admin.subscription.common.fx_updating",
+                                                ) || "Updating FX…"} </span
+                                            >
                                         {:else if fxSource}
                                             <span class="fx-pill"
-                                                >FX: {fxSource}</span
+                                                >{$t(
+                                                    "admin.subscription.common.fx",
+                                                ) || "FX:"} {fxSource}</span
                                             >
                                         {:else if fxError}
                                             <span class="fx-pill warn"
-                                                >FX unavailable</span
+                                                >{$t(
+                                                    "admin.subscription.common.fx_unavailable",
+                                                ) || "FX unavailable"}</span
                                             >
                                         {/if}
                                     </div>
                                 {/if}
                             {:else}
-                                <div class="price-tag free">Free</div>
+                                <div class="price-tag free">
+                                    {$t("admin.subscription.common.free") ||
+                                        "Free"}
+                                </div>
                             {/if}
                             <span class="status-pill active"
                                 >{subscription.status}</span
@@ -270,12 +365,18 @@
                     <div class="detail-body">
                         <!-- Left Column: Usage -->
                         <div class="usage-section">
-                            <h3>Resource Usage</h3>
+                            <h3>
+                                {$t("admin.subscription.overview.usage_title") ||
+                                    "Resource Usage"}
+                            </h3>
 
                             <div class="usage-item">
                                 <div class="usage-label">
                                     <span class="u-title"
-                                        ><Icon name="folder" size={14} /> Storage</span
+                                        ><Icon name="folder" size={14} />
+                                        {$t(
+                                            "admin.subscription.overview.storage",
+                                        ) || "Storage"}</span
                                     >
                                     <span class="u-val"
                                         >{formatBytes(
@@ -284,7 +385,9 @@
                                             ? formatBytes(
                                                   subscription.storage_limit,
                                               )
-                                            : "Unlimited"}</span
+                                            : $t(
+                                                  "admin.subscription.common.unlimited",
+                                              ) || "Unlimited"}</span
                                     >
                                 </div>
                                 <div class="progress-container">
@@ -309,11 +412,16 @@
                             <div class="usage-item">
                                 <div class="usage-label">
                                     <span class="u-title"
-                                        ><Icon name="users" size={14} /> Team Members</span
+                                        ><Icon name="users" size={14} />
+                                        {$t(
+                                            "admin.subscription.overview.team_members",
+                                        ) || "Team Members"}</span
                                     >
                                     <span class="u-val"
                                         >{subscription.member_usage} / {subscription.member_limit ||
-                                            "Unlimited"}</span
+                                            ($t(
+                                                "admin.subscription.common.unlimited",
+                                            ) || "Unlimited")}</span
                                     >
                                 </div>
                                 <div class="progress-container">
@@ -332,10 +440,18 @@
 
                         <!-- Right Column: Info & Features -->
                         <div class="info-section">
-                            <h3>Billing Details</h3>
+                            <h3>
+                                {$t(
+                                    "admin.subscription.overview.billing_details",
+                                ) || "Billing Details"}
+                            </h3>
                             <div class="info-grid">
                                 <div class="info-item">
-                                    <span class="info-label">Active Until</span>
+                                    <span class="info-label"
+                                        >{$t(
+                                            "admin.subscription.overview.active_until",
+                                        ) || "Active Until"}</span
+                                    >
                                     {#if subscription.current_period_end}
                                         <span
                                             >{new Date(
@@ -343,21 +459,35 @@
                                             ).toLocaleDateString()}</span
                                         >
                                     {:else}
-                                        <span>Lifetime</span>
+                                        <span>
+                                            {$t(
+                                                "admin.subscription.overview.lifetime",
+                                            ) || "Lifetime"}
+                                        </span>
                                     {/if}
                                 </div>
                                 <div class="info-item">
-                                    <span class="info-label">Billing Cycle</span
+                                    <span class="info-label"
+                                        >{$t(
+                                            "admin.subscription.overview.billing_cycle",
+                                        ) || "Billing Cycle"}</span
                                     >
                                     <span
                                         >{currentPlanInfo?.price_yearly > 0
-                                            ? "Monthly / Yearly"
-                                            : "Free Tier"}</span
+                                            ? $t(
+                                                  "admin.subscription.overview.billing_cycle_paid",
+                                              ) || "Monthly / Yearly"
+                                            : $t(
+                                                  "admin.subscription.overview.billing_cycle_free",
+                                              ) || "Free Tier"}</span
                                     >
                                 </div>
                             </div>
 
-                            <h3 class="mt-4">Includes</h3>
+                            <h3 class="mt-4">
+                                {$t("admin.subscription.overview.includes") ||
+                                    "Includes"}
+                            </h3>
                             <ul class="feature-list">
                                 {#each getPlanFeatures(subscription.plan_slug) as feature}
                                     <li>
@@ -366,7 +496,7 @@
                                             size={14}
                                             class="check-icon"
                                         />
-                                        {feature}
+                                        {$t(feature.key) || feature.fallback}
                                     </li>
                                 {/each}
                             </ul>
@@ -376,7 +506,10 @@
             </div>
         {:else if activeTab === "plans"}
             <div class="plans-comparison fade-in">
-                <h3>Select a Plan</h3>
+                <h3>
+                    {$t("admin.subscription.plans.select_title") ||
+                        "Select a Plan"}
+                </h3>
                 <div class="plans-grid">
                     {#each availablePlans as plan}
                         <div
@@ -395,18 +528,36 @@
                                         <span class="period">/mo</span>
                                     </div>
                                 {:else}
-                                    <div class="price-tag free">Free</div>
+                                    <div class="price-tag free">
+                                        {$t("admin.subscription.common.free") ||
+                                            "Free"}
+                                    </div>
                                 {/if}
                             </div>
                             {#if plan.price_monthly > 0 && tenantCurrencyCode !== baseCurrencyCode}
                                 <div class="base-hint">
-                                    Base: {formatBasePrice(plan.price_monthly)}
+                                    {$t(
+                                        "admin.subscription.common.base",
+                                    ) || "Base:"}
+                                    {formatBasePrice(plan.price_monthly)}
                                     {#if fxLoading}
-                                        <span class="fx-pill">Updating FX…</span>
+                                        <span class="fx-pill"
+                                            >{$t(
+                                                "admin.subscription.common.fx_updating",
+                                            ) || "Updating FX…"} </span
+                                        >
                                     {:else if fxSource}
-                                        <span class="fx-pill">FX: {fxSource}</span>
+                                        <span class="fx-pill"
+                                            >{$t(
+                                                "admin.subscription.common.fx",
+                                            ) || "FX:"} {fxSource}</span
+                                        >
                                     {:else if fxError}
-                                        <span class="fx-pill warn">FX unavailable</span>
+                                        <span class="fx-pill warn"
+                                            >{$t(
+                                                "admin.subscription.common.fx_unavailable",
+                                            ) || "FX unavailable"}</span
+                                        >
                                     {/if}
                                 </div>
                             {/if}
@@ -414,14 +565,20 @@
 
                             <ul class="mini-features">
                                 {#each getPlanFeatures(plan.slug) as feat}
-                                    <li>• {feat}</li>
+                                    <li>
+                                        • {$t(feat.key) || feat.fallback}
+                                    </li>
                                 {/each}
                             </ul>
 
                             {#if plan.slug === subscription.plan_slug}
                                 <button
                                     class="btn btn-secondary w-full"
-                                    disabled>Current Plan</button
+                                    disabled
+                                >
+                                    {$t("admin.subscription.plans.current") ||
+                                        "Current Plan"}
+                                </button
                                 >
                             {:else}
                                 <button
@@ -429,7 +586,10 @@
                                     onclick={() => handleUpgrade(plan)}
                                     disabled={upgrading}
                                 >
-                                    {upgrading ? "..." : "Upgrade"}
+                                    {upgrading
+                                        ? $t("common.loading") || "..."
+                                        : $t("admin.subscription.plans.upgrade") ||
+                                          "Upgrade"}
                                 </button>
                             {/if}
                         </div>
@@ -444,7 +604,9 @@
                         data={invoices}
                         columns={invoiceColumns}
                         searchable={true}
-                        searchPlaceholder="Search invoices..."
+                        searchPlaceholder={$t(
+                            "admin.subscription.invoices.search_placeholder",
+                        ) || "Search invoices..."}
                     >
                         {#snippet cell({ item, column })}
                             {#if column.key === "amount"}
@@ -460,20 +622,28 @@
                             {:else if column.key === "actions"}
                                 <div class="actions">
                                     {#if item.status === "pending"}
-                                        <a
-                                            href="/pay/{item.id}"
+                                        <button
+                                            type="button"
                                             class="btn btn-primary btn-sm"
+                                            onclick={() => goto(`/pay/${item.id}`)}
                                         >
-                                            Pay
-                                        </a>
+                                            {$t("admin.subscription.invoices.pay") ||
+                                                "Pay"}
+                                        </button>
                                     {:else}
-                                        <a
-                                            href="/pay/{item.id}"
+                                        <button
+                                            type="button"
                                             class="action-btn"
-                                            title="View Details"
+                                            title={$t(
+                                                "admin.subscription.invoices.view_details",
+                                            ) || "View Details"}
+                                            aria-label={$t(
+                                                "admin.subscription.invoices.view_details",
+                                            ) || "View Details"}
+                                            onclick={() => goto(`/pay/${item.id}`)}
                                         >
                                             <Icon name="eye" size={18} />
-                                        </a>
+                                        </button>
                                     {/if}
                                 </div>
                             {:else}

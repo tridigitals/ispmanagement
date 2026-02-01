@@ -148,9 +148,17 @@
     }
 
     function moneyStep() {
-        const code = String($appSettings?.currency_code || "USD").toUpperCase();
+        const code = String($appSettings?.currency_code || "IDR").toUpperCase();
         return code === "IDR" || code === "JPY" || code === "KRW" ? "1" : "0.01";
     }
+
+    const baseCurrencyCode = $derived.by(() =>
+        String($appSettings?.currency_code || "IDR").toUpperCase(),
+    );
+
+    const baseLocale = $derived.by(() =>
+        String($appSettings?.default_locale || "en-US"),
+    );
 </script>
 
 <svelte:head>
@@ -242,7 +250,7 @@
 
                     <div class="form-group">
                         <label for="price_m">
-                            Monthly Price ({$appSettings.currency_code})
+                            Monthly Price ({baseCurrencyCode})
                         </label>
                         <div class="money-input">
                             <input
@@ -251,19 +259,20 @@
                                 step={moneyStep()}
                                 bind:value={planData.price_monthly}
                             />
-                            <span class="money-suffix"
-                                >{$appSettings.currency_code}</span
-                            >
+                            <span class="money-suffix">{baseCurrencyCode}</span>
                         </div>
                         <small class="hint"
-                            >Preview: {formatMoney(planData.price_monthly)}
+                            >Preview: {formatMoney(planData.price_monthly, {
+                                currency: baseCurrencyCode,
+                                locale: baseLocale,
+                            })}
                             /mo</small
                         >
                     </div>
 
                     <div class="form-group">
                         <label for="price_y">
-                            Yearly Price ({$appSettings.currency_code})
+                            Yearly Price ({baseCurrencyCode})
                         </label>
                         <div class="money-input">
                             <input
@@ -272,12 +281,13 @@
                                 step={moneyStep()}
                                 bind:value={planData.price_yearly}
                             />
-                            <span class="money-suffix"
-                                >{$appSettings.currency_code}</span
-                            >
+                            <span class="money-suffix">{baseCurrencyCode}</span>
                         </div>
                         <small class="hint"
-                            >Preview: {formatMoney(planData.price_yearly)}
+                            >Preview: {formatMoney(planData.price_yearly, {
+                                currency: baseCurrencyCode,
+                                locale: baseLocale,
+                            })}
                             /yr</small
                         >
                     </div>
@@ -312,7 +322,7 @@
                         <Icon name="info" size={16} />
                         <span>
                             Plan prices are stored in the base currency (
-                            {$appSettings.currency_code}). If a tenant uses a
+                            {baseCurrencyCode}). If a tenant uses a
                             different currency, invoices will be auto-converted
                             using the configured FX provider.
                         </span>

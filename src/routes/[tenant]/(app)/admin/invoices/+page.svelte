@@ -5,6 +5,8 @@
     import Table from "$lib/components/Table.svelte";
     import { toast } from "$lib/stores/toast";
     import { formatMoney } from "$lib/utils/money";
+    import { goto } from "$app/navigation";
+    import { t } from "svelte-i18n";
 
     let invoices: Invoice[] = [];
     let loading = true;
@@ -43,12 +45,15 @@
 <div class="page-container fade-in">
     <div class="page-header">
         <div class="header-content">
-            <h1>Billing & Invoices</h1>
-            <p class="subtitle">View and manage your subscription payments</p>
+            <h1>{$t("admin.invoices.title") || "Billing & Invoices"}</h1>
+            <p class="subtitle">
+                {$t("admin.invoices.subtitle") ||
+                    "View and manage your subscription payments"}
+            </p>
         </div>
         <button class="btn btn-secondary" onclick={loadInvoices}>
             <Icon name="refresh-cw" size={18} />
-            <span>Refresh</span>
+            <span>{$t("common.refresh") || "Refresh"}</span>
         </button>
     </div>
 
@@ -62,7 +67,8 @@
             data={invoices}
             {columns}
             searchable={true}
-            searchPlaceholder="Search invoices..."
+            searchPlaceholder={$t("admin.invoices.search_placeholder") ||
+                "Search invoices..."}
         >
             {#snippet cell({ item, column })}
                 {#if column.key === "amount"}
@@ -74,21 +80,26 @@
                 {:else if column.key === "actions"}
                     <div class="actions">
                         {#if item.status === "pending"}
-                            <a
-                                href="/pay/{item.id}"
+                            <button
+                                type="button"
                                 class="btn btn-primary btn-sm"
+                                onclick={() => goto(`/pay/${item.id}`)}
                             >
                                 <Icon name="credit-card" size={14} />
-                                Pay Now
-                            </a>
+                                {$t("admin.invoices.pay_now") || "Pay Now"}
+                            </button>
                         {:else}
-                            <a
-                                href="/pay/{item.id}"
+                            <button
+                                type="button"
                                 class="action-btn"
-                                title="View Details"
+                                title={$t("admin.invoices.view_details") ||
+                                    "View Details"}
+                                aria-label={$t("admin.invoices.view_details") ||
+                                    "View Details"}
+                                onclick={() => goto(`/pay/${item.id}`)}
                             >
                                 <Icon name="eye" size={18} />
-                            </a>
+                            </button>
                         {/if}
                     </div>
                 {:else}
@@ -134,18 +145,32 @@
         font-size: 0.75rem;
         font-weight: 700;
         text-transform: uppercase;
+        border: 1px solid transparent;
     }
     .status-pill.pending {
-        background: #fef3c7;
-        color: #d97706;
+        background: rgba(245, 158, 11, 0.14);
+        color: var(--color-warning, #f59e0b);
+        border-color: rgba(245, 158, 11, 0.22);
+    }
+    .status-pill.verification_pending {
+        background: rgba(245, 158, 11, 0.14);
+        color: var(--color-warning, #f59e0b);
+        border-color: rgba(245, 158, 11, 0.22);
     }
     .status-pill.paid {
-        background: #dcfce7;
-        color: #16a34a;
+        background: rgba(16, 185, 129, 0.14);
+        color: var(--color-success, #10b981);
+        border-color: rgba(16, 185, 129, 0.22);
     }
     .status-pill.failed {
-        background: #fee2e2;
-        color: #dc2626;
+        background: rgba(239, 68, 68, 0.14);
+        color: var(--color-danger, #ef4444);
+        border-color: rgba(239, 68, 68, 0.22);
+    }
+    .status-pill.expired {
+        background: rgba(148, 163, 184, 0.12);
+        color: var(--text-secondary);
+        border-color: rgba(148, 163, 184, 0.18);
     }
 
     .actions {

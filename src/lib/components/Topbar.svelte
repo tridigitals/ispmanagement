@@ -13,6 +13,10 @@
     // Helper to get page title based on path (ordered by specificity)
     function getPageTitle(path: string) {
         const map: [string, string][] = [
+            [
+                "/notifications",
+                $t("topbar.titles.notifications") || "Notifications",
+            ],
             ["/superadmin/tenants", $t("topbar.titles.tenants") || "Tenants"],
             ["/superadmin/users", $t("topbar.titles.users") || "Users"],
             ["/superadmin/plans", $t("topbar.titles.plans") || "Plans"],
@@ -106,8 +110,8 @@
 
         <button
             class="icon-btn"
-            title={themeLabel}
             aria-label={themeLabel}
+            data-tooltip={themeLabel}
             onclick={toggleTheme}
         >
             <Icon name={themeIcon} size={18} />

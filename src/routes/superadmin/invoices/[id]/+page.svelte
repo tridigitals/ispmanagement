@@ -3,11 +3,13 @@
     import { onMount } from "svelte";
     import { api, type Invoice } from "$lib/api/client";
     import Icon from "$lib/components/Icon.svelte";
-    import { toast } from "$lib/stores/toast";
+    import { toast } from "svelte-sonner";
     import { goto } from "$app/navigation";
     import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
     import { formatMoney } from "$lib/utils/money";
     import Lightbox from "$lib/components/Lightbox.svelte";
+    import { t } from "svelte-i18n";
+    import { getTenantsCached } from "$lib/stores/superadminTenantsCache";
 
     let invoiceId = $state("");
     let invoice = $state<Invoice | null>(null);
@@ -26,7 +28,7 @@
         title: "",
         message: "",
         type: "info" as "danger" | "warning" | "info",
-        confirmText: "Confirm",
+        confirmText: "",
         onConfirm: async () => {},
     });
 
@@ -42,7 +44,9 @@
         if (!invoiceId) {
             invoice = null;
             loading = false;
-            toast.error("Missing invoice id");
+            toast.error(
+                $t("superadmin.invoices.detail.missing_id") || "Missing invoice id",
+            );
             return;
         }
         loading = true;
@@ -50,23 +54,26 @@
             tenantName = null;
             tenantSlug = null;
 
-            const [inv, tenantsRes] = await Promise.all([
+            const [inv, tenants] = await Promise.all([
                 api.payment.getInvoice(invoiceId),
-                api.superadmin.listTenants().catch(() => ({ data: [], total: 0 })),
+                getTenantsCached().catch(() => []),
             ]);
             invoice = inv;
 
             if (inv?.tenant_id) {
-                const t = (tenantsRes.data || []).find(
-                    (x: any) => x.id === inv.tenant_id,
-                );
+                const t = (tenants || []).find((x: any) => x.id === inv.tenant_id);
                 if (t) {
                     tenantName = t.name ?? null;
                     tenantSlug = t.slug ?? null;
                 }
             }
         } catch (e: any) {
-            toast.error("Failed to load invoice: " + e.message);
+            toast.error(
+                ($t("superadmin.invoices.detail.load_failed") ||
+                    "Failed to load invoice") +
+                    ": " +
+                    (e.message || String(e)),
+            );
         } finally {
             loading = false;
         }
@@ -74,13 +81,23 @@
 
     function triggerVerify(status: "paid" | "failed") {
         confirmConfig = {
-            title: status === "paid" ? "Approve Payment" : "Reject Payment",
+            title:
+                status === "paid"
+                    ? $t("superadmin.invoices.detail.approve_title") ||
+                      "Approve Payment"
+                    : $t("superadmin.invoices.detail.reject_title") ||
+                      "Reject Payment",
             message:
                 status === "paid"
-                    ? "Are you sure you want to approve this payment? This will activate the subscription immediately."
-                    : "Are you sure you want to reject this payment? The user will be notified.",
+                    ? $t("superadmin.invoices.detail.approve_message") ||
+                      "Are you sure you want to approve this payment? This will activate the subscription immediately."
+                    : $t("superadmin.invoices.detail.reject_message") ||
+                      "Are you sure you want to reject this payment? The user will be notified.",
             type: status === "paid" ? "info" : "danger",
-            confirmText: status === "paid" ? "Approve" : "Reject",
+            confirmText:
+                status === "paid"
+                    ? $t("superadmin.invoices.detail.approve") || "Approve"
+                    : $t("superadmin.invoices.detail.reject") || "Reject",
             onConfirm: async () => await handleVerify(status),
         };
         showConfirm = true;
@@ -91,11 +108,20 @@
         processing = true;
         try {
             await api.payment.verifyPayment(invoiceId, status);
-            toast.success(`Invoice marked as ${status}`);
+            toast.success(
+                ($t("superadmin.invoices.detail.marked_as") ||
+                    "Invoice marked as") +
+                    ` ${status}`,
+            );
             void loadInvoice();
             showConfirm = false;
         } catch (e: any) {
-            toast.error("Verification failed: " + e.message);
+            toast.error(
+                ($t("superadmin.invoices.detail.verify_failed") ||
+                    "Verification failed") +
+                    ": " +
+                    (e.message || String(e)),
+            );
         } finally {
             processing = false;
         }
@@ -115,7 +141,9 @@
         lightboxFiles = [
             {
                 id: fileId,
-                original_name: "Payment Proof",
+                original_name:
+                    $t("superadmin.invoices.detail.payment_proof") ||
+                    "Payment Proof",
                 content_type: "image/jpeg",
                 size: 0,
                 created_at: new Date().toISOString(),
@@ -129,19 +157,24 @@
     <div class="page-header">
         <button class="back-btn" onclick={() => goto("/superadmin/invoices")}>
             <Icon name="arrow-left" size={20} />
-            Back to Invoices
+            {$t("superadmin.invoices.detail.back") || "Back to Invoices"}
         </button>
-        <h1>Invoice Details</h1>
+        <h1>{$t("superadmin.invoices.detail.title") || "Invoice Details"}</h1>
     </div>
 
     {#if loading}
-        <div class="loading">Loading details...</div>
+        <div class="loading">
+            {$t("superadmin.invoices.detail.loading") || "Loading details..."}
+        </div>
     {:else if invoice}
         <div class="details-grid">
             <!-- Left: Info -->
             <div class="card info-card">
                 <div class="card-header">
-                    <h2>Invoice #{invoice.invoice_number}</h2>
+                    <h2>
+                        {$t("superadmin.invoices.detail.invoice") || "Invoice"}
+                        #{invoice.invoice_number}
+                    </h2>
                     <span class="status-pill {invoice.status}"
                         >{invoice.status}</span
                     >
@@ -149,7 +182,10 @@
 
                 <div class="info-rows">
                     <div class="row">
-                        <span class="label">Tenant</span>
+                        <span class="label"
+                            >{$t("superadmin.invoices.detail.tenant") ||
+                                "Tenant"}</span
+                        >
                         <span class="value">
                             {#if tenantName}
                                 {tenantName}
@@ -162,11 +198,17 @@
                         </span>
                     </div>
                     <div class="row">
-                        <span class="label">Description</span>
+                        <span class="label"
+                            >{$t("superadmin.invoices.detail.description") ||
+                                "Description"}</span
+                        >
                         <span class="value">{invoice.description}</span>
                     </div>
                     <div class="row">
-                        <span class="label">Amount</span>
+                        <span class="label"
+                            >{$t("superadmin.invoices.detail.amount") ||
+                                "Amount"}</span
+                        >
                         <span class="value highlight"
                             >{formatCurrency(
                                 invoice.amount,
@@ -175,7 +217,10 @@
                         >
                     </div>
                     <div class="row">
-                        <span class="label">Created At</span>
+                        <span class="label"
+                            >{$t("superadmin.invoices.detail.created_at") ||
+                                "Created At"}</span
+                        >
                         <span class="value"
                             >{invoice.created_at
                                 ? new Date(invoice.created_at).toLocaleString()
@@ -183,7 +228,10 @@
                         >
                     </div>
                     <div class="row">
-                        <span class="label">Updated At</span>
+                        <span class="label"
+                            >{$t("superadmin.invoices.detail.updated_at") ||
+                                "Updated At"}</span
+                        >
                         <span class="value"
                             >{invoice.updated_at
                                 ? new Date(invoice.updated_at).toLocaleString()
@@ -194,7 +242,10 @@
 
                 <div class="actions">
                     {#if invoice.status === "verification_pending" || invoice.status === "pending"}
-                        <h3 class="section-title">Manual Verification</h3>
+                        <h3 class="section-title">
+                            {$t("superadmin.invoices.detail.manual_verification") ||
+                                "Manual Verification"}
+                        </h3>
                         <div class="btn-group">
                             <button
                                 class="btn btn-success"
@@ -202,7 +253,8 @@
                                 disabled={processing}
                             >
                                 <Icon name="check" size={18} />
-                                Approve Payment
+                                {$t("superadmin.invoices.detail.approve_title") ||
+                                    "Approve Payment"}
                             </button>
                             <button
                                 class="btn btn-danger"
@@ -210,12 +262,14 @@
                                 disabled={processing}
                             >
                                 <Icon name="x" size={18} />
-                                Reject
+                                {$t("superadmin.invoices.detail.reject") ||
+                                    "Reject"}
                             </button>
                         </div>
                     {:else}
                         <p class="info-text">
-                            This invoice is already {invoice.status}.
+                            {$t("superadmin.invoices.detail.already_status") ||
+                                "This invoice is already"} {invoice.status}.
                         </p>
                     {/if}
                 </div>
@@ -223,7 +277,10 @@
 
             <!-- Right: Proof Attachment -->
             <div class="card proof-card">
-                <h2>Payment Proof</h2>
+                <h2>
+                    {$t("superadmin.invoices.detail.payment_proof") ||
+                        "Payment Proof"}
+                </h2>
                 {#if invoice.proof_attachment}
                     <div class="proof-wrapper">
                         <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -235,18 +292,26 @@
                             onclick={() =>
                                 openLightbox(invoice!.proof_attachment!)}
                         />
-                        <p class="hint">Click to enlarge</p>
+                        <p class="hint">
+                            {$t("superadmin.invoices.detail.click_enlarge") ||
+                                "Click to enlarge"}
+                        </p>
                     </div>
                 {:else}
                     <div class="no-proof">
                         <Icon name="image" size={48} />
-                        <p>No proof uploaded yet.</p>
+                        <p>
+                            {$t("superadmin.invoices.detail.no_proof") ||
+                                "No proof uploaded yet."}
+                        </p>
                     </div>
                 {/if}
             </div>
         </div>
     {:else}
-        <div class="error">Invoice not found</div>
+        <div class="error">
+            {$t("superadmin.invoices.detail.not_found") || "Invoice not found"}
+        </div>
     {/if}
 </div>
 
@@ -321,23 +386,27 @@
         font-weight: 600;
         text-transform: uppercase;
         font-size: 0.85rem;
+        border: 1px solid transparent;
     }
     .status-pill.pending {
-        background: #fef3c7;
-        color: #d97706;
+        background: rgba(245, 158, 11, 0.14);
+        color: var(--color-warning, #f59e0b);
+        border-color: rgba(245, 158, 11, 0.22);
     }
     .status-pill.verification_pending {
-        background: #fef3c7;
-        color: #d97706;
-        border: 1px solid #d97706;
+        background: rgba(245, 158, 11, 0.14);
+        color: var(--color-warning, #f59e0b);
+        border-color: rgba(245, 158, 11, 0.22);
     }
     .status-pill.paid {
-        background: #dcfce7;
-        color: #16a34a;
+        background: rgba(16, 185, 129, 0.14);
+        color: var(--color-success, #10b981);
+        border-color: rgba(16, 185, 129, 0.22);
     }
     .status-pill.failed {
-        background: #fee2e2;
-        color: #dc2626;
+        background: rgba(239, 68, 68, 0.14);
+        color: var(--color-danger, #ef4444);
+        border-color: rgba(239, 68, 68, 0.22);
     }
 
     .info-rows {
