@@ -279,7 +279,10 @@
             }));
         } catch (error) {
             console.error(error);
-            toast.error("Failed to load settings");
+            toast.error(
+                get(t)("admin.settings.toasts.load_failed") ||
+                    "Failed to load settings",
+            );
         } finally {
             if (!opts.silent) loading = false;
         }
@@ -334,11 +337,17 @@
                 appLogo.set(base64);
                 logoBase64 = base64;
                 recomputeHasChanges();
-                toast.success("Logo uploaded");
+                toast.success(
+                    get(t)("admin.settings.toasts.logo_uploaded") ||
+                        "Logo uploaded",
+                );
             };
             reader.readAsDataURL(file);
         } catch (error) {
-            toast.error("Failed to upload logo");
+            toast.error(
+                get(t)("admin.settings.toasts.logo_upload_failed") ||
+                    "Failed to upload logo",
+            );
         }
     }
 
@@ -381,9 +390,15 @@
 
             await loadSettings();
             await appSettings.refresh();
-            toast.success("Settings saved");
+            toast.success(
+                get(t)("admin.settings.toasts.saved") || "Settings saved",
+            );
         } catch (error: any) {
-            toast.error(error.message || "Failed to save settings");
+            toast.error(
+                error.message ||
+                    get(t)("admin.settings.toasts.save_failed") ||
+                    "Failed to save settings",
+            );
         } finally {
             saving = false;
         }
@@ -561,7 +576,13 @@
                                 .label}
                         </h2>
                         <p class="card-subtitle">
-                            Manage your {activeTab} settings
+                            {$t("admin.settings.subtitle_dynamic", {
+                                values: {
+                                    tab: categories[
+                                        activeTab as keyof typeof categories
+                                    ].label,
+                                },
+                            }) || `Manage your ${activeTab} settings`}
                         </p>
                     </div>
 
@@ -570,7 +591,9 @@
                             <!-- Tenant Branding -->
                             <div class="setting-group">
                                 <label for="tenant-name"
-                                    >Organization Name</label
+                                    >{$t(
+                                        "admin.settings.keys.organization_name",
+                                    ) || "Organization Name"}</label
                                 >
                                 <Input
                                     id="tenant-name"
@@ -584,7 +607,10 @@
                             </div>
 
                             <div class="setting-group">
-                                <label for="custom-domain">Custom Domain</label>
+                                <label for="custom-domain"
+                                    >{$t("admin.settings.keys.custom_domain") ||
+                                        "Custom Domain"}</label
+                                >
                                 {#if customDomainAccess}
                                     <Input
                                         id="custom-domain"
@@ -594,12 +620,20 @@
                                                 "custom_domain",
                                                 e.target.value,
                                             )}
-                                        placeholder="e.g. app.yourcompany.com"
+                                        placeholder={$t(
+                                            "admin.settings.placeholders.custom_domain",
+                                        ) || "e.g. app.yourcompany.com"}
                                     />
                                     <p class="help-text">
-                                        Point your domain's CNAME record to <code
+                                        {$t(
+                                            "admin.settings.branding.custom_domain_help_prefix",
+                                        ) ||
+                                            "Point your domain's CNAME record to"} <code
                                             >cname.tridigitals.com</code
-                                        > (or configured alias).
+                                        >
+                                        {$t(
+                                            "admin.settings.branding.custom_domain_help_suffix",
+                                        ) || "(or configured alias)."}
                                     </p>
                                 {:else}
                                     <div class="upgrade-banner">
@@ -608,11 +642,16 @@
                                         </div>
                                         <div class="text">
                                             <h4>
-                                                Custom Domain is a Pro Feature
+                                                {$t(
+                                                    "admin.settings.branding.custom_domain_pro_title",
+                                                ) ||
+                                                    "Custom Domain is a Pro Feature"}
                                             </h4>
                                             <p>
-                                                Upgrade your plan to use your
-                                                own domain name.
+                                                {$t(
+                                                    "admin.settings.branding.custom_domain_pro_desc",
+                                                ) ||
+                                                    "Upgrade your plan to use your own domain name."}
                                             </p>
                                         </div>
                                         <button
@@ -622,13 +661,16 @@
                                                     `/${tenantInfo?.slug}/admin/subscription`,
                                                 )}
                                         >
-                                            Upgrade Plan
+                                            {$t("common.upgrade_plan") ||
+                                                "Upgrade Plan"}
                                         </button>
                                     </div>
                                     <Input
                                         value={localSettings["custom_domain"]}
                                         disabled={true}
-                                        placeholder="Locked"
+                                        placeholder={$t(
+                                            "admin.settings.placeholders.locked",
+                                        ) || "Locked"}
                                     />
                                 {/if}
                             </div>
@@ -636,11 +678,16 @@
                             <!-- Security Settings -->
                             <div class="setting-item setting-item-row mt-6">
                                 <div class="setting-info">
-                                    <h3>Enforce Two-Factor Authentication</h3>
+                                    <h3>
+                                        {$t(
+                                            "admin.settings.sections.enforce_2fa",
+                                        ) || "Enforce Two-Factor Authentication"}
+                                    </h3>
                                     <p>
-                                        Require all members of this organization
-                                        to enable 2FA before accessing the
-                                        dashboard.
+                                        {$t(
+                                            "admin.settings.security.enforce_2fa_desc",
+                                        ) ||
+                                            "Require all members of this organization to enable 2FA before accessing the dashboard."}
                                     </p>
                                 </div>
                                 <label class="toggle">
@@ -660,7 +707,8 @@
                             <!-- Redesigned Storage Settings -->
                             <div class="storage-settings">
                                 <span class="section-label"
-                                    >Select Storage Provider</span
+                                    >{$t("admin.settings.storage.select_provider") ||
+                                        "Select Storage Provider"}</span
                                 >
                                 <div class="provider-grid">
                                     {#each storageOptions as option}
@@ -726,7 +774,11 @@
 
                                 {#if localSettings["storage_driver"] === "s3" || localSettings["storage_driver"] === "r2"}
                                     <div class="config-panel fade-in">
-                                        <h3>Configuration</h3>
+                                        <h3>
+                                            {$t(
+                                                "admin.settings.sections.configuration",
+                                            ) || "Configuration"}
+                                        </h3>
                                         <div class="config-grid">
                                             {#each categories["storage"].keys as key}
                                                 {#if key !== "storage_driver"}
@@ -777,7 +829,8 @@
                             <!-- Redesigned Email Settings -->
                             <div class="email-settings">
                                 <span class="section-label"
-                                    >Email Delivery Provider</span
+                                    >{$t("admin.settings.email.provider_label") ||
+                                        "Email Delivery Provider"}</span
                                 >
                                 <div class="provider-grid">
                                     {#each emailProviderOptions as option}
@@ -834,11 +887,17 @@
                                 </div>
 
                                 <div class="config-panel fade-in">
-                                    <h3>Sender Information</h3>
+                                    <h3>
+                                        {$t(
+                                            "admin.settings.sections.sender_info",
+                                        ) || "Sender Information"}
+                                    </h3>
                                     <div class="config-grid mb-6">
                                         <div class="setting-item">
                                             <label for="email-from-name"
-                                                >From Name</label
+                                                >{$t(
+                                                    "admin.settings.keys.email_from_name",
+                                                ) || "From Name"}</label
                                             >
                                             <Input
                                                 id="email-from-name"
@@ -850,12 +909,16 @@
                                                         "email_from_name",
                                                         e.target.value,
                                                     )}
-                                                placeholder="e.g. Acme Support"
+                                                placeholder={$t(
+                                                    "admin.settings.email.placeholders.from_name",
+                                                ) || "e.g. Acme Support"}
                                             />
                                         </div>
                                         <div class="setting-item">
                                             <label for="email-from-address"
-                                                >From Address</label
+                                                >{$t(
+                                                    "admin.settings.keys.email_from_address",
+                                                ) || "From Address"}</label
                                             >
                                             <Input
                                                 id="email-from-address"
@@ -867,19 +930,27 @@
                                                         "email_from_address",
                                                         e.target.value,
                                                     )}
-                                                placeholder="noreply@yourdomain.com"
+                                                placeholder={$t(
+                                                    "admin.settings.email.placeholders.from_address",
+                                                ) || "noreply@yourdomain.com"}
                                             />
                                         </div>
                                     </div>
 
                                     <div class="divider-line"></div>
 
-                                    <h3 class="mt-6">Connection Details</h3>
+                                    <h3 class="mt-6">
+                                        {$t(
+                                            "admin.settings.email.connection_details",
+                                        ) || "Connection Details"}
+                                    </h3>
                                     <div class="config-grid">
                                         {#if localSettings["email_provider"] === "smtp"}
                                             <div class="setting-item">
                                                 <label for="smtp-host"
-                                                    >SMTP Host</label
+                                                    >{$t(
+                                                        "admin.settings.keys.email_smtp_host",
+                                                    ) || "SMTP Host"}</label
                                                 >
                                                 <Input
                                                     id="smtp-host"
@@ -891,12 +962,16 @@
                                                             "email_smtp_host",
                                                             e.target.value,
                                                         )}
-                                                    placeholder="smtp.mailtrap.io"
+                                                    placeholder={$t(
+                                                        "admin.settings.email.placeholders.smtp_host",
+                                                    ) || "smtp.mailtrap.io"}
                                                 />
                                             </div>
                                             <div class="setting-item">
                                                 <label for="smtp-port"
-                                                    >SMTP Port</label
+                                                    >{$t(
+                                                        "admin.settings.keys.email_smtp_port",
+                                                    ) || "SMTP Port"}</label
                                                 >
                                                 <Input
                                                     id="smtp-port"
@@ -909,12 +984,16 @@
                                                             "email_smtp_port",
                                                             e.target.value,
                                                         )}
-                                                    placeholder="587"
+                                                    placeholder={$t(
+                                                        "admin.settings.email.placeholders.smtp_port",
+                                                    ) || "587"}
                                                 />
                                             </div>
                                             <div class="setting-item">
                                                 <label for="smtp-encryption"
-                                                    >Encryption</label
+                                                    >{$t(
+                                                        "admin.settings.keys.email_smtp_encryption",
+                                                    ) || "Encryption"}</label
                                                 >
                                                 <Select
                                                     id="smtp-encryption"
@@ -931,7 +1010,9 @@
                                             </div>
                                             <div class="setting-item">
                                                 <label for="smtp-username"
-                                                    >Username</label
+                                                    >{$t(
+                                                        "admin.settings.keys.email_smtp_username",
+                                                    ) || "Username"}</label
                                                 >
                                                 <Input
                                                     id="smtp-username"
@@ -949,7 +1030,9 @@
                                                 class="setting-item full-width"
                                             >
                                                 <label for="smtp-password"
-                                                    >Password</label
+                                                    >{$t(
+                                                        "admin.settings.keys.email_smtp_password",
+                                                    ) || "Password"}</label
                                                 >
                                                 <Input
                                                     id="smtp-password"
@@ -971,7 +1054,9 @@
                                                 class="setting-item full-width"
                                             >
                                                 <label for="api-key"
-                                                    >API Key</label
+                                                    >{$t(
+                                                        "admin.settings.keys.email_api_key",
+                                                    ) || "API Key"}</label
                                                 >
                                                 <Input
                                                     id="api-key"
@@ -995,7 +1080,11 @@
                                 <div class="test-email-card mt-6">
                                     <div class="test-header">
                                         <Icon name="send" size={18} />
-                                        <h4>Test Configuration</h4>
+                                        <h4>
+                                            {$t(
+                                                "admin.settings.sections.test_configuration",
+                                            ) || "Test Configuration"}
+                                        </h4>
                                     </div>
                                     <p>
                                         Send a test email to verify your
@@ -1008,7 +1097,9 @@
                                             oninput={(e: any) =>
                                                 (testEmailAddress =
                                                     e.target.value)}
-                                            placeholder="Enter recipient email"
+                                            placeholder={$t(
+                                                "admin.settings.email.test.recipient_placeholder",
+                                            ) || "Enter recipient email"}
                                         />
                                         <button
                                             class="btn btn-secondary"
@@ -1017,8 +1108,10 @@
                                                 !testEmailAddress}
                                         >
                                             {sendingTestEmail
-                                                ? "Sending..."
-                                                : "Send Test"}
+                                                ? $t("admin.settings.email.test.sending") ||
+                                                  "Sending..."
+                                                : $t("admin.settings.email.test.send") ||
+                                                  "Send Test"}
                                         </button>
                                     </div>
                                 </div>
@@ -1027,7 +1120,8 @@
                             <!-- Payment Settings -->
                             <div class="payment-settings">
                                 <span class="section-label"
-                                    >Payment Methods</span
+                                    >{$t("admin.settings.payment.methods_label") ||
+                                        "Payment Methods"}</span
                                 >
 
                                 <!-- Midtrans Card -->
@@ -1035,7 +1129,11 @@
                                     <div class="method-header">
                                         <div class="m-icon midtrans">M</div>
                                         <div class="m-info">
-                                            <h4>Midtrans Payment Gateway</h4>
+                                            <h4>
+                                                {$t(
+                                                    "admin.settings.sections.midtrans",
+                                                ) || "Midtrans Payment Gateway"}
+                                            </h4>
                                             <p>
                                                 Accept payments via Credit Card,
                                                 GoPay, ShopeePay, VA, etc.
@@ -1063,7 +1161,9 @@
                                                 <div class="setting-item">
                                                     <label
                                                         for="midtrans-merchant-id"
-                                                        >Merchant ID</label
+                                                        >{$t(
+                                                            "admin.settings.payment.midtrans.merchant_id",
+                                                        ) || "Merchant ID"}</label
                                                     >
                                                     <Input
                                                         id="midtrans-merchant-id"
@@ -1081,7 +1181,9 @@
                                                 <div class="setting-item">
                                                     <label
                                                         for="midtrans-client-key"
-                                                        >Client Key</label
+                                                        >{$t(
+                                                            "admin.settings.payment.midtrans.client_key",
+                                                        ) || "Client Key"}</label
                                                     >
                                                     <Input
                                                         id="midtrans-client-key"
@@ -1101,7 +1203,9 @@
                                                 >
                                                     <label
                                                         for="midtrans-server-key"
-                                                        >Server Key</label
+                                                        >{$t(
+                                                            "admin.settings.payment.midtrans.server_key",
+                                                        ) || "Server Key"}</label
                                                     >
                                                     <Input
                                                         id="midtrans-server-key"
@@ -1157,7 +1261,11 @@
                                             <Icon name="landmark" size={24} />
                                         </div>
                                         <div class="m-info">
-                                            <h4>Bank Transfer (Manual)</h4>
+                                            <h4>
+                                                {$t(
+                                                    "admin.settings.sections.bank_transfer_manual",
+                                                ) || "Bank Transfer (Manual)"}
+                                            </h4>
                                             <p>
                                                 Accept payments via direct bank
                                                 transfer verification.
@@ -1186,7 +1294,9 @@
                                             >
                                                 <label
                                                     for="payment-manual-instructions"
-                                                    >Payment Instructions</label
+                                                    >{$t(
+                                                        "admin.settings.payment.manual.instructions_label",
+                                                    ) || "Payment Instructions"}</label
                                                 >
                                                 <textarea
                                                     id="payment-manual-instructions"
@@ -1200,7 +1310,10 @@
                                                             "payment_manual_instructions",
                                                             e.target.value,
                                                         )}
-                                                    placeholder="Please transfer to BCA 1234567890 a/n PT Company..."
+                                                    placeholder={$t(
+                                                        "admin.settings.payment.manual.placeholder_instructions",
+                                                    ) ||
+                                                        "Please transfer to BCA 1234567890 a/n PT Company..."}
                                                 ></textarea>
                                                 <p class="help-text">
                                                     These instructions will be
@@ -1211,16 +1324,18 @@
                                             <div
                                                 class="bank-accounts-manager mt-6"
                                             >
-                                                <div class="bm-header">
-                                                    <span class="label-text"
-                                                        >Bank Accounts</span
-                                                    >
-                                                    <button
-                                                        class="btn btn-primary btn-sm"
-                                                        onclick={() =>
-                                                            (showAddBank =
-                                                                !showAddBank)}
-                                                    >
+                                                    <div class="bm-header">
+                                                        <span class="label-text"
+                                                            >{$t(
+                                                                "admin.settings.payment.manual.bank_accounts",
+                                                            ) || "Bank Accounts"}</span
+                                                        >
+                                                        <button
+                                                            class="btn btn-primary btn-sm"
+                                                            onclick={() =>
+                                                                (showAddBank =
+                                                                    !showAddBank)}
+                                                        >
                                                         <Icon
                                                             name={showAddBank
                                                                 ? "minus"
@@ -1228,10 +1343,13 @@
                                                             size={14}
                                                         />
                                                         {showAddBank
-                                                            ? "Cancel"
-                                                            : "Add Bank"}
-                                                    </button>
-                                                </div>
+                                                            ? $t("common.cancel") ||
+                                                              "Cancel"
+                                                            : $t(
+                                                                  "admin.settings.payment.manual.add_bank",
+                                                              ) || "Add Bank"}
+                                                        </button>
+                                                    </div>
 
                                                 {#if showAddBank}
                                                     <div
@@ -1239,41 +1357,59 @@
                                                     >
                                                         <div class="form-row">
                                                             <Input
-                                                                aria-label="Bank Name"
+                                                                aria-label={$t(
+                                                                    "admin.settings.payment.manual.bank_form.bank_name_label",
+                                                                ) ||
+                                                                    "Bank Name"}
                                                                 value={newBank.bank_name}
                                                                 oninput={(
                                                                     e: any,
                                                                 ) =>
                                                                     (newBank.bank_name =
                                                                         e.target.value)}
-                                                                placeholder="Bank Name (e.g. BCA)"
+                                                                placeholder={$t(
+                                                                    "admin.settings.payment.manual.bank_form.bank_name_placeholder",
+                                                                ) ||
+                                                                    "Bank Name (e.g. BCA)"}
                                                             />
                                                             <Input
-                                                                aria-label="Account Number"
+                                                                aria-label={$t(
+                                                                    "admin.settings.payment.manual.bank_form.account_number_label",
+                                                                ) ||
+                                                                    "Account Number"}
                                                                 value={newBank.account_number}
                                                                 oninput={(
                                                                     e: any,
                                                                 ) =>
                                                                     (newBank.account_number =
                                                                         e.target.value)}
-                                                                placeholder="Account Number"
+                                                                placeholder={$t(
+                                                                    "admin.settings.payment.manual.bank_form.account_number_placeholder",
+                                                                ) || "Account Number"}
                                                             />
                                                         </div>
                                                         <div class="form-row">
                                                             <Input
-                                                                aria-label="Account Holder Name"
+                                                                aria-label={$t(
+                                                                    "admin.settings.payment.manual.bank_form.account_holder_label",
+                                                                ) ||
+                                                                    "Account Holder Name"}
                                                                 value={newBank.account_holder}
                                                                 oninput={(
                                                                     e: any,
                                                                 ) =>
                                                                     (newBank.account_holder =
                                                                         e.target.value)}
-                                                                placeholder="Account Holder Name"
+                                                                placeholder={$t(
+                                                                    "admin.settings.payment.manual.bank_form.account_holder_placeholder",
+                                                                ) || "Account Holder Name"}
                                                             />
                                                             <button
                                                                 class="btn btn-secondary"
                                                                 onclick={addBankAccount}
-                                                                >Add</button
+                                                                >{$t(
+                                                                    "admin.settings.payment.manual.bank_form.add",
+                                                                ) || "Add"}</button
                                                             >
                                                         </div>
                                                     </div>
@@ -1300,7 +1436,9 @@
                                                                 class="btn btn-primary btn-sm mt-2"
                                                                 onclick={() =>
                                                                     (showAddBank = true)}
-                                                                >Add One</button
+                                                                >{$t(
+                                                                    "admin.settings.payment.manual.add_one",
+                                                                ) || "Add One"}</button
                                                             >
                                                         </div>
                                                     {:else}
@@ -1341,7 +1479,10 @@
                                                                             removeBankAccount(
                                                                                 bank.id,
                                                                             )}
-                                                                        title="Remove Account"
+                                                                        title={$t(
+                                                                            "admin.settings.payment.manual.bank_form.remove_account",
+                                                                        ) ||
+                                                                            "Remove Account"}
                                                                     >
                                                                         <Icon
                                                                             name="trash"
@@ -1361,7 +1502,9 @@
                                                                 size={24}
                                                             />
                                                             <span
-                                                                >Add Account</span
+                                                                >{$t(
+                                                                    "admin.settings.payment.manual.bank_form.add_account",
+                                                                ) || "Add Account"}</span
                                                             >
                                                         </button>
                                                     {/if}
@@ -1495,14 +1638,16 @@
                         <button
                             class="btn btn-secondary"
                             disabled={!hasChanges || saving}
-                            onclick={discardChanges}>Reset</button
+                            onclick={discardChanges}>{$t("common.reset") || "Reset"}</button
                         >
                         <button
                             class="btn btn-primary"
                             disabled={!hasChanges || saving}
                             onclick={saveChanges}
                         >
-                            {saving ? "Saving..." : "Save Changes"}
+                            {saving
+                                ? $t("common.saving") || "Saving..."
+                                : $t("common.save_changes") || "Save Changes"}
                         </button>
                     </div>
                 </div>
@@ -1513,7 +1658,7 @@
     <MobileFabMenu
         items={mobileMenuItems}
         {activeTab}
-        title="Settings"
+        title={$t("topbar.titles.settings") || "Settings"}
         on:change={(e) => {
             activeTab = e.detail;
             // Keep unsaved edits when switching tabs (avoid refetch/reset).

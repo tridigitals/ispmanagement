@@ -3,8 +3,11 @@
     import { appSettings } from "$lib/stores/settings";
     import { isSuperAdmin } from "$lib/stores/auth";
     import { goto } from "$app/navigation";
+    import { t } from "svelte-i18n";
+    import { get } from "svelte/store";
 
     let message =
+        get(t)("pages.maintenance.default_message") ||
         "We're updating our systems to serve you better. Please check back soon!";
     let dots = "";
     let interval: any;
@@ -69,18 +72,21 @@
             </div>
         </div>
 
-        <h1>Under Maintenance</h1>
+        <h1>{$t("pages.maintenance.title") || "Under Maintenance"}</h1>
         <p class="message">{message}</p>
 
         <div class="progress-container">
             <div class="progress-bar">
                 <div class="progress-fill"></div>
             </div>
-            <span class="progress-text">Working on it{dots}</span>
+            <span class="progress-text"
+                >{$t("pages.maintenance.working") || "Working on it"}{dots}</span
+            >
         </div>
 
         <p class="footer-text">
-            Thank you for your patience. We'll be back shortly!
+            {$t("pages.maintenance.thanks") ||
+                "Thank you for your patience. We'll be back shortly!"}
         </p>
     </div>
 </div>

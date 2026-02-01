@@ -1,6 +1,7 @@
 <script lang="ts">
     import Icon from "./Icon.svelte";
     import Select from "./Select.svelte";
+    import { t } from "svelte-i18n";
 
     let {
         count = 0,
@@ -30,7 +31,9 @@
 
 <div class="pagination-container">
     <div class="rows-per-page">
-        <label for="page-size">Rows per page:</label>
+        <label for="page-size">
+            {$t("components.pagination.rows_per_page") || "Rows per page:"}
+        </label>
         <div class="select-width">
             <Select
                 value={pageSize}
@@ -43,14 +46,16 @@
 
     <div class="page-controls">
         <span class="range-text">
-            {startRow}-{endRow} of {count}
+            {$t("components.pagination.range", {
+                values: { start: startRow, end: endRow, count },
+            }) || `${startRow}-${endRow} of ${count}`}
         </span>
         <div class="nav-buttons">
             <button
                 class="icon-btn"
                 disabled={page === 0}
                 onclick={() => handlePageChange(page - 1)}
-                aria-label="Previous page"
+                aria-label={$t("components.pagination.previous") || "Previous page"}
             >
                 <Icon name="chevron-left" size={20} />
             </button>
@@ -58,7 +63,7 @@
                 class="icon-btn"
                 disabled={page >= totalPages - 1}
                 onclick={() => handlePageChange(page + 1)}
-                aria-label="Next page"
+                aria-label={$t("components.pagination.next") || "Next page"}
             >
                 <Icon name="chevron-right" size={20} />
             </button>

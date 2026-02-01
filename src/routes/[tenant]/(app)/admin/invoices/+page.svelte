@@ -7,19 +7,40 @@
     import { formatMoney } from "$lib/utils/money";
     import { goto } from "$app/navigation";
     import { t } from "svelte-i18n";
+    import { get } from "svelte/store";
 
-    let invoices: Invoice[] = [];
-    let loading = true;
-    let error = "";
+    let invoices = $state<Invoice[]>([]);
+    let loading = $state(true);
+    let error = $state("");
 
-    const columns = [
-        { key: "invoice_number", label: "Invoice #", sortable: true },
-        { key: "description", label: "Description", sortable: true },
-        { key: "amount", label: "Amount", sortable: true },
-        { key: "status", label: "Status", sortable: true },
-        { key: "due_date", label: "Due Date", sortable: true },
-        { key: "actions", label: "Actions", align: "right" },
-    ];
+    const columns = $derived.by(() => [
+        {
+            key: "invoice_number",
+            label: $t("admin.invoices.columns.invoice_number") || "Invoice #",
+            sortable: true,
+        },
+        {
+            key: "description",
+            label: $t("admin.invoices.columns.description") || "Description",
+            sortable: true,
+        },
+        {
+            key: "amount",
+            label: $t("admin.invoices.columns.amount") || "Amount",
+            sortable: true,
+        },
+        {
+            key: "status",
+            label: $t("admin.invoices.columns.status") || "Status",
+            sortable: true,
+        },
+        {
+            key: "due_date",
+            label: $t("admin.invoices.columns.due_date") || "Due Date",
+            sortable: true,
+        },
+        { key: "actions", label: "", align: "right" as const },
+    ]);
 
     onMount(() => {
         loadInvoices();
@@ -31,7 +52,10 @@
             invoices = await api.payment.listInvoices();
         } catch (e: any) {
             error = e.toString();
-            toast.error("Failed to load invoices");
+            toast.error(
+                get(t)("admin.invoices.toasts.load_failed") ||
+                    "Failed to load invoices",
+            );
         } finally {
             loading = false;
         }

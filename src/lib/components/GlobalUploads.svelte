@@ -2,10 +2,11 @@
     import { uploadStore } from "$lib/stores/upload";
     import Icon from "$lib/components/Icon.svelte";
     import { fly, slide } from "svelte/transition";
+    import { t } from "svelte-i18n";
 
-    $: uploads = $uploadStore;
-    $: activeCount = uploads.length;
-    $: isExpanded = true;
+    let uploads = $derived($uploadStore);
+    let activeCount = $derived(uploads.length);
+    let isExpanded = $state(true);
 
     function toggle() {
         isExpanded = !isExpanded;
@@ -24,9 +25,11 @@
         >
             <div class="title">
                 <span class="count">{activeCount}</span>
-                <span>Uploads in progress</span>
+                <span>
+                    {$t("components.global_uploads.title") || "Uploads in progress"}
+                </span>
             </div>
-            <button class="toggle-btn">
+            <button class="toggle-btn" type="button">
                 <Icon
                     name={isExpanded ? "chevron-down" : "chevron-up"}
                     size={18}
@@ -46,9 +49,15 @@
                             <div class="item-top">
                                 <span class="name">{item.file.name}</span>
                                 {#if item.status === "error"}
-                                    <span class="status error">Failed</span>
+                                    <span class="status error">
+                                        {$t("components.global_uploads.status.failed") ||
+                                            "Failed"}
+                                    </span>
                                 {:else if item.status === "success"}
-                                    <span class="status success">Done</span>
+                                    <span class="status success">
+                                        {$t("components.global_uploads.status.done") ||
+                                            "Done"}
+                                    </span>
                                 {:else}
                                     <span class="status">{item.progress}%</span>
                                 {/if}
@@ -65,6 +74,11 @@
                         {#if item.status === "uploading"}
                             <button
                                 class="cancel-btn"
+                                type="button"
+                                title={$t("components.global_uploads.actions.cancel") ||
+                                    "Cancel upload"}
+                                aria-label={$t("components.global_uploads.actions.cancel") ||
+                                    "Cancel upload"}
                                 onclick={() => uploadStore.cancel(item.id)}
                             >
                                 <Icon name="x" size={14} />

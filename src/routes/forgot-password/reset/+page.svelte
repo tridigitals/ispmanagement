@@ -4,6 +4,8 @@
     import { auth } from '$lib/api/client';
     import { goto } from '$app/navigation';
     import Icon from '$lib/components/Icon.svelte';
+    import { t } from "svelte-i18n";
+    import { get } from "svelte/store";
 
     let token = '';
     let password = '';
@@ -17,18 +19,24 @@
     onMount(() => {
         token = $page.url.searchParams.get('token') || '';
         if (!token) {
-            error = 'Invalid or missing reset token.';
+            error =
+                get(t)("auth.reset_password.invalid_token") ||
+                'Invalid or missing reset token.';
         }
     });
 
     async function handleSubmit() {
         if (!token) return;
         if (password !== confirmPassword) {
-            error = 'Passwords do not match';
+            error =
+                get(t)("auth.reset_password.passwords_do_not_match") ||
+                'Passwords do not match';
             return;
         }
         if (password.length < 8) {
-            error = 'Password must be at least 8 characters';
+            error =
+                get(t)("auth.reset_password.min_length") ||
+                'Password must be at least 8 characters';
             return;
         }
 
@@ -52,8 +60,11 @@
 <div class="auth-page">
     <div class="auth-card">
         <div class="auth-header">
-            <h1>Reset Password</h1>
-            <p>Enter your new password below</p>
+            <h1>{$t("auth.reset_password.title") || "Reset Password"}</h1>
+            <p>
+                {$t("auth.reset_password.subtitle") ||
+                    "Enter your new password below"}
+            </p>
         </div>
 
         {#if error}
@@ -64,12 +75,18 @@
 
         {#if success}
             <div class="alert alert-success">
-                Password reset successfully! Redirecting to login...
+                {$t("auth.reset_password.success") ||
+                    "Password reset successfully!"}
+                {$t("auth.reset_password.redirecting") ||
+                    "Redirecting to login..."}
             </div>
         {:else}
             <form on:submit|preventDefault={handleSubmit}>
                 <div class="form-group">
-                    <label class="form-label" for="password">New Password</label>
+                    <label class="form-label" for="password"
+                        >{$t("auth.reset_password.new_password") ||
+                            "New Password"}</label
+                    >
                     <div class="input-wrapper">
                         <input
                             type={showPassword ? "text" : "password"}
@@ -92,7 +109,10 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="confirmPassword">Confirm Password</label>
+                    <label class="form-label" for="confirmPassword"
+                        >{$t("auth.reset_password.confirm_password") ||
+                            "Confirm Password"}</label
+                    >
                     <div class="input-wrapper">
                         <input
                             type={showConfirmPassword ? "text" : "password"}
@@ -119,9 +139,9 @@
                     disabled={loading || !token}
                 >
                     {#if loading}
-                        Resetting...
+                        {$t("auth.reset_password.resetting") || "Resetting..."}
                     {:else}
-                        Reset Password
+                        {$t("auth.reset_password.submit") || "Reset Password"}
                     {/if}
                 </button>
             </form>

@@ -8,6 +8,8 @@
     import { formatMoney } from "$lib/utils/money";
     import { goto } from "$app/navigation";
     import { getTenantsCached } from "$lib/stores/superadminTenantsCache";
+    import { t } from "svelte-i18n";
+    import { get } from "svelte/store";
 
     type InvoiceStatus =
         | "all"
@@ -30,15 +32,43 @@
     let viewMode = $state<"cards" | "table">("cards");
     let isMobile = $state(false);
 
-    const columns = [
-        { key: "invoice_number", label: "Invoice #", sortable: true },
-        { key: "tenant", label: "Tenant", sortable: true },
-        { key: "amount", label: "Amount", sortable: true },
-        { key: "status", label: "Status", sortable: true },
-        { key: "due_date", label: "Due Date", sortable: true },
-        { key: "created_at", label: "Created At", sortable: true },
-        { key: "actions", label: "Actions", align: "right" },
-    ];
+    const columns = $derived.by(() => [
+        {
+            key: "invoice_number",
+            label: $t("superadmin.invoices.list.columns.invoice_number") || "Invoice #",
+            sortable: true,
+        },
+        {
+            key: "tenant",
+            label: $t("superadmin.invoices.list.columns.tenant") || "Tenant",
+            sortable: true,
+        },
+        {
+            key: "amount",
+            label: $t("superadmin.invoices.list.columns.amount") || "Amount",
+            sortable: true,
+        },
+        {
+            key: "status",
+            label: $t("superadmin.invoices.list.columns.status") || "Status",
+            sortable: true,
+        },
+        {
+            key: "due_date",
+            label: $t("superadmin.invoices.list.columns.due_date") || "Due Date",
+            sortable: true,
+        },
+        {
+            key: "created_at",
+            label: $t("superadmin.invoices.list.columns.created_at") || "Created At",
+            sortable: true,
+        },
+        {
+            key: "actions",
+            label: $t("superadmin.invoices.list.columns.actions") || "Actions",
+            align: "right",
+        },
+    ]);
 
     const stats = $derived({
         total: invoices.length,
@@ -118,7 +148,10 @@
             );
         } catch (e: any) {
             error = e.message || e.toString();
-            toast.error("Failed to load invoices");
+            toast.error(
+                get(t)("superadmin.invoices.list.errors.load_failed") ||
+                    "Failed to load invoices",
+            );
         } finally {
             loading = false;
         }
@@ -136,10 +169,16 @@
     async function checkStatus(id: string) {
         try {
             const status = await api.payment.checkStatus(id);
-            toast.success(`Invoice status: ${status}`);
+            toast.success(
+                (get(t)("superadmin.invoices.list.toasts.status") ||
+                    "Invoice status: ") + status,
+            );
             void loadInvoices();
         } catch (e: any) {
-            toast.error("Failed to check status: " + e.message);
+            toast.error(
+                (get(t)("superadmin.invoices.list.errors.check_failed") ||
+                    "Failed to check status: ") + e.message,
+            );
         }
     }
 </script>
@@ -147,25 +186,29 @@
 <div class="page-container fade-in">
     <div class="page-header">
         <div class="header-content">
-            <h1>All Invoices</h1>
+            <h1>{$t("superadmin.invoices.list.title") || "All Invoices"}</h1>
             <p class="subtitle">
-                Monitor all payments and transactions across the platform
+                {$t("superadmin.invoices.list.subtitle") ||
+                    "Monitor all payments and transactions across the platform"}
             </p>
         </div>
         <button class="btn btn-secondary" onclick={loadInvoices}>
             <Icon name="refresh-cw" size={18} />
-            <span>Refresh</span>
+            <span>{$t("common.refresh") || "Refresh"}</span>
         </button>
     </div>
 
-    <div class="stats-row" aria-label="Invoice stats">
+    <div
+        class="stats-row"
+        aria-label={$t("superadmin.invoices.aria.stats") || "Invoice stats"}
+    >
         <button
             class="stat-btn"
             class:active={statusFilter === "all"}
             type="button"
             onclick={() => (statusFilter = "all")}
         >
-            <div class="stat-title">All</div>
+            <div class="stat-title">{$t("superadmin.invoices.list.filters.all") || "All"}</div>
             <div class="stat-value">{stats.total}</div>
         </button>
         <button
@@ -174,7 +217,7 @@
             type="button"
             onclick={() => (statusFilter = "pending")}
         >
-            <div class="stat-title">Pending</div>
+            <div class="stat-title">{$t("superadmin.invoices.list.filters.pending") || "Pending"}</div>
             <div class="stat-value">{stats.pending}</div>
         </button>
         <button
@@ -183,7 +226,7 @@
             type="button"
             onclick={() => (statusFilter = "paid")}
         >
-            <div class="stat-title">Paid</div>
+            <div class="stat-title">{$t("superadmin.invoices.list.filters.paid") || "Paid"}</div>
             <div class="stat-value">{stats.paid}</div>
         </button>
         <button
@@ -192,7 +235,7 @@
             type="button"
             onclick={() => (statusFilter = "failed")}
         >
-            <div class="stat-title">Failed</div>
+            <div class="stat-title">{$t("superadmin.invoices.list.filters.failed") || "Failed"}</div>
             <div class="stat-value">{stats.failed}</div>
         </button>
     </div>
@@ -203,7 +246,10 @@
         {/if}
 
         <div class="toolbar-wrapper">
-            <TableToolbar bind:searchQuery={search} placeholder="Search invoices...">
+            <TableToolbar
+                bind:searchQuery={search}
+                placeholder={$t("superadmin.invoices.list.search") || "Search invoices..."}
+            >
                 {#snippet filters()}
                     <div class="filter-row">
                         <div class="status-filter">
@@ -213,7 +259,9 @@
                                 class:active={statusFilter === "all"}
                                 onclick={() => (statusFilter = "all")}
                             >
-                                All
+                                {$t("superadmin.invoices.list.filters.all") ||
+                                    $t("common.all") ||
+                                    "All"}
                             </button>
                             <button
                                 type="button"
@@ -221,7 +269,8 @@
                                 class:active={statusFilter === "pending"}
                                 onclick={() => (statusFilter = "pending")}
                             >
-                                Pending
+                                {$t("superadmin.invoices.list.filters.pending") ||
+                                    "Pending"}
                             </button>
                             <button
                                 type="button"
@@ -229,7 +278,8 @@
                                 class:active={statusFilter === "paid"}
                                 onclick={() => (statusFilter = "paid")}
                             >
-                                Paid
+                                {$t("superadmin.invoices.list.filters.paid") ||
+                                    "Paid"}
                             </button>
                             <button
                                 type="button"
@@ -237,7 +287,8 @@
                                 class:active={statusFilter === "failed"}
                                 onclick={() => (statusFilter = "failed")}
                             >
-                                Failed
+                                {$t("superadmin.invoices.list.filters.failed") ||
+                                    "Failed"}
                             </button>
                         </div>
 
@@ -246,7 +297,8 @@
                                 type="button"
                                 class="btn-icon view-btn"
                                 class:active={viewMode === "cards"}
-                                title="Cards view"
+                                title={$t("superadmin.invoices.list.view.cards") ||
+                                    "Cards view"}
                                 onclick={() => (viewMode = "cards")}
                             >
                                 <Icon name="grid" size={18} />
@@ -255,7 +307,8 @@
                                 type="button"
                                 class="btn-icon view-btn"
                                 class:active={viewMode === "table"}
-                                title="Table view"
+                                title={$t("superadmin.invoices.list.view.table") ||
+                                    "Table view"}
                                 onclick={() => (viewMode = "table")}
                             >
                                 <Icon name="list" size={18} />
@@ -269,19 +322,31 @@
         {#if loading}
             <div class="loading-state">
                 <div class="spinner"></div>
-                <p>Loading invoices...</p>
+                <p>
+                    {$t("superadmin.invoices.list.loading") ||
+                        "Loading invoices..."}
+                </p>
             </div>
         {:else if filteredInvoices.length === 0}
             <div class="empty-grid">
                 <div class="empty-icon">
                     <Icon name="file-text" size={56} />
                 </div>
-                <h4>No invoices found</h4>
-                <p>Try adjusting your search or filters.</p>
+                <h4>
+                    {$t("superadmin.invoices.list.empty") || "No invoices found"}
+                </h4>
+                <p>
+                    {$t("superadmin.invoices.list.empty_hint") ||
+                        "Try adjusting your search or filters."}
+                </p>
             </div>
         {:else}
             {#if viewMode === "cards" || isMobile}
-                <div class="invoices-grid" aria-label="Invoice cards">
+                <div
+                    class="invoices-grid"
+                    aria-label={$t("superadmin.invoices.aria.cards") ||
+                        "Invoice cards"}
+                >
                     {#each filteredInvoices as inv (inv.id)}
                         <div class="invoice-card">
                             <div class="invoice-top">
@@ -311,13 +376,19 @@
 
                             <div class="invoice-meta">
                                 <div class="meta-item">
-                                    <span class="meta-label">Amount</span>
+                                    <span class="meta-label">
+                                        {$t("superadmin.invoices.cards.amount") ||
+                                            "Amount"}
+                                    </span>
                                     <span class="meta-value">
                                         {formatCurrency(inv.amount, inv.currency_code)}
                                     </span>
                                 </div>
                                 <div class="meta-item">
-                                    <span class="meta-label">Due</span>
+                                    <span class="meta-label">
+                                        {$t("superadmin.invoices.cards.due") ||
+                                            "Due"}
+                                    </span>
                                     <span class="meta-value">
                                         {new Date(inv.due_date).toLocaleDateString()}
                                     </span>
@@ -328,7 +399,8 @@
                                 <button
                                     class="btn-icon"
                                     type="button"
-                                    title="Check Status"
+                                    title={$t("superadmin.invoices.actions.check_status") ||
+                                        "Check Status"}
                                     onclick={() => checkStatus(inv.id)}
                                 >
                                     <Icon name="refresh-cw" size={18} />
@@ -336,7 +408,8 @@
                                 <button
                                     class="btn-icon"
                                     type="button"
-                                    title="View Details"
+                                    title={$t("superadmin.invoices.actions.view_details") ||
+                                        "View Details"}
                                     onclick={() =>
                                         goto(`/superadmin/invoices/${inv.id}`)}
                                 >
@@ -349,7 +422,11 @@
             {/if}
 
             {#if viewMode === "table" && !isMobile}
-                <div class="table-wrapper" aria-label="Invoices table">
+                <div
+                    class="table-wrapper"
+                    aria-label={$t("superadmin.invoices.aria.table") ||
+                        "Invoices table"}
+                >
                     <Table
                         data={filteredInvoices}
                         {columns}
@@ -389,7 +466,8 @@
                                 <div class="actions">
                                     <button
                                         class="action-btn"
-                                        title="Check Status"
+                                        title={$t("superadmin.invoices.actions.check_status") ||
+                                            "Check Status"}
                                         type="button"
                                         onclick={() => checkStatus(item.id)}
                                     >
@@ -398,7 +476,8 @@
                                     <button
                                         type="button"
                                         class="action-btn"
-                                        title="View Details"
+                                        title={$t("superadmin.invoices.actions.view_details") ||
+                                            "View Details"}
                                         onclick={() =>
                                             goto(
                                                 `/superadmin/invoices/${item.id}`,

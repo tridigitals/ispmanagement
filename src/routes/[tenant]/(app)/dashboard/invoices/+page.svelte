@@ -5,19 +5,46 @@
     import Table from "$lib/components/Table.svelte";
     import { toast } from "$lib/stores/toast";
     import { formatMoney } from "$lib/utils/money";
+    import { goto } from "$app/navigation";
+    import { t } from "svelte-i18n";
+    import { get } from "svelte/store";
 
-    let invoices: Invoice[] = [];
-    let loading = true;
-    let error = "";
+    let invoices = $state<Invoice[]>([]);
+    let loading = $state(true);
+    let error = $state("");
 
-    const columns = [
-        { key: "invoice_number", label: "Invoice #", sortable: true },
-        { key: "description", label: "Description", sortable: true },
-        { key: "amount", label: "Amount", sortable: true },
-        { key: "status", label: "Status", sortable: true },
-        { key: "due_date", label: "Due Date", sortable: true },
-        { key: "actions", label: "Actions", align: "right" },
-    ];
+    const columns = $derived.by(() => [
+        {
+            key: "invoice_number",
+            label: $t("admin.subscription.invoices.invoice_number") || "Invoice #",
+            sortable: true,
+        },
+        {
+            key: "description",
+            label: $t("admin.subscription.invoices.description") || "Description",
+            sortable: true,
+        },
+        {
+            key: "amount",
+            label: $t("admin.subscription.invoices.amount") || "Amount",
+            sortable: true,
+        },
+        {
+            key: "status",
+            label: $t("admin.subscription.invoices.status") || "Status",
+            sortable: true,
+        },
+        {
+            key: "due_date",
+            label: $t("admin.subscription.invoices.due_date") || "Due Date",
+            sortable: true,
+        },
+        {
+            key: "actions",
+            label: $t("admin.subscription.invoices.actions") || "Actions",
+            align: "right",
+        },
+    ]);
 
     onMount(() => {
         loadInvoices();
@@ -29,7 +56,9 @@
             invoices = await api.payment.listInvoices();
         } catch (e: any) {
             error = e.toString();
-            toast.error("Failed to load invoices");
+            toast.error(
+                get(t)("admin.invoices.load_error") || "Failed to load invoices",
+            );
         } finally {
             loading = false;
         }
@@ -43,12 +72,15 @@
 <div class="page-container fade-in">
     <div class="page-header">
         <div class="header-content">
-            <h1>Billing & Invoices</h1>
-            <p class="subtitle">View and manage your subscription payments</p>
+            <h1>{$t("admin.invoices.title") || "Billing & Invoices"}</h1>
+            <p class="subtitle">
+                {$t("admin.invoices.subtitle") ||
+                    "View and manage your subscription payments"}
+            </p>
         </div>
         <button class="btn btn-secondary" onclick={loadInvoices}>
             <Icon name="refresh-cw" size={18} />
-            <span>Refresh</span>
+            <span>{$t("common.refresh") || "Refresh"}</span>
         </button>
     </div>
 
@@ -62,7 +94,8 @@
             data={invoices}
             {columns}
             searchable={true}
-            searchPlaceholder="Search invoices..."
+            searchPlaceholder={$t("admin.invoices.search_placeholder") ||
+                "Search invoices..."}
         >
             {#snippet cell({ item, column })}
                 {#if column.key === "amount"}
@@ -74,21 +107,24 @@
                 {:else if column.key === "actions"}
                     <div class="actions">
                         {#if item.status === "pending"}
-                            <a
-                                href="/pay/{item.id}"
+                            <button
+                                type="button"
                                 class="btn btn-primary btn-sm"
+                                onclick={() => goto(`/pay/${item.id}`)}
                             >
                                 <Icon name="credit-card" size={14} />
-                                Pay Now
-                            </a>
+                                {$t("admin.invoices.pay_now") || "Pay Now"}
+                            </button>
                         {:else}
-                            <a
-                                href="/pay/{item.id}"
+                            <button
+                                type="button"
                                 class="action-btn"
-                                title="View Details"
+                                title={$t("admin.invoices.view_details") || "View Details"}
+                                aria-label={$t("admin.invoices.view_details") || "View Details"}
+                                onclick={() => goto(`/pay/${item.id}`)}
                             >
                                 <Icon name="eye" size={18} />
-                            </a>
+                            </button>
                         {/if}
                     </div>
                 {:else}

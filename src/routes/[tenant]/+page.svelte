@@ -497,7 +497,7 @@
                             type="text"
                             bind:value={twoFactorCode}
                             maxlength="6"
-                            placeholder="000000"
+                            placeholder={$t("common.otp_placeholder") || "000000"}
                             class="otp-input"
                             autocomplete="one-time-code"
                         />
@@ -560,7 +560,7 @@
                             type="text"
                             bind:value={twoFactorCode}
                             maxlength="6"
-                            placeholder="000000"
+                            placeholder={$t("common.otp_placeholder") || "000000"}
                             class="otp-input"
                             autocomplete="one-time-code"
                         />

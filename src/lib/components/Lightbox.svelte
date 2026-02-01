@@ -3,6 +3,8 @@
     import { fade, scale } from "svelte/transition";
     import Icon from "./Icon.svelte";
     import { downloadFile } from "$lib/utils/download";
+    import { t } from "svelte-i18n";
+    import { get } from "svelte/store";
 
     let { index = $bindable(0), files = [], onclose } = $props();
 
@@ -54,10 +56,14 @@
             if (res.ok) {
                 textContent = await res.text();
             } else {
-                textContent = "Failed to load content.";
+                textContent =
+                    get(t)("components.lightbox.errors.load_failed") ||
+                    "Failed to load content.";
             }
         } catch (e) {
-            textContent = "Error loading content.";
+            textContent =
+                get(t)("components.lightbox.errors.load_error") ||
+                "Error loading content.";
         } finally {
             loadingText = false;
         }
@@ -126,7 +132,7 @@
         <div class="actions">
             <button
                 class="action-btn"
-                title="Download"
+                title={$t("common.download") || "Download"}
                 onclick={(e) => {
                     e.stopPropagation();
                     downloadFile(downloadUrl, currentFile.original_name);
@@ -141,11 +147,19 @@
     </div>
 
     <!-- Navigation Buttons -->
-    <button class="nav-btn prev" onclick={prev} title="Previous">
+    <button
+        class="nav-btn prev"
+        onclick={prev}
+        title={$t("common.previous") || "Previous"}
+    >
         <Icon name="chevron-left" size={32} />
     </button>
 
-    <button class="nav-btn next" onclick={next} title="Next">
+    <button
+        class="nav-btn next"
+        onclick={next}
+        title={$t("common.next") || "Next"}
+    >
         <Icon name="chevron-right" size={32} />
     </button>
 
@@ -195,10 +209,14 @@
                         data={fileSrc}
                         type="application/pdf"
                         class="pdf-viewer"
-                        title="PDF Preview"
+                        title={$t("components.lightbox.pdf_preview") || "PDF Preview"}
                     >
                         <div class="generic-file">
-                            <p>Browser does not support PDF preview.</p>
+                            <p>
+                                {$t(
+                                    "components.lightbox.pdf_unsupported",
+                                ) || "Browser does not support PDF preview."}
+                            </p>
                             <button
                                 class="btn-download"
                                 onclick={() =>
@@ -207,7 +225,8 @@
                                         currentFile.original_name,
                                     )}
                             >
-                                Download PDF
+                                {$t("components.lightbox.download_pdf") ||
+                                    "Download PDF"}
                             </button>
                         </div>
                     </object>
@@ -226,7 +245,10 @@
                             size={64}
                             class="mb-4 text-gray-400"
                         />
-                        <h3>Preview not available</h3>
+                        <h3>
+                            {$t("components.lightbox.preview_unavailable") ||
+                                "Preview not available"}
+                        </h3>
                         <p>{currentFile.original_name}</p>
                         <p class="text-sm text-gray-500 mb-6">
                             {formatSize(currentFile.size)}
@@ -240,7 +262,8 @@
                                 )}
                         >
                             <Icon name="download" size={18} />
-                            Download File
+                            {$t("components.lightbox.download_file") ||
+                                "Download File"}
                         </button>
                     </div>
                 {/if}

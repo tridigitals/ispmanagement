@@ -1,6 +1,7 @@
 <script lang="ts">
     import Modal from "./Modal.svelte";
     import Icon from "./Icon.svelte";
+    import { t } from "svelte-i18n";
 
     let { 
         show = $bindable(false), 
@@ -63,12 +64,17 @@
         {#if confirmationKeyword}
             <div class="confirmation-input">
                 <p class="instruction">
-                    Type <strong>{confirmationKeyword}</strong> to confirm.
+                    {$t("components.confirm_dialog.instruction_prefix") || "Type"}
+                    <strong>{confirmationKeyword}</strong>
+                    {$t("components.confirm_dialog.instruction_suffix") ||
+                        "to confirm."}
                 </p>
                 <input
                     type="text"
                     bind:value={inputValue}
-                    placeholder={`Type ${confirmationKeyword} here`}
+                    placeholder={$t("components.confirm_dialog.placeholder", {
+                        values: { keyword: confirmationKeyword },
+                    }) || `Type ${confirmationKeyword} here`}
                     class="confirm-input"
                 />
             </div>

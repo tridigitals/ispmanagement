@@ -1,7 +1,7 @@
 <script lang="ts">
     import "$lib/styles/global.css";
     import "../lib/i18n"; // Init i18n
-    import { waitLocale } from "svelte-i18n";
+    import { waitLocale, t } from "svelte-i18n";
     import { checkAuth, isAuthenticated, isSuperAdmin } from "$lib/stores/auth";
     import { appSettings } from "$lib/stores/settings";
     import { appLogo } from "$lib/stores/logo";
@@ -163,7 +163,7 @@
 {#if loading}
     <div class="loading-container">
         <div class="spinner"></div>
-        <p>Loading...</p>
+        <p>{$t("common.loading") || "Loading..."}</p>
     </div>
 {:else}
     <Toaster />

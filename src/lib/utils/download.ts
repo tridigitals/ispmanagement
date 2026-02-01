@@ -2,6 +2,8 @@ import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
 import { isTauri } from '@tauri-apps/api/core';
 import { toast } from 'svelte-sonner';
+import { t } from 'svelte-i18n';
+import { get } from 'svelte/store';
 
 /**
  * Downloads a file.
@@ -17,12 +19,16 @@ export async function downloadFile(url: string, filename: string) {
             // 1. Open Native Save Dialog
             const savePath = await save({
                 defaultPath: filename,
-                title: 'Save File'
+                title: get(t)('utils.download.save_title') || 'Save File'
             });
 
             if (!savePath) return; // User cancelled
 
-            const loadingToast = toast.loading(`Downloading ${filename}...`);
+            const loadingToast = toast.loading(
+                get(t)('utils.download.downloading', {
+                    values: { filename }
+                }) || `Downloading ${filename}...`
+            );
 
             // 2. Fetch the file content as binary
             // Note: We use standard fetch here. If you have authentication cookies/headers, 
@@ -33,7 +39,8 @@ export async function downloadFile(url: string, filename: string) {
                 }
             });
 
-            if (!response.ok) throw new Error('Download failed');
+            if (!response.ok)
+                throw new Error(get(t)('utils.download.failed_generic') || 'Download failed');
 
             const blob = await response.blob();
             const buffer = await blob.arrayBuffer();
@@ -43,11 +50,15 @@ export async function downloadFile(url: string, filename: string) {
             await writeFile(savePath, uint8Array);
 
             toast.dismiss(loadingToast);
-            toast.success('File saved successfully');
+            toast.success(get(t)('common.file_saved') || 'File saved successfully');
 
         } catch (e: any) {
             console.error('Download error:', e);
-            toast.error(`Download failed: ${e.message}`);
+            toast.error(
+                get(t)('utils.download.failed', {
+                    values: { message: e?.message || e }
+                }) || `Download failed: ${e.message}`
+            );
         }
     } else {
         // Web Fallback: Standard <a> tag download

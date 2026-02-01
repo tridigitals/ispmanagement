@@ -14,6 +14,7 @@
         type SuperadminPlan,
     } from "$lib/stores/superadminPlans";
     import { get } from "svelte/store";
+    import { t } from "svelte-i18n";
 
     let plans = $state<SuperadminPlan[]>([]);
     let loading = $state(true);
@@ -117,7 +118,11 @@
             plans = await api.plans.list();
             superadminPlansCache.set({ plans, fetchedAt: Date.now() });
         } catch (e: any) {
-            toast.error(e.message || "Failed to load data");
+            toast.error(
+                e.message ||
+                    get(t)("superadmin.plans.errors.load_failed") ||
+                    "Failed to load data",
+            );
         } finally {
             loading = false;
             isRefreshing = false;
@@ -170,11 +175,15 @@
 
     function confirmDeletePlan(plan: SuperadminPlan) {
         openConfirmDialog(
-            "Delete Plan",
-            `Delete "${plan.name}"? This action cannot be undone. Type DELETE to confirm.`,
+            get(t)("superadmin.plans.confirm.delete_title") || "Delete Plan",
+            get(t)("superadmin.plans.confirm.delete_message", {
+                values: { name: plan.name },
+            }) || `Delete "${plan.name}"? This action cannot be undone.`,
             async () => {
                 await api.plans.delete(plan.id);
-                toast.success("Plan deleted");
+                toast.success(
+                    get(t)("superadmin.plans.toasts.deleted") || "Plan deleted",
+                );
                 await loadData();
             },
             "danger",
@@ -185,17 +194,28 @@
     function confirmToggleActive(plan: SuperadminPlan) {
         if (plan.is_default && plan.is_active) {
             toast.error(
-                "Default plan cannot be deactivated. Set another default first.",
+                get(t)("superadmin.plans.errors.default_cannot_deactivate") ||
+                    "Default plan cannot be deactivated. Set another default first.",
             );
             return;
         }
 
         const next = !plan.is_active;
         openConfirmDialog(
-            next ? "Activate Plan" : "Deactivate Plan",
             next
-                ? `Activate "${plan.name}"? Tenants can be assigned to it again. Type ACTIVATE to confirm.`
-                : `Deactivate "${plan.name}"? Tenants can no longer be assigned to it. Type DEACTIVATE to confirm.`,
+                ? get(t)("superadmin.plans.confirm.activate_title") ||
+                  "Activate Plan"
+                : get(t)("superadmin.plans.confirm.deactivate_title") ||
+                  "Deactivate Plan",
+            next
+                ? get(t)("superadmin.plans.confirm.activate_message", {
+                      values: { name: plan.name },
+                  }) ||
+                  `Activate "${plan.name}"? Tenants can be assigned to it again.`
+                : get(t)("superadmin.plans.confirm.deactivate_message", {
+                      values: { name: plan.name },
+                  }) ||
+                  `Deactivate "${plan.name}"? Tenants can no longer be assigned to it.`,
             async () => {
                 await api.plans.update(
                     plan.id,
@@ -208,7 +228,13 @@
                     plan.is_default,
                     plan.sort_order,
                 );
-                toast.success(next ? "Plan activated" : "Plan deactivated");
+                toast.success(
+                    next
+                        ? get(t)("superadmin.plans.toasts.activated") ||
+                          "Plan activated"
+                        : get(t)("superadmin.plans.toasts.deactivated") ||
+                          "Plan deactivated",
+                );
                 await loadData();
             },
             next ? "info" : "warning",
@@ -220,8 +246,11 @@
         if (plan.is_default) return;
 
         openConfirmDialog(
-            "Set Default Plan",
-            `Make "${plan.name}" the default plan for new tenants? Type DEFAULT to confirm.`,
+            get(t)("superadmin.plans.confirm.default_title") ||
+                "Set Default Plan",
+            get(t)("superadmin.plans.confirm.default_message", {
+                values: { name: plan.name },
+            }) || `Make "${plan.name}" the default plan for new tenants?`,
             async () => {
                 const currentDefault = plans.find((p) => p.is_default);
                 if (currentDefault && currentDefault.id !== plan.id) {
@@ -250,7 +279,10 @@
                     plan.sort_order,
                 );
 
-                toast.success("Default plan updated");
+                toast.success(
+                    get(t)("superadmin.plans.toasts.default_updated") ||
+                        "Default plan updated",
+                );
                 await loadData();
             },
             "info",
@@ -259,26 +291,30 @@
     }
 
     function formatPrice(price: number): string {
-        if (!price || price <= 0) return "Free";
+        if (!price || price <= 0)
+            return $t("superadmin.plans.price.free") || "Free";
         return formatMoney(price);
     }
 </script>
 
 <svelte:head>
-    <title>Plans | Superadmin</title>
+    <title>{$t("superadmin.plans.page_title") || "Plans | Superadmin"}</title>
 </svelte:head>
 
 <div class="superadmin-content fade-in">
-    <div class="stats-row" aria-label="Plan stats">
+    <div
+        class="stats-row"
+        aria-label={$t("superadmin.plans.aria.stats") || "Plan stats"}
+    >
         <button
             class="stat-btn"
             class:active={statusFilter === "all"}
             onclick={() => (statusFilter = "all")}
             type="button"
-            title="Show all plans"
+            title={$t("superadmin.plans.stats.show_all") || "Show all plans"}
         >
             <StatsCard
-                title="All Plans"
+                title={$t("superadmin.plans.stats.all_title") || "All Plans"}
                 value={stats.total}
                 icon="credit-card"
                 color="primary"
@@ -289,10 +325,12 @@
             class:active={statusFilter === "active"}
             onclick={() => (statusFilter = "active")}
             type="button"
-            title="Show active plans"
+            title={$t("superadmin.plans.stats.show_active") || "Show active plans"}
         >
             <StatsCard
-                title="Active"
+                title={$t("superadmin.plans.stats.active_title") ||
+                    $t("common.active") ||
+                    "Active"}
                 value={stats.active}
                 icon="check-circle"
                 color="success"
@@ -303,10 +341,13 @@
             class:active={statusFilter === "inactive"}
             onclick={() => (statusFilter = "inactive")}
             type="button"
-            title="Show inactive plans"
+            title={$t("superadmin.plans.stats.show_inactive") ||
+                "Show inactive plans"}
         >
             <StatsCard
-                title="Inactive"
+                title={$t("superadmin.plans.stats.inactive_title") ||
+                    $t("common.inactive") ||
+                    "Inactive"}
                 value={stats.inactive}
                 icon="ban"
                 color="warning"
@@ -315,11 +356,12 @@
         <button
             class="stat-btn"
             type="button"
-            title="Current default plan"
+            title={$t("superadmin.plans.stats.current_default") ||
+                "Current default plan"}
             disabled={!stats.defaultPlan}
         >
             <StatsCard
-                title="Default"
+                title={$t("superadmin.plans.stats.default_title") || "Default"}
                 value={stats.defaultPlan?.name || "—"}
                 icon="star"
                 color="primary"
@@ -330,19 +372,28 @@
     <div class="glass-card">
         <div class="card-header glass">
             <div>
-                <h3>Subscription Plans</h3>
-                <span class="muted">Manage pricing tiers and plan status</span>
+                <h3>{$t("superadmin.plans.title") || "Subscription Plans"}</h3>
+                <span class="muted">
+                    {$t("superadmin.plans.subtitle") ||
+                        "Manage pricing tiers and plan status"}
+                </span>
             </div>
             <div class="header-actions">
                 {#if isRefreshing}
-                    <span class="refresh-pill" title="Refreshing...">
+                    <span
+                        class="refresh-pill"
+                        title={$t("superadmin.plans.refreshing_title") ||
+                            "Refreshing..."}
+                    >
                         <span class="spinner-sm"></span>
-                        Refreshing
+                        {$t("superadmin.plans.refreshing") || "Refreshing"}
                     </span>
                 {/if}
                 <button class="btn btn-primary" onclick={createPlan} type="button">
                     <Icon name="plus" size={18} />
-                    <span>New Plan</span>
+                    <span>
+                        {$t("superadmin.plans.actions.create") || "Create plan"}
+                    </span>
                 </button>
             </div>
         </div>
@@ -350,13 +401,13 @@
         {#if loading}
             <div class="loading-state">
                 <div class="spinner"></div>
-                <p>Loading plans...</p>
+                <p>{$t("superadmin.plans.loading") || "Loading plans..."}</p>
             </div>
         {:else}
             <div class="toolbar-wrapper">
                 <TableToolbar
                     bind:searchQuery={planSearch}
-                    placeholder="Search plans..."
+                    placeholder={$t("superadmin.plans.search") || "Search plans..."}
                 >
                     {#snippet filters()}
                         <div class="filter-row">
@@ -364,27 +415,33 @@
                                 <button
                                     type="button"
                                     class="filter-chip"
-                                    class:active={statusFilter === "all"}
-                                    onclick={() => (statusFilter = "all")}
-                                >
-                                    All
-                                </button>
+                                class:active={statusFilter === "all"}
+                                onclick={() => (statusFilter = "all")}
+                            >
+                                {$t("superadmin.plans.filters.all") ||
+                                    $t("common.all") ||
+                                    "All"}
+                            </button>
                                 <button
                                     type="button"
                                     class="filter-chip"
-                                    class:active={statusFilter === "active"}
-                                    onclick={() => (statusFilter = "active")}
-                                >
-                                    Active
-                                </button>
+                                class:active={statusFilter === "active"}
+                                onclick={() => (statusFilter = "active")}
+                            >
+                                {$t("superadmin.plans.filters.active") ||
+                                    $t("common.active") ||
+                                    "Active"}
+                            </button>
                                 <button
                                     type="button"
                                     class="filter-chip"
-                                    class:active={statusFilter === "inactive"}
-                                    onclick={() => (statusFilter = "inactive")}
-                                >
-                                    Inactive
-                                </button>
+                                class:active={statusFilter === "inactive"}
+                                onclick={() => (statusFilter = "inactive")}
+                            >
+                                {$t("superadmin.plans.filters.inactive") ||
+                                    $t("common.inactive") ||
+                                    "Inactive"}
+                            </button>
                             </div>
 
                             {#if !isMobile}
@@ -392,7 +449,8 @@
                                     type="button"
                                     class="btn-icon view-btn"
                                     class:active={viewMode === "cards"}
-                                    title="Cards view"
+                                    title={$t("superadmin.plans.view.cards") ||
+                                        "Cards view"}
                                     onclick={() => (viewMode = "cards")}
                                 >
                                     <Icon name="grid" size={18} />
@@ -401,7 +459,8 @@
                                     type="button"
                                     class="btn-icon view-btn"
                                     class:active={viewMode === "table"}
-                                    title="Table view"
+                                    title={$t("superadmin.plans.view.table") ||
+                                        "Table view"}
                                     onclick={() => (viewMode = "table")}
                                 >
                                     <Icon name="list" size={18} />
@@ -413,7 +472,10 @@
             </div>
 
             {#if viewMode === "cards" || isMobile}
-                <div class="plans-grid" aria-label="Plan cards">
+                <div
+                    class="plans-grid"
+                    aria-label={$t("superadmin.plans.aria.cards") || "Plan cards"}
+                >
                     {#each filteredPlans as plan (plan.id)}
                         <div
                             class="plan-card"
@@ -430,8 +492,11 @@
                                         {#if plan.is_default}
                                             <span
                                                 class="pill default"
-                                                title="Default plan"
-                                                >Default</span
+                                                title={$t(
+                                                    "superadmin.plans.badges.default_title",
+                                                ) || "Default plan"}
+                                                >{$t("superadmin.plans.badges.default") ||
+                                                    "Default"}</span
                                             >
                                         {/if}
                                         <span
@@ -439,12 +504,14 @@
                                                 ? 'active'
                                                 : 'inactive'}"
                                             title={plan.is_active
-                                                ? "Active"
-                                                : "Inactive"}
+                                                ? $t("common.active") || "Active"
+                                                : $t("common.inactive") ||
+                                                  "Inactive"}
                                         >
                                             {plan.is_active
-                                                ? "Active"
-                                                : "Inactive"}
+                                                ? $t("common.active") || "Active"
+                                                : $t("common.inactive") ||
+                                                  "Inactive"}
                                         </span>
                                     </div>
                                     <div class="plan-code">{plan.slug}</div>
@@ -453,13 +520,13 @@
                                     <div class="price-main">
                                         {formatPrice(plan.price_monthly)}<span
                                             class="unit"
-                                            >/mo</span
+                                            >{$t("common.per_month_short") || "/mo"}</span
                                         >
                                     </div>
                                     <div class="price-sub">
                                         {formatPrice(plan.price_yearly)}<span
                                             class="unit"
-                                            >/yr</span
+                                            >{$t("common.per_year_short") || "/yr"}</span
                                         >
                                     </div>
                                 </div>
@@ -469,14 +536,15 @@
                                 <div class="plan-desc">{plan.description}</div>
                             {:else}
                                 <div class="plan-desc muted-text">
-                                    No description
+                                    {$t("superadmin.plans.empty.description") ||
+                                        "No description"}
                                 </div>
                             {/if}
 
                             <div class="plan-actions">
                                 <button
                                     class="btn-icon"
-                                    title="Edit"
+                                    title={$t("common.edit") || "Edit"}
                                     type="button"
                                     onclick={(e) => {
                                         e.stopPropagation();
@@ -488,8 +556,11 @@
                                 <button
                                     class="btn-icon"
                                     title={plan.is_default
-                                        ? "Already default"
-                                        : "Set as default"}
+                                        ? $t(
+                                              "superadmin.plans.actions.already_default",
+                                          ) || "Already default"
+                                        : $t("superadmin.plans.actions.set_default") ||
+                                          "Set as default"}
                                     type="button"
                                     disabled={plan.is_default}
                                     onclick={(e) => {
@@ -504,8 +575,10 @@
                                         ? 'warn'
                                         : 'success'}"
                                     title={plan.is_active
-                                        ? "Deactivate"
-                                        : "Activate"}
+                                        ? $t("superadmin.plans.actions.deactivate") ||
+                                          "Deactivate"
+                                        : $t("superadmin.plans.actions.activate") ||
+                                          "Activate"}
                                     type="button"
                                     onclick={(e) => {
                                         e.stopPropagation();
@@ -521,7 +594,7 @@
                                 </button>
                                 <button
                                     class="btn-icon danger"
-                                    title="Delete"
+                                    title={$t("common.delete") || "Delete"}
                                     type="button"
                                     onclick={(e) => {
                                         e.stopPropagation();
@@ -539,21 +612,33 @@
                             <div class="empty-icon">
                                 <Icon name="credit-card" size={56} />
                             </div>
-                            <h4>No plans found</h4>
-                            <p>Try adjusting your search or filters.</p>
+                            <h4>
+                                {$t("superadmin.plans.empty.title") ||
+                                    "No plans found"}
+                            </h4>
+                            <p>
+                                {$t("superadmin.plans.empty.subtitle") ||
+                                    "Try adjusting your search or filters."}
+                            </p>
                             <button
                                 class="btn btn-primary"
                                 type="button"
                                 onclick={createPlan}
                             >
                                 <Icon name="plus" size={18} />
-                                <span>Create plan</span>
+                                <span>
+                                    {$t("superadmin.plans.actions.create") ||
+                                        "Create plan"}
+                                </span>
                             </button>
                         </div>
                     {/if}
                 </div>
             {:else if viewMode === "table" && !isMobile}
-                <div class="table-wrapper" aria-label="Plans table">
+                <div
+                    class="table-wrapper"
+                    aria-label={$t("superadmin.plans.aria.table") || "Plans table"}
+                >
                     <Table
                         columns={planColumns}
                         data={filteredPlans}
@@ -596,7 +681,8 @@
                                     </span>
                                     {#if item.is_default}
                                         <span class="badge primary"
-                                            >Default</span
+                                            >{$t("superadmin.plans.badges.default") ||
+                                                "Default"}</span
                                         >
                                     {/if}
                                 </div>
@@ -604,7 +690,7 @@
                                 <div class="table-actions">
                                     <button
                                         class="btn-icon"
-                                        title="Edit"
+                                        title={$t("common.edit") || "Edit"}
                                         type="button"
                                         onclick={() => editPlan(item)}
                                     >
@@ -613,8 +699,12 @@
                                     <button
                                         class="btn-icon"
                                         title={item.is_default
-                                            ? "Already default"
-                                            : "Set as default"}
+                                            ? $t(
+                                                  "superadmin.plans.actions.already_default",
+                                              ) || "Already default"
+                                            : $t(
+                                                  "superadmin.plans.actions.set_default",
+                                              ) || "Set as default"}
                                         type="button"
                                         disabled={item.is_default}
                                         onclick={() => confirmSetDefault(item)}
@@ -626,8 +716,12 @@
                                             ? 'warn'
                                             : 'success'}"
                                         title={item.is_active
-                                            ? "Deactivate"
-                                            : "Activate"}
+                                            ? $t(
+                                                  "superadmin.plans.actions.deactivate",
+                                              ) || "Deactivate"
+                                            : $t(
+                                                  "superadmin.plans.actions.activate",
+                                              ) || "Activate"}
                                         type="button"
                                         onclick={() =>
                                             confirmToggleActive(item)}
@@ -641,7 +735,7 @@
                                     </button>
                                     <button
                                         class="btn-icon danger"
-                                        title="Delete"
+                                        title={$t("common.delete") || "Delete"}
                                         type="button"
                                         onclick={() => confirmDeletePlan(item)}
                                     >

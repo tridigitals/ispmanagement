@@ -1,20 +1,24 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
     import { user } from '$lib/stores/auth';
+    import { t } from "svelte-i18n";
 </script>
 
 <div class="unauthorized-page fade-in">
     <div class="content">
         <div class="lock-icon">🛡️</div>
         <div class="error-code">403</div>
-        <h1>Access Denied</h1>
+        <h1>{$t("pages.unauthorized.title") || "Access Denied"}</h1>
         <p class="message">
-            Sorry, <strong>{$user?.name || 'User'}</strong>. You don't have the required permissions to view this page. This area is restricted to system administrators.
+            {$t("pages.unauthorized.sorry") || "Sorry,"}
+            <strong>{$user?.name || $t("profile.fallback.user") || "User"}</strong>.
+            {$t("pages.unauthorized.message") ||
+                "You don't have the required permissions to view this page. This area is restricted to system administrators."}
         </p>
         
         <div class="actions">
             <button class="btn btn-primary" on:click={() => goto('/dashboard')}>
-                Return to Safety
+                {$t("pages.unauthorized.back") || "Return to Safety"}
             </button>
         </div>
     </div>

@@ -9,6 +9,7 @@
     import { formatMoney } from "$lib/utils/money";
     import { superadminPlansCache } from "$lib/stores/superadminPlans";
     import { get } from "svelte/store";
+    import { t } from "svelte-i18n";
 
     let id = $state("");
     let isNew = $state(true);
@@ -97,7 +98,10 @@
                 await saveFeatures(created.id);
 
                 upsertPlanCache(created);
-                toast.success("Plan created successfully");
+                toast.success(
+                    get(t)("superadmin.plans.editor.toasts.created") ||
+                        "Plan created successfully",
+                );
                 goto("/superadmin/plans");
             } else {
                 // Update Plan
@@ -115,10 +119,17 @@
                 await saveFeatures(id);
 
                 upsertPlanCache({ ...planData, id });
-                toast.success("Plan updated successfully");
+                toast.success(
+                    get(t)("superadmin.plans.editor.toasts.updated") ||
+                        "Plan updated successfully",
+                );
             }
         } catch (e: any) {
-            toast.error(e.message || "Failed to save plan");
+            toast.error(
+                e.message ||
+                    get(t)("superadmin.plans.editor.errors.save_failed") ||
+                    "Failed to save plan",
+            );
         } finally {
             saving = false;
         }
@@ -162,20 +173,31 @@
 </script>
 
 <svelte:head>
-    <title>{isNew ? "New Plan" : planData.name} | Superadmin</title>
+    <title>{isNew ? ($t("superadmin.plans.editor.head.new") || "New Plan") : planData.name} | Superadmin</title>
 </svelte:head>
 
 <div class="plan-detail-page">
     <div class="page-header">
         <div class="header-content">
-            <h1>{isNew ? "Create New Plan" : `Edit ${planData.name}`}</h1>
-            <div class="actions" aria-label="Plan actions">
+            <h1>
+                {isNew
+                    ? $t("superadmin.plans.editor.header.create_title") ||
+                      "Create New Plan"
+                    : $t("superadmin.plans.editor.header.edit_title", {
+                          values: { name: planData.name },
+                      }) || `Edit ${planData.name}`}
+            </h1>
+            <div
+                class="actions"
+                aria-label={$t("superadmin.plans.editor.aria.actions") ||
+                    "Plan actions"}
+            >
                 <button
                     class="btn btn-secondary"
                     type="button"
                     onclick={() => goto("/superadmin/plans")}
                 >
-                    Cancel
+                    {$t("common.cancel") || "Cancel"}
                 </button>
                 <button
                     class="btn btn-primary"
@@ -183,16 +205,25 @@
                     disabled={saving}
                     type="button"
                 >
-                    {#if saving}Saving...{:else}Save Plan{/if}
+                    {#if saving}
+                        {$t("common.saving") || "Saving..."}
+                    {:else}
+                        {$t("superadmin.plans.editor.actions.save") || "Save Plan"}
+                    {/if}
                 </button>
             </div>
         </div>
     </div>
 
     {#if loading}
-        <div class="loading">Loading...</div>
+        <div class="loading">{$t("common.loading") || "Loading..."}</div>
     {:else}
-        <div class="tabs" role="tablist" aria-label="Plan editor tabs">
+        <div
+            class="tabs"
+            role="tablist"
+            aria-label={$t("superadmin.plans.editor.aria.tabs") ||
+                "Plan editor tabs"}
+        >
             <button
                 class="tab {activeTab === 'general' ? 'active' : ''}"
                 onclick={() => (activeTab = "general")}
@@ -200,7 +231,7 @@
                 role="tab"
                 aria-selected={activeTab === "general"}
             >
-                General
+                {$t("superadmin.plans.editor.tabs.general") || "General"}
             </button>
             <button
                 class="tab {activeTab === 'features' ? 'active' : ''}"
@@ -209,7 +240,7 @@
                 role="tab"
                 aria-selected={activeTab === "features"}
             >
-                Features & Limits
+                {$t("superadmin.plans.editor.tabs.features") || "Features & Limits"}
             </button>
         </div>
 
@@ -217,30 +248,44 @@
             {#if activeTab === "general"}
                 <div class="form-grid fade-in">
                     <div class="form-group">
-                        <label for="name">Plan Name</label>
+                        <label for="name">
+                            {$t("superadmin.plans.editor.fields.name") || "Plan Name"}
+                        </label>
                         <input
                             id="name"
                             type="text"
                             bind:value={planData.name}
                             oninput={onNameChange}
-                            placeholder="e.g. Pro Plan"
+                            placeholder={$t(
+                                "superadmin.plans.editor.placeholders.name",
+                            ) || "e.g. Pro Plan"}
                         />
                     </div>
 
                     <div class="form-group">
-                        <label for="slug">Slug (Code)</label>
+                        <label for="slug">
+                            {$t("superadmin.plans.editor.fields.slug") || "Slug (Code)"}
+                        </label>
                         <input
                             id="slug"
                             type="text"
                             bind:value={planData.slug}
                             disabled={!isNew}
-                            placeholder="e.g. pro-plan"
+                            placeholder={$t(
+                                "superadmin.plans.editor.placeholders.slug",
+                            ) || "e.g. pro-plan"}
                         />
-                        <small>Unique identifier used in code/API.</small>
+                        <small>
+                            {$t("superadmin.plans.editor.help.slug") ||
+                                "Unique identifier used in code/API."}
+                        </small>
                     </div>
 
                     <div class="form-group full-width">
-                        <label for="description">Description</label>
+                        <label for="description">
+                            {$t("superadmin.plans.editor.fields.description") ||
+                                "Description"}
+                        </label>
                         <textarea
                             id="description"
                             bind:value={planData.description}
@@ -293,7 +338,10 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="sort_order">Sort Order</label>
+                        <label for="sort_order"
+                            >{$t("superadmin.plans.editor.fields.sort_order") ||
+                                "Sort Order"}</label
+                        >
                         <input
                             id="sort_order"
                             type="number"

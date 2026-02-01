@@ -3,6 +3,7 @@ import { notifications as api, type Notification, type NotificationPreference } 
 import { toast } from 'svelte-sonner';
 import { sendNotification } from '@tauri-apps/plugin-notification';
 import { isTauri } from '@tauri-apps/api/core';
+import { t } from 'svelte-i18n';
 
 const UNREAD_REFRESH_MIN_INTERVAL_MS = 15_000;
 let lastUnreadRefreshAt = 0;
@@ -202,13 +203,19 @@ export async function checkSubscription() {
  */
 export async function subscribePush() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        toast.error('Push notifications not supported');
+        toast.error(
+            get(t)('notifications.toasts.push_not_supported') ||
+                'Push notifications not supported',
+        );
         return;
     }
 
     // 1. Check if blocked
     if (Notification.permission === 'denied') {
-        toast.error('Notifications are blocked. Please allow notifications in your browser settings.');
+        toast.error(
+            get(t)('notifications.toasts.blocked') ||
+                'Notifications are blocked. Please allow notifications in your browser settings.',
+        );
         return;
     }
 
@@ -216,7 +223,10 @@ export async function subscribePush() {
         // 2. Request permission explicitly
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') {
-            toast.warning('Permission denied. You need to allow notifications.');
+            toast.warning(
+                get(t)('notifications.toasts.permission_denied') ||
+                    'Permission denied. You need to allow notifications.',
+            );
             return;
         }
 
@@ -225,7 +235,10 @@ export async function subscribePush() {
 
         if (!vapidPublicKey) {
             console.error('VAPID public key not found');
-            toast.error('Configuration error: Missing VAPID key');
+            toast.error(
+                get(t)('notifications.toasts.missing_vapid') ||
+                    'Configuration error: Missing VAPID key',
+            );
             return;
         }
 
@@ -253,14 +266,22 @@ export async function subscribePush() {
                 toBase64Url(auth)
             );
             pushEnabled.set(true);
-            toast.success('Push notifications enabled successfully!');
+            toast.success(
+                get(t)('notifications.toasts.enabled') ||
+                    'Push notifications enabled successfully!',
+            );
         } else {
             console.warn('Push subscription missing keys');
         }
 
     } catch (e) {
         console.error('Failed to subscribe to push:', e);
-        toast.error(`Error: ${e instanceof Error ? e.message : 'Unknown error'}`);
+        const msg = e instanceof Error ? e.message : 'Unknown error';
+        toast.error(
+            get(t)('notifications.toasts.generic_error', {
+                values: { message: msg },
+            }) || `Error: ${msg}`,
+        );
     }
 }
 
@@ -278,7 +299,10 @@ export async function unsubscribePush() {
             await subscription.unsubscribe();
             await api.unsubscribePush(subscription.endpoint);
             pushEnabled.set(false);
-            toast.success('Push notifications disabled');
+            toast.success(
+                get(t)('notifications.toasts.disabled') ||
+                    'Push notifications disabled',
+            );
         }
     } catch (e) {
         console.error('Failed to unsubscribe push:', e);
@@ -291,10 +315,16 @@ export async function unsubscribePush() {
 export async function sendTestNotification() {
     try {
         await api.sendTest();
-        toast.success('Test notification sent!');
+        toast.success(
+            get(t)('notifications.toasts.test_sent') ||
+                'Test notification sent!',
+        );
     } catch (e) {
         console.error('Failed to send test notification:', e);
-        toast.error('Failed to send test notification');
+        toast.error(
+            get(t)('notifications.toasts.test_failed') ||
+                'Failed to send test notification',
+        );
     }
 }
 

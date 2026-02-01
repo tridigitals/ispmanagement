@@ -2,6 +2,7 @@
     import Icon from "./Icon.svelte";
     import { createEventDispatcher } from "svelte";
     import { fade, fly } from "svelte/transition";
+    import { t } from "svelte-i18n";
 
     export let items: Array<{ id: string; label: string; icon: string }> = [];
     export let activeTab: string = "";
@@ -22,7 +23,7 @@
     <button
         class="mobile-fab"
         on:click={() => (isOpen = !isOpen)}
-        aria-label="Open Menu"
+        aria-label={$t("components.mobile_fab.open_menu") || "Open Menu"}
         type="button"
     >
         <Icon name={isOpen ? "x" : "settings"} size={24} />
@@ -48,7 +49,12 @@
             >
                 <div class="mobile-menu-header">
                     <h3>{title}</h3>
-                    <button class="close-btn" on:click={() => (isOpen = false)}>
+                    <button
+                        class="close-btn"
+                        on:click={() => (isOpen = false)}
+                        aria-label={$t("common.close") || "Close"}
+                        type="button"
+                    >
                         <Icon name="x" size={20} />
                     </button>
                 </div>

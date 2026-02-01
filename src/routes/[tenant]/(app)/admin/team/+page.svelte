@@ -13,15 +13,19 @@
     import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
     import { toast } from "svelte-sonner";
     import { t } from "svelte-i18n";
+    import { get } from "svelte/store";
     import type { TeamMember, Role } from "$lib/api/client";
 
-    const columns = [
-        { key: "member", label: "Member" },
-        { key: "role", label: "Role" },
-        { key: "status", label: "Status" },
-        { key: "created_at", label: "Date Added" },
+    const columns = $derived.by(() => [
+        { key: "member", label: $t("admin.team.columns.member") || "Member" },
+        { key: "role", label: $t("admin.team.columns.role") || "Role" },
+        { key: "status", label: $t("admin.team.columns.status") || "Status" },
+        {
+            key: "created_at",
+            label: $t("admin.team.columns.created_at") || "Date Added",
+        },
         { key: "actions", label: "", align: "right" as const },
-    ];
+    ]);
 
     let teamMembers = $state<TeamMember[]>([]);
     let roles = $state<Role[]>([]);
@@ -77,7 +81,10 @@
     );
 
     let roleOptions = $derived([
-        { label: "All Roles", value: "all" },
+        {
+            label: $t("admin.team.filters.all_roles") || "All Roles",
+            value: "all",
+        },
         ...roles.map((r) => ({ label: r.name, value: r.id })),
     ]);
 
@@ -105,7 +112,10 @@
             }
         } catch (e: any) {
             error = e.toString();
-            toast.error("Failed to load team data");
+            toast.error(
+                get(t)("admin.team.toasts.load_failed") ||
+                    "Failed to load team data",
+            );
         } finally {
             loading = false;
         }
@@ -126,9 +136,16 @@
             inviteEmail = "";
             inviteName = "";
             invitePassword = "";
-            toast.success("Team member added successfully");
+            toast.success(
+                get(t)("admin.team.toasts.added") ||
+                    "Team member added successfully",
+            );
         } catch (e: any) {
-            toast.error("Failed to add member: " + e.message);
+            toast.error(
+                get(t)("admin.team.toasts.add_failed", {
+                    values: { message: e?.message || e },
+                }) || "Failed to add member: " + e.message,
+            );
         } finally {
             inviting = false;
         }
@@ -146,11 +163,18 @@
         try {
             await api.team.remove(target.id);
             teamMembers = teamMembers.filter((m) => m.id !== target.id);
-            toast.success("Member removed successfully");
+            toast.success(
+                get(t)("admin.team.toasts.removed") ||
+                    "Member removed successfully",
+            );
             showDeleteModal = false;
             memberToDelete = null;
         } catch (e: any) {
-            toast.error("Failed to remove member: " + e.message);
+            toast.error(
+                get(t)("admin.team.toasts.remove_failed", {
+                    values: { message: e?.message || e },
+                }) || "Failed to remove member: " + e.message,
+            );
         } finally {
             isDeleting = false;
         }
@@ -175,11 +199,18 @@
                 teamMembers[index].role_name = role?.name || "";
                 teamMembers = [...teamMembers];
             }
-            toast.success("Member role updated successfully");
+            toast.success(
+                get(t)("admin.team.toasts.role_updated") ||
+                    "Member role updated successfully",
+            );
             showEditModal = false;
             editingMember = null;
         } catch (e: any) {
-            toast.error("Failed to update role: " + e.message);
+            toast.error(
+                get(t)("admin.team.toasts.role_update_failed", {
+                    values: { message: e?.message || e },
+                }) || "Failed to update role: " + e.message,
+            );
         } finally {
             savingRole = false;
         }
@@ -194,12 +225,12 @@
             class="stat-btn"
             class:active={statusFilter === "all"}
             onclick={() => (statusFilter = "all")}
-            aria-label="Show all members"
-            title="Show all members"
+            aria-label={$t("admin.team.stats.show_all") || "Show all members"}
+            title={$t("admin.team.stats.show_all") || "Show all members"}
             type="button"
         >
             <StatsCard
-                title="Total Members"
+                title={$t("admin.team.stats.total_title") || "Total Members"}
                 value={stats.total}
                 icon="users"
                 color="primary"
@@ -209,12 +240,12 @@
             class="stat-btn"
             class:active={statusFilter === "active"}
             onclick={() => (statusFilter = "active")}
-            aria-label="Show active members"
-            title="Show active members"
+            aria-label={$t("admin.team.stats.show_active") || "Show active members"}
+            title={$t("admin.team.stats.show_active") || "Show active members"}
             type="button"
         >
             <StatsCard
-                title="Active Members"
+                title={$t("admin.team.stats.active_title") || "Active Members"}
                 value={stats.active}
                 icon="check-circle"
                 color="success"
@@ -224,12 +255,13 @@
             class="stat-btn"
             class:active={statusFilter === "inactive"}
             onclick={() => (statusFilter = "inactive")}
-            aria-label="Show inactive members"
-            title="Show inactive members"
+            aria-label={$t("admin.team.stats.show_inactive") ||
+                "Show inactive members"}
+            title={$t("admin.team.stats.show_inactive") || "Show inactive members"}
             type="button"
         >
             <StatsCard
-                title="Inactive Members"
+                title={$t("admin.team.stats.inactive_title") || "Inactive Members"}
                 value={stats.inactive}
                 icon="slash"
                 color="warning"
@@ -242,14 +274,21 @@
             <div>
                 <h3>{$t("admin.team.title") || "Team Members"}</h3>
                 <span class="muted"
-                    >Manage your organization members and access</span
+                    >{$t("admin.team.subtitle") ||
+                        "Manage your organization members and access"}</span
                 >
             </div>
-            <span class="count-badge">{stats.total} members</span>
+            <span class="count-badge">
+                {$t("admin.team.count", { values: { count: stats.total } }) ||
+                    `${stats.total} members`}
+            </span>
         </div>
 
         <div class="toolbar-wrapper">
-            <TableToolbar bind:searchQuery placeholder="Search members...">
+            <TableToolbar
+                bind:searchQuery
+                placeholder={$t("admin.team.search") || "Search members..."}
+            >
                 {#snippet filters()}
                     <div class="filter-dropdown">
                         <Select bind:value={roleFilter} options={roleOptions} width="100%" />
@@ -261,7 +300,9 @@
                             class:active={statusFilter === "all"}
                             onclick={() => (statusFilter = "all")}
                         >
-                            All
+                            {$t("admin.team.filters.all") ||
+                                $t("common.all") ||
+                                "All"}
                         </button>
                         <button
                             type="button"
@@ -269,7 +310,9 @@
                             class:active={statusFilter === "active"}
                             onclick={() => (statusFilter = "active")}
                         >
-                            Active
+                            {$t("admin.team.filters.active") ||
+                                $t("common.active") ||
+                                "Active"}
                         </button>
                         <button
                             type="button"
@@ -277,7 +320,9 @@
                             class:active={statusFilter === "inactive"}
                             onclick={() => (statusFilter = "inactive")}
                         >
-                            Inactive
+                            {$t("admin.team.filters.inactive") ||
+                                $t("common.inactive") ||
+                                "Inactive"}
                         </button>
                     </div>
                 {/snippet}
@@ -299,7 +344,9 @@
             <div class="error-state">
                 <Icon name="alert-circle" size={48} color="#ef4444" />
                 <p>{error}</p>
-                <button class="btn btn-glass" onclick={loadData}>Retry</button>
+                <button class="btn btn-glass" onclick={loadData}>
+                    {$t("common.retry") || "Retry"}
+                </button>
             </div>
         {:else}
             <div class="table-wrapper">
@@ -308,15 +355,21 @@
                     {columns}
                     data={filteredMembers}
                     {loading}
-                    emptyText="No members found"
+                    emptyText={$t("admin.team.empty.no_results") || "No members found"}
                 >
                     {#snippet empty()}
                         <div class="empty-state-container">
                             <div class="empty-icon">
                                 <Icon name="users" size={64} />
                             </div>
-                            <h3>No members found</h3>
-                            <p>Try adjusting your search or filters.</p>
+                            <h3>
+                                {$t("admin.team.empty.no_results") ||
+                                    "No members found"}
+                            </h3>
+                            <p>
+                                {$t("admin.team.empty.try_adjusting") ||
+                                    "Try adjusting your search or filters."}
+                            </p>
                         </div>
                     {/snippet}
 
@@ -330,7 +383,9 @@
                                     <div class="member-name">
                                         {item.name}
                                         {#if item.email === $user?.email}
-                                            <span class="you-badge">YOU</span>
+                                            <span class="you-badge"
+                                                >{$t("common.you") || "YOU"}</span
+                                            >
                                         {/if}
                                     </div>
                                     <div class="text-muted" style="font-size: 0.85rem">
@@ -340,12 +395,14 @@
                             </div>
                         {:else if key === "role"}
                             <span class="role-pill {item.role_name?.toLowerCase() || 'member'}">
-                                {item.role_name || "Member"}
+                                {item.role_name || ($t("admin.team.roles.member") || "Member")}
                             </span>
                         {:else if key === "status"}
                             <span class="status-pill {item.is_active ? 'active' : 'inactive'}">
                                 <span class="dot"></span>
-                                {item.is_active ? "Active" : "Inactive"}
+                                {item.is_active
+                                    ? $t("common.active") || "Active"
+                                    : $t("common.inactive") || "Inactive"}
                             </span>
                         {:else if key === "created_at"}
                             {new Date(item.created_at).toLocaleDateString()}
@@ -354,21 +411,26 @@
                                 {#if $can("update", "team") && myRoleLevel > (roles.find((r) => r.id === item.role_id)?.level || 0)}
                                     <button
                                         class="btn-icon primary"
-                                        title="Edit Role"
+                                        title={$t("admin.team.actions.edit_role") || "Edit Role"}
                                         onclick={() => openEditModal(item)}
                                     >
                                         <Icon name="edit" size={18} />
-                                        <span class="btn-text">Edit</span>
+                                        <span class="btn-text">
+                                            {$t("common.edit") || "Edit"}
+                                        </span>
                                     </button>
                                 {/if}
                                 {#if item.email !== $user?.email && $can("delete", "team") && myRoleLevel > (roles.find((r) => r.id === item.role_id)?.level || 0)}
                                     <button
                                         class="btn-icon danger"
-                                        title="Remove Member"
+                                        title={$t("admin.team.actions.remove_member") ||
+                                            "Remove Member"}
                                         onclick={() => confirmRemove(item)}
                                     >
                                         <Icon name="trash" size={18} />
-                                        <span class="btn-text">Delete</span>
+                                        <span class="btn-text">
+                                            {$t("common.delete") || "Delete"}
+                                        </span>
                                     </button>
                                 {/if}
                             </div>
@@ -382,9 +444,12 @@
 
 <ConfirmDialog
     bind:show={showDeleteModal}
-    title="Remove Team Member"
-    message={`Are you sure you want to remove ${memberToDelete?.name} from the team? They will lose access immediately.`}
-    confirmText="Remove Member"
+    title={$t("admin.team.remove.title") || "Remove Team Member"}
+    message={$t("admin.team.remove.message", {
+        values: { name: memberToDelete?.name || "" },
+    }) ||
+        `Are you sure you want to remove ${memberToDelete?.name} from the team? They will lose access immediately.`}
+    confirmText={$t("admin.team.remove.confirm") || "Remove Member"}
     type="danger"
     loading={isDeleting}
     onconfirm={handleConfirmDelete}
@@ -407,7 +472,7 @@
                 <input
                     type="text"
                     bind:value={inviteName}
-                    placeholder="John Doe"
+                    placeholder={$t("admin.team.placeholders.name") || "John Doe"}
                     required
                 />
             </label>
@@ -418,7 +483,8 @@
                 <input
                     type="email"
                     bind:value={inviteEmail}
-                    placeholder="colleague@company.com"
+                    placeholder={$t("admin.team.placeholders.email") ||
+                        "colleague@company.com"}
                     required
                 />
             </label>
@@ -429,7 +495,8 @@
                 <input
                     type="text"
                     bind:value={invitePassword}
-                    placeholder="Auto-generated if empty"
+                    placeholder={$t("admin.team.placeholders.password_auto") ||
+                        "Auto-generated if empty"}
                 />
             </label>
         </div>
@@ -453,7 +520,7 @@
             </button>
             <button type="submit" class="btn btn-primary" disabled={inviting}>
                 {inviting
-                    ? "Saving..."
+                    ? $t("common.saving") || "Saving..."
                     : $t("admin.team.submit") || "Add Member"}
             </button>
         </div>
@@ -462,7 +529,7 @@
 
 <Modal
     show={showEditModal}
-    title="Edit Member Role"
+    title={$t("admin.team.edit_role.title") || "Edit Member Role"}
     onclose={() => (showEditModal = false)}
 >
     <form
@@ -473,7 +540,7 @@
     >
         <div class="form-group">
             <label>
-                Member Name
+                {$t("admin.team.edit_role.member_name") || "Member Name"}
                 <input
                     type="text"
                     value={editingMember?.name}
@@ -484,7 +551,7 @@
         </div>
         <div class="form-group">
             <label>
-                Role
+                {$t("admin.team.edit_role.role_label") || "Role"}
                 <select bind:value={editRoleId} required>
                     {#each roles as role}
                         <option value={role.id}>{role.name}</option>
@@ -498,10 +565,12 @@
                 class="btn btn-ghost"
                 onclick={() => (showEditModal = false)}
             >
-                Cancel
+                {$t("common.cancel") || "Cancel"}
             </button>
             <button type="submit" class="btn btn-primary" disabled={savingRole}>
-                {savingRole ? "Saving..." : "Save Changes"}
+                {savingRole
+                    ? $t("common.saving") || "Saving..."
+                    : $t("common.save_changes") || "Save Changes"}
             </button>
         </div>
     </form>

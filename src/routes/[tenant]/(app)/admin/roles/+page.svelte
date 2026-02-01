@@ -11,6 +11,7 @@
     import { t } from "svelte-i18n";
     import type { Role, Permission } from "$lib/api/client";
     import { toast } from "svelte-sonner";
+    import { get } from "svelte/store";
 
     let roles = $state<Role[]>([]);
     let permissions = $state<Permission[]>([]);
@@ -31,14 +32,20 @@
         ),
     );
 
-    // Table Columns
-    const columns = [
-        { key: "name", label: "Role Name" },
-        { key: "type", label: "Type", width: "120px" },
-        { key: "level", label: "Level", width: "80px" },
-        { key: "permissions", label: "Permissions" },
+    // Table Columns (i18n)
+    const columns = $derived.by(() => [
+        {
+            key: "name",
+            label: $t("admin.roles.columns.name") || "Role Name",
+        },
+        { key: "type", label: $t("admin.roles.columns.type") || "Type", width: "120px" },
+        { key: "level", label: $t("admin.roles.columns.level") || "Level", width: "80px" },
+        {
+            key: "permissions",
+            label: $t("admin.roles.columns.permissions") || "Permissions",
+        },
         { key: "actions", label: "", align: "right" as const, width: "140px" },
-    ];
+    ]);
 
     // Modal state
     let showModal = $state(false);
@@ -147,7 +154,10 @@
                     roleLevel,
                     permsArray,
                 );
-                toast.success("Role updated successfully");
+                toast.success(
+                    get(t)("admin.roles.toasts.updated") ||
+                        "Role updated successfully",
+                );
             } else {
                 await api.roles.create(
                     roleName,
@@ -155,13 +165,20 @@
                     roleLevel,
                     permsArray,
                 );
-                toast.success("Role created successfully");
+                toast.success(
+                    get(t)("admin.roles.toasts.created") ||
+                        "Role created successfully",
+                );
             }
 
             await loadData();
             showModal = false;
         } catch (e: any) {
-            toast.error(e.message || "Failed to save role");
+            toast.error(
+                e.message ||
+                    get(t)("admin.roles.errors.save_failed") ||
+                    "Failed to save role",
+            );
             console.error(e);
         } finally {
             saving = false;
@@ -178,12 +195,18 @@
         isDeleting = true;
         try {
             await api.roles.delete(roleToDelete.id);
-            toast.success("Role deleted successfully");
+            toast.success(
+                get(t)("admin.roles.toasts.deleted") ||
+                    "Role deleted successfully",
+            );
             await loadData();
             showDeleteModal = false;
             roleToDelete = null;
         } catch (e: any) {
-            toast.error("Failed to delete role: " + e.message);
+            toast.error(
+                (get(t)("admin.roles.errors.delete_failed") ||
+                    "Failed to delete role: ") + e.message,
+            );
         } finally {
             isDeleting = false;
         }
@@ -194,14 +217,22 @@
     <div class="glass-card">
         <div class="card-header glass">
             <div>
-                <h3>All Roles</h3>
-                <span class="muted">Manage role definitions and permissions</span>
+                <h3>{$t("admin.roles.title") || "All Roles"}</h3>
+                <span class="muted">
+                    {$t("admin.roles.subtitle") ||
+                        "Manage role definitions and permissions"}
+                </span>
             </div>
-            <span class="count-badge">{filteredRoles.length} roles</span>
+            <span class="count-badge">
+                {filteredRoles.length} {$t("admin.roles.count") || "roles"}
+            </span>
         </div>
 
         <div class="toolbar-wrapper">
-            <TableToolbar bind:searchQuery placeholder="Search roles...">
+            <TableToolbar
+                bind:searchQuery
+                placeholder={$t("admin.roles.search") || "Search roles..."}
+            >
                 {#snippet actions()}
                     {#if $can("create", "roles")}
                         <button
@@ -209,7 +240,7 @@
                             onclick={openCreateModal}
                         >
                             <Icon name="plus" size={18} />
-                            Create Role
+                            {$t("admin.roles.actions.create") || "Create Role"}
                         </button>
                     {/if}
                 {/snippet}
@@ -222,7 +253,7 @@
                 {columns}
                 data={filteredRoles}
                 {loading}
-                emptyText="No roles found"
+                emptyText={$t("admin.roles.empty") || "No roles found"}
             >
                 {#snippet cell({ item, key })}
                     {#if key === "name"}
@@ -235,37 +266,49 @@
                         </div>
                     {:else if key === "type"}
                         {#if item.is_system}
-                            <span class="badge system">System</span>
+                            <span class="badge system">
+                                {$t("admin.roles.badges.system") || "System"}
+                            </span>
                         {:else}
-                            <span class="badge custom">Custom</span>
+                            <span class="badge custom">
+                                {$t("admin.roles.badges.custom") || "Custom"}
+                            </span>
                         {/if}
                     {:else if key === "level"}
-                        <span class="level-badge">Lvl {item.level}</span>
+                        <span class="level-badge">
+                            {$t("admin.roles.level_prefix") || "Lvl"} {item.level}
+                        </span>
                     {:else if key === "permissions"}
                         <span class="perm-count">
                             <Icon name="lock" size={14} />
-                            {item.permissions?.length || 0} permissions
+                            {item.permissions?.length || 0}
+                            {$t("admin.roles.permissions") || "permissions"}
                         </span>
                     {:else if key === "actions"}
                         <div class="action-buttons-cell">
                             {#if (!item.is_system || $isSuperAdmin) && $can("delete", "roles")}
                                 <button
                                     class="btn-icon danger"
-                                    title="Delete Role"
+                                    title={$t("admin.roles.actions.delete") || "Delete Role"}
                                     onclick={() => confirmDelete(item)}
                                 >
                                     <Icon name="trash" size={18} />
-                                    <span class="btn-text">Delete</span>
+                                    <span class="btn-text">
+                                        {$t("admin.roles.actions.delete_short") ||
+                                            "Delete"}
+                                    </span>
                                 </button>
                             {/if}
                             {#if (!item.is_system || $isSuperAdmin) && $can("update", "roles")}
                                 <button
                                     class="btn-icon primary"
-                                    title="Edit Role"
+                                    title={$t("admin.roles.actions.edit") || "Edit Role"}
                                     onclick={() => openEditModal(item)}
                                 >
                                     <Icon name="edit" size={18} />
-                                    <span class="btn-text">Edit Role</span>
+                                    <span class="btn-text">
+                                        {$t("admin.roles.actions.edit") || "Edit Role"}
+                                    </span>
                                 </button>
                             {/if}
                         </div>
@@ -278,9 +321,12 @@
 
 <ConfirmDialog
     bind:show={showDeleteModal}
-    title="Delete Role"
-    message={`Are you sure you want to permanently delete the role "${roleToDelete?.name}"? All users assigned to this role might lose permissions.`}
-    confirmText="Delete Role"
+    title={$t("admin.roles.delete.title") || "Delete Role"}
+    message={$t("admin.roles.delete.message", {
+        values: { name: roleToDelete?.name || "" },
+    }) ||
+        `Are you sure you want to permanently delete the role \"${roleToDelete?.name}\"? All users assigned to this role might lose permissions.`}
+    confirmText={$t("admin.roles.delete.confirm") || "Delete Role"}
     type="danger"
     loading={isDeleting}
     onconfirm={handleConfirmDelete}
@@ -321,32 +367,43 @@
                 >
                     <div class="form-row">
                         <div class="form-group flex-1">
-                            <label for="role-name">Role Name</label>
+                            <label for="role-name">
+                                {$t("admin.roles.form.name_label") || "Role Name"}
+                            </label>
                             <input
                                 id="role-name"
                                 type="text"
                                 bind:value={roleName}
                                 required
                                 disabled={editingRole?.is_system}
-                                placeholder="e.g. Editor"
+                                placeholder={$t("admin.roles.placeholders.name") ||
+                                    "e.g. Editor"}
                             />
                             {#if editingRole?.is_system}
                                 <small class="text-muted"
-                                    >System role names cannot be changed</small
+                                    >{$t("admin.roles.form.system_name_locked") ||
+                                        "System role names cannot be changed"}</small
                                 >
                             {/if}
                         </div>
                         <div class="form-group flex-2">
-                            <label for="role-desc">Description</label>
+                            <label for="role-desc">
+                                {$t("admin.roles.form.description_label") ||
+                                    "Description"}
+                            </label>
                             <input
                                 id="role-desc"
                                 type="text"
                                 bind:value={roleDescription}
-                                placeholder="Role description"
+                                placeholder={$t(
+                                    "admin.roles.placeholders.description",
+                                ) || "Role description"}
                             />
                         </div>
                         <div class="form-group" style="flex: 0 0 100px;">
-                            <label for="role-level">Level</label>
+                            <label for="role-level">
+                                {$t("admin.roles.form.level_label") || "Level"}
+                            </label>
                             <input
                                 id="role-level"
                                 type="number"
@@ -358,7 +415,10 @@
                     </div>
 
                     <div class="permissions-section">
-                        <h4>Permissions Settings</h4>
+                        <h4>
+                            {$t("admin.roles.permissions_settings") ||
+                                "Permissions Settings"}
+                        </h4>
                         <div class="permissions-container">
                             {#each Object.entries(permissionGroups) as [resource, groupPerms]}
                                 {@const allSelected = groupPerms.every((p) =>
@@ -386,9 +446,10 @@
                                                         groupPerms,
                                                     )}
                                             />
-                                            <span class="select-all-text"
-                                                >Select All</span
-                                            >
+                                            <span class="select-all-text">
+                                                {$t("common.select_all") ||
+                                                    "Select All"}
+                                            </span>
                                         </label>
                                     </div>
                                     <div class="perms-list">
@@ -433,8 +494,10 @@
                 <button
                     type="button"
                     class="btn btn-glass"
-                    onclick={() => (showModal = false)}>Cancel</button
+                    onclick={() => (showModal = false)}
                 >
+                    {$t("common.cancel") || "Cancel"}
+                </button>
                 <button
                     type="submit"
                     form="roleForm"
@@ -443,9 +506,9 @@
                 >
                     {#if saving}
                         <div class="spinner-sm"></div>
-                        Saving...
+                        {$t("common.saving") || "Saving..."}
                     {:else}
-                        Save Role
+                        {$t("admin.roles.actions.save") || "Save Role"}
                     {/if}
                 </button>
             </div>

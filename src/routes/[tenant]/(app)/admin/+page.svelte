@@ -8,6 +8,7 @@
     import { page } from "$app/stores";
     import { getSlugFromDomain } from "$lib/utils/domain";
     import Icon from "$lib/components/Icon.svelte";
+    import { t } from "svelte-i18n";
 
     let memberCount = $state(0);
     let settingsCount = $state(0);
@@ -68,7 +69,7 @@
     {#if loading}
         <div class="loading">
             <div class="spinner"></div>
-            <p>Loading system data...</p>
+            <p>{$t("admin.overview.loading") || "Loading system data..."}</p>
         </div>
     {:else}
         <div class="stats-grid">
@@ -86,7 +87,10 @@
                 </div>
                 <div class="stat-content">
                     <span class="stat-value">{memberCount}</span>
-                    <span class="stat-label">Team Members</span>
+                    <span class="stat-label">
+                        {$t("admin.overview.stats.team_members") ||
+                            "Team Members"}
+                    </span>
                 </div>
             </div>
 
@@ -104,7 +108,10 @@
                 </div>
                 <div class="stat-content">
                     <span class="stat-value">{settingsCount}</span>
-                    <span class="stat-label">Global Settings</span>
+                    <span class="stat-label">
+                        {$t("admin.overview.stats.global_settings") ||
+                            "Global Settings"}
+                    </span>
                 </div>
             </div>
 
@@ -145,18 +152,24 @@
                             ></div>
                         </div>
                         <span class="usage-text">
-                            {formatBytes(subscription.storage_usage)} used
+                            {formatBytes(subscription.storage_usage)}
+                            {$t("admin.overview.stats.used") || "used"}
                         </span>
                     {:else}
-                        <span class="stat-value">Free</span>
-                        <span class="stat-label">Plan Status</span>
+                        <span class="stat-value">
+                            {$t("admin.overview.stats.free") || "Free"}
+                        </span>
+                        <span class="stat-label">
+                            {$t("admin.overview.stats.plan_status") ||
+                                "Plan Status"}
+                        </span>
                     {/if}
                 </div>
             </div>
         </div>
 
         <div class="section-header">
-            <h2>Quick Actions</h2>
+            <h2>{$t("admin.overview.quick_actions.title") || "Quick Actions"}</h2>
         </div>
 
         <div class="actions-grid">
@@ -168,8 +181,14 @@
                     <div class="action-icon accent-emerald">
                         <Icon name="users" size={18} />
                     </div>
-                    <h3>Manage Team</h3>
-                    <p>View, edit, and invite team members.</p>
+                    <h3>
+                        {$t("admin.overview.quick_actions.team.title") ||
+                            "Manage Team"}
+                    </h3>
+                    <p>
+                        {$t("admin.overview.quick_actions.team.desc") ||
+                            "View, edit, and invite team members."}
+                    </p>
                 </button>
             {/if}
 
@@ -181,8 +200,14 @@
                     <div class="action-icon accent-amber">
                         <Icon name="lock" size={18} />
                     </div>
-                    <h3>Roles & Permissions</h3>
-                    <p>Manage roles and access control.</p>
+                    <h3>
+                        {$t("admin.overview.quick_actions.roles.title") ||
+                            "Roles & Permissions"}
+                    </h3>
+                    <p>
+                        {$t("admin.overview.quick_actions.roles.desc") ||
+                            "Manage roles and access control."}
+                    </p>
                 </button>
             {/if}
 
@@ -194,8 +219,14 @@
                     <div class="action-icon accent-cyan">
                         <Icon name="settings" size={18} />
                     </div>
-                    <h3>Global Settings</h3>
-                    <p>Configure application policies and defaults.</p>
+                    <h3>
+                        {$t("admin.overview.quick_actions.settings.title") ||
+                            "Global Settings"}
+                    </h3>
+                    <p>
+                        {$t("admin.overview.quick_actions.settings.desc") ||
+                            "Configure application policies and defaults."}
+                    </p>
                 </button>
             {/if}
 
@@ -206,8 +237,11 @@
                 <div class="action-icon accent-indigo">
                     <Icon name="credit-card" size={18} />
                 </div>
-                <h3>Billing</h3>
-                <p>Manage subscription and invoices.</p>
+                <h3>{$t("admin.overview.quick_actions.billing.title") || "Billing"}</h3>
+                <p>
+                    {$t("admin.overview.quick_actions.billing.desc") ||
+                        "Manage subscription and invoices."}
+                </p>
             </button>
         </div>
     {/if}

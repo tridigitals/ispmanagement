@@ -1,6 +1,7 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
     import { auth } from '$lib/api/client';
+    import { t } from "svelte-i18n";
     
     let email = "";
     let submitted = false;
@@ -28,8 +29,11 @@
         {#if !submitted}
             <div class="auth-header">
                 <div class="icon">🔑</div>
-                <h1>Reset Password</h1>
-                <p>Enter your email and we'll send you a link to reset your password.</p>
+                <h1>{$t("auth.forgot_password.title") || "Reset Password"}</h1>
+                <p>
+                    {$t("auth.forgot_password.subtitle") ||
+                        "Enter your email and we'll send you a link to reset your password."}
+                </p>
             </div>
             
             {#if error}
@@ -40,35 +44,54 @@
 
             <form on:submit|preventDefault={handleReset}>
                 <div class="form-group">
-                    <label class="form-label" for="email">Email Address</label>
+                    <label class="form-label" for="email"
+                        >{$t("auth.forgot_password.email_label") ||
+                            "Email Address"}</label
+                    >
                     <input
                         type="email"
                         id="email"
                         class="form-input"
                         bind:value={email}
-                        placeholder="you@example.com"
+                        placeholder={$t(
+                            "auth.forgot_password.email_placeholder",
+                        ) || "you@example.com"}
                         required
                         disabled={loading}
                     />
                 </div>
 
                 <button type="submit" class="btn btn-primary w-full" disabled={loading}>
-                    {#if loading}Sending...{:else}Send Reset Link{/if}
+                    {#if loading}
+                        {$t("auth.forgot_password.sending") || "Sending..."}
+                    {:else}
+                        {$t("auth.forgot_password.submit") || "Send Reset Link"}
+                    {/if}
                 </button>
             </form>
         {:else}
             <div class="success-state fade-in">
                 <div class="icon">📩</div>
-                <h1>Check your email</h1>
-                <p>We've sent a password reset link to <strong>{email}</strong>.</p>
+                <h1>
+                    {$t("auth.forgot_password.check_email_title") ||
+                        "Check your email"}
+                </h1>
+                <p>
+                    {$t("auth.forgot_password.check_email_message") ||
+                        "We've sent a password reset link to"} <strong>{email}</strong>.
+                </p>
                 <button class="btn btn-secondary w-full" on:click={() => goto('/login')}>
-                    Back to Login
+                    {$t("auth.forgot_password.back_to_login") ||
+                        "Back to Login"}
                 </button>
             </div>
         {/if}
 
         <div class="auth-footer">
-            <a href="/login" class="back-link">← Back to Login</a>
+            <a href="/login" class="back-link"
+                >← {$t("auth.forgot_password.back_to_login") ||
+                    "Back to Login"}</a
+            >
         </div>
     </div>
 </div>

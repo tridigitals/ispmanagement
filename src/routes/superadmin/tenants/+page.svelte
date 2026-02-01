@@ -15,6 +15,7 @@
     import { get } from "svelte/store";
     import { superadminTenantsCache } from "$lib/stores/superadminTenants";
     import { superadminPlansCache } from "$lib/stores/superadminPlans";
+    import { t } from "svelte-i18n";
 
     import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
 
@@ -257,10 +258,17 @@
                 newTenant.isActive,
             );
             showCreateModal = false;
-            toast.success("Tenant updated successfully");
+            toast.success(
+                get(t)("superadmin.tenants.toasts.updated") ||
+                    "Tenant updated successfully",
+            );
             await loadTenants();
         } catch (e: any) {
-            toast.error("Failed to update tenant: " + e);
+            toast.error(
+                get(t)("superadmin.tenants.toasts.update_failed", {
+                    values: { message: e?.message || e },
+                }) || "Failed to update tenant: " + e,
+            );
         } finally {
             creating = false;
         }
@@ -286,10 +294,17 @@
             );
 
             showCreateModal = false;
-            toast.success("Tenant created successfully");
+            toast.success(
+                get(t)("superadmin.tenants.toasts.created") ||
+                    "Tenant created successfully",
+            );
             await loadTenants();
         } catch (e: any) {
-            toast.error("Failed to create tenant: " + e);
+            toast.error(
+                get(t)("superadmin.tenants.toasts.create_failed", {
+                    values: { message: e?.message || e },
+                }) || "Failed to create tenant: " + e,
+            );
         } finally {
             creating = false;
         }
@@ -318,11 +333,18 @@
         confirmLoading = true;
         try {
             await api.superadmin.deleteTenant(pendingDeleteId);
-            toast.success("Tenant deleted successfully");
+            toast.success(
+                get(t)("superadmin.tenants.toasts.deleted") ||
+                    "Tenant deleted successfully",
+            );
             showConfirm = false;
             await loadTenants();
         } catch (e: any) {
-            toast.error("Failed to delete tenant: " + e);
+            toast.error(
+                get(t)("superadmin.tenants.toasts.delete_failed", {
+                    values: { message: e?.message || e },
+                }) || "Failed to delete tenant: " + e,
+            );
         } finally {
             confirmLoading = false;
             pendingDeleteId = "";
@@ -334,7 +356,10 @@
     );
 
     let toggleTitle = $derived.by(() =>
-        pendingToggleTenant?.is_active ? "Deactivate Tenant" : "Activate Tenant",
+        pendingToggleTenant?.is_active
+            ? $t("superadmin.tenants.toggle.deactivate_title") ||
+                  "Deactivate Tenant"
+            : $t("superadmin.tenants.toggle.activate_title") || "Activate Tenant",
     );
 
     let toggleType = $derived.by(
@@ -343,15 +368,29 @@
     );
 
     let toggleMessage = $derived.by(() => {
-        const name = pendingToggleTenant?.name || "this tenant";
+        const name =
+            pendingToggleTenant?.name ||
+            ($t("superadmin.tenants.toggle.this_tenant") || "this tenant");
         if (pendingToggleTenant?.is_active) {
-            return `Deactivate ${name}? Users in this tenant will be blocked from accessing the app. Type ${toggleKeyword} to confirm.`;
+            return (
+                $t("superadmin.tenants.toggle.deactivate_message", {
+                    values: { name },
+                }) ||
+                `Deactivate ${name}? Users in this tenant will be blocked from accessing the app.`
+            );
         }
-        return `Activate ${name}? Users in this tenant will regain access. Type ${toggleKeyword} to confirm.`;
+        return (
+            $t("superadmin.tenants.toggle.activate_message", {
+                values: { name },
+            }) ||
+            `Activate ${name}? Users in this tenant will regain access.`
+        );
     });
 
     let toggleConfirmText = $derived.by(() =>
-        pendingToggleTenant?.is_active ? "Deactivate" : "Activate",
+        pendingToggleTenant?.is_active
+            ? $t("superadmin.tenants.actions.deactivate") || "Deactivate"
+            : $t("superadmin.tenants.actions.activate") || "Activate",
     );
 
     async function handleToggleTenant() {
@@ -367,14 +406,20 @@
             );
             toast.success(
                 pendingToggleTenant.is_active
-                    ? "Tenant deactivated"
-                    : "Tenant activated",
+                    ? get(t)("superadmin.tenants.toasts.deactivated") ||
+                          "Tenant deactivated"
+                    : get(t)("superadmin.tenants.toasts.activated") ||
+                          "Tenant activated",
             );
             showToggleConfirm = false;
             pendingToggleTenant = null;
             await loadTenants();
         } catch (e: any) {
-            toast.error("Failed to update tenant: " + e);
+            toast.error(
+                get(t)("superadmin.tenants.toasts.update_failed", {
+                    values: { message: e?.message || e },
+                }) || "Failed to update tenant: " + e,
+            );
         } finally {
             toggleLoading = false;
         }
@@ -382,17 +427,21 @@
 </script>
 
 <div class="superadmin-content fade-in">
-    <div class="stats-row" aria-label="Tenant stats">
+    <div
+        class="stats-row"
+        aria-label={$t("superadmin.tenants.aria.stats") || "Tenant stats"}
+    >
         <button
             class="stat-btn"
             class:active={statusFilter === "all"}
             onclick={() => (statusFilter = "all")}
-            aria-label="Show all tenants"
-            title="Show all tenants"
+            aria-label={$t("superadmin.tenants.stats.show_all") ||
+                "Show all tenants"}
+            title={$t("superadmin.tenants.stats.show_all") || "Show all tenants"}
             type="button"
         >
             <StatsCard
-                title="All Tenants"
+                title={$t("superadmin.tenants.stats.all_title") || "All Tenants"}
                 value={stats.total}
                 icon="database"
                 color="primary"
@@ -402,12 +451,15 @@
             class="stat-btn"
             class:active={statusFilter === "active"}
             onclick={() => (statusFilter = "active")}
-            aria-label="Show active tenants"
-            title="Show active tenants"
+            aria-label={$t("superadmin.tenants.stats.show_active") ||
+                "Show active tenants"}
+            title={$t("superadmin.tenants.stats.show_active") ||
+                "Show active tenants"}
             type="button"
         >
             <StatsCard
-                title="Active Tenants"
+                title={$t("superadmin.tenants.stats.active_title") ||
+                    "Active Tenants"}
                 value={stats.active}
                 icon="check-circle"
                 color="success"
@@ -417,12 +469,15 @@
             class="stat-btn"
             class:active={statusFilter === "inactive"}
             onclick={() => (statusFilter = "inactive")}
-            aria-label="Show inactive tenants"
-            title="Show inactive tenants"
+            aria-label={$t("superadmin.tenants.stats.show_inactive") ||
+                "Show inactive tenants"}
+            title={$t("superadmin.tenants.stats.show_inactive") ||
+                "Show inactive tenants"}
             type="button"
         >
             <StatsCard
-                title="Inactive Tenants"
+                title={$t("superadmin.tenants.stats.inactive_title") ||
+                    "Inactive Tenants"}
                 value={stats.inactive}
                 icon="slash"
                 color="warning"
@@ -430,27 +485,40 @@
         </button>
     </div>
 
-    <div class="glass-card" in:fly={{ y: 20, delay: 80 }}>
-        <div class="card-header glass">
-            <div>
-                <h3>Tenants</h3>
-                <span class="muted"
-                    >Manage all organizations in the platform</span
-                >
+        <div class="glass-card" in:fly={{ y: 20, delay: 80 }}>
+            <div class="card-header glass">
+                <div>
+                    <h3>{$t("superadmin.tenants.title") || "Tenants"}</h3>
+                    <span class="muted"
+                        >{$t("superadmin.tenants.subtitle") ||
+                            "Manage all organizations in the platform"}</span
+                    >
+                </div>
+                <div class="header-actions">
+                    {#if isRefreshing}
+                        <span
+                            class="refresh-pill"
+                            title={$t("superadmin.tenants.refreshing_title") ||
+                                "Refreshing..."}
+                        >
+                            <span class="spinner-xs"></span>
+                            {$t("superadmin.tenants.refreshing") || "Refreshing"}
+                        </span>
+                    {/if}
+                    <span class="count-badge"
+                        >{$t("superadmin.tenants.count", {
+                            values: { count: stats.total },
+                        }) || `${stats.total} tenants`}</span
+                    >
+                </div>
             </div>
-            <div class="header-actions">
-                {#if isRefreshing}
-                    <span class="refresh-pill" title="Refreshing...">
-                        <span class="spinner-xs"></span>
-                        Refreshing
-                    </span>
-                {/if}
-                <span class="count-badge">{stats.total} tenants</span>
-            </div>
-        </div>
 
         <div class="toolbar-wrapper">
-            <TableToolbar bind:searchQuery placeholder="Search tenants...">
+            <TableToolbar
+                bind:searchQuery
+                placeholder={$t("superadmin.tenants.search") ||
+                    "Search tenants..."}
+            >
                 {#snippet filters()}
                     <div class="status-filter">
                         <button
@@ -459,7 +527,9 @@
                             class:active={statusFilter === "all"}
                             onclick={() => (statusFilter = "all")}
                         >
-                            All
+                            {$t("superadmin.tenants.filters.all") ||
+                                $t("common.all") ||
+                                "All"}
                         </button>
                         <button
                             type="button"
@@ -467,7 +537,9 @@
                             class:active={statusFilter === "active"}
                             onclick={() => (statusFilter = "active")}
                         >
-                            Active
+                            {$t("superadmin.tenants.filters.active") ||
+                                $t("common.active") ||
+                                "Active"}
                         </button>
                         <button
                             type="button"
@@ -475,7 +547,9 @@
                             class:active={statusFilter === "inactive"}
                             onclick={() => (statusFilter = "inactive")}
                         >
-                            Inactive
+                            {$t("superadmin.tenants.filters.inactive") ||
+                                $t("common.inactive") ||
+                                "Inactive"}
                         </button>
                     </div>
 
@@ -484,7 +558,8 @@
                             type="button"
                             class="btn-icon view-btn"
                             class:active={viewMode === "table"}
-                            title="Table view"
+                            title={$t("superadmin.tenants.view.table") ||
+                                "Table view"}
                             onclick={() => (viewMode = "table")}
                         >
                             <Icon name="list" size={18} />
@@ -493,7 +568,8 @@
                             type="button"
                             class="btn-icon view-btn"
                             class:active={viewMode === "cards"}
-                            title="Cards view"
+                            title={$t("superadmin.tenants.view.cards") ||
+                                "Cards view"}
                             onclick={() => (viewMode = "cards")}
                         >
                             <Icon name="grid" size={18} />
@@ -503,23 +579,30 @@
                 {#snippet actions()}
                     <button class="btn btn-primary" onclick={openCreateModal}>
                         <Icon name="plus" size={18} />
-                        <span>New Tenant</span>
+                        <span>
+                            {$t("superadmin.tenants.actions.new") ||
+                                "New Tenant"}
+                        </span>
                     </button>
                 {/snippet}
             </TableToolbar>
         </div>
 
-        {#if error}
-            <div class="error-state">
-                <Icon name="alert-circle" size={48} color="#ef4444" />
-                <p>{error}</p>
-                <button class="btn btn-secondary" onclick={() => loadData()}>
-                    Retry
-                </button>
-            </div>
-        {:else}
+            {#if error}
+                <div class="error-state">
+                    <Icon name="alert-circle" size={48} color="#ef4444" />
+                    <p>{error}</p>
+                    <button class="btn btn-secondary" onclick={() => loadData()}>
+                        {$t("common.retry") || "Retry"}
+                    </button>
+                </div>
+            {:else}
             {#if viewMode === "cards" || isMobile}
-                <div class="tenants-grid" aria-label="Tenant cards">
+                <div
+                    class="tenants-grid"
+                    aria-label={$t("superadmin.tenants.aria.cards") ||
+                        "Tenant cards"}
+                >
                     {#each filteredTenants as tenant (tenant.id)}
                         <div class="tenant-card" in:fly={{ y: 6, duration: 150 }}>
                             <div class="tenant-top">
@@ -540,12 +623,17 @@
                                         ? 'success'
                                         : 'error'}"
                                 >
-                                    {tenant.is_active ? "Active" : "Inactive"}
+                                    {tenant.is_active
+                                        ? $t("common.active") || "Active"
+                                        : $t("common.inactive") || "Inactive"}
                                 </span>
                             </div>
 
                             <div class="tenant-meta">
-                                <span class="meta-label">Created</span>
+                                <span class="meta-label">
+                                    {$t("superadmin.tenants.meta.created") ||
+                                        "Created"}
+                                </span>
                                 <span class="meta-value">
                                     {tenant.created_at
                                         ? new Date(tenant.created_at).toLocaleDateString()
@@ -556,7 +644,11 @@
                             <div class="tenant-actions">
                                 <button
                                     class="btn-icon {tenant.is_active ? 'warn' : 'success'}"
-                                    title={tenant.is_active ? "Deactivate" : "Activate"}
+                                    title={tenant.is_active
+                                        ? $t("superadmin.tenants.actions.deactivate") ||
+                                          "Deactivate"
+                                        : $t("superadmin.tenants.actions.activate") ||
+                                          "Activate"}
                                     type="button"
                                     onclick={() => confirmToggleTenant(tenant)}
                                 >
@@ -567,7 +659,7 @@
                                 </button>
                                 <button
                                     class="btn-icon"
-                                    title="Edit"
+                                    title={$t("common.edit") || "Edit"}
                                     type="button"
                                     onclick={() => openEditModal(tenant)}
                                 >
@@ -575,7 +667,7 @@
                                 </button>
                                 <button
                                     class="btn-icon danger"
-                                    title="Delete"
+                                    title={$t("common.delete") || "Delete"}
                                     type="button"
                                     onclick={() => confirmDelete(tenant.id)}
                                 >
@@ -590,8 +682,14 @@
                             <div class="empty-icon">
                                 <Icon name="database" size={64} />
                             </div>
-                            <h3>No tenants found</h3>
-                            <p>Try adjusting your search or filters.</p>
+                            <h3>
+                                {$t("superadmin.tenants.empty.title") ||
+                                    "No tenants found"}
+                            </h3>
+                            <p>
+                                {$t("superadmin.tenants.empty.hint") ||
+                                    "Try adjusting your search or filters."}
+                            </p>
                         </div>
                     {/if}
                 </div>
@@ -602,7 +700,7 @@
                         {loading}
                         data={filteredTenants}
                         {columns}
-                        emptyText="No tenants found"
+                        emptyText={$t("superadmin.tenants.empty.title") || "No tenants found"}
                         mobileView="scroll"
                     >
                         {#snippet empty()}
@@ -610,8 +708,14 @@
                                 <div class="empty-icon">
                                     <Icon name="database" size={64} />
                                 </div>
-                                <h3>No tenants found</h3>
-                                <p>Try adjusting your search or filters.</p>
+                                <h3>
+                                {$t("superadmin.tenants.empty.title") ||
+                                        "No tenants found"}
+                                </h3>
+                                <p>
+                                    {$t("superadmin.tenants.empty.hint") ||
+                                        "Try adjusting your search or filters."}
+                                </p>
                             </div>
                         {/snippet}
 
@@ -630,7 +734,9 @@
                                         ? 'success'
                                         : 'error'}"
                                 >
-                                    {item.is_active ? "Active" : "Inactive"}
+                                    {item.is_active
+                                        ? $t("common.active") || "Active"
+                                        : $t("common.inactive") || "Inactive"}
                                 </span>
                             {:else if key === "created_at"}
                                 {new Date(item.created_at).toLocaleDateString()}
@@ -641,8 +747,10 @@
                                             ? 'warn'
                                             : 'success'}"
                                         title={item.is_active
-                                            ? "Deactivate"
-                                            : "Activate"}
+                                            ? $t("superadmin.tenants.actions.deactivate") ||
+                                              "Deactivate"
+                                            : $t("superadmin.tenants.actions.activate") ||
+                                              "Activate"}
                                         type="button"
                                         onclick={() => confirmToggleTenant(item)}
                                     >
@@ -655,7 +763,7 @@
                                     </button>
                                     <button
                                         class="btn-icon"
-                                        title="Edit"
+                                        title={$t("common.edit") || "Edit"}
                                         type="button"
                                         onclick={() => openEditModal(item)}
                                     >
@@ -663,7 +771,7 @@
                                     </button>
                                     <button
                                         class="btn-icon danger"
-                                        title="Delete"
+                                        title={$t("common.delete") || "Delete"}
                                         type="button"
                                         onclick={() => confirmDelete(item.id)}
                                     >
@@ -683,58 +791,76 @@
 
 <Modal
     bind:show={showCreateModal}
-    title={isEditing ? "Edit Tenant" : "Create New Tenant"}
+    title={isEditing
+        ? $t("superadmin.tenants.modal.edit_title") || "Edit Tenant"
+        : $t("superadmin.tenants.modal.create_title") || "Create New Tenant"}
 >
     <div class="modal-form">
         <Input
-            label="Tenant Name"
+            label={$t("superadmin.tenants.modal.labels.name") || "Tenant Name"}
             bind:value={newTenant.name}
             oninput={generateSlug}
-            placeholder="e.g. Acme Corp"
+            placeholder={$t("superadmin.tenants.modal.placeholders.name") ||
+                "e.g. Acme Corp"}
         />
 
         <Input
-            label="Slug (URL)"
+            label={$t("superadmin.tenants.modal.labels.slug") || "Slug (URL)"}
             bind:value={newTenant.slug}
-            placeholder="e.g. acme-corp"
+            placeholder={$t("superadmin.tenants.modal.placeholders.slug") ||
+                "e.g. acme-corp"}
             disabled={isEditing}
         />
 
         <Input
-            label="Custom Domain (Optional)"
+            label={$t("superadmin.tenants.modal.labels.custom_domain") ||
+                "Custom Domain (Optional)"}
             bind:value={newTenant.customDomain}
-            placeholder="e.g. app.acme.com"
+            placeholder={$t("superadmin.tenants.modal.placeholders.custom_domain") ||
+                "e.g. app.acme.com"}
         />
 
         {#if !isEditing}
             <div class="divider">
-                <span>Initial Subscription</span>
+                <span>
+                    {$t("superadmin.tenants.modal.sections.initial_subscription") ||
+                        "Initial Subscription"}
+                </span>
             </div>
 
             <Select
-                label="Subscription Plan"
+                label={$t("superadmin.tenants.modal.labels.plan") ||
+                    "Subscription Plan"}
                 options={plans}
                 bind:value={newTenant.planId}
-                placeholder="Select a plan"
+                placeholder={$t("superadmin.tenants.modal.placeholders.plan") ||
+                    "Select a plan"}
             />
 
             <div class="divider">
-                <span>Initial Admin User</span>
+                <span>
+                    {$t("superadmin.tenants.modal.sections.initial_admin") ||
+                        "Initial Admin User"}
+                </span>
             </div>
 
             <Input
-                label="Owner Email"
+                label={$t("superadmin.tenants.modal.labels.owner_email") ||
+                    "Owner Email"}
                 type="email"
                 bind:value={newTenant.ownerEmail}
-                placeholder="admin@acme.com"
+                placeholder={$t("superadmin.tenants.modal.placeholders.owner_email") ||
+                    "admin@acme.com"}
             />
 
             <div class="password-group">
                 <Input
-                    label="Owner Password"
+                    label={$t("superadmin.tenants.modal.labels.owner_password") ||
+                        "Owner Password"}
                     type={showPassword ? "text" : "password"}
                     bind:value={newTenant.ownerPassword}
-                    placeholder="Strong password"
+                    placeholder={$t("superadmin.tenants.modal.placeholders.owner_password") ||
+                        "Strong password"}
                 />
                 <button
                     class="toggle-password"
@@ -749,7 +875,10 @@
         <div class="form-group toggle-row">
             <label>
                 <input type="checkbox" bind:checked={newTenant.isActive} />
-                <span class="toggle-label">Active Status</span>
+                <span class="toggle-label">
+                    {$t("superadmin.tenants.modal.labels.active_status") ||
+                        "Active Status"}
+                </span>
             </label>
         </div>
 
@@ -759,7 +888,7 @@
                 onclick={() => (showCreateModal = false)}
                 disabled={creating}
             >
-                Cancel
+                {$t("common.cancel") || "Cancel"}
             </button>
             <button
                 class="btn btn-primary"
@@ -769,7 +898,11 @@
                 {#if creating}
                     <div class="spinner-sm"></div>
                 {/if}
-                {isEditing ? "Update Tenant" : "Create Tenant"}
+                {isEditing
+                    ? $t("superadmin.tenants.modal.actions.update") ||
+                      "Update Tenant"
+                    : $t("superadmin.tenants.modal.actions.create") ||
+                      "Create Tenant"}
             </button>
         </div>
     </div>
@@ -777,9 +910,10 @@
 
 <ConfirmDialog
     bind:show={showConfirm}
-    title="Delete Tenant"
-    message="Are you sure you want to delete this tenant? This action cannot be undone and will remove all associated data. Type DELETE to confirm."
-    confirmText="Delete Permanently"
+    title={$t("superadmin.tenants.delete.title") || "Delete Tenant"}
+    message={$t("superadmin.tenants.delete.message") ||
+        "Are you sure you want to delete this tenant? This action cannot be undone and will remove all associated data."}
+    confirmText={$t("superadmin.tenants.delete.confirm") || "Delete Permanently"}
     confirmationKeyword="DELETE"
     type="danger"
     loading={confirmLoading}

@@ -4,22 +4,30 @@
     import { auth } from '$lib/api/client';
     import { goto } from '$app/navigation';
     import { token as authToken, user } from '$lib/stores/auth';
+    import { t } from "svelte-i18n";
+    import { get } from "svelte/store";
 
     let status: 'verifying' | 'success' | 'error' = 'verifying';
-    let message = 'Verifying your email...';
+    let message =
+        get(t)("auth.verify_email.verifying") || "Verifying your email...";
 
     onMount(async () => {
         const token = $page.url.searchParams.get('token');
         if (!token) {
             status = 'error';
-            message = 'Invalid verification link.';
+            message =
+                get(t)("auth.verify_email.invalid_link") ||
+                "Invalid verification link.";
             return;
         }
 
         try {
             const response = await auth.verifyEmail(token);
             status = 'success';
-            message = response.message || 'Email verified successfully!';
+            message =
+                response.message ||
+                (get(t)("auth.verify_email.success") ||
+                    "Email verified successfully!");
             
             // Auto login if token returned
             if (response.token) {
@@ -49,16 +57,19 @@
                 ✕
             {/if}
         </div>
-        <h1>Email Verification</h1>
+        <h1>{$t("auth.verify_email.title") || "Email Verification"}</h1>
         <p>{message}</p>
         
         {#if status === 'success'}
-            <p class="redirect-text">Redirecting to dashboard...</p>
+            <p class="redirect-text">
+                {$t("auth.verify_email.redirecting") ||
+                    "Redirecting to dashboard..."}
+            </p>
         {/if}
 
         {#if status === 'error'}
             <button class="btn btn-primary" on:click={() => goto('/login')}>
-                Go to Login
+                {$t("auth.verify_email.go_to_login") || "Go to Login"}
             </button>
         {/if}
     </div>

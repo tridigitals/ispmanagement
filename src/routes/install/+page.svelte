@@ -2,6 +2,8 @@
     import { install } from "$lib/api/client";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
+    import { t } from "svelte-i18n";
+    import { get } from "svelte/store";
 
     let appName = "SaaS App";
     let appUrl = "";
@@ -42,17 +44,22 @@
     async function handleSubmit() {
         error = "";
         if (!name || !email || !password || !confirmPassword) {
-            error = "Please fill in all fields";
+            error =
+                get(t)("install.errors.fill_all") || "Please fill in all fields";
             return;
         }
 
         if (password !== confirmPassword) {
-            error = "Passwords do not match";
+            error =
+                get(t)("auth.validation.passwords_do_not_match") ||
+                "Passwords do not match";
             return;
         }
 
         if (password.length < 8) {
-            error = "Password must be at least 8 characters";
+            error =
+                get(t)("auth.validation.min_length", { values: { length: 8 } }) ||
+                "Password must be at least 8 characters";
             return;
         }
 
@@ -65,7 +72,9 @@
                 goto("/login");
             }, 2000);
         } catch (e: any) {
-            error = e.message || "Installation failed";
+            error =
+                e.message ||
+                (get(t)("install.errors.failed") || "Installation failed");
         } finally {
             loading = false;
         }
@@ -92,39 +101,57 @@
                         /><path d="M2 12l10 5 10-5" /></svg
                     >
                 </div>
-                <h1>Welcome to SaaS App</h1>
+                <h1>
+                    {$t("install.welcome.title", { values: { app: appName } }) ||
+                        "Welcome to SaaS App"}
+                </h1>
                 <p>
-                    Let's get your application set up. We'll start by
-                    configuring the basics.
+                    {$t("install.welcome.subtitle") ||
+                        "Let's get your application set up. We'll start by configuring the basics."}
                 </p>
                 <button class="btn-primary" on:click={() => (step = 2)}>
-                    Get Started
+                    {$t("install.welcome.cta") || "Get Started"}
                 </button>
             </div>
         {:else if step === 2}
             <div class="step-content">
-                <h2>General Settings</h2>
-                <p class="subtitle">Configure your application details.</p>
+                <h2>
+                    {$t("install.general.title") || "General Settings"}
+                </h2>
+                <p class="subtitle">
+                    {$t("install.general.subtitle") ||
+                        "Configure your application details."}
+                </p>
 
                 <form on:submit|preventDefault={() => (step = 3)}>
                     <div class="form-group">
-                        <label for="appName">Application Name</label>
+                        <label for="appName">
+                            {$t("install.general.app_name") ||
+                                "Application Name"}
+                        </label>
                         <input
                             type="text"
                             id="appName"
                             bind:value={appName}
-                            placeholder="My SaaS App"
+                            placeholder={$t(
+                                "install.general.app_name_placeholder",
+                            ) || "My SaaS App"}
                             required
                         />
                     </div>
 
                     <div class="form-group">
-                        <label for="appUrl">Application URL</label>
+                        <label for="appUrl">
+                            {$t("install.general.app_url") ||
+                                "Application URL"}
+                        </label>
                         <input
                             type="text"
                             id="appUrl"
                             bind:value={appUrl}
-                            placeholder="http://localhost:3000"
+                            placeholder={$t(
+                                "install.general.app_url_placeholder",
+                            ) || "http://localhost:3000"}
                             required
                         />
                     </div>
@@ -133,19 +160,23 @@
                         <button
                             type="button"
                             class="btn-secondary"
-                            on:click={() => (step = 1)}>Back</button
+                            on:click={() => (step = 1)}
+                            >{$t("common.back") || "Back"}</button
                         >
                         <button type="submit" class="btn-primary">
-                            Next
+                            {$t("install.common.next") || "Next"}
                         </button>
                     </div>
                 </form>
             </div>
         {:else if step === 3}
             <div class="step-content">
-                <h2>Create Admin Account</h2>
+                <h2>
+                    {$t("install.admin.title") || "Create Admin Account"}
+                </h2>
                 <p class="subtitle">
-                    This account will have full access to the system.
+                    {$t("install.admin.subtitle") ||
+                        "This account will have full access to the system."}
                 </p>
 
                 {#if error}
@@ -156,29 +187,39 @@
 
                 <form on:submit|preventDefault={handleSubmit}>
                     <div class="form-group">
-                        <label for="name">Full Name</label>
+                        <label for="name">
+                            {$t("install.admin.full_name") || "Full Name"}
+                        </label>
                         <input
                             type="text"
                             id="name"
                             bind:value={name}
-                            placeholder="John Doe"
+                            placeholder={$t(
+                                "install.admin.full_name_placeholder",
+                            ) || "John Doe"}
                             disabled={loading}
                         />
                     </div>
 
                     <div class="form-group">
-                        <label for="email">Email Address</label>
+                        <label for="email">
+                            {$t("install.admin.email") || "Email Address"}
+                        </label>
                         <input
                             type="email"
                             id="email"
                             bind:value={email}
-                            placeholder="john@example.com"
+                            placeholder={$t(
+                                "install.admin.email_placeholder",
+                            ) || "john@example.com"}
                             disabled={loading}
                         />
                     </div>
 
                     <div class="form-group">
-                        <label for="password">Password</label>
+                        <label for="password">
+                            {$t("install.admin.password") || "Password"}
+                        </label>
                         <div class="password-wrapper">
                             <input
                                 type={showPassword ? "text" : "password"}
@@ -234,7 +275,10 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="confirmPassword">Confirm Password</label>
+                        <label for="confirmPassword">
+                            {$t("install.admin.confirm_password") ||
+                                "Confirm Password"}
+                        </label>
                         <div class="password-wrapper">
                             <input
                                 type={showConfirmPassword ? "text" : "password"}
@@ -296,7 +340,8 @@
                             type="button"
                             class="btn-secondary"
                             on:click={() => (step = 2)}
-                            disabled={loading}>Back</button
+                            disabled={loading}
+                            >{$t("common.back") || "Back"}</button
                         >
                         <button
                             type="submit"
@@ -304,9 +349,11 @@
                             disabled={loading}
                         >
                             {#if loading}
-                                Installing...
+                                {$t("install.admin.installing") ||
+                                    "Installing..."}
                             {:else}
-                                Complete Setup
+                                {$t("install.admin.complete") ||
+                                    "Complete Setup"}
                             {/if}
                         </button>
                     </div>
@@ -330,8 +377,14 @@
                         /><polyline points="22 4 12 14.01 9 11.01" /></svg
                     >
                 </div>
-                <h2>Installation Complete!</h2>
-                <p>Redirecting you to login...</p>
+                <h2>
+                    {$t("install.success.title") ||
+                        "Installation Complete!"}
+                </h2>
+                <p>
+                    {$t("install.success.redirecting") ||
+                        "Redirecting you to login..."}
+                </p>
             </div>
         {/if}
     </div>

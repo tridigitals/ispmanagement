@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import { user, isAuthenticated } from "$lib/stores/auth";
+    import { t } from "svelte-i18n";
 
     onMount(() => {
         if ($isAuthenticated && $user?.tenant_slug) {
@@ -15,7 +16,7 @@
 </script>
 
 <div class="redirect-container">
-    <p>Redirecting to your dashboard...</p>
+    <p>{$t("pages.dashboard.redirecting") || "Redirecting to your dashboard..."}</p>
 </div>
 
 <style>

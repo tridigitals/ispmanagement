@@ -755,10 +755,13 @@
                 <!-- 2FA Section -->
                 <div class="card section fade-in-up" style="margin-top: 2rem;">
                     <div class="card-header">
-                        <h2 class="card-title">Two-Factor Authentication</h2>
+                        <h2 class="card-title">
+                            {$t("profile.security.twofa.title") ||
+                                "Two-Factor Authentication"}
+                        </h2>
                         <p class="card-subtitle">
-                            Protect your account with an extra layer of
-                            security.
+                            {$t("profile.security.twofa.subtitle") ||
+                                "Protect your account with an extra layer of security."}
                         </p>
                     </div>
 
@@ -773,8 +776,16 @@
                                     />
                                 </div>
                                 <div style="flex: 1">
-                                    <h3>2FA is Enabled</h3>
-                                    <p>Your account is secured with 2FA.</p>
+                                    <h3>
+                                        {$t(
+                                            "profile.security.twofa.enabled_title",
+                                        ) || "2FA is Enabled"}
+                                    </h3>
+                                    <p>
+                                        {$t(
+                                            "profile.security.twofa.enabled_desc",
+                                        ) || "Your account is secured with 2FA."}
+                                    </p>
 
                                     <div
                                         class="method-selector"
@@ -815,7 +826,9 @@
                                                     />
                                                     <span
                                                         style="font-weight: 500;"
-                                                        >Authenticator App</span
+                                                        >{$t(
+                                                            "profile.security.twofa.methods.authenticator_app",
+                                                        ) || "Authenticator App"}</span
                                                     >
                                                 </div>
                                             </label>
@@ -848,7 +861,9 @@
                                                     />
                                                     <span
                                                         style="font-weight: 500;"
-                                                        >Email Verification</span
+                                                        >{$t(
+                                                            "profile.security.twofa.methods.email_verification",
+                                                        ) || "Email Verification"}</span
                                                     >
                                                 </div>
                                             </label>
@@ -859,7 +874,11 @@
 
                             {#if twoFactorData.showRecovery}
                                 <div class="recovery-codes-box">
-                                    <h4>Save your Recovery Codes!</h4>
+                                    <h4>
+                                        {$t(
+                                            "profile.security.twofa.recovery_title",
+                                        ) || "Save your Recovery Codes!"}
+                                    </h4>
                                     <p>
                                         These codes are the ONLY way to access
                                         your account if you lose your phone.
@@ -873,12 +892,18 @@
                                         class="btn btn-primary width-full"
                                         onclick={() =>
                                             (twoFactorData.showRecovery = false)}
-                                        >I have saved them</button
+                                        >{$t(
+                                            "profile.security.twofa.recovery.saved_button",
+                                        ) || "I have saved them"}</button
                                     >
                                 </div>
                             {:else}
                                 <div class="disable-box">
-                                    <h4>Disable 2FA</h4>
+                                    <h4>
+                                        {$t(
+                                            "profile.security.twofa.disable_title",
+                                        ) || "Disable 2FA"}
+                                    </h4>
                                     <p>
                                         {#if $user?.preferred_2fa_method === "email"}
                                             To disable, please request a code
@@ -912,7 +937,9 @@
                                             type="text"
                                             class="form-input"
                                             bind:value={twoFactorData.disableCode}
-                                            placeholder="Enter authentication code"
+                                            placeholder={$t(
+                                                "profile.security.twofa.disable.placeholder",
+                                            ) || "Enter authentication code"}
                                         />
                                     </div>
                                     <button
@@ -952,7 +979,11 @@
                                             style="display: flex; align-items: center; gap: 0.5rem;"
                                         >
                                             <Icon name="smartphone" size={18} />
-                                            <span>Authenticator App</span>
+                                            <span>
+                                                {$t(
+                                                    "profile.security.twofa.methods.authenticator_app",
+                                                ) || "Authenticator App"}
+                                            </span>
                                         </div>
                                     </button>
                                     <button
@@ -965,7 +996,11 @@
                                             style="display: flex; align-items: center; gap: 0.5rem;"
                                         >
                                             <Icon name="mail" size={18} />
-                                            <span>Email Verification</span>
+                                            <span>
+                                                {$t(
+                                                    "profile.security.twofa.methods.email_verification",
+                                                ) || "Email Verification"}
+                                            </span>
                                         </div>
                                     </button>
                                 </div>
@@ -996,7 +1031,9 @@
                                             type="text"
                                             class="form-input text-center text-lg"
                                             bind:value={twoFactorData.code}
-                                            placeholder="000 000"
+                                            placeholder={$t(
+                                                "common.otp_placeholder_spaced",
+                                            ) || "000 000"}
                                             maxlength="6"
                                         />
                                         <div class="form-actions row">
@@ -1004,7 +1041,7 @@
                                                 class="btn btn-outline"
                                                 onclick={() =>
                                                     (twoFactorData.showSetup = false)}
-                                                >Cancel</button
+                                                >{$t("common.cancel") || "Cancel"}</button
                                             >
                                             <button
                                                 class="btn btn-primary"
@@ -1050,14 +1087,17 @@
                                                 for="email-otp"
                                                 class="form-label"
                                                 style="text-align: left;"
-                                                >Verification Code</label
+                                                >{$t("auth.2fa.enter_code") ||
+                                                    "Enter Verification Code"}</label
                                             >
                                             <input
                                                 type="text"
                                                 id="email-otp"
                                                 class="form-input text-center text-lg"
                                                 bind:value={twoFactorData.code}
-                                                placeholder="000000"
+                                                placeholder={$t(
+                                                    "common.otp_placeholder",
+                                                ) || "000000"}
                                                 maxlength="6"
                                                 style="letter-spacing: 0.5em;"
                                             />

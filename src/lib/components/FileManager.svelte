@@ -9,6 +9,8 @@
     import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
     import { fade, fly } from "svelte/transition";
     import { flip } from "svelte/animate";
+    import { t } from "svelte-i18n";
+    import { get } from "svelte/store";
 
     // Props (Svelte 5)
     let { mode = "admin", showHeader = true } = $props();
@@ -60,13 +62,42 @@
         return true;
     }
 
-    const filterCards = [
-        { id: "all", label: "All Files", icon: "hard-drive" },
-        { id: "image", label: "Images", icon: "image" },
-        { id: "video", label: "Videos", icon: "film" },
-        { id: "audio", label: "Audio", icon: "music" },
-        { id: "document", label: "Documents", icon: "file-text" },
-    ] as const;
+    const filterCards = $derived.by(
+        () =>
+            [
+                {
+                    id: "all",
+                    label:
+                        $t("components.file_manager.filters.all") || "All Files",
+                    icon: "hard-drive",
+                },
+                {
+                    id: "image",
+                    label:
+                        $t("components.file_manager.filters.images") || "Images",
+                    icon: "image",
+                },
+                {
+                    id: "video",
+                    label:
+                        $t("components.file_manager.filters.videos") || "Videos",
+                    icon: "film",
+                },
+                {
+                    id: "audio",
+                    label:
+                        $t("components.file_manager.filters.audio") || "Audio",
+                    icon: "music",
+                },
+                {
+                    id: "document",
+                    label:
+                        $t("components.file_manager.filters.documents") ||
+                        "Documents",
+                    icon: "file-text",
+                },
+            ] as const,
+    );
 
     let filterCounts = $derived.by(() => {
         const counts: Record<string, number> = {
@@ -207,7 +238,11 @@
             if (files.length > 0)
                 totalSize = files.reduce((acc, curr) => acc + curr.size, 0);
         } catch (e: any) {
-            toast.error("Failed to load files: " + e.message);
+            toast.error(
+                get(t)("components.file_manager.toasts.load_failed", {
+                    values: { message: e.message },
+                }) || "Failed to load files: " + e.message,
+            );
         } finally {
             loading = false;
         }
@@ -258,7 +293,10 @@
             } else {
                 await api.storage.deleteFileTenant(fileToDelete.id);
             }
-            toast.success("File deleted successfully");
+            toast.success(
+                get(t)("components.file_manager.toasts.deleted") ||
+                    "File deleted successfully",
+            );
             showDeleteModal = false;
             fileToDelete = null;
             loadFiles();
@@ -321,13 +359,16 @@
             <div class="header-content">
                 <h1>
                     {mode === "admin"
-                        ? "Global Storage Manager"
-                        : "File Manager"}
+                        ? $t("components.file_manager.title_admin") ||
+                          "Global Storage Manager"
+                        : $t("components.file_manager.title") || "File Manager"}
                 </h1>
                 <p class="subtitle">
                     {mode === "admin"
-                        ? "Manage uploaded files and assets across all tenants"
-                        : "Manage your organization's files and assets"}
+                        ? $t("components.file_manager.subtitle_admin") ||
+                          "Manage uploaded files and assets across all tenants"
+                        : $t("components.file_manager.subtitle") ||
+                          "Manage your organization's files and assets"}
                 </p>
             </div>
             <div class="header-actions">
@@ -344,18 +385,23 @@
                         onclick={() => fileInput?.click()}
                     >
                         <Icon name="plus" size={18} />
-                        <span>Upload</span>
+                        <span>
+                            {$t("components.file_manager.upload") || "Upload"}
+                        </span>
                     </button>
                 {/if}
 
                 <div class="stats-badge">
                     <Icon name="hard-drive" size={16} />
-                    <span>{total} Files</span>
+                    <span>
+                        {total} {$t("components.file_manager.files") || "Files"}
+                    </span>
                 </div>
                 <button
                     class="btn-refresh"
                     onclick={loadFiles}
-                    title="Refresh"
+                    title={$t("common.refresh") || "Refresh"}
+                    aria-label={$t("common.refresh") || "Refresh"}
                 >
                     <Icon
                         name="refresh-cw"
@@ -367,15 +413,23 @@
         </div>
     {/if}
 
-    <div class="filter-cards" aria-label="File type filters">
+    <div
+        class="filter-cards"
+        aria-label={$t("components.file_manager.filters.aria_group") ||
+            "File type filters"}
+    >
         {#each filterCards as c}
             <button
                 type="button"
                 class="filter-card"
                 class:active={activeFilter === c.id}
                 onclick={() => setActiveFilter(c.id)}
-                aria-label={`Filter: ${c.label}`}
-                title={`Filter: ${c.label}`}
+                aria-label={$t("components.file_manager.filters.aria_filter", {
+                    values: { label: c.label },
+                }) || `Filter: ${c.label}`}
+                title={$t("components.file_manager.filters.aria_filter", {
+                    values: { label: c.label },
+                }) || `Filter: ${c.label}`}
             >
                 <div class="fc-icon">
                     <Icon name={c.icon} size={18} />
@@ -399,7 +453,10 @@
                             <span class="count-pill"
                                 >{selectedFileIds.length}</span
                             >
-                            <span>Selected</span>
+                            <span>
+                                {$t("components.file_manager.selected") ||
+                                    "Selected"}
+                            </span>
                             <span class="sep">•</span>
                             <span class="meta"
                                 >{formatSize(selectedTotalSize)}</span
@@ -407,14 +464,15 @@
                         </div>
                         <div class="action-buttons">
                             <button class="btn-ghost" onclick={deselectAll}
-                                >Cancel</button
+                                >{$t("common.cancel") || "Cancel"}</button
                             >
                             <button
                                 class="btn-danger-sm"
                                 onclick={handleBatchDelete}
                             >
                                 <Icon name="trash-2" size={16} />
-                                Delete Selected
+                                {$t("components.file_manager.delete_selected") ||
+                                    "Delete Selected"}
                             </button>
                         </div>
                     </div>
@@ -423,7 +481,9 @@
                         <Icon name="search" size={18} class="search-icon" />
                         <input
                             type="text"
-                            placeholder="Search files by name..."
+                            placeholder={$t(
+                                "components.file_manager.search_placeholder",
+                            ) || "Search files by name..."}
                             bind:value={searchQuery}
                             oninput={handleSearch}
                         />
@@ -435,7 +495,8 @@
                                 ? 'active'
                                 : ''}"
                             onclick={() => (viewMode = "grid")}
-                            title="Grid View"
+                            title={$t("components.file_manager.view.grid") || "Grid View"}
+                            aria-label={$t("components.file_manager.view.grid") || "Grid View"}
                         >
                             <Icon name="grid" size={18} />
                         </button>
@@ -444,7 +505,8 @@
                                 ? 'active'
                                 : ''}"
                             onclick={() => (viewMode = "list")}
-                            title="List View"
+                            title={$t("components.file_manager.view.list") || "List View"}
+                            aria-label={$t("components.file_manager.view.list") || "List View"}
                         >
                             <Icon name="list" size={18} />
                         </button>
@@ -464,18 +526,25 @@
                                 onclick={() => fileInput?.click()}
                             >
                                 <Icon name="plus" size={18} />
-                                <span>Upload</span>
+                                <span>
+                                    {$t("components.file_manager.upload") ||
+                                        "Upload"}
+                                </span>
                             </button>
                         {/if}
 
                         <div class="stats-badge">
                             <Icon name="hard-drive" size={16} />
-                            <span>{total} Files</span>
+                            <span>
+                                {total} {$t("components.file_manager.files") ||
+                                    "Files"}
+                            </span>
                         </div>
                         <button
                             class="btn-refresh"
                             onclick={loadFiles}
-                            title="Refresh"
+                            title={$t("common.refresh") || "Refresh"}
+                            aria-label={$t("common.refresh") || "Refresh"}
                         >
                             <Icon
                                 name="refresh-cw"
@@ -492,15 +561,24 @@
                 {#if loading && files.length === 0}
                     <div class="loading-state">
                         <div class="spinner"></div>
-                        <p>Loading files...</p>
+                        <p>
+                            {$t("components.file_manager.loading") ||
+                                "Loading files..."}
+                        </p>
                     </div>
                 {:else if files.length === 0}
                     <div class="empty-state">
                         <div class="empty-icon">
                             <Icon name="folder" size={48} />
                         </div>
-                        <h3>No Files Found</h3>
-                        <p>Try adjusting your search terms.</p>
+                        <h3>
+                            {$t("components.file_manager.empty.title") ||
+                                "No Files Found"}
+                        </h3>
+                        <p>
+                            {$t("components.file_manager.empty.subtitle") ||
+                                "Try adjusting your search terms."}
+                        </p>
                     </div>
                 {:else if viewMode === "grid"}
                     <!-- Grid View -->
@@ -609,7 +687,7 @@
                                                 e.stopPropagation();
                                                 confirmDelete(file);
                                             }}
-                                            title="Delete"
+                                            title={$t("common.delete") || "Delete"}
                                         >
                                             <Icon name="trash-2" size={14} />
                                         </button>
@@ -640,11 +718,26 @@
                                             />
                                         {/if}
                                     </th>
-                                    <th>Name</th>
-                                    <th>Size</th>
-                                    <th>Type</th>
-                                    <th>Uploaded</th>
-                                    <th class="text-right">Action</th>
+                                    <th>
+                                        {$t("components.file_manager.columns.name") ||
+                                            "Name"}
+                                    </th>
+                                    <th>
+                                        {$t("components.file_manager.columns.size") ||
+                                            "Size"}
+                                    </th>
+                                    <th>
+                                        {$t("components.file_manager.columns.type") ||
+                                            "Type"}
+                                    </th>
+                                    <th>
+                                        {$t("components.file_manager.columns.uploaded") ||
+                                            "Uploaded"}
+                                    </th>
+                                    <th class="text-right">
+                                        {$t("components.file_manager.columns.action") ||
+                                            "Action"}
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -748,7 +841,8 @@
                                                         confirmDelete(file);
                                                     }}
                                                 >
-                                                    Delete
+                                                    {$t("common.delete") ||
+                                                        "Delete"}
                                                 </button>
                                             {/if}
                                         </td>
@@ -763,22 +857,32 @@
             <!-- Pagination Footer -->
             {#if totalPages > 1}
                 <div class="pagination-footer">
-                    <span class="page-info">Page {page} of {totalPages}</span>
+                    <span class="page-info">
+                        {$t("components.file_manager.pagination.page_of", {
+                            values: { page, total: totalPages },
+                        }) || `Page ${page} of ${totalPages}`}
+                    </span>
                     <div class="page-controls">
                         <button
+                            type="button"
                             disabled={page === 1}
                             onclick={() => {
                                 page--;
                                 loadFiles();
-                            }}>Previous</button
+                            }}
                         >
+                            {$t("common.previous") || "Previous"}
+                        </button>
                         <button
+                            type="button"
                             disabled={page === totalPages}
                             onclick={() => {
                                 page++;
                                 loadFiles();
-                            }}>Next</button
+                            }}
                         >
+                            {$t("common.next") || "Next"}
+                        </button>
                     </div>
                 </div>
             {/if}
@@ -797,12 +901,26 @@
     <ConfirmDialog
         bind:show={showDeleteModal}
         title={fileToDelete
-            ? "Delete File"
-            : `Delete ${selectedFileIds.length} files`}
+            ? $t("components.file_manager.confirm.delete_one_title") ||
+              "Delete File"
+            : $t("components.file_manager.confirm.delete_many_title", {
+                  values: { count: selectedFileIds.length },
+              }) || `Delete ${selectedFileIds.length} files`}
         message={fileToDelete
-            ? "Are you sure you want to delete this file? This action cannot be undone."
-            : `Are you sure you want to delete ${selectedFileIds.length} files (${formatSize(selectedTotalSize)})? This action cannot be undone.`}
-        confirmText={fileToDelete ? "Delete" : `Delete ${selectedFileIds.length}`}
+            ? $t("components.file_manager.confirm.delete_one_message") ||
+              "Are you sure you want to delete this file? This action cannot be undone."
+            : $t("components.file_manager.confirm.delete_many_message", {
+                  values: {
+                      count: selectedFileIds.length,
+                      size: formatSize(selectedTotalSize),
+                  },
+              }) ||
+              `Are you sure you want to delete ${selectedFileIds.length} files (${formatSize(selectedTotalSize)})? This action cannot be undone.`}
+        confirmText={fileToDelete
+            ? $t("common.delete") || "Delete"
+            : $t("components.file_manager.confirm.delete_many_confirm", {
+                  values: { count: selectedFileIds.length },
+              }) || `Delete ${selectedFileIds.length}`}
         type="danger"
         onconfirm={handleConfirmDelete}
     />

@@ -8,6 +8,7 @@
     import TableToolbar from "$lib/components/TableToolbar.svelte";
     import Pagination from "$lib/components/Pagination.svelte";
     import type { AuditLog } from "$lib/api/client";
+    import { t } from "svelte-i18n";
 
     let logs = $state<AuditLog[]>([]);
     let loading = $state(true);
@@ -134,16 +135,37 @@
         loadLogs();
     }
 
-    // Columns config
-    const columns = [
-        { key: "created_at", label: "Time", width: "180px" },
-        { key: "action", label: "Action", width: "150px" },
-        { key: "user", label: "User" },
-        { key: "tenant", label: "Tenant" },
-        { key: "resource", label: "Resource" },
-        { key: "details", label: "Details" },
-        { key: "ip", label: "IP", width: "120px" },
-    ];
+    // Columns config (i18n)
+    const columns = $derived.by(() => [
+        {
+            key: "created_at",
+            label: $t("superadmin.audit_logs.columns.time") || "Time",
+            width: "180px",
+        },
+        {
+            key: "action",
+            label: $t("superadmin.audit_logs.columns.action") || "Action",
+            width: "150px",
+        },
+        { key: "user", label: $t("superadmin.audit_logs.columns.user") || "User" },
+        {
+            key: "tenant",
+            label: $t("superadmin.audit_logs.columns.tenant") || "Tenant",
+        },
+        {
+            key: "resource",
+            label: $t("superadmin.audit_logs.columns.resource") || "Resource",
+        },
+        {
+            key: "details",
+            label: $t("superadmin.audit_logs.columns.details") || "Details",
+        },
+        {
+            key: "ip",
+            label: $t("superadmin.audit_logs.columns.ip") || "IP",
+            width: "120px",
+        },
+    ]);
 
     function getActionCategory(action: string) {
         const head = String(action || "").split("_")[0].toLowerCase();
@@ -163,16 +185,21 @@
     <div class="glass-card">
         <div class="card-header glass">
             <div>
-                <h3>Audit Logs</h3>
-                <span class="muted">Track system activity and security events</span>
+                <h3>{$t("superadmin.audit_logs.title") || "Audit Logs"}</h3>
+                <span class="muted">
+                    {$t("superadmin.audit_logs.subtitle") ||
+                        "Track system activity and security events"}
+                </span>
             </div>
             <div class="header-actions">
-                <span class="count-badge">{total} logs</span>
+                <span class="count-badge"
+                    >{total} {$t("superadmin.audit_logs.count") || "logs"}</span
+                >
                 <button
                     class="btn-icon"
                     onclick={() => loadLogs()}
-                    title="Refresh logs"
-                    aria-label="Refresh logs"
+                    title={$t("superadmin.audit_logs.refresh") || "Refresh logs"}
+                    aria-label={$t("superadmin.audit_logs.refresh") || "Refresh logs"}
                     type="button"
                 >
                     <Icon name="refresh-cw" size={18} />
@@ -181,23 +208,35 @@
         </div>
 
         <div class="toolbar-wrapper">
-            <TableToolbar bind:searchQuery={searchQuery} placeholder="Search logs..." onsearch={handleSearch}>
+            <TableToolbar
+                bind:searchQuery={searchQuery}
+                placeholder={$t("superadmin.audit_logs.search") || "Search logs..."}
+                onsearch={handleSearch}
+            >
                 {#snippet filters()}
                     <div class="filters-row">
                         <div class="field">
-                            <label class="field-label" for="filter-action">Action (exact)</label>
+                            <label class="field-label" for="filter-action"
+                                >{$t("superadmin.audit_logs.filters.action") ||
+                                    "Action (exact)"}</label
+                            >
                             <input
                                 id="filter-action"
                                 type="text"
                                 bind:value={actionFilter}
                                 oninput={handleSearch}
-                                placeholder="e.g. login, create_user"
+                                placeholder={$t(
+                                    "superadmin.audit_logs.filters.action_placeholder",
+                                ) || "e.g. login, create_user"}
                                 class="field-input"
                             />
                         </div>
 
                         <div class="field">
-                            <label class="field-label" for="filter-date-from">From</label>
+                            <label class="field-label" for="filter-date-from"
+                                >{$t("superadmin.audit_logs.filters.from") ||
+                                    "From"}</label
+                            >
                             <input
                                 id="filter-date-from"
                                 type="datetime-local"
@@ -208,7 +247,10 @@
                         </div>
 
                         <div class="field">
-                            <label class="field-label" for="filter-date-to">To</label>
+                            <label class="field-label" for="filter-date-to"
+                                >{$t("superadmin.audit_logs.filters.to") ||
+                                    "To"}</label
+                            >
                             <input
                                 id="filter-date-to"
                                 type="datetime-local"
@@ -218,25 +260,35 @@
                             />
                         </div>
 
-                        <div class="quick-row" aria-label="Quick ranges">
+                        <div
+                            class="quick-row"
+                            aria-label={$t("superadmin.audit_logs.aria.quick_ranges") ||
+                                "Quick ranges"}
+                        >
                             <button type="button" class="chip" onclick={() => setQuickRange(1)}>24h</button>
                             <button type="button" class="chip" onclick={() => setQuickRange(7)}>7d</button>
                             <button type="button" class="chip" onclick={() => setQuickRange(30)}>30d</button>
-                            <button type="button" class="chip danger" onclick={clearFilters}>Clear</button>
+                            <button type="button" class="chip danger" onclick={clearFilters}>
+                                {$t("common.clear") || "Clear"}
+                            </button>
                         </div>
                     </div>
                 {/snippet}
 
                 {#snippet actions()}
                     {#if !isMobile}
-                        <div class="view-toggle" aria-label="View mode">
+                        <div
+                            class="view-toggle"
+                            aria-label={$t("superadmin.audit_logs.aria.view_mode") ||
+                                "View mode"}
+                        >
                             <button
                                 type="button"
                                 class="view-btn"
                                 class:active={viewMode === "table"}
                                 onclick={() => (viewMode = "table")}
-                                title="Table view"
-                                aria-label="Table view"
+                                title={$t("superadmin.audit_logs.view.table") || "Table view"}
+                                aria-label={$t("superadmin.audit_logs.view.table") || "Table view"}
                             >
                                 <Icon name="list" size={18} />
                             </button>
@@ -245,8 +297,8 @@
                                 class="view-btn"
                                 class:active={viewMode === "cards"}
                                 onclick={() => (viewMode = "cards")}
-                                title="Card view"
-                                aria-label="Card view"
+                                title={$t("superadmin.audit_logs.view.cards") || "Card view"}
+                                aria-label={$t("superadmin.audit_logs.view.cards") || "Card view"}
                             >
                                 <Icon name="grid" size={18} />
                             </button>
@@ -261,16 +313,29 @@
                 {#if loading && logs.length === 0}
                     <div class="loading-state">
                         <div class="spinner"></div>
-                        <p>Loading logs...</p>
+                        <p>
+                            {$t("superadmin.audit_logs.loading") ||
+                                "Loading logs..."}
+                        </p>
                     </div>
                 {:else if logs.length === 0}
                     <div class="empty-state">
                         <Icon name="activity" size={48} />
-                        <h4>No logs found</h4>
-                        <p>Try adjusting your filters.</p>
+                        <h4>
+                            {$t("superadmin.audit_logs.empty.title") ||
+                                "No logs found"}
+                        </h4>
+                        <p>
+                            {$t("superadmin.audit_logs.empty.subtitle") ||
+                                "Try adjusting your filters."}
+                        </p>
                     </div>
                 {:else}
-                    <div class="log-cards" aria-label="Audit logs">
+                    <div
+                        class="log-cards"
+                        aria-label={$t("superadmin.audit_logs.aria.cards") ||
+                            "Audit logs"}
+                    >
                         {#each logs as l (l.id)}
                             <div class="log-card">
                                 <div class="log-top">
@@ -286,8 +351,20 @@
                                         type="button"
                                         class="btn-icon"
                                         onclick={() => toggleExpand(l.id)}
-                                        aria-label={expandedLogId === l.id ? "Collapse details" : "Expand details"}
-                                        title={expandedLogId === l.id ? "Collapse" : "Expand"}
+                                        aria-label={expandedLogId === l.id
+                                            ? $t(
+                                                  "superadmin.audit_logs.actions.collapse_details",
+                                              ) || "Collapse details"
+                                            : $t(
+                                                  "superadmin.audit_logs.actions.expand_details",
+                                              ) || "Expand details"}
+                                        title={expandedLogId === l.id
+                                            ? $t(
+                                                  "superadmin.audit_logs.actions.collapse",
+                                              ) || "Collapse"
+                                            : $t(
+                                                  "superadmin.audit_logs.actions.expand",
+                                              ) || "Expand"}
                                     >
                                         <Icon name={expandedLogId === l.id ? "chevron-up" : "chevron-down"} size={18} />
                                     </button>
@@ -295,7 +372,10 @@
 
                                 <div class="log-grid">
                                     <div class="kv">
-                                        <span class="k">User</span>
+                                        <span class="k"
+                                            >{$t("superadmin.audit_logs.labels.user") ||
+                                                "User"}</span
+                                        >
                                         <span class="v">
                                             {#if l.user_email}
                                                 {l.user_name ? `${l.user_name} — ${l.user_email}` : l.user_email}
@@ -308,20 +388,29 @@
                                     </div>
 
                                     <div class="kv">
-                                        <span class="k">Tenant</span>
+                                        <span class="k"
+                                            >{$t("superadmin.audit_logs.labels.tenant") ||
+                                                "Tenant"}</span
+                                        >
                                         <span class="v">
                                             {#if l.tenant_name}
                                                 {l.tenant_name}
                                             {:else if l.tenant_id}
                                                 <span class="text-mono">{l.tenant_id.substring(0, 8)}…</span>
                                             {:else}
-                                                <span class="badge-global">Global</span>
+                                                <span class="badge-global"
+                                                    >{$t("common.global") ||
+                                                        "Global"}</span
+                                                >
                                             {/if}
                                         </span>
                                     </div>
 
                                     <div class="kv">
-                                        <span class="k">Resource</span>
+                                        <span class="k"
+                                            >{$t("superadmin.audit_logs.labels.resource") ||
+                                                "Resource"}</span
+                                        >
                                         <span class="v">
                                             {l.resource}
                                             {#if l.resource_name}
@@ -333,14 +422,23 @@
                                     </div>
 
                                     <div class="kv">
-                                        <span class="k">IP</span>
-                                        <span class="v text-mono">{l.ip_address || "—"}</span>
+                                        <span class="k"
+                                            >{$t("superadmin.audit_logs.labels.ip") ||
+                                                "IP"}</span
+                                        >
+                                        <span class="v text-mono"
+                                            >{l.ip_address ||
+                                                ($t("common.na") || "—")}</span
+                                        >
                                     </div>
                                 </div>
 
                                 {#if expandedLogId === l.id}
                                     <div class="details-block">
-                                        <div class="details-title">Details</div>
+                                        <div class="details-title">
+                                            {$t("superadmin.audit_logs.labels.details") ||
+                                                "Details"}
+                                        </div>
                                         <div class="details-text">{l.details || "—"}</div>
                                     </div>
                                 {/if}
@@ -394,7 +492,9 @@
                                     >{item.user_id.substring(0, 8)}…</span
                                 >
                             {:else}
-                                <span class="text-muted">—</span>
+                                <span class="text-muted"
+                                    >{$t("common.na") || "—"}</span
+                                >
                             {/if}
                         {:else if key === "tenant"}
                             {#if item.tenant_name}
@@ -406,7 +506,9 @@
                                     >{item.tenant_id.substring(0, 8)}…</span
                                 >
                             {:else}
-                                <span class="badge-global">Global</span>
+                                <span class="badge-global"
+                                    >{$t("common.global") || "Global"}</span
+                                >
                             {/if}
                         {:else if key === "resource"}
                             <span class="font-medium block"
@@ -423,11 +525,11 @@
                             {/if}
                         {:else if key === "details"}
                             <div class="details-cell" title={item.details}>
-                                {item.details || "—"}
+                                {item.details || ($t("common.na") || "—")}
                             </div>
                         {:else if key === "ip"}
                             <span class="text-xs text-mono text-muted"
-                                >{item.ip_address || "—"}</span
+                                >{item.ip_address || ($t("common.na") || "—")}</span
                             >
                         {/if}
                     {/snippet}

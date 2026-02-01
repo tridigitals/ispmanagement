@@ -426,7 +426,9 @@
                         class="input-group"
                         class:focus={activeField === "2fa"}
                     >
-                        <label for="2fa-code">Authenticator Code</label>
+                        <label for="2fa-code">
+                            {$t("auth.2fa.enter_code") || "Enter Verification Code"}
+                        </label>
                         <div class="field">
                             <span class="icon"
                                 ><Icon name="shield" size={18} /></span
@@ -437,7 +439,7 @@
                                 bind:value={twoFactorCode}
                                 on:focus={() => (activeField = "2fa")}
                                 on:blur={() => (activeField = "")}
-                                placeholder="000000"
+                                placeholder={$t("common.otp_placeholder") || "000000"}
                                 maxlength="6"
                                 required
                                 style="letter-spacing: 0.5em; text-align: center;"
@@ -467,7 +469,7 @@
                         {#if loading}
                             <div class="spinner"></div>
                         {:else}
-                            Verify & Login
+                            {$t("auth.2fa.verify_and_login") || "Verify & Login"}
                         {/if}
                     </button>
 
@@ -478,7 +480,8 @@
                             on:click={() => (step = "2fa-select")}
                             style="width: 100%; margin-top: 0.5rem; background: none; border: none; color: var(--text-secondary); cursor: pointer;"
                         >
-                            Try another method
+                            {$t("auth.2fa.try_another_method") ||
+                                "Try another method"}
                         </button>
                     {/if}
 
@@ -488,7 +491,7 @@
                         on:click={() => (step = "login")}
                         style="width: 100%; margin-top: 0.5rem; background: none; border: none; color: var(--text-secondary); cursor: pointer;"
                     >
-                        Back to Login
+                        {$t("auth.2fa.back_to_login") || "Back to Login"}
                     </button>
                 </form>
             {:else if step === "2fa-email"}
@@ -500,7 +503,10 @@
                             style="margin-bottom: 1rem; padding: 1rem; background: var(--bg-success); border-radius: 8px; color: var(--text-success);"
                         >
                             <Icon name="check-circle" size={18} />
-                            <span>Verification code sent to your email</span>
+                            <span>
+                                {$t("auth.2fa.email_sent") ||
+                                    "A verification code has been sent to your email"}
+                            </span>
                         </div>
                     {/if}
 
@@ -508,9 +514,9 @@
                         class="input-group"
                         class:focus={activeField === "2fa"}
                     >
-                        <label for="email-otp-code"
-                            >Email Verification Code</label
-                        >
+                        <label for="email-otp-code">
+                            {$t("auth.2fa.enter_email_code") || "Enter Email Code"}
+                        </label>
                         <div class="field">
                             <span class="icon"
                                 ><Icon name="mail" size={18} /></span
@@ -521,7 +527,7 @@
                                 bind:value={twoFactorCode}
                                 on:focus={() => (activeField = "2fa")}
                                 on:blur={() => (activeField = "")}
-                                placeholder="000000"
+                                placeholder={$t("common.otp_placeholder") || "000000"}
                                 maxlength="6"
                                 required
                                 style="letter-spacing: 0.5em; text-align: center;"
@@ -551,7 +557,7 @@
                         {#if loading}
                             <div class="spinner"></div>
                         {:else}
-                            Verify & Login
+                            {$t("auth.2fa.verify_and_login") || "Verify & Login"}
                         {/if}
                     </button>
 
@@ -578,7 +584,8 @@
                             on:click={() => (step = "2fa-select")}
                             style="width: 100%; margin-top: 0.5rem; background: none; border: none; color: var(--text-secondary); cursor: pointer;"
                         >
-                            Try another method
+                            {$t("auth.2fa.try_another_method") ||
+                                "Try another method"}
                         </button>
                     {/if}
 
@@ -588,7 +595,7 @@
                         on:click={() => (step = "login")}
                         style="width: 100%; margin-top: 0.5rem; background: none; border: none; color: var(--text-secondary); cursor: pointer;"
                     >
-                        Back to Login
+                        {$t("auth.2fa.back_to_login") || "Back to Login"}
                     </button>
                 </form>
             {/if}

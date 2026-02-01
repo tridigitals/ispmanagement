@@ -849,10 +849,14 @@
                                     <label
                                         class="setting-label"
                                         for="allow-registration"
-                                        >Allow Public Registration</label
+                                        >{$t(
+                                            "superadmin.settings.auth.allow_public_registration.label",
+                                        ) || "Allow Public Registration"}</label
                                     >
                                     <p class="setting-description">
-                                        Allow new users to sign up freely.
+                                        {$t(
+                                            "superadmin.settings.auth.allow_public_registration.desc",
+                                        ) || "Allow new users to sign up freely."}
                                     </p>
                                 </div>
                                 <label class="toggle">
@@ -870,11 +874,14 @@
                                     <label
                                         class="setting-label"
                                         for="require-email-verify"
-                                        >Require Email Verification</label
+                                        >{$t(
+                                            "superadmin.settings.auth.require_email_verification.label",
+                                        ) || "Require Email Verification"}</label
                                     >
                                     <p class="setting-description">
-                                        Users must verify email before logging
-                                        in.
+                                        {$t(
+                                            "superadmin.settings.auth.require_email_verification.desc",
+                                        ) || "Users must verify email before logging in."}
                                     </p>
                                 </div>
                                 <label class="toggle">
@@ -894,10 +901,12 @@
                                     <label
                                         class="setting-label"
                                         for="jwt-expiry"
-                                        >JWT Expiry (Hours)</label
+                                        >{$t("superadmin.settings.auth.jwt_expiry.label") ||
+                                            "JWT Expiry (Hours)"}</label
                                     >
                                     <p class="setting-description">
-                                        How long an auth token remains valid.
+                                        {$t("superadmin.settings.auth.jwt_expiry.desc") ||
+                                            "How long an auth token remains valid."}
                                     </p>
                                 </div>
                                 <div class="input-group">
@@ -908,7 +917,9 @@
                                         on:input={handleChange}
                                         min="1"
                                     />
-                                    <span class="input-suffix">hours</span>
+                                    <span class="input-suffix"
+                                        >{$t("common.units.hours") || "hours"}</span
+                                    >
                                 </div>
                             </div>
                             <div class="setting-row">
@@ -916,10 +927,14 @@
                                     <label
                                         class="setting-label"
                                         for="session-timeout"
-                                        >Session Timeout (Minutes)</label
+                                        >{$t(
+                                            "superadmin.settings.auth.session_timeout.label",
+                                        ) || "Session Timeout (Minutes)"}</label
                                     >
                                     <p class="setting-description">
-                                        Auto-logout after inactivity.
+                                        {$t(
+                                            "superadmin.settings.auth.session_timeout.desc",
+                                        ) || "Auto-logout after inactivity."}
                                     </p>
                                 </div>
                                 <div class="input-group">
@@ -930,7 +945,9 @@
                                         on:input={handleChange}
                                         min="5"
                                     />
-                                    <span class="input-suffix">min</span>
+                                    <span class="input-suffix"
+                                        >{$t("common.units.min") || "min"}</span
+                                    >
                                 </div>
                             </div>
                         </div>
@@ -952,7 +969,8 @@
                                     <label
                                         class="setting-label"
                                         for="min-pwd-length"
-                                        >Minimum Length</label
+                                        >{$t("superadmin.settings.password.min_length.label") ||
+                                            "Minimum Length"}</label
                                     >
                                 </div>
                                 <div class="input-group">
@@ -963,7 +981,9 @@
                                         on:input={handleChange}
                                         min="6"
                                     />
-                                    <span class="input-suffix">chars</span>
+                                    <span class="input-suffix"
+                                        >{$t("common.units.chars") || "chars"}</span
+                                    >
                                 </div>
                             </div>
                             <div class="setting-row">
@@ -971,7 +991,9 @@
                                     <label
                                         class="setting-label"
                                         for="require-uppercase"
-                                        >Require Uppercase</label
+                                        >{$t(
+                                            "superadmin.settings.password.require_uppercase.label",
+                                        ) || "Require Uppercase"}</label
                                     >
                                 </div>
                                 <label class="toggle">
@@ -991,7 +1013,9 @@
                                     <label
                                         class="setting-label"
                                         for="require-number"
-                                        >Require Number</label
+                                        >{$t(
+                                            "superadmin.settings.password.require_number.label",
+                                        ) || "Require Number"}</label
                                     >
                                 </div>
                                 <label class="toggle">
@@ -1009,7 +1033,9 @@
                                     <label
                                         class="setting-label"
                                         for="require-special"
-                                        >Require Special Character</label
+                                        >{$t(
+                                            "superadmin.settings.password.require_special.label",
+                                        ) || "Require Special Character"}</label
                                     >
                                 </div>
                                 <label class="toggle">
@@ -1043,11 +1069,15 @@
                                     <label
                                         class="setting-label"
                                         for="max-login-attempts"
-                                        >Max Login Attempts</label
+                                        >{$t(
+                                            "superadmin.settings.security.max_login_attempts.label",
+                                        ) || "Max Login Attempts"}</label
                                     >
                                     <p class="setting-description">
-                                        Number of failed login attempts before
-                                        account lockout.
+                                        {$t(
+                                            "superadmin.settings.security.max_login_attempts.desc",
+                                        ) ||
+                                            "Number of failed login attempts before account lockout."}
                                     </p>
                                 </div>
                                 <div class="input-group">
@@ -1059,7 +1089,10 @@
                                         min="1"
                                         max="20"
                                     />
-                                    <span class="input-suffix">attempts</span>
+                                    <span class="input-suffix"
+                                        >{$t("common.units.attempts") ||
+                                            "attempts"}</span
+                                    >
                                 </div>
                             </div>
 
@@ -1068,11 +1101,15 @@
                                     <label
                                         class="setting-label"
                                         for="lockout-duration"
-                                        >Lockout Duration</label
+                                        >{$t(
+                                            "superadmin.settings.security.lockout_duration.label",
+                                        ) || "Lockout Duration"}</label
                                     >
                                     <p class="setting-description">
-                                        How long a user stays locked out after
-                                        max failed attempts.
+                                        {$t(
+                                            "superadmin.settings.security.lockout_duration.desc",
+                                        ) ||
+                                            "How long a user stays locked out after max failed attempts."}
                                     </p>
                                 </div>
                                 <div class="input-group">
@@ -1084,7 +1121,10 @@
                                         min="1"
                                         max="1440"
                                     />
-                                    <span class="input-suffix">minutes</span>
+                                    <span class="input-suffix"
+                                        >{$t("common.units.minutes") ||
+                                            "minutes"}</span
+                                    >
                                 </div>
                             </div>
 
@@ -1093,11 +1133,14 @@
                                     <label
                                         class="setting-label"
                                         for="api-rate-limit"
-                                        >API Rate Limit</label
+                                        >{$t(
+                                            "superadmin.settings.security.api_rate_limit.label",
+                                        ) || "API Rate Limit"}</label
                                     >
                                     <p class="setting-description">
-                                        Maximum API requests allowed per minute
-                                        per user.
+                                        {$t(
+                                            "superadmin.settings.security.api_rate_limit.desc",
+                                        ) || "Maximum API requests allowed per minute per user."}
                                     </p>
                                 </div>
                                 <div class="input-group">
@@ -1109,18 +1152,25 @@
                                         min="10"
                                         max="1000"
                                     />
-                                    <span class="input-suffix">req/min</span>
+                                    <span class="input-suffix"
+                                        >{$t("common.units.req_per_min") ||
+                                            "req/min"}</span
+                                    >
                                 </div>
                             </div>
 
                             <div class="setting-row">
                                 <div class="setting-info">
                                     <span class="setting-label"
-                                        >Enable IP Blocking</span
+                                        >{$t(
+                                            "superadmin.settings.security.ip_blocking.label",
+                                        ) || "Enable IP Blocking"}</span
                                     >
                                     <p class="setting-description">
-                                        Automatically block IP addresses with
-                                        suspicious activity.
+                                        {$t(
+                                            "superadmin.settings.security.ip_blocking.desc",
+                                        ) ||
+                                            "Automatically block IP addresses with suspicious activity."}
                                     </p>
                                 </div>
                                 <label class="toggle">
@@ -1128,7 +1178,9 @@
                                         type="checkbox"
                                         bind:checked={enableIpBlocking}
                                         on:change={handleChange}
-                                        aria-label="Enable IP Blocking"
+                                        aria-label={$t(
+                                            "superadmin.settings.security.ip_blocking.aria",
+                                        ) || "Enable IP Blocking"}
                                     />
                                     <span class="slider"></span>
                                 </label>
@@ -1142,16 +1194,24 @@
                         style="margin-top: 1.5rem;"
                     >
                         <div class="card-header">
-                            <h3>Two-Factor Authentication</h3>
+                            <h3>
+                                {$t("superadmin.settings.sections.twofa") ||
+                                    "Two-Factor Authentication"}
+                            </h3>
                         </div>
                         <div class="card-body">
                             <div class="setting-row">
                                 <div class="setting-info">
-                                    <span class="setting-label">Enable 2FA</span
+                                    <span class="setting-label"
+                                        >{$t(
+                                            "superadmin.settings.twofa.enable_2fa.label",
+                                        ) || "Enable 2FA"}</span
                                     >
                                     <p class="setting-description">
-                                        Allow users to set up two-factor
-                                        authentication for enhanced security.
+                                        {$t(
+                                            "superadmin.settings.twofa.enable_2fa.desc",
+                                        ) ||
+                                            "Allow users to set up two-factor authentication for enhanced security."}
                                     </p>
                                 </div>
                                 <label class="toggle">
@@ -1159,7 +1219,9 @@
                                         type="checkbox"
                                         bind:checked={twoFAEnabled}
                                         on:change={handleChange}
-                                        aria-label="Enable 2FA"
+                                        aria-label={$t(
+                                            "superadmin.settings.twofa.enable_2fa.aria",
+                                        ) || "Enable 2FA"}
                                     />
                                     <span class="slider"></span>
                                 </label>
@@ -1168,11 +1230,15 @@
                             <div class="setting-row">
                                 <div class="setting-info">
                                     <span class="setting-label"
-                                        >TOTP (Authenticator App)</span
+                                        >{$t(
+                                            "superadmin.settings.twofa.enable_totp.label",
+                                        ) || "TOTP (Authenticator App)"}</span
                                     >
                                     <p class="setting-description">
-                                        Allow users to verify with Google
-                                        Authenticator, Authy, etc.
+                                        {$t(
+                                            "superadmin.settings.twofa.enable_totp.desc",
+                                        ) ||
+                                            "Allow users to verify with Google Authenticator, Authy, etc."}
                                     </p>
                                 </div>
                                 <label class="toggle">
@@ -1180,7 +1246,9 @@
                                         type="checkbox"
                                         bind:checked={twoFAMethodTotp}
                                         on:change={handleChange}
-                                        aria-label="Enable TOTP"
+                                        aria-label={$t(
+                                            "superadmin.settings.twofa.enable_totp.aria",
+                                        ) || "Enable TOTP"}
                                     />
                                     <span class="slider"></span>
                                 </label>
@@ -1188,10 +1256,16 @@
 
                             <div class="setting-row">
                                 <div class="setting-info">
-                                    <span class="setting-label">Email OTP</span>
+                                    <span class="setting-label"
+                                        >{$t(
+                                            "superadmin.settings.twofa.email_otp.label",
+                                        ) || "Email OTP"}</span
+                                    >
                                     <p class="setting-description">
-                                        Allow users to receive verification
-                                        codes via email.
+                                        {$t(
+                                            "superadmin.settings.twofa.email_otp.desc",
+                                        ) ||
+                                            "Allow users to receive verification codes via email."}
                                     </p>
                                 </div>
                                 <label class="toggle">
@@ -1199,7 +1273,9 @@
                                         type="checkbox"
                                         bind:checked={twoFAMethodEmail}
                                         on:change={handleChange}
-                                        aria-label="Enable Email OTP"
+                                        aria-label={$t(
+                                            "superadmin.settings.twofa.enable_email_otp.aria",
+                                        ) || "Enable Email OTP"}
                                     />
                                     <span class="slider"></span>
                                 </label>
@@ -1211,11 +1287,15 @@
                                         <label
                                             class="setting-label"
                                             for="email-otp-expiry"
-                                            >Email OTP Expiry</label
+                                            >{$t(
+                                                "superadmin.settings.twofa.email_otp_expiry.label",
+                                            ) || "Email OTP Expiry"}</label
                                         >
                                         <p class="setting-description">
-                                            How long email verification codes
-                                            remain valid.
+                                            {$t(
+                                                "superadmin.settings.twofa.email_otp_expiry.desc",
+                                            ) ||
+                                                "How long email verification codes remain valid."}
                                         </p>
                                     </div>
                                     <div class="input-group">
@@ -1229,7 +1309,10 @@
                                             min="1"
                                             max="30"
                                         />
-                                        <span class="input-suffix">min</span>
+                                        <span class="input-suffix"
+                                            >{$t("common.units.min") ||
+                                                "min"}</span
+                                        >
                                     </div>
                                 </div>
                             {/if}
@@ -1253,11 +1336,15 @@
                                     <label
                                         class="setting-label"
                                         for="storage-driver"
-                                        >Storage Driver</label
+                                        >{$t(
+                                            "superadmin.settings.storage.driver.label",
+                                        ) || "Storage Driver"}</label
                                     >
                                     <p class="setting-description">
-                                        Choose where files are stored. Local
-                                        uses the server's disk.
+                                        {$t(
+                                            "superadmin.settings.storage.driver.desc",
+                                        ) ||
+                                            "Choose where files are stored. Local uses the server's disk."}
                                     </p>
                                 </div>
                                 <div class="input-group">
@@ -1267,12 +1354,23 @@
                                         on:change={handleChange}
                                         class="native-select"
                                     >
-                                        <option value="local">Local Disk</option
+                                        <option value="local">
+                                            {$t(
+                                                "superadmin.settings.storage.driver.options.local",
+                                            ) || "Local Disk"}
+                                        </option
                                         >
-                                        <option value="s3"
-                                            >AWS S3 / MinIO</option
+                                        <option value="s3">
+                                            {$t(
+                                                "superadmin.settings.storage.driver.options.s3",
+                                            ) || "AWS S3 / MinIO"}
+                                        </option
                                         >
-                                        <option value="r2">Cloudflare R2</option
+                                        <option value="r2">
+                                            {$t(
+                                                "superadmin.settings.storage.driver.options.r2",
+                                            ) || "Cloudflare R2"}
+                                        </option
                                         >
                                     </select>
                                 </div>
@@ -1285,7 +1383,9 @@
                                             <label
                                                 class="setting-label"
                                                 for="bucket-name"
-                                                >Bucket Name</label
+                                                >{$t(
+                                                    "superadmin.settings.storage.s3.bucket_name",
+                                                ) || "Bucket Name"}</label
                                             >
                                         </div>
                                         <input
@@ -1303,10 +1403,14 @@
                                             <label
                                                 class="setting-label"
                                                 for="bucket-region"
-                                                >Region</label
+                                                >{$t(
+                                                    "superadmin.settings.storage.s3.region",
+                                                ) || "Region"}</label
                                             >
                                             <p class="setting-description">
-                                                Use 'auto' for R2.
+                                                {$t(
+                                                    "superadmin.settings.storage.s3.region_hint",
+                                                ) || "Use 'auto' for R2."}
                                             </p>
                                         </div>
                                         <input
@@ -1324,12 +1428,15 @@
                                             <label
                                                 class="setting-label"
                                                 for="bucket-endpoint"
-                                                >Endpoint URL</label
+                                                >{$t(
+                                                    "superadmin.settings.storage.s3.endpoint_url",
+                                                ) || "Endpoint URL"}</label
                                             >
                                             <p class="setting-description">
-                                                Required for R2
-                                                (https://ID.r2.cloudflarestorage.com)
-                                                or MinIO.
+                                                {$t(
+                                                    "superadmin.settings.storage.s3.endpoint_hint",
+                                                ) ||
+                                                    "Required for R2 (https://ID.r2.cloudflarestorage.com) or MinIO."}
                                             </p>
                                         </div>
                                         <input
@@ -1347,7 +1454,9 @@
                                             <label
                                                 class="setting-label"
                                                 for="access-key"
-                                                >Access Key ID</label
+                                                >{$t(
+                                                    "superadmin.settings.storage.s3.access_key_id",
+                                                ) || "Access Key ID"}</label
                                             >
                                         </div>
                                         <input
@@ -1362,7 +1471,9 @@
                                             <label
                                                 class="setting-label"
                                                 for="access-secret-key"
-                                                >Secret Access Key</label
+                                                >{$t(
+                                                    "superadmin.settings.storage.s3.secret_access_key",
+                                                ) || "Secret Access Key"}</label
                                             >
                                         </div>
                                         <input
@@ -1377,11 +1488,15 @@
                                             <label
                                                 class="setting-label"
                                                 for="public-access-url"
-                                                >Public Access URL (Optional)</label
+                                                >{$t(
+                                                    "superadmin.settings.storage.s3.public_url_optional",
+                                                ) ||
+                                                    "Public Access URL (Optional)"}</label
                                             >
                                             <p class="setting-description">
-                                                CDN URL if serving files
-                                                publicly.
+                                                {$t(
+                                                    "superadmin.settings.storage.s3.public_url_hint",
+                                                ) || "CDN URL if serving files publicly."}
                                             </p>
                                         </div>
                                         <input
@@ -1402,11 +1517,15 @@
                                     <label
                                         class="setting-label"
                                         for="max-file-size"
-                                        >Max File Size (MB)</label
+                                        >{$t(
+                                            "superadmin.settings.storage.max_file_size_mb",
+                                        ) || "Max File Size (MB)"}</label
                                     >
                                     <p class="setting-description">
-                                        Maximum allowed size for a single file
-                                        upload.
+                                        {$t(
+                                            "superadmin.settings.storage.max_file_size_mb_desc",
+                                        ) ||
+                                            "Maximum allowed size for a single file upload."}
                                     </p>
                                 </div>
                                 <div class="input-group">
@@ -1417,7 +1536,9 @@
                                         on:input={handleChange}
                                         min="1"
                                     />
-                                    <span class="input-suffix">MB</span>
+                                    <span class="input-suffix"
+                                        >{$t("common.units.mb") || "MB"}</span
+                                    >
                                 </div>
                             </div>
 
@@ -1426,12 +1547,15 @@
                                     <label
                                         class="setting-label"
                                         for="allowed-extensions"
-                                        >Allowed Extensions</label
+                                        >{$t(
+                                            "superadmin.settings.storage.allowed_extensions",
+                                        ) || "Allowed Extensions"}</label
                                     >
                                     <p class="setting-description">
-                                        Comma-separated list of allowed file
-                                        extensions (e.g., jpg, png, pdf). Use *
-                                        for all.
+                                        {$t(
+                                            "superadmin.settings.storage.allowed_extensions_desc",
+                                        ) ||
+                                            "Comma-separated list of allowed file extensions (e.g., jpg, png, pdf). Use * for all."}
                                     </p>
                                     <textarea
                                         id="allowed-extensions"
@@ -1463,10 +1587,14 @@
                                     <label
                                         class="setting-label"
                                         for="midtrans-gateway-toggle"
-                                        >Enable Midtrans Gateway</label
+                                        >{$t(
+                                            "superadmin.settings.payment.midtrans.enable.label",
+                                        ) || "Enable Midtrans Gateway"}</label
                                     >
                                     <p class="setting-description">
-                                        Allow users to pay online via Midtrans.
+                                        {$t(
+                                            "superadmin.settings.payment.midtrans.enable.desc",
+                                        ) || "Allow users to pay online via Midtrans."}
                                     </p>
                                 </div>
                                 <label class="toggle">
@@ -1487,7 +1615,9 @@
                                             <label
                                                 class="setting-label"
                                                 for="midtrans-merchant-id"
-                                                >Merchant ID</label
+                                                >{$t(
+                                                    "superadmin.settings.payment.midtrans.merchant_id",
+                                                ) || "Merchant ID"}</label
                                             >
                                         </div>
                                         <input
@@ -1505,11 +1635,15 @@
                                             <label
                                                 class="setting-label"
                                                 for="midtrans-server-key"
-                                                >Server Key</label
+                                                >{$t(
+                                                    "superadmin.settings.payment.midtrans.server_key",
+                                                ) || "Server Key"}</label
                                             >
                                             <p class="setting-description">
-                                                From Midtrans Dashboard >
-                                                Settings > Access Keys.
+                                                {$t(
+                                                    "superadmin.settings.payment.midtrans.server_key_hint",
+                                                ) ||
+                                                    "From Midtrans Dashboard > Settings > Access Keys."}
                                             </p>
                                         </div>
                                         <input
@@ -1527,10 +1661,14 @@
                                             <label
                                                 class="setting-label"
                                                 for="midtrans-client-key"
-                                                >Client Key</label
+                                                >{$t(
+                                                    "superadmin.settings.payment.midtrans.client_key",
+                                                ) || "Client Key"}</label
                                             >
                                             <p class="setting-description">
-                                                Public key for frontend Snap.js.
+                                                {$t(
+                                                    "superadmin.settings.payment.midtrans.client_key_hint",
+                                                ) || "Public key for frontend Snap.js."}
                                             </p>
                                         </div>
                                         <input
@@ -1548,11 +1686,15 @@
                                             <label
                                                 class="setting-label"
                                                 for="midtrans-production"
-                                                >Production Mode</label
+                                                >{$t(
+                                                    "superadmin.settings.payment.midtrans.production_mode",
+                                                ) || "Production Mode"}</label
                                             >
                                             <p class="setting-description">
-                                                Enable for real transactions.
-                                                Disable for Sandbox.
+                                                {$t(
+                                                    "superadmin.settings.payment.midtrans.production_mode_desc",
+                                                ) ||
+                                                    "Enable for real transactions. Disable for Sandbox."}
                                             </p>
                                         </div>
                                         <label class="toggle">
@@ -1586,11 +1728,15 @@
                                     <label
                                         class="setting-label"
                                         for="manual-transfer-toggle"
-                                        >Enable Manual Transfer</label
+                                        >{$t(
+                                            "superadmin.settings.payment.manual.enable.label",
+                                        ) || "Enable Manual Transfer"}</label
                                     >
                                     <p class="setting-description">
-                                        Allow users to pay via bank transfer and
-                                        upload proof.
+                                        {$t(
+                                            "superadmin.settings.payment.manual.enable.desc",
+                                        ) ||
+                                            "Allow users to pay via bank transfer and upload proof."}
                                     </p>
                                 </div>
                                 <label class="toggle">
@@ -1611,11 +1757,15 @@
                                             <label
                                                 class="setting-label"
                                                 for="manual-instructions"
-                                                >Payment Instructions</label
+                                                >{$t(
+                                                    "superadmin.settings.payment.manual.instructions_label",
+                                                ) || "Payment Instructions"}</label
                                             >
                                             <p class="setting-description">
-                                                Instructions shown to user when
-                                                they select Manual Transfer.
+                                                {$t(
+                                                    "superadmin.settings.payment.manual.instructions_desc",
+                                                ) ||
+                                                    "Instructions shown to user when they select Manual Transfer."}
                                             </p>
                                             <textarea
                                                 id="manual-instructions"

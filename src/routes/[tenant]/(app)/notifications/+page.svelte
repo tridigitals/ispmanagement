@@ -180,7 +180,11 @@
                 {/if}
             </div>
 
-            <div class="filters" role="tablist" aria-label="Filters">
+            <div
+                class="filters"
+                role="tablist"
+                aria-label={$t("notifications_page.filters.aria") || "Filters"}
+            >
                 <button
                     class="chip"
                     class:active={filter === "all"}

@@ -525,7 +525,9 @@
                                                 plan.price_monthly,
                                             )}</span
                                         >
-                                        <span class="period">/mo</span>
+                                        <span class="period">
+                                            {$t("common.per_month_short") || "/mo"}
+                                        </span>
                                     </div>
                                 {:else}
                                     <div class="price-tag free">

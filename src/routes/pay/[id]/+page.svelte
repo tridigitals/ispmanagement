@@ -6,6 +6,8 @@
     import { user } from "$lib/stores/auth";
     import Icon from "$lib/components/Icon.svelte";
     import { toast } from "svelte-sonner";
+    import { t } from "svelte-i18n";
+    import { get } from "svelte/store";
 
     let invoiceId = $page.params.id as string;
     let invoice = $state<Invoice | null>(null);
@@ -54,7 +56,11 @@
                 if (clientKey) loadSnapScript(clientKey, isProd);
             }
         } catch (e: any) {
-            toast.error(e.message || "Failed to load invoice");
+            toast.error(
+                e.message ||
+                    get(t)("payment.checkout.errors.load_failed") ||
+                    "Failed to load invoice",
+            );
         } finally {
             loading = false;
         }
@@ -78,22 +84,34 @@
             // @ts-ignore
             window.snap.pay(token, {
                 onSuccess: function (result: any) {
-                    toast.success("Payment successful!");
+                    toast.success(
+                        get(t)("payment.checkout.toasts.payment_success") ||
+                            "Payment successful!",
+                    );
                     // Reload invoice to check status or redirect
                     location.reload();
                 },
                 onPending: function (result: any) {
-                    toast.info("Waiting for payment...");
+                    toast.info(
+                        get(t)("payment.checkout.toasts.waiting") ||
+                            "Waiting for payment...",
+                    );
                 },
                 onError: function (result: any) {
-                    toast.error("Payment failed");
+                    toast.error(
+                        get(t)("payment.checkout.toasts.payment_failed") ||
+                            "Payment failed",
+                    );
                 },
                 onClose: function () {
                     // closed
                 },
             });
         } catch (e: any) {
-            toast.error("Failed to initiate payment: " + e.message);
+            toast.error(
+                (get(t)("payment.checkout.errors.initiate_failed") ||
+                    "Failed to initiate payment: ") + e.message,
+            );
         }
     }
 
@@ -102,13 +120,22 @@
         try {
             const status = await api.payment.checkStatus(invoice.id);
             if (status !== invoice.status) {
-                toast.success(`Status updated: ${status}`);
+                toast.success(
+                    (get(t)("payment.checkout.toasts.status_updated") ||
+                        "Status updated: ") + status,
+                );
                 location.reload();
             } else {
-                toast.info(`Current status: ${status}`);
+                toast.info(
+                    (get(t)("payment.checkout.toasts.current_status") ||
+                        "Current status: ") + status,
+                );
             }
         } catch (e: any) {
-            toast.error("Failed to check status: " + e.message);
+            toast.error(
+                (get(t)("payment.checkout.errors.check_status_failed") ||
+                    "Failed to check status: ") + e.message,
+            );
         }
     }
 
@@ -131,7 +158,10 @@
         if (!file) return;
 
         if (file.size > 5 * 1024 * 1024) {
-            toast.error("File size must be less than 5MB");
+            toast.error(
+                get(t)("payment.checkout.errors.file_too_large") ||
+                    "File size must be less than 5MB",
+            );
             return;
         }
 
@@ -162,11 +192,17 @@
 
             await api.payment.submitPaymentProof(invoice!.id, uploadedFile.id); // Storing ID for security/lookup
 
-            toast.success("Proof uploaded successfully!");
+            toast.success(
+                get(t)("payment.checkout.toasts.proof_uploaded") ||
+                    "Proof uploaded successfully!",
+            );
             // Reload to show pending state
             location.reload();
         } catch (e: any) {
-            toast.error("Upload failed: " + e.message);
+            toast.error(
+                (get(t)("payment.checkout.errors.upload_failed") ||
+                    "Upload failed: ") + e.message,
+            );
         } finally {
             uploading = false;
         }
@@ -176,7 +212,9 @@
 <div class="checkout-page fade-in">
     <div class="checkout-card">
         {#if loading}
-            <div class="loading">Loading invoice...</div>
+            <div class="loading">
+                {$t("payment.checkout.loading") || "Loading invoice..."}
+            </div>
         {:else if invoice}
             <div class="header">
                 <button
@@ -189,23 +227,29 @@
                         )}
                 >
                     <Icon name="arrow-left" size={18} />
-                    <span>Back</span>
+                    <span>{$t("common.back") || "Back"}</span>
                 </button>
-                <h1>Checkout</h1>
+                <h1>{$t("payment.checkout.title") || "Checkout"}</h1>
                 <span class="invoice-number">#{invoice.invoice_number}</span>
             </div>
 
             <div class="summary-section">
                 <div class="item-row">
-                    <span class="label">Item</span>
+                    <span class="label">
+                        {$t("payment.checkout.item") || "Item"}
+                    </span>
                     <span class="value">{invoice.description}</span>
                 </div>
                 <div class="item-row total">
-                    <span class="label">Total</span>
+                    <span class="label">
+                        {$t("payment.checkout.total") || "Total"}
+                    </span>
                     <span class="value">{formatCurrency(invoice.amount)}</span>
                 </div>
                 <div class="status-row">
-                    <span class="label">Status</span>
+                    <span class="label">
+                        {$t("payment.checkout.status") || "Status"}
+                    </span>
                     <span class="status-pill {invoice.status}"
                         >{invoice.status}</span
                     >
@@ -222,7 +266,8 @@
                             onclick={() => (paymentMethod = "online")}
                         >
                             <Icon name="credit-card" size={18} />
-                            Online Payment
+                            {$t("payment.checkout.tabs.online") ||
+                                "Online Payment"}
                         </button>
                     {/if}
                     {#if manualEnabled}
@@ -234,7 +279,8 @@
                         >
                             <Icon name="landmark" size={18} />
                             <!-- Bank icon -->
-                            Bank Transfer
+                            {$t("payment.checkout.tabs.manual") ||
+                                "Bank Transfer"}
                         </button>
                     {/if}
                 </div>
@@ -243,29 +289,34 @@
                     {#if paymentMethod === "online" && midtransEnabled}
                         <div class="online-method">
                             <p>
-                                Pay securely with Credit Card, GoPay, ShopeePay,
-                                or Virtual Account via Midtrans.
+                                {$t("payment.checkout.online.description") ||
+                                    "Pay securely with Credit Card, GoPay, ShopeePay, or Virtual Account via Midtrans."}
                             </p>
                             <button
                                 class="btn btn-primary btn-lg w-full"
                                 onclick={handlePayOnline}
                             >
-                                Pay Now
+                                {$t("payment.checkout.online.pay_now") ||
+                                    "Pay Now"}
                             </button>
                             <div style="margin-top: 1rem;">
                                 <button
                                     class="btn btn-secondary w-full"
                                     onclick={checkPaymentStatus}
                                 >
-                                    Check Payment Status
+                                    {$t(
+                                        "payment.checkout.online.check_status",
+                                    ) || "Check Payment Status"}
                                 </button>
                             </div>
                         </div>
                     {:else if paymentMethod === "manual" && manualEnabled}
                         <div class="manual-method">
                             <p class="instructions">
-                                Please transfer the exact amount to one of the
-                                following accounts:
+                                {$t(
+                                    "payment.checkout.manual.instructions",
+                                ) ||
+                                    "Please transfer the exact amount to one of the following accounts:"}
                             </p>
 
                             <div class="bank-list">
@@ -287,7 +338,12 @@
                             </div>
 
                             <div class="upload-section">
-                                <p>Already transferred? Upload your receipt.</p>
+                                <p>
+                                    {$t(
+                                        "payment.checkout.manual.upload_hint",
+                                    ) ||
+                                        "Already transferred? Upload your receipt."}
+                                </p>
                                 <input
                                     type="file"
                                     accept="image/*,application/pdf"
@@ -301,10 +357,14 @@
                                     disabled={uploading}
                                 >
                                     {#if uploading}
-                                        Uploading...
+                                        {$t(
+                                            "payment.checkout.manual.uploading",
+                                        ) || "Uploading..."}
                                     {:else}
                                         <Icon name="upload" size={18} />
-                                        Upload Proof of Payment
+                                        {$t(
+                                            "payment.checkout.manual.upload",
+                                        ) || "Upload Proof of Payment"}
                                     {/if}
                                 </button>
                             </div>
@@ -316,10 +376,13 @@
                     <div class="icon-circle pending">
                         <Icon name="clock" size={32} />
                     </div>
-                    <h3>Payment Verification Pending</h3>
+                    <h3>
+                        {$t("payment.checkout.pending.title") ||
+                            "Payment Verification Pending"}
+                    </h3>
                     <p>
-                        We have received your payment proof. Our team is
-                        verifying it. We will notify you once approved.
+                        {$t("payment.checkout.pending.message") ||
+                            "We have received your payment proof. Our team is verifying it. We will notify you once approved."}
                     </p>
                     <button
                         class="btn btn-secondary"
@@ -330,7 +393,8 @@
                                     : "/dashboard",
                             )}
                     >
-                        Return to Dashboard
+                        {$t("payment.checkout.pending.back") ||
+                            "Return to Dashboard"}
                     </button>
                     <!-- Allow re-upload in case of mistake? Optional. -->
                 </div>
@@ -339,10 +403,13 @@
                     <div class="icon-circle success">
                         <Icon name="check" size={32} />
                     </div>
-                    <h3>Payment Successful!</h3>
+                    <h3>
+                        {$t("payment.checkout.success.title") ||
+                            "Payment Successful!"}
+                    </h3>
                     <p>
-                        Thank you for your payment. Your subscription has been
-                        activated.
+                        {$t("payment.checkout.success.message") ||
+                            "Thank you for your payment. Your subscription has been activated."}
                     </p>
                     <button
                         class="btn btn-primary"
@@ -353,12 +420,15 @@
                                     : "/dashboard",
                             )}
                     >
-                        Go to Subscription
+                        {$t("payment.checkout.success.cta") ||
+                            "Go to Subscription"}
                     </button>
                 </div>
             {/if}
         {:else}
-            <div class="error">Invoice not found</div>
+            <div class="error">
+                {$t("payment.checkout.not_found") || "Invoice not found"}
+            </div>
         {/if}
     </div>
 </div>

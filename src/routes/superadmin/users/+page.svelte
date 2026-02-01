@@ -14,16 +14,18 @@
     import Pagination from "$lib/components/Pagination.svelte";
     import { toast } from "$lib/stores/toast";
     import type { User } from "$lib/api/client";
+    import { t } from "svelte-i18n";
+    import { get } from "svelte/store";
 
-    const columns = [
-        { key: "user", label: "User" },
-        { key: "email", label: "Email" },
-        { key: "role", label: "Role" },
-        { key: "tenant", label: "Tenant" },
-        { key: "status", label: "Status" },
-        { key: "joined", label: "Joined" },
+    const columns = $derived.by(() => [
+        { key: "user", label: $t("superadmin.users.columns.user") || "User" },
+        { key: "email", label: $t("superadmin.users.columns.email") || "Email" },
+        { key: "role", label: $t("superadmin.users.columns.role") || "Role" },
+        { key: "tenant", label: $t("superadmin.users.columns.tenant") || "Tenant" },
+        { key: "status", label: $t("superadmin.users.columns.status") || "Status" },
+        { key: "joined", label: $t("superadmin.users.columns.joined") || "Joined" },
         { key: "actions", label: "", align: "right" as const },
-    ];
+    ]);
 
     let allUsers = $state<User[]>([]);
     let totalUsers = $state(0);
@@ -196,10 +198,17 @@
                     ? ({ ...user, two_factor_enabled: false } as any)
                     : user,
             );
-            toast.success("Two-factor authentication has been reset");
+            toast.success(
+                get(t)("superadmin.users.toasts.reset_2fa_success") ||
+                    "Two-factor authentication has been reset",
+            );
             showResetConfirm = false;
         } catch (err: any) {
-            toast.error("Failed to reset 2FA: " + (err?.message || err));
+            toast.error(
+                get(t)("superadmin.users.toasts.reset_2fa_failed", {
+                    values: { message: err?.message || err },
+                }) || "Failed to reset 2FA: " + (err?.message || err),
+            );
         } finally {
             confirmLoading = false;
             userPending2FAReset = null;
@@ -211,17 +220,31 @@
     let userPendingStatus = $state<User | null>(null);
     let pendingIsActive = $state<boolean>(false);
 
-    let statusConfirmTitle = $derived(
-        pendingIsActive ? "Activate User" : "Deactivate User",
+    let statusConfirmTitle = $derived.by(() =>
+        pendingIsActive
+            ? $t("superadmin.users.status.activate_title") || "Activate User"
+            : $t("superadmin.users.status.deactivate_title") || "Deactivate User",
     );
 
     let statusConfirmMessage = $derived.by(() => {
         const u = userPendingStatus;
-        const name = u?.name || "this user";
+        const name =
+            u?.name ||
+            ($t("superadmin.users.status.this_user") || "this user");
         if (pendingIsActive) {
-            return `Activate ${name}? They will be able to login again. Type ACTIVATE to confirm.`;
+            return (
+                $t("superadmin.users.status.activate_message", {
+                    values: { name },
+                }) ||
+                `Activate ${name}? They will be able to login again.`
+            );
         }
-        return `Deactivate ${name}? They will not be able to login. Type DEACTIVATE to confirm.`;
+        return (
+            $t("superadmin.users.status.deactivate_message", {
+                values: { name },
+            }) ||
+            `Deactivate ${name}? They will not be able to login.`
+        );
     });
 
     let statusConfirmKeyword = $derived(
@@ -234,11 +257,17 @@
 
     function confirmToggleActive(u: User) {
         if ((u as any).is_super_admin) {
-            toast.error("Super Admin accounts cannot be deactivated here");
+            toast.error(
+                get(t)("superadmin.users.toasts.superadmin_cannot_deactivate") ||
+                    "Super Admin accounts cannot be deactivated here",
+            );
             return;
         }
         if (u.id === $currentUser?.id) {
-            toast.error("You cannot deactivate your own account");
+            toast.error(
+                get(t)("superadmin.users.toasts.cannot_deactivate_self") ||
+                    "You cannot deactivate your own account",
+            );
             return;
         }
         userPendingStatus = u;
@@ -257,12 +286,19 @@
                 x.id === u.id ? { ...x, is_active: pendingIsActive } : x,
             );
             toast.success(
-                pendingIsActive ? "User activated" : "User deactivated",
+                pendingIsActive
+                    ? get(t)("superadmin.users.toasts.activated") ||
+                      "User activated"
+                    : get(t)("superadmin.users.toasts.deactivated") ||
+                      "User deactivated",
             );
             showStatusConfirm = false;
         } catch (e: any) {
             toast.error(
-                "Failed to update user status: " + (e?.message || e),
+                get(t)("superadmin.users.toasts.update_status_failed", {
+                    values: { message: e?.message || e },
+                }) ||
+                    "Failed to update user status: " + (e?.message || e),
             );
         } finally {
             statusConfirmLoading = false;
@@ -289,7 +325,10 @@
 </script>
 
 <div class="superadmin-content fade-in">
-    <div class="stats-row" aria-label="User stats">
+    <div
+        class="stats-row"
+        aria-label={$t("superadmin.users.aria.stats") || "User stats"}
+    >
         <button
             class="stat-btn"
             class:active={statusFilter === "all"}
@@ -297,12 +336,12 @@
                 statusFilter = "all";
                 roleFilter = "all";
             }}
-            aria-label="Show all users"
-            title="Show all users"
+            aria-label={$t("superadmin.users.stats.show_all") || "Show all users"}
+            title={$t("superadmin.users.stats.show_all") || "Show all users"}
             type="button"
         >
             <StatsCard
-                title="All Users"
+                title={$t("superadmin.users.stats.all_title") || "All Users"}
                 value={stats.total}
                 icon="users"
                 color="primary"
@@ -312,12 +351,15 @@
             class="stat-btn"
             class:active={statusFilter === "active"}
             onclick={() => (statusFilter = "active")}
-            aria-label="Show active users"
-            title="Show active users"
+            aria-label={$t("superadmin.users.stats.show_active") ||
+                "Show active users"}
+            title={$t("superadmin.users.stats.show_active") ||
+                "Show active users"}
             type="button"
         >
             <StatsCard
-                title="Active Users"
+                title={$t("superadmin.users.stats.active_title") ||
+                    "Active Users"}
                 value={stats.active}
                 icon="check-circle"
                 color="success"
@@ -327,12 +369,15 @@
             class="stat-btn"
             class:active={statusFilter === "inactive"}
             onclick={() => (statusFilter = "inactive")}
-            aria-label="Show inactive users"
-            title="Show inactive users"
+            aria-label={$t("superadmin.users.stats.show_inactive") ||
+                "Show inactive users"}
+            title={$t("superadmin.users.stats.show_inactive") ||
+                "Show inactive users"}
             type="button"
         >
             <StatsCard
-                title="Inactive Users"
+                title={$t("superadmin.users.stats.inactive_title") ||
+                    "Inactive Users"}
                 value={stats.inactive}
                 icon="slash"
                 color="warning"
@@ -345,12 +390,15 @@
                 roleFilter = "superadmin";
                 statusFilter = "all";
             }}
-            aria-label="Show super admins"
-            title="Show super admins"
+            aria-label={$t("superadmin.users.stats.show_superadmins") ||
+                "Show super admins"}
+            title={$t("superadmin.users.stats.show_superadmins") ||
+                "Show super admins"}
             type="button"
         >
             <StatsCard
-                title="Super Admins"
+                title={$t("superadmin.users.stats.superadmins_title") ||
+                    "Super Admins"}
                 value={stats.superadmins}
                 icon="server"
                 color="danger"
@@ -361,14 +409,23 @@
     <div class="glass-card" in:fly={{ y: 20, delay: 80 }}>
         <div class="card-header glass">
             <div>
-                <h3>Users</h3>
-                <span class="muted">Manage global users and access</span>
+                <h3>{$t("superadmin.users.title") || "Users"}</h3>
+                <span class="muted">
+                    {$t("superadmin.users.subtitle") ||
+                        "Manage global users and access"}
+                </span>
             </div>
-            <span class="count-badge">{totalUsers || stats.total} users</span>
+            <span class="count-badge">
+                {totalUsers || stats.total}
+                {$t("superadmin.users.count") || "users"}
+            </span>
         </div>
 
         <div class="toolbar-wrapper">
-            <TableToolbar bind:searchQuery placeholder="Search users...">
+            <TableToolbar
+                bind:searchQuery
+                placeholder={$t("superadmin.users.search") || "Search users..."}
+            >
                 {#snippet filters()}
                     <div class="filters-row">
                         <div class="role-filter">
@@ -378,7 +435,8 @@
                                 class:active={roleFilter === "all"}
                                 onclick={() => (roleFilter = "all")}
                             >
-                                All Roles
+                                {$t("superadmin.users.filters.all_roles") ||
+                                    "All Roles"}
                             </button>
                             <button
                                 type="button"
@@ -386,7 +444,7 @@
                                 class:active={roleFilter === "admin"}
                                 onclick={() => (roleFilter = "admin")}
                             >
-                                Admin
+                                {$t("superadmin.users.filters.admin") || "Admin"}
                             </button>
                             <button
                                 type="button"
@@ -394,7 +452,7 @@
                                 class:active={roleFilter === "user"}
                                 onclick={() => (roleFilter = "user")}
                             >
-                                User
+                                {$t("superadmin.users.filters.user") || "User"}
                             </button>
                             <button
                                 type="button"
@@ -402,7 +460,8 @@
                                 class:active={roleFilter === "superadmin"}
                                 onclick={() => (roleFilter = "superadmin")}
                             >
-                                Super Admin
+                                {$t("superadmin.users.filters.superadmin") ||
+                                    "Super Admin"}
                             </button>
                         </div>
 
@@ -413,7 +472,7 @@
                                 class:active={statusFilter === "all"}
                                 onclick={() => (statusFilter = "all")}
                             >
-                                All
+                                {$t("superadmin.users.filters.all") || "All"}
                             </button>
                             <button
                                 type="button"
@@ -421,7 +480,7 @@
                                 class:active={statusFilter === "active"}
                                 onclick={() => (statusFilter = "active")}
                             >
-                                Active
+                                {$t("superadmin.users.filters.active") || "Active"}
                             </button>
                             <button
                                 type="button"
@@ -429,7 +488,8 @@
                                 class:active={statusFilter === "inactive"}
                                 onclick={() => (statusFilter = "inactive")}
                             >
-                                Inactive
+                                {$t("superadmin.users.filters.inactive") ||
+                                    "Inactive"}
                             </button>
                         </div>
                     </div>
@@ -437,14 +497,20 @@
 
                 {#snippet actions()}
                     {#if !isMobile}
-                        <div class="view-toggle" aria-label="View mode">
+                        <div
+                            class="view-toggle"
+                            aria-label={$t("superadmin.users.view.aria") ||
+                                "View mode"}
+                        >
                             <button
                                 type="button"
                                 class="view-btn"
                                 class:active={viewMode === "table"}
                                 onclick={() => (viewMode = "table")}
-                                title="Table view"
-                                aria-label="Table view"
+                                title={$t("superadmin.users.view.table") ||
+                                    "Table view"}
+                                aria-label={$t("superadmin.users.view.table") ||
+                                    "Table view"}
                             >
                                 <Icon name="list" size={18} />
                             </button>
@@ -453,8 +519,10 @@
                                 class="view-btn"
                                 class:active={viewMode === "cards"}
                                 onclick={() => (viewMode = "cards")}
-                                title="Card view"
-                                aria-label="Card view"
+                                title={$t("superadmin.users.view.cards") ||
+                                    "Card view"}
+                                aria-label={$t("superadmin.users.view.cards") ||
+                                    "Card view"}
                             >
                                 <Icon name="grid" size={18} />
                             </button>
@@ -476,11 +544,21 @@
                         <div class="empty-icon">
                             <Icon name="users" size={64} />
                         </div>
-                        <h3>No users found</h3>
-                        <p>Try adjusting your search or filters.</p>
+                        <h3>
+                            {$t("superadmin.users.empty.title") ||
+                                "No users found"}
+                        </h3>
+                        <p>
+                            {$t("superadmin.users.empty.hint") ||
+                                "Try adjusting your search or filters."}
+                        </p>
                     </div>
                 {:else}
-                    <div class="user-cards" aria-label="Users list">
+                    <div
+                        class="user-cards"
+                        aria-label={$t("superadmin.users.aria.list") ||
+                            "Users list"}
+                    >
                         {#each pagedUsers as u (u.id)}
                             <div class="user-card">
                                 <div class="card-top">
@@ -500,8 +578,11 @@
                                         <button
                                             class="btn-icon"
                                             onclick={() => openDetails(u)}
-                                            title="View details"
-                                            aria-label="View details"
+                                            title={$t("superadmin.users.actions.view_details") ||
+                                                "View details"}
+                                            aria-label={$t(
+                                                "superadmin.users.actions.view_details",
+                                            ) || "View details"}
                                             type="button"
                                         >
                                             <Icon name="eye" size={16} />
@@ -511,8 +592,11 @@
                                             <button
                                                 class="btn-icon warning"
                                                 onclick={() => confirmReset2FA(u)}
-                                                title="Reset 2FA"
-                                                aria-label="Reset 2FA"
+                                                title={$t("superadmin.users.actions.reset_2fa") ||
+                                                    "Reset 2FA"}
+                                                aria-label={$t(
+                                                    "superadmin.users.actions.reset_2fa",
+                                                ) || "Reset 2FA"}
                                                 type="button"
                                             >
                                                 <Icon name="shield-off" size={16} />
@@ -523,11 +607,19 @@
                                             class="btn-icon {u.is_active ? 'danger' : 'success'}"
                                             onclick={() => confirmToggleActive(u)}
                                             title={u.is_active
-                                                ? "Deactivate user"
-                                                : "Activate user"}
+                                                ? $t(
+                                                      "superadmin.users.actions.deactivate_user",
+                                                  ) || "Deactivate user"
+                                                : $t(
+                                                      "superadmin.users.actions.activate_user",
+                                                  ) || "Activate user"}
                                             aria-label={u.is_active
-                                                ? "Deactivate user"
-                                                : "Activate user"}
+                                                ? $t(
+                                                      "superadmin.users.actions.deactivate_user",
+                                                  ) || "Deactivate user"
+                                                : $t(
+                                                      "superadmin.users.actions.activate_user",
+                                                  ) || "Activate user"}
                                             disabled={u.is_super_admin || u.id === $currentUser?.id}
                                             type="button"
                                         >
@@ -544,11 +636,15 @@
                                 <div class="card-bottom">
                                     <div class="meta-grid">
                                         <div class="meta-item">
-                                            <span class="meta-label">Role</span>
+                                            <span class="meta-label"
+                                                >{$t("superadmin.users.columns.role") ||
+                                                    "Role"}</span
+                                            >
                                             <span class="meta-value">
                                                 {#if u.is_super_admin}
                                                     <span class="role-pill superadmin">
-                                                        Super Admin
+                                                        {$t("sidebar.super_admin") ||
+                                                            "Super Admin"}
                                                     </span>
                                                 {:else if (u as any).tenant_role}
                                                     <span
@@ -564,7 +660,10 @@
                                         </div>
 
                                         <div class="meta-item">
-                                            <span class="meta-label">Tenant</span>
+                                            <span class="meta-label"
+                                                >{$t("superadmin.users.columns.tenant") ||
+                                                    "Tenant"}</span
+                                            >
                                             <span class="meta-value">
                                                 {#if getTenantName(u as any)}
                                                     {getTenantName(u as any)}
@@ -577,22 +676,30 @@
                                         </div>
 
                                         <div class="meta-item">
-                                            <span class="meta-label">Status</span>
+                                            <span class="meta-label"
+                                                >{$t("superadmin.users.columns.status") ||
+                                                    "Status"}</span
+                                            >
                                             <span class="meta-value">
                                                 {#if u.is_active}
                                                     <span class="status-pill active">
-                                                        <span class="dot"></span> Active
+                                                        <span class="dot"></span>
+                                                        {$t("common.active") || "Active"}
                                                     </span>
                                                 {:else}
                                                     <span class="status-pill inactive">
-                                                        <span class="dot"></span> Inactive
+                                                        <span class="dot"></span>
+                                                        {$t("common.inactive") || "Inactive"}
                                                     </span>
                                                 {/if}
                                             </span>
                                         </div>
 
                                         <div class="meta-item">
-                                            <span class="meta-label">Joined</span>
+                                            <span class="meta-label"
+                                                >{$t("superadmin.users.columns.joined") ||
+                                                    "Joined"}</span
+                                            >
                                             <span class="meta-value text-muted">
                                                 {new Date(u.created_at).toLocaleDateString()}
                                             </span>
@@ -621,15 +728,21 @@
                     {columns}
                     data={filteredUsers}
                     {loading}
-                    emptyText="No users found"
+                    emptyText={$t("superadmin.users.empty.title") || "No users found"}
                 >
                     {#snippet empty()}
                         <div class="empty-state-container">
                             <div class="empty-icon">
                                 <Icon name="users" size={64} />
                             </div>
-                            <h3>No users found</h3>
-                            <p>Try adjusting your search or filters.</p>
+                            <h3>
+                                {$t("superadmin.users.empty.title") ||
+                                    "No users found"}
+                            </h3>
+                            <p>
+                                {$t("superadmin.users.empty.subtitle") ||
+                                    "Try adjusting your search or filters."}
+                            </p>
                         </div>
                     {/snippet}
 
@@ -648,7 +761,7 @@
                         {:else if key === "role"}
                             {#if item.is_super_admin}
                                 <span class="role-pill superadmin">
-                                    Super Admin
+                                    {$t("sidebar.super_admin") || "Super Admin"}
                                 </span>
                             {:else if item.tenant_role}
                                 <span
@@ -689,11 +802,13 @@
                         {:else if key === "status"}
                             {#if item.is_active}
                                 <span class="status-pill active">
-                                    <span class="dot"></span> Active
+                                    <span class="dot"></span>
+                                    {$t("common.active") || "Active"}
                                 </span>
                             {:else}
                                 <span class="status-pill inactive">
-                                    <span class="dot"></span> Inactive
+                                    <span class="dot"></span>
+                                    {$t("common.inactive") || "Inactive"}
                                 </span>
                             {/if}
                         {:else if key === "joined"}
@@ -705,8 +820,11 @@
                                 <button
                                     class="btn-icon"
                                     onclick={() => openDetails(item)}
-                                    title="View details"
-                                    aria-label="View details"
+                                    title={$t("superadmin.users.actions.view_details") ||
+                                        "View details"}
+                                    aria-label={$t(
+                                        "superadmin.users.actions.view_details",
+                                    ) || "View details"}
                                     type="button"
                                 >
                                     <Icon name="eye" size={16} />
@@ -716,8 +834,11 @@
                                     <button
                                         class="btn-icon warning"
                                         onclick={() => confirmReset2FA(item)}
-                                        title="Reset 2FA"
-                                        aria-label="Reset 2FA"
+                                        title={$t("superadmin.users.actions.reset_2fa") ||
+                                            "Reset 2FA"}
+                                        aria-label={$t(
+                                            "superadmin.users.actions.reset_2fa",
+                                        ) || "Reset 2FA"}
                                         type="button"
                                     >
                                         <Icon name="shield-off" size={16} />
@@ -728,11 +849,19 @@
                                     class="btn-icon {item.is_active ? 'danger' : 'success'}"
                                     onclick={() => confirmToggleActive(item)}
                                     title={item.is_active
-                                        ? "Deactivate user"
-                                        : "Activate user"}
+                                        ? $t(
+                                              "superadmin.users.actions.deactivate_user",
+                                          ) || "Deactivate user"
+                                        : $t(
+                                              "superadmin.users.actions.activate_user",
+                                          ) || "Activate user"}
                                     aria-label={item.is_active
-                                        ? "Deactivate user"
-                                        : "Activate user"}
+                                        ? $t(
+                                              "superadmin.users.actions.deactivate_user",
+                                          ) || "Deactivate user"
+                                        : $t(
+                                              "superadmin.users.actions.activate_user",
+                                          ) || "Activate user"}
                                     disabled={item.is_super_admin || item.id === $currentUser?.id}
                                     type="button"
                                 >
@@ -756,9 +885,11 @@
 
 <ConfirmDialog
     bind:show={showResetConfirm}
-    title="Reset Two-Factor Authentication"
-    message="Reset 2FA for this user? They will be able to login without a secondary code. Type RESET to confirm."
-    confirmText="Reset 2FA"
+    title={$t("superadmin.users.reset2fa.title") ||
+        "Reset Two-Factor Authentication"}
+    message={$t("superadmin.users.reset2fa.message") ||
+        "Reset 2FA for this user? They will be able to login without a secondary code."}
+    confirmText={$t("superadmin.users.reset2fa.confirm") || "Reset 2FA"}
     confirmationKeyword="RESET"
     type="warning"
     loading={confirmLoading}
@@ -769,7 +900,9 @@
     bind:show={showStatusConfirm}
     title={statusConfirmTitle}
     message={statusConfirmMessage}
-    confirmText={pendingIsActive ? "Activate" : "Deactivate"}
+    confirmText={pendingIsActive
+        ? $t("superadmin.users.actions.activate") || "Activate"
+        : $t("superadmin.users.actions.deactivate") || "Deactivate"}
     confirmationKeyword={statusConfirmKeyword}
     type={statusConfirmType}
     loading={statusConfirmLoading}
@@ -778,7 +911,11 @@
 
 <Modal
     bind:show={showDetailsModal}
-    title={detailsUser ? `User Details — ${detailsUser.name}` : "User Details"}
+    title={detailsUser
+        ? $t("superadmin.users.details.title_with_name", {
+              values: { name: detailsUser.name },
+          }) || `User Details — ${detailsUser.name}`
+        : $t("superadmin.users.details.title") || "User Details"}
     width="640px"
     onclose={() => {
         showDetailsModal = false;
@@ -788,21 +925,29 @@
     {#if detailsUser}
         <div class="details-grid">
             <div class="detail-card">
-                <div class="detail-title">Account</div>
+                <div class="detail-title">
+                    {$t("superadmin.users.details.sections.account") || "Account"}
+                </div>
                 <div class="detail-row">
-                    <span class="detail-key">Name</span>
+                    <span class="detail-key">
+                        {$t("superadmin.users.details.labels.name") || "Name"}
+                    </span>
                     <span class="detail-val">{detailsUser.name}</span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-key">Email</span>
+                    <span class="detail-key">
+                        {$t("superadmin.users.details.labels.email") || "Email"}
+                    </span>
                     <span class="detail-val">{detailsUser.email}</span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-key">Role</span>
+                    <span class="detail-key">
+                        {$t("superadmin.users.details.labels.role") || "Role"}
+                    </span>
                     <span class="detail-val">
                         {#if detailsUser.is_super_admin}
                             <span class="role-pill superadmin"
-                                >Super Admin</span
+                                >{$t("sidebar.super_admin") || "Super Admin"}</span
                             >
                         {:else}
                             <span class="role-pill {detailsUser.role}"
@@ -812,27 +957,36 @@
                     </span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-key">Status</span>
+                    <span class="detail-key">
+                        {$t("superadmin.users.details.labels.status") || "Status"}
+                    </span>
                     <span class="detail-val">
                         {#if detailsUser.is_active}
                             <span class="status-pill active">
-                                <span class="dot"></span> Active
+                                <span class="dot"></span>
+                                {$t("common.active") || "Active"}
                             </span>
                         {:else}
                             <span class="status-pill inactive">
-                                <span class="dot"></span> Inactive
+                                <span class="dot"></span>
+                                {$t("common.inactive") || "Inactive"}
                             </span>
                         {/if}
                     </span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-key">Created</span>
+                    <span class="detail-key">
+                        {$t("superadmin.users.details.labels.created") || "Created"}
+                    </span>
                     <span class="detail-val"
                         >{formatDateMaybe(detailsUser.created_at)}</span
                     >
                 </div>
                 <div class="detail-row">
-                    <span class="detail-key">Last Login</span>
+                    <span class="detail-key">
+                        {$t("superadmin.users.details.labels.last_login") ||
+                            "Last Login"}
+                    </span>
                     <span class="detail-val">
                         {formatDateMaybe(
                             (detailsUser as any).last_login_at ||
@@ -844,9 +998,13 @@
             </div>
 
             <div class="detail-card">
-                <div class="detail-title">Tenant</div>
+                <div class="detail-title">
+                    {$t("superadmin.users.details.sections.tenant") || "Tenant"}
+                </div>
                 <div class="detail-row">
-                    <span class="detail-key">Tenant</span>
+                    <span class="detail-key">
+                        {$t("superadmin.users.details.labels.tenant") || "Tenant"}
+                    </span>
                     <span class="detail-val">
                         {#if getTenantName(detailsUser as any)}
                             {getTenantName(detailsUser as any)}
@@ -856,13 +1014,18 @@
                     </span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-key">Slug</span>
+                    <span class="detail-key">
+                        {$t("superadmin.users.details.labels.slug") || "Slug"}
+                    </span>
                     <span class="detail-val text-mono">
                         {(detailsUser as any).tenant_slug || "-"}
                     </span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-key">Tenant Role</span>
+                    <span class="detail-key">
+                        {$t("superadmin.users.details.labels.tenant_role") ||
+                            "Tenant Role"}
+                    </span>
                     <span class="detail-val">
                         {(detailsUser as any).tenant_role || "-"}
                     </span>
@@ -870,17 +1033,25 @@
             </div>
 
             <div class="detail-card">
-                <div class="detail-title">Security</div>
+                <div class="detail-title">
+                    {$t("superadmin.users.details.sections.security") || "Security"}
+                </div>
                 <div class="detail-row">
-                    <span class="detail-key">2FA Enabled</span>
+                    <span class="detail-key">
+                        {$t("superadmin.users.details.labels.twofa_enabled") ||
+                            "2FA Enabled"}
+                    </span>
                     <span class="detail-val">
                         {(detailsUser as any).two_factor_enabled
-                            ? "Yes"
-                            : "No"}
+                            ? $t("common.yes") || "Yes"
+                            : $t("common.no") || "No"}
                     </span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-key">Preferred 2FA</span>
+                    <span class="detail-key">
+                        {$t("superadmin.users.details.labels.preferred_2fa") ||
+                            "Preferred 2FA"}
+                    </span>
                     <span class="detail-val">
                         {(detailsUser as any).preferred_2fa_method || "-"}
                     </span>

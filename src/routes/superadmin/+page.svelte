@@ -4,11 +4,12 @@
     import { systemHealthCache } from "$lib/stores/systemHealth";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
+    import { t } from "svelte-i18n";
 
     let tenantTotal = $state(0);
     let tenantActive = $state(0);
     let userTotal = $state(0);
-    let healthText = $state("OK");
+    let healthStatus = $state<"ok" | "down" | "unknown">("unknown");
     let loading = $state(true);
 
     onMount(async () => {
@@ -33,10 +34,10 @@
             if (healthRes) {
                 systemHealthCache.set({ health: healthRes, fetchedAt: Date.now() });
             }
-            healthText = healthRes?.database?.is_connected ? "OK" : "DB Down";
+            healthStatus = healthRes?.database?.is_connected ? "ok" : "down";
         } catch (e) {
             console.error("Failed to load stats", e);
-            healthText = "—";
+            healthStatus = "unknown";
         } finally {
             loading = false;
         }
@@ -47,10 +48,16 @@
     {#if loading}
         <div class="loading">
             <div class="spinner"></div>
-            <p>Loading system data...</p>
+            <p>
+                {$t("superadmin.dashboard.loading") ||
+                    "Loading system data..."}
+            </p>
         </div>
     {:else}
-        <div class="stats-grid" aria-label="Superadmin stats">
+        <div
+            class="stats-grid"
+            aria-label={$t("superadmin.dashboard.stats_aria") || "Superadmin stats"}
+        >
             <button
                 class="stat-card cyan"
                 onclick={() => goto("/superadmin/tenants")}
@@ -60,7 +67,9 @@
                 </div>
                 <div class="stat-content">
                     <span class="stat-value">{tenantTotal}</span>
-                    <span class="stat-label">Tenants</span>
+                    <span class="stat-label">
+                        {$t("superadmin.dashboard.stats.tenants") || "Tenants"}
+                    </span>
                 </div>
             </button>
 
@@ -73,7 +82,10 @@
                 </div>
                 <div class="stat-content">
                     <span class="stat-value">{tenantActive}</span>
-                    <span class="stat-label">Active Tenants</span>
+                    <span class="stat-label">
+                        {$t("superadmin.dashboard.stats.active_tenants") ||
+                            "Active Tenants"}
+                    </span>
                 </div>
             </button>
 
@@ -86,7 +98,9 @@
                 </div>
                 <div class="stat-content">
                     <span class="stat-value">{userTotal}</span>
-                    <span class="stat-label">Users</span>
+                    <span class="stat-label">
+                        {$t("superadmin.dashboard.stats.users") || "Users"}
+                    </span>
                 </div>
             </button>
 
@@ -98,14 +112,30 @@
                     <Icon name="activity" size={32} />
                 </div>
                 <div class="stat-content">
-                    <span class="stat-value">{healthText}</span>
-                    <span class="stat-label">System Health</span>
+                    <span class="stat-value">
+                        {#if healthStatus === "ok"}
+                            {$t("superadmin.dashboard.stats.health_ok") ||
+                                "OK"}
+                        {:else if healthStatus === "down"}
+                            {$t("superadmin.dashboard.stats.health_down") ||
+                                "DB Down"}
+                        {:else}
+                            {$t("common.loading") || "—"}
+                        {/if}
+                    </span>
+                    <span class="stat-label">
+                        {$t("superadmin.dashboard.stats.system_health") ||
+                            "System Health"}
+                    </span>
                 </div>
             </button>
         </div>
 
         <div class="section-header">
-            <h2>Quick Actions</h2>
+            <h2>
+                {$t("superadmin.dashboard.quick_actions.title") ||
+                    "Quick Actions"}
+            </h2>
         </div>
 
         <div class="actions-grid">
@@ -116,8 +146,14 @@
                 <div class="action-icon accent-cyan">
                     <Icon name="database" size={18} />
                 </div>
-                <h3>Manage Tenants</h3>
-                <p>Create, edit, and maintain organizations.</p>
+                <h3>
+                    {$t("superadmin.dashboard.quick_actions.tenants.title") ||
+                        "Manage Tenants"}
+                </h3>
+                <p>
+                    {$t("superadmin.dashboard.quick_actions.tenants.desc") ||
+                        "Create, edit, and maintain organizations."}
+                </p>
             </button>
 
             <button
@@ -127,8 +163,14 @@
                 <div class="action-icon accent-indigo">
                     <Icon name="users" size={18} />
                 </div>
-                <h3>Manage Users</h3>
-                <p>View global users, roles, and access.</p>
+                <h3>
+                    {$t("superadmin.dashboard.quick_actions.users.title") ||
+                        "Manage Users"}
+                </h3>
+                <p>
+                    {$t("superadmin.dashboard.quick_actions.users.desc") ||
+                        "View global users, roles, and access."}
+                </p>
             </button>
 
             <button
@@ -138,8 +180,14 @@
                 <div class="action-icon accent-emerald">
                     <Icon name="activity" size={18} />
                 </div>
-                <h3>Audit Logs</h3>
-                <p>Track activity and security events.</p>
+                <h3>
+                    {$t("superadmin.dashboard.quick_actions.audit.title") ||
+                        "Audit Logs"}
+                </h3>
+                <p>
+                    {$t("superadmin.dashboard.quick_actions.audit.desc") ||
+                        "Track activity and security events."}
+                </p>
             </button>
 
             <button
@@ -149,8 +197,14 @@
                 <div class="action-icon accent-amber">
                     <Icon name="settings" size={18} />
                 </div>
-                <h3>Platform Settings</h3>
-                <p>Configure policies and system defaults.</p>
+                <h3>
+                    {$t("superadmin.dashboard.quick_actions.settings.title") ||
+                        "Platform Settings"}
+                </h3>
+                <p>
+                    {$t("superadmin.dashboard.quick_actions.settings.desc") ||
+                        "Configure policies and system defaults."}
+                </p>
             </button>
         </div>
     {/if}

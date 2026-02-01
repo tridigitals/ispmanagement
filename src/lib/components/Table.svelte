@@ -2,13 +2,14 @@
     import Icon from "./Icon.svelte";
     import { fade } from "svelte/transition";
     import Pagination from "./Pagination.svelte";
+    import { t } from "svelte-i18n";
 
     let {
         columns = [],
         data = [],
         keyField = "id",
         loading = false,
-        emptyText = "No data found",
+        emptyText = "",
         mobileView = "card",
         pagination = false,
         pageSize = 10,
@@ -17,7 +18,7 @@
         onchange,
         onpageSizeChange,
         searchable = false,
-        searchPlaceholder = "Search...",
+        searchPlaceholder = "",
         children,
         empty,
         cell,
@@ -110,7 +111,10 @@
                 <Icon name="search" size={18} />
                 <input
                     type="text"
-                    placeholder={searchPlaceholder}
+                    placeholder={
+                        searchPlaceholder ||
+                        ($t("components.table.search_placeholder") || "Search...")
+                    }
                     bind:value={searchQuery}
                     class="search-input"
                 />
@@ -128,7 +132,7 @@
     {#if loading}
         <div class="loading-state">
             <div class="spinner"></div>
-            <p>Loading...</p>
+            <p>{$t("common.loading") || "Loading..."}</p>
         </div>
     {:else if data.length === 0}
         <div class="empty-state">
@@ -138,7 +142,10 @@
                 <div class="empty-icon">
                     <Icon name="search" size={32} />
                 </div>
-                <p>{emptyText}</p>
+                <p>
+                    {emptyText ||
+                        ($t("components.table.empty") || "No data found")}
+                </p>
             {/if}
         </div>
     {:else}
