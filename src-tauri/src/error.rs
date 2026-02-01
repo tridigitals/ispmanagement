@@ -44,6 +44,18 @@ pub enum AppError {
 
     #[error("Not found: {0}")]
     NotFound(String),
+
+    #[error("Cache error: {0}")]
+    Cache(String),
+
+    #[error("Rate limit exceeded: {0}")]
+    RateLimited(String),
+
+    #[error("Service unavailable: {0}")]
+    ServiceUnavailable(String),
+
+    #[error("Conflict: {0}")]
+    Conflict(String),
 }
 
 impl serde::Serialize for AppError {

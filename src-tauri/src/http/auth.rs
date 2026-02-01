@@ -47,6 +47,12 @@ impl IntoResponse for crate::error::AppError {
             crate::error::AppError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
             crate::error::AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             crate::error::AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg),
+            crate::error::AppError::Cache(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            crate::error::AppError::RateLimited(msg) => (StatusCode::TOO_MANY_REQUESTS, msg),
+            crate::error::AppError::ServiceUnavailable(msg) => {
+                (StatusCode::SERVICE_UNAVAILABLE, msg)
+            }
+            crate::error::AppError::Conflict(msg) => (StatusCode::CONFLICT, msg),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Unknown error".to_string(),

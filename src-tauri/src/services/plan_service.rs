@@ -2,9 +2,8 @@
 
 use crate::db::DbPool;
 use crate::models::{
-    Plan, PlanWithFeatures, FeatureDefinition, PlanFeature, PlanFeatureValue,
-    TenantSubscription, FeatureAccess,
-    CreatePlanRequest, UpdatePlanRequest, CreateFeatureRequest,
+    CreateFeatureRequest, CreatePlanRequest, FeatureAccess, FeatureDefinition, Plan, PlanFeature,
+    PlanFeatureValue, PlanWithFeatures, TenantSubscription, UpdatePlanRequest,
 };
 use chrono::Utc;
 use uuid::Uuid;
@@ -38,17 +37,16 @@ impl PlanService {
                 is_active, is_default, sort_order, created_at, updated_at
             FROM plans 
             ORDER BY sort_order ASC, created_at ASC
-            "#
+            "#,
         )
         .fetch_all(&self.pool)
         .await?;
 
         #[cfg(feature = "sqlite")]
-        let plans: Vec<Plan> = sqlx::query_as(
-            "SELECT * FROM plans ORDER BY sort_order ASC, created_at ASC"
-        )
-        .fetch_all(&self.pool)
-        .await?;
+        let plans: Vec<Plan> =
+            sqlx::query_as("SELECT * FROM plans ORDER BY sort_order ASC, created_at ASC")
+                .fetch_all(&self.pool)
+                .await?;
 
         Ok(plans)
     }
@@ -66,14 +64,14 @@ impl PlanService {
             FROM plans 
             WHERE is_active = true
             ORDER BY sort_order ASC, created_at ASC
-            "#
+            "#,
         )
         .fetch_all(&self.pool)
         .await?;
 
         #[cfg(feature = "sqlite")]
         let plans: Vec<Plan> = sqlx::query_as(
-            "SELECT * FROM plans WHERE is_active = 1 ORDER BY sort_order ASC, created_at ASC"
+            "SELECT * FROM plans WHERE is_active = 1 ORDER BY sort_order ASC, created_at ASC",
         )
         .fetch_all(&self.pool)
         .await?;
@@ -82,7 +80,10 @@ impl PlanService {
     }
 
     /// Get plan by ID with features
-    pub async fn get_plan_with_features(&self, plan_id: &str) -> Result<Option<PlanWithFeatures>, sqlx::Error> {
+    pub async fn get_plan_with_features(
+        &self,
+        plan_id: &str,
+    ) -> Result<Option<PlanWithFeatures>, sqlx::Error> {
         #[cfg(feature = "postgres")]
         let plan: Option<Plan> = sqlx::query_as(
             r#"
@@ -93,11 +94,11 @@ impl PlanService {
                 is_active, is_default, sort_order, created_at, updated_at
             FROM plans 
             WHERE id = $1
-            "#
+            "#,
         )
-            .bind(plan_id)
-            .fetch_optional(&self.pool)
-            .await?;
+        .bind(plan_id)
+        .fetch_optional(&self.pool)
+        .await?;
 
         #[cfg(feature = "sqlite")]
         let plan: Option<Plan> = sqlx::query_as("SELECT * FROM plans WHERE id = ?")
@@ -114,7 +115,10 @@ impl PlanService {
     }
 
     /// Get features for a plan
-    pub async fn get_plan_features(&self, plan_id: &str) -> Result<Vec<PlanFeatureValue>, sqlx::Error> {
+    pub async fn get_plan_features(
+        &self,
+        plan_id: &str,
+    ) -> Result<Vec<PlanFeatureValue>, sqlx::Error> {
         #[cfg(feature = "postgres")]
         let features: Vec<PlanFeatureValue> = sqlx::query_as(
             r#"
@@ -129,7 +133,7 @@ impl PlanService {
             JOIN features fd ON fd.id = pf.feature_id
             WHERE pf.plan_id = $1
             ORDER BY fd.sort_order ASC
-            "#
+            "#,
         )
         .bind(plan_id)
         .fetch_all(&self.pool)
@@ -149,7 +153,7 @@ impl PlanService {
             JOIN features fd ON fd.id = pf.feature_id
             WHERE pf.plan_id = ?
             ORDER BY fd.sort_order ASC
-            "#
+            "#,
         )
         .bind(plan_id)
         .fetch_all(&self.pool)
@@ -221,11 +225,11 @@ impl PlanService {
                 is_active, is_default, sort_order, created_at, updated_at
             FROM plans 
             WHERE id = $1
-            "#
+            "#,
         )
-            .bind(plan_id)
-            .fetch_one(&self.pool)
-            .await?;
+        .bind(plan_id)
+        .fetch_one(&self.pool)
+        .await?;
 
         #[cfg(feature = "sqlite")]
         let plan: Plan = sqlx::query_as("SELECT * FROM plans WHERE id = ?")
@@ -237,7 +241,11 @@ impl PlanService {
     }
 
     /// Update a plan
-    pub async fn update_plan(&self, plan_id: &str, req: UpdatePlanRequest) -> Result<Plan, sqlx::Error> {
+    pub async fn update_plan(
+        &self,
+        plan_id: &str,
+        req: UpdatePlanRequest,
+    ) -> Result<Plan, sqlx::Error> {
         let now = Utc::now();
 
         #[cfg(feature = "postgres")]
@@ -254,7 +262,7 @@ impl PlanService {
                 sort_order = COALESCE($9, sort_order),
                 updated_at = $10
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(plan_id)
         .bind(&req.name)
@@ -279,7 +287,7 @@ impl PlanService {
                     name = ?, slug = ?, description = ?, price_monthly = ?, price_yearly = ?,
                     is_active = ?, is_default = ?, sort_order = ?, updated_at = ?
                 WHERE id = ?
-                "#
+                "#,
             )
             .bind(req.name.as_ref().unwrap_or(&existing.name))
             .bind(req.slug.as_ref().unwrap_or(&existing.slug))
@@ -320,24 +328,25 @@ impl PlanService {
     /// List all feature definitions
     pub async fn list_feature_definitions(&self) -> Result<Vec<FeatureDefinition>, sqlx::Error> {
         #[cfg(feature = "postgres")]
-        let features: Vec<FeatureDefinition> = sqlx::query_as(
-            "SELECT * FROM features ORDER BY category ASC, sort_order ASC"
-        )
-        .fetch_all(&self.pool)
-        .await?;
+        let features: Vec<FeatureDefinition> =
+            sqlx::query_as("SELECT * FROM features ORDER BY category ASC, sort_order ASC")
+                .fetch_all(&self.pool)
+                .await?;
 
         #[cfg(feature = "sqlite")]
-        let features: Vec<FeatureDefinition> = sqlx::query_as(
-            "SELECT * FROM features ORDER BY category ASC, sort_order ASC"
-        )
-        .fetch_all(&self.pool)
-        .await?;
+        let features: Vec<FeatureDefinition> =
+            sqlx::query_as("SELECT * FROM features ORDER BY category ASC, sort_order ASC")
+                .fetch_all(&self.pool)
+                .await?;
 
         Ok(features)
     }
 
     /// Create a feature definition
-    pub async fn create_feature(&self, req: CreateFeatureRequest) -> Result<FeatureDefinition, sqlx::Error> {
+    pub async fn create_feature(
+        &self,
+        req: CreateFeatureRequest,
+    ) -> Result<FeatureDefinition, sqlx::Error> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
 
@@ -419,7 +428,12 @@ impl PlanService {
     // ==================== PLAN FEATURES ====================
 
     /// Set a feature value for a plan
-    pub async fn set_plan_feature(&self, plan_id: &str, feature_id: &str, value: &str) -> Result<(), sqlx::Error> {
+    pub async fn set_plan_feature(
+        &self,
+        plan_id: &str,
+        feature_id: &str,
+        value: &str,
+    ) -> Result<(), sqlx::Error> {
         let id = Uuid::new_v4().to_string();
 
         #[cfg(feature = "postgres")]
@@ -428,7 +442,7 @@ impl PlanService {
             INSERT INTO plan_features (id, plan_id, feature_id, value)
             VALUES ($1, $2, $3, $4)
             ON CONFLICT (plan_id, feature_id) DO UPDATE SET value = $4
-            "#
+            "#,
         )
         .bind(&id)
         .bind(plan_id)
@@ -443,7 +457,7 @@ impl PlanService {
             INSERT INTO plan_features (id, plan_id, feature_id, value)
             VALUES (?, ?, ?, ?)
             ON CONFLICT (plan_id, feature_id) DO UPDATE SET value = excluded.value
-            "#
+            "#,
         )
         .bind(&id)
         .bind(plan_id)
@@ -457,7 +471,11 @@ impl PlanService {
 
     /// Remove a feature from a plan
     #[allow(dead_code)]
-    pub async fn remove_plan_feature(&self, plan_id: &str, feature_id: &str) -> Result<(), sqlx::Error> {
+    pub async fn remove_plan_feature(
+        &self,
+        plan_id: &str,
+        feature_id: &str,
+    ) -> Result<(), sqlx::Error> {
         #[cfg(feature = "postgres")]
         sqlx::query("DELETE FROM plan_features WHERE plan_id = $1 AND feature_id = $2")
             .bind(plan_id)
@@ -478,7 +496,10 @@ impl PlanService {
     // ==================== TENANT SUBSCRIPTIONS ====================
 
     /// Get tenant subscription (Internal raw fetch)
-    async fn get_tenant_subscription_raw(&self, tenant_id: &str) -> Result<Option<TenantSubscription>, sqlx::Error> {
+    async fn get_tenant_subscription_raw(
+        &self,
+        tenant_id: &str,
+    ) -> Result<Option<TenantSubscription>, sqlx::Error> {
         #[cfg(feature = "postgres")]
         let sub: Option<TenantSubscription> = sqlx::query_as(
             r#"
@@ -488,25 +509,27 @@ impl PlanService {
                 feature_overrides::TEXT as feature_overrides, 
                 created_at, updated_at 
             FROM tenant_subscriptions WHERE tenant_id = $1
-            "#
+            "#,
         )
         .bind(tenant_id)
         .fetch_optional(&self.pool)
         .await?;
 
         #[cfg(feature = "sqlite")]
-        let sub: Option<TenantSubscription> = sqlx::query_as(
-            "SELECT * FROM tenant_subscriptions WHERE tenant_id = ?"
-        )
-        .bind(tenant_id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let sub: Option<TenantSubscription> =
+            sqlx::query_as("SELECT * FROM tenant_subscriptions WHERE tenant_id = ?")
+                .bind(tenant_id)
+                .fetch_optional(&self.pool)
+                .await?;
 
         Ok(sub)
     }
 
     /// Get tenant subscription with auto-expiration check
-    pub async fn get_tenant_subscription(&self, tenant_id: &str) -> Result<Option<TenantSubscription>, sqlx::Error> {
+    pub async fn get_tenant_subscription(
+        &self,
+        tenant_id: &str,
+    ) -> Result<Option<TenantSubscription>, sqlx::Error> {
         let sub = self.get_tenant_subscription_raw(tenant_id).await?;
 
         if let Some(ref s) = sub {
@@ -528,16 +551,20 @@ impl PlanService {
     async fn downgrade_to_free(&self, tenant_id: &str) -> Result<(), sqlx::Error> {
         // 1. Get Free Plan ID
         #[cfg(feature = "postgres")]
-        let free_plan_id: Option<String> = sqlx::query_scalar("SELECT id FROM plans WHERE slug = 'free'")
-            .fetch_optional(&self.pool).await?;
-        
+        let free_plan_id: Option<String> =
+            sqlx::query_scalar("SELECT id FROM plans WHERE slug = 'free'")
+                .fetch_optional(&self.pool)
+                .await?;
+
         #[cfg(feature = "sqlite")]
-        let free_plan_id: Option<String> = sqlx::query_scalar("SELECT id FROM plans WHERE slug = 'free'")
-            .fetch_optional(&self.pool).await?;
+        let free_plan_id: Option<String> =
+            sqlx::query_scalar("SELECT id FROM plans WHERE slug = 'free'")
+                .fetch_optional(&self.pool)
+                .await?;
 
         if let Some(free_id) = free_plan_id {
             let now = Utc::now();
-            
+
             // 2. Update Subscription
             #[cfg(feature = "postgres")]
             sqlx::query(
@@ -555,9 +582,14 @@ impl PlanService {
         }
         Ok(())
     }
-    
-    /// Get tenant subscription within a transaction
-    pub async fn get_tenant_subscription_with_conn<'a>(&self, tenant_id: &str, tx: &mut sqlx::Transaction<'a, Postgres>) -> Result<Option<TenantSubscription>, sqlx::Error> {
+
+    /// Get tenant subscription within a transaction (PostgreSQL only)
+    #[cfg(feature = "postgres")]
+    pub async fn get_tenant_subscription_with_conn<'a>(
+        &self,
+        tenant_id: &str,
+        tx: &mut sqlx::Transaction<'a, Postgres>,
+    ) -> Result<Option<TenantSubscription>, sqlx::Error> {
         // 1. Fetch
         let sub: Option<TenantSubscription> = sqlx::query_as(
             r#"
@@ -567,7 +599,7 @@ impl PlanService {
                 feature_overrides::TEXT as feature_overrides, 
                 created_at, updated_at 
             FROM tenant_subscriptions WHERE tenant_id = $1
-            "#
+            "#,
         )
         .bind(tenant_id)
         .fetch_optional(&mut **tx)
@@ -578,8 +610,10 @@ impl PlanService {
             if let Some(end_date) = s.current_period_end {
                 if end_date < Utc::now() && s.status == "active" {
                     // Downgrade Logic (Inline for transaction)
-                    let free_plan_id: Option<String> = sqlx::query_scalar("SELECT id FROM plans WHERE slug = 'free'")
-                        .fetch_optional(&mut **tx).await?;
+                    let free_plan_id: Option<String> =
+                        sqlx::query_scalar("SELECT id FROM plans WHERE slug = 'free'")
+                            .fetch_optional(&mut **tx)
+                            .await?;
 
                     if let Some(free_id) = free_plan_id {
                         let now = Utc::now();
@@ -588,7 +622,7 @@ impl PlanService {
                         )
                         .bind(free_id).bind(now).bind(tenant_id)
                         .execute(&mut **tx).await?;
-                        
+
                         // Refetch
                         return sqlx::query_as(
                             r#"
@@ -598,7 +632,7 @@ impl PlanService {
                                 feature_overrides::TEXT as feature_overrides, 
                                 created_at, updated_at 
                             FROM tenant_subscriptions WHERE tenant_id = $1
-                            "#
+                            "#,
                         )
                         .bind(tenant_id)
                         .fetch_optional(&mut **tx)
@@ -612,7 +646,11 @@ impl PlanService {
     }
 
     /// Assign a plan to a tenant
-    pub async fn assign_plan_to_tenant(&self, tenant_id: &str, plan_id: &str) -> Result<TenantSubscription, sqlx::Error> {
+    pub async fn assign_plan_to_tenant(
+        &self,
+        tenant_id: &str,
+        plan_id: &str,
+    ) -> Result<TenantSubscription, sqlx::Error> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
 
@@ -658,59 +696,71 @@ impl PlanService {
         .execute(&self.pool)
         .await?;
 
-        self.get_tenant_subscription(tenant_id).await.map(|s| s.unwrap())
+        self.get_tenant_subscription(tenant_id)
+            .await
+            .map(|s| s.unwrap())
     }
 
     // ==================== FEATURE ACCESS CHECKING ====================
 
     /// Check if a tenant has access to a feature
-    pub async fn check_feature_access(&self, tenant_id: &str, feature_code: &str) -> Result<FeatureAccess, sqlx::Error> {
+    pub async fn check_feature_access(
+        &self,
+        tenant_id: &str,
+        feature_code: &str,
+    ) -> Result<FeatureAccess, sqlx::Error> {
         // Get tenant's subscription
         let subscription = self.get_tenant_subscription(tenant_id).await?;
-        
+
         // Get feature definition
         #[cfg(feature = "postgres")]
-        let feature: Option<FeatureDefinition> = sqlx::query_as(
-            "SELECT * FROM features WHERE code = $1"
-        )
-        .bind(feature_code)
-        .fetch_optional(&self.pool)
-        .await?;
+        let feature: Option<FeatureDefinition> =
+            sqlx::query_as("SELECT * FROM features WHERE code = $1")
+                .bind(feature_code)
+                .fetch_optional(&self.pool)
+                .await?;
 
         #[cfg(feature = "sqlite")]
-        let feature: Option<FeatureDefinition> = sqlx::query_as(
-            "SELECT * FROM features WHERE code = ?"
-        )
-        .bind(feature_code)
-        .fetch_optional(&self.pool)
-        .await?;
+        let feature: Option<FeatureDefinition> =
+            sqlx::query_as("SELECT * FROM features WHERE code = ?")
+                .bind(feature_code)
+                .fetch_optional(&self.pool)
+                .await?;
 
         let feature = match feature {
             Some(f) => f,
-            None => return Ok(FeatureAccess {
-                code: feature_code.to_string(),
-                has_access: false,
-                value: "false".to_string(),
-                value_type: "boolean".to_string(),
-            }),
+            None => {
+                return Ok(FeatureAccess {
+                    code: feature_code.to_string(),
+                    has_access: false,
+                    value: "false".to_string(),
+                    value_type: "boolean".to_string(),
+                })
+            }
         };
 
         // No subscription means use default value
         let subscription = match subscription {
             Some(s) => s,
-            None => return Ok(FeatureAccess {
-                code: feature_code.to_string(),
-                has_access: feature.default_value == "true" || feature.default_value == "unlimited",
-                value: feature.default_value.clone(),
-                value_type: feature.value_type.clone(),
-            }),
+            None => {
+                return Ok(FeatureAccess {
+                    code: feature_code.to_string(),
+                    has_access: feature.default_value == "true"
+                        || feature.default_value == "unlimited",
+                    value: feature.default_value.clone(),
+                    value_type: feature.value_type.clone(),
+                })
+            }
         };
 
         // Check for feature override in subscription
         if let Some(ref overrides_json) = subscription.feature_overrides {
             if let Ok(overrides) = serde_json::from_str::<serde_json::Value>(overrides_json) {
                 if let Some(override_value) = overrides.get(feature_code) {
-                    let value_str = override_value.as_str().unwrap_or(&override_value.to_string()).to_string();
+                    let value_str = override_value
+                        .as_str()
+                        .unwrap_or(&override_value.to_string())
+                        .to_string();
                     return Ok(FeatureAccess {
                         code: feature_code.to_string(),
                         has_access: self.is_truthy(&value_str),
@@ -723,22 +773,20 @@ impl PlanService {
 
         // Get plan feature value
         #[cfg(feature = "postgres")]
-        let plan_feature: Option<PlanFeature> = sqlx::query_as(
-            "SELECT * FROM plan_features WHERE plan_id = $1 AND feature_id = $2"
-        )
-        .bind(&subscription.plan_id)
-        .bind(&feature.id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let plan_feature: Option<PlanFeature> =
+            sqlx::query_as("SELECT * FROM plan_features WHERE plan_id = $1 AND feature_id = $2")
+                .bind(&subscription.plan_id)
+                .bind(&feature.id)
+                .fetch_optional(&self.pool)
+                .await?;
 
         #[cfg(feature = "sqlite")]
-        let plan_feature: Option<PlanFeature> = sqlx::query_as(
-            "SELECT * FROM plan_features WHERE plan_id = ? AND feature_id = ?"
-        )
-        .bind(&subscription.plan_id)
-        .bind(&feature.id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let plan_feature: Option<PlanFeature> =
+            sqlx::query_as("SELECT * FROM plan_features WHERE plan_id = ? AND feature_id = ?")
+                .bind(&subscription.plan_id)
+                .bind(&feature.id)
+                .fetch_optional(&self.pool)
+                .await?;
 
         let value = plan_feature
             .map(|pf| pf.value)
@@ -765,9 +813,13 @@ impl PlanService {
     }
 
     /// Get numeric limit for a feature (for things like max_users)
-    pub async fn get_feature_limit(&self, tenant_id: &str, feature_code: &str) -> Result<Option<i64>, sqlx::Error> {
+    pub async fn get_feature_limit(
+        &self,
+        tenant_id: &str,
+        feature_code: &str,
+    ) -> Result<Option<i64>, sqlx::Error> {
         let access = self.check_feature_access(tenant_id, feature_code).await?;
-        
+
         if access.value.to_lowercase() == "unlimited" {
             return Ok(None); // None means unlimited
         }
@@ -776,15 +828,23 @@ impl PlanService {
     }
 
     /// Get detailed subscription info for dashboard (Usage vs Limits)
-    pub async fn get_tenant_subscription_details(&self, tenant_id: &str) -> Result<crate::models::TenantSubscriptionDetails, sqlx::Error> {
+    pub async fn get_tenant_subscription_details(
+        &self,
+        tenant_id: &str,
+    ) -> Result<crate::models::TenantSubscriptionDetails, sqlx::Error> {
         // 1. Get Subscription & Plan
         let sub = self.get_tenant_subscription(tenant_id).await?;
-        
+
         let (plan_name, plan_slug, status, period_end) = if let Some(s) = sub {
             let plan = self.get_plan(&s.plan_id).await?;
             (plan.name, plan.slug, s.status, s.current_period_end)
         } else {
-            ("Free".to_string(), "free".to_string(), "active".to_string(), None)
+            (
+                "Free".to_string(),
+                "free".to_string(),
+                "active".to_string(),
+                None,
+            )
         };
 
         // 2. Get Limits
@@ -796,21 +856,33 @@ impl PlanService {
         // 3. Get Usage
         // Storage Usage
         #[cfg(feature = "postgres")]
-        let storage_usage: i64 = sqlx::query_scalar("SELECT storage_usage FROM tenants WHERE id = $1")
-            .bind(tenant_id).fetch_one(&self.pool).await?;
-        
+        let storage_usage: i64 =
+            sqlx::query_scalar("SELECT storage_usage FROM tenants WHERE id = $1")
+                .bind(tenant_id)
+                .fetch_one(&self.pool)
+                .await?;
+
         #[cfg(feature = "sqlite")]
-        let storage_usage: i64 = sqlx::query_scalar("SELECT storage_usage FROM tenants WHERE id = ?")
-            .bind(tenant_id).fetch_one(&self.pool).await?;
+        let storage_usage: i64 =
+            sqlx::query_scalar("SELECT storage_usage FROM tenants WHERE id = ?")
+                .bind(tenant_id)
+                .fetch_one(&self.pool)
+                .await?;
 
         // Member Usage
         #[cfg(feature = "postgres")]
-        let member_usage: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM tenant_members WHERE tenant_id = $1")
-            .bind(tenant_id).fetch_one(&self.pool).await?;
+        let member_usage: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM tenant_members WHERE tenant_id = $1")
+                .bind(tenant_id)
+                .fetch_one(&self.pool)
+                .await?;
 
         #[cfg(feature = "sqlite")]
-        let member_usage: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM tenant_members WHERE tenant_id = ?")
-            .bind(tenant_id).fetch_one(&self.pool).await?;
+        let member_usage: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM tenant_members WHERE tenant_id = ?")
+                .bind(tenant_id)
+                .fetch_one(&self.pool)
+                .await?;
 
         Ok(crate::models::TenantSubscriptionDetails {
             plan_name,
@@ -824,11 +896,18 @@ impl PlanService {
         })
     }
 
-    /// Get numeric limit for a feature (for things like max_users) within a transaction
-    pub async fn get_feature_limit_with_conn<'a>(&self, tenant_id: &str, feature_code: &str, tx: &mut sqlx::Transaction<'a, Postgres>) -> Result<Option<i64>, sqlx::Error>
-    {
-        let access = self.check_feature_access_with_conn(tenant_id, feature_code, tx).await?;
-        
+    /// Get numeric limit for a feature (for things like max_users) within a transaction (PostgreSQL only)
+    #[cfg(feature = "postgres")]
+    pub async fn get_feature_limit_with_conn<'a>(
+        &self,
+        tenant_id: &str,
+        feature_code: &str,
+        tx: &mut sqlx::Transaction<'a, Postgres>,
+    ) -> Result<Option<i64>, sqlx::Error> {
+        let access = self
+            .check_feature_access_with_conn(tenant_id, feature_code, tx)
+            .await?;
+
         if access.value.to_lowercase() == "unlimited" {
             return Ok(None); // None means unlimited
         }
@@ -836,46 +915,60 @@ impl PlanService {
         Ok(access.value.parse::<i64>().ok())
     }
 
-    /// Check if a tenant has access to a feature within a transaction
-    pub async fn check_feature_access_with_conn<'a>(&self, tenant_id: &str, feature_code: &str, tx: &mut sqlx::Transaction<'a, Postgres>) -> Result<FeatureAccess, sqlx::Error>
-    {
+    /// Check if a tenant has access to a feature within a transaction (PostgreSQL only)
+    #[cfg(feature = "postgres")]
+    pub async fn check_feature_access_with_conn<'a>(
+        &self,
+        tenant_id: &str,
+        feature_code: &str,
+        tx: &mut sqlx::Transaction<'a, Postgres>,
+    ) -> Result<FeatureAccess, sqlx::Error> {
         // Get tenant's subscription
-        let subscription = self.get_tenant_subscription_with_conn(tenant_id, tx).await?;
-        
+        let subscription = self
+            .get_tenant_subscription_with_conn(tenant_id, tx)
+            .await?;
+
         // Get feature definition
-        let feature: Option<FeatureDefinition> = sqlx::query_as(
-            "SELECT * FROM features WHERE code = $1"
-        )
-        .bind(feature_code)
-        .fetch_optional(&mut **tx)
-        .await?;
+        let feature: Option<FeatureDefinition> =
+            sqlx::query_as("SELECT * FROM features WHERE code = $1")
+                .bind(feature_code)
+                .fetch_optional(&mut **tx)
+                .await?;
 
         let feature = match feature {
             Some(f) => f,
-            None => return Ok(FeatureAccess {
-                code: feature_code.to_string(),
-                has_access: false,
-                value: "false".to_string(),
-                value_type: "boolean".to_string(),
-            }),
+            None => {
+                return Ok(FeatureAccess {
+                    code: feature_code.to_string(),
+                    has_access: false,
+                    value: "false".to_string(),
+                    value_type: "boolean".to_string(),
+                })
+            }
         };
 
         // No subscription means use default value
         let subscription = match subscription {
             Some(s) => s,
-            None => return Ok(FeatureAccess {
-                code: feature_code.to_string(),
-                has_access: feature.default_value == "true" || feature.default_value == "unlimited",
-                value: feature.default_value.clone(),
-                value_type: feature.value_type.clone(),
-            }),
+            None => {
+                return Ok(FeatureAccess {
+                    code: feature_code.to_string(),
+                    has_access: feature.default_value == "true"
+                        || feature.default_value == "unlimited",
+                    value: feature.default_value.clone(),
+                    value_type: feature.value_type.clone(),
+                })
+            }
         };
 
         // Check for feature override in subscription
         if let Some(ref overrides_json) = subscription.feature_overrides {
             if let Ok(overrides) = serde_json::from_str::<serde_json::Value>(overrides_json) {
                 if let Some(override_value) = overrides.get(feature_code) {
-                    let value_str = override_value.as_str().unwrap_or(&override_value.to_string()).to_string();
+                    let value_str = override_value
+                        .as_str()
+                        .unwrap_or(&override_value.to_string())
+                        .to_string();
                     return Ok(FeatureAccess {
                         code: feature_code.to_string(),
                         has_access: self.is_truthy(&value_str),
@@ -887,13 +980,12 @@ impl PlanService {
         }
 
         // Get plan feature value
-        let plan_feature: Option<PlanFeature> = sqlx::query_as(
-            "SELECT * FROM plan_features WHERE plan_id = $1 AND feature_id = $2"
-        )
-        .bind(&subscription.plan_id)
-        .bind(&feature.id)
-        .fetch_optional(&mut **tx)
-        .await?;
+        let plan_feature: Option<PlanFeature> =
+            sqlx::query_as("SELECT * FROM plan_features WHERE plan_id = $1 AND feature_id = $2")
+                .bind(&subscription.plan_id)
+                .bind(&feature.id)
+                .fetch_optional(&mut **tx)
+                .await?;
 
         let value = plan_feature
             .map(|pf| pf.value)
@@ -910,23 +1002,80 @@ impl PlanService {
     pub async fn seed_default_features(&self) -> Result<(), sqlx::Error> {
         // Define standard SaaS features
         let default_features = vec![
-            ("max_users", "Maximum Users", "Maximum number of users allowed", "number", "limits", "5"),
-            ("max_storage_gb", "Storage (GB)", "Maximum storage in Gigabytes", "number", "limits", "1"),
-            ("api_access", "API Access", "Access to developer API", "boolean", "capabilities", "false"),
-            ("custom_domain", "Custom Domain", "Ability to use custom domain", "boolean", "branding", "false"),
-            ("remove_branding", "Remove Branding", "Remove 'Powered by' branding", "boolean", "branding", "false"),
-            ("audit_logs", "Audit Logs", "Access to audit logs", "boolean", "security", "false"),
-            ("sso_support", "SSO Support", "Single Sign-On (SAML/OIDC)", "boolean", "security", "false"),
-            ("support_level", "Support Level", "Level of support (Standard, Priority, 24/7)", "text", "support", "Standard"),
+            (
+                "max_users",
+                "Maximum Users",
+                "Maximum number of users allowed",
+                "number",
+                "limits",
+                "5",
+            ),
+            (
+                "max_storage_gb",
+                "Storage (GB)",
+                "Maximum storage in Gigabytes",
+                "number",
+                "limits",
+                "1",
+            ),
+            (
+                "api_access",
+                "API Access",
+                "Access to developer API",
+                "boolean",
+                "capabilities",
+                "false",
+            ),
+            (
+                "custom_domain",
+                "Custom Domain",
+                "Ability to use custom domain",
+                "boolean",
+                "branding",
+                "false",
+            ),
+            (
+                "remove_branding",
+                "Remove Branding",
+                "Remove 'Powered by' branding",
+                "boolean",
+                "branding",
+                "false",
+            ),
+            (
+                "audit_logs",
+                "Audit Logs",
+                "Access to audit logs",
+                "boolean",
+                "security",
+                "false",
+            ),
+            (
+                "sso_support",
+                "SSO Support",
+                "Single Sign-On (SAML/OIDC)",
+                "boolean",
+                "security",
+                "false",
+            ),
+            (
+                "support_level",
+                "Support Level",
+                "Level of support (Standard, Priority, 24/7)",
+                "text",
+                "support",
+                "Standard",
+            ),
         ];
 
-        for (i, (code, name, description, value_type, category, default_value)) in default_features.into_iter().enumerate() {
-            let exists: bool = sqlx::query_scalar(
-                "SELECT EXISTS(SELECT 1 FROM features WHERE code = $1)"
-            )
-            .bind(code)
-            .fetch_one(&self.pool)
-            .await?;
+        for (i, (code, name, description, value_type, category, default_value)) in
+            default_features.into_iter().enumerate()
+        {
+            let exists: bool =
+                sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM features WHERE code = $1)")
+                    .bind(code)
+                    .fetch_one(&self.pool)
+                    .await?;
 
             if !exists {
                 sqlx::query(

@@ -18,7 +18,7 @@ pub type DbPool = Pool<Postgres>;
 pub type DbPool = Pool<Sqlite>;
 
 /// Initialize database connection
-pub async fn init_db(_app_data_dir: PathBuf) -> Result<DbPool, sqlx::Error> {
+pub async fn init_db(app_data_dir: PathBuf) -> Result<DbPool, sqlx::Error> {
     #[cfg(feature = "postgres")]
     {
         let database_url = env::var("DATABASE_URL").map_err(|_| {
@@ -1078,11 +1078,10 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await;
 
-    let _ = sqlx::query(
-        "ALTER TABLE invoices ADD COLUMN currency_code TEXT NOT NULL DEFAULT 'IDR'",
-    )
-    .execute(pool)
-    .await;
+    let _ =
+        sqlx::query("ALTER TABLE invoices ADD COLUMN currency_code TEXT NOT NULL DEFAULT 'IDR'")
+            .execute(pool)
+            .await;
 
     let _ = sqlx::query(
         "ALTER TABLE invoices ADD COLUMN base_currency_code TEXT NOT NULL DEFAULT 'IDR'",

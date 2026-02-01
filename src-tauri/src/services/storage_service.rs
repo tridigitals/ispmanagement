@@ -95,7 +95,13 @@ impl StorageService {
         };
 
         // Fetch Tenant Driver preference first
+        #[cfg(feature = "postgres")]
         let tenant_driver: Option<String> = sqlx::query_scalar("SELECT value FROM settings WHERE tenant_id = $1 AND key = 'storage_driver'")
+            .bind(tenant_id)
+            .fetch_optional(&self.pool).await.unwrap_or(None);
+
+        #[cfg(feature = "sqlite")]
+        let tenant_driver: Option<String> = sqlx::query_scalar("SELECT value FROM settings WHERE tenant_id = ? AND key = 'storage_driver'")
             .bind(tenant_id)
             .fetch_optional(&self.pool).await.unwrap_or(None);
 
@@ -104,6 +110,7 @@ impl StorageService {
             _ => false, 
         };
 
+        #[cfg(feature = "postgres")]
         let rows: Vec<(String, String)> = if use_tenant_config {
             config.driver = tenant_driver.unwrap();
             sqlx::query_as("SELECT key, value FROM settings WHERE tenant_id = $1 AND key = ANY($2)")
@@ -113,6 +120,22 @@ impl StorageService {
         } else {
             sqlx::query_as("SELECT key, value FROM settings WHERE tenant_id IS NULL AND key = ANY($1)")
                 .bind(&keys)
+                .fetch_all(&self.pool).await.unwrap_or_default()
+        };
+
+        #[cfg(feature = "sqlite")]
+        let rows: Vec<(String, String)> = if use_tenant_config {
+            config.driver = tenant_driver.unwrap();
+            // SQLite doesn't support ANY, so we use IN with individual bindings
+            sqlx::query_as(
+                "SELECT key, value FROM settings WHERE tenant_id = ? AND key IN ('storage_driver', 'storage_s3_bucket', 'storage_s3_region', 'storage_s3_endpoint', 'storage_s3_access_key', 'storage_s3_secret_key', 'storage_s3_public_url')"
+            )
+                .bind(tenant_id)
+                .fetch_all(&self.pool).await.unwrap_or_default()
+        } else {
+            sqlx::query_as(
+                "SELECT key, value FROM settings WHERE tenant_id IS NULL AND key IN ('storage_driver', 'storage_s3_bucket', 'storage_s3_region', 'storage_s3_endpoint', 'storage_s3_access_key', 'storage_s3_secret_key', 'storage_s3_public_url')"
+            )
                 .fetch_all(&self.pool).await.unwrap_or_default()
         };
 

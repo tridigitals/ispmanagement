@@ -91,6 +91,8 @@ pub struct AuthService {
     email_service: EmailService,
     audit_service: AuditService,
     settings_service: SettingsService,
+    /// Cached auth settings with TTL (60 seconds)
+    auth_settings_cache: Arc<crate::services::cache::SingleValueCache<AuthSettings>>,
 }
 
 impl AuthService {
@@ -107,62 +109,89 @@ impl AuthService {
             email_service,
             audit_service,
             settings_service,
+            // Initialize cache with 60 second TTL
+            auth_settings_cache: Arc::new(crate::services::cache::SingleValueCache::new(60)),
         }
     }
 
-    /// Get auth settings from database
+    /// Get auth settings from database (with caching)
     pub async fn get_auth_settings(&self) -> AuthSettings {
+        // Check cache first
+        if let Some(cached) = self.auth_settings_cache.get() {
+            return cached;
+        }
+
+        // Fetch from database with a single batch query
+        let settings = self.fetch_auth_settings_from_db().await;
+
+        // Cache the result
+        self.auth_settings_cache.set(settings.clone());
+
+        settings
+    }
+
+    /// Fetch auth settings from database (internal helper)
+    async fn fetch_auth_settings_from_db(&self) -> AuthSettings {
         let mut settings = AuthSettings::default();
 
-        // Helper to get setting value
-        async fn get_setting(pool: &DbPool, key: &str) -> Option<String> {
-            sqlx::query_scalar::<_, String>("SELECT value FROM settings WHERE key = $1 AND tenant_id IS NULL")
-                .bind(key)
-                .fetch_optional(pool)
-                .await
-                .ok()
-                .flatten()
-        }
+        // Batch query: fetch all auth settings at once
+        let rows: Vec<(String, String)> = sqlx::query_as(
+            "SELECT key, value FROM settings WHERE tenant_id IS NULL AND key LIKE 'auth_%' OR key IN ('max_login_attempts', 'lockout_duration_minutes')"
+        )
+        .fetch_all(&self.pool)
+        .await
+        .unwrap_or_default();
 
-        if let Some(val) = get_setting(&self.pool, "auth_jwt_expiry_hours").await {
+        // Build a hashmap for easy lookup
+        let settings_map: std::collections::HashMap<String, String> = rows.into_iter().collect();
+
+        // Apply settings from the map
+        if let Some(val) = settings_map.get("auth_jwt_expiry_hours") {
             settings.jwt_expiry_hours = val.parse().unwrap_or(24);
         }
-        if let Some(val) = get_setting(&self.pool, "auth_password_min_length").await {
+        if let Some(val) = settings_map.get("auth_password_min_length") {
             settings.password_min_length = val.parse().unwrap_or(8);
         }
-        if let Some(val) = get_setting(&self.pool, "auth_password_require_uppercase").await {
+        if let Some(val) = settings_map.get("auth_password_require_uppercase") {
             settings.password_require_uppercase = val == "true";
         }
-        if let Some(val) = get_setting(&self.pool, "auth_password_require_number").await {
+        if let Some(val) = settings_map.get("auth_password_require_number") {
             settings.password_require_number = val == "true";
         }
-        if let Some(val) = get_setting(&self.pool, "auth_password_require_special").await {
+        if let Some(val) = settings_map.get("auth_password_require_special") {
             settings.password_require_special = val == "true";
         }
-        if let Some(val) = get_setting(&self.pool, "auth_max_login_attempts").await {
+
+        // max_login_attempts with fallback
+        if let Some(val) = settings_map.get("auth_max_login_attempts") {
             settings.max_login_attempts = val.parse().unwrap_or(5);
-        } else if let Some(val) = get_setting(&self.pool, "max_login_attempts").await {
-            // Fallback to superadmin settings key (without auth_ prefix)
+        } else if let Some(val) = settings_map.get("max_login_attempts") {
             settings.max_login_attempts = val.parse().unwrap_or(5);
         }
-        if let Some(val) = get_setting(&self.pool, "auth_lockout_duration_minutes").await {
+
+        // lockout_duration_minutes with fallback
+        if let Some(val) = settings_map.get("auth_lockout_duration_minutes") {
             settings.lockout_duration_minutes = val.parse().unwrap_or(15);
-        } else if let Some(val) = get_setting(&self.pool, "lockout_duration_minutes").await {
-            // Fallback to superadmin settings key (without auth_ prefix)
+        } else if let Some(val) = settings_map.get("lockout_duration_minutes") {
             settings.lockout_duration_minutes = val.parse().unwrap_or(15);
         }
-                if let Some(val) = get_setting(&self.pool, "auth_allow_registration").await {
-                    settings.allow_registration = val == "true";
-                }
-        
-                if let Some(val) = get_setting(&self.pool, "auth_logout_all_on_password_change").await {
+
+        if let Some(val) = settings_map.get("auth_allow_registration") {
+            settings.allow_registration = val == "true";
+        }
+        if let Some(val) = settings_map.get("auth_logout_all_on_password_change") {
             settings.logout_all_on_password_change = val == "true";
         }
-        if let Some(val) = get_setting(&self.pool, "auth_require_email_verification").await {
+        if let Some(val) = settings_map.get("auth_require_email_verification") {
             settings.require_email_verification = val == "true";
         }
 
         settings
+    }
+
+    /// Invalidate auth settings cache (call when settings are updated)
+    pub fn invalidate_auth_settings_cache(&self) {
+        self.auth_settings_cache.invalidate();
     }
 
     /// Validate password against policy
@@ -1083,18 +1112,20 @@ impl AuthService {
 
             // Get tenant slug and custom_domain
             #[cfg(feature = "postgres")]
-            let tenant_info: Option<(String, Option<String>)> = sqlx::query_as("SELECT slug, custom_domain FROM tenants WHERE id = $1")
-                .bind(&tid)
-                .fetch_optional(&self.pool)
-                .await
-                .unwrap_or(None);
+            let tenant_info: Option<(String, Option<String>)> =
+                sqlx::query_as("SELECT slug, custom_domain FROM tenants WHERE id = $1")
+                    .bind(&tid)
+                    .fetch_optional(&self.pool)
+                    .await
+                    .unwrap_or(None);
 
             #[cfg(feature = "sqlite")]
-            let tenant_info: Option<(String, Option<String>)> = sqlx::query_as("SELECT slug, custom_domain FROM tenants WHERE id = ?")
-                .bind(&tid)
-                .fetch_optional(&self.pool)
-                .await
-                .unwrap_or(None);
+            let tenant_info: Option<(String, Option<String>)> =
+                sqlx::query_as("SELECT slug, custom_domain FROM tenants WHERE id = ?")
+                    .bind(&tid)
+                    .fetch_optional(&self.pool)
+                    .await
+                    .unwrap_or(None);
 
             if let Some((slug, domain)) = tenant_info {
                 user_response.tenant_slug = Some(slug);
@@ -1242,13 +1273,14 @@ impl AuthService {
         // If no ACTIVE tenant is found but membership exists, do not self-heal into a new tenant.
         // This prevents bypassing tenant suspension by auto-creating a new tenant.
         if tenant.is_none() && !user.is_super_admin {
-            let has_any_membership: bool =
-                sqlx::query_scalar::<_, i64>("SELECT count(*) FROM tenant_members WHERE user_id = $1")
-                    .bind(&user.id)
-                    .fetch_one(&self.pool)
-                    .await
-                    .map(|count| count > 0)
-                    .unwrap_or(false);
+            let has_any_membership: bool = sqlx::query_scalar::<_, i64>(
+                "SELECT count(*) FROM tenant_members WHERE user_id = $1",
+            )
+            .bind(&user.id)
+            .fetch_one(&self.pool)
+            .await
+            .map(|count| count > 0)
+            .unwrap_or(false);
 
             if has_any_membership {
                 return Err(AppError::Validation(
@@ -1562,7 +1594,9 @@ impl AuthService {
         }
 
         if !verified {
-            return Err(AppError::Validation("Invalid authentication code".to_string()));
+            return Err(AppError::Validation(
+                "Invalid authentication code".to_string(),
+            ));
         }
 
         // DB Update: Clear all 2FA related fields
@@ -2036,7 +2070,12 @@ impl AuthService {
     }
 
     /// Reset 2FA for a user (Admin/Superadmin only)
-    pub async fn reset_2fa(&self, user_id: &str, actor_id: Option<&str>, ip_address: Option<&str>) -> AppResult<()> {
+    pub async fn reset_2fa(
+        &self,
+        user_id: &str,
+        actor_id: Option<&str>,
+        ip_address: Option<&str>,
+    ) -> AppResult<()> {
         let query = "UPDATE users SET two_factor_enabled = false, two_factor_secret = NULL, two_factor_recovery_codes = NULL, email_otp_code = NULL, email_otp_expires = NULL, preferred_2fa_method = 'totp', updated_at = $1 WHERE id = $2";
 
         #[cfg(feature = "postgres")]

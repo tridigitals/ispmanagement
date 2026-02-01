@@ -16,21 +16,24 @@ pub struct UserService {
 
 impl UserService {
     pub fn new(pool: DbPool, audit_service: AuditService) -> Self {
-        Self { pool, audit_service }
+        Self {
+            pool,
+            audit_service,
+        }
     }
 
-    /// List all users with pagination
+    /// List all users with pagination (optimized single query with window function)
     pub async fn list(&self, page: u32, per_page: u32) -> AppResult<(Vec<UserResponse>, i64)> {
         let offset = (page.saturating_sub(1)) * per_page;
 
-        // Query to fetch users enriched with tenant info (if any)
-        // We assume 1 user -> 1 tenant for simplicity in this view, or take the first one found.
+        // Optimized query: fetch users with tenant info AND total count in single query
         #[cfg(feature = "postgres")]
         let query = r#"
             SELECT 
                 u.*, 
                 t.slug as tenant_slug,
-                r.name as tenant_role_name
+                r.name as tenant_role_name,
+                COUNT(*) OVER() as total_count
             FROM users u
             LEFT JOIN tenant_members tm ON u.id = tm.user_id
             LEFT JOIN tenants t ON tm.tenant_id = t.id
@@ -44,7 +47,8 @@ impl UserService {
             SELECT 
                 u.*, 
                 t.slug as tenant_slug,
-                r.name as tenant_role_name
+                r.name as tenant_role_name,
+                (SELECT COUNT(*) FROM users) as total_count
             FROM users u
             LEFT JOIN tenant_members tm ON u.id = tm.user_id
             LEFT JOIN tenants t ON tm.tenant_id = t.id
@@ -53,13 +57,14 @@ impl UserService {
             LIMIT ? OFFSET ?
         "#;
 
-        // We need a custom struct to handle the projection
+        // Custom struct to handle the projection with count
         #[derive(sqlx::FromRow)]
         struct UserRow {
             #[sqlx(flatten)]
             user: User,
             tenant_slug: Option<String>,
             tenant_role_name: Option<String>,
+            total_count: i64,
         }
 
         let rows: Vec<UserRow> = sqlx::query_as(query)
@@ -68,18 +73,20 @@ impl UserService {
             .fetch_all(&self.pool)
             .await?;
 
-        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users")
-            .fetch_one(&self.pool)
-            .await?;
+        // Extract total count from first row (same for all rows due to window function)
+        let total_count = rows.first().map(|r| r.total_count).unwrap_or(0);
 
-        let response = rows.into_iter().map(|row| {
-            let mut res: UserResponse = row.user.into();
-            res.tenant_slug = row.tenant_slug;
-            res.tenant_role = row.tenant_role_name;
-            res
-        }).collect();
+        let response = rows
+            .into_iter()
+            .map(|row| {
+                let mut res: UserResponse = row.user.into();
+                res.tenant_slug = row.tenant_slug;
+                res.tenant_role = row.tenant_role_name;
+                res
+            })
+            .collect();
 
-        Ok((response, count.0))
+        Ok((response, total_count))
     }
 
     /// Get user by ID
@@ -94,7 +101,12 @@ impl UserService {
     }
 
     /// Create new user
-    pub async fn create(&self, dto: CreateUserDto, actor_id: Option<&str>, ip_address: Option<&str>) -> AppResult<UserResponse> {
+    pub async fn create(
+        &self,
+        dto: CreateUserDto,
+        actor_id: Option<&str>,
+        ip_address: Option<&str>,
+    ) -> AppResult<UserResponse> {
         // Check if email already exists
         let existing: Option<User> = sqlx::query_as("SELECT * FROM users WHERE email = $1")
             .bind(&dto.email)
@@ -123,9 +135,7 @@ impl UserService {
         .bind(user.is_active);
 
         #[cfg(feature = "postgres")]
-        let query = query
-            .bind(user.created_at)
-            .bind(user.updated_at);
+        let query = query.bind(user.created_at).bind(user.updated_at);
 
         #[cfg(not(feature = "postgres"))]
         let query = query
@@ -135,21 +145,29 @@ impl UserService {
         query.execute(&self.pool).await?;
 
         // Audit Log
-        self.audit_service.log(
-            actor_id,
-            None,
-            "USER_CREATE",
-            "user",
-            Some(&user.id),
-            Some(&format!("Created user {}", user.email)),
-            ip_address,
-        ).await;
+        self.audit_service
+            .log(
+                actor_id,
+                None,
+                "USER_CREATE",
+                "user",
+                Some(&user.id),
+                Some(&format!("Created user {}", user.email)),
+                ip_address,
+            )
+            .await;
 
         Ok(user.into())
     }
 
     /// Update user
-    pub async fn update(&self, id: &str, dto: UpdateUserDto, actor_id: Option<&str>, ip_address: Option<&str>) -> AppResult<UserResponse> {
+    pub async fn update(
+        &self,
+        id: &str,
+        dto: UpdateUserDto,
+        actor_id: Option<&str>,
+        ip_address: Option<&str>,
+    ) -> AppResult<UserResponse> {
         let mut user: User = sqlx::query_as("SELECT * FROM users WHERE id = $1")
             .bind(id)
             .fetch_optional(&self.pool)
@@ -159,13 +177,12 @@ impl UserService {
         // Update fields if provided
         if let Some(email) = dto.email {
             // Check if email is taken by another user
-            let existing: Option<User> = sqlx::query_as(
-                "SELECT * FROM users WHERE email = $1 AND id != $2"
-            )
-            .bind(&email)
-            .bind(id)
-            .fetch_optional(&self.pool)
-            .await?;
+            let existing: Option<User> =
+                sqlx::query_as("SELECT * FROM users WHERE email = $1 AND id != $2")
+                    .bind(&email)
+                    .bind(id)
+                    .fetch_optional(&self.pool)
+                    .await?;
 
             if existing.is_some() {
                 return Err(AppError::UserAlreadyExists);
@@ -205,29 +222,33 @@ impl UserService {
         #[cfg(not(feature = "postgres"))]
         let query = query.bind(updated_at.to_rfc3339());
 
-        query
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
+        query.bind(id).execute(&self.pool).await?;
 
         user.updated_at = updated_at;
 
         // Audit Log
-        self.audit_service.log(
-            actor_id,
-            None,
-            "USER_UPDATE",
-            "user",
-            Some(id),
-            Some("Updated user details"),
-            ip_address,
-        ).await;
+        self.audit_service
+            .log(
+                actor_id,
+                None,
+                "USER_UPDATE",
+                "user",
+                Some(id),
+                Some("Updated user details"),
+                ip_address,
+            )
+            .await;
 
         Ok(user.into())
     }
 
     /// Delete user
-    pub async fn delete(&self, id: &str, actor_id: Option<&str>, ip_address: Option<&str>) -> AppResult<()> {
+    pub async fn delete(
+        &self,
+        id: &str,
+        actor_id: Option<&str>,
+        ip_address: Option<&str>,
+    ) -> AppResult<()> {
         let result = sqlx::query("DELETE FROM users WHERE id = $1")
             .bind(id)
             .execute(&self.pool)
@@ -238,19 +259,21 @@ impl UserService {
         }
 
         // Audit Log
-        self.audit_service.log(
-            actor_id,
-            None,
-            "USER_DELETE",
-            "user",
-            Some(id),
-            Some("Deleted user"),
-            ip_address,
-        ).await;
+        self.audit_service
+            .log(
+                actor_id,
+                None,
+                "USER_DELETE",
+                "user",
+                Some(id),
+                Some("Deleted user"),
+                ip_address,
+            )
+            .await;
 
         Ok(())
     }
-    
+
     /// Count all users
     pub async fn count(&self) -> AppResult<i64> {
         let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users")

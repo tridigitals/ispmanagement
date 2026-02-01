@@ -1,6 +1,7 @@
 //! Services module
 
 pub mod auth_service;
+pub mod cache;
 pub mod email_service;
 pub mod role_service;
 pub mod settings_service;
