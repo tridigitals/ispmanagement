@@ -94,7 +94,12 @@
 <style>
     .app-shell {
         display: flex;
-        min-height: 100dvh; /* Modern unit for mobile browsers */
+        height: calc(
+            100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+        );
+        min-height: calc(
+            100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+        ); /* Prevent body scrolling caused by global safe-area padding */
         width: 100%;
         background: var(--bg-app); /* Background dasar aplikasi */
         overflow: hidden;
@@ -106,6 +111,7 @@
         flex-direction: column;
         padding: clamp(6px, 1vw, 12px);
         padding-left: 0; /* Sidebar occupies the left edge */
+        min-height: 0; /* allow .scroll-area to be the scroller */
     }
 
     .content-surface {
@@ -118,6 +124,7 @@
         overflow: hidden;
         box-shadow: var(--shadow-sm);
         position: relative;
+        min-height: 0; /* allow .scroll-area to be the scroller */
     }
 
     .scroll-area {
@@ -125,6 +132,8 @@
         overflow-y: auto;
         position: relative;
         padding-bottom: env(safe-area-inset-bottom);
+        min-height: 0;
+        overscroll-behavior: contain;
     }
 
     @media (max-width: 900px) {

@@ -324,12 +324,15 @@
             width 0.3s ease;
         background: var(--bg-app); /* Ensure background is solid for overlay */
         border-right: 1px solid var(--border-color);
-        height: 100vh;
+        height: calc(
+            100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+        );
+        overflow: hidden;
 
         /* Mobile defaults */
         position: fixed;
         left: 0;
-        top: 0;
+        top: env(safe-area-inset-top);
         z-index: 50;
         transform: translateX(-100%);
     }
@@ -339,7 +342,9 @@
         .sidebar {
             position: sticky;
             transform: none;
-            height: 100vh;
+            height: calc(
+                100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+            );
         }
     }
 
@@ -432,6 +437,9 @@
         display: flex;
         flex-direction: column;
         gap: 4px;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
     }
 
     .nav-item {

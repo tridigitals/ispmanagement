@@ -86,7 +86,12 @@
 
     .app-shell {
         display: flex;
-        min-height: 100dvh;
+        height: calc(
+            100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+        );
+        min-height: calc(
+            100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+        );
         width: 100%;
         background: var(--bg-app);
         overflow: hidden;
@@ -98,6 +103,7 @@
         flex-direction: column;
         padding: clamp(6px, 1vw, 12px);
         padding-left: 0;
+        min-height: 0;
     }
 
     .content-surface {
@@ -110,6 +116,7 @@
         overflow: hidden;
         box-shadow: var(--shadow-sm);
         position: relative;
+        min-height: 0;
     }
 
     .scroll-area {
@@ -117,6 +124,8 @@
         overflow-y: auto;
         position: relative;
         padding-bottom: env(safe-area-inset-bottom);
+        min-height: 0;
+        overscroll-behavior: contain;
     }
 
     @media (max-width: 900px) {
