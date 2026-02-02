@@ -23,6 +23,7 @@ use std::path::PathBuf;
 pub mod audit;
 pub mod auth;
 pub mod install;
+pub mod middleware;
 pub mod notifications;
 pub mod payment;
 pub mod plans;
@@ -57,6 +58,8 @@ pub struct AppState {
     pub notification_service: Arc<NotificationService>,
     pub ws_hub: Arc<WsHub>,
     pub app_data_dir: PathBuf,
+    pub rate_limiter: Arc<crate::services::rate_limiter::RateLimiter>,
+    pub metrics_service: Arc<crate::services::metrics_service::MetricsService>,
 }
 
 pub async fn start_server(
@@ -75,8 +78,22 @@ pub async fn start_server(
     ws_hub: Arc<WsHub>,
     app_data_dir: PathBuf,
     default_port: u16,
-    pool: crate::db::DbPool, // Add pool argument
+    pool: crate::db::DbPool,
+    metrics_service: Arc<crate::services::metrics_service::MetricsService>,
 ) {
+    // Initialize rate limiter
+    let rate_limiter = Arc::new(crate::services::rate_limiter::RateLimiter::default());
+
+    // Spawn background task to cleanup expired rate limit entries every minute
+    let cleanup_limiter = rate_limiter.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(60));
+        loop {
+            interval.tick().await;
+            cleanup_limiter.cleanup();
+        }
+    });
+
     let state = AppState {
         auth_service: Arc::new(auth_service),
         user_service: Arc::new(user_service),
@@ -92,6 +109,8 @@ pub async fn start_server(
         notification_service: Arc::new(notification_service),
         ws_hub,
         app_data_dir,
+        rate_limiter,
+        metrics_service,
     };
 
     // --- Dynamic CORS Implementation ---
@@ -206,7 +225,10 @@ pub async fn start_server(
         .route("/api/auth/2fa/enable", post(auth::enable_2fa))
         .route("/api/auth/2fa/verify-setup", post(auth::verify_2fa_setup))
         .route("/api/auth/2fa/disable", post(auth::disable_2fa))
-        .route("/api/auth/2fa/disable-request", post(auth::request_2fa_disable_code))
+        .route(
+            "/api/auth/2fa/disable-request",
+            post(auth::request_2fa_disable_code),
+        )
         .route("/api/auth/2fa/reset/{user_id}", post(auth::reset_user_2fa))
         .route("/api/auth/2fa/preference", post(auth::set_2fa_preference))
         .route(
@@ -324,6 +346,11 @@ pub async fn start_server(
             #[allow(deprecated)]
             TimeoutLayer::new(Duration::from_secs(3600))
         }) // 1 Hour Timeout for large uploads
+        .layer(axum::middleware::from_fn(middleware::metrics_middleware))
+        .layer(axum::Extension(state.metrics_service.clone()))
+        .layer(axum::middleware::from_fn(
+            middleware::security_headers_middleware,
+        ))
         .layer(cors)
         .with_state(state);
 

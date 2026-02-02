@@ -115,9 +115,9 @@ impl From<User> for UserResponse {
             two_factor_enabled: user.two_factor_enabled,
             preferred_2fa_method: user.preferred_2fa_method,
             created_at: user.created_at,
-            permissions: vec![], // Populated by service
-            tenant_slug: None,   // Populated by service
-            tenant_role: None,   // Populated by service
+            permissions: vec![],        // Populated by service
+            tenant_slug: None,          // Populated by service
+            tenant_role: None,          // Populated by service
             tenant_custom_domain: None, // Populated by service
         }
     }
@@ -126,21 +126,28 @@ impl From<User> for UserResponse {
 /// DTO for creating a new user
 #[derive(Debug, Deserialize, Validate)]
 pub struct CreateUserDto {
-    #[validate(email(message = "Invalid email format"))]
+    #[validate(
+        email(message = "Invalid email format"),
+        length(max = 255, message = "Email too long")
+    )]
     pub email: String,
-    #[validate(length(min = 8, message = "Password must be at least 8 characters"))]
+    #[validate(length(min = 8, max = 128, message = "Password must be 8-128 characters"))]
     pub password: String,
-    #[validate(length(min = 2, message = "Name must be at least 2 characters"))]
+    #[validate(length(min = 2, max = 100, message = "Name must be 2-100 characters"))]
     pub name: String,
 }
 
 /// DTO for updating a user
 #[derive(Debug, Deserialize, Validate)]
 pub struct UpdateUserDto {
-    #[validate(email(message = "Invalid email format"))]
+    #[validate(
+        email(message = "Invalid email format"),
+        length(max = 255, message = "Email too long")
+    )]
     pub email: Option<String>,
-    #[validate(length(min = 2, message = "Name must be at least 2 characters"))]
+    #[validate(length(min = 2, max = 100, message = "Name must be 2-100 characters"))]
     pub name: Option<String>,
+    #[validate(length(max = 50, message = "Role too long"))]
     pub role: Option<String>,
     pub is_super_admin: Option<bool>,
     pub is_active: Option<bool>,
@@ -149,19 +156,25 @@ pub struct UpdateUserDto {
 /// DTO for user login
 #[derive(Debug, Deserialize, Validate)]
 pub struct LoginDto {
-    #[validate(email(message = "Invalid email format"))]
+    #[validate(
+        email(message = "Invalid email format"),
+        length(max = 255, message = "Email too long")
+    )]
     pub email: String,
-    #[validate(length(min = 1, message = "Password is required"))]
+    #[validate(length(min = 1, max = 128, message = "Password must be 1-128 characters"))]
     pub password: String,
 }
 
 /// DTO for user registration
 #[derive(Debug, Deserialize, Validate)]
 pub struct RegisterDto {
-    #[validate(email(message = "Invalid email format"))]
+    #[validate(
+        email(message = "Invalid email format"),
+        length(max = 255, message = "Email too long")
+    )]
     pub email: String,
-    #[validate(length(min = 8, message = "Password must be at least 8 characters"))]
+    #[validate(length(min = 8, max = 128, message = "Password must be 8-128 characters"))]
     pub password: String,
-    #[validate(length(min = 2, message = "Name must be at least 2 characters"))]
+    #[validate(length(min = 2, max = 100, message = "Name must be 2-100 characters"))]
     pub name: String,
 }

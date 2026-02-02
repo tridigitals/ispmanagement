@@ -1,13 +1,13 @@
 //! System Health & Monitoring Service
 
-use sqlx::{Pool, Postgres};
+use chrono::{DateTime, Utc};
+use serde::Serialize;
 #[cfg(feature = "sqlite")]
 use sqlx::Sqlite;
-use serde::Serialize;
-use chrono::{DateTime, Utc};
-use sysinfo::System;
+use sqlx::{Pool, Postgres};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use sysinfo::System;
 use tokio::sync::RwLock;
 
 #[derive(Debug, Serialize, Clone)]
@@ -55,6 +55,8 @@ pub struct SystemHealth {
     pub uptime_seconds: u64,
     pub app_version: String,
     pub collected_at: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub request_metrics: Option<crate::services::metrics_service::RequestMetrics>,
 }
 
 #[derive(Clone)]
@@ -70,7 +72,7 @@ pub struct SystemService {
 impl SystemService {
     #[cfg(feature = "postgres")]
     pub fn new(pool: Pool<Postgres>) -> Self {
-        Self { 
+        Self {
             pool,
             start_time: Instant::now(),
             cache: Arc::new(RwLock::new(None)),
@@ -79,7 +81,7 @@ impl SystemService {
 
     #[cfg(feature = "sqlite")]
     pub fn new(pool: Pool<Sqlite>) -> Self {
-        Self { 
+        Self {
             pool,
             start_time: Instant::now(),
             cache: Arc::new(RwLock::new(None)),
@@ -112,6 +114,7 @@ impl SystemService {
             uptime_seconds: self.start_time.elapsed().as_secs(),
             app_version: env!("CARGO_PKG_VERSION").to_string(),
             collected_at: Utc::now(),
+            request_metrics: None,
         };
 
         *self.cache.write().await = Some((health.clone(), Instant::now()));
@@ -180,7 +183,10 @@ impl SystemService {
             UNION ALL SELECT 'settings', (SELECT COUNT(*) FROM settings) \
             UNION ALL SELECT 'audit_logs', (SELECT COUNT(*) FROM audit_logs)";
 
-        match sqlx::query_as::<_, TableRow>(union_query).fetch_all(&self.pool).await {
+        match sqlx::query_as::<_, TableRow>(union_query)
+            .fetch_all(&self.pool)
+            .await
+        {
             Ok(rows) => Ok(rows
                 .into_iter()
                 .map(|r| TableInfo {
@@ -221,12 +227,10 @@ impl SystemService {
     async fn get_active_sessions(&self) -> Result<i64, sqlx::Error> {
         // Count users who have logged in within the last 24 hours (based on updated_at)
         // This is an approximation since we don't have a sessions table
-        let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM users WHERE is_active = true"
-        )
-        .fetch_one(&self.pool)
-        .await
-        .unwrap_or(0);
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE is_active = true")
+            .fetch_one(&self.pool)
+            .await
+            .unwrap_or(0);
 
         Ok(count)
     }
@@ -333,7 +337,7 @@ impl SystemService {
     async fn get_system_resources(&self) -> SystemResources {
         let mut sys = System::new_all();
         sys.refresh_all();
-        
+
         // Brief sleep to get accurate CPU usage
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
         sys.refresh_all();
@@ -350,10 +354,12 @@ impl SystemService {
     async fn get_total_tables(&self) -> i64 {
         #[cfg(feature = "postgres")]
         {
-            sqlx::query_scalar("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'")
-                .fetch_one(&self.pool)
-                .await
-                .unwrap_or(0)
+            sqlx::query_scalar(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'",
+            )
+            .fetch_one(&self.pool)
+            .await
+            .unwrap_or(0)
         }
 
         #[cfg(feature = "sqlite")]

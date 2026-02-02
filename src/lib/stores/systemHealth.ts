@@ -13,6 +13,17 @@ export interface RecentActivity {
     created_at: string;
 }
 
+export interface RequestMetrics {
+    total_requests: number;
+    requests_last_minute: number;
+    avg_response_time_ms: number;
+    min_response_time_ms: number;
+    max_response_time_ms: number;
+    error_count: number;
+    rate_limited_count: number;
+    p95_response_time_ms: number;
+}
+
 export interface SystemHealth {
     database: {
         is_connected: boolean;
@@ -36,6 +47,7 @@ export interface SystemHealth {
     uptime_seconds: number;
     app_version: string;
     collected_at: string;
+    request_metrics?: RequestMetrics;
 }
 
 export const systemHealthCache = writable<{

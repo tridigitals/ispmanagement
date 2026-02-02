@@ -13,7 +13,8 @@ pub mod http;
 use commands::*;
 use commands::audit::list_audit_logs;
 use db::connection::{init_db, seed_defaults};
-use services::{AuthService, EmailService, SettingsService, UserService, TeamService, AuditService, RoleService, SystemService, PlanService, PaymentService, NotificationService}; // Added PaymentService, NotificationService
+use services::{AuthService, EmailService, SettingsService, UserService, TeamService, AuditService, RoleService, SystemService, PlanService, PaymentService, NotificationService};
+use services::metrics_service::MetricsService;
 use tauri::Manager;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -185,6 +186,7 @@ pub fn run() {
                 let team_service = TeamService::new(pool.clone(), auth_service.clone(), audit_service.clone(), plan_service.clone());
                 let system_service = SystemService::new(pool.clone());
                 let storage_service = crate::services::StorageService::new(pool.clone(), plan_service.clone(), app_data_dir.clone());
+                let metrics_service = MetricsService::new();
                 
                 // Create WebSocket hub for real-time sync (shared between HTTP and Tauri)
                 let ws_hub = std::sync::Arc::new(http::WsHub::new());
@@ -212,7 +214,10 @@ pub fn run() {
                 app_handle.manage(payment_service.clone());
                 app_handle.manage(notification_service.clone());
                 app_handle.manage(ws_hub.clone());
+                let metrics_arc = std::sync::Arc::new(metrics_service);
+                app_handle.manage(metrics_arc.clone());
                 info!("Services added to Tauri state.");
+
 
                 // Start HTTP Server (This can run in background)
                 let app_dir = app_data_dir.clone();
@@ -233,9 +238,11 @@ pub fn run() {
                         ws_hub, 
                         app_dir, 
                         3000,
-                        pool.clone(), // Pass pool
+                        pool.clone(),
+                        metrics_arc,
                     ).await;
                 });
+
 
                 info!("Services initialized successfully");
                 Ok(())

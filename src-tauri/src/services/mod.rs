@@ -3,6 +3,8 @@
 pub mod auth_service;
 pub mod cache;
 pub mod email_service;
+pub mod metrics_service;
+pub mod rate_limiter;
 pub mod role_service;
 pub mod settings_service;
 pub mod team_service;

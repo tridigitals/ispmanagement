@@ -2,8 +2,9 @@ use saas_tauri_lib::{
     db::connection::{init_db, seed_defaults},
     http::{self, WsHub},
     services::{
-        AuditService, AuthService, EmailService, NotificationService, PaymentService, PlanService,
-        RoleService, SettingsService, StorageService, SystemService, TeamService, UserService,
+        metrics_service::MetricsService, AuditService, AuthService, EmailService,
+        NotificationService, PaymentService, PlanService, RoleService, SettingsService,
+        StorageService, SystemService, TeamService, UserService,
     },
 };
 use std::env;
@@ -17,7 +18,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Initialize Logging
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())
-        .with(tracing_subscriber::EnvFilter::from_default_env().add_directive("info".parse().unwrap()))
+        .with(
+            tracing_subscriber::EnvFilter::from_default_env()
+                .add_directive("info".parse().unwrap()),
+        )
         .init();
 
     info!("Starting SaaS Standalone Server...");
@@ -33,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // but it might be used for other file storage?
     // Let's check init_db implementation later if needed. For now, we pass current dir.
     let app_data_dir = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    
+
     info!("Initializing database connection...");
     let pool = init_db(app_data_dir.clone()).await?;
     info!("Database initialized.");
@@ -81,9 +85,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::fs::create_dir_all(&storage_dir)?;
     }
     let storage_service = StorageService::new(pool.clone(), plan_service.clone(), storage_dir);
-    
+    let metrics_service = Arc::new(MetricsService::new());
+
     let ws_hub = Arc::new(WsHub::new());
-    let notification_service = NotificationService::new(pool.clone(), ws_hub.clone(), email_service.clone());
+    let notification_service =
+        NotificationService::new(pool.clone(), ws_hub.clone(), email_service.clone());
     let payment_service = PaymentService::new(pool.clone(), notification_service.clone());
 
     plan_service.seed_default_features().await?;
@@ -107,6 +113,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         app_data_dir,
         3000,
         pool,
+        metrics_service,
     )
     .await;
 
