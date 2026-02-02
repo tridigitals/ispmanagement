@@ -4,6 +4,7 @@
     import Icon from "$lib/components/ui/Icon.svelte";
 
     export let appPublicUrl: string;
+    export let appMainDomain: string;
     export let currencyCode: string;
     export let currencyCodeOptions: string[];
     export let maintenanceMode: boolean;
@@ -41,6 +42,29 @@
                     class="form-input"
                     placeholder={$t("superadmin.settings.placeholders.url") ||
                         "https://..."}
+                />
+            </div>
+        </div>
+
+        <div class="setting-row">
+            <div class="setting-info full-width">
+                <label class="setting-label" for="main-domain">
+                    {$t("superadmin.settings.fields.main_domain.label") ||
+                        "Main Domain"}
+                </label>
+                <p class="setting-description">
+                    {$t("superadmin.settings.fields.main_domain.desc") ||
+                        "The primary domain where the application is hosted (e.g. example.com). Used for domain validation and tenant routing."}
+                </p>
+                <input
+                    type="text"
+                    id="main-domain"
+                    bind:value={appMainDomain}
+                    on:input={handleChange}
+                    class="form-input"
+                    placeholder={$t(
+                        "superadmin.settings.placeholders.domain",
+                    ) || "example.com"}
                 />
             </div>
         </div>
@@ -266,4 +290,3 @@
         }
     }
 </style>
-

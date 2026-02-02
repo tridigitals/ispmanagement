@@ -184,9 +184,9 @@ pub fn run() {
                 let auth_service = AuthService::new(pool.clone(), jwt_secret, email_service.clone(), audit_service.clone(), settings_service.clone());
                 let user_service = UserService::new(pool.clone(), audit_service.clone());
                 let team_service = TeamService::new(pool.clone(), auth_service.clone(), audit_service.clone(), plan_service.clone());
-                let system_service = SystemService::new(pool.clone());
+                let metrics_service = std::sync::Arc::new(MetricsService::new());
+                let system_service = SystemService::new(pool.clone(), metrics_service.clone());
                 let storage_service = crate::services::StorageService::new(pool.clone(), plan_service.clone(), app_data_dir.clone());
-                let metrics_service = MetricsService::new();
                 
                 // Create WebSocket hub for real-time sync (shared between HTTP and Tauri)
                 let ws_hub = std::sync::Arc::new(http::WsHub::new());
@@ -214,8 +214,7 @@ pub fn run() {
                 app_handle.manage(payment_service.clone());
                 app_handle.manage(notification_service.clone());
                 app_handle.manage(ws_hub.clone());
-                let metrics_arc = std::sync::Arc::new(metrics_service);
-                app_handle.manage(metrics_arc.clone());
+                app_handle.manage(metrics_service.clone());
                 info!("Services added to Tauri state.");
 
 
@@ -239,7 +238,7 @@ pub fn run() {
                         app_dir, 
                         3000,
                         pool.clone(),
-                        metrics_arc,
+                        metrics_service,
                     ).await;
                 });
 

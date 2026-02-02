@@ -78,14 +78,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         audit_service.clone(),
         plan_service.clone(),
     );
-    let system_service = SystemService::new(pool.clone());
+    let metrics_service = Arc::new(MetricsService::new());
+    let system_service = SystemService::new(pool.clone(), metrics_service.clone());
     // Use a specific "storage" folder for uploads on the server
     let storage_dir = app_data_dir.join("storage");
     if !storage_dir.exists() {
         std::fs::create_dir_all(&storage_dir)?;
     }
     let storage_service = StorageService::new(pool.clone(), plan_service.clone(), storage_dir);
-    let metrics_service = Arc::new(MetricsService::new());
 
     let ws_hub = Arc::new(WsHub::new());
     let notification_service =

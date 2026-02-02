@@ -37,7 +37,7 @@
 
     // Pagination & Search
     let page = $state(1);
-    let perPage = $state(24);
+    let perPage = $state(12);
     let total = $state(0);
     let totalPages = $state(1);
     let searchQuery = $state("");
@@ -68,19 +68,22 @@
                 {
                     id: "all",
                     label:
-                        $t("components.file_manager.filters.all") || "All Files",
+                        $t("components.file_manager.filters.all") ||
+                        "All Files",
                     icon: "hard-drive",
                 },
                 {
                     id: "image",
                     label:
-                        $t("components.file_manager.filters.images") || "Images",
+                        $t("components.file_manager.filters.images") ||
+                        "Images",
                     icon: "image",
                 },
                 {
                     id: "video",
                     label:
-                        $t("components.file_manager.filters.videos") || "Videos",
+                        $t("components.file_manager.filters.videos") ||
+                        "Videos",
                     icon: "film",
                 },
                 {
@@ -120,9 +123,32 @@
     function setActiveFilter(next: typeof activeFilter) {
         activeFilter = next;
         deselectAll();
+        // Reset and reload
+        page = 1;
+        files = [];
+        loadFiles();
     }
 
     // Derived filtered files
+    // NOTE: With server-side pagination/filtering, we might not want to filter client-side
+    // if the API is already doing it. However, the current API `list_files` only supports 'search' string.
+    // The `activeFilter` logic seems to be client-side filtering ONLY?
+    // Looking at the original code:
+    // `files = res.data` then `filteredFiles = files.filter(...)`
+    // This implies we only filter what we have loaded.
+    // IF we switch to Load More, client-side filtering on a partial dataset is weird (you might load 20 images, but if you have 100 docs mixed in, you might see nothing).
+    // OPTIMAL: The backend should support `type` filter.
+    // BUT checking `client.ts`: `list_files_admin` only takes `search`.
+    // Checking `storage.rs`: `list_all_files` only takes `search`.
+    //
+    // IMPLICATION: We must stick to client-side filtering for now, but this is flawed for "Load More" if the backend doesn't filter.
+    // User expectation: "Load More" loads more *of the current filter*.
+    //
+    // Workaround for now: We maintain the existing behavior but with accumulation.
+    // `files` holds ALL loaded files. `filteredFiles` shows the subset.
+    // "Load More" fetches the next page of *everything* and adds to `files`.
+    // Valid for MVP.
+
     let filteredFiles = $derived(
         files.filter((f) => matchesFilter(f, activeFilter)),
     );
@@ -156,13 +182,6 @@
 
     async function handleBatchDelete() {
         if (selectedFileIds.length === 0) return;
-
-        // Show confirmation using existing modal logic mechanism or new one?
-        // Let's repurpose the modal: "Delete 5 files?"
-        // Ideally we need a separate confirm flow or reuse the existing dialog with tweaked text.
-        // For simplicity, let's reuse fileToDelete=null as a signal for batch?
-        // Or cleaner: add isBatch flag to the dialog context.
-
         fileToDelete = null; // null means batch mode
         showDeleteModal = true;
     }
@@ -172,7 +191,6 @@
         let successCount = 0;
         let errors = 0;
 
-        // Execute sequentially or parallel? Parallel limit is safer but Promise.all is okay for <50 files.
         const promises = selectedFileIds.map(async (id) => {
             try {
                 if (mode === "admin") {
@@ -199,24 +217,39 @@
         } else {
             toast.success(`Deleted ${successCount} files successfully.`);
         }
+
+        // Refresh list from scratch to ensure consistency
+        page = 1;
+        files = [];
         loadFiles();
     }
 
-    // Auto-reload on upload success (Svelte 5 Effect)
+    // Auto-reload on upload success
     $effect(() => {
         const finished = $uploadStore.filter((u) => u.status === "success");
         if (finished.length > 0) {
-            loadFiles();
+            // Check if we already have these files to avoid full reload?
+            // Often easiest to just prepend or reload.
+            // Let's reload to be safe and simple.
+            page = 1;
+            // files = []; // Optional: clear or keep to prevent flash? Helper to reset is better.
+            loadFiles(true); // Pass true to reset
             uploadStore.clearFinished();
         }
     });
 
-    async function loadFiles() {
+    async function loadFiles(reset = false) {
+        if (loading && page > 1 && !reset) return; // Prevent duplicate load more
+
         loading = true;
         try {
-            selectedFileIds = [];
-            fileToDelete = null;
-            showDeleteModal = false;
+            if (reset) {
+                page = 1;
+                files = [];
+                selectedFileIds = [];
+                fileToDelete = null;
+                showDeleteModal = false;
+            }
 
             let res;
             if (mode === "admin") {
@@ -229,12 +262,20 @@
                 );
             }
 
-            files = res.data;
+            if (page === 1) {
+                files = res.data;
+            } else {
+                // Filter out duplicates just in case
+                const newFiles = res.data.filter(
+                    (nf) => !files.some((ef) => ef.id === nf.id),
+                );
+                files = [...files, ...newFiles];
+            }
+
             total = res.total;
+            // totalPages = Math.ceil(total / perPage); // No longer strictly needed for Load More
 
-            totalPages = Math.ceil(total / perPage);
-
-            // Calculate size for current page
+            // Recalculate size from ALL loaded files
             if (files.length > 0)
                 totalSize = files.reduce((acc, curr) => acc + curr.size, 0);
         } catch (e: any) {
@@ -251,13 +292,11 @@
     async function handleFileSelect(e: Event) {
         const target = e.target as HTMLInputElement;
         if (target.files && target.files.length > 0) {
-            // Delegate to global upload store
             if ($token) {
                 for (const file of Array.from(target.files)) {
                     uploadStore.upload(file, $token);
                 }
             }
-            // Reset input
             target.value = "";
         }
     }
@@ -267,7 +306,6 @@
     }
 
     function handleItemClick(index: number) {
-        // On mobile, single tap opens lightbox
         if (window.innerWidth < 768) {
             openLightbox(index);
         }
@@ -299,7 +337,14 @@
             );
             showDeleteModal = false;
             fileToDelete = null;
-            loadFiles();
+
+            // Refetch or just remove from local state?
+            // Local remove is smoother
+            files = files.filter((f) => f.id !== fileToDelete?.id);
+            selectedFileIds = selectedFileIds.filter(
+                (id) => id !== fileToDelete?.id,
+            );
+            total--;
         } catch (e: any) {
             toast.error(e.message);
         } finally {
@@ -342,13 +387,12 @@
         searchQuery = val;
         clearTimeout(searchTimer);
         searchTimer = setTimeout(() => {
-            page = 1;
-            loadFiles();
+            loadFiles(true); // True to reset
         }, 300);
     }
 
     onMount(() => {
-        loadFiles();
+        loadFiles(true);
     });
 </script>
 
@@ -394,12 +438,13 @@
                 <div class="stats-badge">
                     <Icon name="hard-drive" size={16} />
                     <span>
-                        {total} {$t("components.file_manager.files") || "Files"}
+                        {total}
+                        {$t("components.file_manager.files") || "Files"}
                     </span>
                 </div>
                 <button
                     class="btn-refresh"
-                    onclick={loadFiles}
+                    onclick={() => loadFiles(true)}
                     title={$t("common.refresh") || "Refresh"}
                     aria-label={$t("common.refresh") || "Refresh"}
                 >
@@ -471,8 +516,9 @@
                                 onclick={handleBatchDelete}
                             >
                                 <Icon name="trash-2" size={16} />
-                                {$t("components.file_manager.delete_selected") ||
-                                    "Delete Selected"}
+                                {$t(
+                                    "components.file_manager.delete_selected",
+                                ) || "Delete Selected"}
                             </button>
                         </div>
                     </div>
@@ -495,8 +541,11 @@
                                 ? 'active'
                                 : ''}"
                             onclick={() => (viewMode = "grid")}
-                            title={$t("components.file_manager.view.grid") || "Grid View"}
-                            aria-label={$t("components.file_manager.view.grid") || "Grid View"}
+                            title={$t("components.file_manager.view.grid") ||
+                                "Grid View"}
+                            aria-label={$t(
+                                "components.file_manager.view.grid",
+                            ) || "Grid View"}
                         >
                             <Icon name="grid" size={18} />
                         </button>
@@ -505,8 +554,11 @@
                                 ? 'active'
                                 : ''}"
                             onclick={() => (viewMode = "list")}
-                            title={$t("components.file_manager.view.list") || "List View"}
-                            aria-label={$t("components.file_manager.view.list") || "List View"}
+                            title={$t("components.file_manager.view.list") ||
+                                "List View"}
+                            aria-label={$t(
+                                "components.file_manager.view.list",
+                            ) || "List View"}
                         >
                             <Icon name="list" size={18} />
                         </button>
@@ -536,13 +588,13 @@
                         <div class="stats-badge">
                             <Icon name="hard-drive" size={16} />
                             <span>
-                                {total} {$t("components.file_manager.files") ||
-                                    "Files"}
+                                {total}
+                                {$t("components.file_manager.files") || "Files"}
                             </span>
                         </div>
                         <button
                             class="btn-refresh"
-                            onclick={loadFiles}
+                            onclick={() => loadFiles(true)}
                             title={$t("common.refresh") || "Refresh"}
                             aria-label={$t("common.refresh") || "Refresh"}
                         >
@@ -687,7 +739,8 @@
                                                 e.stopPropagation();
                                                 confirmDelete(file);
                                             }}
-                                            title={$t("common.delete") || "Delete"}
+                                            title={$t("common.delete") ||
+                                                "Delete"}
                                         >
                                             <Icon name="trash-2" size={14} />
                                         </button>
@@ -719,24 +772,29 @@
                                         {/if}
                                     </th>
                                     <th>
-                                        {$t("components.file_manager.columns.name") ||
-                                            "Name"}
+                                        {$t(
+                                            "components.file_manager.columns.name",
+                                        ) || "Name"}
                                     </th>
                                     <th>
-                                        {$t("components.file_manager.columns.size") ||
-                                            "Size"}
+                                        {$t(
+                                            "components.file_manager.columns.size",
+                                        ) || "Size"}
                                     </th>
                                     <th>
-                                        {$t("components.file_manager.columns.type") ||
-                                            "Type"}
+                                        {$t(
+                                            "components.file_manager.columns.type",
+                                        ) || "Type"}
                                     </th>
                                     <th>
-                                        {$t("components.file_manager.columns.uploaded") ||
-                                            "Uploaded"}
+                                        {$t(
+                                            "components.file_manager.columns.uploaded",
+                                        ) || "Uploaded"}
                                     </th>
                                     <th class="text-right">
-                                        {$t("components.file_manager.columns.action") ||
-                                            "Action"}
+                                        {$t(
+                                            "components.file_manager.columns.action",
+                                        ) || "Action"}
                                     </th>
                                 </tr>
                             </thead>
@@ -855,34 +913,32 @@
             </div>
 
             <!-- Pagination Footer -->
-            {#if totalPages > 1}
-                <div class="pagination-footer">
-                    <span class="page-info">
-                        {$t("components.file_manager.pagination.page_of", {
-                            values: { page, total: totalPages },
-                        }) || `Page ${page} of ${totalPages}`}
-                    </span>
-                    <div class="page-controls">
-                        <button
-                            type="button"
-                            disabled={page === 1}
-                            onclick={() => {
-                                page--;
-                                loadFiles();
-                            }}
-                        >
-                            {$t("common.previous") || "Previous"}
-                        </button>
-                        <button
-                            type="button"
-                            disabled={page === totalPages}
-                            onclick={() => {
-                                page++;
-                                loadFiles();
-                            }}
-                        >
-                            {$t("common.next") || "Next"}
-                        </button>
+            <!-- Load More Controls -->
+            {#if files.length < total}
+                <div class="load-more-container">
+                    <button
+                        class="btn-load-more"
+                        onclick={() => {
+                            page++;
+                            loadFiles();
+                        }}
+                        disabled={loading}
+                    >
+                        {#if loading}
+                            <Icon name="loader" size={18} class="spin" />
+                            <span>{$t("common.loading") || "Loading..."}</span>
+                        {:else}
+                            <Icon name="arrow-down-circle" size={18} />
+                            <span
+                                >{$t("components.file_manager.load_more") ||
+                                    "Load More"}</span
+                            >
+                        {/if}
+                    </button>
+                    <div class="progress-info">
+                        {$t("components.file_manager.showing_count", {
+                            values: { current: files.length, total: total },
+                        }) || `Showing ${files.length} of ${total} files`}
                     </div>
                 </div>
             {/if}
@@ -935,7 +991,6 @@
         max-width: 1400px;
         margin: 0 auto;
         width: 100%;
-        height: 100%;
         padding: 1rem 2rem 2rem 2rem;
         box-sizing: border-box; /* Ensure padding doesn't affect width calculation */
     }
@@ -995,9 +1050,46 @@
         transition: all 0.2s;
     }
 
-    .btn-refresh:hover {
+    .load-more-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.8rem;
+        padding: 2rem 0;
+        margin-top: auto;
+    }
+
+    .btn-load-more {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 2rem;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: 99px;
+        color: var(--text-primary);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        min-width: 160px;
+        justify-content: center;
+    }
+
+    .btn-load-more:hover:not(:disabled) {
         border-color: var(--color-primary);
         color: var(--color-primary);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transform: translateY(-1px);
+    }
+
+    .btn-load-more:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    .progress-info {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
     }
 
     .hidden {
@@ -1012,7 +1104,11 @@
     }
 
     .filter-card {
-        background: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+        background: linear-gradient(
+            145deg,
+            rgba(255, 255, 255, 0.06),
+            rgba(255, 255, 255, 0.02)
+        );
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 18px;
         padding: 1rem 1.1rem;
@@ -1021,7 +1117,10 @@
         gap: 0.85rem;
         cursor: pointer;
         text-align: left;
-        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        transition:
+            transform 0.2s ease,
+            box-shadow 0.2s ease,
+            border-color 0.2s ease;
     }
 
     .filter-card:hover {
@@ -1101,8 +1200,9 @@
         border-radius: 16px;
         border: 1px solid rgba(255, 255, 255, 0.08);
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-        overflow: hidden;
-        min-height: 520px;
+        display: flex;
+        flex-direction: column;
+        min-height: 520px; /* Restored min-height */
     }
 
     :global([data-theme="light"]) .glass-card {
@@ -1114,10 +1214,10 @@
     }
 
     .fm-main {
-        flex: 1;
+        /* flex: 1; REMOVED */
         display: flex;
         flex-direction: column;
-        min-width: 0; /* Prevent flex overflow */
+        min-width: 0;
     }
 
     .action-bar {
@@ -1296,10 +1396,8 @@
 
     /* Browser Area */
     .browser-area {
-        flex: 1;
         padding: 1.5rem;
         background: var(--bg-hover); /* Slight contrast for content area */
-        overflow-y: auto; /* Allow scrolling internally */
     }
 
     /* Grid View */
@@ -1578,52 +1676,6 @@
         }
     }
 
-    /* Pagination */
-    .pagination-footer {
-        padding: 1rem 1.5rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: rgba(255, 255, 255, 0.015);
-    }
-
-    :global([data-theme="light"]) .pagination-footer {
-        border-top-color: rgba(0, 0, 0, 0.06);
-        background: rgba(0, 0, 0, 0.015);
-    }
-
-    .page-info {
-        font-size: 0.85rem;
-        color: var(--text-secondary);
-    }
-
-    .page-controls {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .page-controls button {
-        padding: 0.3rem 0.8rem;
-        border: 1px solid var(--border-color);
-        background: var(--bg-app);
-        border-radius: 6px;
-        font-size: 0.85rem;
-        color: var(--text-primary);
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .page-controls button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    .page-controls button:not(:disabled):hover {
-        border-color: var(--color-primary);
-        color: var(--color-primary);
-    }
-
     @media (max-width: 768px) {
         .page-container {
             padding: 1rem 1.25rem;
@@ -1766,4 +1818,3 @@
         }
     }
 </style>
-

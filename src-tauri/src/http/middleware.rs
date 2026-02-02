@@ -100,6 +100,11 @@ pub async fn rate_limit_middleware(
             response
         }
         Err(info) => {
+            // Record rate limit event
+            if let Some(metrics) = request.extensions().get::<Arc<MetricsService>>() {
+                metrics.record_rate_limited();
+            }
+
             // Rate limit exceeded
             let body = Json(json!({
                 "error": "Rate limit exceeded",

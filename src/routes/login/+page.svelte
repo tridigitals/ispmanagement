@@ -42,7 +42,10 @@
         "Enterprise-grade boilerplate built with Rust and SvelteKit. Secure, scalable, and lightweight.";
 
     // Derived store for registration allowed state - secure by default
-    const allowRegistration = derived(appSettings, $s => $s.auth?.allow_registration === true);
+    const allowRegistration = derived(
+        appSettings,
+        ($s) => $s.auth?.allow_registration === true,
+    );
 
     onMount(async () => {
         await Promise.all([appSettings.init(), appLogo.init()]);
@@ -52,7 +55,7 @@
             // Re-use the main redirection logic
             // Note: We don't have the full tenant object here, but we now have u.tenant_custom_domain
             // from the updated User model.
-            redirectUser(u, undefined); 
+            redirectUser(u, undefined);
         }
     });
 
@@ -62,7 +65,9 @@
         const customDomain = t?.custom_domain || u?.tenant_custom_domain;
         const currentHost = window.location.hostname;
         // @ts-ignore
-        const isTauri = typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__;
+        const isTauri =
+            typeof window !== "undefined" &&
+            (window as any).__TAURI_INTERNALS__;
 
         // 1. Super Admin: Can login anywhere
         if (u.is_super_admin) {
@@ -77,7 +82,18 @@
         }
 
         // 2. Tenant User with Custom Domain
-        if (!isTauri && customDomain && currentHost !== customDomain) {
+        // Skip domain check for localhost (development), main domain, or if no custom domain set
+        const isLocalhost =
+            currentHost === "localhost" || currentHost === "127.0.0.1";
+        const mainDomain = $appSettings.auth?.main_domain;
+        const isMainDomain = mainDomain && currentHost === mainDomain;
+        if (
+            !isTauri &&
+            !isLocalhost &&
+            !isMainDomain &&
+            customDomain &&
+            currentHost !== customDomain
+        ) {
             // Domain mismatch -> Logout and show error instead of redirecting
             const { logout } = await import("$lib/stores/auth");
             logout();
@@ -89,9 +105,9 @@
         if (slug) {
             // Check if we are already on the correct subdomain (slug.basedomain.com)
             // Or if we are using path-based routing (domain.com/slug/dashboard)
-            
+
             // NOTE: This assumes standard "slug.basedomain.com" structure OR path-based "/slug/..."
-            // If the current hostname DOES NOT contain the slug, and it's the main domain, 
+            // If the current hostname DOES NOT contain the slug, and it's the main domain,
             // we should probably redirect to the subdomain if that's the architecture.
             // For now, let's stick to the existing path-based logic but make it robust.
 
@@ -150,19 +166,25 @@
 
             if (response.user) {
                 // ... (existing domain check)
-                const customDomain = response.tenant?.custom_domain || response.user.tenant_custom_domain;
+                const customDomain =
+                    response.tenant?.custom_domain ||
+                    response.user.tenant_custom_domain;
                 const currentHost = window.location.hostname;
-                
-                if (customDomain && currentHost !== customDomain && !response.user.is_super_admin) {
+
+                if (
+                    customDomain &&
+                    currentHost !== customDomain &&
+                    !response.user.is_super_admin
+                ) {
                     error = "Invalid login credentials or unauthorized domain.";
                     // Clear session immediately
                     token.set(null);
                     user.set(null);
-                    if (typeof window !== 'undefined') {
-                        localStorage.removeItem('auth_token');
-                        sessionStorage.removeItem('auth_token');
-                        localStorage.removeItem('auth_user');
-                        sessionStorage.removeItem('auth_user');
+                    if (typeof window !== "undefined") {
+                        localStorage.removeItem("auth_token");
+                        sessionStorage.removeItem("auth_token");
+                        localStorage.removeItem("auth_user");
+                        sessionStorage.removeItem("auth_user");
                     }
                     loading = false;
                     return;
@@ -253,7 +275,12 @@
 
             if (response.token) {
                 const { setAuthData } = await import("$lib/stores/auth");
-                setAuthData(response.token, response.user, rememberMe, response.tenant);
+                setAuthData(
+                    response.token,
+                    response.user,
+                    rememberMe,
+                    response.tenant,
+                );
 
                 redirectUser(response.user, response.tenant);
             }
@@ -427,7 +454,8 @@
                         class:focus={activeField === "2fa"}
                     >
                         <label for="2fa-code">
-                            {$t("auth.2fa.enter_code") || "Enter Verification Code"}
+                            {$t("auth.2fa.enter_code") ||
+                                "Enter Verification Code"}
                         </label>
                         <div class="field">
                             <span class="icon"
@@ -439,7 +467,8 @@
                                 bind:value={twoFactorCode}
                                 on:focus={() => (activeField = "2fa")}
                                 on:blur={() => (activeField = "")}
-                                placeholder={$t("common.otp_placeholder") || "000000"}
+                                placeholder={$t("common.otp_placeholder") ||
+                                    "000000"}
                                 maxlength="6"
                                 required
                                 style="letter-spacing: 0.5em; text-align: center;"
@@ -469,7 +498,8 @@
                         {#if loading}
                             <div class="spinner"></div>
                         {:else}
-                            {$t("auth.2fa.verify_and_login") || "Verify & Login"}
+                            {$t("auth.2fa.verify_and_login") ||
+                                "Verify & Login"}
                         {/if}
                     </button>
 
@@ -515,7 +545,8 @@
                         class:focus={activeField === "2fa"}
                     >
                         <label for="email-otp-code">
-                            {$t("auth.2fa.enter_email_code") || "Enter Email Code"}
+                            {$t("auth.2fa.enter_email_code") ||
+                                "Enter Email Code"}
                         </label>
                         <div class="field">
                             <span class="icon"
@@ -527,7 +558,8 @@
                                 bind:value={twoFactorCode}
                                 on:focus={() => (activeField = "2fa")}
                                 on:blur={() => (activeField = "")}
-                                placeholder={$t("common.otp_placeholder") || "000000"}
+                                placeholder={$t("common.otp_placeholder") ||
+                                    "000000"}
                                 maxlength="6"
                                 required
                                 style="letter-spacing: 0.5em; text-align: center;"
@@ -557,7 +589,8 @@
                         {#if loading}
                             <div class="spinner"></div>
                         {:else}
-                            {$t("auth.2fa.verify_and_login") || "Verify & Login"}
+                            {$t("auth.2fa.verify_and_login") ||
+                                "Verify & Login"}
                         {/if}
                     </button>
 
@@ -878,4 +911,3 @@
         }
     }
 </style>
-

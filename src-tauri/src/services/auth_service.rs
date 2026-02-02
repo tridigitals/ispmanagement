@@ -40,6 +40,7 @@ pub struct AuthResponse {
     pub expires_at: Option<String>,
     pub message: Option<String>,
     pub requires_2fa: Option<bool>,
+    pub requires_2fa_setup: Option<bool>,
     pub temp_token: Option<String>,
     pub available_2fa_methods: Option<Vec<String>>,
 }
@@ -64,6 +65,7 @@ pub struct AuthSettings {
     pub allow_registration: bool,
     pub logout_all_on_password_change: bool,
     pub require_email_verification: bool,
+    pub main_domain: Option<String>,
 }
 
 impl Default for AuthSettings {
@@ -79,6 +81,7 @@ impl Default for AuthSettings {
             allow_registration: false,
             logout_all_on_password_change: true,
             require_email_verification: false,
+            main_domain: std::env::var("APP_MAIN_DOMAIN").ok(),
         }
     }
 }
@@ -136,7 +139,7 @@ impl AuthService {
 
         // Batch query: fetch all auth settings at once
         let rows: Vec<(String, String)> = sqlx::query_as(
-            "SELECT key, value FROM settings WHERE tenant_id IS NULL AND key LIKE 'auth_%' OR key IN ('max_login_attempts', 'lockout_duration_minutes')"
+            "SELECT key, value FROM settings WHERE tenant_id IS NULL AND key LIKE 'auth_%' OR key IN ('max_login_attempts', 'lockout_duration_minutes', 'app_main_domain')"
         )
         .fetch_all(&self.pool)
         .await
@@ -184,6 +187,13 @@ impl AuthService {
         }
         if let Some(val) = settings_map.get("auth_require_email_verification") {
             settings.require_email_verification = val == "true";
+        }
+
+        // main_domain: DB overrides ENV
+        if let Some(val) = settings_map.get("app_main_domain") {
+            if !val.is_empty() {
+                settings.main_domain = Some(val.clone());
+            }
         }
 
         settings
@@ -613,6 +623,7 @@ impl AuthService {
                         .to_string(),
                 ),
                 requires_2fa: None,
+                requires_2fa_setup: None,
                 temp_token: None,
                 available_2fa_methods: None,
             })
@@ -639,6 +650,7 @@ impl AuthService {
                 expires_at: Some(expires_at),
                 message: None,
                 requires_2fa: None,
+                requires_2fa_setup: None,
                 temp_token: None,
                 available_2fa_methods: None,
             })
@@ -709,6 +721,7 @@ impl AuthService {
             requires_2fa: None,
             temp_token: None,
             available_2fa_methods: None,
+            requires_2fa_setup: None,
         })
     }
 
@@ -946,22 +959,25 @@ impl AuthService {
 
             let (token, expires_at) = self.generate_2fa_token(&user).await?;
 
-            // Get available methods: user's TOTP if set up, plus email if globally enabled
+            // Get available methods based on user's enabled methods AND global settings
             let global_methods = self.get_available_2fa_methods().await;
             let mut available_methods = vec![];
 
-            // If user has TOTP set up and it's allowed globally
-            if user.two_factor_secret.is_some() && global_methods.contains(&"totp".to_string()) {
+            // If user has TOTP enabled and it's allowed globally
+            if user.totp_enabled
+                && user.two_factor_secret.is_some()
+                && global_methods.contains(&"totp".to_string())
+            {
                 available_methods.push("totp".to_string());
             }
 
-            // If email OTP is allowed globally
-            if global_methods.contains(&"email".to_string()) {
+            // If user has Email 2FA enabled and it's allowed globally
+            if user.email_2fa_enabled && global_methods.contains(&"email".to_string()) {
                 available_methods.push("email".to_string());
             }
 
-            // Default to TOTP if no methods available (shouldn't happen)
-            if available_methods.is_empty() {
+            // Legacy fallback: if two_factor_enabled but no specific methods set, use TOTP if secret exists
+            if available_methods.is_empty() && user.two_factor_secret.is_some() {
                 available_methods.push("totp".to_string());
             }
 
@@ -974,6 +990,7 @@ impl AuthService {
                 requires_2fa: Some(true),
                 temp_token: Some(token),
                 available_2fa_methods: Some(available_methods),
+                requires_2fa_setup: None,
             });
         }
 
@@ -1312,6 +1329,7 @@ impl AuthService {
                     requires_2fa: None,
                     temp_token: None,
                     available_2fa_methods: None,
+                    requires_2fa_setup: None,
                 });
             }
 
@@ -1394,6 +1412,29 @@ impl AuthService {
 
         let tenant_id = tenant.as_ref().map(|t| t.id.clone());
 
+        // Enforce 2FA if tenant requires it and user doesn't have it enabled
+        if let Some(ref t) = tenant {
+            if t.enforce_2fa && !user.two_factor_enabled {
+                // Generate temp token
+                let (token, expires_at) = self.generate_2fa_token(&user).await?;
+
+                // Get minimal user info
+                let user_response: crate::models::user::UserResponse = user.into();
+
+                return Ok(AuthResponse {
+                    user: user_response,
+                    tenant: None,
+                    token: None,
+                    expires_at: Some(expires_at),
+                    message: Some("2FA setup is required by your organization".to_string()),
+                    requires_2fa: None,
+                    requires_2fa_setup: Some(true),
+                    temp_token: Some(token),
+                    available_2fa_methods: None,
+                });
+            }
+        }
+
         // Get permissions if tenant exists
         let permissions = if let Some(tid) = &tenant_id {
             self.get_user_permissions(&user.id, tid).await?
@@ -1423,6 +1464,7 @@ impl AuthService {
             expires_at: Some(expires_at),
             message: None,
             requires_2fa: None,
+            requires_2fa_setup: None,
             temp_token: None,
             available_2fa_methods: None,
         })
@@ -1509,7 +1551,7 @@ impl AuthService {
 
         // Implement DB Update
         #[cfg(feature = "postgres")]
-        sqlx::query("UPDATE users SET two_factor_enabled = true, two_factor_secret = $1, two_factor_recovery_codes = $2, updated_at = $3 WHERE id = $4")
+        sqlx::query("UPDATE users SET two_factor_enabled = true, totp_enabled = true, two_factor_secret = $1, two_factor_recovery_codes = $2, updated_at = $3 WHERE id = $4")
             .bind(secret)
             .bind(&recovery_codes_str)
             .bind(Utc::now())
@@ -1518,7 +1560,7 @@ impl AuthService {
             .await?;
 
         #[cfg(feature = "sqlite")]
-        sqlx::query("UPDATE users SET two_factor_enabled = true, two_factor_secret = ?, two_factor_recovery_codes = ?, updated_at = ? WHERE id = ?")
+        sqlx::query("UPDATE users SET two_factor_enabled = true, totp_enabled = true, two_factor_secret = ?, two_factor_recovery_codes = ?, updated_at = ? WHERE id = ?")
             .bind(secret)
             .bind(&recovery_codes_str)
             .bind(Utc::now().to_rfc3339())
@@ -1600,7 +1642,7 @@ impl AuthService {
         }
 
         // DB Update: Clear all 2FA related fields
-        let query = "UPDATE users SET two_factor_enabled = false, two_factor_secret = NULL, two_factor_recovery_codes = NULL, email_otp_code = NULL, email_otp_expires = NULL, preferred_2fa_method = 'totp', updated_at = $1 WHERE id = $2";
+        let query = "UPDATE users SET two_factor_enabled = false, totp_enabled = false, email_2fa_enabled = false, two_factor_secret = NULL, two_factor_recovery_codes = NULL, email_otp_code = NULL, email_otp_expires = NULL, preferred_2fa_method = 'totp', updated_at = $1 WHERE id = $2";
 
         #[cfg(feature = "postgres")]
         sqlx::query(query)
@@ -1610,7 +1652,7 @@ impl AuthService {
             .await?;
 
         #[cfg(feature = "sqlite")]
-        sqlx::query("UPDATE users SET two_factor_enabled = false, two_factor_secret = NULL, two_factor_recovery_codes = NULL, email_otp_code = NULL, email_otp_expires = NULL, preferred_2fa_method = 'totp', updated_at = ? WHERE id = ?")
+        sqlx::query("UPDATE users SET two_factor_enabled = false, totp_enabled = false, email_2fa_enabled = false, two_factor_secret = NULL, two_factor_recovery_codes = NULL, email_otp_code = NULL, email_otp_expires = NULL, preferred_2fa_method = 'totp', updated_at = ? WHERE id = ?")
             .bind(Utc::now().to_rfc3339())
             .bind(user_id)
             .execute(&self.pool)
@@ -1897,7 +1939,7 @@ impl AuthService {
         }
 
         // Clear OTP & Enable 2FA
-        let query = "UPDATE users SET email_otp_code = NULL, email_otp_expires = NULL, two_factor_enabled = true, preferred_2fa_method = 'email', updated_at = $1 WHERE id = $2";
+        let query = "UPDATE users SET email_otp_code = NULL, email_otp_expires = NULL, two_factor_enabled = true, email_2fa_enabled = true, preferred_2fa_method = 'email', updated_at = $1 WHERE id = $2";
 
         #[cfg(feature = "postgres")]
         sqlx::query(query)
@@ -1907,7 +1949,7 @@ impl AuthService {
             .await?;
 
         #[cfg(feature = "sqlite")]
-        sqlx::query("UPDATE users SET email_otp_code = NULL, email_otp_expires = NULL, two_factor_enabled = true, preferred_2fa_method = 'email', updated_at = ? WHERE id = ?")
+        sqlx::query("UPDATE users SET email_otp_code = NULL, email_otp_expires = NULL, two_factor_enabled = true, email_2fa_enabled = true, preferred_2fa_method = 'email', updated_at = ? WHERE id = ?")
             .bind(Utc::now().to_rfc3339())
             .bind(user_id)
             .execute(&self.pool)

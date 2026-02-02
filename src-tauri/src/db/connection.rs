@@ -18,7 +18,7 @@ pub type DbPool = Pool<Postgres>;
 pub type DbPool = Pool<Sqlite>;
 
 /// Initialize database connection
-pub async fn init_db(app_data_dir: PathBuf) -> Result<DbPool, sqlx::Error> {
+pub async fn init_db(_app_data_dir: PathBuf) -> Result<DbPool, sqlx::Error> {
     #[cfg(feature = "postgres")]
     {
         let database_url = env::var("DATABASE_URL").map_err(|_| {
@@ -680,10 +680,28 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
             IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='preferred_2fa_method') THEN
                 ALTER TABLE users ADD COLUMN preferred_2fa_method TEXT DEFAULT 'totp';
             END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='totp_enabled') THEN
+                ALTER TABLE users ADD COLUMN totp_enabled BOOLEAN NOT NULL DEFAULT false;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='email_2fa_enabled') THEN
+                ALTER TABLE users ADD COLUMN email_2fa_enabled BOOLEAN NOT NULL DEFAULT false;
+            END IF;
         END $$;
     "#)
     .execute(pool)
     .await?;
+
+    // Data migration: Set totp_enabled=true for existing users who have TOTP secret
+    sqlx::query("UPDATE users SET totp_enabled = true WHERE two_factor_secret IS NOT NULL AND totp_enabled = false")
+        .execute(pool)
+        .await
+        .ok();
+
+    // Data migration: Set email_2fa_enabled=true for existing users with email 2FA preference
+    sqlx::query("UPDATE users SET email_2fa_enabled = true WHERE two_factor_enabled = true AND preferred_2fa_method = 'email' AND email_2fa_enabled = false")
+        .execute(pool)
+        .await
+        .ok();
 
     // Migration: Create trusted_devices table for 2FA device trust
     sqlx::query(
@@ -1313,6 +1331,23 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
         .execute(pool)
         .await;
     let _ = sqlx::query("ALTER TABLE users ADD COLUMN preferred_2fa_method TEXT DEFAULT 'totp'")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0")
+        .execute(pool)
+        .await;
+    let _ =
+        sqlx::query("ALTER TABLE users ADD COLUMN email_2fa_enabled INTEGER NOT NULL DEFAULT 0")
+            .execute(pool)
+            .await;
+
+    // Data migration: Set totp_enabled=1 for existing users who have TOTP secret (SQLite uses INTEGER)
+    let _ = sqlx::query("UPDATE users SET totp_enabled = 1 WHERE two_factor_secret IS NOT NULL AND totp_enabled = 0")
+        .execute(pool)
+        .await;
+
+    // Data migration: Set email_2fa_enabled=1 for existing users with email 2FA preference
+    let _ = sqlx::query("UPDATE users SET email_2fa_enabled = 1 WHERE two_factor_enabled = 1 AND preferred_2fa_method = 'email' AND email_2fa_enabled = 0")
         .execute(pool)
         .await;
 

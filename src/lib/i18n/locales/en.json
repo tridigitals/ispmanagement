@@ -201,6 +201,8 @@
             "pagination": {
                 "page_of": "Page {page} of {total}"
             },
+            "load_more": "Load More",
+            "showing_count": "Showing {current} of {total} files",
             "confirm": {
                 "delete_one_title": "Delete File",
                 "delete_one_message": "Are you sure you want to delete this file? This action cannot be undone.",
@@ -464,11 +466,6 @@
                     "title": "Platform Settings",
                     "desc": "Configure policies and system defaults."
                 }
-            }
-        },
-        "system": {
-            "request_metrics": {
-                "title": "Request Metrics"
             }
         },
         "audit_logs": {
@@ -790,6 +787,9 @@
             }
         },
         "system": {
+            "request_metrics": {
+                "title": "Request Metrics"
+            },
             "title": "System Health",
             "subtitle": "Monitor platform status and metrics",
             "loading": "Loading system health...",
@@ -976,6 +976,10 @@
                     "label": "Public Application URL",
                     "desc": "Base URL for redirects, emails, and payment callbacks (e.g. https://app.example.com)."
                 },
+                "main_domain": {
+                    "label": "Main Domain",
+                    "desc": "The primary domain where the application is hosted (e.g. example.com). Used for domain validation and tenant routing."
+                },
                 "currency": {
                     "label": "Default Currency",
                     "desc": "Currency used for plan pricing and invoice display (ISO 4217, e.g. IDR, USD)."
@@ -991,6 +995,7 @@
             },
             "placeholders": {
                 "url": "https://...",
+                "domain": "example.com",
                 "public_url": "https://cdn.example.com",
                 "maintenance_message": "Enter maintenance message...",
                 "manual_instructions": "Please transfer to one of the bank accounts below and upload proof.",

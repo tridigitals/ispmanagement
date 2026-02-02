@@ -201,6 +201,8 @@
             "pagination": {
                 "page_of": "Halaman {page} dari {total}"
             },
+            "load_more": "Muat Lebih Banyak",
+            "showing_count": "Menampilkan {current} dari {total} file",
             "confirm": {
                 "delete_one_title": "Hapus File",
                 "delete_one_message": "Yakin ingin menghapus file ini? Tindakan ini tidak dapat dibatalkan.",
@@ -466,11 +468,6 @@
                 }
             }
         },
-        "system": {
-            "request_metrics": {
-                "title": "Metrik Permintaan"
-            }
-        },
         "audit_logs": {
             "title": "Log Audit",
             "subtitle": "Lacak aktivitas sistem dan event keamanan",
@@ -521,6 +518,54 @@
             "empty": {
                 "title": "Tidak ada log",
                 "subtitle": "Coba sesuaikan filter Anda."
+            }
+        },
+        "superadmin": {
+            "settings": {
+                "title": "Pengaturan Platform",
+                "subtitle": "Konfigurasi Global",
+                "loading": "Memuat pengaturan...",
+                "sections": {
+                    "general": "Pengaturan Umum"
+                },
+                "fields": {
+                    "public_url": {
+                        "label": "URL Aplikasi Publik",
+                        "desc": "URL dasar untuk pengalihan, email, dan callback pembayaran (contoh: https://app.example.com)."
+                    },
+                    "main_domain": {
+                        "label": "Domain Utama",
+                        "desc": "Domain utama tempat aplikasi dihosting (contoh: example.com). Digunakan untuk validasi domain dan routing tenant."
+                    },
+                    "currency": {
+                        "label": "Mata Uang Default",
+                        "desc": "Mata uang untuk harga paket dan tampilan invoice (ISO 4217, misal: IDR, USD)."
+                    },
+                    "maintenance_mode": {
+                        "label": "Aktifkan Mode Pemeliharaan",
+                        "desc": "Saat diaktifkan, semua pengguna kecuali superadmin akan melihat halaman pemeliharaan."
+                    },
+                    "maintenance_message": {
+                        "label": "Pesan Pemeliharaan",
+                        "desc": "Pesan yang ditampilkan kepada pengguna saat mode pemeliharaan aktif."
+                    }
+                },
+                "placeholders": {
+                    "url": "https://...",
+                    "domain": "contoh.com"
+                },
+                "categories": {
+                    "general": "Umum & Pemeliharaan",
+                    "auth": "Autentikasi",
+                    "password": "Kebijakan Sandi",
+                    "security": "Keamanan & Batas Tarif",
+                    "storage": "Konfigurasi Penyimpanan",
+                    "payment": "Gateway Pembayaran",
+                    "alerting": "Notifikasi Error"
+                },
+                "errors": {
+                    "load_failed": "Gagal memuat pengaturan"
+                }
             }
         },
         "users": {
@@ -790,6 +835,9 @@
             }
         },
         "system": {
+            "request_metrics": {
+                "title": "Metrik Permintaan"
+            },
             "title": "Kesehatan Sistem",
             "subtitle": "Pantau status platform dan metrik",
             "loading": "Memuat kesehatan sistem...",

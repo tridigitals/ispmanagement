@@ -51,11 +51,11 @@ pub struct AlertService {
 
 /// Snapshot of metrics for rate calculation
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct MetricsSnapshot {
     total_requests: u64,
     error_count: u64,
     rate_limited_count: u64,
-    #[allow(dead_code)]
     timestamp: Instant,
 }
 

@@ -39,28 +39,26 @@
                         "Choose where files are stored. Local uses the server's disk."}
                 </p>
             </div>
-            <div class="input-group">
-                <select
-                    id="storage-driver"
-                    bind:value={storageDriver}
-                    on:change={handleChange}
-                    class="form-input native-select"
-                >
-                    <option value="local">
-                        {$t(
-                            "superadmin.settings.storage.driver.options.local",
-                        ) || "Local Disk"}
-                    </option>
-                    <option value="s3">
-                        {$t("superadmin.settings.storage.driver.options.s3") ||
-                            "AWS S3 / MinIO"}
-                    </option>
-                    <option value="r2">
-                        {$t("superadmin.settings.storage.driver.options.r2") ||
-                            "Cloudflare R2"}
-                    </option>
-                </select>
-            </div>
+
+            <select
+                id="storage-driver"
+                bind:value={storageDriver}
+                on:change={handleChange}
+                class="form-input native-select"
+            >
+                <option value="local">
+                    {$t("superadmin.settings.storage.driver.options.local") ||
+                        "Local Disk"}
+                </option>
+                <option value="s3">
+                    {$t("superadmin.settings.storage.driver.options.s3") ||
+                        "AWS S3 / MinIO"}
+                </option>
+                <option value="r2">
+                    {$t("superadmin.settings.storage.driver.options.r2") ||
+                        "Cloudflare R2"}
+                </option>
+            </select>
         </div>
 
         {#if storageDriver !== "local"}

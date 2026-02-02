@@ -18,8 +18,8 @@
         unsubscribePush,
         sendTestNotification,
         checkSubscription,
-         pushEnabled,
-     } from "$lib/stores/notifications";
+        pushEnabled,
+    } from "$lib/stores/notifications";
 
     let activeTab = $state("general");
     let loading = $state(false);
@@ -63,7 +63,9 @@
 
     // Tenant prefix helper (supports custom domain mode)
     let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
-    let isCustomDomain = $derived(domainSlug && domainSlug === $user?.tenant_slug);
+    let isCustomDomain = $derived(
+        domainSlug && domainSlug === $user?.tenant_slug,
+    );
     let tenantPrefix = $derived(
         $user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : "",
     );
@@ -73,27 +75,43 @@
         {
             id: "system",
             icon: "server",
-            label: $t("profile.notifications.categories.system.label") || "System Updates",
-            desc: $t("profile.notifications.categories.system.desc") || "Maintenance & announcements",
+            label:
+                $t("profile.notifications.categories.system.label") ||
+                "System Updates",
+            desc:
+                $t("profile.notifications.categories.system.desc") ||
+                "Maintenance & announcements",
         },
         {
             id: "team",
             icon: "users",
-            label: $t("profile.notifications.categories.team.label") || "Team Activity",
-            desc: $t("profile.notifications.categories.team.desc") || "Member changes & invites",
+            label:
+                $t("profile.notifications.categories.team.label") ||
+                "Team Activity",
+            desc:
+                $t("profile.notifications.categories.team.desc") ||
+                "Member changes & invites",
         },
         {
             // aligns with backend/category enum: 'payment'
             id: "payment",
             icon: "credit-card",
-            label: $t("profile.notifications.categories.payment.label") || "Billing",
-            desc: $t("profile.notifications.categories.payment.desc") || "Invoices & subscriptions",
+            label:
+                $t("profile.notifications.categories.payment.label") ||
+                "Billing",
+            desc:
+                $t("profile.notifications.categories.payment.desc") ||
+                "Invoices & subscriptions",
         },
         {
             id: "security",
             icon: "shield",
-            label: $t("profile.notifications.categories.security.label") || "Security",
-            desc: $t("profile.notifications.categories.security.desc") || "Login alerts & password changes",
+            label:
+                $t("profile.notifications.categories.security.label") ||
+                "Security",
+            desc:
+                $t("profile.notifications.categories.security.desc") ||
+                "Login alerts & password changes",
         },
     ]);
 
@@ -101,10 +119,10 @@
 
     let policy = $derived(
         $appSettings.auth || {
-        password_min_length: 8,
-        password_require_uppercase: true,
-        password_require_number: true,
-        password_require_special: false,
+            password_min_length: 8,
+            password_require_uppercase: true,
+            password_require_number: true,
+            password_require_special: false,
         },
     );
 
@@ -135,7 +153,7 @@
 
         // Check URL for active tab or 2FA requirement
         const urlParams = new URLSearchParams(window.location.search);
-        
+
         if (urlParams.get("2fa_required") === "true") {
             activeTab = "security";
             showMessage(
@@ -147,9 +165,12 @@
             const tab = urlParams.get("tab");
             if (
                 tab &&
-                ["general", "security", "preferences", "notifications"].includes(
-                    tab,
-                )
+                [
+                    "general",
+                    "security",
+                    "preferences",
+                    "notifications",
+                ].includes(tab)
             ) {
                 activeTab = tab;
             } else {
@@ -157,9 +178,12 @@
                 const saved = localStorage.getItem("profile.activeTab");
                 if (
                     saved &&
-                    ["general", "security", "preferences", "notifications"].includes(
-                        saved,
-                    )
+                    [
+                        "general",
+                        "security",
+                        "preferences",
+                        "notifications",
+                    ].includes(saved)
                 ) {
                     activeTab = saved;
                 }
@@ -336,7 +360,9 @@
             await api.auth.disable2FA(twoFactorData.disableCode);
             twoFactorData.enabled = false;
             twoFactorData.disableCode = "";
-            user.update((u) => (u ? { ...u, two_factor_enabled: false } : null));
+            user.update((u) =>
+                u ? { ...u, two_factor_enabled: false } : null,
+            );
             showMessage("success", "Two-factor authentication disabled.");
         } catch (error: any) {
             showMessage("error", error.toString());
@@ -436,11 +462,13 @@
                 <div class="user-info">
                     <span class="name"
                         >{profileData.name ||
-                            ($t("profile.fallback.user") || "User")}</span
+                            $t("profile.fallback.user") ||
+                            "User"}</span
                     >
                     <span class="role"
                         >{profileData.role ||
-                            ($t("profile.fallback.member") || "Member")}</span
+                            $t("profile.fallback.member") ||
+                            "Member"}</span
                     >
                 </div>
             </div>
@@ -497,13 +525,13 @@
                         <div class="profile-header-text">
                             <h3>
                                 {profileData.name ||
-                                    ($t("profile.general.your_name") ||
-                                        "Your Name")}
+                                    $t("profile.general.your_name") ||
+                                    "Your Name"}
                             </h3>
                             <p>
                                 {profileData.role ||
-                                    ($t("profile.general.role_label") ||
-                                        "Role")}
+                                    $t("profile.general.role_label") ||
+                                    "Role"}
                             </p>
                         </div>
                     </div>
@@ -784,7 +812,8 @@
                                     <p>
                                         {$t(
                                             "profile.security.twofa.enabled_desc",
-                                        ) || "Your account is secured with 2FA."}
+                                        ) ||
+                                            "Your account is secured with 2FA."}
                                     </p>
 
                                     <div
@@ -792,82 +821,157 @@
                                         style="margin-top: 1rem;"
                                     >
                                         <h4
-                                            style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-secondary);"
+                                            style="font-size: 0.9rem; margin-bottom: 0.75rem; color: var(--text-secondary);"
                                         >
-                                            Preferred Method
+                                            Enabled Methods
                                         </h4>
                                         <div
-                                            class="radio-group"
-                                            style="display: flex; gap: 1rem;"
+                                            class="checkbox-group"
+                                            style="display: flex; flex-direction: column; gap: 0.75rem;"
                                         >
+                                            <!-- TOTP Method -->
                                             <label
-                                                class="radio-card"
-                                                class:selected={$user?.preferred_2fa_method !==
-                                                    "email"}
-                                                style="flex: 1; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s; background: var(--bg-primary);"
+                                                class="checkbox-card"
+                                                style="padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; transition: all 0.2s; background: var(--bg-primary);"
                                             >
                                                 <input
-                                                    type="radio"
-                                                    name="2fa_method"
-                                                    value="totp"
-                                                    checked={$user?.preferred_2fa_method !==
-                                                        "email"}
-                                                    onchange={() =>
-                                                        change2FAMethod("totp")}
+                                                    type="checkbox"
+                                                    checked={$user?.totp_enabled}
+                                                    disabled={true}
                                                     style="accent-color: var(--color-primary);"
                                                 />
-                                                <div
-                                                    class="radio-content"
-                                                    style="display: flex; align-items: center; gap: 0.5rem;"
+                                                <Icon
+                                                    name="smartphone"
+                                                    size={18}
+                                                />
+                                                <span
+                                                    style="flex: 1; font-weight: 500;"
                                                 >
-                                                    <Icon
-                                                        name="smartphone"
-                                                        size={18}
-                                                    />
+                                                    {$t(
+                                                        "profile.security.twofa.methods.authenticator_app",
+                                                    ) || "Authenticator App"}
+                                                </span>
+                                                {#if $user?.totp_enabled}
                                                     <span
-                                                        style="font-weight: 500;"
-                                                        >{$t(
-                                                            "profile.security.twofa.methods.authenticator_app",
-                                                        ) || "Authenticator App"}</span
+                                                        style="font-size: 0.75rem; color: var(--success); background: rgba(34, 197, 94, 0.1); padding: 0.25rem 0.5rem; border-radius: 4px;"
+                                                        >Enabled</span
                                                     >
-                                                </div>
+                                                {:else}
+                                                    <button
+                                                        class="btn btn-sm btn-outline"
+                                                        onclick={() =>
+                                                            start2FA("totp")}
+                                                        disabled={loading}
+                                                    >
+                                                        Enable
+                                                    </button>
+                                                {/if}
                                             </label>
 
+                                            <!-- Email Method -->
                                             <label
-                                                class="radio-card"
-                                                class:selected={$user?.preferred_2fa_method ===
-                                                    "email"}
-                                                style="flex: 1; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s; background: var(--bg-primary);"
+                                                class="checkbox-card"
+                                                style="padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; transition: all 0.2s; background: var(--bg-primary);"
                                             >
                                                 <input
-                                                    type="radio"
-                                                    name="2fa_method"
-                                                    value="email"
-                                                    checked={$user?.preferred_2fa_method ===
-                                                        "email"}
-                                                    onchange={() =>
-                                                        change2FAMethod(
-                                                            "email",
-                                                        )}
+                                                    type="checkbox"
+                                                    checked={$user?.email_2fa_enabled}
+                                                    disabled={true}
                                                     style="accent-color: var(--color-primary);"
                                                 />
-                                                <div
-                                                    class="radio-content"
-                                                    style="display: flex; align-items: center; gap: 0.5rem;"
+                                                <Icon name="mail" size={18} />
+                                                <span
+                                                    style="flex: 1; font-weight: 500;"
                                                 >
-                                                    <Icon
-                                                        name="mail"
-                                                        size={18}
-                                                    />
+                                                    {$t(
+                                                        "profile.security.twofa.methods.email_verification",
+                                                    ) || "Email Verification"}
+                                                </span>
+                                                {#if $user?.email_2fa_enabled}
                                                     <span
-                                                        style="font-weight: 500;"
-                                                        >{$t(
-                                                            "profile.security.twofa.methods.email_verification",
-                                                        ) || "Email Verification"}</span
+                                                        style="font-size: 0.75rem; color: var(--success); background: rgba(34, 197, 94, 0.1); padding: 0.25rem 0.5rem; border-radius: 4px;"
+                                                        >Enabled</span
                                                     >
-                                                </div>
+                                                {:else}
+                                                    <button
+                                                        class="btn btn-sm btn-outline"
+                                                        onclick={() =>
+                                                            start2FA("email")}
+                                                        disabled={loading}
+                                                    >
+                                                        Enable
+                                                    </button>
+                                                {/if}
                                             </label>
                                         </div>
+
+                                        <!-- Preferred Method Selector (only if both enabled) -->
+                                        {#if $user?.totp_enabled && $user?.email_2fa_enabled}
+                                            <h4
+                                                style="font-size: 0.9rem; margin: 1rem 0 0.5rem; color: var(--text-secondary);"
+                                            >
+                                                Preferred Method
+                                            </h4>
+                                            <div
+                                                class="radio-group"
+                                                style="display: flex; gap: 1rem;"
+                                            >
+                                                <label
+                                                    class="radio-card"
+                                                    class:selected={$user?.preferred_2fa_method !==
+                                                        "email"}
+                                                    style="flex: 1; padding: 0.5rem 0.75rem; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s; background: var(--bg-primary);"
+                                                >
+                                                    <input
+                                                        type="radio"
+                                                        name="2fa_method"
+                                                        value="totp"
+                                                        checked={$user?.preferred_2fa_method !==
+                                                            "email"}
+                                                        onchange={() =>
+                                                            change2FAMethod(
+                                                                "totp",
+                                                            )}
+                                                        style="accent-color: var(--color-primary);"
+                                                    />
+                                                    <Icon
+                                                        name="smartphone"
+                                                        size={16}
+                                                    />
+                                                    <span
+                                                        style="font-size: 0.85rem;"
+                                                        >TOTP</span
+                                                    >
+                                                </label>
+                                                <label
+                                                    class="radio-card"
+                                                    class:selected={$user?.preferred_2fa_method ===
+                                                        "email"}
+                                                    style="flex: 1; padding: 0.5rem 0.75rem; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s; background: var(--bg-primary);"
+                                                >
+                                                    <input
+                                                        type="radio"
+                                                        name="2fa_method"
+                                                        value="email"
+                                                        checked={$user?.preferred_2fa_method ===
+                                                            "email"}
+                                                        onchange={() =>
+                                                            change2FAMethod(
+                                                                "email",
+                                                            )}
+                                                        style="accent-color: var(--color-primary);"
+                                                    />
+                                                    <Icon
+                                                        name="mail"
+                                                        size={16}
+                                                    />
+                                                    <span
+                                                        style="font-size: 0.85rem;"
+                                                        >Email</span
+                                                    >
+                                                </label>
+                                            </div>
+                                        {/if}
                                     </div>
                                 </div>
                             </div>
@@ -936,7 +1040,9 @@
                                         <input
                                             type="text"
                                             class="form-input"
-                                            bind:value={twoFactorData.disableCode}
+                                            bind:value={
+                                                twoFactorData.disableCode
+                                            }
                                             placeholder={$t(
                                                 "profile.security.twofa.disable.placeholder",
                                             ) || "Enter authentication code"}
@@ -1041,7 +1147,8 @@
                                                 class="btn btn-outline"
                                                 onclick={() =>
                                                     (twoFactorData.showSetup = false)}
-                                                >{$t("common.cancel") || "Cancel"}</button
+                                                >{$t("common.cancel") ||
+                                                    "Cancel"}</button
                                             >
                                             <button
                                                 class="btn btn-primary"
@@ -1209,11 +1316,14 @@
                                     </div>
                                     <div class="push-text">
                                         <h4>
-                                            {$t("profile.notifications.push.active_title") ||
-                                                "Push Notifications Active"}
+                                            {$t(
+                                                "profile.notifications.push.active_title",
+                                            ) || "Push Notifications Active"}
                                         </h4>
                                         <p>
-                                            {$t("profile.notifications.push.active_desc") ||
+                                            {$t(
+                                                "profile.notifications.push.active_desc",
+                                            ) ||
                                                 "You are subscribed to real-time updates on this device."}
                                         </p>
                                     </div>
@@ -1235,11 +1345,14 @@
                                     </div>
                                     <div class="push-text">
                                         <h4>
-                                            {$t("profile.notifications.push.enable_title") ||
-                                                "Enable Push Notifications"}
+                                            {$t(
+                                                "profile.notifications.push.enable_title",
+                                            ) || "Enable Push Notifications"}
                                         </h4>
                                         <p>
-                                            {$t("profile.notifications.push.enable_desc") ||
+                                            {$t(
+                                                "profile.notifications.push.enable_desc",
+                                            ) ||
                                                 "Get real-time updates even when the app is closed."}
                                         </p>
                                     </div>
@@ -2182,4 +2295,3 @@
         margin-top: 0.5rem;
     }
 </style>
-

@@ -42,7 +42,10 @@
         "Enterprise-grade boilerplate built with Rust and SvelteKit. Secure, scalable, and lightweight.";
 
     // Derived store for registration allowed state - secure by default
-    const allowRegistration = derived(appSettings, $s => $s.auth?.allow_registration === true);
+    const allowRegistration = derived(
+        appSettings,
+        ($s) => $s.auth?.allow_registration === true,
+    );
 
     onMount(async () => {
         await Promise.all([appSettings.init(), appLogo.init()]);
@@ -174,12 +177,27 @@
 
             if (response.token && response.user) {
                 // Domain Validation: Prevent login on wrong domain (Web only)
-                const customDomain = response.tenant?.custom_domain || response.user.tenant_custom_domain;
+                const customDomain =
+                    response.tenant?.custom_domain ||
+                    response.user.tenant_custom_domain;
                 const currentHost = window.location.hostname;
                 // @ts-ignore
-                const isTauri = typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__;
+                const isTauri =
+                    typeof window !== "undefined" &&
+                    (window as any).__TAURI_INTERNALS__;
+                const isLocalhost =
+                    currentHost === "localhost" || currentHost === "127.0.0.1";
+                const mainDomain = $appSettings.auth?.main_domain;
+                const isMainDomain = mainDomain && currentHost === mainDomain;
 
-                if (!isTauri && customDomain && currentHost !== customDomain && !response.user.is_super_admin) {
+                if (
+                    !isTauri &&
+                    !isLocalhost &&
+                    !isMainDomain &&
+                    customDomain &&
+                    currentHost !== customDomain &&
+                    !response.user.is_super_admin
+                ) {
                     error = "Invalid login credentials or unauthorized domain.";
                     loading = false;
                     return;
@@ -202,10 +220,23 @@
         const customDomain = t?.custom_domain || u?.tenant_custom_domain;
         const currentHost = window.location.hostname;
         // @ts-ignore
-        const isTauri = typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__;
+        const isTauri =
+            typeof window !== "undefined" &&
+            (window as any).__TAURI_INTERNALS__;
+        const isLocalhost =
+            currentHost === "localhost" || currentHost === "127.0.0.1";
+        const mainDomain = $appSettings.auth?.main_domain;
+        const isMainDomain = mainDomain && currentHost === mainDomain;
 
-        // Domain Validation: Prevent login on wrong domain (Web only)
-        if (!isTauri && customDomain && currentHost !== customDomain && !u.is_super_admin) {
+        // Domain Validation: Prevent login on wrong domain (Web only) - skip localhost and main domain
+        if (
+            !isTauri &&
+            !isLocalhost &&
+            !isMainDomain &&
+            customDomain &&
+            currentHost !== customDomain &&
+            !u.is_super_admin
+        ) {
             const { logout } = await import("$lib/stores/auth");
             logout();
             error = "Invalid login credentials or unauthorized domain.";
@@ -237,7 +268,6 @@
         try {
             const response = await login(email, password, rememberMe);
 
-
             // Check for 2FA requirement FIRST
             if (response.requires_2fa) {
                 tempToken = response.temp_token || "";
@@ -263,12 +293,21 @@
             }
 
             // Domain Validation: Prevent login on wrong domain (Web only)
-            const customDomain = response.tenant?.custom_domain || response.user.tenant_custom_domain;
+            const customDomain =
+                response.tenant?.custom_domain ||
+                response.user.tenant_custom_domain;
             const currentHost = window.location.hostname;
             // @ts-ignore
-            const isTauri = typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__;
+            const isTauri =
+                typeof window !== "undefined" &&
+                (window as any).__TAURI_INTERNALS__;
 
-            if (!isTauri && customDomain && currentHost !== customDomain && !response.user.is_super_admin) {
+            if (
+                !isTauri &&
+                customDomain &&
+                currentHost !== customDomain &&
+                !response.user.is_super_admin
+            ) {
                 // Logout immediately
                 await import("$lib/stores/auth").then((m) => m.logout());
                 error = "Invalid login credentials or unauthorized domain.";
@@ -429,12 +468,12 @@
                     </button>
                 </form>
 
-            {#if $allowRegistration}
-                <p class="footer-text">
-                    {$t("auth.login.footer_text")}
-                    <a href="/register">{$t("auth.login.register_link")}</a>
-                </p>
-            {/if}
+                {#if $allowRegistration}
+                    <p class="footer-text">
+                        {$t("auth.login.footer_text")}
+                        <a href="/register">{$t("auth.login.register_link")}</a>
+                    </p>
+                {/if}
             {:else if step === "2fa-select"}
                 <!-- 2FA Method Selection -->
                 <div class="twofa-section" in:fade>
@@ -497,7 +536,8 @@
                             type="text"
                             bind:value={twoFactorCode}
                             maxlength="6"
-                            placeholder={$t("common.otp_placeholder") || "000000"}
+                            placeholder={$t("common.otp_placeholder") ||
+                                "000000"}
                             class="otp-input"
                             autocomplete="one-time-code"
                         />
@@ -560,7 +600,8 @@
                             type="text"
                             bind:value={twoFactorCode}
                             maxlength="6"
-                            placeholder={$t("common.otp_placeholder") || "000000"}
+                            placeholder={$t("common.otp_placeholder") ||
+                                "000000"}
                             class="otp-input"
                             autocomplete="one-time-code"
                         />
@@ -940,4 +981,3 @@
         }
     }
 </style>
-

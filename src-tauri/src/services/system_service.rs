@@ -67,24 +67,33 @@ pub struct SystemService {
     pub pool: Pool<Sqlite>,
     start_time: Instant,
     cache: Arc<RwLock<Option<(SystemHealth, Instant)>>>,
+    metrics: Arc<crate::services::metrics_service::MetricsService>,
 }
 
 impl SystemService {
     #[cfg(feature = "postgres")]
-    pub fn new(pool: Pool<Postgres>) -> Self {
+    pub fn new(
+        pool: Pool<Postgres>,
+        metrics: Arc<crate::services::metrics_service::MetricsService>,
+    ) -> Self {
         Self {
             pool,
             start_time: Instant::now(),
             cache: Arc::new(RwLock::new(None)),
+            metrics,
         }
     }
 
     #[cfg(feature = "sqlite")]
-    pub fn new(pool: Pool<Sqlite>) -> Self {
+    pub fn new(
+        pool: Pool<Sqlite>,
+        metrics: Arc<crate::services::metrics_service::MetricsService>,
+    ) -> Self {
         Self {
             pool,
             start_time: Instant::now(),
             cache: Arc::new(RwLock::new(None)),
+            metrics,
         }
     }
 
@@ -114,7 +123,7 @@ impl SystemService {
             uptime_seconds: self.start_time.elapsed().as_secs(),
             app_version: env!("CARGO_PKG_VERSION").to_string(),
             collected_at: Utc::now(),
-            request_metrics: None,
+            request_metrics: Some(self.metrics.get_metrics()),
         };
 
         *self.cache.write().await = Some((health.clone(), Instant::now()));

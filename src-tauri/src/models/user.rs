@@ -41,6 +41,11 @@ pub struct User {
     #[serde(skip_serializing)]
     pub email_otp_expires: Option<DateTime<Utc>>,
     pub preferred_2fa_method: Option<String>,
+    // Multi-method 2FA flags
+    #[serde(default)]
+    pub totp_enabled: bool,
+    #[serde(default)]
+    pub email_2fa_enabled: bool,
 }
 
 impl User {
@@ -70,6 +75,8 @@ impl User {
             email_otp_code: None,
             email_otp_expires: None,
             preferred_2fa_method: Some("totp".to_string()),
+            totp_enabled: false,
+            email_2fa_enabled: false,
         }
     }
 
@@ -95,6 +102,8 @@ pub struct UserResponse {
     pub is_active: bool,
     pub two_factor_enabled: bool,
     pub preferred_2fa_method: Option<String>,
+    pub totp_enabled: bool,
+    pub email_2fa_enabled: bool,
     pub created_at: DateTime<Utc>,
     pub permissions: Vec<String>,
     pub tenant_slug: Option<String>,
@@ -114,6 +123,8 @@ impl From<User> for UserResponse {
             is_active: user.is_active,
             two_factor_enabled: user.two_factor_enabled,
             preferred_2fa_method: user.preferred_2fa_method,
+            totp_enabled: user.totp_enabled,
+            email_2fa_enabled: user.email_2fa_enabled,
             created_at: user.created_at,
             permissions: vec![],        // Populated by service
             tenant_slug: None,          // Populated by service

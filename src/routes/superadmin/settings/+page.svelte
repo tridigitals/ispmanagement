@@ -39,6 +39,7 @@
 
     // General
     let appPublicUrl = "";
+    let appMainDomain = "";
     let currencyCode = "IDR";
     const currencyCodeOptions = [
         "IDR",
@@ -207,6 +208,7 @@
 
         // General
         appPublicUrl = settingsMap["app_public_url"] || "http://localhost:3000";
+        appMainDomain = settingsMap["app_main_domain"] || "";
         currencyCode = (settingsMap["currency_code"] || "IDR").toUpperCase();
 
         // Authentication
@@ -356,6 +358,11 @@
                     "app_public_url",
                     appPublicUrl,
                     "Public Application URL",
+                ),
+                api.settings.upsert(
+                    "app_main_domain",
+                    appMainDomain,
+                    "Main Application Domain",
                 ),
                 api.settings.upsert(
                     "currency_code",
@@ -1058,55 +1065,84 @@
 
     /* Actions Footer */
     .actions-footer {
-        margin-top: 1.5rem;
+        margin-top: 2rem;
         display: flex;
         justify-content: flex-end;
+        align-items: center;
         gap: 1rem;
         position: sticky;
-        bottom: 0;
-        padding: 1rem 0;
-        background: linear-gradient(
-            to top,
-            var(--bg-app) 80%,
-            transparent 100%
-        );
-        z-index: 5;
+        bottom: 0px;
+        padding: 1.5rem 2rem;
+        background: var(--bg-surface);
+        border-top: 1px solid var(--border-color);
+        z-index: 100;
+        /* Negative margins to span full width of container padding */
+        margin-left: -2rem;
+        margin-right: -2rem;
+        margin-bottom: -2rem;
+        width: calc(100% + 4rem);
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Adjust for mobile */
+    @media (max-width: 600px) {
+        .actions-footer {
+            padding: 1rem;
+            margin-left: -1rem;
+            margin-right: -1rem;
+            margin-bottom: -1rem;
+            width: calc(100% + 2rem);
+        }
     }
 
     .btn {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 0.5rem;
-        padding: 0.75rem 1.5rem;
-        border-radius: var(--radius-sm);
-        font-weight: 600;
+        padding: 0.6rem 1.25rem;
+        border-radius: var(--radius-md);
+        font-weight: 500;
         font-size: 0.9rem;
         cursor: pointer;
-        transition: all 0.2s;
-        border: none;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+        min-width: 100px;
+    }
+
+    .btn:active {
+        transform: scale(0.98);
     }
 
     .btn-primary {
         background: var(--color-primary);
         color: white;
+        box-shadow: 0 2px 4px rgba(var(--color-primary-rgb), 0.3);
     }
 
     .btn-primary:hover:not(:disabled) {
         background: var(--color-primary-hover);
+        box-shadow: 0 4px 8px rgba(var(--color-primary-rgb), 0.4);
+        transform: translateY(-1px);
     }
 
     .btn-secondary {
-        background: var(--bg-tertiary);
-        color: var(--text-primary);
+        background: transparent;
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
     }
 
     .btn-secondary:hover:not(:disabled) {
-        background: var(--bg-hover);
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        border-color: var(--text-secondary);
     }
 
     .btn:disabled {
-        opacity: 0.6;
+        opacity: 0.5;
         cursor: not-allowed;
+        transform: none !important;
+        box-shadow: none !important;
     }
 
     /* Mobile Responsive */
@@ -1129,5 +1165,3 @@
         }
     }
 </style>
-
-

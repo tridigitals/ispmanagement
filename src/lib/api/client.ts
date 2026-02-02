@@ -278,6 +278,8 @@ export interface User {
     avatar_url: string | null;
     is_active: boolean;
     two_factor_enabled?: boolean;
+    totp_enabled?: boolean;
+    email_2fa_enabled?: boolean;
     created_at: string;
     permissions: string[];
     tenant_slug?: string;
@@ -692,9 +694,9 @@ export const tenant = {
         safeInvoke('get_current_tenant', { token: getTokenOrThrow() }),
 
     updateSelf: (data: { name?: string, customDomain?: string, enforce2fa?: boolean }): Promise<any> =>
-        safeInvoke('update_current_tenant', { 
-            token: getTokenOrThrow(), 
-            name: data.name, 
+        safeInvoke('update_current_tenant', {
+            token: getTokenOrThrow(),
+            name: data.name,
             customDomain: data.customDomain,
             enforce2fa: data.enforce2fa
         }),
