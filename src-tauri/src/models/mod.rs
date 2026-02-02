@@ -9,6 +9,7 @@ pub mod plan;
 pub mod file;
 pub mod invoice;
 pub mod notification;
+pub mod trusted_device;
 
 pub use role::*;
 pub use tenant::*;
@@ -19,6 +20,7 @@ pub use plan::*;
 pub use file::*;
 pub use invoice::*;
 pub use notification::*;
+pub use trusted_device::*;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct PaginatedResponse<T> {

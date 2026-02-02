@@ -1,6 +1,6 @@
 //! Authentication Commands
 
-use crate::models::{LoginDto, RegisterDto, UserResponse};
+use crate::models::{LoginDto, RegisterDto, UserResponse, TrustedDevice};
 use crate::services::{AuthResponse, AuthService};
 use tauri::State;
 use validator::Validate;
@@ -365,3 +365,35 @@ pub async fn reset_user_2fa(
 }
 
 
+/// List all trusted devices for a user
+#[tauri::command]
+pub async fn list_trusted_devices(
+    token: String,
+    auth_service: State<'_, AuthService>,
+) -> Result<Vec<TrustedDevice>, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    auth_service
+        .list_trusted_devices(&claims.sub)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Revoke a specific trusted device for a user
+#[tauri::command]
+pub async fn revoke_trusted_device(
+    token: String,
+    device_id: String,
+    auth_service: State<'_, AuthService>,
+) -> Result<(), String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    auth_service
+        .revoke_trusted_device(&claims.sub, &device_id)
+        .await
+        .map_err(|e| e.to_string())
+}

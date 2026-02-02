@@ -819,6 +819,7 @@
                 {#if activeTab === "general"}
                     <SettingsGeneralTab
                         bind:appPublicUrl
+                        bind:appMainDomain
                         bind:currencyCode
                         {currencyCodeOptions}
                         bind:maintenanceMode

@@ -64,6 +64,8 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             'set_2fa_preference': { method: 'POST', path: '/auth/2fa/preference' },
             'request_email_otp': { method: 'POST', path: '/auth/2fa/email/request' },
             'verify_email_otp': { method: 'POST', path: '/auth/2fa/email/verify' },
+            'list_trusted_devices': { method: 'GET', path: '/auth/trusted-devices' },
+            'revoke_trusted_device': { method: 'DELETE', path: '/auth/trusted-devices/:deviceId' },
             // Users
             'list_users': { method: 'GET', path: '/users' },
             'get_user': { method: 'GET', path: '/users/:id' },
@@ -289,6 +291,17 @@ export interface User {
     preferred_2fa_method?: string;
 }
 
+export interface TrustedDevice {
+    id: string;
+    user_id: string;
+    device_fingerprint: string;
+    ip_address?: string;
+    user_agent?: string;
+    trusted_at: string;
+    expires_at: string;
+    last_used_at?: string;
+}
+
 export interface Tenant {
     id: string;
     name: string;
@@ -337,6 +350,7 @@ export interface AuthSettings {
     max_login_attempts: number;
     lockout_duration_minutes: number;
     allow_registration: boolean;
+    main_domain?: string;
 }
 
 export interface Role {
@@ -447,6 +461,12 @@ export const auth = {
 
     verifyEmail2FASetup: (code: string): Promise<void> =>
         safeInvoke('verify_email_2fa_setup', { token: getTokenOrThrow(), code }),
+
+    listTrustedDevices: (): Promise<TrustedDevice[]> =>
+        safeInvoke('list_trusted_devices', { token: getTokenOrThrow() }),
+
+    revokeTrustedDevice: (deviceId: string): Promise<void> =>
+        safeInvoke('revoke_trusted_device', { token: getTokenOrThrow(), deviceId }),
 };
 
 // Users API

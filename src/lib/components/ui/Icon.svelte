@@ -4,6 +4,7 @@
         Users,
         Settings,
         Shield,
+        ShieldCheck,
         ShieldOff,
         Ban,
         Star,
@@ -70,6 +71,8 @@
         TrendingDown,
         Minus,
         ExternalLink,
+        Smartphone,
+        Monitor,
     } from "lucide-svelte";
 
     let {
@@ -87,10 +90,12 @@
         users: Users,
         settings: Settings,
         shield: Shield,
+        "shield-check": ShieldCheck,
         "shield-off": ShieldOff,
         ban: Ban,
         star: Star,
         profile: User,
+        user: User,
         logout: LogOut,
         "chevron-up": ChevronUp,
         "chevron-down": ChevronDown,
@@ -158,6 +163,8 @@
         "external-link": ExternalLink,
         key: Key,
         save: Save,
+        smartphone: Smartphone,
+        monitor: Monitor,
     };
 
     let IconComponent = $derived(icons[name] || HelpCircle);

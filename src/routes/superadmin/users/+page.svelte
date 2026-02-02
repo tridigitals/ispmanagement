@@ -401,7 +401,7 @@
                 {loading}
                 {isMobile}
                 {viewMode}
-                {currentUser}
+                currentUser={$currentUser}
                 onOpenDetails={openDetails}
                 onReset2FA={confirmReset2FA}
                 onToggleActive={confirmToggleActive}

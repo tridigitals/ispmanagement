@@ -252,6 +252,12 @@ pub async fn start_server(
             "/api/auth/2fa/email/enable-verify",
             post(auth::verify_email_2fa_setup),
         )
+        // Trusted Devices Routes
+        .route("/api/auth/trusted-devices", get(auth::list_trusted_devices))
+        .route(
+            "/api/auth/trusted-devices/{device_id}",
+            delete(auth::revoke_trusted_device),
+        )
         // User Routes
         .route(
             "/api/users",

@@ -494,12 +494,47 @@ pub async fn verify_email_2fa_setup(
         .ok_or_else(|| crate::error::AppError::Unauthorized)?;
 
     let claims = state.auth_service.validate_token(auth_header).await?;
-    state
-        .auth_service
-        .verify_email_2fa_setup(&claims.sub, &payload.code)
-        .await?;
-
     Ok(Json(json!({
         "success": true
     })))
+}
+
+use crate::models::TrustedDevice;
+
+/// List Trusted Devices
+pub async fn list_trusted_devices(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<TrustedDevice>>, crate::error::AppError> {
+    let auth_header = headers
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+        .ok_or_else(|| crate::error::AppError::Unauthorized)?;
+
+    let claims = state.auth_service.validate_token(auth_header).await?;
+    let devices = state.auth_service.list_trusted_devices(&claims.sub).await?;
+
+    Ok(Json(devices))
+}
+
+/// Revoke Trusted Device
+pub async fn revoke_trusted_device(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(device_id): Path<String>,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let auth_header = headers
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+        .ok_or_else(|| crate::error::AppError::Unauthorized)?;
+
+    let claims = state.auth_service.validate_token(auth_header).await?;
+    state
+        .auth_service
+        .revoke_trusted_device(&claims.sub, &device_id)
+        .await?;
+
+    Ok(Json(json!({ "success": true })))
 }

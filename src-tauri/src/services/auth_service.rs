@@ -2,7 +2,7 @@
 
 use crate::db::connection::DbPool;
 use crate::error::{AppError, AppResult};
-use crate::models::{LoginDto, RegisterDto, User, UserResponse};
+use crate::models::{LoginDto, RegisterDto, User, UserResponse, TrustedDevice};
 use crate::services::{AuditService, EmailService, SettingsService};
 use argon2::{
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
@@ -2162,4 +2162,30 @@ impl AuthService {
 
         Ok(())
     }
+
+    /// List all trusted devices for a user
+    pub async fn list_trusted_devices(&self, user_id: &str) -> AppResult<Vec<TrustedDevice>> {
+        let devices = sqlx::query_as::<_, TrustedDevice>("SELECT * FROM trusted_devices WHERE user_id = $1 ORDER BY last_used_at DESC")
+            .bind(user_id)
+            .fetch_all(&self.pool)
+            .await?;
+        Ok(devices)
+    }
+
+    /// Revoke a specific trusted device for a user
+    pub async fn revoke_trusted_device(&self, user_id: &str, device_id: &str) -> AppResult<()> {
+        let rows_affected = sqlx::query("DELETE FROM trusted_devices WHERE id = $1 AND user_id = $2")
+            .bind(device_id)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?
+            .rows_affected();
+
+        if rows_affected == 0 {
+            return Err(AppError::NotFound("Device not found or permission denied".to_string()));
+        }
+
+        Ok(())
+    }
 }
+

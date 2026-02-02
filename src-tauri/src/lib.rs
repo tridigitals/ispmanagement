@@ -288,6 +288,8 @@ pub fn run() {
             set_2fa_preference,
             request_2fa_disable_code,
             reset_user_2fa,
+            list_trusted_devices,
+            revoke_trusted_device,
             // User commands
             list_users,
             get_user,
