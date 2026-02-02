@@ -4,9 +4,9 @@
     import { toast } from "svelte-sonner";
     import { uploadStore } from "$lib/stores/upload";
     import { token, can } from "$lib/stores/auth";
-    import Icon from "$lib/components/Icon.svelte";
-    import Lightbox from "$lib/components/Lightbox.svelte";
-    import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
+    import Lightbox from "$lib/components/ui/Lightbox.svelte";
+    import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
     import { fade, fly } from "svelte/transition";
     import { flip } from "svelte/animate";
     import { t } from "svelte-i18n";
@@ -1766,3 +1766,4 @@
         }
     }
 </style>
+

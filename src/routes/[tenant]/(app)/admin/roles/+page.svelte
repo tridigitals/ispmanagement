@@ -4,10 +4,10 @@
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
     import { fade, fly } from "svelte/transition";
-    import Icon from "$lib/components/Icon.svelte";
-    import Table from "$lib/components/Table.svelte";
-    import TableToolbar from "$lib/components/TableToolbar.svelte";
-    import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
+    import Table from "$lib/components/ui/Table.svelte";
+    import TableToolbar from "$lib/components/ui/TableToolbar.svelte";
+    import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
     import { t } from "svelte-i18n";
     import type { Role, Permission } from "$lib/api/client";
     import { toast } from "svelte-sonner";
@@ -1025,3 +1025,4 @@ input[type="number"]:disabled {
     border-color: rgba(0, 0, 0, 0.08);
 }
 </style>
+

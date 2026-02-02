@@ -3,8 +3,8 @@
     import { api } from "$lib/api/client";
     import { isSuperAdmin } from "$lib/stores/auth";
     import { goto } from "$app/navigation";
-    import Icon from "$lib/components/Icon.svelte";
-    import StatsCard from "$lib/components/StatsCard.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
+    import StatsCard from "$lib/components/dashboard/StatsCard.svelte";
     import {
         systemHealthCache,
         type SystemHealth,
@@ -963,3 +963,4 @@
         }
     }
 </style>
+

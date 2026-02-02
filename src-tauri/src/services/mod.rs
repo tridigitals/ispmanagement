@@ -1,5 +1,6 @@
 //! Services module
 
+pub mod alert_service;
 pub mod auth_service;
 pub mod cache;
 pub mod email_service;
@@ -18,6 +19,7 @@ pub mod plan_service;
 pub mod storage_service;
 pub mod system_service;
 
+pub use alert_service::AlertService;
 pub use audit_service::AuditService;
 pub use auth_service::AuthService;
 pub use email_service::EmailService;

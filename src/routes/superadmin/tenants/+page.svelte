@@ -3,13 +3,13 @@
     import { api } from "$lib/api/client";
     import { goto } from "$app/navigation";
     import { fly } from "svelte/transition";
-    import Icon from "$lib/components/Icon.svelte";
-    import Table from "$lib/components/Table.svelte";
-    import TableToolbar from "$lib/components/TableToolbar.svelte";
-    import StatsCard from "$lib/components/StatsCard.svelte";
-    import Modal from "$lib/components/Modal.svelte";
-    import Input from "$lib/components/Input.svelte";
-    import Select from "$lib/components/Select.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
+    import Table from "$lib/components/ui/Table.svelte";
+    import TableToolbar from "$lib/components/ui/TableToolbar.svelte";
+    import StatsCard from "$lib/components/dashboard/StatsCard.svelte";
+    import Modal from "$lib/components/ui/Modal.svelte";
+    import Input from "$lib/components/ui/Input.svelte";
+    import Select from "$lib/components/ui/Select.svelte";
     import { toast } from "$lib/stores/toast";
     import { formatMoney } from "$lib/utils/money";
     import { get } from "svelte/store";
@@ -17,7 +17,7 @@
     import { superadminPlansCache } from "$lib/stores/superadminPlans";
     import { t } from "svelte-i18n";
 
-    import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
+    import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
 
     let tenants = $state<any[]>([]);
     let plans = $state<any[]>([]);
@@ -99,7 +99,7 @@
         let cleanup: (() => void) | undefined;
 
         if (typeof window !== "undefined") {
-            const mq = window.matchMedia("(max-width: 720px)");
+            const mq = window.matchMedia("(max-width: 899px)");
             const sync = () => {
                 isMobile = mq.matches;
                 if (mq.matches) viewMode = "cards";
@@ -358,19 +358,20 @@
     let toggleTitle = $derived.by(() =>
         pendingToggleTenant?.is_active
             ? $t("superadmin.tenants.toggle.deactivate_title") ||
-                  "Deactivate Tenant"
-            : $t("superadmin.tenants.toggle.activate_title") || "Activate Tenant",
+              "Deactivate Tenant"
+            : $t("superadmin.tenants.toggle.activate_title") ||
+              "Activate Tenant",
     );
 
-    let toggleType = $derived.by(
-        (): "danger" | "warning" | "info" =>
-            pendingToggleTenant?.is_active ? "danger" : "info",
+    let toggleType = $derived.by((): "danger" | "warning" | "info" =>
+        pendingToggleTenant?.is_active ? "danger" : "info",
     );
 
     let toggleMessage = $derived.by(() => {
         const name =
             pendingToggleTenant?.name ||
-            ($t("superadmin.tenants.toggle.this_tenant") || "this tenant");
+            $t("superadmin.tenants.toggle.this_tenant") ||
+            "this tenant";
         if (pendingToggleTenant?.is_active) {
             return (
                 $t("superadmin.tenants.toggle.deactivate_message", {
@@ -382,8 +383,7 @@
         return (
             $t("superadmin.tenants.toggle.activate_message", {
                 values: { name },
-            }) ||
-            `Activate ${name}? Users in this tenant will regain access.`
+            }) || `Activate ${name}? Users in this tenant will regain access.`
         );
     });
 
@@ -437,11 +437,13 @@
             onclick={() => (statusFilter = "all")}
             aria-label={$t("superadmin.tenants.stats.show_all") ||
                 "Show all tenants"}
-            title={$t("superadmin.tenants.stats.show_all") || "Show all tenants"}
+            title={$t("superadmin.tenants.stats.show_all") ||
+                "Show all tenants"}
             type="button"
         >
             <StatsCard
-                title={$t("superadmin.tenants.stats.all_title") || "All Tenants"}
+                title={$t("superadmin.tenants.stats.all_title") ||
+                    "All Tenants"}
                 value={stats.total}
                 icon="database"
                 color="primary"
@@ -485,33 +487,33 @@
         </button>
     </div>
 
-        <div class="glass-card" in:fly={{ y: 20, delay: 80 }}>
-            <div class="card-header glass">
-                <div>
-                    <h3>{$t("superadmin.tenants.title") || "Tenants"}</h3>
-                    <span class="muted"
-                        >{$t("superadmin.tenants.subtitle") ||
-                            "Manage all organizations in the platform"}</span
-                    >
-                </div>
-                <div class="header-actions">
-                    {#if isRefreshing}
-                        <span
-                            class="refresh-pill"
-                            title={$t("superadmin.tenants.refreshing_title") ||
-                                "Refreshing..."}
-                        >
-                            <span class="spinner-xs"></span>
-                            {$t("superadmin.tenants.refreshing") || "Refreshing"}
-                        </span>
-                    {/if}
-                    <span class="count-badge"
-                        >{$t("superadmin.tenants.count", {
-                            values: { count: stats.total },
-                        }) || `${stats.total} tenants`}</span
-                    >
-                </div>
+    <div class="glass-card" in:fly={{ y: 20, delay: 80 }}>
+        <div class="card-header glass">
+            <div>
+                <h3>{$t("superadmin.tenants.title") || "Tenants"}</h3>
+                <span class="muted"
+                    >{$t("superadmin.tenants.subtitle") ||
+                        "Manage all organizations in the platform"}</span
+                >
             </div>
+            <div class="header-actions">
+                {#if isRefreshing}
+                    <span
+                        class="refresh-pill"
+                        title={$t("superadmin.tenants.refreshing_title") ||
+                            "Refreshing..."}
+                    >
+                        <span class="spinner-xs"></span>
+                        {$t("superadmin.tenants.refreshing") || "Refreshing"}
+                    </span>
+                {/if}
+                <span class="count-badge"
+                    >{$t("superadmin.tenants.count", {
+                        values: { count: stats.total },
+                    }) || `${stats.total} tenants`}</span
+                >
+            </div>
+        </div>
 
         <div class="toolbar-wrapper">
             <TableToolbar
@@ -588,96 +590,132 @@
             </TableToolbar>
         </div>
 
-            {#if error}
-                <div class="error-state">
-                    <Icon name="alert-circle" size={48} color="#ef4444" />
-                    <p>{error}</p>
-                    <button class="btn btn-secondary" onclick={() => loadData()}>
-                        {$t("common.retry") || "Retry"}
-                    </button>
-                </div>
-            {:else}
-            {#if viewMode === "cards" || isMobile}
-                <div
-                    class="tenants-grid"
-                    aria-label={$t("superadmin.tenants.aria.cards") ||
-                        "Tenant cards"}
-                >
-                    {#each filteredTenants as tenant (tenant.id)}
-                        <div class="tenant-card" in:fly={{ y: 6, duration: 150 }}>
-                            <div class="tenant-top">
-                                <div>
-                                    <div class="tenant-name">{tenant.name}</div>
-                                    <div class="tenant-sub">
-                                        <span class="tenant-slug">{tenant.slug}</span>
-                                        {#if tenant.custom_domain}
-                                            <span class="dot">•</span>
-                                            <span class="tenant-domain mono">
-                                                {tenant.custom_domain}
-                                            </span>
-                                        {/if}
-                                    </div>
+        {#if error}
+            <div class="error-state">
+                <Icon name="alert-circle" size={48} color="#ef4444" />
+                <p>{error}</p>
+                <button class="btn btn-secondary" onclick={() => loadData()}>
+                    {$t("common.retry") || "Retry"}
+                </button>
+            </div>
+        {:else if viewMode === "cards" || isMobile}
+            <div
+                class="tenants-grid"
+                aria-label={$t("superadmin.tenants.aria.cards") ||
+                    "Tenant cards"}
+            >
+                {#each filteredTenants as tenant (tenant.id)}
+                    <div class="tenant-card" in:fly={{ y: 6, duration: 150 }}>
+                        <div class="tenant-top">
+                            <div>
+                                <div class="tenant-name">{tenant.name}</div>
+                                <div class="tenant-sub">
+                                    <span class="tenant-slug"
+                                        >{tenant.slug}</span
+                                    >
+                                    {#if tenant.custom_domain}
+                                        <span class="dot">•</span>
+                                        <span class="tenant-domain mono">
+                                            {tenant.custom_domain}
+                                        </span>
+                                    {/if}
                                 </div>
-                                <span
-                                    class="status-badge {tenant.is_active
-                                        ? 'success'
-                                        : 'error'}"
-                                >
-                                    {tenant.is_active
-                                        ? $t("common.active") || "Active"
-                                        : $t("common.inactive") || "Inactive"}
-                                </span>
                             </div>
-
-                            <div class="tenant-meta">
-                                <span class="meta-label">
-                                    {$t("superadmin.tenants.meta.created") ||
-                                        "Created"}
-                                </span>
-                                <span class="meta-value">
-                                    {tenant.created_at
-                                        ? new Date(tenant.created_at).toLocaleDateString()
-                                        : "—"}
-                                </span>
-                            </div>
-
-                            <div class="tenant-actions">
-                                <button
-                                    class="btn-icon {tenant.is_active ? 'warn' : 'success'}"
-                                    title={tenant.is_active
-                                        ? $t("superadmin.tenants.actions.deactivate") ||
-                                          "Deactivate"
-                                        : $t("superadmin.tenants.actions.activate") ||
-                                          "Activate"}
-                                    type="button"
-                                    onclick={() => confirmToggleTenant(tenant)}
-                                >
-                                    <Icon
-                                        name={tenant.is_active ? "ban" : "check-circle"}
-                                        size={18}
-                                    />
-                                </button>
-                                <button
-                                    class="btn-icon"
-                                    title={$t("common.edit") || "Edit"}
-                                    type="button"
-                                    onclick={() => openEditModal(tenant)}
-                                >
-                                    <Icon name="edit" size={18} />
-                                </button>
-                                <button
-                                    class="btn-icon danger"
-                                    title={$t("common.delete") || "Delete"}
-                                    type="button"
-                                    onclick={() => confirmDelete(tenant.id)}
-                                >
-                                    <Icon name="trash" size={18} />
-                                </button>
-                            </div>
+                            <span
+                                class="status-badge {tenant.is_active
+                                    ? 'success'
+                                    : 'error'}"
+                            >
+                                {tenant.is_active
+                                    ? $t("common.active") || "Active"
+                                    : $t("common.inactive") || "Inactive"}
+                            </span>
                         </div>
-                    {/each}
 
-                    {#if filteredTenants.length === 0}
+                        <div class="tenant-meta">
+                            <span class="meta-label">
+                                {$t("superadmin.tenants.meta.created") ||
+                                    "Created"}
+                            </span>
+                            <span class="meta-value">
+                                {tenant.created_at
+                                    ? new Date(
+                                          tenant.created_at,
+                                      ).toLocaleDateString()
+                                    : "—"}
+                            </span>
+                        </div>
+
+                        <div class="tenant-actions">
+                            <button
+                                class="btn-icon {tenant.is_active
+                                    ? 'warn'
+                                    : 'success'}"
+                                title={tenant.is_active
+                                    ? $t(
+                                          "superadmin.tenants.actions.deactivate",
+                                      ) || "Deactivate"
+                                    : $t(
+                                          "superadmin.tenants.actions.activate",
+                                      ) || "Activate"}
+                                type="button"
+                                onclick={() => confirmToggleTenant(tenant)}
+                            >
+                                <Icon
+                                    name={tenant.is_active
+                                        ? "ban"
+                                        : "check-circle"}
+                                    size={18}
+                                />
+                            </button>
+                            <button
+                                class="btn-icon"
+                                title={$t("common.edit") || "Edit"}
+                                type="button"
+                                onclick={() => openEditModal(tenant)}
+                            >
+                                <Icon name="edit" size={18} />
+                            </button>
+                            <button
+                                class="btn-icon danger"
+                                title={$t("common.delete") || "Delete"}
+                                type="button"
+                                onclick={() => confirmDelete(tenant.id)}
+                            >
+                                <Icon name="trash" size={18} />
+                            </button>
+                        </div>
+                    </div>
+                {/each}
+
+                {#if filteredTenants.length === 0}
+                    <div class="empty-state-container">
+                        <div class="empty-icon">
+                            <Icon name="database" size={64} />
+                        </div>
+                        <h3>
+                            {$t("superadmin.tenants.empty.title") ||
+                                "No tenants found"}
+                        </h3>
+                        <p>
+                            {$t("superadmin.tenants.empty.hint") ||
+                                "Try adjusting your search or filters."}
+                        </p>
+                    </div>
+                {/if}
+            </div>
+        {:else if viewMode === "table" && !isMobile}
+            <div class="table-wrapper">
+                <Table
+                    pagination={true}
+                    {loading}
+                    data={filteredTenants}
+                    {columns}
+                    emptyText={$t("superadmin.tenants.empty.title") ||
+                        "No tenants found"}
+                    mobileView="scroll"
+                >
+                    {#snippet empty()}
                         <div class="empty-state-container">
                             <div class="empty-icon">
                                 <Icon name="database" size={64} />
@@ -691,100 +729,75 @@
                                     "Try adjusting your search or filters."}
                             </p>
                         </div>
-                    {/if}
-                </div>
-            {:else if viewMode === "table" && !isMobile}
-                <div class="table-wrapper">
-                    <Table
-                        pagination={true}
-                        {loading}
-                        data={filteredTenants}
-                        {columns}
-                        emptyText={$t("superadmin.tenants.empty.title") || "No tenants found"}
-                        mobileView="scroll"
-                    >
-                        {#snippet empty()}
-                            <div class="empty-state-container">
-                                <div class="empty-icon">
-                                    <Icon name="database" size={64} />
-                                </div>
-                                <h3>
-                                {$t("superadmin.tenants.empty.title") ||
-                                        "No tenants found"}
-                                </h3>
-                                <p>
-                                    {$t("superadmin.tenants.empty.hint") ||
-                                        "Try adjusting your search or filters."}
-                                </p>
-                            </div>
-                        {/snippet}
+                    {/snippet}
 
-                        {#snippet cell({ item, key })}
-                            {#if key === "custom_domain"}
-                                {#if item.custom_domain}
-                                    <code class="domain-badge"
-                                        >{item.custom_domain}</code
-                                    >
-                                {:else}
-                                    <span class="text-muted">-</span>
-                                {/if}
-                            {:else if key === "is_active"}
-                                <span
-                                    class="status-badge {item.is_active
-                                        ? 'success'
-                                        : 'error'}"
+                    {#snippet cell({ item, key })}
+                        {#if key === "custom_domain"}
+                            {#if item.custom_domain}
+                                <code class="domain-badge"
+                                    >{item.custom_domain}</code
                                 >
-                                    {item.is_active
-                                        ? $t("common.active") || "Active"
-                                        : $t("common.inactive") || "Inactive"}
-                                </span>
-                            {:else if key === "created_at"}
-                                {new Date(item.created_at).toLocaleDateString()}
-                            {:else if key === "actions"}
-                                <div class="actions">
-                                    <button
-                                        class="btn-icon {item.is_active
-                                            ? 'warn'
-                                            : 'success'}"
-                                        title={item.is_active
-                                            ? $t("superadmin.tenants.actions.deactivate") ||
-                                              "Deactivate"
-                                            : $t("superadmin.tenants.actions.activate") ||
-                                              "Activate"}
-                                        type="button"
-                                        onclick={() => confirmToggleTenant(item)}
-                                    >
-                                        <Icon
-                                            name={item.is_active
-                                                ? "ban"
-                                                : "check-circle"}
-                                            size={18}
-                                        />
-                                    </button>
-                                    <button
-                                        class="btn-icon"
-                                        title={$t("common.edit") || "Edit"}
-                                        type="button"
-                                        onclick={() => openEditModal(item)}
-                                    >
-                                        <Icon name="edit" size={18} />
-                                    </button>
-                                    <button
-                                        class="btn-icon danger"
-                                        title={$t("common.delete") || "Delete"}
-                                        type="button"
-                                        onclick={() => confirmDelete(item.id)}
-                                    >
-                                        <Icon name="trash" size={18} />
-                                    </button>
-                                </div>
                             {:else}
-                                {item[key]}
+                                <span class="text-muted">-</span>
                             {/if}
-                        {/snippet}
-                    </Table>
-                </div>
-            {/if}
+                        {:else if key === "is_active"}
+                            <span
+                                class="status-badge {item.is_active
+                                    ? 'success'
+                                    : 'error'}"
+                            >
+                                {item.is_active
+                                    ? $t("common.active") || "Active"
+                                    : $t("common.inactive") || "Inactive"}
+                            </span>
+                        {:else if key === "created_at"}
+                            {new Date(item.created_at).toLocaleDateString()}
+                        {:else if key === "actions"}
+                            <div class="actions">
+                                <button
+                                    class="btn-icon {item.is_active
+                                        ? 'warn'
+                                        : 'success'}"
+                                    title={item.is_active
+                                        ? $t(
+                                              "superadmin.tenants.actions.deactivate",
+                                          ) || "Deactivate"
+                                        : $t(
+                                              "superadmin.tenants.actions.activate",
+                                          ) || "Activate"}
+                                    type="button"
+                                    onclick={() => confirmToggleTenant(item)}
+                                >
+                                    <Icon
+                                        name={item.is_active
+                                            ? "ban"
+                                            : "check-circle"}
+                                        size={18}
+                                    />
+                                </button>
+                                <button
+                                    class="btn-icon"
+                                    title={$t("common.edit") || "Edit"}
+                                    type="button"
+                                    onclick={() => openEditModal(item)}
+                                >
+                                    <Icon name="edit" size={18} />
+                                </button>
+                                <button
+                                    class="btn-icon danger"
+                                    title={$t("common.delete") || "Delete"}
+                                    type="button"
+                                    onclick={() => confirmDelete(item.id)}
+                                >
+                                    <Icon name="trash" size={18} />
+                                </button>
+                            </div>
+                        {:else}
+                            {item[key]}
+                        {/if}
+                    {/snippet}
+                </Table>
+            </div>
         {/if}
     </div>
 </div>
@@ -816,15 +829,17 @@
             label={$t("superadmin.tenants.modal.labels.custom_domain") ||
                 "Custom Domain (Optional)"}
             bind:value={newTenant.customDomain}
-            placeholder={$t("superadmin.tenants.modal.placeholders.custom_domain") ||
-                "e.g. app.acme.com"}
+            placeholder={$t(
+                "superadmin.tenants.modal.placeholders.custom_domain",
+            ) || "e.g. app.acme.com"}
         />
 
         {#if !isEditing}
             <div class="divider">
                 <span>
-                    {$t("superadmin.tenants.modal.sections.initial_subscription") ||
-                        "Initial Subscription"}
+                    {$t(
+                        "superadmin.tenants.modal.sections.initial_subscription",
+                    ) || "Initial Subscription"}
                 </span>
             </div>
 
@@ -849,18 +864,21 @@
                     "Owner Email"}
                 type="email"
                 bind:value={newTenant.ownerEmail}
-                placeholder={$t("superadmin.tenants.modal.placeholders.owner_email") ||
-                    "admin@acme.com"}
+                placeholder={$t(
+                    "superadmin.tenants.modal.placeholders.owner_email",
+                ) || "admin@acme.com"}
             />
 
             <div class="password-group">
                 <Input
-                    label={$t("superadmin.tenants.modal.labels.owner_password") ||
-                        "Owner Password"}
+                    label={$t(
+                        "superadmin.tenants.modal.labels.owner_password",
+                    ) || "Owner Password"}
                     type={showPassword ? "text" : "password"}
                     bind:value={newTenant.ownerPassword}
-                    placeholder={$t("superadmin.tenants.modal.placeholders.owner_password") ||
-                        "Strong password"}
+                    placeholder={$t(
+                        "superadmin.tenants.modal.placeholders.owner_password",
+                    ) || "Strong password"}
                 />
                 <button
                     class="toggle-password"
@@ -913,7 +931,8 @@
     title={$t("superadmin.tenants.delete.title") || "Delete Tenant"}
     message={$t("superadmin.tenants.delete.message") ||
         "Are you sure you want to delete this tenant? This action cannot be undone and will remove all associated data."}
-    confirmText={$t("superadmin.tenants.delete.confirm") || "Delete Permanently"}
+    confirmText={$t("superadmin.tenants.delete.confirm") ||
+        "Delete Permanently"}
     confirmationKeyword="DELETE"
     type="danger"
     loading={confirmLoading}

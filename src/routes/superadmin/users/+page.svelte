@@ -5,13 +5,13 @@
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
     import { fly } from "svelte/transition";
-    import Icon from "$lib/components/Icon.svelte";
-    import Table from "$lib/components/Table.svelte";
-    import TableToolbar from "$lib/components/TableToolbar.svelte";
-    import StatsCard from "$lib/components/StatsCard.svelte";
-    import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
-    import Modal from "$lib/components/Modal.svelte";
-    import Pagination from "$lib/components/Pagination.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
+    import Table from "$lib/components/ui/Table.svelte";
+    import TableToolbar from "$lib/components/ui/TableToolbar.svelte";
+    import StatsCard from "$lib/components/dashboard/StatsCard.svelte";
+    import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
+    import Modal from "$lib/components/ui/Modal.svelte";
+    import Pagination from "$lib/components/ui/Pagination.svelte";
     import { toast } from "$lib/stores/toast";
     import type { User } from "$lib/api/client";
     import { t } from "svelte-i18n";
@@ -1647,3 +1647,5 @@
         }
     }
 </style>
+
+

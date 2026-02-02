@@ -1,6 +1,6 @@
 <script lang="ts">
-    import Sidebar from "$lib/components/Sidebar.svelte";
-    import Topbar from "$lib/components/Topbar.svelte";
+    import Sidebar from "$lib/components/layout/Sidebar.svelte";
+    import Topbar from "$lib/components/layout/Topbar.svelte";
     import { isAuthenticated, isSuperAdmin, is2FARequiredButDisabled } from "$lib/stores/auth";
     import { appSettings } from "$lib/stores/settings";
     import { page } from "$app/stores";
@@ -148,3 +148,4 @@
         }
     }
 </style>
+

@@ -94,6 +94,19 @@ pub async fn start_server(
         }
     });
 
+    // Initialize and spawn AlertService for error alerting via email
+    let alert_service =
+        crate::services::AlertService::new(email_service.clone(), settings_service.clone());
+    let alert_metrics = metrics_service.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(60));
+        loop {
+            interval.tick().await;
+            let metrics = alert_metrics.get_metrics();
+            alert_service.check_and_alert(&metrics).await;
+        }
+    });
+
     let state = AppState {
         auth_service: Arc::new(auth_service),
         user_service: Arc::new(user_service),

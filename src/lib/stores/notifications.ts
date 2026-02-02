@@ -205,7 +205,7 @@ export async function subscribePush() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         toast.error(
             get(t)('notifications.toasts.push_not_supported') ||
-                'Push notifications not supported',
+            'Push notifications not supported',
         );
         return;
     }
@@ -214,7 +214,7 @@ export async function subscribePush() {
     if (Notification.permission === 'denied') {
         toast.error(
             get(t)('notifications.toasts.blocked') ||
-                'Notifications are blocked. Please allow notifications in your browser settings.',
+            'Notifications are blocked. Please allow notifications in your browser settings.',
         );
         return;
     }
@@ -225,7 +225,7 @@ export async function subscribePush() {
         if (permission !== 'granted') {
             toast.warning(
                 get(t)('notifications.toasts.permission_denied') ||
-                    'Permission denied. You need to allow notifications.',
+                'Permission denied. You need to allow notifications.',
             );
             return;
         }
@@ -237,7 +237,7 @@ export async function subscribePush() {
             console.error('VAPID public key not found');
             toast.error(
                 get(t)('notifications.toasts.missing_vapid') ||
-                    'Configuration error: Missing VAPID key',
+                'Configuration error: Missing VAPID key',
             );
             return;
         }
@@ -268,7 +268,7 @@ export async function subscribePush() {
             pushEnabled.set(true);
             toast.success(
                 get(t)('notifications.toasts.enabled') ||
-                    'Push notifications enabled successfully!',
+                'Push notifications enabled successfully!',
             );
         } else {
             console.warn('Push subscription missing keys');
@@ -280,7 +280,7 @@ export async function subscribePush() {
         toast.error(
             get(t)('notifications.toasts.generic_error', {
                 values: { message: msg },
-            }) || `Error: ${msg}`,
+            }) || `Error: ${msg} `,
         );
     }
 }
@@ -301,7 +301,7 @@ export async function unsubscribePush() {
             pushEnabled.set(false);
             toast.success(
                 get(t)('notifications.toasts.disabled') ||
-                    'Push notifications disabled',
+                'Push notifications disabled',
             );
         }
     } catch (e) {
@@ -317,13 +317,13 @@ export async function sendTestNotification() {
         await api.sendTest();
         toast.success(
             get(t)('notifications.toasts.test_sent') ||
-                'Test notification sent!',
+            'Test notification sent!',
         );
     } catch (e) {
         console.error('Failed to send test notification:', e);
         toast.error(
             get(t)('notifications.toasts.test_failed') ||
-                'Failed to send test notification',
+            'Failed to send test notification',
         );
     }
 }
@@ -377,3 +377,4 @@ export function handleNotificationReceived(notification: Notification) {
 export function handleUnreadCountUpdated(count: number) {
     unreadCount.set(count);
 }
+

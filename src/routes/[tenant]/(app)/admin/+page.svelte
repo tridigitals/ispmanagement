@@ -7,7 +7,7 @@
     import { get } from "svelte/store";
     import { page } from "$app/stores";
     import { getSlugFromDomain } from "$lib/utils/domain";
-    import Icon from "$lib/components/Icon.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
     import { t } from "svelte-i18n";
 
     let memberCount = $state(0);
@@ -569,3 +569,4 @@
         width: 100%;
     }
 </style>
+

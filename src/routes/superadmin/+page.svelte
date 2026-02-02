@@ -1,6 +1,6 @@
 <script lang="ts">
     import { api } from "$lib/api/client";
-    import Icon from "$lib/components/Icon.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
     import { systemHealthCache } from "$lib/stores/systemHealth";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
@@ -446,3 +446,4 @@
         }
     }
 </style>
+

@@ -5,7 +5,7 @@
     import { login } from "$lib/stores/auth";
     import { goto } from "$app/navigation";
     import { fade } from "svelte/transition";
-    import Icon from "$lib/components/Icon.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
 
     let slug = "";
     let tenant: any = null;

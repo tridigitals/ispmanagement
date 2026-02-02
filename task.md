@@ -6,6 +6,13 @@
 - [x] Create PostgreSQL migrations/logic for plans tables (in `connection.rs`)
 - [x] Create SQLite migrations/logic for plans tables (in `connection.rs`)
 - [x] Add seed data for default plans and features (in `connection.rs`)
+- [x] Phase 7: Fixing Broken Pages (Plans, Audit Logs)
+- [x] Phase 8: Layout & Breakpoint Synchronization
+- [x] Phase 9: Audit Logs Table Design Optimization
+    - [x] Create condensed multi-line column layout
+    - [x] Merge User and Tenant info
+    - [x] Merge Action and Resource info
+    - [x] Optimize widths to eliminate horizontal scroll
 
 ### Backend (Rust)
 - [x] Create Plan models (`src-tauri/src/models/plan.rs`)

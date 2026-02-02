@@ -480,7 +480,10 @@
                 "tenant": "Tenant",
                 "resource": "Resource",
                 "details": "Details",
-                "ip": "IP"
+                "ip": "IP",
+                "time_ip": "Time / IP",
+                "user_tenant": "User / Tenant",
+                "action_resource": "Action / Resource"
             },
             "filters": {
                 "action": "Action (exact)",
@@ -898,10 +901,18 @@
                 }
             },
             "password": {
-                "min_length": { "label": "Minimum Length" },
-                "require_uppercase": { "label": "Require Uppercase" },
-                "require_number": { "label": "Require Number" },
-                "require_special": { "label": "Require Special Character" }
+                "min_length": {
+                    "label": "Minimum Length"
+                },
+                "require_uppercase": {
+                    "label": "Require Uppercase"
+                },
+                "require_number": {
+                    "label": "Require Number"
+                },
+                "require_special": {
+                    "label": "Require Special Character"
+                }
             },
             "storage": {
                 "driver": {
@@ -931,6 +942,7 @@
             },
             "payment": {
                 "midtrans": {
+                    "title": "Midtrans Gateway",
                     "enable": {
                         "label": "Enable Midtrans Gateway",
                         "desc": "Allow users to pay online via Midtrans."
@@ -944,19 +956,33 @@
                     "production_mode_desc": "Enable for real transactions. Disable for Sandbox."
                 },
                 "manual": {
+                    "title": "Manual Bank Transfer",
                     "enable": {
                         "label": "Enable Manual Transfer",
                         "desc": "Allow users to pay via bank transfer and upload proof."
                     },
                     "instructions_label": "Payment Instructions",
-                    "instructions_desc": "Instructions shown to user when they select Manual Transfer."
+                    "instructions_desc": "Instructions shown to user when they select Manual Transfer.",
+                    "bank_accounts_title": "Bank Accounts"
                 }
             },
             "fields": {
-                "public_url": "Public Application URL",
-                "currency": "Default Currency",
-                "maintenance_mode": "Enable Maintenance Mode",
-                "maintenance_message": "Maintenance Message"
+                "public_url": {
+                    "label": "Public Application URL",
+                    "desc": "Base URL for redirects, emails, and payment callbacks (e.g. https://app.example.com)."
+                },
+                "currency": {
+                    "label": "Default Currency",
+                    "desc": "Currency used for plan pricing and invoice display (ISO 4217, e.g. IDR, USD)."
+                },
+                "maintenance_mode": {
+                    "label": "Enable Maintenance Mode",
+                    "desc": "When enabled, all users except superadmins will see a maintenance page."
+                },
+                "maintenance_message": {
+                    "label": "Maintenance Message",
+                    "desc": "The message displayed to users when maintenance mode is active."
+                }
             },
             "placeholders": {
                 "url": "https://...",
@@ -977,6 +1003,33 @@
                 "save": "Save Changes",
                 "saving": "Saving..."
             },
+            "alerting": {
+                "title": "Error Alerting",
+                "enabled": {
+                    "label": "Enable Alerting",
+                    "desc": "Send email alerts when error thresholds are exceeded."
+                },
+                "email": {
+                    "label": "Alert Email",
+                    "desc": "Email address to receive alerts."
+                },
+                "error_threshold": {
+                    "label": "Error Rate Threshold (%)",
+                    "desc": "Alert when error rate exceeds this percentage."
+                },
+                "rate_limit_threshold": {
+                    "label": "Rate Limit Threshold",
+                    "desc": "Alert when rate-limited requests exceed this count."
+                },
+                "response_time_threshold": {
+                    "label": "P95 Response Time Threshold (ms)",
+                    "desc": "Alert when P95 response time exceeds this value."
+                },
+                "cooldown": {
+                    "label": "Alert Cooldown (minutes)",
+                    "desc": "Minutes to wait before sending the same alert type again."
+                }
+            },
             "bank": {
                 "add_new_account": "Add New Account",
                 "empty": "No bank accounts added yet.",
@@ -993,7 +1046,8 @@
                 "password": "Password Policy",
                 "security": "Security & Rate Limiting",
                 "storage": "Storage Configuration",
-                "payment": "Payment Gateway"
+                "payment": "Payment Gateway",
+                "alerting": "Error Alerting"
             }
         },
         "plans": {
@@ -1147,18 +1201,18 @@
         }
     },
     "profile": {
-    "title": "Settings",
-    "subtitle": "Manage your account settings and preferences.",
-    "fallback": {
-      "user": "User",
-      "member": "Member"
-    },
-    "tabs": {
-      "general": "General",
-      "security": "Security",
-      "preferences": "Preferences",
-      "notifications": "Notifications"
-    },
+        "title": "Settings",
+        "subtitle": "Manage your account settings and preferences.",
+        "fallback": {
+            "user": "User",
+            "member": "Member"
+        },
+        "tabs": {
+            "general": "General",
+            "security": "Security",
+            "preferences": "Preferences",
+            "notifications": "Notifications"
+        },
         "general": {
             "title": "Profile Information",
             "subtitle": "Update your account details and public profile.",
@@ -1231,23 +1285,35 @@
                 "required": "Required"
             },
             "categories": {
-                "system": { "label": "System Updates", "desc": "Maintenance & announcements" },
-                "team": { "label": "Team Activity", "desc": "Member changes & invites" },
-                "payment": { "label": "Billing", "desc": "Invoices & subscriptions" },
-                "security": { "label": "Security", "desc": "Login alerts & password changes" }
+                "system": {
+                    "label": "System Updates",
+                    "desc": "Maintenance & announcements"
+                },
+                "team": {
+                    "label": "Team Activity",
+                    "desc": "Member changes & invites"
+                },
+                "payment": {
+                    "label": "Billing",
+                    "desc": "Invoices & subscriptions"
+                },
+                "security": {
+                    "label": "Security",
+                    "desc": "Login alerts & password changes"
+                }
             }
         },
-    "messages": {
-      "profile_updated": "Profile updated successfully!",
-      "password_changed": "Password changed successfully!",
-      "password_mismatch": "New passwords do not match",
-      "update_failed": "Failed to update profile",
-      "change_password_failed": "Failed to change password",
-      "twofa_required": "Your organization requires Two-Factor Authentication. Please enable it to continue.",
-      "2fa_method_totp": "2FA method changed to Authenticator App",
-      "2fa_method_email": "2FA method changed to Email"
-    }
-  },
+        "messages": {
+            "profile_updated": "Profile updated successfully!",
+            "password_changed": "Password changed successfully!",
+            "password_mismatch": "New passwords do not match",
+            "update_failed": "Failed to update profile",
+            "change_password_failed": "Failed to change password",
+            "twofa_required": "Your organization requires Two-Factor Authentication. Please enable it to continue.",
+            "2fa_method_totp": "2FA method changed to Authenticator App",
+            "2fa_method_email": "2FA method changed to Email"
+        }
+    },
     "admin": {
         "roles": {
             "title": "All Roles",

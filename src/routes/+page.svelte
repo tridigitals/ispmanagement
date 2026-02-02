@@ -8,7 +8,7 @@
   import { fade, fly } from "svelte/transition";
   import { get, derived } from "svelte/store";
   import { t } from "svelte-i18n";
-  import Icon from "$lib/components/Icon.svelte";
+  import Icon from "$lib/components/ui/Icon.svelte";
 
   let email = "";
   let password = "";
@@ -405,3 +405,4 @@
     }
   }
 </style>
+

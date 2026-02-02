@@ -1,6 +1,6 @@
 <script lang="ts">
     import { uploadStore } from "$lib/stores/upload";
-    import Icon from "$lib/components/Icon.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
     import { fly, slide } from "svelte/transition";
     import { t } from "svelte-i18n";
 
@@ -228,3 +228,4 @@
         color: var(--color-danger);
     }
 </style>
+

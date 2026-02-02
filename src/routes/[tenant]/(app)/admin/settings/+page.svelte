@@ -6,10 +6,10 @@
     import { appLogo } from "$lib/stores/logo";
     import { goto } from "$app/navigation";
     import { locale, t, waitLocale } from "svelte-i18n";
-    import Icon from "$lib/components/Icon.svelte";
-    import MobileFabMenu from "$lib/components/MobileFabMenu.svelte";
-    import Input from "$lib/components/Input.svelte";
-    import Select from "$lib/components/Select.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
+    import MobileFabMenu from "$lib/components/ui/MobileFabMenu.svelte";
+    import Input from "$lib/components/ui/Input.svelte";
+    import Select from "$lib/components/ui/Select.svelte";
     import type { Setting } from "$lib/api/client";
     import { toast } from "svelte-sonner";
     import { get } from "svelte/store";
@@ -2547,3 +2547,4 @@
         border: 1px solid var(--glass-border);
     }
 </style>
+

@@ -2,12 +2,12 @@
     import { page } from "$app/stores";
     import { onMount } from "svelte";
     import { api, type Invoice } from "$lib/api/client";
-    import Icon from "$lib/components/Icon.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
     import { toast } from "svelte-sonner";
     import { goto } from "$app/navigation";
-    import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
+    import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
     import { formatMoney } from "$lib/utils/money";
-    import Lightbox from "$lib/components/Lightbox.svelte";
+    import Lightbox from "$lib/components/ui/Lightbox.svelte";
     import { t } from "svelte-i18n";
     import { getTenantsCached } from "$lib/stores/superadminTenantsCache";
 
@@ -518,3 +518,4 @@
         color: var(--text-tertiary);
     }
 </style>
+

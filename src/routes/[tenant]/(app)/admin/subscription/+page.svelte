@@ -7,10 +7,10 @@
         type Invoice,
     } from "$lib/api/client";
     import { goto } from "$app/navigation";
-    import Icon from "$lib/components/Icon.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
     import { fade } from "svelte/transition";
     import { toast } from "svelte-sonner";
-    import Table from "$lib/components/Table.svelte";
+    import Table from "$lib/components/ui/Table.svelte";
     import { formatMoney } from "$lib/utils/money";
     import { appSettings } from "$lib/stores/settings";
     import { t } from "svelte-i18n";
@@ -1129,3 +1129,4 @@
         color: #111827;
     }
 </style>
+

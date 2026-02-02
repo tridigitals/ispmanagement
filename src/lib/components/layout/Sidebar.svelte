@@ -14,7 +14,7 @@
     import { goto } from "$app/navigation";
     import { t } from "svelte-i18n";
     import { getSlugFromDomain } from "$lib/utils/domain";
-    import Icon from "./Icon.svelte";
+    import Icon from "../ui/Icon.svelte";
 
     let { isMobileOpen = $bindable(false) } = $props();
 
@@ -131,7 +131,9 @@
 
     let isDropdownOpen = $state(false);
 
-    let isUrlSuperadmin = $derived($page.url.pathname.startsWith("/superadmin"));
+    let isUrlSuperadmin = $derived(
+        $page.url.pathname.startsWith("/superadmin"),
+    );
     let isUrlAdmin = $derived($page.url.pathname.includes("/admin"));
     let currentMenu = $derived(
         isUrlSuperadmin ? superAdminMenu : isUrlAdmin ? adminMenu : appMenu,
@@ -166,7 +168,8 @@
         }
 
         if (item.href === `${tenantPrefix}/admin`) return path === item.href;
-        if (item.href === `${tenantPrefix}/dashboard`) return path === item.href;
+        if (item.href === `${tenantPrefix}/dashboard`)
+            return path === item.href;
 
         return path === item.href || path.startsWith(`${item.href}/`);
     }
@@ -228,7 +231,11 @@
             <button
                 class="context-btn"
                 onclick={() =>
-                    goto(tenantPrefix ? `${tenantPrefix}/dashboard` : "/dashboard")}
+                    goto(
+                        tenantPrefix
+                            ? `${tenantPrefix}/dashboard`
+                            : "/dashboard",
+                    )}
                 aria-label={$t("sidebar.exit") || "Exit"}
                 data-tooltip={$t("sidebar.exit") || "Exit"}
             >
@@ -245,7 +252,9 @@
                 data-tooltip={$t("sidebar.super_admin") || "Super Admin"}
             >
                 <Icon name="server" size={16} />
-                <span class="label">{$t("sidebar.super_admin") || "Super Admin"}</span>
+                <span class="label"
+                    >{$t("sidebar.super_admin") || "Super Admin"}</span
+                >
             </button>
         {/if}
 

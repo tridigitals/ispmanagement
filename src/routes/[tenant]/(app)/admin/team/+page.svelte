@@ -4,13 +4,13 @@
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
     import { fade, fly } from "svelte/transition";
-    import Icon from "$lib/components/Icon.svelte";
-    import Table from "$lib/components/Table.svelte";
-    import TableToolbar from "$lib/components/TableToolbar.svelte";
-    import StatsCard from "$lib/components/StatsCard.svelte";
-    import Modal from "$lib/components/Modal.svelte";
-    import Select from "$lib/components/Select.svelte";
-    import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
+    import Table from "$lib/components/ui/Table.svelte";
+    import TableToolbar from "$lib/components/ui/TableToolbar.svelte";
+    import StatsCard from "$lib/components/dashboard/StatsCard.svelte";
+    import Modal from "$lib/components/ui/Modal.svelte";
+    import Select from "$lib/components/ui/Select.svelte";
+    import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
     import { toast } from "svelte-sonner";
     import { t } from "svelte-i18n";
     import { get } from "svelte/store";
@@ -1075,3 +1075,4 @@
         color: #0f172a;
     }
 </style>
+

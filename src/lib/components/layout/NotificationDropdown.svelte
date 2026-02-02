@@ -2,7 +2,7 @@
     import { fly, fade } from "svelte/transition";
     import { clickOutside } from "$lib/actions/clickOutside";
     import { t } from "svelte-i18n";
-    import Icon from "./Icon.svelte";
+    import Icon from "../ui/Icon.svelte";
     import { page } from "$app/stores";
     import {
         notifications,
@@ -23,18 +23,23 @@
     let lastOpenRefreshAt = 0;
 
     let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
-    let isCustomDomain = $derived(domainSlug && domainSlug === $user?.tenant_slug);
+    let isCustomDomain = $derived(
+        domainSlug && domainSlug === $user?.tenant_slug,
+    );
     let tenantPrefix = $derived(
         $user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : "",
     );
-    let isSuperadminUrl = $derived($page.url.pathname.startsWith("/superadmin"));
+    let isSuperadminUrl = $derived(
+        $page.url.pathname.startsWith("/superadmin"),
+    );
 
     async function open() {
         isOpen = true;
         const now = Date.now();
         const shouldRefresh =
             $notifications.length === 0 ||
-            ($unreadCount > 0 && now - lastOpenRefreshAt > OPEN_REFRESH_MIN_INTERVAL_MS);
+            ($unreadCount > 0 &&
+                now - lastOpenRefreshAt > OPEN_REFRESH_MIN_INTERVAL_MS);
 
         if (shouldRefresh) {
             lastOpenRefreshAt = now;

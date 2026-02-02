@@ -4,13 +4,22 @@
     import type { Setting, BankAccount } from "$lib/api/client";
     import { isSuperAdmin } from "$lib/stores/auth";
     import { goto } from "$app/navigation";
-    import Icon from "$lib/components/Icon.svelte";
-    import MobileFabMenu from "$lib/components/MobileFabMenu.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
+    import MobileFabMenu from "$lib/components/ui/MobileFabMenu.svelte";
     import { toast } from "$lib/stores/toast";
     import { appSettings } from "$lib/stores/settings";
     import { superadminPlatformSettingsCache } from "$lib/stores/superadminPlatformSettings";
     import { get } from "svelte/store";
     import { t } from "svelte-i18n";
+
+    // Modulariized Settings Components
+    import SettingsGeneralTab from "$lib/components/superadmin/settings/SettingsGeneralTab.svelte";
+    import SettingsAuthTab from "$lib/components/superadmin/settings/SettingsAuthTab.svelte";
+    import SettingsPasswordTab from "$lib/components/superadmin/settings/SettingsPasswordTab.svelte";
+    import SettingsSecurityTab from "$lib/components/superadmin/settings/SettingsSecurityTab.svelte";
+    import SettingsStorageTab from "$lib/components/superadmin/settings/SettingsStorageTab.svelte";
+    import SettingsPaymentTab from "$lib/components/superadmin/settings/SettingsPaymentTab.svelte";
+    import SettingsAlertingTab from "$lib/components/superadmin/settings/SettingsAlertingTab.svelte";
 
     let loading = true;
     let saving = false;
@@ -89,6 +98,14 @@
     let paymentManualEnabled = true;
     let paymentManualInstructions = "";
 
+    // Alerting Settings
+    let alertingEnabled = false;
+    let alertingEmail = "";
+    let alertingErrorThreshold = 5.0;
+    let alertingRateLimitThreshold = 50;
+    let alertingResponseTimeThreshold = 3000;
+    let alertingCooldownMinutes = 15;
+
     let hasChanges = false;
 
     // Sending test email state
@@ -125,6 +142,11 @@
             labelKey: "superadmin.settings.categories.payment",
             labelFallback: "Payment Gateway",
             icon: "credit-card",
+        },
+        alerting: {
+            labelKey: "superadmin.settings.categories.alerting",
+            labelFallback: "Error Alerting",
+            icon: "bell",
         },
     };
 
@@ -188,10 +210,13 @@
         currencyCode = (settingsMap["currency_code"] || "IDR").toUpperCase();
 
         // Authentication
-        authAllowRegistration = settingsMap["auth_allow_registration"] === "true";
+        authAllowRegistration =
+            settingsMap["auth_allow_registration"] === "true";
         authRequireEmailVerification =
             settingsMap["auth_require_email_verification"] === "true";
-        authJwtExpiryHours = parseInt(settingsMap["auth_jwt_expiry_hours"] || "24");
+        authJwtExpiryHours = parseInt(
+            settingsMap["auth_jwt_expiry_hours"] || "24",
+        );
         authSessionTimeoutMinutes = parseInt(
             settingsMap["auth_session_timeout_minutes"] || "60",
         );
@@ -251,16 +276,37 @@
         storageS3PublicUrl = settingsMap["storage_s3_public_url"] || "";
 
         // Payment
-        paymentMidtransEnabled = settingsMap["payment_midtrans_enabled"] === "true";
-        paymentMidtransMerchantId = settingsMap["payment_midtrans_merchant_id"] || "";
-        paymentMidtransServerKey = settingsMap["payment_midtrans_server_key"] || "";
-        paymentMidtransClientKey = settingsMap["payment_midtrans_client_key"] || "";
+        paymentMidtransEnabled =
+            settingsMap["payment_midtrans_enabled"] === "true";
+        paymentMidtransMerchantId =
+            settingsMap["payment_midtrans_merchant_id"] || "";
+        paymentMidtransServerKey =
+            settingsMap["payment_midtrans_server_key"] || "";
+        paymentMidtransClientKey =
+            settingsMap["payment_midtrans_client_key"] || "";
         paymentMidtransIsProduction =
             settingsMap["payment_midtrans_is_production"] === "true";
-        paymentManualEnabled = settingsMap["payment_manual_enabled"] !== "false"; // Default true
+        paymentManualEnabled =
+            settingsMap["payment_manual_enabled"] !== "false"; // Default true
         paymentManualInstructions =
             settingsMap["payment_manual_instructions"] ||
             "Please transfer to our bank account.";
+
+        // Alerting
+        alertingEnabled = settingsMap["alerting_enabled"] === "true";
+        alertingEmail = settingsMap["alerting_email"] || "";
+        alertingErrorThreshold = parseFloat(
+            settingsMap["alerting_error_threshold"] || "5.0",
+        );
+        alertingRateLimitThreshold = parseInt(
+            settingsMap["alerting_rate_limit_threshold"] || "50",
+        );
+        alertingResponseTimeThreshold = parseInt(
+            settingsMap["alerting_response_time_threshold"] || "3000",
+        );
+        alertingCooldownMinutes = parseInt(
+            settingsMap["alerting_cooldown_minutes"] || "15",
+        );
     }
 
     async function loadSettings(opts: { silent?: boolean } = {}) {
@@ -498,6 +544,37 @@
                     paymentManualInstructions,
                     "Manual Payment Instructions",
                 ),
+                // Alerting
+                api.settings.upsert(
+                    "alerting_enabled",
+                    alertingEnabled ? "true" : "false",
+                    "Enable error alerting via email",
+                ),
+                api.settings.upsert(
+                    "alerting_email",
+                    alertingEmail,
+                    "Email address to receive alerts",
+                ),
+                api.settings.upsert(
+                    "alerting_error_threshold",
+                    alertingErrorThreshold.toString(),
+                    "Error rate threshold percentage",
+                ),
+                api.settings.upsert(
+                    "alerting_rate_limit_threshold",
+                    alertingRateLimitThreshold.toString(),
+                    "Rate limit count threshold",
+                ),
+                api.settings.upsert(
+                    "alerting_response_time_threshold",
+                    alertingResponseTimeThreshold.toString(),
+                    "P95 response time threshold in ms",
+                ),
+                api.settings.upsert(
+                    "alerting_cooldown_minutes",
+                    alertingCooldownMinutes.toString(),
+                    "Minutes between same alert type",
+                ),
             ];
 
             await Promise.all(updates);
@@ -517,12 +594,15 @@
                 currency_code: currencyCode.toUpperCase(),
                 maintenance_mode: maintenanceMode ? "true" : "false",
                 maintenance_message: maintenanceMessage,
-                auth_allow_registration: authAllowRegistration ? "true" : "false",
+                auth_allow_registration: authAllowRegistration
+                    ? "true"
+                    : "false",
                 auth_require_email_verification: authRequireEmailVerification
                     ? "true"
                     : "false",
                 auth_jwt_expiry_hours: authJwtExpiryHours.toString(),
-                auth_session_timeout_minutes: authSessionTimeoutMinutes.toString(),
+                auth_session_timeout_minutes:
+                    authSessionTimeoutMinutes.toString(),
                 auth_password_min_length: authPasswordMinLength.toString(),
                 auth_password_require_uppercase: authPasswordRequireUppercase
                     ? "true"
@@ -533,11 +613,11 @@
                 auth_password_require_special: authPasswordRequireSpecial
                     ? "true"
                     : "false",
-                auth_logout_all_on_password_change: authLogoutAllOnPasswordChange
-                    ? "true"
-                    : "false",
+                auth_logout_all_on_password_change:
+                    authLogoutAllOnPasswordChange ? "true" : "false",
                 auth_max_login_attempts: maxLoginAttempts.toString(),
-                auth_lockout_duration_minutes: lockoutDurationMinutes.toString(),
+                auth_lockout_duration_minutes:
+                    lockoutDurationMinutes.toString(),
                 api_rate_limit_per_minute: apiRateLimitPerMinute.toString(),
                 enable_ip_blocking: enableIpBlocking ? "true" : "false",
                 "2fa_enabled": twoFAEnabled ? "true" : "false",
@@ -558,7 +638,9 @@
                 storage_s3_access_key: storageS3AccessKey,
                 storage_s3_secret_key: storageS3SecretKey,
                 storage_s3_public_url: storageS3PublicUrl,
-                payment_midtrans_enabled: paymentMidtransEnabled ? "true" : "false",
+                payment_midtrans_enabled: paymentMidtransEnabled
+                    ? "true"
+                    : "false",
                 payment_midtrans_merchant_id: paymentMidtransMerchantId,
                 payment_midtrans_server_key: paymentMidtransServerKey,
                 payment_midtrans_client_key: paymentMidtransClientKey,
@@ -567,6 +649,14 @@
                     : "false",
                 payment_manual_enabled: paymentManualEnabled ? "true" : "false",
                 payment_manual_instructions: paymentManualInstructions,
+                alerting_enabled: alertingEnabled ? "true" : "false",
+                alerting_email: alertingEmail,
+                alerting_error_threshold: alertingErrorThreshold.toString(),
+                alerting_rate_limit_threshold:
+                    alertingRateLimitThreshold.toString(),
+                alerting_response_time_threshold:
+                    alertingResponseTimeThreshold.toString(),
+                alerting_cooldown_minutes: alertingCooldownMinutes.toString(),
             };
 
             superadminPlatformSettingsCache.set({
@@ -720,1225 +810,102 @@
             {:else}
                 <!-- General & Maintenance Tab -->
                 {#if activeTab === "general"}
-                    <div class="card section fade-in">
-                        <div class="card-header">
-                            <h3>
-                                {$t("superadmin.settings.sections.general") ||
-                                    "General Settings"}
-                            </h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="setting-row">
-                                <div class="setting-info full-width">
-                                    <label
-                                        class="setting-label"
-                                        for="public-url"
-                                        >{$t(
-                                            "superadmin.settings.fields.public_url",
-                                        ) || "Public Application URL"}</label
-                                    >
-                                    <p class="setting-description">
-                                        Base URL for redirects, emails, and
-                                        payment callbacks (e.g.
-                                        https://app.example.com).
-                                    </p>
-                                    <input
-                                        type="text"
-                                        id="public-url"
-                                        bind:value={appPublicUrl}
-                                        on:input={handleChange}
-                                        class="form-input"
-                                        placeholder={$t(
-                                            "superadmin.settings.placeholders.url",
-                                        ) || "https://..."}
-                                    />
-                                </div>
-                            </div>
-
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <label
-                                        class="setting-label"
-                                        for="currency-code"
-                                        >{$t(
-                                            "superadmin.settings.fields.currency",
-                                        ) || "Default Currency"}</label
-                                    >
-                                    <p class="setting-description">
-                                        Currency used for plan pricing and invoice
-                                        display (ISO 4217, e.g. IDR, USD).
-                                    </p>
-                                </div>
-                                <select
-                                    id="currency-code"
-                                    class="form-input"
-                                    bind:value={currencyCode}
-                                    on:change={handleChange}
-                                >
-                                    {#each currencyCodeOptions as opt}
-                                        <option value={opt}>{opt}</option>
-                                    {/each}
-                                </select>
-                            </div>
-
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <label
-                                        class="setting-label"
-                                        for="maintenance-mode"
-                                        >{$t(
-                                            "superadmin.settings.fields.maintenance_mode",
-                                        ) || "Enable Maintenance Mode"}</label
-                                    >
-                                    <p class="setting-description">
-                                        When enabled, all users except
-                                        superadmins will see a maintenance page.
-                                    </p>
-                                </div>
-                                <label class="toggle">
-                                    <input
-                                        type="checkbox"
-                                        id="maintenance-mode"
-                                        bind:checked={maintenanceMode}
-                                        on:change={handleChange}
-                                    />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-
-                            <div class="setting-row">
-                                <div class="setting-info full-width">
-                                    <label
-                                        class="setting-label"
-                                        for="maintenance-message"
-                                        >{$t(
-                                            "superadmin.settings.fields.maintenance_message",
-                                        ) || "Maintenance Message"}</label
-                                    >
-                                    <p class="setting-description">
-                                        Message displayed to users during
-                                        maintenance.
-                                    </p>
-                                    <textarea
-                                        id="maintenance-message"
-                                        bind:value={maintenanceMessage}
-                                        on:input={handleChange}
-                                        rows="3"
-                                        placeholder={$t(
-                                            "superadmin.settings.placeholders.maintenance_message",
-                                        ) || "Enter maintenance message..."}
-                                    ></textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <SettingsGeneralTab
+                        bind:appPublicUrl
+                        bind:currencyCode
+                        {currencyCodeOptions}
+                        bind:maintenanceMode
+                        bind:maintenanceMessage
+                        on:change={handleChange}
+                    />
                 {/if}
 
                 <!-- Authentication Tab -->
                 {#if activeTab === "auth"}
-                    <div class="card section fade-in">
-                        <div class="card-header">
-                            <h3>
-                                {$t("superadmin.settings.sections.auth") ||
-                                    "Authentication Policy"}
-                            </h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <label
-                                        class="setting-label"
-                                        for="allow-registration"
-                                        >{$t(
-                                            "superadmin.settings.auth.allow_public_registration.label",
-                                        ) || "Allow Public Registration"}</label
-                                    >
-                                    <p class="setting-description">
-                                        {$t(
-                                            "superadmin.settings.auth.allow_public_registration.desc",
-                                        ) || "Allow new users to sign up freely."}
-                                    </p>
-                                </div>
-                                <label class="toggle">
-                                    <input
-                                        type="checkbox"
-                                        id="allow-registration"
-                                        bind:checked={authAllowRegistration}
-                                        on:change={handleChange}
-                                    />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <label
-                                        class="setting-label"
-                                        for="require-email-verify"
-                                        >{$t(
-                                            "superadmin.settings.auth.require_email_verification.label",
-                                        ) || "Require Email Verification"}</label
-                                    >
-                                    <p class="setting-description">
-                                        {$t(
-                                            "superadmin.settings.auth.require_email_verification.desc",
-                                        ) || "Users must verify email before logging in."}
-                                    </p>
-                                </div>
-                                <label class="toggle">
-                                    <input
-                                        type="checkbox"
-                                        id="require-email-verify"
-                                        bind:checked={
-                                            authRequireEmailVerification
-                                        }
-                                        on:change={handleChange}
-                                    />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <label
-                                        class="setting-label"
-                                        for="jwt-expiry"
-                                        >{$t("superadmin.settings.auth.jwt_expiry.label") ||
-                                            "JWT Expiry (Hours)"}</label
-                                    >
-                                    <p class="setting-description">
-                                        {$t("superadmin.settings.auth.jwt_expiry.desc") ||
-                                            "How long an auth token remains valid."}
-                                    </p>
-                                </div>
-                                <div class="input-group">
-                                    <input
-                                        type="number"
-                                        id="jwt-expiry"
-                                        bind:value={authJwtExpiryHours}
-                                        on:input={handleChange}
-                                        min="1"
-                                    />
-                                    <span class="input-suffix"
-                                        >{$t("common.units.hours") || "hours"}</span
-                                    >
-                                </div>
-                            </div>
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <label
-                                        class="setting-label"
-                                        for="session-timeout"
-                                        >{$t(
-                                            "superadmin.settings.auth.session_timeout.label",
-                                        ) || "Session Timeout (Minutes)"}</label
-                                    >
-                                    <p class="setting-description">
-                                        {$t(
-                                            "superadmin.settings.auth.session_timeout.desc",
-                                        ) || "Auto-logout after inactivity."}
-                                    </p>
-                                </div>
-                                <div class="input-group">
-                                    <input
-                                        type="number"
-                                        id="session-timeout"
-                                        bind:value={authSessionTimeoutMinutes}
-                                        on:input={handleChange}
-                                        min="5"
-                                    />
-                                    <span class="input-suffix"
-                                        >{$t("common.units.min") || "min"}</span
-                                    >
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <SettingsAuthTab
+                        bind:authAllowRegistration
+                        bind:authRequireEmailVerification
+                        bind:authJwtExpiryHours
+                        bind:authSessionTimeoutMinutes
+                        on:change={handleChange}
+                    />
                 {/if}
 
                 <!-- Password Policy Tab -->
                 {#if activeTab === "password"}
-                    <div class="card section fade-in">
-                        <div class="card-header">
-                            <h3>
-                                {$t("superadmin.settings.sections.password") ||
-                                    "Password Policy"}
-                            </h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <label
-                                        class="setting-label"
-                                        for="min-pwd-length"
-                                        >{$t("superadmin.settings.password.min_length.label") ||
-                                            "Minimum Length"}</label
-                                    >
-                                </div>
-                                <div class="input-group">
-                                    <input
-                                        type="number"
-                                        id="min-pwd-length"
-                                        bind:value={authPasswordMinLength}
-                                        on:input={handleChange}
-                                        min="6"
-                                    />
-                                    <span class="input-suffix"
-                                        >{$t("common.units.chars") || "chars"}</span
-                                    >
-                                </div>
-                            </div>
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <label
-                                        class="setting-label"
-                                        for="require-uppercase"
-                                        >{$t(
-                                            "superadmin.settings.password.require_uppercase.label",
-                                        ) || "Require Uppercase"}</label
-                                    >
-                                </div>
-                                <label class="toggle">
-                                    <input
-                                        type="checkbox"
-                                        id="require-uppercase"
-                                        bind:checked={
-                                            authPasswordRequireUppercase
-                                        }
-                                        on:change={handleChange}
-                                    />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <label
-                                        class="setting-label"
-                                        for="require-number"
-                                        >{$t(
-                                            "superadmin.settings.password.require_number.label",
-                                        ) || "Require Number"}</label
-                                    >
-                                </div>
-                                <label class="toggle">
-                                    <input
-                                        type="checkbox"
-                                        id="require-number"
-                                        bind:checked={authPasswordRequireNumber}
-                                        on:change={handleChange}
-                                    />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <label
-                                        class="setting-label"
-                                        for="require-special"
-                                        >{$t(
-                                            "superadmin.settings.password.require_special.label",
-                                        ) || "Require Special Character"}</label
-                                    >
-                                </div>
-                                <label class="toggle">
-                                    <input
-                                        type="checkbox"
-                                        id="require-special"
-                                        bind:checked={
-                                            authPasswordRequireSpecial
-                                        }
-                                        on:change={handleChange}
-                                    />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
+                    <SettingsPasswordTab
+                        bind:authPasswordMinLength
+                        bind:authPasswordRequireUppercase
+                        bind:authPasswordRequireNumber
+                        bind:authPasswordRequireSpecial
+                        on:change={handleChange}
+                    />
                 {/if}
 
                 <!-- Security Tab -->
                 {#if activeTab === "security"}
-                    <div class="card section fade-in">
-                        <div class="card-header">
-                            <h3>
-                                {$t("superadmin.settings.sections.security") ||
-                                    "Security & Rate Limiting"}
-                            </h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <label
-                                        class="setting-label"
-                                        for="max-login-attempts"
-                                        >{$t(
-                                            "superadmin.settings.security.max_login_attempts.label",
-                                        ) || "Max Login Attempts"}</label
-                                    >
-                                    <p class="setting-description">
-                                        {$t(
-                                            "superadmin.settings.security.max_login_attempts.desc",
-                                        ) ||
-                                            "Number of failed login attempts before account lockout."}
-                                    </p>
-                                </div>
-                                <div class="input-group">
-                                    <input
-                                        type="number"
-                                        id="max-login-attempts"
-                                        bind:value={maxLoginAttempts}
-                                        on:input={handleChange}
-                                        min="1"
-                                        max="20"
-                                    />
-                                    <span class="input-suffix"
-                                        >{$t("common.units.attempts") ||
-                                            "attempts"}</span
-                                    >
-                                </div>
-                            </div>
-
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <label
-                                        class="setting-label"
-                                        for="lockout-duration"
-                                        >{$t(
-                                            "superadmin.settings.security.lockout_duration.label",
-                                        ) || "Lockout Duration"}</label
-                                    >
-                                    <p class="setting-description">
-                                        {$t(
-                                            "superadmin.settings.security.lockout_duration.desc",
-                                        ) ||
-                                            "How long a user stays locked out after max failed attempts."}
-                                    </p>
-                                </div>
-                                <div class="input-group">
-                                    <input
-                                        type="number"
-                                        id="lockout-duration"
-                                        bind:value={lockoutDurationMinutes}
-                                        on:input={handleChange}
-                                        min="1"
-                                        max="1440"
-                                    />
-                                    <span class="input-suffix"
-                                        >{$t("common.units.minutes") ||
-                                            "minutes"}</span
-                                    >
-                                </div>
-                            </div>
-
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <label
-                                        class="setting-label"
-                                        for="api-rate-limit"
-                                        >{$t(
-                                            "superadmin.settings.security.api_rate_limit.label",
-                                        ) || "API Rate Limit"}</label
-                                    >
-                                    <p class="setting-description">
-                                        {$t(
-                                            "superadmin.settings.security.api_rate_limit.desc",
-                                        ) || "Maximum API requests allowed per minute per user."}
-                                    </p>
-                                </div>
-                                <div class="input-group">
-                                    <input
-                                        type="number"
-                                        id="api-rate-limit"
-                                        bind:value={apiRateLimitPerMinute}
-                                        on:input={handleChange}
-                                        min="10"
-                                        max="1000"
-                                    />
-                                    <span class="input-suffix"
-                                        >{$t("common.units.req_per_min") ||
-                                            "req/min"}</span
-                                    >
-                                </div>
-                            </div>
-
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <span class="setting-label"
-                                        >{$t(
-                                            "superadmin.settings.security.ip_blocking.label",
-                                        ) || "Enable IP Blocking"}</span
-                                    >
-                                    <p class="setting-description">
-                                        {$t(
-                                            "superadmin.settings.security.ip_blocking.desc",
-                                        ) ||
-                                            "Automatically block IP addresses with suspicious activity."}
-                                    </p>
-                                </div>
-                                <label class="toggle">
-                                    <input
-                                        type="checkbox"
-                                        bind:checked={enableIpBlocking}
-                                        on:change={handleChange}
-                                        aria-label={$t(
-                                            "superadmin.settings.security.ip_blocking.aria",
-                                        ) || "Enable IP Blocking"}
-                                    />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 2FA Settings Card -->
-                    <div
-                        class="card section fade-in"
-                        style="margin-top: 1.5rem;"
-                    >
-                        <div class="card-header">
-                            <h3>
-                                {$t("superadmin.settings.sections.twofa") ||
-                                    "Two-Factor Authentication"}
-                            </h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <span class="setting-label"
-                                        >{$t(
-                                            "superadmin.settings.twofa.enable_2fa.label",
-                                        ) || "Enable 2FA"}</span
-                                    >
-                                    <p class="setting-description">
-                                        {$t(
-                                            "superadmin.settings.twofa.enable_2fa.desc",
-                                        ) ||
-                                            "Allow users to set up two-factor authentication for enhanced security."}
-                                    </p>
-                                </div>
-                                <label class="toggle">
-                                    <input
-                                        type="checkbox"
-                                        bind:checked={twoFAEnabled}
-                                        on:change={handleChange}
-                                        aria-label={$t(
-                                            "superadmin.settings.twofa.enable_2fa.aria",
-                                        ) || "Enable 2FA"}
-                                    />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <span class="setting-label"
-                                        >{$t(
-                                            "superadmin.settings.twofa.enable_totp.label",
-                                        ) || "TOTP (Authenticator App)"}</span
-                                    >
-                                    <p class="setting-description">
-                                        {$t(
-                                            "superadmin.settings.twofa.enable_totp.desc",
-                                        ) ||
-                                            "Allow users to verify with Google Authenticator, Authy, etc."}
-                                    </p>
-                                </div>
-                                <label class="toggle">
-                                    <input
-                                        type="checkbox"
-                                        bind:checked={twoFAMethodTotp}
-                                        on:change={handleChange}
-                                        aria-label={$t(
-                                            "superadmin.settings.twofa.enable_totp.aria",
-                                        ) || "Enable TOTP"}
-                                    />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <span class="setting-label"
-                                        >{$t(
-                                            "superadmin.settings.twofa.email_otp.label",
-                                        ) || "Email OTP"}</span
-                                    >
-                                    <p class="setting-description">
-                                        {$t(
-                                            "superadmin.settings.twofa.email_otp.desc",
-                                        ) ||
-                                            "Allow users to receive verification codes via email."}
-                                    </p>
-                                </div>
-                                <label class="toggle">
-                                    <input
-                                        type="checkbox"
-                                        bind:checked={twoFAMethodEmail}
-                                        on:change={handleChange}
-                                        aria-label={$t(
-                                            "superadmin.settings.twofa.enable_email_otp.aria",
-                                        ) || "Enable Email OTP"}
-                                    />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-
-                            {#if twoFAMethodEmail}
-                                <div class="setting-row">
-                                    <div class="setting-info">
-                                        <label
-                                            class="setting-label"
-                                            for="email-otp-expiry"
-                                            >{$t(
-                                                "superadmin.settings.twofa.email_otp_expiry.label",
-                                            ) || "Email OTP Expiry"}</label
-                                        >
-                                        <p class="setting-description">
-                                            {$t(
-                                                "superadmin.settings.twofa.email_otp_expiry.desc",
-                                            ) ||
-                                                "How long email verification codes remain valid."}
-                                        </p>
-                                    </div>
-                                    <div class="input-group">
-                                        <input
-                                            type="number"
-                                            id="email-otp-expiry"
-                                            bind:value={
-                                                twoFAEmailOtpExpiryMinutes
-                                            }
-                                            on:input={handleChange}
-                                            min="1"
-                                            max="30"
-                                        />
-                                        <span class="input-suffix"
-                                            >{$t("common.units.min") ||
-                                                "min"}</span
-                                        >
-                                    </div>
-                                </div>
-                            {/if}
-                        </div>
-                    </div>
+                    <SettingsSecurityTab
+                        bind:maxLoginAttempts
+                        bind:lockoutDurationMinutes
+                        bind:apiRateLimitPerMinute
+                        bind:enableIpBlocking
+                        bind:twoFAEnabled
+                        bind:twoFAMethodTotp
+                        bind:twoFAMethodEmail
+                        bind:twoFAEmailOtpExpiryMinutes
+                        on:change={handleChange}
+                    />
                 {/if}
 
                 <!-- Storage Tab -->
                 {#if activeTab === "storage"}
-                    <div class="card section fade-in">
-                        <div class="card-header">
-                            <h3>
-                                {$t("superadmin.settings.sections.storage") ||
-                                    "Storage Configuration"}
-                            </h3>
-                        </div>
-                        <div class="card-body">
-                            <!-- Driver Selection -->
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <label
-                                        class="setting-label"
-                                        for="storage-driver"
-                                        >{$t(
-                                            "superadmin.settings.storage.driver.label",
-                                        ) || "Storage Driver"}</label
-                                    >
-                                    <p class="setting-description">
-                                        {$t(
-                                            "superadmin.settings.storage.driver.desc",
-                                        ) ||
-                                            "Choose where files are stored. Local uses the server's disk."}
-                                    </p>
-                                </div>
-                                <div class="input-group">
-                                    <select
-                                        id="storage-driver"
-                                        bind:value={storageDriver}
-                                        on:change={handleChange}
-                                        class="native-select"
-                                    >
-                                        <option value="local">
-                                            {$t(
-                                                "superadmin.settings.storage.driver.options.local",
-                                            ) || "Local Disk"}
-                                        </option
-                                        >
-                                        <option value="s3">
-                                            {$t(
-                                                "superadmin.settings.storage.driver.options.s3",
-                                            ) || "AWS S3 / MinIO"}
-                                        </option
-                                        >
-                                        <option value="r2">
-                                            {$t(
-                                                "superadmin.settings.storage.driver.options.r2",
-                                            ) || "Cloudflare R2"}
-                                        </option
-                                        >
-                                    </select>
-                                </div>
-                            </div>
-
-                            {#if storageDriver !== "local"}
-                                <div class="sub-settings fade-in">
-                                    <div class="setting-row">
-                                        <div class="setting-info">
-                                            <label
-                                                class="setting-label"
-                                                for="bucket-name"
-                                                >{$t(
-                                                    "superadmin.settings.storage.s3.bucket_name",
-                                                ) || "Bucket Name"}</label
-                                            >
-                                        </div>
-                                        <input
-                                            type="text"
-                                            id="bucket-name"
-                                            bind:value={storageS3Bucket}
-                                            on:input={handleChange}
-                                            placeholder={$t(
-                                                "superadmin.settings.placeholders.s3_bucket",
-                                            ) || "e.g. my-app-uploads"}
-                                        />
-                                    </div>
-                                    <div class="setting-row">
-                                        <div class="setting-info">
-                                            <label
-                                                class="setting-label"
-                                                for="bucket-region"
-                                                >{$t(
-                                                    "superadmin.settings.storage.s3.region",
-                                                ) || "Region"}</label
-                                            >
-                                            <p class="setting-description">
-                                                {$t(
-                                                    "superadmin.settings.storage.s3.region_hint",
-                                                ) || "Use 'auto' for R2."}
-                                            </p>
-                                        </div>
-                                        <input
-                                            type="text"
-                                            id="bucket-region"
-                                            bind:value={storageS3Region}
-                                            on:input={handleChange}
-                                            placeholder={$t(
-                                                "superadmin.settings.placeholders.s3_region",
-                                            ) || "us-east-1"}
-                                        />
-                                    </div>
-                                    <div class="setting-row">
-                                        <div class="setting-info">
-                                            <label
-                                                class="setting-label"
-                                                for="bucket-endpoint"
-                                                >{$t(
-                                                    "superadmin.settings.storage.s3.endpoint_url",
-                                                ) || "Endpoint URL"}</label
-                                            >
-                                            <p class="setting-description">
-                                                {$t(
-                                                    "superadmin.settings.storage.s3.endpoint_hint",
-                                                ) ||
-                                                    "Required for R2 (https://ID.r2.cloudflarestorage.com) or MinIO."}
-                                            </p>
-                                        </div>
-                                        <input
-                                            type="text"
-                                            id="bucket-endpoint"
-                                            bind:value={storageS3Endpoint}
-                                            on:input={handleChange}
-                                            placeholder={$t(
-                                                "superadmin.settings.placeholders.url",
-                                            ) || "https://..."}
-                                        />
-                                    </div>
-                                    <div class="setting-row">
-                                        <div class="setting-info">
-                                            <label
-                                                class="setting-label"
-                                                for="access-key"
-                                                >{$t(
-                                                    "superadmin.settings.storage.s3.access_key_id",
-                                                ) || "Access Key ID"}</label
-                                            >
-                                        </div>
-                                        <input
-                                            type="text"
-                                            id="access-key"
-                                            bind:value={storageS3AccessKey}
-                                            on:input={handleChange}
-                                        />
-                                    </div>
-                                    <div class="setting-row">
-                                        <div class="setting-info">
-                                            <label
-                                                class="setting-label"
-                                                for="access-secret-key"
-                                                >{$t(
-                                                    "superadmin.settings.storage.s3.secret_access_key",
-                                                ) || "Secret Access Key"}</label
-                                            >
-                                        </div>
-                                        <input
-                                            type="password"
-                                            id="access-secret-key"
-                                            bind:value={storageS3SecretKey}
-                                            on:input={handleChange}
-                                        />
-                                    </div>
-                                    <div class="setting-row">
-                                        <div class="setting-info">
-                                            <label
-                                                class="setting-label"
-                                                for="public-access-url"
-                                                >{$t(
-                                                    "superadmin.settings.storage.s3.public_url_optional",
-                                                ) ||
-                                                    "Public Access URL (Optional)"}</label
-                                            >
-                                            <p class="setting-description">
-                                                {$t(
-                                                    "superadmin.settings.storage.s3.public_url_hint",
-                                                ) || "CDN URL if serving files publicly."}
-                                            </p>
-                                        </div>
-                                        <input
-                                            type="text"
-                                            id="public-access-url"
-                                            bind:value={storageS3PublicUrl}
-                                            on:input={handleChange}
-                                            placeholder={$t(
-                                                "superadmin.settings.placeholders.public_url",
-                                            ) || "https://cdn.example.com"}
-                                        />
-                                    </div>
-                                </div>
-                            {/if}
-
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <label
-                                        class="setting-label"
-                                        for="max-file-size"
-                                        >{$t(
-                                            "superadmin.settings.storage.max_file_size_mb",
-                                        ) || "Max File Size (MB)"}</label
-                                    >
-                                    <p class="setting-description">
-                                        {$t(
-                                            "superadmin.settings.storage.max_file_size_mb_desc",
-                                        ) ||
-                                            "Maximum allowed size for a single file upload."}
-                                    </p>
-                                </div>
-                                <div class="input-group">
-                                    <input
-                                        type="number"
-                                        id="max-file-size"
-                                        bind:value={storageMaxFileSizeMb}
-                                        on:input={handleChange}
-                                        min="1"
-                                    />
-                                    <span class="input-suffix"
-                                        >{$t("common.units.mb") || "MB"}</span
-                                    >
-                                </div>
-                            </div>
-
-                            <div class="setting-row">
-                                <div class="setting-info full-width">
-                                    <label
-                                        class="setting-label"
-                                        for="allowed-extensions"
-                                        >{$t(
-                                            "superadmin.settings.storage.allowed_extensions",
-                                        ) || "Allowed Extensions"}</label
-                                    >
-                                    <p class="setting-description">
-                                        {$t(
-                                            "superadmin.settings.storage.allowed_extensions_desc",
-                                        ) ||
-                                            "Comma-separated list of allowed file extensions (e.g., jpg, png, pdf). Use * for all."}
-                                    </p>
-                                    <textarea
-                                        id="allowed-extensions"
-                                        bind:value={storageAllowedExtensions}
-                                        on:input={handleChange}
-                                        rows="3"
-                                        placeholder={$t(
-                                            "superadmin.settings.placeholders.extensions",
-                                        ) || "jpg, png, pdf..."}
-                                    ></textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <SettingsStorageTab
+                        bind:storageDriver
+                        bind:storageS3Bucket
+                        bind:storageS3Region
+                        bind:storageS3Endpoint
+                        bind:storageS3AccessKey
+                        bind:storageS3SecretKey
+                        bind:storageS3PublicUrl
+                        bind:storageMaxFileSizeMb
+                        bind:storageAllowedExtensions
+                        on:change={handleChange}
+                    />
                 {/if}
 
                 <!-- Payment Tab -->
                 {#if activeTab === "payment"}
-                    <div class="card section fade-in">
-                        <div class="card-header">
-                            <h3>
-                                {$t("superadmin.settings.sections.payment") ||
-                                    "Payment Gateway (Midtrans)"}
-                            </h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <label
-                                        class="setting-label"
-                                        for="midtrans-gateway-toggle"
-                                        >{$t(
-                                            "superadmin.settings.payment.midtrans.enable.label",
-                                        ) || "Enable Midtrans Gateway"}</label
-                                    >
-                                    <p class="setting-description">
-                                        {$t(
-                                            "superadmin.settings.payment.midtrans.enable.desc",
-                                        ) || "Allow users to pay online via Midtrans."}
-                                    </p>
-                                </div>
-                                <label class="toggle">
-                                    <input
-                                        id="midtrans-gateway-toggle"
-                                        type="checkbox"
-                                        bind:checked={paymentMidtransEnabled}
-                                        on:change={handleChange}
-                                    />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
+                    <SettingsPaymentTab
+                        bind:paymentMidtransEnabled
+                        bind:paymentMidtransMerchantId
+                        bind:paymentMidtransServerKey
+                        bind:paymentMidtransClientKey
+                        bind:paymentMidtransIsProduction
+                        bind:paymentManualEnabled
+                        bind:paymentManualInstructions
+                        {bankAccounts}
+                        bind:newBankName
+                        bind:newAccountNumber
+                        bind:newAccountHolder
+                        {addingBank}
+                        {isMobile}
+                        on:change={handleChange}
+                        on:addBank={addBank}
+                        on:deleteBank={(e) => deleteBank(e.detail)}
+                    />
+                {/if}
 
-                            {#if paymentMidtransEnabled}
-                                <div class="sub-settings fade-in">
-                                    <div class="setting-row">
-                                        <div class="setting-info">
-                                            <label
-                                                class="setting-label"
-                                                for="midtrans-merchant-id"
-                                                >{$t(
-                                                    "superadmin.settings.payment.midtrans.merchant_id",
-                                                ) || "Merchant ID"}</label
-                                            >
-                                        </div>
-                                        <input
-                                            id="midtrans-merchant-id"
-                                            type="text"
-                                            bind:value={
-                                                paymentMidtransMerchantId
-                                            }
-                                            on:input={handleChange}
-                                            class="form-input"
-                                        />
-                                    </div>
-                                    <div class="setting-row">
-                                        <div class="setting-info">
-                                            <label
-                                                class="setting-label"
-                                                for="midtrans-server-key"
-                                                >{$t(
-                                                    "superadmin.settings.payment.midtrans.server_key",
-                                                ) || "Server Key"}</label
-                                            >
-                                            <p class="setting-description">
-                                                {$t(
-                                                    "superadmin.settings.payment.midtrans.server_key_hint",
-                                                ) ||
-                                                    "From Midtrans Dashboard > Settings > Access Keys."}
-                                            </p>
-                                        </div>
-                                        <input
-                                            id="midtrans-server-key"
-                                            type="password"
-                                            bind:value={
-                                                paymentMidtransServerKey
-                                            }
-                                            on:input={handleChange}
-                                            class="form-input"
-                                        />
-                                    </div>
-                                    <div class="setting-row">
-                                        <div class="setting-info">
-                                            <label
-                                                class="setting-label"
-                                                for="midtrans-client-key"
-                                                >{$t(
-                                                    "superadmin.settings.payment.midtrans.client_key",
-                                                ) || "Client Key"}</label
-                                            >
-                                            <p class="setting-description">
-                                                {$t(
-                                                    "superadmin.settings.payment.midtrans.client_key_hint",
-                                                ) || "Public key for frontend Snap.js."}
-                                            </p>
-                                        </div>
-                                        <input
-                                            id="midtrans-client-key"
-                                            type="text"
-                                            bind:value={
-                                                paymentMidtransClientKey
-                                            }
-                                            on:input={handleChange}
-                                            class="form-input"
-                                        />
-                                    </div>
-                                    <div class="setting-row">
-                                        <div class="setting-info">
-                                            <label
-                                                class="setting-label"
-                                                for="midtrans-production"
-                                                >{$t(
-                                                    "superadmin.settings.payment.midtrans.production_mode",
-                                                ) || "Production Mode"}</label
-                                            >
-                                            <p class="setting-description">
-                                                {$t(
-                                                    "superadmin.settings.payment.midtrans.production_mode_desc",
-                                                ) ||
-                                                    "Enable for real transactions. Disable for Sandbox."}
-                                            </p>
-                                        </div>
-                                        <label class="toggle">
-                                            <input
-                                                id="midtrans-production"
-                                                type="checkbox"
-                                                bind:checked={
-                                                    paymentMidtransIsProduction
-                                                }
-                                                on:change={handleChange}
-                                            />
-                                            <span class="slider"></span>
-                                        </label>
-                                    </div>
-                                </div>
-                            {/if}
-                        </div>
-                    </div>
-
-                    <div class="card section fade-in">
-                        <div class="card-header">
-                            <h3>
-                                {$t(
-                                    "superadmin.settings.sections.manual_bank_transfer",
-                                ) || "Manual Bank Transfer"}
-                            </h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="setting-row">
-                                <div class="setting-info">
-                                    <label
-                                        class="setting-label"
-                                        for="manual-transfer-toggle"
-                                        >{$t(
-                                            "superadmin.settings.payment.manual.enable.label",
-                                        ) || "Enable Manual Transfer"}</label
-                                    >
-                                    <p class="setting-description">
-                                        {$t(
-                                            "superadmin.settings.payment.manual.enable.desc",
-                                        ) ||
-                                            "Allow users to pay via bank transfer and upload proof."}
-                                    </p>
-                                </div>
-                                <label class="toggle">
-                                    <input
-                                        id="manual-transfer-toggle"
-                                        type="checkbox"
-                                        bind:checked={paymentManualEnabled}
-                                        on:change={handleChange}
-                                    />
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-
-                            {#if paymentManualEnabled}
-                                <div class="sub-settings fade-in">
-                                    <div class="setting-row">
-                                        <div class="setting-info full-width">
-                                            <label
-                                                class="setting-label"
-                                                for="manual-instructions"
-                                                >{$t(
-                                                    "superadmin.settings.payment.manual.instructions_label",
-                                                ) || "Payment Instructions"}</label
-                                            >
-                                            <p class="setting-description">
-                                                {$t(
-                                                    "superadmin.settings.payment.manual.instructions_desc",
-                                                ) ||
-                                                    "Instructions shown to user when they select Manual Transfer."}
-                                            </p>
-                                            <textarea
-                                                id="manual-instructions"
-                                                bind:value={
-                                                    paymentManualInstructions
-                                                }
-                                                on:input={handleChange}
-                                                rows="3"
-                                                placeholder={$t(
-                                                    "superadmin.settings.placeholders.manual_instructions",
-                                                ) ||
-                                                    "Please transfer to one of the bank accounts below and upload proof."}
-                                            ></textarea>
-                                        </div>
-                                    </div>
-
-                                    <div class="bank-accounts-list">
-                                        <h4 class="subsection-title">
-                                            Bank Accounts
-                                        </h4>
-                                        {#if bankAccounts.length > 0}
-                                            {#if isMobile}
-                                                <div class="bank-cards">
-                                                    {#each bankAccounts as bank}
-                                                        <div class="bank-card">
-                                                            <div class="bank-card-top">
-                                                                <div>
-                                                                    <div class="bank-name">
-                                                                        {bank.bank_name}
-                                                                    </div>
-                                                                    <div class="bank-sub">
-                                                                        {bank.account_holder}
-                                                                    </div>
-                                                                </div>
-                                                                <button
-                                                                    class="btn-icon danger"
-                                                                    type="button"
-                                                                    title={$t(
-                                                                        "superadmin.settings.actions.remove",
-                                                                    ) ||
-                                                                        "Remove"}
-                                                                    on:click={() =>
-                                                                        deleteBank(
-                                                                            bank.id,
-                                                                        )}
-                                                                >
-                                                                    <Icon
-                                                                        name="trash"
-                                                                        size={16}
-                                                                    />
-                                                                </button>
-                                                            </div>
-                                                            <div class="bank-number mono">
-                                                                {bank.account_number}
-                                                            </div>
-                                                        </div>
-                                                    {/each}
-                                                </div>
-                                            {:else}
-                                                <table class="simple-table">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>
-                                                                {$t(
-                                                                    "superadmin.settings.bank.table.bank",
-                                                                ) || "Bank"}
-                                                            </th>
-                                                            <th>
-                                                                {$t(
-                                                                    "superadmin.settings.bank.table.number",
-                                                                ) || "Number"}
-                                                            </th>
-                                                            <th>
-                                                                {$t(
-                                                                    "superadmin.settings.bank.table.holder",
-                                                                ) || "Holder"}
-                                                            </th>
-                                                            <th>
-                                                                {$t(
-                                                                    "superadmin.settings.bank.table.action",
-                                                                ) || "Action"}
-                                                            </th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {#each bankAccounts as bank}
-                                                            <tr>
-                                                                <td
-                                                                    >{bank.bank_name}</td
-                                                                >
-                                                                <td
-                                                                    >{bank.account_number}</td
-                                                                >
-                                                                <td
-                                                                    >{bank.account_holder}</td
-                                                                >
-                                                                <td>
-                                                                    <button
-                                                                        class="btn-icon danger"
-                                                                        type="button"
-                                                                        on:click={() =>
-                                                                            deleteBank(
-                                                                                bank.id,
-                                                                            )}
-                                                                    >
-                                                                        <Icon
-                                                                            name="trash"
-                                                                            size={16}
-                                                                        />
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                        {/each}
-                                                    </tbody>
-                                                </table>
-                                            {/if}
-                                        {:else}
-                                            <p class="text-muted">
-                                                {$t(
-                                                    "superadmin.settings.bank.empty",
-                                                ) || "No bank accounts added yet."}
-                                            </p>
-                                        {/if}
-                                    </div>
-
-                                    <div class="add-bank-form">
-                                        <h4>
-                                            {$t(
-                                                "superadmin.settings.bank.add_new_account",
-                                            ) || "Add New Account"}
-                                        </h4>
-                                        <div class="form-row-inline">
-                                            <input
-                                                type="text"
-                                                bind:value={newBankName}
-                                                placeholder={$t(
-                                                    "superadmin.settings.placeholders.bank_name",
-                                                ) ||
-                                                    "Bank Name (e.g. BCA)"}
-                                                class="form-input"
-                                            />
-                                            <input
-                                                type="text"
-                                                bind:value={newAccountNumber}
-                                                placeholder={$t(
-                                                    "superadmin.settings.placeholders.bank_account_number",
-                                                ) || "Account Number"}
-                                                class="form-input"
-                                            />
-                                            <input
-                                                type="text"
-                                                bind:value={newAccountHolder}
-                                                placeholder={$t(
-                                                    "superadmin.settings.placeholders.bank_account_holder",
-                                                ) || "Account Holder"}
-                                                class="form-input"
-                                            />
-                                            <button
-                                                class="btn btn-primary"
-                                                on:click={addBank}
-                                                disabled={addingBank}
-                                            >
-                                                <Icon name="plus" size={16} />
-                                                {$t(
-                                                    "superadmin.settings.actions.add",
-                                                ) || "Add"}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            {/if}
-                        </div>
-                    </div>
+                <!-- Alerting Tab -->
+                {#if activeTab === "alerting"}
+                    <SettingsAlertingTab
+                        bind:alertingEnabled
+                        bind:alertingEmail
+                        bind:alertingErrorThreshold
+                        bind:alertingRateLimitThreshold
+                        bind:alertingResponseTimeThreshold
+                        bind:alertingCooldownMinutes
+                        on:change={handleChange}
+                    />
                 {/if}
 
                 <!-- Actions Footer -->
@@ -2055,25 +1022,6 @@
         margin-bottom: 1.5rem;
     }
 
-    .card-header {
-        padding: 1rem 1.5rem;
-        border-bottom: 1px solid var(--border-color);
-        background: rgba(0, 0, 0, 0.2);
-    }
-
-    .card-header h3 {
-        margin: 0;
-        font-size: 1rem;
-        font-weight: 600;
-        color: var(--text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .card-body {
-        padding: 1.5rem;
-    }
-
     .loading-state {
         display: flex;
         flex-direction: column;
@@ -2106,109 +1054,6 @@
         to {
             transform: rotate(360deg);
         }
-    }
-
-    .setting-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        padding: 1.25rem 0;
-        border-bottom: 1px solid var(--border-color);
-    }
-
-    .setting-row:last-child {
-        border-bottom: none;
-    }
-
-    .setting-info {
-        flex: 1;
-        padding-right: 1.5rem;
-    }
-
-    .setting-info.full-width {
-        width: 100%;
-        padding-right: 0;
-    }
-
-    .setting-label {
-        font-weight: 600;
-        color: var(--text-primary);
-        font-size: 0.95rem;
-        display: block;
-        margin-bottom: 0.25rem;
-    }
-
-    .setting-description {
-        color: var(--text-secondary);
-        font-size: 0.85rem;
-        margin: 0;
-        line-height: 1.4;
-    }
-
-    textarea {
-        width: 100%;
-        padding: 0.75rem 1rem;
-        background: var(--bg-app);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-sm);
-        color: var(--text-primary);
-        font-size: 0.9rem;
-        resize: vertical;
-        min-height: 80px;
-        margin-top: 0.75rem;
-    }
-
-    textarea:focus {
-        outline: none;
-        border-color: var(--color-primary);
-        box-shadow: 0 0 0 2px var(--color-primary-subtle);
-    }
-
-    /* Toggle Switch */
-    .toggle {
-        position: relative;
-        display: inline-block;
-        width: 52px;
-        height: 28px;
-        flex-shrink: 0;
-    }
-
-    .toggle input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-
-    .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: var(--bg-tertiary);
-        transition: 0.3s;
-        border-radius: 28px;
-    }
-
-    .slider:before {
-        position: absolute;
-        content: "";
-        height: 20px;
-        width: 20px;
-        left: 4px;
-        bottom: 4px;
-        background-color: white;
-        transition: 0.3s;
-        border-radius: 50%;
-    }
-
-    input:checked + .slider {
-        background-color: var(--color-primary);
-    }
-
-    input:checked + .slider:before {
-        transform: translateX(24px);
     }
 
     /* Actions Footer */
@@ -2264,217 +1109,6 @@
         cursor: not-allowed;
     }
 
-    .input-group {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .input-group input[type="number"] {
-        width: 100px;
-        padding: 0.5rem 0.75rem;
-        background: var(--bg-app);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-sm);
-        color: var(--text-primary);
-        font-size: 0.9rem;
-        text-align: center;
-    }
-
-    .input-group input[type="number"]:focus {
-        outline: none;
-        border-color: var(--color-primary);
-        box-shadow: 0 0 0 2px var(--color-primary-subtle);
-    }
-
-    .input-suffix {
-        color: var(--text-secondary);
-        font-size: 0.85rem;
-        white-space: nowrap;
-    }
-
-    .form-input {
-        width: 100%;
-        max-width: 400px;
-        padding: 0.5rem 0.75rem;
-        background: var(--bg-app);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-sm);
-        color: var(--text-primary);
-        font-size: 0.9rem;
-    }
-
-    .form-input:focus {
-        outline: none;
-        border-color: var(--color-primary);
-    }
-
-    .native-select {
-        background: var(--bg-app);
-        border: 1px solid var(--border-color);
-        padding: 0.5rem 1rem;
-        border-radius: var(--radius-sm);
-        color: var(--text-primary);
-        font-size: 0.9rem;
-        cursor: pointer;
-        min-width: 150px;
-    }
-
-    .native-select:focus {
-        outline: none;
-        border-color: var(--color-primary);
-    }
-
-    .sub-settings {
-        background: rgba(0, 0, 0, 0.1);
-        border-radius: var(--radius-md);
-        padding: 1rem 1.5rem;
-        margin-bottom: 1.5rem;
-        border: 1px solid var(--border-color);
-    }
-
-    .sub-settings input[type="text"],
-    .sub-settings input[type="password"] {
-        width: 100%;
-        max-width: 400px;
-        padding: 0.5rem 0.75rem;
-        background: var(--bg-app);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-sm);
-        color: var(--text-primary);
-        font-size: 0.9rem;
-    }
-
-    .text-muted {
-        color: var(--text-secondary);
-        font-style: italic;
-        font-size: 0.9rem;
-    }
-
-    .subsection-title {
-        margin: 1.5rem 0 0.5rem 0;
-        font-size: 1rem;
-        font-weight: 600;
-        color: var(--text-primary);
-    }
-
-    .simple-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 1.5rem;
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-sm);
-        overflow: hidden;
-    }
-
-    .simple-table th,
-    .simple-table td {
-        padding: 0.75rem 1rem;
-        text-align: left;
-        border-bottom: 1px solid var(--border-color);
-        font-size: 0.9rem;
-    }
-
-    .simple-table th {
-        background: var(--bg-tertiary);
-        font-weight: 600;
-        color: var(--text-secondary);
-    }
-
-    .form-row-inline {
-        display: flex;
-        gap: 0.75rem;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-
-    .form-row-inline .form-input {
-        flex: 1;
-        min-width: 150px;
-    }
-
-    .mono {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-            "Liberation Mono", "Courier New", monospace;
-    }
-
-    .bank-cards {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 0.75rem;
-        margin-bottom: 1rem;
-    }
-
-    .bank-card {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: var(--radius-md);
-        padding: 0.9rem;
-    }
-
-    .bank-card-top {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 0.75rem;
-    }
-
-    .bank-name {
-        font-weight: 800;
-        color: var(--text-primary);
-    }
-
-    .bank-sub {
-        margin-top: 0.15rem;
-        color: var(--text-secondary);
-        font-size: 0.85rem;
-        font-weight: 600;
-    }
-
-    .bank-number {
-        margin-top: 0.75rem;
-        padding: 0.55rem 0.75rem;
-        border-radius: var(--radius-sm);
-        background: rgba(0, 0, 0, 0.12);
-        border: 1px solid var(--border-color);
-        color: var(--text-primary);
-        font-weight: 700;
-        overflow-wrap: anywhere;
-    }
-
-    .btn-icon {
-        padding: 0.4rem;
-        border-radius: var(--radius-sm);
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        color: var(--text-secondary);
-        transition: all 0.2s;
-    }
-
-    .btn-icon:hover {
-        background: var(--bg-hover);
-        color: var(--text-primary);
-    }
-
-    .btn-icon.danger:hover {
-        background: rgba(239, 68, 68, 0.1);
-        color: #ef4444;
-    }
-
-    :global([data-theme="light"]) .bank-card {
-        background: linear-gradient(135deg, #ffffff, #f7f7fb);
-        border-color: rgba(0, 0, 0, 0.06);
-        box-shadow:
-            0 10px 28px rgba(0, 0, 0, 0.06),
-            0 0 0 1px rgba(255, 255, 255, 0.8);
-    }
-
-    :global([data-theme="light"]) .bank-number {
-        background: rgba(0, 0, 0, 0.03);
-        border-color: rgba(0, 0, 0, 0.06);
-    }
-
     /* Mobile Responsive */
     @media (max-width: 900px) {
         .layout-grid {
@@ -2493,23 +1127,7 @@
         .header-mobile h1 {
             font-size: 1.5rem;
         }
-
-        .card-body {
-            padding: 1.1rem;
-        }
-
-        .setting-row {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 0.75rem;
-        }
-
-        .setting-info {
-            padding-right: 0;
-        }
-
-        .form-input {
-            max-width: none;
-        }
     }
 </style>
+
+

@@ -3,7 +3,7 @@
     import { page } from "$app/stores";
     import { goto } from "$app/navigation";
     import { api } from "$lib/api/client";
-    import Icon from "$lib/components/Icon.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
     import { toast } from "$lib/stores/toast";
     import { appSettings } from "$lib/stores/settings";
     import { formatMoney } from "$lib/utils/money";
@@ -766,3 +766,4 @@
         }
     }
 </style>
+

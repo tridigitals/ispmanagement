@@ -4,7 +4,7 @@
     import { api, type Invoice, type BankAccount } from "$lib/api/client";
     import { goto } from "$app/navigation";
     import { user } from "$lib/stores/auth";
-    import Icon from "$lib/components/Icon.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
     import { toast } from "svelte-sonner";
     import { t } from "svelte-i18n";
     import { get } from "svelte/store";
@@ -693,3 +693,4 @@
         text-align: center;
     }
 </style>
+

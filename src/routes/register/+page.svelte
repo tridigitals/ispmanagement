@@ -10,7 +10,7 @@
     import { onMount } from "svelte";
     import { fade, fly } from "svelte/transition";
     import { t } from "svelte-i18n";
-    import Icon from "$lib/components/Icon.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
     import { toast } from "$lib/stores/toast";
 
     let name = "";
@@ -526,3 +526,4 @@
         }
     }
 </style>
+

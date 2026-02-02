@@ -4,7 +4,7 @@
     import { isSidebarCollapsed } from "$lib/stores/ui";
     import { theme } from "$lib/stores/theme";
     import { t } from "svelte-i18n";
-    import Icon from "./Icon.svelte";
+    import Icon from "../ui/Icon.svelte";
     import NotificationDropdown from "./NotificationDropdown.svelte";
 
     let { onMobileMenuClick }: { onMobileMenuClick: () => void } = $props();
@@ -20,13 +20,19 @@
             ["/superadmin/tenants", $t("topbar.titles.tenants") || "Tenants"],
             ["/superadmin/users", $t("topbar.titles.users") || "Users"],
             ["/superadmin/plans", $t("topbar.titles.plans") || "Plans"],
-            ["/superadmin/invoices", $t("topbar.titles.invoices") || "Invoices"],
+            [
+                "/superadmin/invoices",
+                $t("topbar.titles.invoices") || "Invoices",
+            ],
             ["/superadmin/storage", $t("topbar.titles.storage") || "Storage"],
             [
                 "/superadmin/audit-logs",
                 $t("topbar.titles.audit_logs") || "Audit Logs",
             ],
-            ["/superadmin/settings", $t("topbar.titles.settings") || "Settings"],
+            [
+                "/superadmin/settings",
+                $t("topbar.titles.settings") || "Settings",
+            ],
             ["/superadmin/system", $t("topbar.titles.system") || "System"],
             [
                 "/superadmin",
@@ -34,9 +40,15 @@
             ],
             ["/admin/team", $t("topbar.titles.team") || "Team"],
             ["/admin/roles", $t("topbar.titles.roles") || "Roles"],
-            ["/admin/settings", $t("topbar.titles.global_settings") || "Settings"],
+            [
+                "/admin/settings",
+                $t("topbar.titles.global_settings") || "Settings",
+            ],
             ["/admin/storage", $t("topbar.titles.storage") || "Storage"],
-            ["/admin/subscription", $t("topbar.titles.subscription") || "Subscription"],
+            [
+                "/admin/subscription",
+                $t("topbar.titles.subscription") || "Subscription",
+            ],
             ["/admin/invoices", $t("topbar.titles.invoices") || "Invoices"],
             ["/admin", $t("topbar.titles.admin_overview") || "Admin"],
             ["/profile", $t("topbar.titles.profile") || "Profile"],
@@ -66,7 +78,7 @@
     let toggleLabel = $derived(
         $isSidebarCollapsed
             ? $t("sidebar.expand") || "Expand sidebar"
-        : $t("sidebar.collapse") || "Collapse sidebar",
+            : $t("sidebar.collapse") || "Collapse sidebar",
     );
 
     // Theme toggle

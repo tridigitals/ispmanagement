@@ -480,7 +480,10 @@
                 "tenant": "Tenant",
                 "resource": "Resource",
                 "details": "Detail",
-                "ip": "IP"
+                "ip": "IP",
+                "time_ip": "Waktu / IP",
+                "user_tenant": "Pengguna / Tenant",
+                "action_resource": "Aksi / Resource"
             },
             "filters": {
                 "action": "Aksi (tepat)",
@@ -898,10 +901,18 @@
                 }
             },
             "password": {
-                "min_length": { "label": "Panjang Minimum" },
-                "require_uppercase": { "label": "Wajib Huruf Besar" },
-                "require_number": { "label": "Wajib Angka" },
-                "require_special": { "label": "Wajib Karakter Spesial" }
+                "min_length": {
+                    "label": "Panjang Minimum"
+                },
+                "require_uppercase": {
+                    "label": "Wajib Huruf Besar"
+                },
+                "require_number": {
+                    "label": "Wajib Angka"
+                },
+                "require_special": {
+                    "label": "Wajib Karakter Spesial"
+                }
             },
             "storage": {
                 "driver": {
@@ -931,6 +942,7 @@
             },
             "payment": {
                 "midtrans": {
+                    "title": "Gerbang Pembayaran Midtrans",
                     "enable": {
                         "label": "Aktifkan Midtrans",
                         "desc": "Izinkan pengguna membayar online via Midtrans."
@@ -944,19 +956,33 @@
                     "production_mode_desc": "Aktifkan untuk transaksi nyata. Nonaktifkan untuk Sandbox."
                 },
                 "manual": {
+                    "title": "Transfer Bank Manual",
                     "enable": {
                         "label": "Aktifkan Transfer Manual",
                         "desc": "Izinkan pengguna membayar via transfer bank dan unggah bukti."
                     },
                     "instructions_label": "Instruksi Pembayaran",
-                    "instructions_desc": "Instruksi yang ditampilkan saat pengguna memilih Transfer Manual."
+                    "instructions_desc": "Instruksi yang ditampilkan saat pengguna memilih Transfer Manual.",
+                    "bank_accounts_title": "Rekening Bank"
                 }
             },
             "fields": {
-                "public_url": "URL Aplikasi Publik",
-                "currency": "Mata Uang Default",
-                "maintenance_mode": "Aktifkan Mode Maintenance",
-                "maintenance_message": "Pesan Maintenance"
+                "public_url": {
+                    "label": "URL Aplikasi Publik",
+                    "desc": "URL dasar untuk pengalihan, email, dan callback pembayaran (misal: https://app.example.com)."
+                },
+                "currency": {
+                    "label": "Mata Uang Utama",
+                    "desc": "Mata uang untuk harga paket dan tampilan invoice (ISO 4217, misal: IDR, USD)."
+                },
+                "maintenance_mode": {
+                    "label": "Aktifkan Mode Pemeliharaan",
+                    "desc": "Saat diaktifkan, semua pengguna kecuali superadmin akan melihat halaman pemeliharaan."
+                },
+                "maintenance_message": {
+                    "label": "Pesan Pemeliharaan",
+                    "desc": "Pesan yang ditampilkan kepada pengguna saat mode pemeliharaan aktif."
+                }
             },
             "placeholders": {
                 "url": "https://...",
@@ -977,6 +1003,33 @@
                 "save": "Simpan Perubahan",
                 "saving": "Menyimpan..."
             },
+            "alerting": {
+                "title": "Peringatan Error",
+                "enabled": {
+                    "label": "Aktifkan Peringatan",
+                    "desc": "Kirim peringatan email ketika ambang batas error terlampaui."
+                },
+                "email": {
+                    "label": "Email Peringatan",
+                    "desc": "Alamat email untuk menerima peringatan."
+                },
+                "error_threshold": {
+                    "label": "Ambang Batas Error (%)",
+                    "desc": "Peringatan ketika tingkat error melebihi persentase ini."
+                },
+                "rate_limit_threshold": {
+                    "label": "Ambang Batas Rate Limit",
+                    "desc": "Peringatan ketika permintaan yang terkena rate limit melebihi jumlah ini."
+                },
+                "response_time_threshold": {
+                    "label": "Ambang Batas Waktu Respon P95 (ms)",
+                    "desc": "Peringatan ketika waktu respon P95 melebihi nilai ini."
+                },
+                "cooldown": {
+                    "label": "Cooldown Peringatan (menit)",
+                    "desc": "Menit untuk menunggu sebelum mengirim tipe peringatan yang sama lagi."
+                }
+            },
             "bank": {
                 "add_new_account": "Tambah Akun Baru",
                 "empty": "Belum ada akun bank yang ditambahkan.",
@@ -993,7 +1046,8 @@
                 "password": "Kebijakan Password",
                 "security": "Keamanan & Rate Limit",
                 "storage": "Konfigurasi Storage",
-                "payment": "Payment Gateway"
+                "payment": "Payment Gateway",
+                "alerting": "Peringatan Error"
             }
         },
         "plans": {
@@ -1146,19 +1200,19 @@
             "contact_support": "Hubungi Dukungan"
         }
     },
-  "profile": {
-    "title": "Pengaturan",
-    "subtitle": "Kelola pengaturan dan preferensi akun Anda.",
-    "fallback": {
-      "user": "Pengguna",
-      "member": "Anggota"
-    },
-    "tabs": {
-      "general": "Umum",
-      "security": "Keamanan",
-      "preferences": "Preferensi",
-      "notifications": "Notifikasi"
-    },
+    "profile": {
+        "title": "Pengaturan",
+        "subtitle": "Kelola pengaturan dan preferensi akun Anda.",
+        "fallback": {
+            "user": "Pengguna",
+            "member": "Anggota"
+        },
+        "tabs": {
+            "general": "Umum",
+            "security": "Keamanan",
+            "preferences": "Preferensi",
+            "notifications": "Notifikasi"
+        },
         "general": {
             "title": "Informasi Profil",
             "subtitle": "Perbarui detail akun dan profil publik Anda.",
@@ -1231,23 +1285,35 @@
                 "required": "Wajib"
             },
             "categories": {
-                "system": { "label": "Pembaruan Sistem", "desc": "Pemeliharaan & pengumuman" },
-                "team": { "label": "Aktivitas Tim", "desc": "Perubahan anggota & undangan" },
-                "payment": { "label": "Penagihan", "desc": "Invoice & langganan" },
-                "security": { "label": "Keamanan", "desc": "Peringatan login & perubahan kata sandi" }
+                "system": {
+                    "label": "Pembaruan Sistem",
+                    "desc": "Pemeliharaan & pengumuman"
+                },
+                "team": {
+                    "label": "Aktivitas Tim",
+                    "desc": "Perubahan anggota & undangan"
+                },
+                "payment": {
+                    "label": "Penagihan",
+                    "desc": "Invoice & langganan"
+                },
+                "security": {
+                    "label": "Keamanan",
+                    "desc": "Peringatan login & perubahan kata sandi"
+                }
             }
         },
-    "messages": {
-      "profile_updated": "Profil berhasil diperbarui!",
-      "password_changed": "Kata sandi berhasil diubah!",
-      "password_mismatch": "Kata sandi baru tidak cocok",
-      "update_failed": "Gagal memperbarui profil",
-      "change_password_failed": "Gagal mengubah kata sandi",
-      "twofa_required": "Organisasi Anda mewajibkan Autentikasi Dua Faktor (2FA). Silakan aktifkan untuk melanjutkan.",
-      "2fa_method_totp": "Metode 2FA diubah ke Aplikasi Authenticator",
-      "2fa_method_email": "Metode 2FA diubah ke Email"
-    }
-  },
+        "messages": {
+            "profile_updated": "Profil berhasil diperbarui!",
+            "password_changed": "Kata sandi berhasil diubah!",
+            "password_mismatch": "Kata sandi baru tidak cocok",
+            "update_failed": "Gagal memperbarui profil",
+            "change_password_failed": "Gagal mengubah kata sandi",
+            "twofa_required": "Organisasi Anda mewajibkan Autentikasi Dua Faktor (2FA). Silakan aktifkan untuk melanjutkan.",
+            "2fa_method_totp": "Metode 2FA diubah ke Aplikasi Authenticator",
+            "2fa_method_email": "Metode 2FA diubah ke Email"
+        }
+    },
     "admin": {
         "roles": {
             "title": "Semua Peran",

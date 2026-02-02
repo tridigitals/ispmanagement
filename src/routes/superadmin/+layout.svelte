@@ -1,6 +1,6 @@
 <script lang="ts">
-    import Sidebar from "$lib/components/Sidebar.svelte";
-    import Topbar from "$lib/components/Topbar.svelte";
+    import Sidebar from "$lib/components/layout/Sidebar.svelte";
+    import Topbar from "$lib/components/layout/Topbar.svelte";
     import { user, isSuperAdmin, token } from "$lib/stores/auth";
     import { goto } from "$app/navigation";
     import { onMount } from "svelte";
@@ -140,3 +140,4 @@
         }
     }
 </style>
+

@@ -3,10 +3,10 @@
     import { api } from "$lib/api/client";
     import { isSuperAdmin } from "$lib/stores/auth";
     import { goto } from "$app/navigation";
-    import Icon from "$lib/components/Icon.svelte";
-    import Table from "$lib/components/Table.svelte";
-    import TableToolbar from "$lib/components/TableToolbar.svelte";
-    import Pagination from "$lib/components/Pagination.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
+    import Table from "$lib/components/ui/Table.svelte";
+    import TableToolbar from "$lib/components/ui/TableToolbar.svelte";
+    import Pagination from "$lib/components/ui/Pagination.svelte";
     import type { AuditLog } from "$lib/api/client";
     import { t } from "svelte-i18n";
 
@@ -72,9 +72,7 @@
             if (searchQuery) activeFilters.search = searchQuery;
             if (actionFilter) activeFilters.action = actionFilter;
             if (dateFrom)
-                activeFilters.date_from = new Date(
-                    dateFrom,
-                ).toISOString();
+                activeFilters.date_from = new Date(dateFrom).toISOString();
             if (dateTo) activeFilters.date_to = new Date(dateTo).toISOString();
             if (userIdFilter) activeFilters.user_id = userIdFilter;
             // if (tenantIdFilter) activeFilters.tenant_id = tenantIdFilter;
@@ -102,7 +100,7 @@
         }
 
         if (typeof window !== "undefined") {
-            const mq = window.matchMedia("(max-width: 720px)");
+            const mq = window.matchMedia("(max-width: 899px)"); // Match global.css
             const sync = () => (isMobile = mq.matches);
             sync();
             try {
@@ -135,40 +133,37 @@
         loadLogs();
     }
 
-    // Columns config (i18n)
+    // Columns config (i18n) - Condensed for better layout
     const columns = $derived.by(() => [
         {
             key: "created_at",
-            label: $t("superadmin.audit_logs.columns.time") || "Time",
-            width: "180px",
+            label: $t("superadmin.audit_logs.columns.time_ip") || "Time / IP",
+            width: "185px",
+        },
+        {
+            key: "user",
+            label:
+                $t("superadmin.audit_logs.columns.user_tenant") ||
+                "User / Tenant",
+            width: "240px",
         },
         {
             key: "action",
-            label: $t("superadmin.audit_logs.columns.action") || "Action",
-            width: "150px",
-        },
-        { key: "user", label: $t("superadmin.audit_logs.columns.user") || "User" },
-        {
-            key: "tenant",
-            label: $t("superadmin.audit_logs.columns.tenant") || "Tenant",
-        },
-        {
-            key: "resource",
-            label: $t("superadmin.audit_logs.columns.resource") || "Resource",
+            label:
+                $t("superadmin.audit_logs.columns.action_resource") ||
+                "Action / Resource",
+            width: "220px",
         },
         {
             key: "details",
             label: $t("superadmin.audit_logs.columns.details") || "Details",
         },
-        {
-            key: "ip",
-            label: $t("superadmin.audit_logs.columns.ip") || "IP",
-            width: "120px",
-        },
     ]);
 
     function getActionCategory(action: string) {
-        const head = String(action || "").split("_")[0].toLowerCase();
+        const head = String(action || "")
+            .split("_")[0]
+            .toLowerCase();
         if (["auth", "login", "logout", "2fa"].includes(head)) return "auth";
         if (["user", "users"].includes(head)) return "user";
         if (["tenant", "tenants"].includes(head)) return "tenant";
@@ -183,34 +178,11 @@
 
 <div class="superadmin-content fade-in">
     <div class="glass-card">
-        <div class="card-header glass">
-            <div>
-                <h3>{$t("superadmin.audit_logs.title") || "Audit Logs"}</h3>
-                <span class="muted">
-                    {$t("superadmin.audit_logs.subtitle") ||
-                        "Track system activity and security events"}
-                </span>
-            </div>
-            <div class="header-actions">
-                <span class="count-badge"
-                    >{total} {$t("superadmin.audit_logs.count") || "logs"}</span
-                >
-                <button
-                    class="btn-icon"
-                    onclick={() => loadLogs()}
-                    title={$t("superadmin.audit_logs.refresh") || "Refresh logs"}
-                    aria-label={$t("superadmin.audit_logs.refresh") || "Refresh logs"}
-                    type="button"
-                >
-                    <Icon name="refresh-cw" size={18} />
-                </button>
-            </div>
-        </div>
-
         <div class="toolbar-wrapper">
             <TableToolbar
-                bind:searchQuery={searchQuery}
-                placeholder={$t("superadmin.audit_logs.search") || "Search logs..."}
+                bind:searchQuery
+                placeholder={$t("superadmin.audit_logs.search") ||
+                    "Search logs..."}
                 onsearch={handleSearch}
             >
                 {#snippet filters()}
@@ -262,13 +234,30 @@
 
                         <div
                             class="quick-row"
-                            aria-label={$t("superadmin.audit_logs.aria.quick_ranges") ||
-                                "Quick ranges"}
+                            aria-label={$t(
+                                "superadmin.audit_logs.aria.quick_ranges",
+                            ) || "Quick ranges"}
                         >
-                            <button type="button" class="chip" onclick={() => setQuickRange(1)}>24h</button>
-                            <button type="button" class="chip" onclick={() => setQuickRange(7)}>7d</button>
-                            <button type="button" class="chip" onclick={() => setQuickRange(30)}>30d</button>
-                            <button type="button" class="chip danger" onclick={clearFilters}>
+                            <button
+                                type="button"
+                                class="chip"
+                                onclick={() => setQuickRange(1)}>24h</button
+                            >
+                            <button
+                                type="button"
+                                class="chip"
+                                onclick={() => setQuickRange(7)}>7d</button
+                            >
+                            <button
+                                type="button"
+                                class="chip"
+                                onclick={() => setQuickRange(30)}>30d</button
+                            >
+                            <button
+                                type="button"
+                                class="chip danger"
+                                onclick={clearFilters}
+                            >
                                 {$t("common.clear") || "Clear"}
                             </button>
                         </div>
@@ -279,16 +268,20 @@
                     {#if !isMobile}
                         <div
                             class="view-toggle"
-                            aria-label={$t("superadmin.audit_logs.aria.view_mode") ||
-                                "View mode"}
+                            aria-label={$t(
+                                "superadmin.audit_logs.aria.view_mode",
+                            ) || "View mode"}
                         >
                             <button
                                 type="button"
                                 class="view-btn"
                                 class:active={viewMode === "table"}
                                 onclick={() => (viewMode = "table")}
-                                title={$t("superadmin.audit_logs.view.table") || "Table view"}
-                                aria-label={$t("superadmin.audit_logs.view.table") || "Table view"}
+                                title={$t("superadmin.audit_logs.view.table") ||
+                                    "Table view"}
+                                aria-label={$t(
+                                    "superadmin.audit_logs.view.table",
+                                ) || "Table view"}
                             >
                                 <Icon name="list" size={18} />
                             </button>
@@ -297,8 +290,11 @@
                                 class="view-btn"
                                 class:active={viewMode === "cards"}
                                 onclick={() => (viewMode = "cards")}
-                                title={$t("superadmin.audit_logs.view.cards") || "Card view"}
-                                aria-label={$t("superadmin.audit_logs.view.cards") || "Card view"}
+                                title={$t("superadmin.audit_logs.view.cards") ||
+                                    "Card view"}
+                                aria-label={$t(
+                                    "superadmin.audit_logs.view.cards",
+                                ) || "Card view"}
                             >
                                 <Icon name="grid" size={18} />
                             </button>
@@ -341,9 +337,15 @@
                                 <div class="log-top">
                                     <div class="log-left">
                                         <div class="log-time">
-                                            {new Date(l.created_at).toLocaleString()}
+                                            {new Date(
+                                                l.created_at,
+                                            ).toLocaleString()}
                                         </div>
-                                        <span class="action-pill {getActionCategory(l.action)}">
+                                        <span
+                                            class="action-pill {getActionCategory(
+                                                l.action,
+                                            )}"
+                                        >
                                             {l.action}
                                         </span>
                                     </div>
@@ -366,21 +368,34 @@
                                                   "superadmin.audit_logs.actions.expand",
                                               ) || "Expand"}
                                     >
-                                        <Icon name={expandedLogId === l.id ? "chevron-up" : "chevron-down"} size={18} />
+                                        <Icon
+                                            name={expandedLogId === l.id
+                                                ? "chevron-up"
+                                                : "chevron-down"}
+                                            size={18}
+                                        />
                                     </button>
                                 </div>
 
                                 <div class="log-grid">
                                     <div class="kv">
                                         <span class="k"
-                                            >{$t("superadmin.audit_logs.labels.user") ||
-                                                "User"}</span
+                                            >{$t(
+                                                "superadmin.audit_logs.labels.user",
+                                            ) || "User"}</span
                                         >
                                         <span class="v">
                                             {#if l.user_email}
-                                                {l.user_name ? `${l.user_name} — ${l.user_email}` : l.user_email}
+                                                {l.user_name
+                                                    ? `${l.user_name} — ${l.user_email}`
+                                                    : l.user_email}
                                             {:else if l.user_id}
-                                                <span class="text-mono">{l.user_id.substring(0, 8)}…</span>
+                                                <span class="text-mono"
+                                                    >{l.user_id.substring(
+                                                        0,
+                                                        8,
+                                                    )}…</span
+                                                >
                                             {:else}
                                                 —
                                             {/if}
@@ -389,14 +404,20 @@
 
                                     <div class="kv">
                                         <span class="k"
-                                            >{$t("superadmin.audit_logs.labels.tenant") ||
-                                                "Tenant"}</span
+                                            >{$t(
+                                                "superadmin.audit_logs.labels.tenant",
+                                            ) || "Tenant"}</span
                                         >
                                         <span class="v">
                                             {#if l.tenant_name}
                                                 {l.tenant_name}
                                             {:else if l.tenant_id}
-                                                <span class="text-mono">{l.tenant_id.substring(0, 8)}…</span>
+                                                <span class="text-mono"
+                                                    >{l.tenant_id.substring(
+                                                        0,
+                                                        8,
+                                                    )}…</span
+                                                >
                                             {:else}
                                                 <span class="badge-global"
                                                     >{$t("common.global") ||
@@ -408,27 +429,37 @@
 
                                     <div class="kv">
                                         <span class="k"
-                                            >{$t("superadmin.audit_logs.labels.resource") ||
-                                                "Resource"}</span
+                                            >{$t(
+                                                "superadmin.audit_logs.labels.resource",
+                                            ) || "Resource"}</span
                                         >
                                         <span class="v">
                                             {l.resource}
                                             {#if l.resource_name}
-                                                <span class="sub">{l.resource_name}</span>
+                                                <span class="sub"
+                                                    >{l.resource_name}</span
+                                                >
                                             {:else if l.resource_id}
-                                                <span class="sub text-mono">{l.resource_id.substring(0, 8)}…</span>
+                                                <span class="sub text-mono"
+                                                    >{l.resource_id.substring(
+                                                        0,
+                                                        8,
+                                                    )}…</span
+                                                >
                                             {/if}
                                         </span>
                                     </div>
 
                                     <div class="kv">
                                         <span class="k"
-                                            >{$t("superadmin.audit_logs.labels.ip") ||
-                                                "IP"}</span
+                                            >{$t(
+                                                "superadmin.audit_logs.labels.ip",
+                                            ) || "IP"}</span
                                         >
                                         <span class="v text-mono"
                                             >{l.ip_address ||
-                                                ($t("common.na") || "—")}</span
+                                                $t("common.na") ||
+                                                "—"}</span
                                         >
                                     </div>
                                 </div>
@@ -436,10 +467,13 @@
                                 {#if expandedLogId === l.id}
                                     <div class="details-block">
                                         <div class="details-title">
-                                            {$t("superadmin.audit_logs.labels.details") ||
-                                                "Details"}
+                                            {$t(
+                                                "superadmin.audit_logs.labels.details",
+                                            ) || "Details"}
                                         </div>
-                                        <div class="details-text">{l.details || "—"}</div>
+                                        <div class="details-text">
+                                            {l.details || "—"}
+                                        </div>
                                     </div>
                                 {/if}
                             </div>
@@ -450,9 +484,10 @@
                         <Pagination
                             count={total}
                             page={page - 1}
-                            pageSize={pageSize}
+                            {pageSize}
                             onchange={(p: number) => handlePageChange(p)}
-                            onpageSizeChange={(s: number) => handlePageSizeChange(s)}
+                            onpageSizeChange={(s: number) =>
+                                handlePageSizeChange(s)}
                         />
                     </div>
                 {/if}
@@ -469,68 +504,67 @@
                     onchange={handlePageChange}
                     onpageSizeChange={handlePageSizeChange}
                     serverSide={true}
+                    mobileView="card"
                 >
                     {#snippet cell({ item, key })}
                         {#if key === "created_at"}
-                            <span class="text-secondary">
-                                {new Date(item.created_at).toLocaleString()}
-                            </span>
-                        {:else if key === "action"}
-                            <span class="action-pill {getActionCategory(item.action)}">
-                                {item.action}
-                            </span>
+                            <div class="stack">
+                                <span class="text-secondary font-medium"
+                                    >{new Date(
+                                        item.created_at,
+                                    ).toLocaleString()}</span
+                                >
+                                <span class="text-xs text-mono text-muted"
+                                    >{item.ip_address || "—"}</span
+                                >
+                            </div>
                         {:else if key === "user"}
-                            {#if item.user_email}
+                            <div class="stack">
                                 <div class="user-info">
-                                    {#if item.user_name}
-                                        <span class="user-name">{item.user_name}</span>
+                                    <span class="user-name"
+                                        >{item.user_name || "System"}</span
+                                    >
+                                    {#if item.user_email}
+                                        <span class="user-email"
+                                            >{item.user_email}</span
+                                        >
                                     {/if}
-                                    <span class="user-email">{item.user_email}</span>
                                 </div>
-                            {:else if item.user_id}
-                                <span class="text-mono text-xs text-muted"
-                                    >{item.user_id.substring(0, 8)}…</span
+                                <div class="tenant-tag">
+                                    {#if item.tenant_name}
+                                        <span class="tenant-label"
+                                            >{item.tenant_name}</span
+                                        >
+                                    {:else}
+                                        <span class="badge-global"
+                                            >{$t("common.global") ||
+                                                "Global"}</span
+                                        >
+                                    {/if}
+                                </div>
+                            </div>
+                        {:else if key === "action"}
+                            <div class="stack">
+                                <span
+                                    class="action-pill {getActionCategory(
+                                        item.action,
+                                    )}">{item.action}</span
                                 >
-                            {:else}
-                                <span class="text-muted"
-                                    >{$t("common.na") || "—"}</span
-                                >
-                            {/if}
-                        {:else if key === "tenant"}
-                            {#if item.tenant_name}
-                                <span class="font-medium"
-                                    >{item.tenant_name}</span
-                                >
-                            {:else if item.tenant_id}
-                                <span class="text-mono text-xs"
-                                    >{item.tenant_id.substring(0, 8)}…</span
-                                >
-                            {:else}
-                                <span class="badge-global"
-                                    >{$t("common.global") || "Global"}</span
-                                >
-                            {/if}
-                        {:else if key === "resource"}
-                            <span class="font-medium block"
-                                >{item.resource}</span
-                            >
-                            {#if item.resource_name}
-                                <span class="text-xs text-muted block"
-                                    >{item.resource_name}</span
-                                >
-                            {:else if item.resource_id}
-                                <span class="text-xs text-muted block text-mono"
-                                    >{item.resource_id.substring(0, 8)}…</span
-                                >
-                            {/if}
+                                <div class="resource-info">
+                                    <span class="text-xs font-medium"
+                                        >{item.resource}</span
+                                    >
+                                    {#if item.resource_name}
+                                        <span class="text-xs text-muted"
+                                            >({item.resource_name})</span
+                                        >
+                                    {/if}
+                                </div>
+                            </div>
                         {:else if key === "details"}
                             <div class="details-cell" title={item.details}>
-                                {item.details || ($t("common.na") || "—")}
+                                {item.details || $t("common.na") || "—"}
                             </div>
-                        {:else if key === "ip"}
-                            <span class="text-xs text-mono text-muted"
-                                >{item.ip_address || ($t("common.na") || "—")}</span
-                            >
                         {/if}
                     {/snippet}
                 </Table>
@@ -540,6 +574,19 @@
 </div>
 
 <style>
+    .superadmin-content {
+        padding: clamp(12px, 2vw, 32px);
+        max-width: 1400px;
+        margin: 0 auto;
+        color: var(--text-primary);
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        min-width: 0; /* Critical for containing wide children */
+        --glass: rgba(255, 255, 255, 0.04);
+        --glass-border: rgba(255, 255, 255, 0.08);
+    }
+
     .glass-card {
         background: linear-gradient(145deg, var(--bg-surface), #0b0c10);
         border-radius: 16px;
@@ -554,57 +601,6 @@
         box-shadow:
             0 12px 32px rgba(0, 0, 0, 0.08),
             0 0 0 1px rgba(255, 255, 255, 0.8);
-    }
-
-    .card-header {
-        padding: 1.1rem 1.25rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: rgba(255, 255, 255, 0.015);
-    }
-
-    :global([data-theme="light"]) .card-header {
-        border-bottom-color: rgba(0, 0, 0, 0.06);
-        background: rgba(0, 0, 0, 0.01);
-    }
-
-    .card-header h3 {
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 800;
-        color: var(--text-primary);
-        letter-spacing: -0.01em;
-    }
-
-    .muted {
-        display: block;
-        margin-top: 0.25rem;
-        color: var(--text-secondary);
-        font-size: 0.92rem;
-    }
-
-    .header-actions {
-        display: inline-flex;
-        gap: 0.5rem;
-        align-items: center;
-    }
-
-    .count-badge {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        color: var(--text-primary);
-        padding: 0.35rem 0.75rem;
-        border-radius: 999px;
-        font-size: 0.85rem;
-        font-weight: 650;
-        white-space: nowrap;
-    }
-
-    :global([data-theme="light"]) .count-badge {
-        background: rgba(0, 0, 0, 0.03);
-        border-color: rgba(0, 0, 0, 0.06);
     }
 
     .btn-icon {
@@ -649,7 +645,8 @@
         display: flex;
         flex-direction: column;
         gap: 0.35rem;
-        min-width: 220px;
+        flex: 1;
+        min-width: 180px;
     }
 
     .field-label {
@@ -760,6 +757,10 @@
 
     .table-wrapper {
         padding: 0 1.25rem 1rem 1.25rem;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        width: 100%;
+        overflow: hidden;
     }
 
     .cards-wrapper {
@@ -767,10 +768,38 @@
     }
 
     /* Cell Styles */
+    .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        line-height: 1.3;
+    }
+
     .user-info {
         display: flex;
         flex-direction: column;
         line-height: 1.2;
+    }
+
+    .tenant-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 0.1rem 0.4rem;
+        border-radius: 4px;
+        display: inline-block;
+    }
+
+    :global([data-theme="light"]) .tenant-label {
+        background: rgba(0, 0, 0, 0.03);
+    }
+
+    .resource-info {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        color: var(--text-primary);
     }
 
     .user-name {
@@ -864,7 +893,8 @@
     }
 
     .text-mono {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+            "Liberation Mono", "Courier New", monospace;
         font-size: 0.85rem;
         color: var(--text-secondary);
     }
@@ -1022,7 +1052,7 @@
         color: var(--text-primary);
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 899px) {
         .toolbar-wrapper {
             padding: 0.9rem 1rem 0 1rem;
         }

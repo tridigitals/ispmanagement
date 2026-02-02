@@ -4,7 +4,7 @@
     import { page } from "$app/stores";
     import { onMount } from "svelte";
     import { t } from "svelte-i18n";
-    import Icon from "$lib/components/Icon.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
     import { getSlugFromDomain } from "$lib/utils/domain";
     import { timeAgo } from "$lib/utils/date";
     import {
@@ -708,3 +708,4 @@
         }
     }
 </style>
+

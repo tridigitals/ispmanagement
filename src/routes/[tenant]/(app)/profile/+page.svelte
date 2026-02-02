@@ -7,8 +7,8 @@
     import { goto } from "$app/navigation";
     import { page } from "$app/stores";
     import { t } from "svelte-i18n";
-    import Icon from "$lib/components/Icon.svelte";
-    import MobileFabMenu from "$lib/components/MobileFabMenu.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
+    import MobileFabMenu from "$lib/components/ui/MobileFabMenu.svelte";
     import { getSlugFromDomain } from "$lib/utils/domain";
     import {
         preferences,
@@ -2182,3 +2182,4 @@
         margin-top: 0.5rem;
     }
 </style>
+

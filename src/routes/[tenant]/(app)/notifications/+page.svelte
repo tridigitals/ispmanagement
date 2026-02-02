@@ -3,11 +3,11 @@
     import { page } from "$app/stores";
     import { goto } from "$app/navigation";
     import { t } from "svelte-i18n";
-    import Icon from "$lib/components/Icon.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
     import { user } from "$lib/stores/auth";
     import { timeAgo } from "$lib/utils/date";
     import { getSlugFromDomain } from "$lib/utils/domain";
-    import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
+    import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
     import {
         notifications,
         unreadCount,
@@ -754,3 +754,4 @@
         color: #475569;
     }
 </style>
+

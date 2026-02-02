@@ -1,5 +1,5 @@
 <script lang="ts">
-    import Icon from "$lib/components/Icon.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
 
     interface Props {
         value?: string | number;
@@ -182,3 +182,4 @@
         }
     }
 </style>
+

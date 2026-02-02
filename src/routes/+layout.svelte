@@ -16,7 +16,7 @@
     } from "$lib/stores/websocket";
     import { refreshUnreadCount } from "$lib/stores/notifications";
     import { Toaster } from "svelte-sonner";
-    import GlobalUploads from "$lib/components/GlobalUploads.svelte";
+    import GlobalUploads from "$lib/components/layout/GlobalUploads.svelte";
     import { getSlugFromDomain } from "$lib/utils/domain";
 
     let loading = true;
@@ -196,3 +196,4 @@
         }
     }
 </style>
+

@@ -1,8 +1,8 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { api, type Invoice } from "$lib/api/client";
-    import Icon from "$lib/components/Icon.svelte";
-    import Table from "$lib/components/Table.svelte";
+    import Icon from "$lib/components/ui/Icon.svelte";
+    import Table from "$lib/components/ui/Table.svelte";
     import { toast } from "$lib/stores/toast";
     import { formatMoney } from "$lib/utils/money";
     import { goto } from "$app/navigation";
@@ -264,3 +264,4 @@
         }
     }
 </style>
+

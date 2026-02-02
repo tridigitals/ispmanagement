@@ -3,7 +3,7 @@
     import { page } from '$app/stores';
     import { auth } from '$lib/api/client';
     import { goto } from '$app/navigation';
-    import Icon from '$lib/components/Icon.svelte';
+    import Icon from '$lib/components/ui/Icon.svelte';
     import { t } from "svelte-i18n";
     import { get } from "svelte/store";
 
@@ -271,3 +271,4 @@
         color: #22c55e;
     }
 </style>
+

@@ -714,6 +714,94 @@ async fn run_migrations_pg(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
+    // ==================== PERFORMANCE OPTIMIZATION INDEXES ====================
+
+    // Audit logs indexes for faster filtering
+    if let Err(e) =
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id)")
+            .execute(pool)
+            .await
+    {
+        tracing::warn!("Failed to create idx_audit_logs_user: {}", e);
+    }
+    if let Err(e) =
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_audit_logs_tenant ON audit_logs(tenant_id)")
+            .execute(pool)
+            .await
+    {
+        tracing::warn!("Failed to create idx_audit_logs_tenant: {}", e);
+    }
+    if let Err(e) = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at DESC)",
+    )
+    .execute(pool)
+    .await
+    {
+        tracing::warn!("Failed to create idx_audit_logs_created: {}", e);
+    }
+    if let Err(e) =
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)")
+            .execute(pool)
+            .await
+    {
+        tracing::warn!("Failed to create idx_audit_logs_action: {}", e);
+    }
+
+    // File records indexes for faster listing
+    if let Err(e) =
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_file_records_tenant ON file_records(tenant_id)")
+            .execute(pool)
+            .await
+    {
+        tracing::warn!("Failed to create idx_file_records_tenant: {}", e);
+    }
+    if let Err(e) = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_file_records_created ON file_records(created_at DESC)",
+    )
+    .execute(pool)
+    .await
+    {
+        tracing::warn!("Failed to create idx_file_records_created: {}", e);
+    }
+
+    // Notifications indexes for faster unread queries
+    if let Err(e) =
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id)")
+            .execute(pool)
+            .await
+    {
+        tracing::warn!("Failed to create idx_notifications_user: {}", e);
+    }
+    if let Err(e) = sqlx::query("CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, is_read) WHERE is_read = false")
+        .execute(pool)
+        .await
+    {
+        tracing::warn!("Failed to create idx_notifications_user_unread: {}", e);
+    }
+
+    // Invoices indexes for faster filtering
+    if let Err(e) =
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_invoices_tenant ON invoices(tenant_id)")
+            .execute(pool)
+            .await
+    {
+        tracing::warn!("Failed to create idx_invoices_tenant: {}", e);
+    }
+    if let Err(e) =
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status)")
+            .execute(pool)
+            .await
+    {
+        tracing::warn!("Failed to create idx_invoices_status: {}", e);
+    }
+    if let Err(e) =
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_invoices_created ON invoices(created_at DESC)")
+            .execute(pool)
+            .await
+    {
+        tracing::warn!("Failed to create idx_invoices_created: {}", e);
+    }
+
     info!("PostgreSQL migrations completed");
     Ok(())
 }
@@ -1307,6 +1395,13 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
         ("payment_midtrans_is_production", "false", "Use Midtrans Production Environment"),
         ("payment_manual_enabled", "true", "Enable Manual Bank Transfer"),
         ("payment_manual_instructions", "Please transfer the total amount to one of the bank accounts listed below and upload your proof of payment.", "Instructions for manual bank transfer"),
+        // Alerting Settings
+        ("alerting_enabled", "false", "Enable error alerting via email"),
+        ("alerting_email", "", "Email address to receive alerts"),
+        ("alerting_error_threshold", "5.0", "Error rate threshold percentage to trigger alert"),
+        ("alerting_rate_limit_threshold", "50", "Rate limit count threshold to trigger alert"),
+        ("alerting_response_time_threshold", "3000.0", "P95 response time threshold in ms"),
+        ("alerting_cooldown_minutes", "15", "Minutes to wait before sending same alert type again"),
     ];
 
     for (key, value, description) in defaults {
