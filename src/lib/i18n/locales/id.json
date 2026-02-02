@@ -466,6 +466,11 @@
                 }
             }
         },
+        "system": {
+            "request_metrics": {
+                "title": "Metrik Permintaan"
+            }
+        },
         "audit_logs": {
             "title": "Log Audit",
             "subtitle": "Lacak aktivitas sistem dan event keamanan",

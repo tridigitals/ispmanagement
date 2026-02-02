@@ -466,6 +466,11 @@
                 }
             }
         },
+        "system": {
+            "request_metrics": {
+                "title": "Request Metrics"
+            }
+        },
         "audit_logs": {
             "title": "Audit Logs",
             "subtitle": "Track system activity and security events",

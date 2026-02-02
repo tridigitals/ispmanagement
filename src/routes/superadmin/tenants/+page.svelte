@@ -4,12 +4,8 @@
     import { goto } from "$app/navigation";
     import { fly } from "svelte/transition";
     import Icon from "$lib/components/ui/Icon.svelte";
-    import Table from "$lib/components/ui/Table.svelte";
     import TableToolbar from "$lib/components/ui/TableToolbar.svelte";
     import StatsCard from "$lib/components/dashboard/StatsCard.svelte";
-    import Modal from "$lib/components/ui/Modal.svelte";
-    import Input from "$lib/components/ui/Input.svelte";
-    import Select from "$lib/components/ui/Select.svelte";
     import { toast } from "$lib/stores/toast";
     import { formatMoney } from "$lib/utils/money";
     import { get } from "svelte/store";
@@ -18,6 +14,8 @@
     import { t } from "svelte-i18n";
 
     import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
+    import TenantTable from "$lib/components/superadmin/tenants/TenantTable.svelte";
+    import TenantFormModal from "$lib/components/superadmin/tenants/TenantFormModal.svelte";
 
     let tenants = $state<any[]>([]);
     let plans = $state<any[]>([]);
@@ -41,7 +39,6 @@
         planId: "",
     });
     let creating = $state(false);
-    let showPassword = $state(false);
 
     // Confirm Dialog State
     let showConfirm = $state(false);
@@ -598,333 +595,30 @@
                     {$t("common.retry") || "Retry"}
                 </button>
             </div>
-        {:else if viewMode === "cards" || isMobile}
-            <div
-                class="tenants-grid"
-                aria-label={$t("superadmin.tenants.aria.cards") ||
-                    "Tenant cards"}
-            >
-                {#each filteredTenants as tenant (tenant.id)}
-                    <div class="tenant-card" in:fly={{ y: 6, duration: 150 }}>
-                        <div class="tenant-top">
-                            <div>
-                                <div class="tenant-name">{tenant.name}</div>
-                                <div class="tenant-sub">
-                                    <span class="tenant-slug"
-                                        >{tenant.slug}</span
-                                    >
-                                    {#if tenant.custom_domain}
-                                        <span class="dot">•</span>
-                                        <span class="tenant-domain mono">
-                                            {tenant.custom_domain}
-                                        </span>
-                                    {/if}
-                                </div>
-                            </div>
-                            <span
-                                class="status-badge {tenant.is_active
-                                    ? 'success'
-                                    : 'error'}"
-                            >
-                                {tenant.is_active
-                                    ? $t("common.active") || "Active"
-                                    : $t("common.inactive") || "Inactive"}
-                            </span>
-                        </div>
-
-                        <div class="tenant-meta">
-                            <span class="meta-label">
-                                {$t("superadmin.tenants.meta.created") ||
-                                    "Created"}
-                            </span>
-                            <span class="meta-value">
-                                {tenant.created_at
-                                    ? new Date(
-                                          tenant.created_at,
-                                      ).toLocaleDateString()
-                                    : "—"}
-                            </span>
-                        </div>
-
-                        <div class="tenant-actions">
-                            <button
-                                class="btn-icon {tenant.is_active
-                                    ? 'warn'
-                                    : 'success'}"
-                                title={tenant.is_active
-                                    ? $t(
-                                          "superadmin.tenants.actions.deactivate",
-                                      ) || "Deactivate"
-                                    : $t(
-                                          "superadmin.tenants.actions.activate",
-                                      ) || "Activate"}
-                                type="button"
-                                onclick={() => confirmToggleTenant(tenant)}
-                            >
-                                <Icon
-                                    name={tenant.is_active
-                                        ? "ban"
-                                        : "check-circle"}
-                                    size={18}
-                                />
-                            </button>
-                            <button
-                                class="btn-icon"
-                                title={$t("common.edit") || "Edit"}
-                                type="button"
-                                onclick={() => openEditModal(tenant)}
-                            >
-                                <Icon name="edit" size={18} />
-                            </button>
-                            <button
-                                class="btn-icon danger"
-                                title={$t("common.delete") || "Delete"}
-                                type="button"
-                                onclick={() => confirmDelete(tenant.id)}
-                            >
-                                <Icon name="trash" size={18} />
-                            </button>
-                        </div>
-                    </div>
-                {/each}
-
-                {#if filteredTenants.length === 0}
-                    <div class="empty-state-container">
-                        <div class="empty-icon">
-                            <Icon name="database" size={64} />
-                        </div>
-                        <h3>
-                            {$t("superadmin.tenants.empty.title") ||
-                                "No tenants found"}
-                        </h3>
-                        <p>
-                            {$t("superadmin.tenants.empty.hint") ||
-                                "Try adjusting your search or filters."}
-                        </p>
-                    </div>
-                {/if}
-            </div>
-        {:else if viewMode === "table" && !isMobile}
-            <div class="table-wrapper">
-                <Table
-                    pagination={true}
-                    {loading}
-                    data={filteredTenants}
-                    {columns}
-                    emptyText={$t("superadmin.tenants.empty.title") ||
-                        "No tenants found"}
-                    mobileView="scroll"
-                >
-                    {#snippet empty()}
-                        <div class="empty-state-container">
-                            <div class="empty-icon">
-                                <Icon name="database" size={64} />
-                            </div>
-                            <h3>
-                                {$t("superadmin.tenants.empty.title") ||
-                                    "No tenants found"}
-                            </h3>
-                            <p>
-                                {$t("superadmin.tenants.empty.hint") ||
-                                    "Try adjusting your search or filters."}
-                            </p>
-                        </div>
-                    {/snippet}
-
-                    {#snippet cell({ item, key })}
-                        {#if key === "custom_domain"}
-                            {#if item.custom_domain}
-                                <code class="domain-badge"
-                                    >{item.custom_domain}</code
-                                >
-                            {:else}
-                                <span class="text-muted">-</span>
-                            {/if}
-                        {:else if key === "is_active"}
-                            <span
-                                class="status-badge {item.is_active
-                                    ? 'success'
-                                    : 'error'}"
-                            >
-                                {item.is_active
-                                    ? $t("common.active") || "Active"
-                                    : $t("common.inactive") || "Inactive"}
-                            </span>
-                        {:else if key === "created_at"}
-                            {new Date(item.created_at).toLocaleDateString()}
-                        {:else if key === "actions"}
-                            <div class="actions">
-                                <button
-                                    class="btn-icon {item.is_active
-                                        ? 'warn'
-                                        : 'success'}"
-                                    title={item.is_active
-                                        ? $t(
-                                              "superadmin.tenants.actions.deactivate",
-                                          ) || "Deactivate"
-                                        : $t(
-                                              "superadmin.tenants.actions.activate",
-                                          ) || "Activate"}
-                                    type="button"
-                                    onclick={() => confirmToggleTenant(item)}
-                                >
-                                    <Icon
-                                        name={item.is_active
-                                            ? "ban"
-                                            : "check-circle"}
-                                        size={18}
-                                    />
-                                </button>
-                                <button
-                                    class="btn-icon"
-                                    title={$t("common.edit") || "Edit"}
-                                    type="button"
-                                    onclick={() => openEditModal(item)}
-                                >
-                                    <Icon name="edit" size={18} />
-                                </button>
-                                <button
-                                    class="btn-icon danger"
-                                    title={$t("common.delete") || "Delete"}
-                                    type="button"
-                                    onclick={() => confirmDelete(item.id)}
-                                >
-                                    <Icon name="trash" size={18} />
-                                </button>
-                            </div>
-                        {:else}
-                            {item[key]}
-                        {/if}
-                    {/snippet}
-                </Table>
-            </div>
+        {:else}
+            <TenantTable
+                tenants={filteredTenants}
+                {loading}
+                {viewMode}
+                {isMobile}
+                {columns}
+                onEdit={openEditModal}
+                onDelete={(id: string) => confirmDelete(id)}
+                onToggleStatus={confirmToggleTenant}
+            />
         {/if}
     </div>
 </div>
 
-<Modal
+<TenantFormModal
     bind:show={showCreateModal}
-    title={isEditing
-        ? $t("superadmin.tenants.modal.edit_title") || "Edit Tenant"
-        : $t("superadmin.tenants.modal.create_title") || "Create New Tenant"}
->
-    <div class="modal-form">
-        <Input
-            label={$t("superadmin.tenants.modal.labels.name") || "Tenant Name"}
-            bind:value={newTenant.name}
-            oninput={generateSlug}
-            placeholder={$t("superadmin.tenants.modal.placeholders.name") ||
-                "e.g. Acme Corp"}
-        />
-
-        <Input
-            label={$t("superadmin.tenants.modal.labels.slug") || "Slug (URL)"}
-            bind:value={newTenant.slug}
-            placeholder={$t("superadmin.tenants.modal.placeholders.slug") ||
-                "e.g. acme-corp"}
-            disabled={isEditing}
-        />
-
-        <Input
-            label={$t("superadmin.tenants.modal.labels.custom_domain") ||
-                "Custom Domain (Optional)"}
-            bind:value={newTenant.customDomain}
-            placeholder={$t(
-                "superadmin.tenants.modal.placeholders.custom_domain",
-            ) || "e.g. app.acme.com"}
-        />
-
-        {#if !isEditing}
-            <div class="divider">
-                <span>
-                    {$t(
-                        "superadmin.tenants.modal.sections.initial_subscription",
-                    ) || "Initial Subscription"}
-                </span>
-            </div>
-
-            <Select
-                label={$t("superadmin.tenants.modal.labels.plan") ||
-                    "Subscription Plan"}
-                options={plans}
-                bind:value={newTenant.planId}
-                placeholder={$t("superadmin.tenants.modal.placeholders.plan") ||
-                    "Select a plan"}
-            />
-
-            <div class="divider">
-                <span>
-                    {$t("superadmin.tenants.modal.sections.initial_admin") ||
-                        "Initial Admin User"}
-                </span>
-            </div>
-
-            <Input
-                label={$t("superadmin.tenants.modal.labels.owner_email") ||
-                    "Owner Email"}
-                type="email"
-                bind:value={newTenant.ownerEmail}
-                placeholder={$t(
-                    "superadmin.tenants.modal.placeholders.owner_email",
-                ) || "admin@acme.com"}
-            />
-
-            <div class="password-group">
-                <Input
-                    label={$t(
-                        "superadmin.tenants.modal.labels.owner_password",
-                    ) || "Owner Password"}
-                    type={showPassword ? "text" : "password"}
-                    bind:value={newTenant.ownerPassword}
-                    placeholder={$t(
-                        "superadmin.tenants.modal.placeholders.owner_password",
-                    ) || "Strong password"}
-                />
-                <button
-                    class="toggle-password"
-                    onclick={() => (showPassword = !showPassword)}
-                    type="button"
-                >
-                    <Icon name={showPassword ? "eye-off" : "eye"} size={18} />
-                </button>
-            </div>
-        {/if}
-
-        <div class="form-group toggle-row">
-            <label>
-                <input type="checkbox" bind:checked={newTenant.isActive} />
-                <span class="toggle-label">
-                    {$t("superadmin.tenants.modal.labels.active_status") ||
-                        "Active Status"}
-                </span>
-            </label>
-        </div>
-
-        <div class="modal-actions">
-            <button
-                class="btn btn-secondary"
-                onclick={() => (showCreateModal = false)}
-                disabled={creating}
-            >
-                {$t("common.cancel") || "Cancel"}
-            </button>
-            <button
-                class="btn btn-primary"
-                onclick={handleSubmit}
-                disabled={creating}
-            >
-                {#if creating}
-                    <div class="spinner-sm"></div>
-                {/if}
-                {isEditing
-                    ? $t("superadmin.tenants.modal.actions.update") ||
-                      "Update Tenant"
-                    : $t("superadmin.tenants.modal.actions.create") ||
-                      "Create Tenant"}
-            </button>
-        </div>
-    </div>
-</Modal>
+    {isEditing}
+    bind:newTenant
+    {plans}
+    loading={creating}
+    onSubmit={handleSubmit}
+    onGenerateSlug={generateSlug}
+/>
 
 <ConfirmDialog
     bind:show={showConfirm}
@@ -1131,170 +825,14 @@
         color: var(--text-primary);
     }
 
-    .table-wrapper {
-        padding: 0 1.25rem 1rem 1.25rem;
-    }
-
-    .mono {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-            "Liberation Mono", "Courier New", monospace;
-    }
-
-    .tenants-grid {
-        padding: 0 1.25rem 1.25rem 1.25rem;
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 1rem;
-    }
-
-    .tenant-card {
-        background: linear-gradient(
-            145deg,
-            rgba(255, 255, 255, 0.06),
-            rgba(255, 255, 255, 0.02)
-        );
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 18px;
-        padding: 1rem;
-        box-shadow: 0 14px 36px rgba(0, 0, 0, 0.25);
-    }
-
-    :global([data-theme="light"]) .tenant-card {
-        background: linear-gradient(135deg, #ffffff, #f7f7fb);
-        border-color: rgba(0, 0, 0, 0.06);
-        box-shadow:
-            0 12px 28px rgba(0, 0, 0, 0.06),
-            0 0 0 1px rgba(255, 255, 255, 0.85);
-    }
-
-    .tenant-top {
+    .error-state {
+        padding: 2rem 1.25rem;
+        text-align: center;
+        color: var(--text-secondary);
         display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 0.75rem;
-    }
-
-    .tenant-name {
-        font-weight: 900;
-        color: var(--text-primary);
-        letter-spacing: -0.02em;
-        line-height: 1.15;
-    }
-
-    .tenant-sub {
-        margin-top: 0.35rem;
-        display: flex;
+        flex-direction: column;
         align-items: center;
         gap: 0.5rem;
-        flex-wrap: wrap;
-        color: var(--text-secondary);
-        font-weight: 650;
-        font-size: 0.9rem;
-    }
-
-    .tenant-slug {
-        padding: 0.15rem 0.5rem;
-        border-radius: 999px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(255, 255, 255, 0.03);
-    }
-
-    .dot {
-        opacity: 0.6;
-    }
-
-    .tenant-domain {
-        opacity: 0.9;
-    }
-
-    .tenant-meta {
-        margin-top: 0.9rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-top: 0.75rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.06);
-        color: var(--text-secondary);
-    }
-
-    :global([data-theme="light"]) .tenant-meta {
-        border-top-color: rgba(0, 0, 0, 0.06);
-    }
-
-    .meta-label {
-        font-size: 0.8rem;
-        font-weight: 750;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-    }
-
-    .meta-value {
-        font-weight: 750;
-        color: var(--text-primary);
-    }
-
-    .tenant-actions {
-        margin-top: 0.9rem;
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.5rem;
-    }
-
-    .status-badge {
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .status-badge.success {
-        background: rgba(16, 185, 129, 0.1);
-        color: #10b981;
-    }
-
-    .status-badge.error {
-        background: rgba(239, 68, 68, 0.1);
-        color: #ef4444;
-    }
-
-    .domain-badge {
-        background: var(--bg-app);
-        padding: 0.2rem 0.5rem;
-        border-radius: 4px;
-        font-family: monospace;
-        font-size: 0.85rem;
-        color: var(--color-primary);
-    }
-
-    .text-muted {
-        color: var(--text-secondary);
-        font-style: italic;
-    }
-
-    .actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.5rem;
-    }
-
-    :global(.btn-icon.danger:hover:not(:disabled)) {
-        background: rgba(239, 68, 68, 0.1);
-        border-color: rgba(239, 68, 68, 0.35);
-        color: #ef4444;
-    }
-
-    :global(.btn-icon.warn:hover:not(:disabled)) {
-        background: rgba(245, 158, 11, 0.12);
-        border-color: rgba(245, 158, 11, 0.35);
-        color: #f59e0b;
-    }
-
-    :global(.btn-icon.success:hover:not(:disabled)) {
-        background: rgba(16, 185, 129, 0.12);
-        border-color: rgba(16, 185, 129, 0.35);
-        color: #10b981;
     }
 
     .btn {
@@ -1328,79 +866,25 @@
         background: var(--bg-hover);
     }
 
-    /* Modal Form Styles */
-    .modal-form {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .divider {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        margin: 1rem 0;
-        color: var(--text-secondary);
-        font-size: 0.8rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .divider::before,
-    .divider::after {
-        content: "";
-        flex: 1;
-        height: 1px;
-        background: var(--border-color);
-    }
-
-    .password-group {
-        position: relative;
-    }
-
-    .toggle-password {
-        position: absolute;
-        right: 0;
-        top: 28px; /* Approximate alignment with input content */
-        background: transparent;
-        border: none;
+    .btn-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.02);
         color: var(--text-secondary);
         cursor: pointer;
-        padding: 0.5rem;
-    }
-
-    .toggle-row {
-        margin-top: 0.5rem;
-    }
-
-    .toggle-row label {
-        display: flex;
+        padding: 0;
+        display: inline-flex;
         align-items: center;
-        gap: 0.75rem;
-        cursor: pointer;
+        justify-content: center;
+        transition: all 0.2s;
     }
 
-    .modal-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.75rem;
-        margin-top: 1.5rem;
-    }
-
-    .spinner-sm {
-        width: 16px;
-        height: 16px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-top-color: white;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
+    :global([data-theme="light"]) .btn-icon {
+        border-color: rgba(0, 0, 0, 0.06);
+        background: rgba(0, 0, 0, 0.02);
+        color: var(--text-secondary);
     }
 
     @media (max-width: 768px) {
@@ -1411,15 +895,6 @@
 
         .toolbar-wrapper {
             padding: 0.9rem 1rem 0 1rem;
-        }
-
-        .table-wrapper {
-            padding: 0 1rem 1rem 1rem;
-        }
-
-        .tenants-grid {
-            padding: 0 1rem 1rem 1rem;
-            grid-template-columns: 1fr;
         }
 
         .btn {
