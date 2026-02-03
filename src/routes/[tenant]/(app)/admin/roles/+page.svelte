@@ -140,6 +140,17 @@
         selectedPermissions = nextSet;
     }
 
+    function toggleAllPermissions() {
+        const allPermIds = permissions.map(p => `${p.resource}:${p.action}`);
+        const allSelected = allPermIds.every(id => selectedPermissions.has(id));
+        
+        if (allSelected) {
+            selectedPermissions = new Set();
+        } else {
+            selectedPermissions = new Set(allPermIds);
+        }
+    }
+
     async function saveRole() {
         if (!roleName) return;
         saving = true;
@@ -374,6 +385,7 @@
                                 id="role-name"
                                 type="text"
                                 bind:value={roleName}
+                                autofocus
                                 required
                                 disabled={editingRole?.is_system}
                                 placeholder={$t("admin.roles.placeholders.name") ||
@@ -419,6 +431,13 @@
                             {$t("admin.roles.permissions_settings") ||
                                 "Permissions Settings"}
                         </h4>
+                        <div class="permissions-toolbar">
+                            <button type="button" class="btn-text-action" onclick={toggleAllPermissions}>
+                                {permissions.length > 0 && permissions.every(p => selectedPermissions.has(`${p.resource}:${p.action}`)) 
+                                    ? "Deselect All"
+                                    : ($t("common.select_all") || "Select All")}
+                            </button>
+                        </div>
                         <div class="permissions-container">
                             {#each Object.entries(permissionGroups) as [resource, groupPerms]}
                                 {@const allSelected = groupPerms.every((p) =>
@@ -523,10 +542,6 @@
     margin: 0 auto;
     --glass: rgba(255, 255, 255, 0.04);
     --glass-border: rgba(255, 255, 255, 0.08);
-    --accent-emerald: #10b981;
-    --accent-cyan: #22d3ee;
-    --accent-indigo: #6366f1;
-    --accent-amber: #f59e0b;
 }
 
 .glass-card {
@@ -605,12 +620,12 @@
 }
 .badge.system {
     background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.18), transparent 60%);
-    color: #6366f1;
+    color: var(--color-primary);
     border-color: rgba(99, 102, 241, 0.35);
 }
 .badge.custom {
     background: radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.18), transparent 60%);
-    color: #10b981;
+    color: var(--color-success);
     border-color: rgba(16, 185, 129, 0.35);
 }
 
@@ -643,12 +658,12 @@
 }
 .btn-icon:hover {
     background: rgba(99, 102, 241, 0.12);
-    color: #6366f1;
+    color: var(--color-primary);
     border-color: rgba(99, 102, 241, 0.35);
 }
 .btn-icon.danger:hover {
     background: rgba(239, 68, 68, 0.12);
-    color: #ef4444;
+    color: var(--color-danger);
     border-color: rgba(239, 68, 68, 0.35);
 }
 
@@ -790,6 +805,11 @@ input[type="number"]:disabled {
     font-size: 1rem;
     color: var(--text-primary);
 }
+.permissions-toolbar {
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: flex-end;
+}
 .permissions-container {
     display: flex;
     flex-direction: column;
@@ -925,6 +945,16 @@ input[type="number"]:disabled {
     color: var(--text-primary);
 }
 
+.btn-text-action {
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+}
+
 .btn {
     padding: 0.6rem 1.2rem;
     border-radius: 8px;
@@ -1025,4 +1055,3 @@ input[type="number"]:disabled {
     border-color: rgba(0, 0, 0, 0.08);
 }
 </style>
-

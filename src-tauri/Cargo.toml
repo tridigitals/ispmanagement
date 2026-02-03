@@ -34,7 +34,7 @@ serde_json = "1"
 tokio = { version = "1", features = ["full"] }
 
 # Database (SQLite default, PostgreSQL optional)
-sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "postgres", "uuid", "chrono"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "postgres", "uuid", "chrono", "bigdecimal"] }
 
 # Authentication
 jsonwebtoken = "9"
@@ -44,6 +44,9 @@ base64 = "0.21"
 
 # UUID
 uuid = { version = "1", features = ["v4", "serde"] }
+
+# ZIP Compression
+zip = "0.6"
 
 # Date/Time
 chrono = { version = "0.4", features = ["serde"] }

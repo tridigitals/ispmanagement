@@ -4,7 +4,7 @@ use saas_tauri_lib::{
     services::{
         metrics_service::MetricsService, AuditService, AuthService, EmailService,
         NotificationService, PaymentService, PlanService, RoleService, SettingsService,
-        StorageService, SystemService, TeamService, UserService,
+        StorageService, SystemService, TeamService, UserService, BackupService,
     },
 };
 use std::env;
@@ -91,6 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let notification_service =
         NotificationService::new(pool.clone(), ws_hub.clone(), email_service.clone());
     let payment_service = PaymentService::new(pool.clone(), notification_service.clone());
+    let backup_service = BackupService::new(pool.clone(), app_data_dir.clone());
 
     plan_service.seed_default_features().await?;
 
@@ -109,6 +110,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         storage_service,
         payment_service,
         notification_service,
+        backup_service,
         ws_hub,
         app_data_dir,
         3000,

@@ -36,8 +36,22 @@
     let recent = $derived($notifications.slice(0, 6));
 
     function openNotification(n: any) {
-        if (n?.action_url) goto(n.action_url);
+        if (n?.action_url) goto(resolveActionUrl(n.action_url));
         else goto(`${tenantPrefix}/notifications`);
+    }
+
+    function resolveActionUrl(actionUrl: string) {
+        if (!actionUrl || !tenantPrefix) return actionUrl;
+        if (actionUrl.startsWith(tenantPrefix + "/")) return actionUrl;
+        if (
+            actionUrl.startsWith("/admin") ||
+            actionUrl.startsWith("/dashboard") ||
+            actionUrl.startsWith("/profile") ||
+            actionUrl.startsWith("/notifications")
+        ) {
+            return `${tenantPrefix}${actionUrl}`;
+        }
+        return actionUrl;
     }
 
     function iconForType(type: string) {

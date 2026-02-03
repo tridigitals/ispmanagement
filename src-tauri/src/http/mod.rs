@@ -22,6 +22,7 @@ use std::path::PathBuf;
 
 pub mod audit;
 pub mod auth;
+pub mod backup;
 pub mod install;
 pub mod middleware;
 pub mod notifications;
@@ -56,6 +57,7 @@ pub struct AppState {
     pub storage_service: Arc<StorageService>,
     pub payment_service: Arc<PaymentService>,
     pub notification_service: Arc<NotificationService>,
+    pub backup_service: Arc<crate::services::BackupService>,
     pub ws_hub: Arc<WsHub>,
     pub app_data_dir: PathBuf,
     pub rate_limiter: Arc<crate::services::rate_limiter::RateLimiter>,
@@ -75,6 +77,7 @@ pub async fn start_server(
     storage_service: StorageService,
     payment_service: PaymentService,
     notification_service: NotificationService,
+    backup_service: crate::services::BackupService,
     ws_hub: Arc<WsHub>,
     app_data_dir: PathBuf,
     default_port: u16,
@@ -120,6 +123,7 @@ pub async fn start_server(
         storage_service: Arc::new(storage_service),
         payment_service: Arc::new(payment_service.clone()),
         notification_service: Arc::new(notification_service),
+        backup_service: Arc::new(backup_service),
         ws_hub,
         app_data_dir,
         rate_limiter,
@@ -333,6 +337,8 @@ pub async fn start_server(
         .route("/api/permissions", get(roles::get_permissions))
         // WebSocket Route
         .route("/api/ws", get(websocket::ws_handler))
+        // Backup Routes
+        .nest("/api/backups", backup::router())
         // Storage Routes
         .route("/api/storage/files", get(storage::list_files))
         .route("/api/storage/files/{id}", delete(storage::delete_file))

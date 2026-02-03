@@ -343,6 +343,7 @@
         "storage": "Penyimpanan",
         "subscription": "Langganan",
         "audit_logs": "Log Audit",
+        "backups": "Cadangan",
         "system": "Sistem",
         "expand": "Perluas sidebar",
         "collapse": "Ciutkan sidebar",

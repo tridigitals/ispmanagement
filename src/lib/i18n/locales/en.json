@@ -343,6 +343,7 @@
         "storage": "Storage",
         "subscription": "Subscription",
         "audit_logs": "Audit Logs",
+        "backups": "Backups",
         "system": "System",
         "expand": "Expand sidebar",
         "collapse": "Collapse sidebar",

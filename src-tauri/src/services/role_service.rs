@@ -35,6 +35,12 @@ impl RoleService {
             ("roles", "delete", "Delete roles"),
             // Dashboard permissions
             ("dashboard", "read", "View dashboard"),
+            // Backups permissions
+            ("backups", "read", "View backups"),
+            ("backups", "create", "Create backups"),
+            ("backups", "download", "Download backups"),
+            ("backups", "restore", "Restore backups"),
+            ("backups", "delete", "Delete backups"),
         ]
     }
 
@@ -51,6 +57,8 @@ impl RoleService {
                     "settings:read", "settings:update",
                     "roles:create", "roles:read", "roles:update", "roles:delete",
                     "dashboard:read",
+                    "backups:read", "backups:create", "backups:download", "backups:restore",
+                    "backups:delete",
                 ],
             ),
             (
@@ -62,6 +70,8 @@ impl RoleService {
                     "settings:read", "settings:update",
                     "roles:read",
                     "dashboard:read",
+                    "backups:read", "backups:create", "backups:download", "backups:restore",
+                    "backups:delete",
                 ],
             ),
             (

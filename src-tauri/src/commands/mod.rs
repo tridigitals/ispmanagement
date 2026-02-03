@@ -2,6 +2,7 @@
 
 pub mod audit;
 pub mod auth;
+pub mod backup;
 pub mod install;
 pub mod notifications;
 pub mod payment;
@@ -21,6 +22,7 @@ pub fn get_app_version() -> String {
 }
 
 pub use auth::*;
+pub use backup::*;
 pub use install::*;
 pub use notifications::*;
 pub use payment::*;

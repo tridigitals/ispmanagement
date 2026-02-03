@@ -13,8 +13,9 @@ pub mod http;
 use commands::*;
 use commands::audit::list_audit_logs;
 use db::connection::{init_db, seed_defaults};
-use services::{AuthService, EmailService, SettingsService, UserService, TeamService, AuditService, RoleService, SystemService, PlanService, PaymentService, NotificationService};
+use services::{AuthService, EmailService, SettingsService, UserService, TeamService, AuditService, RoleService, SystemService, PlanService, PaymentService, NotificationService, BackupService};
 use services::metrics_service::MetricsService;
+use services::backup::BackupScheduler;
 use tauri::Manager;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -187,7 +188,12 @@ pub fn run() {
                 let metrics_service = std::sync::Arc::new(MetricsService::new());
                 let system_service = SystemService::new(pool.clone(), metrics_service.clone());
                 let storage_service = crate::services::StorageService::new(pool.clone(), plan_service.clone(), app_data_dir.clone());
+                let backup_service = BackupService::new(pool.clone(), app_data_dir.clone());
                 
+                // Start Backup Scheduler
+                let scheduler = BackupScheduler::new(pool.clone(), backup_service.clone());
+                scheduler.start().await;
+
                 // Create WebSocket hub for real-time sync (shared between HTTP and Tauri)
                 let ws_hub = std::sync::Arc::new(http::WsHub::new());
                 
@@ -211,6 +217,7 @@ pub fn run() {
                 app_handle.manage(system_service.clone());
                 app_handle.manage(plan_service.clone());
                 app_handle.manage(storage_service.clone());
+                app_handle.manage(backup_service.clone());
                 app_handle.manage(payment_service.clone());
                 app_handle.manage(notification_service.clone());
                 app_handle.manage(ws_hub.clone());
@@ -234,6 +241,7 @@ pub fn run() {
                         storage_service,
                         payment_service, 
                         notification_service,
+                        backup_service,
                         ws_hub, 
                         app_dir, 
                         3000,
@@ -381,6 +389,13 @@ pub fn run() {
                                     subscribe_push,
                                     unsubscribe_push,
                                     send_test,
+                                    // Backup commands
+                                    list_backups,
+                                    create_backup,
+                                    delete_backup,
+                                    save_backup_to_disk,
+                                    restore_backup_from_file,
+                                    restore_local_backup_command,
                                 ])
                                 .run(tauri::generate_context!())
                                 .expect("error while running tauri application");

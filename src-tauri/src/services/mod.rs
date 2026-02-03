@@ -13,6 +13,7 @@ pub mod user_service;
 
 pub use auth_service::*;
 pub mod audit_service;
+pub mod backup;
 pub mod notification_service;
 pub mod payment_service;
 pub mod plan_service;
@@ -22,6 +23,7 @@ pub mod system_service;
 pub use alert_service::AlertService;
 pub use audit_service::AuditService;
 pub use auth_service::AuthService;
+pub use backup::BackupService;
 pub use email_service::EmailService;
 pub use notification_service::NotificationService;
 pub use payment_service::PaymentService;

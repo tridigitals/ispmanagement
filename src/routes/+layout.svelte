@@ -1,6 +1,6 @@
 <script lang="ts">
     import "$lib/styles/global.css";
-    import "../lib/i18n"; // Init i18n
+    import "$lib/i18n"; // Init i18n
     import { waitLocale, t } from "svelte-i18n";
     import { checkAuth, isAuthenticated, isSuperAdmin } from "$lib/stores/auth";
     import { appSettings } from "$lib/stores/settings";
@@ -20,6 +20,7 @@
     import { getSlugFromDomain } from "$lib/utils/domain";
 
     let loading = true;
+    let i18nReady = false;
 
     onMount(async () => {
         try {
@@ -37,6 +38,7 @@
             // Wait for i18n to be ready (locale set in appSettings.init)
             // Wait for i18n to be ready (locale set in appSettings.init)
             await waitLocale();
+            i18nReady = true;
 
             // --- Dynamic Custom Domain Lookup ---
             const hostname = window.location.hostname;
@@ -163,7 +165,7 @@
 {#if loading}
     <div class="loading-container">
         <div class="spinner"></div>
-        <p>{$t("common.loading") || "Loading..."}</p>
+        <p>{i18nReady ? $t("common.loading") || "Loading..." : "Loading..."}</p>
     </div>
 {:else}
     <Toaster />

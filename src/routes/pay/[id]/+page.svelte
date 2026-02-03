@@ -1,6 +1,6 @@
 <script lang="ts">
     import { page } from "$app/stores";
-    import { onMount } from "svelte";
+    import { onDestroy, onMount } from "svelte";
     import { api, type Invoice, type BankAccount } from "$lib/api/client";
     import { goto } from "$app/navigation";
     import { user } from "$lib/stores/auth";
@@ -17,6 +17,13 @@
     let midtransEnabled = $state(false);
     let manualEnabled = $state(true);
     let snapToken = $state("");
+    let snapReady = $state(false);
+    let snapLoading = $state(false);
+    let autoChecking = $state(false);
+    let statusCheckTimer: ReturnType<typeof setInterval> | null = null;
+    let statusCheckAttempts = 0;
+    const STATUS_CHECK_INTERVAL_MS = 3000;
+    const MAX_STATUS_CHECK_ATTEMPTS = 20;
     let manualInstructions = $state("");
     let publicSettings = $state<any>({});
 
@@ -55,6 +62,14 @@
                 const isProd = !!publicSettings.payment_midtrans_is_production;
                 if (clientKey) loadSnapScript(clientKey, isProd);
             }
+
+            if (
+                midtransEnabled &&
+                invoice?.status === "pending" &&
+                hasMidtransPending()
+            ) {
+                startStatusPolling();
+            }
         } catch (e: any) {
             toast.error(
                 e.message ||
@@ -66,12 +81,64 @@
         }
     });
 
+    onDestroy(() => {
+        stopStatusPolling();
+    });
+
+    function pendingKey() {
+        return `midtrans:pending:${invoiceId}`;
+    }
+
+    function markMidtransPending() {
+        if (typeof localStorage === "undefined") return;
+        localStorage.setItem(pendingKey(), "1");
+    }
+
+    function clearMidtransPending() {
+        if (typeof localStorage === "undefined") return;
+        localStorage.removeItem(pendingKey());
+    }
+
+    function hasMidtransPending() {
+        if (typeof localStorage === "undefined") return false;
+        return localStorage.getItem(pendingKey()) === "1";
+    }
+
     function loadSnapScript(clientKey: string, isProd: boolean) {
+        if (typeof window !== "undefined" && (window as any).snap) {
+            snapReady = true;
+            return;
+        }
+
+        const existing = document.getElementById(
+            "midtrans-snap-js",
+        ) as HTMLScriptElement | null;
+        if (existing) {
+            existing.addEventListener("load", () => {
+                snapReady = true;
+                snapLoading = false;
+            });
+            return;
+        }
+
+        snapLoading = true;
         const script = document.createElement("script");
+        script.id = "midtrans-snap-js";
         script.src = isProd
             ? "https://app.midtrans.com/snap/snap.js"
             : "https://app.sandbox.midtrans.com/snap/snap.js";
         script.setAttribute("data-client-key", clientKey);
+        script.onload = () => {
+            snapReady = true;
+            snapLoading = false;
+        };
+        script.onerror = () => {
+            snapLoading = false;
+            toast.error(
+                get(t)("payment.checkout.errors.load_failed") ||
+                    "Failed to load Midtrans payment script",
+            );
+        };
         document.head.appendChild(script);
     }
 
@@ -81,27 +148,38 @@
             const token = await api.payment.payMidtrans(invoice.id);
             snapToken = token;
 
-            // @ts-ignore
-            window.snap.pay(token, {
+            const snap = (window as any).snap;
+            if (!snap) {
+                toast.error(
+                    get(t)("payment.checkout.errors.load_failed") ||
+                        "Midtrans is not ready yet. Please try again.",
+                );
+                return;
+            }
+
+            markMidtransPending();
+            snap.pay(token, {
                 onSuccess: function (result: any) {
                     toast.success(
                         get(t)("payment.checkout.toasts.payment_success") ||
                             "Payment successful!",
                     );
-                    // Reload invoice to check status or redirect
-                    location.reload();
+                    startStatusPolling();
                 },
                 onPending: function (result: any) {
                     toast.info(
                         get(t)("payment.checkout.toasts.waiting") ||
                             "Waiting for payment...",
                     );
+                    startStatusPolling();
                 },
                 onError: function (result: any) {
                     toast.error(
                         get(t)("payment.checkout.toasts.payment_failed") ||
                             "Payment failed",
                     );
+                    clearMidtransPending();
+                    stopStatusPolling();
                 },
                 onClose: function () {
                     // closed
@@ -115,28 +193,88 @@
         }
     }
 
-    async function checkPaymentStatus() {
+    async function checkPaymentStatus(options?: {
+        silent?: boolean;
+        notifyOnChange?: boolean;
+    }) {
         if (!invoice) return;
         try {
             const status = await api.payment.checkStatus(invoice.id);
+            const notifyOnChange = options?.notifyOnChange ?? true;
+            const silent = options?.silent ?? false;
+
             if (status !== invoice.status) {
-                toast.success(
-                    (get(t)("payment.checkout.toasts.status_updated") ||
-                        "Status updated: ") + status,
-                );
-                location.reload();
-            } else {
+                invoice = { ...invoice, status };
+                if (status === "paid" || status === "failed") {
+                    clearMidtransPending();
+                    stopStatusPolling();
+                    invoice = await api.payment.getInvoice(invoice.id);
+                }
+                if (notifyOnChange && !silent) {
+                    toast.success(
+                        (get(t)("payment.checkout.toasts.status_updated") ||
+                            "Status updated: ") + status,
+                    );
+                } else if (notifyOnChange && status === "paid") {
+                    toast.success(
+                        get(t)("payment.checkout.toasts.payment_success") ||
+                            "Payment successful!",
+                    );
+                } else if (notifyOnChange && status === "failed") {
+                    toast.error(
+                        get(t)("payment.checkout.toasts.payment_failed") ||
+                            "Payment failed",
+                    );
+                }
+            } else if (!silent) {
                 toast.info(
                     (get(t)("payment.checkout.toasts.current_status") ||
                         "Current status: ") + status,
                 );
             }
+
+            return status;
         } catch (e: any) {
-            toast.error(
-                (get(t)("payment.checkout.errors.check_status_failed") ||
-                    "Failed to check status: ") + e.message,
-            );
+            if (!options?.silent) {
+                toast.error(
+                    (get(t)("payment.checkout.errors.check_status_failed") ||
+                        "Failed to check status: ") + e.message,
+                );
+            }
         }
+    }
+
+    function startStatusPolling() {
+        if (!invoice || invoice.status !== "pending") return;
+        if (statusCheckTimer) return;
+        autoChecking = true;
+        statusCheckAttempts = 0;
+
+        const poll = async () => {
+            statusCheckAttempts += 1;
+            const status = await checkPaymentStatus({
+                silent: true,
+                notifyOnChange: true,
+            });
+            if (status && status !== "pending") {
+                stopStatusPolling();
+                return;
+            }
+            if (statusCheckAttempts >= MAX_STATUS_CHECK_ATTEMPTS) {
+                stopStatusPolling();
+            }
+        };
+
+        void poll();
+        statusCheckTimer = setInterval(poll, STATUS_CHECK_INTERVAL_MS);
+    }
+
+    function stopStatusPolling() {
+        if (statusCheckTimer) {
+            clearInterval(statusCheckTimer);
+            statusCheckTimer = null;
+        }
+        autoChecking = false;
     }
 
     function formatCurrency(amount: number) {
@@ -302,11 +440,22 @@
                             <div style="margin-top: 1rem;">
                                 <button
                                     class="btn btn-secondary w-full"
-                                    onclick={checkPaymentStatus}
+                                    onclick={() =>
+                                        checkPaymentStatus({
+                                            silent: false,
+                                            notifyOnChange: true,
+                                        })}
+                                    disabled={autoChecking}
                                 >
-                                    {$t(
-                                        "payment.checkout.online.check_status",
-                                    ) || "Check Payment Status"}
+                                    {#if autoChecking}
+                                        {$t(
+                                            "payment.checkout.online.checking",
+                                        ) || "Checking..."}
+                                    {:else}
+                                        {$t(
+                                            "payment.checkout.online.check_status",
+                                        ) || "Check Payment Status"}
+                                    {/if}
                                 </button>
                             </div>
                         </div>

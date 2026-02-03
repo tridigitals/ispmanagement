@@ -83,6 +83,11 @@
             icon: "server",
             href: "/superadmin/system",
         },
+        {
+            label: $t("sidebar.backups") || "Backups",
+            icon: "archive",
+            href: "/superadmin/backups",
+        },
     ]);
 
     // Add $user as explicit dependency to force reactivity when user permissions change
@@ -126,6 +131,12 @@
                 href: `${tenantPrefix}/admin/storage`,
                 show: true,
             },
+            {
+                label: $t("sidebar.backups") || "Backups",
+                icon: "archive",
+                href: `${tenantPrefix}/admin/backups`,
+                show: $can("read", "backups"),
+                },
         ].filter((i) => i.show);
     });
 
@@ -227,6 +238,32 @@
 
     <!-- Footer / Profile -->
     <div class="sidebar-footer">
+        {#if $isSuperAdmin && !isUrlSuperadmin}
+            <button
+                class="context-btn"
+                onclick={() => goto("/superadmin")}
+                aria-label={$t("sidebar.super_admin") || "Super Admin"}
+                data-tooltip={$t("sidebar.super_admin") || "Super Admin"}
+            >
+                <Icon name="server" size={16} />
+                <span class="label"
+                    >{$t("sidebar.super_admin") || "Super Admin"}</span
+                >
+            </button>
+        {/if}
+
+        {#if $isSuperAdmin && isUrlSuperadmin && $user?.tenant_slug}
+            <button
+                class="context-btn"
+                onclick={() => goto(`${tenantPrefix}/admin`)}
+                aria-label={$t("sidebar.exit") || "Exit"}
+                data-tooltip={$t("sidebar.exit") || "Exit"}
+            >
+                <Icon name="arrow-left" size={16} />
+                <span class="label">{$t("sidebar.exit") || "Exit"}</span>
+            </button>
+        {/if}
+
         {#if isUrlSuperadmin}
             <button
                 class="context-btn"
@@ -241,20 +278,6 @@
             >
                 <Icon name="arrow-left" size={16} />
                 <span class="label">{$t("sidebar.exit") || "Exit"}</span>
-            </button>
-        {/if}
-
-        {#if $isSuperAdmin && !isUrlSuperadmin}
-            <button
-                class="context-btn super-admin"
-                onclick={() => goto("/superadmin")}
-                aria-label={$t("sidebar.super_admin") || "Super Admin"}
-                data-tooltip={$t("sidebar.super_admin") || "Super Admin"}
-            >
-                <Icon name="server" size={16} />
-                <span class="label"
-                    >{$t("sidebar.super_admin") || "Super Admin"}</span
-                >
             </button>
         {/if}
 
@@ -524,21 +547,6 @@
         border-color: var(--color-primary);
     }
 
-    .context-btn.super-admin {
-        color: white;
-        background: linear-gradient(
-            135deg,
-            #4f46e5,
-            #ec4899
-        ); /* Indigo to Pink */
-        border: none;
-    }
-
-    .context-btn.super-admin:hover {
-        filter: brightness(1.1);
-        transform: translateY(-1px);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    }
 
     .profile-section {
         position: relative;

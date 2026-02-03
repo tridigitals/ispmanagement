@@ -66,7 +66,21 @@
 
     function handleClick(n: any) {
         if (!n.is_read) markAsRead(n.id);
-        if (n.action_url) goto(n.action_url);
+        if (n.action_url) goto(resolveActionUrl(n.action_url));
+    }
+
+    function resolveActionUrl(actionUrl: string) {
+        if (!actionUrl || !tenantPrefix) return actionUrl;
+        if (actionUrl.startsWith(tenantPrefix + "/")) return actionUrl;
+        if (
+            actionUrl.startsWith("/admin") ||
+            actionUrl.startsWith("/dashboard") ||
+            actionUrl.startsWith("/profile") ||
+            actionUrl.startsWith("/notifications")
+        ) {
+            return `${tenantPrefix}${actionUrl}`;
+        }
+        return actionUrl;
     }
 
     // Confirm dialogs

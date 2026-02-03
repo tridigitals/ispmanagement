@@ -415,9 +415,6 @@
                                         onclick={() => openEditModal(item)}
                                     >
                                         <Icon name="edit" size={18} />
-                                        <span class="btn-text">
-                                            {$t("common.edit") || "Edit"}
-                                        </span>
                                     </button>
                                 {/if}
                                 {#if item.email !== $user?.email && $can("delete", "team") && myRoleLevel > (roles.find((r) => r.id === item.role_id)?.level || 0)}
@@ -428,9 +425,6 @@
                                         onclick={() => confirmRemove(item)}
                                     >
                                         <Icon name="trash" size={18} />
-                                        <span class="btn-text">
-                                            {$t("common.delete") || "Delete"}
-                                        </span>
                                     </button>
                                 {/if}
                             </div>
@@ -842,13 +836,13 @@
     }
 
     .btn-icon {
+        width: 36px;
         height: 36px;
-        padding: 0 0.75rem;
+        padding: 0;
         border-radius: 10px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 0.5rem;
         border: 1px solid var(--glass-border);
         background: rgba(255, 255, 255, 0.04);
         color: var(--text-secondary, #cbd5e1);
@@ -868,14 +862,10 @@
         border-color: rgba(239, 68, 68, 0.3);
     }
 
-    .btn-text {
-        font-size: 0.85rem;
-        font-weight: 650;
-    }
-
     @media (max-width: 900px) {
-        .btn-text {
-            display: none;
+        .btn-icon {
+            width: 34px;
+            height: 34px;
         }
     }
 

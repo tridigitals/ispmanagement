@@ -573,6 +573,31 @@ impl PaymentService {
             }
         };
 
+        let current_status = invoice.status.as_str();
+        if current_status == status {
+            println!(
+                "DEBUG: Duplicate Midtrans notification ignored. Invoice={}, status={}",
+                invoice.invoice_number, status
+            );
+            return Ok(());
+        }
+
+        if current_status == "paid" && status != "paid" {
+            println!(
+                "DEBUG: Ignoring Midtrans status downgrade. Invoice={}, current={}, incoming={}",
+                invoice.invoice_number, current_status, status
+            );
+            return Ok(());
+        }
+
+        if current_status == "failed" && status == "pending" {
+            println!(
+                "DEBUG: Ignoring Midtrans pending after failed. Invoice={}",
+                invoice.invoice_number
+            );
+            return Ok(());
+        }
+
         // 2. Update Status
         let now = Utc::now();
         let paid_at = if status == "paid" { Some(now) } else { None };
@@ -679,7 +704,7 @@ impl PaymentService {
                         message.clone(),
                         "info".to_string(),                           // type
                         "billing".to_string(),                        // category
-                        Some(format!("/admin/settings?tab=billing")), // action_url
+                        Some(format!("/admin/subscription")), // action_url
                     )
                     .await;
             }
