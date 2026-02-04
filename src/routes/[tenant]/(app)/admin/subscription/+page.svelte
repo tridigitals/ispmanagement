@@ -44,8 +44,12 @@
       availablePlans = plansRes.filter((p) => p.is_active);
       invoices = invoicesRes;
 
-      if (publicSettings?.currency_code) {
-        baseCurrencyCode = String(publicSettings.currency_code).toUpperCase();
+      // Plans/invoices are stored in base currency; tenant currency is the display currency.
+      // Fallback order keeps backward compatibility with older servers.
+      if (publicSettings?.base_currency_code || publicSettings?.currency_code) {
+        baseCurrencyCode = String(
+          publicSettings.base_currency_code || publicSettings.currency_code,
+        ).toUpperCase();
       }
       if (publicSettings?.default_locale) {
         baseLocale = String(publicSettings.default_locale);

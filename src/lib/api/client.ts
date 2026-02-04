@@ -643,6 +643,7 @@ export const settings = {
     default_locale?: string;
     app_timezone?: string;
     currency_code?: string;
+    base_currency_code?: string;
     maintenance_mode?: boolean;
     maintenance_message?: string;
     payment_midtrans_enabled?: boolean;
@@ -750,6 +751,13 @@ export const plans = {
       name,
       slug,
       description,
+      // NOTE: Tauri IPC arg mapping expects camelCase (it auto-converts to snake_case in Rust).
+      // Keep both camelCase + snake_case to remain compatible with the HTTP API payloads.
+      priceMonthly: price_monthly,
+      priceYearly: price_yearly,
+      isActive: is_active,
+      isDefault: is_default,
+      sortOrder: sort_order,
       price_monthly,
       price_yearly,
       is_active,
@@ -774,6 +782,13 @@ export const plans = {
       name,
       slug,
       description,
+      // NOTE: Tauri IPC arg mapping expects camelCase (it auto-converts to snake_case in Rust).
+      // Keep both camelCase + snake_case to remain compatible with the HTTP API payloads.
+      priceMonthly: price_monthly,
+      priceYearly: price_yearly,
+      isActive: is_active,
+      isDefault: is_default,
+      sortOrder: sort_order,
       price_monthly,
       price_yearly,
       is_active,

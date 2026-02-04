@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { user, isAdmin, isSuperAdmin, logout, can, authVersion } from '$lib/stores/auth';
+  import { user, tenant, isAdmin, isSuperAdmin, logout, can, authVersion } from '$lib/stores/auth';
   import { appName } from '$lib/stores/settings';
   import { appLogo } from '$lib/stores/logo';
   import { isSidebarCollapsed } from '$lib/stores/ui';
@@ -13,10 +13,13 @@
 
   // Determine if we are on a custom domain that matches the current tenant
   let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
-  let isCustomDomain = $derived(domainSlug && domainSlug === $user?.tenant_slug);
+  let effectiveTenantSlug = $derived($tenant?.slug || $user?.tenant_slug || '');
+  let isCustomDomain = $derived(domainSlug && domainSlug === effectiveTenantSlug);
 
   // If on custom domain, prefix is empty. Otherwise, use slug.
-  let tenantPrefix = $derived($user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : '');
+  let tenantPrefix = $derived(
+    effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
+  );
 
   let appMenu = $derived([
     {
@@ -135,6 +138,10 @@
   let isUrlAdmin = $derived($page.url.pathname.includes('/admin'));
   let currentMenu = $derived(isUrlSuperadmin ? superAdminMenu : isUrlAdmin ? adminMenu : appMenu);
 
+  // When inside `/superadmin`, we still want a quick jump back to the tenant admin panel.
+  // If we're on a custom domain, tenantPrefix is empty and `/admin` is the correct route.
+  let adminPanelHref = $derived(tenantPrefix ? `${tenantPrefix}/admin` : '/admin');
+
   function handleLogout() {
     logout();
     goto('/');
@@ -230,19 +237,19 @@
       </button>
     {/if}
 
-    {#if $isSuperAdmin && isUrlSuperadmin && $user?.tenant_slug}
-      <button
-        class="context-btn"
-        onclick={() => goto(`${tenantPrefix}/admin`)}
-        aria-label={$t('sidebar.exit') || 'Exit'}
-        data-tooltip={$t('sidebar.exit') || 'Exit'}
-      >
-        <Icon name="arrow-left" size={16} />
-        <span class="label">{$t('sidebar.exit') || 'Exit'}</span>
-      </button>
-    {/if}
-
     {#if isUrlSuperadmin}
+      {#if $isAdmin}
+        <button
+          class="context-btn"
+          onclick={() => goto(adminPanelHref)}
+          aria-label={$t('sidebar.admin_panel') || 'Admin Panel'}
+          data-tooltip={$t('sidebar.admin_panel') || 'Admin Panel'}
+        >
+          <Icon name="shield" size={16} />
+          <span class="label">{$t('sidebar.admin_panel') || 'Admin Panel'}</span>
+        </button>
+      {/if}
+
       <button
         class="context-btn"
         onclick={() => goto(tenantPrefix ? `${tenantPrefix}/dashboard` : '/dashboard')}

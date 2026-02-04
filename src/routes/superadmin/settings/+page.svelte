@@ -42,7 +42,7 @@
   let appPublicUrl = '';
   let appMainDomain = '';
   let currencyCode = 'IDR';
-  const currencyCodeOptions = ['IDR', 'USD', 'EUR', 'SGD', 'MYR', 'GBP', 'JPY', 'AUD'];
+  const currencyCodeOptions = ['IDR', 'USD'];
   let appTimezone = 'UTC';
 
   // Authentication Settings
@@ -224,6 +224,9 @@
     appPublicUrl = settingsMap['app_public_url'] || 'http://localhost:3000';
     appMainDomain = settingsMap['app_main_domain'] || '';
     currencyCode = (settingsMap['currency_code'] || 'IDR').toUpperCase();
+    if (currencyCode !== 'IDR' && currencyCode !== 'USD') {
+      currencyCode = 'IDR';
+    }
     appTimezone = settingsMap['app_timezone'] || 'UTC';
 
     // Authentication

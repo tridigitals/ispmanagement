@@ -46,7 +46,6 @@
         'support_email',
         'default_locale',
         'currency_code',
-        'currency_symbol',
         'app_logo_path',
       ],
     },
@@ -180,6 +179,10 @@
       cat.keys.forEach((key) => {
         let val = settings[key]?.value ?? '';
         if (key === 'storage_driver' && !val) val = 'system';
+        if (key === 'currency_code') {
+          val = (val || 'IDR').toUpperCase();
+          if (val !== 'IDR' && val !== 'USD') val = 'IDR';
+        }
         localSettings[key] = val;
       });
     });
@@ -397,19 +400,9 @@
     { value: 'en', label: 'English (US)' },
     { value: 'id', label: 'Bahasa Indonesia (ID)' },
   ];
-  const currencyOptions = [
-    { value: 'Rp', label: 'IDR (Rp)' },
-    { value: '$', label: 'USD ($)' },
-  ];
   const currencyCodeOptions = [
     { value: 'IDR', label: 'IDR (Indonesian Rupiah)' },
     { value: 'USD', label: 'USD (US Dollar)' },
-    { value: 'EUR', label: 'EUR (Euro)' },
-    { value: 'SGD', label: 'SGD (Singapore Dollar)' },
-    { value: 'MYR', label: 'MYR (Malaysian Ringgit)' },
-    { value: 'GBP', label: 'GBP (British Pound)' },
-    { value: 'JPY', label: 'JPY (Japanese Yen)' },
-    { value: 'AUD', label: 'AUD (Australian Dollar)' },
   ];
   const storageOptions = [
     { value: 'system', label: 'System Default (Managed)' },
@@ -1162,13 +1155,6 @@
                         <Select
                           id={key}
                           options={currencyCodeOptions}
-                          value={localSettings[key]}
-                          onchange={(e: any) => handleChange(key, e.detail)}
-                        />
-                      {:else if key === 'currency_symbol'}
-                        <Select
-                          id={key}
-                          options={currencyOptions}
                           value={localSettings[key]}
                           onchange={(e: any) => handleChange(key, e.detail)}
                         />

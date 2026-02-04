@@ -16,8 +16,11 @@ export interface AppSettings {
   maintenance_message?: string;
   default_locale: string;
   app_timezone: string;
+  // Stable "pricing/base" currency stored in the database (plans, invoices, etc).
+  // Tenants choose `currency_code` as their display currency; amounts are converted using FX rates.
+  base_currency_code: string;
+  // Display currency (tenants may override).
   currency_code: string;
-  currency_symbol: string;
   auth?: AuthSettings; // Dynamic auth settings
   [key: string]: any; // Allow indexing
 }
@@ -32,8 +35,8 @@ const defaults: AppSettings = {
   maintenance_mode: false,
   default_locale: 'en-US',
   app_timezone: 'UTC',
+  base_currency_code: 'IDR',
   currency_code: 'IDR',
-  currency_symbol: 'Rp',
   auth: undefined,
 };
 
@@ -90,6 +93,11 @@ function createSettingsStore() {
         // Ensure global maintenance settings from publicSettings are not overwritten by tenantSettings
         maintenance_mode: (publicSettings as any).maintenance_mode ?? defaults.maintenance_mode,
         maintenance_message: (publicSettings as any).maintenance_message,
+        // Ensure base currency stays global/stable (do not allow tenant override).
+        base_currency_code:
+          (publicSettings as any).base_currency_code ??
+          (publicSettings as any).currency_code ??
+          defaults.base_currency_code,
       };
 
       set(finalSettings);

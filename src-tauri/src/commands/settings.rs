@@ -16,6 +16,7 @@ pub struct PublicSettings {
     pub default_locale: Option<String>,
     pub app_timezone: Option<String>,
     pub currency_code: Option<String>,
+    pub base_currency_code: Option<String>,
     pub maintenance_mode: bool,
     pub maintenance_message: Option<String>,
     // Payment Settings
@@ -47,6 +48,11 @@ pub async fn get_public_settings(
         .map_err(|e| e.to_string())?;
     let currency_code = settings_service
         .get_value(None, "currency_code")
+        .await
+        .unwrap_or(None)
+        .or_else(|| Some("IDR".to_string()));
+    let base_currency_code = settings_service
+        .get_value(None, "base_currency_code")
         .await
         .unwrap_or(None)
         .or_else(|| Some("IDR".to_string()));
@@ -88,6 +94,7 @@ pub async fn get_public_settings(
         default_locale,
         app_timezone,
         currency_code,
+        base_currency_code,
         maintenance_mode,
         maintenance_message,
         payment_midtrans_enabled,

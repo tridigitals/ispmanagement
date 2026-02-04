@@ -1406,6 +1406,11 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
         ("app_description", "Enterprise-grade boilerplate built with Rust and SvelteKit. Secure, scalable, and lightweight.", "Application description"),
         ("app_public_url", "https://apisaas.tridigitals.com", "Public URL of the application"),
         ("app_version", "1.0.0", "Application version"),
+        // Currency
+        // base_currency_code is the pricing/base currency stored in the database (plans, limits, etc).
+        // currency_code is the default display currency (tenants may override).
+        ("base_currency_code", "IDR", "Base currency for pricing (keep stable)"),
+        ("currency_code", "IDR", "Default display currency code (ISO 4217)"),
         ("jwt_secret", jwt_secret.as_str(), "JWT signing secret"),
         ("auth_jwt_expiry_hours", "24", "JWT token expiry in hours"),
         ("auth_session_timeout_minutes", "60", "Session timeout after inactivity (minutes)"),
@@ -1852,8 +1857,8 @@ pub async fn seed_plans(pool: &DbPool) -> Result<(), sqlx::Error> {
             "Pro",
             "pro",
             "For growing teams",
-            29.0,
-            290.0,
+            290_000.0,
+            2_900_000.0,
             true,
             false,
             2,
@@ -1862,8 +1867,8 @@ pub async fn seed_plans(pool: &DbPool) -> Result<(), sqlx::Error> {
             "Enterprise",
             "enterprise",
             "For large organizations",
-            99.0,
-            990.0,
+            990_000.0,
+            9_900_000.0,
             true,
             false,
             3,

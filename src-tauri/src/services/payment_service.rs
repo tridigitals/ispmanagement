@@ -44,7 +44,7 @@ impl PaymentService {
 
         // Base currency for pricing (global) and tenant display currency.
         let base_currency_code = self
-            .get_setting_value(None, "currency_code")
+            .get_setting_value(None, "base_currency_code")
             .await
             .unwrap_or_else(|| "IDR".to_string())
             .to_uppercase();
