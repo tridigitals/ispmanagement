@@ -18,7 +18,12 @@ pub struct Setting {
 }
 
 impl Setting {
-    pub fn new(tenant_id: Option<String>, key: String, value: String, description: Option<String>) -> Self {
+    pub fn new(
+        tenant_id: Option<String>,
+        key: String,
+        value: String,
+        description: Option<String>,
+    ) -> Self {
         let now = Utc::now();
         Self {
             id: Uuid::new_v4().to_string(),

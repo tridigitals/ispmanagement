@@ -21,7 +21,13 @@ pub struct Role {
 
 impl Role {
     #[allow(dead_code)]
-    pub fn new(tenant_id: Option<String>, name: String, description: Option<String>, is_system: bool, level: i32) -> Self {
+    pub fn new(
+        tenant_id: Option<String>,
+        name: String,
+        description: Option<String>,
+        is_system: bool,
+        level: i32,
+    ) -> Self {
         let now = Utc::now();
         Self {
             id: Uuid::new_v4().to_string(),

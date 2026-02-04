@@ -2,9 +2,11 @@
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
+use sqlx::Pool;
+#[cfg(feature = "postgres")]
+use sqlx::Postgres;
 #[cfg(feature = "sqlite")]
 use sqlx::Sqlite;
-use sqlx::{Pool, Postgres};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use sysinfo::System;

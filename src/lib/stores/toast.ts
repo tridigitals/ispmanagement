@@ -1,4 +1,3 @@
-import { toast } from "svelte-sonner";
+import { toast } from 'svelte-sonner';
 
 export { toast };
-

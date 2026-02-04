@@ -1,18 +1,17 @@
 //! Plan Management HTTP Endpoints
 
 use axum::{
-    extract::{Path, State, Query},
-    http::{StatusCode, HeaderMap},
-    Json,
-    routing::{get, post, put, delete},
-    Router,
+    extract::{Path, Query, State},
+    http::{HeaderMap, StatusCode},
+    routing::{delete, get, post, put},
+    Json, Router,
 };
 use serde::{Deserialize, Serialize};
 
 use crate::http::AppState;
 use crate::models::{
-    Plan, PlanWithFeatures, FeatureDefinition, TenantSubscription, FeatureAccess,
-    CreatePlanRequest, UpdatePlanRequest, CreateFeatureRequest, TenantSubscriptionDetails,
+    CreateFeatureRequest, CreatePlanRequest, FeatureAccess, FeatureDefinition, Plan,
+    PlanWithFeatures, TenantSubscription, TenantSubscriptionDetails, UpdatePlanRequest,
 };
 use crate::services::Claims;
 
@@ -44,25 +43,45 @@ struct ErrorResponse {
 }
 
 // Helper to extract and validate token from headers
-async fn authenticate(state: &AppState, headers: &HeaderMap) -> Result<Claims, (StatusCode, Json<ErrorResponse>)> {
-    let auth_header = headers.get("Authorization")
+async fn authenticate(
+    state: &AppState,
+    headers: &HeaderMap,
+) -> Result<Claims, (StatusCode, Json<ErrorResponse>)> {
+    let auth_header = headers
+        .get("Authorization")
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.strip_prefix("Bearer "))
-        .ok_or_else(|| (StatusCode::UNAUTHORIZED, Json(ErrorResponse {
-            error: "Missing authorization header".to_string()
-        })))?;
+        .ok_or_else(|| {
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse {
+                    error: "Missing authorization header".to_string(),
+                }),
+            )
+        })?;
 
-    state.auth_service.validate_token(auth_header).await
-        .map_err(|e| (StatusCode::UNAUTHORIZED, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+    state
+        .auth_service
+        .validate_token(auth_header)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 fn require_superadmin(claims: &Claims) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
     if !claims.is_super_admin {
-        return Err((StatusCode::FORBIDDEN, Json(ErrorResponse {
-            error: "Superadmin access required".to_string()
-        })));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                error: "Superadmin access required".to_string(),
+            }),
+        ));
     }
     Ok(())
 }
@@ -74,18 +93,21 @@ async fn list_plans(
     headers: HeaderMap,
 ) -> Result<Json<Vec<Plan>>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
-    
+
     let plans = if claims.is_super_admin {
         state.plan_service.list_plans().await
     } else {
         state.plan_service.list_active_plans().await
     };
 
-    plans
-        .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+    plans.map(Json).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: e.to_string(),
+            }),
+        )
+    })
 }
 
 async fn get_plan(
@@ -96,11 +118,19 @@ async fn get_plan(
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state.plan_service.get_plan_with_features(&id).await
+    state
+        .plan_service
+        .get_plan_with_features(&id)
+        .await
         .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 async fn create_plan(
@@ -111,11 +141,19 @@ async fn create_plan(
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state.plan_service.create_plan(req).await
+    state
+        .plan_service
+        .create_plan(req)
+        .await
         .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 async fn update_plan(
@@ -127,11 +165,19 @@ async fn update_plan(
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state.plan_service.update_plan(&id, req).await
+    state
+        .plan_service
+        .update_plan(&id, req)
+        .await
         .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 async fn delete_plan_handler(
@@ -142,11 +188,19 @@ async fn delete_plan_handler(
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state.plan_service.delete_plan(&id).await
+    state
+        .plan_service
+        .delete_plan(&id)
+        .await
         .map(|_| StatusCode::NO_CONTENT)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 // ==================== FEATURES ====================
@@ -158,11 +212,19 @@ async fn list_features(
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state.plan_service.list_feature_definitions().await
+    state
+        .plan_service
+        .list_feature_definitions()
+        .await
         .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 async fn create_feature(
@@ -173,11 +235,19 @@ async fn create_feature(
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state.plan_service.create_feature(req).await
+    state
+        .plan_service
+        .create_feature(req)
+        .await
         .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 async fn delete_feature(
@@ -188,11 +258,19 @@ async fn delete_feature(
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state.plan_service.delete_feature(&id).await
+    state
+        .plan_service
+        .delete_feature(&id)
+        .await
         .map(|_| StatusCode::NO_CONTENT)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 // ==================== PLAN FEATURES ====================
@@ -212,11 +290,19 @@ async fn set_plan_feature(
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state.plan_service.set_plan_feature(&plan_id, &body.feature_id, &body.value).await
+    state
+        .plan_service
+        .set_plan_feature(&plan_id, &body.feature_id, &body.value)
+        .await
         .map(|_| StatusCode::OK)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 // ==================== SUBSCRIPTIONS ====================
@@ -232,31 +318,47 @@ async fn get_subscription_details(
     Query(params): Query<SubscriptionDetailsParams>,
 ) -> Result<Json<TenantSubscriptionDetails>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
-    
+
     // Determine target tenant_id
     let target_tenant_id = match params.tenant_id {
         Some(ref tid) => {
-             // If specifying a tenant, must be superadmin or own tenant
-             if !claims.is_super_admin && claims.tenant_id.as_deref() != Some(tid) {
-                 return Err((StatusCode::FORBIDDEN, Json(ErrorResponse {
-                     error: "Unauthorized".to_string()
-                 })));
-             }
-             tid.clone()
-        },
+            // If specifying a tenant, must be superadmin or own tenant
+            if !claims.is_super_admin && claims.tenant_id.as_deref() != Some(tid) {
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    Json(ErrorResponse {
+                        error: "Unauthorized".to_string(),
+                    }),
+                ));
+            }
+            tid.clone()
+        }
         None => {
             // Default to own tenant
-            claims.tenant_id.ok_or_else(|| (StatusCode::BAD_REQUEST, Json(ErrorResponse {
-                error: "Tenant ID required".to_string()
-            })))?
+            claims.tenant_id.ok_or_else(|| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(ErrorResponse {
+                        error: "Tenant ID required".to_string(),
+                    }),
+                )
+            })?
         }
     };
 
-    state.plan_service.get_tenant_subscription_details(&target_tenant_id).await
+    state
+        .plan_service
+        .get_tenant_subscription_details(&target_tenant_id)
+        .await
         .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 async fn get_subscription(
@@ -265,19 +367,30 @@ async fn get_subscription(
     Path(tenant_id): Path<String>,
 ) -> Result<Json<Option<TenantSubscription>>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
-    
+
     // Allow superadmin or own tenant
     if !claims.is_super_admin && claims.tenant_id.as_deref() != Some(tenant_id.as_str()) {
-        return Err((StatusCode::FORBIDDEN, Json(ErrorResponse {
-            error: "Unauthorized".to_string()
-        })));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                error: "Unauthorized".to_string(),
+            }),
+        ));
     }
 
-    state.plan_service.get_tenant_subscription(&tenant_id).await
+    state
+        .plan_service
+        .get_tenant_subscription(&tenant_id)
+        .await
         .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 #[derive(Deserialize)]
@@ -294,11 +407,19 @@ async fn assign_plan(
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state.plan_service.assign_plan_to_tenant(&tenant_id, &body.plan_id).await
+    state
+        .plan_service
+        .assign_plan_to_tenant(&tenant_id, &body.plan_id)
+        .await
         .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 // ==================== FEATURE ACCESS ====================
@@ -309,17 +430,28 @@ async fn check_access(
     Path((tenant_id, feature_code)): Path<(String, String)>,
 ) -> Result<Json<FeatureAccess>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
-    
+
     // Allow superadmin or own tenant
     if !claims.is_super_admin && claims.tenant_id.as_deref() != Some(tenant_id.as_str()) {
-        return Err((StatusCode::FORBIDDEN, Json(ErrorResponse {
-            error: "Unauthorized".to_string()
-        })));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                error: "Unauthorized".to_string(),
+            }),
+        ));
     }
 
-    state.plan_service.check_feature_access(&tenant_id, &feature_code).await
+    state
+        .plan_service
+        .check_feature_access(&tenant_id, &feature_code)
+        .await
         .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }

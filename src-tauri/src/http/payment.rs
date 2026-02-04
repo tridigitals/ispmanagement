@@ -1,18 +1,17 @@
 //! Payment HTTP Handlers (Webhooks)
 
-use axum::{
-    extract::{Query, State, Path},
-    http::{StatusCode, HeaderMap},
-    response::IntoResponse,
-    Json, 
-    routing::{post, get, delete}, 
-    Router,
-};
-use serde::{Serialize, Deserialize};
-use serde_json::Value;
 use crate::http::AppState;
-use crate::models::{Invoice, BankAccount, CreateBankAccountRequest};
+use crate::models::{BankAccount, CreateBankAccountRequest, Invoice};
 use crate::services::Claims;
+use axum::{
+    extract::{Path, Query, State},
+    http::{HeaderMap, StatusCode},
+    response::IntoResponse,
+    routing::{delete, get, post},
+    Json, Router,
+};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -49,25 +48,45 @@ struct FxRateResponse {
 }
 
 // Helper to extract and validate token from headers
-async fn authenticate(state: &AppState, headers: &HeaderMap) -> Result<Claims, (StatusCode, Json<ErrorResponse>)> {
-    let auth_header = headers.get("Authorization")
+async fn authenticate(
+    state: &AppState,
+    headers: &HeaderMap,
+) -> Result<Claims, (StatusCode, Json<ErrorResponse>)> {
+    let auth_header = headers
+        .get("Authorization")
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.strip_prefix("Bearer "))
-        .ok_or_else(|| (StatusCode::UNAUTHORIZED, Json(ErrorResponse {
-            error: "Missing authorization header".to_string()
-        })))?;
+        .ok_or_else(|| {
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse {
+                    error: "Missing authorization header".to_string(),
+                }),
+            )
+        })?;
 
-    state.auth_service.validate_token(auth_header).await
-        .map_err(|e| (StatusCode::UNAUTHORIZED, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+    state
+        .auth_service
+        .validate_token(auth_header)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 fn require_superadmin(claims: &Claims) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
     if !claims.is_super_admin {
-        return Err((StatusCode::FORBIDDEN, Json(ErrorResponse {
-            error: "Superadmin access required".to_string()
-        })));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                error: "Superadmin access required".to_string(),
+            }),
+        ));
     }
     Ok(())
 }
@@ -111,11 +130,19 @@ async fn list_invoices(
     let claims = authenticate(&state, &headers).await?;
     let tenant_id = claims.tenant_id.as_deref();
 
-    state.payment_service.list_invoices(tenant_id).await
+    state
+        .payment_service
+        .list_invoices(tenant_id)
+        .await
         .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 async fn list_all_invoices(
@@ -125,11 +152,19 @@ async fn list_all_invoices(
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state.payment_service.list_invoices(None).await
+    state
+        .payment_service
+        .list_invoices(None)
+        .await
         .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 #[derive(Deserialize)]
@@ -145,15 +180,28 @@ async fn create_invoice_for_plan(
     Json(body): Json<CreateInvoiceForPlanBody>,
 ) -> Result<Json<Invoice>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
-    let tenant_id = claims.tenant_id.ok_or_else(|| (StatusCode::BAD_REQUEST, Json(ErrorResponse {
-        error: "No tenant context".to_string()
-    })))?;
+    let tenant_id = claims.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "No tenant context".to_string(),
+            }),
+        )
+    })?;
 
-    let plan = state.plan_service.get_plan(&body.plan_id).await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))?;
-    
+    let plan = state
+        .plan_service
+        .get_plan(&body.plan_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })?;
+
     let amount = if body.billing_cycle == "yearly" {
         plan.price_yearly
     } else {
@@ -163,11 +211,19 @@ async fn create_invoice_for_plan(
     let desc = format!("{} Plan ({} billing)", plan.name, body.billing_cycle);
     let ext_id = format!("{}:{}", body.plan_id, body.billing_cycle);
 
-    state.payment_service.create_invoice(&tenant_id, amount, Some(desc), Some(ext_id)).await
+    state
+        .payment_service
+        .create_invoice(&tenant_id, amount, Some(desc), Some(ext_id))
+        .await
         .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 async fn get_invoice(
@@ -176,13 +232,21 @@ async fn get_invoice(
     Path(id): Path<String>,
 ) -> Result<Json<Invoice>, (StatusCode, Json<ErrorResponse>)> {
     let _claims = authenticate(&state, &headers).await?;
-    
+
     // In a real app, we should verify that the invoice belongs to the tenant
-    state.payment_service.get_invoice(&id).await
+    state
+        .payment_service
+        .get_invoice(&id)
+        .await
         .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 async fn pay_invoice_midtrans(
@@ -192,11 +256,19 @@ async fn pay_invoice_midtrans(
 ) -> Result<Json<String>, (StatusCode, Json<ErrorResponse>)> {
     let _claims = authenticate(&state, &headers).await?;
 
-    state.payment_service.initiate_midtrans(&id).await
+    state
+        .payment_service
+        .initiate_midtrans(&id)
+        .await
         .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 async fn check_payment_status(
@@ -206,11 +278,19 @@ async fn check_payment_status(
 ) -> Result<Json<String>, (StatusCode, Json<ErrorResponse>)> {
     let _claims = authenticate(&state, &headers).await?;
 
-    state.payment_service.check_transaction_status(&id).await
+    state
+        .payment_service
+        .check_transaction_status(&id)
+        .await
         .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 async fn list_bank_accounts(
@@ -219,11 +299,19 @@ async fn list_bank_accounts(
 ) -> Result<Json<Vec<BankAccount>>, (StatusCode, Json<ErrorResponse>)> {
     let _claims = authenticate(&state, &headers).await?;
 
-    state.payment_service.list_bank_accounts().await
+    state
+        .payment_service
+        .list_bank_accounts()
+        .await
         .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 async fn create_bank_account(
@@ -234,11 +322,19 @@ async fn create_bank_account(
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state.payment_service.create_bank_account(req).await
+    state
+        .payment_service
+        .create_bank_account(req)
+        .await
         .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 async fn delete_bank_account(
@@ -249,11 +345,19 @@ async fn delete_bank_account(
     let claims = authenticate(&state, &headers).await?;
     require_superadmin(&claims)?;
 
-    state.payment_service.delete_bank_account(&id).await
+    state
+        .payment_service
+        .delete_bank_account(&id)
+        .await
         .map(|_| StatusCode::NO_CONTENT)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string()
-        })))
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 async fn midtrans_notification(
@@ -292,7 +396,10 @@ async fn midtrans_notification(
     }
 
     // 3. Update Invoice Status
-    match payment_service.process_midtrans_notification(order_id, payment_status).await {
+    match payment_service
+        .process_midtrans_notification(order_id, payment_status)
+        .await
+    {
         Ok(_) => (StatusCode::OK, "OK"),
         Err(e) => {
             eprintln!("Failed to process notification: {}", e);

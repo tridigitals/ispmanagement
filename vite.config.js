@@ -1,6 +1,6 @@
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig, loadEnv } from 'vite';
 // @ts-nocheck
-import { sveltekit } from "@sveltejs/kit/vite";
+import { sveltekit } from '@sveltejs/kit/vite';
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -12,20 +12,24 @@ export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
   // Extract hostnames from CORS_ALLOWED_ORIGINS for allowedHosts
-  const corsOrigins = (env.CORS_ALLOWED_ORIGINS || "").split(",");
-  const parsedHosts = corsOrigins.map(origin => {
-    try {
-      // Remove trailing slash if present before parsing (though URL ctor handles it)
-      return new URL(origin.trim()).hostname;
-    } catch {
-      return null; // Ignore invalid URLs
-    }
-  }).filter(Boolean);
+  const corsOrigins = (env.CORS_ALLOWED_ORIGINS || '').split(',');
+  const parsedHosts = corsOrigins
+    .map((origin) => {
+      try {
+        // Remove trailing slash if present before parsing (though URL ctor handles it)
+        return new URL(origin.trim()).hostname;
+      } catch {
+        return null; // Ignore invalid URLs
+      }
+    })
+    .filter(Boolean);
 
-  const explicitAllowedHosts = (env.VITE_ALLOWED_HOSTS || "").split(",").filter(Boolean);
+  const explicitAllowedHosts = (env.VITE_ALLOWED_HOSTS || '').split(',').filter(Boolean);
 
   // Combine all sources
-  const finalAllowedHosts = [...new Set([...parsedHosts, ...explicitAllowedHosts, 'localhost', '127.0.0.1'])];
+  const finalAllowedHosts = [
+    ...new Set([...parsedHosts, ...explicitAllowedHosts, 'localhost', '127.0.0.1']),
+  ];
 
   return {
     plugins: [await sveltekit()],
@@ -42,15 +46,15 @@ export default defineConfig(async ({ mode }) => {
       allowedHosts: explicitAllowedHosts.includes('all') ? true : finalAllowedHosts,
       hmr: host
         ? {
-          protocol: "ws",
-          host,
-          port: 1421,
-          clientPort: 1421,
-        }
+            protocol: 'ws',
+            host,
+            port: 1421,
+            clientPort: 1421,
+          }
         : undefined,
       watch: {
         // 3. tell Vite to ignore watching `src-tauri`
-        ignored: ["**/src-tauri/**"],
+        ignored: ['**/src-tauri/**'],
       },
       cors: true, // Enable CORS (or customize via VITE_CORS_ORIGIN if needed)
     },

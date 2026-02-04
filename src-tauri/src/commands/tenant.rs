@@ -1,14 +1,17 @@
-use tauri::State;
-use crate::services::{AuthService, PlanService};
 use crate::models::Tenant;
+use crate::services::{AuthService, PlanService};
 use chrono::Utc;
+use tauri::State;
 
 #[tauri::command]
 pub async fn get_current_tenant(
     token: String,
     auth_service: State<'_, AuthService>,
 ) -> Result<Tenant, String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims.tenant_id.ok_or("Not a tenant user")?;
 
     let tenant: Tenant = sqlx::query_as("SELECT * FROM tenants WHERE id = $1")
@@ -29,7 +32,10 @@ pub async fn update_current_tenant(
     auth_service: State<'_, AuthService>,
     plan_service: State<'_, PlanService>,
 ) -> Result<Tenant, String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims.tenant_id.ok_or("Not a tenant user")?;
 
     // 1. Get Current Tenant
@@ -43,9 +49,14 @@ pub async fn update_current_tenant(
     if let Some(ref domain) = custom_domain {
         // If changing or setting domain
         if current.custom_domain.as_ref() != Some(domain) {
-            let access = plan_service.check_feature_access(&tenant_id, "custom_domain").await.map_err(|e| e.to_string())?;
+            let access = plan_service
+                .check_feature_access(&tenant_id, "custom_domain")
+                .await
+                .map_err(|e| e.to_string())?;
             if !access.has_access {
-                return Err("Your plan does not support Custom Domains. Please upgrade.".to_string());
+                return Err(
+                    "Your plan does not support Custom Domains. Please upgrade.".to_string()
+                );
             }
         }
     }

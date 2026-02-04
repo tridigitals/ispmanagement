@@ -1,22 +1,21 @@
-import { writable } from "svelte/store";
+import { writable } from 'svelte/store';
 
 export type SuperadminPlan = {
-    id: string;
-    name: string;
-    slug: string;
-    description: string | null;
-    price_monthly: number;
-    price_yearly: number;
-    is_active: boolean;
-    is_default: boolean;
-    sort_order: number;
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  price_monthly: number;
+  price_yearly: number;
+  is_active: boolean;
+  is_default: boolean;
+  sort_order: number;
 };
 
 export const superadminPlansCache = writable<{
-    plans: SuperadminPlan[];
-    fetchedAt: number;
+  plans: SuperadminPlan[];
+  fetchedAt: number;
 }>({
-    plans: [],
-    fetchedAt: 0,
+  plans: [],
+  fetchedAt: 0,
 });
-

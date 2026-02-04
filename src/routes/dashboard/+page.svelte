@@ -1,31 +1,31 @@
 <script lang="ts">
-    import { onMount } from "svelte";
-    import { goto } from "$app/navigation";
-    import { user, isAuthenticated } from "$lib/stores/auth";
-    import { t } from "svelte-i18n";
+  import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { user, isAuthenticated } from '$lib/stores/auth';
+  import { t } from 'svelte-i18n';
 
-    onMount(() => {
-        if ($isAuthenticated && $user?.tenant_slug) {
-            // Redirect to scoped dashboard
-            goto(`/${$user.tenant_slug}/dashboard`);
-        } else {
-            // Redirect to login
-            goto("/login");
-        }
-    });
+  onMount(() => {
+    if ($isAuthenticated && $user?.tenant_slug) {
+      // Redirect to scoped dashboard
+      goto(`/${$user.tenant_slug}/dashboard`);
+    } else {
+      // Redirect to login
+      goto('/login');
+    }
+  });
 </script>
 
 <div class="redirect-container">
-    <p>{$t("pages.dashboard.redirecting") || "Redirecting to your dashboard..."}</p>
+  <p>{$t('pages.dashboard.redirecting') || 'Redirecting to your dashboard...'}</p>
 </div>
 
 <style>
-    .redirect-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100vh;
-        background: var(--bg-primary);
-        color: var(--text-primary);
-    }
+  .redirect-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+  }
 </style>

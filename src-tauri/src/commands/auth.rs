@@ -1,6 +1,6 @@
 //! Authentication Commands
 
-use crate::models::{LoginDto, RegisterDto, UserResponse, TrustedDevice};
+use crate::models::{LoginDto, RegisterDto, TrustedDevice, UserResponse};
 use crate::services::{AuthResponse, AuthService};
 use tauri::State;
 use validator::Validate;
@@ -363,7 +363,6 @@ pub async fn reset_user_2fa(
         .await
         .map_err(|e| e.to_string())
 }
-
 
 /// List all trusted devices for a user
 #[tauri::command]

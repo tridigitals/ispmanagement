@@ -149,7 +149,6 @@ impl Default for RateLimiter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::thread::sleep;
 
     #[test]
     fn test_rate_limit_allows_under_limit() {

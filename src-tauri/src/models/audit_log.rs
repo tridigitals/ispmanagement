@@ -43,7 +43,7 @@ impl AuditLog {
 pub struct AuditLogResponse {
     pub id: String,
     pub user_id: Option<String>,
-    pub user_name: Option<String>, 
+    pub user_name: Option<String>,
     pub user_email: Option<String>,
     pub tenant_id: Option<String>,
     pub tenant_name: Option<String>,

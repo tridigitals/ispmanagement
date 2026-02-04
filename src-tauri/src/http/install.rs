@@ -1,14 +1,10 @@
 //! Install HTTP Handlers
 
-use axum::{
-    extract::State,
-    http::StatusCode,
-    Json,
-};
+use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 
 use super::AppState;
-use crate::models::{CreateUserDto, UpdateUserDto, UserResponse, UpsertSettingDto};
+use crate::models::{CreateUserDto, UpdateUserDto, UpsertSettingDto, UserResponse};
 
 #[derive(Serialize)]
 pub struct IsInstalledResponse {
@@ -33,9 +29,7 @@ pub struct InstallResponse {
 }
 
 /// Check if application is installed (has any users)
-pub async fn check_installed(
-    State(state): State<AppState>,
-) -> Json<IsInstalledResponse> {
+pub async fn check_installed(State(state): State<AppState>) -> Json<IsInstalledResponse> {
     let count = state.user_service.count().await.unwrap_or(0);
     Json(IsInstalledResponse {
         installed: count > 0,
@@ -48,10 +42,12 @@ pub async fn install_app(
     Json(payload): Json<InstallRequest>,
 ) -> Result<Json<InstallResponse>, (StatusCode, String)> {
     // Check if already installed
-    let count = state.user_service.count().await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
-    
+    let count = state
+        .user_service
+        .count()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
     if count > 0 {
         return Err((
             StatusCode::BAD_REQUEST,
@@ -61,19 +57,35 @@ pub async fn install_app(
 
     // 1. Save App Settings
     if let Some(app_name) = payload.app_name {
-        let _ = state.settings_service.upsert(None, UpsertSettingDto {
-            key: "app_name".to_string(),
-            value: app_name,
-            description: Some("Application name".to_string()),
-        }, None, None).await;
+        let _ = state
+            .settings_service
+            .upsert(
+                None,
+                UpsertSettingDto {
+                    key: "app_name".to_string(),
+                    value: app_name,
+                    description: Some("Application name".to_string()),
+                },
+                None,
+                None,
+            )
+            .await;
     }
 
     if let Some(app_url) = payload.app_url {
-        let _ = state.settings_service.upsert(None, UpsertSettingDto {
-            key: "app_url".to_string(),
-            value: app_url,
-            description: Some("Application Base URL".to_string()),
-        }, None, None).await;
+        let _ = state
+            .settings_service
+            .upsert(
+                None,
+                UpsertSettingDto {
+                    key: "app_url".to_string(),
+                    value: app_url,
+                    description: Some("Application Base URL".to_string()),
+                },
+                None,
+                None,
+            )
+            .await;
     }
 
     // 2. Create admin user
@@ -83,9 +95,11 @@ pub async fn install_app(
         name: payload.admin_name,
     };
 
-    let user_res = state.user_service.create(dto, None, None).await.map_err(|e| {
-        (StatusCode::BAD_REQUEST, e.to_string())
-    })?;
+    let user_res = state
+        .user_service
+        .create(dto, None, None)
+        .await
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
 
     // 3. Update role to admin and set as super admin
     let update_dto = UpdateUserDto {
@@ -96,9 +110,11 @@ pub async fn install_app(
         is_active: Some(true),
     };
 
-    let admin_user = state.user_service.update(&user_res.id, update_dto, None, None).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
+    let admin_user = state
+        .user_service
+        .update(&user_res.id, update_dto, None, None)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(InstallResponse {
         success: true,

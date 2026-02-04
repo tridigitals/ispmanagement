@@ -1,11 +1,13 @@
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
+use crate::models::UpsertSettingDto;
+use crate::services::SettingsService;
+use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
+use chrono_tz::Tz;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio::fs;
-use tracing::{error, info};
-use chrono::Utc;
-use serde::{Serialize, Deserialize};
-use chrono::{DateTime, NaiveDate, NaiveDateTime};
+use tracing::{error, info, warn};
 
 #[derive(Clone)]
 pub struct BackupService {
@@ -50,14 +52,18 @@ impl BackupService {
         let mut backups = Vec::new();
         let global_dir = self.get_global_backup_dir();
         if global_dir.exists() {
-            let mut entries =
-                fs::read_dir(&global_dir).await.map_err(|e| AppError::Internal(e.to_string()))?;
+            let mut entries = fs::read_dir(&global_dir)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
             while let Ok(Some(entry)) = entries.next_entry().await {
                 let path = entry.path();
                 if !path.is_file() {
                     continue;
                 }
-                let metadata = entry.metadata().await.map_err(|e| AppError::Internal(e.to_string()))?;
+                let metadata = entry
+                    .metadata()
+                    .await
+                    .map_err(|e| AppError::Internal(e.to_string()))?;
                 let name = entry.file_name().to_string_lossy().to_string();
 
                 if !name.starts_with("global_backup_") {
@@ -68,7 +74,10 @@ impl BackupService {
                     name,
                     path: path.to_string_lossy().to_string(),
                     size: metadata.len(),
-                    created_at: metadata.created().map(|t| chrono::DateTime::from(t)).unwrap_or(Utc::now()),
+                    created_at: metadata
+                        .created()
+                        .map(|t| chrono::DateTime::from(t))
+                        .unwrap_or(Utc::now()),
                     backup_type: "global".to_string(),
                     tenant_id: None,
                 });
@@ -98,8 +107,10 @@ impl BackupService {
                     if !path.is_file() {
                         continue;
                     }
-                    let metadata =
-                        entry.metadata().await.map_err(|e| AppError::Internal(e.to_string()))?;
+                    let metadata = entry
+                        .metadata()
+                        .await
+                        .map_err(|e| AppError::Internal(e.to_string()))?;
                     let name = entry.file_name().to_string_lossy().to_string();
 
                     let expected_prefix = format!("tenant_{}_", tenant_id);
@@ -132,7 +143,9 @@ impl BackupService {
     pub async fn create_global_backup(&self) -> AppResult<String> {
         let backup_dir = self.get_global_backup_dir();
         if !backup_dir.exists() {
-            fs::create_dir_all(&backup_dir).await.map_err(|e| AppError::Internal(e.to_string()))?;
+            fs::create_dir_all(&backup_dir)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
         }
 
         let timestamp = Utc::now().format("%Y%m%d_%H%M%S").to_string();
@@ -140,31 +153,52 @@ impl BackupService {
         let zip_path = backup_dir.join(&zip_filename);
 
         let tables = vec![
-            "permissions", "plans", "features", "bank_accounts", "fx_rates",
-            "tenants", "users", "roles", "settings", "plan_features", 
-            "tenant_subscriptions", "file_records", "invoices", "notifications",
-            "tenant_members", "role_permissions", "trusted_devices",
-            "notification_preferences", "push_subscriptions", "audit_logs"
+            "permissions",
+            "plans",
+            "features",
+            "bank_accounts",
+            "fx_rates",
+            "tenants",
+            "users",
+            "roles",
+            "settings",
+            "plan_features",
+            "tenant_subscriptions",
+            "file_records",
+            "invoices",
+            "notifications",
+            "tenant_members",
+            "role_permissions",
+            "trusted_devices",
+            "notification_preferences",
+            "push_subscriptions",
+            "audit_logs",
         ];
 
-        let mut data_map: std::collections::HashMap<String, serde_json::Value> = std::collections::HashMap::new();
+        let mut data_map: std::collections::HashMap<String, serde_json::Value> =
+            std::collections::HashMap::new();
 
         for table in tables {
             // Optimized: Use native DB JSON conversion if available
             #[cfg(feature = "postgres")]
             let query = format!("SELECT row_to_json(t) FROM (SELECT * FROM {}) t", table);
-            
+
             #[cfg(feature = "sqlite")]
             let query = format!("SELECT * FROM {}", table);
 
             #[cfg(feature = "postgres")]
             {
                 let rows: Vec<(serde_json::Value,)> = sqlx::query_as(&query)
-                    .fetch_all(&self.pool).await.unwrap_or_default();
-                
+                    .fetch_all(&self.pool)
+                    .await
+                    .unwrap_or_default();
+
                 if !rows.is_empty() {
                     let json_rows: Vec<serde_json::Value> = rows.into_iter().map(|r| r.0).collect();
-                    data_map.insert(format!("{}.json", table), serde_json::to_value(json_rows).unwrap());
+                    data_map.insert(
+                        format!("{}.json", table),
+                        serde_json::to_value(json_rows).unwrap(),
+                    );
                 }
             }
 
@@ -172,7 +206,10 @@ impl BackupService {
             {
                 if let Ok(rows) = self.fetch_rows(&query, "", vec![]).await {
                     if !rows.is_empty() {
-                        data_map.insert(format!("{}.json", table), serde_json::to_value(&rows).unwrap());
+                        data_map.insert(
+                            format!("{}.json", table),
+                            serde_json::to_value(&rows).unwrap(),
+                        );
                     }
                 }
             }
@@ -182,17 +219,21 @@ impl BackupService {
         use std::io::Write;
         use zip::write::FileOptions;
 
-        let file = std::fs::File::create(&zip_path).map_err(|e| AppError::Internal(e.to_string()))?;
+        let file =
+            std::fs::File::create(&zip_path).map_err(|e| AppError::Internal(e.to_string()))?;
         let mut zip = zip::ZipWriter::new(file);
         let options = FileOptions::default().compression_method(zip::CompressionMethod::Stored);
 
         for (filename, json_data) in data_map {
-            zip.start_file(filename, options).map_err(|e: zip::result::ZipError| AppError::Internal(e.to_string()))?;
+            zip.start_file(filename, options)
+                .map_err(|e: zip::result::ZipError| AppError::Internal(e.to_string()))?;
             let json_str = serde_json::to_string_pretty(&json_data).unwrap_or_default();
-            zip.write_all(json_str.as_bytes()).map_err(|e: std::io::Error| AppError::Internal(e.to_string()))?;
+            zip.write_all(json_str.as_bytes())
+                .map_err(|e: std::io::Error| AppError::Internal(e.to_string()))?;
         }
 
-        zip.finish().map_err(|e: zip::result::ZipError| AppError::Internal(e.to_string()))?;
+        zip.finish()
+            .map_err(|e: zip::result::ZipError| AppError::Internal(e.to_string()))?;
 
         info!("Global Backup successful: {:?}", zip_path);
         Ok(zip_path.to_string_lossy().to_string())
@@ -202,7 +243,9 @@ impl BackupService {
     pub async fn create_tenant_backup(&self, tenant_id: &str) -> AppResult<String> {
         let backup_dir = self.get_tenant_backup_dir(tenant_id);
         if !backup_dir.exists() {
-            fs::create_dir_all(&backup_dir).await.map_err(|e| AppError::Internal(e.to_string()))?;
+            fs::create_dir_all(&backup_dir)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
         }
 
         let timestamp = Utc::now().format("%Y%m%d_%H%M%S").to_string();
@@ -210,7 +253,8 @@ impl BackupService {
         let zip_path = backup_dir.join(&zip_filename);
 
         // Prepare data collection
-        let mut data_map: std::collections::HashMap<String, serde_json::Value> = std::collections::HashMap::new();
+        let mut data_map: std::collections::HashMap<String, serde_json::Value> =
+            std::collections::HashMap::new();
 
         // --- DATA EXPORT STRATEGY ---
         // NOTE: JSON filenames must match DB table names because restore derives table_name from file_stem.
@@ -229,7 +273,10 @@ impl BackupService {
             )
             .await
             .map_err(|e| AppError::Internal(format!("Failed to export settings: {}", e)))?;
-        data_map.insert("settings.json".to_string(), serde_json::to_value(&settings_rows).unwrap());
+        data_map.insert(
+            "settings.json".to_string(),
+            serde_json::to_value(&settings_rows).unwrap(),
+        );
 
         // NOTE: invoices are billing data (superadmin scope) — do not export in tenant backups.
 
@@ -241,7 +288,10 @@ impl BackupService {
             )
             .await
             .map_err(|e| AppError::Internal(format!("Failed to export file_records: {}", e)))?;
-        data_map.insert("file_records.json".to_string(), serde_json::to_value(&file_rows).unwrap());
+        data_map.insert(
+            "file_records.json".to_string(),
+            serde_json::to_value(&file_rows).unwrap(),
+        );
 
         let audit_rows = self
             .fetch_rows(
@@ -251,8 +301,11 @@ impl BackupService {
             )
             .await
             .map_err(|e| AppError::Internal(format!("Failed to export audit_logs: {}", e)))?;
-        data_map.insert("audit_logs.json".to_string(), serde_json::to_value(&audit_rows).unwrap());
-        
+        data_map.insert(
+            "audit_logs.json".to_string(),
+            serde_json::to_value(&audit_rows).unwrap(),
+        );
+
         let role_rows = self
             .fetch_rows(
                 "SELECT * FROM roles WHERE tenant_id = ?",
@@ -261,7 +314,10 @@ impl BackupService {
             )
             .await
             .map_err(|e| AppError::Internal(format!("Failed to export roles: {}", e)))?;
-        data_map.insert("roles.json".to_string(), serde_json::to_value(&role_rows).unwrap());
+        data_map.insert(
+            "roles.json".to_string(),
+            serde_json::to_value(&role_rows).unwrap(),
+        );
 
         let member_rows = self
             .fetch_rows(
@@ -271,7 +327,10 @@ impl BackupService {
             )
             .await
             .map_err(|e| AppError::Internal(format!("Failed to export tenant_members: {}", e)))?;
-        data_map.insert("tenant_members.json".to_string(), serde_json::to_value(&member_rows).unwrap());
+        data_map.insert(
+            "tenant_members.json".to_string(),
+            serde_json::to_value(&member_rows).unwrap(),
+        );
 
         let notifications_rows = self
             .fetch_rows(
@@ -281,7 +340,10 @@ impl BackupService {
             )
             .await
             .map_err(|e| AppError::Internal(format!("Failed to export notifications: {}", e)))?;
-        data_map.insert("notifications.json".to_string(), serde_json::to_value(&notifications_rows).unwrap());
+        data_map.insert(
+            "notifications.json".to_string(),
+            serde_json::to_value(&notifications_rows).unwrap(),
+        );
 
         // tenant_subscriptions is billing/plan data (superadmin scope) — do not export in tenant backups.
 
@@ -294,7 +356,10 @@ impl BackupService {
             )
             .await
             .map_err(|e| AppError::Internal(format!("Failed to export notification_preferences: {}", e)))?;
-        data_map.insert("notification_preferences.json".to_string(), serde_json::to_value(&notif_prefs_rows).unwrap());
+        data_map.insert(
+            "notification_preferences.json".to_string(),
+            serde_json::to_value(&notif_prefs_rows).unwrap(),
+        );
 
         // push_subscriptions is user-scoped (no tenant_id); filter by tenant members
         let push_sub_rows = self
@@ -305,7 +370,10 @@ impl BackupService {
             )
             .await
             .map_err(|e| AppError::Internal(format!("Failed to export push_subscriptions: {}", e)))?;
-        data_map.insert("push_subscriptions.json".to_string(), serde_json::to_value(&push_sub_rows).unwrap());
+        data_map.insert(
+            "push_subscriptions.json".to_string(),
+            serde_json::to_value(&push_sub_rows).unwrap(),
+        );
 
         // 3) Tenant role_permissions (no tenant_id column; derive by tenant roles)
         let role_permissions_rows = self
@@ -316,54 +384,69 @@ impl BackupService {
             )
             .await
             .map_err(|e| AppError::Internal(format!("Failed to export role_permissions: {}", e)))?;
-        data_map.insert("role_permissions.json".to_string(), serde_json::to_value(&role_permissions_rows).unwrap());
+        data_map.insert(
+            "role_permissions.json".to_string(),
+            serde_json::to_value(&role_permissions_rows).unwrap(),
+        );
 
         // --- ZIP CREATION ---
         use std::io::Write;
         use zip::write::FileOptions;
 
-        let file = std::fs::File::create(&zip_path).map_err(|e| AppError::Internal(e.to_string()))?;
+        let file =
+            std::fs::File::create(&zip_path).map_err(|e| AppError::Internal(e.to_string()))?;
         let mut zip = zip::ZipWriter::new(file);
         let options = FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
         for (filename, json_data) in data_map {
-            zip.start_file(filename, options).map_err(|e: zip::result::ZipError| AppError::Internal(e.to_string()))?;
+            zip.start_file(filename, options)
+                .map_err(|e: zip::result::ZipError| AppError::Internal(e.to_string()))?;
             let json_str = serde_json::to_string_pretty(&json_data).unwrap_or_default();
-            zip.write_all(json_str.as_bytes()).map_err(|e: std::io::Error| AppError::Internal(e.to_string()))?;
+            zip.write_all(json_str.as_bytes())
+                .map_err(|e: std::io::Error| AppError::Internal(e.to_string()))?;
         }
 
-        zip.finish().map_err(|e: zip::result::ZipError| AppError::Internal(e.to_string()))?;
+        zip.finish()
+            .map_err(|e: zip::result::ZipError| AppError::Internal(e.to_string()))?;
 
         info!("Tenant Backup successful: {:?}", zip_path);
         Ok(zip_path.to_string_lossy().to_string())
     }
 
     // Helper to fetch generic rows as JSON
-    async fn fetch_rows(&self, _sqlite_sql: &str, _pg_sql: &str, params: Vec<String>) -> AppResult<Vec<serde_json::Map<String, serde_json::Value>>> {
+    async fn fetch_rows(
+        &self,
+        _sqlite_sql: &str,
+        _pg_sql: &str,
+        params: Vec<String>,
+    ) -> AppResult<Vec<serde_json::Map<String, serde_json::Value>>> {
         #[cfg(feature = "postgres")]
         {
             // Postgres has row_to_json but let's just fetch generic and map manually if needed or use sqlx::Row
             // Actually, sqlx::Row isn't easily serializable to JSON without knowing schema.
             // For a generic backup, we might just want to use `row_to_json`
-            
+
             // Reconstruct query to return single JSON column
             // "SELECT row_to_json(t) FROM (SELECT * FROM table WHERE ...) t"
             // This is complex to rewrite generic SQL.
-            
+
             // Simplified approach: Serialize known structs?
             // No, we want generic backup.
-            
+
             // Let's use `sqlx::query` and iterate columns.
             use sqlx::{Column, Row};
-            
+
             let mut query = sqlx::query(_pg_sql);
             for p in &params {
                 // Keep params as text; for Postgres UUID columns, callers should use explicit casts
                 // (e.g. `WHERE id::text = $1`) to avoid `uuid = text` / `text = uuid` operator errors.
                 query = query.bind(p);
             }
-            
-            let rows = query.fetch_all(&self.pool).await.map_err(|e| AppError::Internal(e.to_string()))?;
+
+            let rows = query
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
             let mut results = Vec::new();
 
             for row in rows {
@@ -373,18 +456,21 @@ impl BackupService {
                     // Attempt to decode common types
                     // This is hacky. A proper export tool should be used.
                     // But for this "Backup System" feature request, this is a reasonable "Logic" implementation.
-                    
+
                     // Fallback to string representation for most things
                     let val_str: Option<String> = row.try_get(name).ok();
                     if let Some(s) = val_str {
                         map.insert(name.to_string(), serde_json::Value::String(s));
                         continue;
                     }
-                    
+
                     let val_int: Option<i64> = row.try_get(name).ok();
                     if let Some(i) = val_int {
-                         map.insert(name.to_string(), serde_json::Value::Number(serde_json::Number::from(i)));
-                         continue;
+                        map.insert(
+                            name.to_string(),
+                            serde_json::Value::Number(serde_json::Number::from(i)),
+                        );
+                        continue;
                     }
 
                     #[cfg(feature = "postgres")]
@@ -405,11 +491,11 @@ impl BackupService {
                         }
                         continue;
                     }
-                    
+
                     let val_bool: Option<bool> = row.try_get(name).ok();
                     if let Some(b) = val_bool {
-                         map.insert(name.to_string(), serde_json::Value::Bool(b));
-                         continue;
+                        map.insert(name.to_string(), serde_json::Value::Bool(b));
+                        continue;
                     }
 
                     map.insert(name.to_string(), serde_json::Value::Null);
@@ -426,23 +512,29 @@ impl BackupService {
             for p in &params {
                 query = query.bind(p);
             }
-            let rows = query.fetch_all(&self.pool).await.map_err(|e| AppError::Internal(e.to_string()))?;
+            let rows = query
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
             let mut results = Vec::new();
 
-             for row in rows {
+            for row in rows {
                 let mut map = serde_json::Map::new();
                 for col in row.columns() {
                     let name = col.name();
                     // SQLite is loosely typed, most things can be strings
                     let val_str: Option<String> = row.try_get(name).ok();
-                     if let Some(s) = val_str {
+                    if let Some(s) = val_str {
                         map.insert(name.to_string(), serde_json::Value::String(s));
                         continue;
                     }
-                     let val_int: Option<i64> = row.try_get(name).ok();
+                    let val_int: Option<i64> = row.try_get(name).ok();
                     if let Some(i) = val_int {
-                         map.insert(name.to_string(), serde_json::Value::Number(serde_json::Number::from(i)));
-                         continue;
+                        map.insert(
+                            name.to_string(),
+                            serde_json::Value::Number(serde_json::Number::from(i)),
+                        );
+                        continue;
                     }
 
                     #[cfg(feature = "postgres")]
@@ -479,7 +571,9 @@ impl BackupService {
             .chars()
             .all(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '.')
         {
-            return Err(AppError::Validation("Invalid characters in filename".to_string()));
+            return Err(AppError::Validation(
+                "Invalid characters in filename".to_string(),
+            ));
         }
 
         // Prevent directory traversal
@@ -492,7 +586,9 @@ impl BackupService {
         } else if filename.starts_with("tenant_") {
             let parts: Vec<&str> = filename.split('_').collect();
             if parts.len() < 3 {
-                return Err(AppError::Validation("Invalid tenant backup filename".to_string()));
+                return Err(AppError::Validation(
+                    "Invalid tenant backup filename".to_string(),
+                ));
             }
             let tenant_id = parts[1];
             self.get_tenant_backup_dir(tenant_id).join(filename)
@@ -501,7 +597,10 @@ impl BackupService {
         };
 
         if !file_path.exists() {
-            return Err(AppError::NotFound(format!("Backup file {} not found", filename)));
+            return Err(AppError::NotFound(format!(
+                "Backup file {} not found",
+                filename
+            )));
         }
 
         Ok(file_path)
@@ -509,23 +608,34 @@ impl BackupService {
 
     pub async fn delete_backup(&self, filename: String) -> AppResult<()> {
         let path = self.get_backup_path(&filename)?;
-        fs::remove_file(path).await.map_err(|e| AppError::Internal(e.to_string()))?;
+        fs::remove_file(path)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
         Ok(())
     }
 
     /// Restore system or tenant data from a ZIP backup file
-    pub async fn restore_from_zip(&self, zip_path: PathBuf, target_tenant_id: Option<&str>) -> AppResult<()> {
+    pub async fn restore_from_zip(
+        &self,
+        zip_path: PathBuf,
+        target_tenant_id: Option<&str>,
+    ) -> AppResult<()> {
         info!("Starting restore from {:?}", zip_path);
-        
+
         // 1. Read everything into memory first
-        let mut table_data: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-        
+        let mut table_data: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
+
         {
-            let file = std::fs::File::open(&zip_path).map_err(|e| AppError::Internal(e.to_string()))?;
-            let mut archive = zip::ZipArchive::new(file).map_err(|e| AppError::Internal(e.to_string()))?;
+            let file =
+                std::fs::File::open(&zip_path).map_err(|e| AppError::Internal(e.to_string()))?;
+            let mut archive =
+                zip::ZipArchive::new(file).map_err(|e| AppError::Internal(e.to_string()))?;
 
             for i in 0..archive.len() {
-                let mut file = archive.by_index(i).map_err(|e| AppError::Internal(e.to_string()))?;
+                let mut file = archive
+                    .by_index(i)
+                    .map_err(|e| AppError::Internal(e.to_string()))?;
                 let outpath = match file.enclosed_name() {
                     Some(path) => path.to_owned(),
                     None => continue,
@@ -536,22 +646,38 @@ impl BackupService {
                 }
 
                 let table_name = outpath.file_stem().unwrap().to_string_lossy().to_string();
-                
+
                 let mut contents = String::new();
                 use std::io::Read;
-                file.read_to_string(&mut contents).map_err(|e| AppError::Internal(e.to_string()))?;
-                
+                file.read_to_string(&mut contents)
+                    .map_err(|e| AppError::Internal(e.to_string()))?;
+
                 table_data.insert(table_name, contents);
             }
         }
 
         // 2. Define Restoration Order (Foreign Key Hierarchy)
         let restore_order = vec![
-            "permissions", "features", "plans", "bank_accounts", "fx_rates",
-            "tenants", "users", "roles", "settings", "plan_features", 
-            "tenant_subscriptions", "file_records", "invoices", "notifications",
-            "tenant_members", "role_permissions", "trusted_devices",
-            "notification_preferences", "push_subscriptions", "audit_logs"
+            "permissions",
+            "features",
+            "plans",
+            "bank_accounts",
+            "fx_rates",
+            "tenants",
+            "users",
+            "roles",
+            "settings",
+            "plan_features",
+            "tenant_subscriptions",
+            "file_records",
+            "invoices",
+            "notifications",
+            "tenant_members",
+            "role_permissions",
+            "trusted_devices",
+            "notification_preferences",
+            "push_subscriptions",
+            "audit_logs",
         ];
 
         let tenant_skip: std::collections::HashSet<&str> = if target_tenant_id.is_some() {
@@ -575,14 +701,23 @@ impl BackupService {
         };
 
         // If this is a tenant restore, pre-compute allowed role_ids and user_ids for validation
-        let allowed_role_ids: std::collections::HashSet<String> = if let Some(tid) = target_tenant_id {
+        let allowed_role_ids: std::collections::HashSet<String> = if let Some(tid) =
+            target_tenant_id
+        {
             if let Some(contents) = table_data.get("roles") {
-                let rows: Vec<serde_json::Map<String, serde_json::Value>> = serde_json::from_str(contents)
-                    .map_err(|e| AppError::Internal(format!("Invalid JSON in roles: {}", e)))?;
+                let rows: Vec<serde_json::Map<String, serde_json::Value>> =
+                    serde_json::from_str(contents)
+                        .map_err(|e| AppError::Internal(format!("Invalid JSON in roles: {}", e)))?;
                 rows.into_iter()
                     .filter_map(|r| {
-                        let tenant_ok = r.get("tenant_id").and_then(|v| v.as_str()).map(|s| s == tid).unwrap_or(false);
-                        if !tenant_ok { return None; }
+                        let tenant_ok = r
+                            .get("tenant_id")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s == tid)
+                            .unwrap_or(false);
+                        if !tenant_ok {
+                            return None;
+                        }
                         r.get("id").and_then(|v| v.as_str()).map(|s| s.to_string())
                     })
                     .collect()
@@ -595,10 +730,16 @@ impl BackupService {
 
         let allowed_user_ids: std::collections::HashSet<String> = if target_tenant_id.is_some() {
             if let Some(contents) = table_data.get("tenant_members") {
-                let rows: Vec<serde_json::Map<String, serde_json::Value>> = serde_json::from_str(contents)
-                    .map_err(|e| AppError::Internal(format!("Invalid JSON in tenant_members: {}", e)))?;
+                let rows: Vec<serde_json::Map<String, serde_json::Value>> =
+                    serde_json::from_str(contents).map_err(|e| {
+                        AppError::Internal(format!("Invalid JSON in tenant_members: {}", e))
+                    })?;
                 rows.into_iter()
-                    .filter_map(|r| r.get("user_id").and_then(|v| v.as_str()).map(|s| s.to_string()))
+                    .filter_map(|r| {
+                        r.get("user_id")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                    })
                     .collect()
             } else {
                 std::collections::HashSet::new()
@@ -608,7 +749,11 @@ impl BackupService {
         };
 
         // 3. Start database operations
-        let mut tx = self.pool.begin().await.map_err(|e| AppError::Internal(e.to_string()))?;
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
         // 4. CLEANUP (Reverse Order)
         if target_tenant_id.is_none() {
@@ -617,12 +762,15 @@ impl BackupService {
                 let trunc_query = format!("DELETE FROM {}", table_name);
                 #[cfg(feature = "postgres")]
                 sqlx::query(&trunc_query).execute(&mut *tx).await.ok();
-                
+
                 #[cfg(feature = "sqlite")]
                 sqlx::query(&trunc_query).execute(&mut *tx).await.ok();
             }
             // Cleanup sessions separately
-            sqlx::query("DELETE FROM sessions").execute(&mut *tx).await.ok();
+            sqlx::query("DELETE FROM sessions")
+                .execute(&mut *tx)
+                .await
+                .ok();
         }
 
         // 5. RESTORE (In Order)
@@ -632,11 +780,15 @@ impl BackupService {
             }
             if let Some(contents) = table_data.get(table_name) {
                 info!("Restoring table: {}", table_name);
-                
-                let rows: Vec<serde_json::Map<String, serde_json::Value>> = serde_json::from_str(&contents)
-                    .map_err(|e| AppError::Internal(format!("Invalid JSON in {}: {}", table_name, e)))?;
 
-                if rows.is_empty() { continue; }
+                let rows: Vec<serde_json::Map<String, serde_json::Value>> =
+                    serde_json::from_str(&contents).map_err(|e| {
+                        AppError::Internal(format!("Invalid JSON in {}: {}", table_name, e))
+                    })?;
+
+                if rows.is_empty() {
+                    continue;
+                }
 
                 if let Some(tid) = target_tenant_id {
                     // Tenant-specific cleanup for this table
@@ -650,28 +802,28 @@ impl BackupService {
                         "notifications",
                     ];
 
-                    let tenant_tables_without_tenant_id = vec![
-                        "role_permissions",
-                    ];
+                    let tenant_tables_without_tenant_id = vec!["role_permissions"];
 
-                    let tenant_tables_user_scoped = vec![
-                        "notification_preferences",
-                        "push_subscriptions",
-                    ];
+                    let tenant_tables_user_scoped =
+                        vec!["notification_preferences", "push_subscriptions"];
 
                     if tenant_tables_with_tenant_id.contains(&table_name) {
-                        let del_query = format!("DELETE FROM {} WHERE tenant_id::text = $1", table_name);
+                        #[cfg(feature = "postgres")]
+                        let del_query =
+                            format!("DELETE FROM {} WHERE tenant_id::text = $1", table_name);
                         #[cfg(feature = "sqlite")]
                         let del_query = format!("DELETE FROM {} WHERE tenant_id = ?", table_name);
                         sqlx::query(&del_query).bind(tid).execute(&mut *tx).await?;
                     } else if tenant_tables_without_tenant_id.contains(&table_name) {
                         // role_permissions is scoped by roles; deleting roles will cascade, but keep this explicit.
+                        #[cfg(feature = "postgres")]
                         let del_query = "DELETE FROM role_permissions WHERE role_id IN (SELECT id FROM roles WHERE tenant_id::text = $1)";
                         #[cfg(feature = "sqlite")]
                         let del_query = "DELETE FROM role_permissions WHERE role_id IN (SELECT id FROM roles WHERE tenant_id = ?)";
                         sqlx::query(del_query).bind(tid).execute(&mut *tx).await?;
                     } else if tenant_tables_user_scoped.contains(&table_name) {
                         // These tables are user-scoped; delete only for users that belong to this tenant.
+                        #[cfg(feature = "postgres")]
                         let del_query = format!(
                             "DELETE FROM {} WHERE user_id IN (SELECT tm.user_id FROM tenant_members tm WHERE tm.tenant_id::text = $1)",
                             table_name
@@ -709,7 +861,10 @@ impl BackupService {
                         // - For tenant_id tables: force tenant_id = tid (or set it if missing)
                         // - For role_permissions: ensure role_id belongs to tenant roles from this backup
                         if row.contains_key("tenant_id") {
-                            row.insert("tenant_id".to_string(), serde_json::Value::String(tid.to_string()));
+                            row.insert(
+                                "tenant_id".to_string(),
+                                serde_json::Value::String(tid.to_string()),
+                            );
                         }
 
                         if table_name == "role_permissions" {
@@ -719,7 +874,9 @@ impl BackupService {
                             }
                         }
 
-                        if table_name == "notification_preferences" || table_name == "push_subscriptions" {
+                        if table_name == "notification_preferences"
+                            || table_name == "push_subscriptions"
+                        {
                             let user_id = row.get("user_id").and_then(|v| v.as_str()).unwrap_or("");
                             if user_id.is_empty() || !allowed_user_ids.contains(user_id) {
                                 continue;
@@ -731,19 +888,23 @@ impl BackupService {
                     let mut placeholders = Vec::new();
                     let mut values = Vec::new();
 
+                    #[cfg(feature = "postgres")]
                     for (idx, (key, val)) in row.into_iter().enumerate() {
                         col_names.push(key);
-                        #[cfg(feature = "postgres")]
-                        {
-                            // If this is a timestamp column and value is a string, cast placeholder to timestamptz
-                            let needs_ts_cast = matches!(val, serde_json::Value::String(_)) && is_time_col(col_names.last().unwrap());
-                            if needs_ts_cast {
-                                placeholders.push(format!("${}::timestamptz", idx + 1));
-                            } else {
-                                placeholders.push(format!("${}", idx + 1));
-                            }
+                        // If this is a timestamp column and value is a string, cast placeholder to timestamptz
+                        let needs_ts_cast = matches!(val, serde_json::Value::String(_))
+                            && is_time_col(col_names.last().unwrap());
+                        if needs_ts_cast {
+                            placeholders.push(format!("${}::timestamptz", idx + 1));
+                        } else {
+                            placeholders.push(format!("${}", idx + 1));
                         }
-                        #[cfg(feature = "sqlite")]
+                        values.push(val);
+                    }
+
+                    #[cfg(feature = "sqlite")]
+                    for (key, val) in row.into_iter() {
+                        col_names.push(key);
                         placeholders.push("?".to_string());
                         values.push(val);
                     }
@@ -757,24 +918,33 @@ impl BackupService {
 
                     let debug_vals: Vec<String> = values
                         .iter()
-                        .map(|v| {
-                            match v {
-                                serde_json::Value::String(s) => {
-                                    if s.len() > 80 { format!("\"{}...\"", &s[..80]) } else { format!("\"{}\"", s) }
+                        .map(|v| match v {
+                            serde_json::Value::String(s) => {
+                                if s.len() > 80 {
+                                    format!("\"{}...\"", &s[..80])
+                                } else {
+                                    format!("\"{}\"", s)
                                 }
-                                serde_json::Value::Number(n) => n.to_string(),
-                                serde_json::Value::Bool(b) => b.to_string(),
-                                serde_json::Value::Null => "null".to_string(),
-                                other => {
-                                    let raw = other.to_string();
-                                    if raw.len() > 80 { format!("{}...", &raw[..80]) } else { raw }
+                            }
+                            serde_json::Value::Number(n) => n.to_string(),
+                            serde_json::Value::Bool(b) => b.to_string(),
+                            serde_json::Value::Null => "null".to_string(),
+                            other => {
+                                let raw = other.to_string();
+                                if raw.len() > 80 {
+                                    format!("{}...", &raw[..80])
+                                } else {
+                                    raw
                                 }
                             }
                         })
                         .collect();
 
                     // per-row savepoint to allow skipping bad rows without aborting transaction
-                    sqlx::query("SAVEPOINT row_save").execute(&mut *tx).await.ok();
+                    sqlx::query("SAVEPOINT row_save")
+                        .execute(&mut *tx)
+                        .await
+                        .ok();
                     let mut q = sqlx::query(&ins_query);
                     fn parse_datetime_utc(s: &str) -> Option<DateTime<Utc>> {
                         // 1) RFC3339 / ISO
@@ -855,7 +1025,9 @@ impl BackupService {
 
                     fn is_uuid_col(name: &str) -> bool {
                         let lc = name.to_lowercase();
-                        (lc == "id" || lc.ends_with("_id")) && lc != "resource_id" && lc != "external_id"
+                        (lc == "id" || lc.ends_with("_id"))
+                            && lc != "resource_id"
+                            && lc != "external_id"
                     }
 
                     for (col_name, v) in col_names.iter().zip(values.into_iter()) {
@@ -875,7 +1047,9 @@ impl BackupService {
                                         }
                                         bound = true;
                                     } else if is_json_col(col_name) {
-                                        q = q.bind(sqlx::types::Json(serde_json::Value::Object(serde_json::Map::new())));
+                                        q = q.bind(sqlx::types::Json(serde_json::Value::Object(
+                                            serde_json::Map::new(),
+                                        )));
                                         bound = true;
                                     } else if table_name == "settings"
                                         && col_name.eq_ignore_ascii_case("value")
@@ -911,12 +1085,15 @@ impl BackupService {
                                 // 1.5) JSON columns
                                 if !bound && is_json_col(col_name) {
                                     let trimmed = s.trim();
-                                    let json_val = if trimmed.starts_with('{') || trimmed.starts_with('[') {
-                                        serde_json::from_str::<serde_json::Value>(trimmed)
-                                            .unwrap_or_else(|_| serde_json::Value::String(s.clone()))
-                                    } else {
-                                        serde_json::Value::String(s.clone())
-                                    };
+                                    let json_val =
+                                        if trimmed.starts_with('{') || trimmed.starts_with('[') {
+                                            serde_json::from_str::<serde_json::Value>(trimmed)
+                                                .unwrap_or_else(|_| {
+                                                    serde_json::Value::String(s.clone())
+                                                })
+                                        } else {
+                                            serde_json::Value::String(s.clone())
+                                        };
                                     q = q.bind(sqlx::types::Json(json_val));
                                     bound = true;
                                 }
@@ -963,9 +1140,12 @@ impl BackupService {
                                 }
                             }
                             serde_json::Value::Number(n) => {
-                                if let Some(i) = n.as_i64() { q = q.bind(i); }
-                                else if let Some(f) = n.as_f64() { q = q.bind(f); }
-                            },
+                                if let Some(i) = n.as_i64() {
+                                    q = q.bind(i);
+                                } else if let Some(f) = n.as_f64() {
+                                    q = q.bind(f);
+                                }
+                            }
                             serde_json::Value::Bool(b) => q = q.bind(b),
                             serde_json::Value::Null => {
                                 if is_uuid_col(col_name) {
@@ -975,7 +1155,9 @@ impl BackupService {
                                         q = q.bind(None::<uuid::Uuid>);
                                     }
                                 } else if is_json_col(col_name) {
-                                    q = q.bind(sqlx::types::Json(serde_json::Value::Object(serde_json::Map::new())));
+                                    q = q.bind(sqlx::types::Json(serde_json::Value::Object(
+                                        serde_json::Map::new(),
+                                    )));
                                 } else if is_time_col(col_name) {
                                     // For required timestamp columns, fall back to now() if value is null
                                     q = q.bind(chrono::Utc::now());
@@ -994,7 +1176,7 @@ impl BackupService {
                                 } else {
                                     q = q.bind(None::<String>);
                                 }
-                            },
+                            }
                             serde_json::Value::Array(arr) => {
                                 if is_json_col(col_name) {
                                     q = q.bind(sqlx::types::Json(serde_json::Value::Array(arr)));
@@ -1024,7 +1206,10 @@ impl BackupService {
                                 e
                             );
                             // reset transaction state so subsequent inserts can continue
-                            sqlx::query("ROLLBACK TO SAVEPOINT row_save").execute(&mut *tx).await.ok();
+                            sqlx::query("ROLLBACK TO SAVEPOINT row_save")
+                                .execute(&mut *tx)
+                                .await
+                                .ok();
                             continue;
                         }
                         if table_name == "file_records"
@@ -1038,34 +1223,43 @@ impl BackupService {
                                 debug_vals,
                                 e
                             );
-                            sqlx::query("ROLLBACK TO SAVEPOINT row_save").execute(&mut *tx).await.ok();
+                            sqlx::query("ROLLBACK TO SAVEPOINT row_save")
+                                .execute(&mut *tx)
+                                .await
+                                .ok();
                             continue;
                         }
 
                         error!(
                             "Restore insert failed table={} cols={:?} vals={:?} err={}",
-                            table_name,
-                            col_names,
-                            debug_vals,
-                            e
+                            table_name, col_names, debug_vals, e
                         );
                         return Err(AppError::Internal(format!(
                             "Restore insert failed in {}: {}",
                             table_name, e
                         )));
                     }
-                    sqlx::query("RELEASE SAVEPOINT row_save").execute(&mut *tx).await.ok();
+                    sqlx::query("RELEASE SAVEPOINT row_save")
+                        .execute(&mut *tx)
+                        .await
+                        .ok();
                 }
             }
         }
 
-        tx.commit().await.map_err(|e| AppError::Internal(e.to_string()))?;
+        tx.commit()
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
         info!("Restore completed successfully");
         Ok(())
     }
 
     /// Restore from a file already in the backups directory
-    pub async fn restore_local_backup(&self, filename: String, target_tenant_id: Option<&str>) -> AppResult<()> {
+    pub async fn restore_local_backup(
+        &self,
+        filename: String,
+        target_tenant_id: Option<&str>,
+    ) -> AppResult<()> {
         let path = self.get_backup_path(&filename)?;
         self.restore_from_zip(path, target_tenant_id).await
     }
@@ -1075,16 +1269,26 @@ impl BackupService {
 pub struct BackupScheduler {
     pool: DbPool,
     backup_service: BackupService,
+    settings_service: SettingsService,
 }
 
 impl BackupScheduler {
-    pub fn new(pool: DbPool, backup_service: BackupService) -> Self {
-        Self { pool, backup_service }
+    pub fn new(
+        pool: DbPool,
+        backup_service: BackupService,
+        settings_service: SettingsService,
+    ) -> Self {
+        Self {
+            pool,
+            backup_service,
+            settings_service,
+        }
     }
 
     pub async fn start(&self) {
         let pool = self.pool.clone();
         let service = self.backup_service.clone();
+        let settings_service = self.settings_service.clone();
 
         tokio::spawn(async move {
             info!("Backup Scheduler started.");
@@ -1092,33 +1296,603 @@ impl BackupScheduler {
 
             loop {
                 interval.tick().await;
-                
+
                 // 1. Check Global Schedule
-                if let Err(e) = Self::check_and_run_global(&pool, &service).await {
+                if let Err(e) = Self::check_and_run_global(&pool, &service, &settings_service).await
+                {
                     error!("Global backup schedule check failed: {}", e);
                 }
 
                 // 2. Check Tenant Schedules
-                // (Optimized: Select all tenants with 'backup_schedule' setting)
-                // For now, let's just do global as proof of concept or iterate if needed.
-                // Iterating all settings every minute is heavy if many tenants. 
-                // Better: Store "next_run" in DB.
+                if let Err(e) =
+                    Self::check_and_run_tenants(&pool, &service, &settings_service).await
+                {
+                    error!("Tenant backup schedule check failed: {}", e);
+                }
             }
         });
     }
 
-    async fn check_and_run_global(_pool: &DbPool, _service: &BackupService) -> Result<(), String> {
-        // Fetch schedule string (Cron)
-        // Key: "global_backup_schedule" value: "0 0 * * *" (Midnight)
-        // Also need "last_backup_run"
-        
-        // This simple implementation will just look for a "TRIGGER_BACKUP_NOW" flag for testing
-        // or a simple daily check.
-        
-        // Real Cron parsing requires `cron` crate which might not be in Cargo.toml.
-        // Checking Cargo.toml... `chrono` is there.
-        // Let's implement a simple "Daily at specific Hour" logic if no cron crate.
-        
+    async fn check_and_run_global(
+        _pool: &DbPool,
+        service: &BackupService,
+        settings_service: &SettingsService,
+    ) -> Result<(), String> {
+        let tz = get_app_timezone(settings_service).await;
+        let trigger_now =
+            get_bool_setting(settings_service, None, "backup_global_trigger", false).await?;
+        let enabled =
+            get_bool_setting(settings_service, None, "backup_global_enabled", false).await?;
+        if !enabled && !trigger_now {
+            return Ok(());
+        }
+
+        let now = Utc::now();
+        let last_run =
+            get_datetime_setting(settings_service, None, "backup_global_last_run").await?;
+        let should_run = if trigger_now {
+            true
+        } else {
+            let cfg = get_mode_settings(
+                settings_service,
+                None,
+                "backup_global",
+                "backup_global_schedule",
+                "02:00",
+            )
+            .await?;
+            let Some((mode, every, daily, weekday)) = cfg else {
+                warn!("Invalid global backup schedule; skipping");
+                return Ok(());
+            };
+
+            match mode {
+                ScheduleMode::Minute | ScheduleMode::Hour => {
+                    should_run_interval(now, last_run, every, mode)
+                }
+                ScheduleMode::Day => should_run_daily(now, last_run, daily, tz),
+                ScheduleMode::Week => should_run_weekly(now, last_run, weekday, daily, tz),
+            }
+        };
+
+        if should_run {
+            service
+                .create_global_backup()
+                .await
+                .map_err(|e| format!("Failed to create global backup: {}", e))?;
+            set_datetime_setting(
+                settings_service,
+                None,
+                "backup_global_last_run",
+                now,
+                "Last successful global backup run (UTC)",
+            )
+            .await?;
+
+            let retention_days =
+                get_i64_setting(settings_service, None, "backup_global_retention_days", 30).await?;
+            if retention_days > 0 {
+                cleanup_backups(service, retention_days, BackupScope::Global).await?;
+            }
+
+            if trigger_now {
+                set_bool_setting(
+                    settings_service,
+                    None,
+                    "backup_global_trigger",
+                    false,
+                    "Manual trigger for global backup",
+                )
+                .await?;
+            }
+        }
+
         Ok(())
     }
+
+    async fn check_and_run_tenants(
+        pool: &DbPool,
+        service: &BackupService,
+        settings_service: &SettingsService,
+    ) -> Result<(), String> {
+        let tz = get_app_timezone(settings_service).await;
+        let trigger_now =
+            get_bool_setting(settings_service, None, "backup_tenant_trigger", false).await?;
+        let global_enabled =
+            get_bool_setting(settings_service, None, "backup_tenant_enabled", false).await?;
+        let global_cfg = get_mode_settings(
+            settings_service,
+            None,
+            "backup_tenant",
+            "backup_tenant_schedule",
+            "02:30",
+        )
+        .await?;
+        let global_retention_days =
+            get_i64_setting(settings_service, None, "backup_tenant_retention_days", 14).await?;
+
+        if !global_enabled && !trigger_now {
+            return Ok(());
+        }
+
+        let now = Utc::now();
+        let tenant_ids = list_active_tenants(pool)
+            .await
+            .map_err(|e| format!("Failed to list tenants: {}", e))?;
+
+        for tenant_id in tenant_ids {
+            let enabled =
+                get_bool_setting(settings_service, Some(&tenant_id), "backup_enabled", true)
+                    .await?;
+            if !enabled {
+                continue;
+            }
+
+            let last_run =
+                get_datetime_setting(settings_service, Some(&tenant_id), "backup_last_run").await?;
+            let should_run = if trigger_now {
+                true
+            } else {
+                let tenant_cfg = get_mode_settings(
+                    settings_service,
+                    Some(&tenant_id),
+                    "backup",
+                    "backup_schedule",
+                    "02:30",
+                )
+                .await?;
+                let cfg = tenant_cfg.or(global_cfg);
+                let Some((mode, every, daily, weekday)) = cfg else {
+                    warn!("Invalid backup schedule for tenant {}; skipping", tenant_id);
+                    continue;
+                };
+
+                match mode {
+                    ScheduleMode::Minute | ScheduleMode::Hour => {
+                        should_run_interval(now, last_run, every, mode)
+                    }
+                    ScheduleMode::Day => should_run_daily(now, last_run, daily, tz),
+                    ScheduleMode::Week => should_run_weekly(now, last_run, weekday, daily, tz),
+                }
+            };
+            if should_run {
+                service
+                    .create_tenant_backup(&tenant_id)
+                    .await
+                    .map_err(|e| {
+                        format!("Failed to create tenant backup for {}: {}", tenant_id, e)
+                    })?;
+                set_datetime_setting(
+                    settings_service,
+                    Some(&tenant_id),
+                    "backup_last_run",
+                    now,
+                    "Last successful tenant backup run (UTC)",
+                )
+                .await?;
+
+                let retention_days = get_i64_setting(
+                    settings_service,
+                    Some(&tenant_id),
+                    "backup_retention_days",
+                    global_retention_days,
+                )
+                .await?;
+                if retention_days > 0 {
+                    cleanup_backups(
+                        service,
+                        retention_days,
+                        BackupScope::Tenant(tenant_id.clone()),
+                    )
+                    .await?;
+                }
+            }
+        }
+
+        if trigger_now {
+            set_bool_setting(
+                settings_service,
+                None,
+                "backup_tenant_trigger",
+                false,
+                "Manual trigger for tenant backups",
+            )
+            .await?;
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct DailySchedule {
+    hour: u32,
+    minute: u32,
+}
+
+fn parse_daily_schedule(input: &str) -> Option<DailySchedule> {
+    let raw = input.trim();
+    if raw.is_empty() {
+        return None;
+    }
+
+    if raw.eq_ignore_ascii_case("@daily") || raw.eq_ignore_ascii_case("daily") {
+        return Some(DailySchedule { hour: 0, minute: 0 });
+    }
+
+    if raw.contains(':') {
+        let parts: Vec<&str> = raw.split(':').collect();
+        if parts.len() != 2 {
+            return None;
+        }
+        let hour: u32 = parts[0].trim().parse().ok()?;
+        let minute: u32 = parts[1].trim().parse().ok()?;
+        if hour < 24 && minute < 60 {
+            return Some(DailySchedule { hour, minute });
+        }
+        return None;
+    }
+
+    let parts: Vec<&str> = raw.split_whitespace().collect();
+    if parts.len() != 5 {
+        return None;
+    }
+    if parts[2] != "*" || parts[3] != "*" || parts[4] != "*" {
+        return None;
+    }
+    let minute: u32 = parts[0].parse().ok()?;
+    let hour: u32 = parts[1].parse().ok()?;
+    if hour < 24 && minute < 60 {
+        return Some(DailySchedule { hour, minute });
+    }
+    None
+}
+
+fn should_run_daily(
+    now: DateTime<Utc>,
+    last_run: Option<DateTime<Utc>>,
+    schedule: DailySchedule,
+    tz: Tz,
+) -> bool {
+    // Interpret HH:MM in the app's timezone (app_timezone), then convert to UTC for comparison.
+    let local_day = now.with_timezone(&tz).date_naive();
+    let scheduled_today = scheduled_time_for_day(local_day, schedule, tz);
+    if now < scheduled_today {
+        return false;
+    }
+    match last_run {
+        None => true,
+        Some(last) => last < scheduled_today,
+    }
+}
+
+fn scheduled_time_for_day(day: NaiveDate, schedule: DailySchedule, tz: Tz) -> DateTime<Utc> {
+    let time = NaiveTime::from_hms_opt(schedule.hour, schedule.minute, 0)
+        .unwrap_or_else(|| NaiveTime::from_hms_opt(0, 0, 0).unwrap());
+
+    let naive = NaiveDateTime::new(day, time);
+    // DST can make local times ambiguous or invalid; pick a reasonable instant.
+    if let Some(dt) = tz
+        .from_local_datetime(&naive)
+        .single()
+        .or_else(|| tz.from_local_datetime(&naive).earliest())
+        .or_else(|| tz.from_local_datetime(&naive).latest())
+    {
+        return dt.with_timezone(&Utc);
+    }
+
+    // Fallback: treat it as UTC if timezone conversion fails (should be rare).
+    DateTime::<Utc>::from_naive_utc_and_offset(naive, Utc)
+}
+
+#[derive(Debug, Clone, Copy)]
+enum ScheduleMode {
+    Minute,
+    Hour,
+    Day,
+    Week,
+}
+
+fn parse_mode(input: &str) -> Option<ScheduleMode> {
+    match input.trim().to_ascii_lowercase().as_str() {
+        "minute" | "minutes" => Some(ScheduleMode::Minute),
+        "hour" | "hours" => Some(ScheduleMode::Hour),
+        "day" | "daily" => Some(ScheduleMode::Day),
+        "week" | "weekly" => Some(ScheduleMode::Week),
+        _ => None,
+    }
+}
+
+fn parse_hhmm(input: &str) -> Option<(u32, u32)> {
+    let raw = input.trim();
+    let parts: Vec<&str> = raw.split(':').collect();
+    if parts.len() != 2 {
+        return None;
+    }
+    let hour: u32 = parts[0].trim().parse().ok()?;
+    let minute: u32 = parts[1].trim().parse().ok()?;
+    if hour < 24 && minute < 60 {
+        Some((hour, minute))
+    } else {
+        None
+    }
+}
+
+fn parse_weekday(input: &str) -> Option<u32> {
+    match input.trim().to_ascii_lowercase().as_str() {
+        "mon" | "monday" => Some(1),
+        "tue" | "tuesday" => Some(2),
+        "wed" | "wednesday" => Some(3),
+        "thu" | "thursday" => Some(4),
+        "fri" | "friday" => Some(5),
+        "sat" | "saturday" => Some(6),
+        "sun" | "sunday" => Some(7),
+        _ => None,
+    }
+}
+
+fn weekday_of_date(day: NaiveDate) -> u32 {
+    day.weekday().number_from_monday()
+}
+
+fn should_run_interval(
+    now: DateTime<Utc>,
+    last_run: Option<DateTime<Utc>>,
+    every: i64,
+    unit: ScheduleMode,
+) -> bool {
+    let every = every.max(1);
+    let dur = match unit {
+        ScheduleMode::Minute => Duration::minutes(every),
+        ScheduleMode::Hour => Duration::hours(every),
+        _ => return false,
+    };
+    match last_run {
+        None => true,
+        Some(last) => now - last >= dur,
+    }
+}
+
+fn should_run_weekly(
+    now: DateTime<Utc>,
+    last_run: Option<DateTime<Utc>>,
+    weekday: u32,
+    schedule: DailySchedule,
+    tz: Tz,
+) -> bool {
+    // Run once per week at weekday+time in app_timezone
+    let today = now.with_timezone(&tz).date_naive();
+    let scheduled_this_week = scheduled_time_for_week_tz(today, weekday, schedule, tz);
+    if now < scheduled_this_week {
+        let last_week = today.checked_sub_signed(Duration::days(7)).unwrap_or(today);
+        let scheduled_last_week = scheduled_time_for_week_tz(last_week, weekday, schedule, tz);
+        return last_run.map(|lr| lr < scheduled_last_week).unwrap_or(false);
+    }
+    last_run.map(|lr| lr < scheduled_this_week).unwrap_or(true)
+}
+
+fn scheduled_time_for_week_tz(
+    day: NaiveDate,
+    weekday: u32,
+    schedule: DailySchedule,
+    tz: Tz,
+) -> DateTime<Utc> {
+    // weekday: 1=Mon .. 7=Sun
+    let current = weekday_of_date(day);
+    let delta_days = if current <= weekday {
+        weekday - current
+    } else {
+        7 - (current - weekday)
+    } as i64;
+
+    let target_day = day
+        .checked_add_signed(Duration::days(delta_days))
+        .unwrap_or(day);
+    scheduled_time_for_day(target_day, schedule, tz)
+}
+
+async fn get_mode_settings(
+    settings_service: &SettingsService,
+    tenant_id: Option<&str>,
+    prefix: &str,
+    legacy_schedule_key: &str,
+    default_at: &str,
+) -> Result<Option<(ScheduleMode, i64, DailySchedule, u32)>, String> {
+    // Returns (mode, every, time, weekday)
+    // If mode not configured, falls back to legacy cron-string (treated as Day).
+    let mode_key = format!("{}_mode", prefix);
+    let mode_raw = settings_service
+        .get_value(tenant_id, &mode_key)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if let Some(mode_raw) = mode_raw {
+        let mode = parse_mode(&mode_raw)
+            .ok_or_else(|| format!("Invalid {} value '{}'", mode_key, mode_raw))?;
+
+        let every_key = format!("{}_every", prefix);
+        let at_key = format!("{}_at", prefix);
+        let weekday_key = format!("{}_weekday", prefix);
+
+        let every = settings_service
+            .get_value(tenant_id, &every_key)
+            .await
+            .map_err(|e| e.to_string())?
+            .and_then(|v| v.parse::<i64>().ok())
+            .unwrap_or(15);
+
+        let at = settings_service
+            .get_value(tenant_id, &at_key)
+            .await
+            .map_err(|e| e.to_string())?
+            .unwrap_or_else(|| default_at.to_string());
+        let (hour, minute) = parse_hhmm(&at).unwrap_or((2, 0));
+
+        let weekday = settings_service
+            .get_value(tenant_id, &weekday_key)
+            .await
+            .map_err(|e| e.to_string())?
+            .and_then(|v| parse_weekday(&v))
+            .unwrap_or(7); // Sun
+
+        return Ok(Some((mode, every, DailySchedule { hour, minute }, weekday)));
+    }
+
+    let legacy = settings_service
+        .get_value(tenant_id, legacy_schedule_key)
+        .await
+        .map_err(|e| e.to_string())?;
+    let legacy = legacy.unwrap_or_else(|| "0 2 * * *".to_string());
+    if let Some(daily) = parse_daily_schedule(&legacy) {
+        return Ok(Some((ScheduleMode::Day, 0, daily, 7)));
+    }
+    Ok(None)
+}
+
+async fn get_bool_setting(
+    settings_service: &SettingsService,
+    tenant_id: Option<&str>,
+    key: &str,
+    default_value: bool,
+) -> Result<bool, String> {
+    let raw = settings_service
+        .get_value(tenant_id, key)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(raw
+        .map(|v| v == "true" || v == "1" || v.eq_ignore_ascii_case("yes"))
+        .unwrap_or(default_value))
+}
+
+async fn get_i64_setting(
+    settings_service: &SettingsService,
+    tenant_id: Option<&str>,
+    key: &str,
+    default_value: i64,
+) -> Result<i64, String> {
+    let raw = settings_service
+        .get_value(tenant_id, key)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(raw
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(default_value))
+}
+
+async fn get_datetime_setting(
+    settings_service: &SettingsService,
+    tenant_id: Option<&str>,
+    key: &str,
+) -> Result<Option<DateTime<Utc>>, String> {
+    let raw = settings_service
+        .get_value(tenant_id, key)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(raw
+        .and_then(|v| DateTime::parse_from_rfc3339(&v).ok())
+        .map(|dt| dt.with_timezone(&Utc)))
+}
+
+async fn get_app_timezone(settings_service: &SettingsService) -> Tz {
+    let raw = match settings_service.get_value(None, "app_timezone").await {
+        Ok(v) => v.unwrap_or_else(|| "UTC".to_string()),
+        Err(e) => {
+            warn!("Failed to read app_timezone setting: {}", e);
+            "UTC".to_string()
+        }
+    };
+
+    match raw.parse::<Tz>() {
+        Ok(tz) => tz,
+        Err(_) => {
+            warn!("Invalid app_timezone '{}'; falling back to UTC", raw);
+            chrono_tz::UTC
+        }
+    }
+}
+
+async fn set_bool_setting(
+    settings_service: &SettingsService,
+    tenant_id: Option<&str>,
+    key: &str,
+    value: bool,
+    description: &str,
+) -> Result<(), String> {
+    let dto = UpsertSettingDto {
+        key: key.to_string(),
+        value: if value {
+            "true".to_string()
+        } else {
+            "false".to_string()
+        },
+        description: Some(description.to_string()),
+    };
+    settings_service
+        .upsert(tenant_id.map(|t| t.to_string()), dto, None, None)
+        .await
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+async fn set_datetime_setting(
+    settings_service: &SettingsService,
+    tenant_id: Option<&str>,
+    key: &str,
+    value: DateTime<Utc>,
+    description: &str,
+) -> Result<(), String> {
+    let dto = UpsertSettingDto {
+        key: key.to_string(),
+        value: value.to_rfc3339(),
+        description: Some(description.to_string()),
+    };
+    settings_service
+        .upsert(tenant_id.map(|t| t.to_string()), dto, None, None)
+        .await
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+async fn list_active_tenants(pool: &DbPool) -> AppResult<Vec<String>> {
+    #[cfg(feature = "postgres")]
+    {
+        let ids: Vec<String> = sqlx::query_scalar("SELECT id FROM tenants WHERE is_active = true")
+            .fetch_all(pool)
+            .await?;
+        Ok(ids)
+    }
+
+    #[cfg(feature = "sqlite")]
+    {
+        let ids: Vec<String> = sqlx::query_scalar("SELECT id FROM tenants WHERE is_active = 1")
+            .fetch_all(pool)
+            .await?;
+        Ok(ids)
+    }
+}
+
+enum BackupScope {
+    Global,
+    Tenant(String),
+}
+
+async fn cleanup_backups(
+    service: &BackupService,
+    retention_days: i64,
+    scope: BackupScope,
+) -> Result<(), String> {
+    let cutoff = Utc::now() - Duration::days(retention_days);
+    let backups = service.list_backups().await.map_err(|e| e.to_string())?;
+    for backup in backups {
+        let should_delete = match &scope {
+            BackupScope::Global => backup.backup_type == "global",
+            BackupScope::Tenant(tid) => {
+                backup.backup_type == "tenant" && backup.tenant_id.as_deref() == Some(tid.as_str())
+            }
+        };
+        if should_delete && backup.created_at < cutoff {
+            let _ = service.delete_backup(backup.name).await;
+        }
+    }
+    Ok(())
 }

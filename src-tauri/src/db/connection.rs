@@ -1,6 +1,10 @@
 //! Database connection and initialization module
 //! Supports PostgreSQL (default/online) and SQLite (optional/offline)
 
+// These features are mutually exclusive. Enabling both breaks compilation due to duplicated types/impls.
+#[cfg(all(feature = "postgres", feature = "sqlite"))]
+compile_error!("Features 'postgres' and 'sqlite' are mutually exclusive. Use default (postgres) OR --no-default-features --features sqlite.");
+
 #[cfg(feature = "postgres")]
 use sqlx::{PgPool, Pool, Postgres};
 
@@ -18,9 +22,12 @@ pub type DbPool = Pool<Postgres>;
 pub type DbPool = Pool<Sqlite>;
 
 /// Initialize database connection
-pub async fn init_db(_app_data_dir: PathBuf) -> Result<DbPool, sqlx::Error> {
+pub async fn init_db(app_data_dir: PathBuf) -> Result<DbPool, sqlx::Error> {
     #[cfg(feature = "postgres")]
     {
+        // app_data_dir is used for SQLite mode; keep signature consistent.
+        let _ = &app_data_dir;
+
         let database_url = env::var("DATABASE_URL").map_err(|_| {
             sqlx::Error::Configuration(
                 "DATABASE_URL must be set for PostgreSQL mode. Please check your .env file.".into(),
@@ -1437,6 +1444,25 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
         ("alerting_rate_limit_threshold", "50", "Rate limit count threshold to trigger alert"),
         ("alerting_response_time_threshold", "3000.0", "P95 response time threshold in ms"),
         ("alerting_cooldown_minutes", "15", "Minutes to wait before sending same alert type again"),
+        // Timezone (IANA TZ database name, e.g. Asia/Jakarta). Used for schedules shown in the UI.
+        ("app_timezone", "UTC", "Application timezone for schedules (IANA, e.g. Asia/Jakarta)"),
+        // Backup Scheduler
+        ("backup_global_enabled", "false", "Enable automatic global backups"),
+        ("backup_global_mode", "day", "Global backup schedule mode: minute, hour, day, week"),
+        ("backup_global_every", "15", "Global backup interval value for minute/hour modes"),
+        ("backup_global_at", "02:00", "Global backup time (HH:MM) for day/week modes (app_timezone)"),
+        ("backup_global_weekday", "sun", "Global backup weekday for weekly mode (mon..sun)"),
+        ("backup_global_schedule", "0 2 * * *", "Legacy global backup schedule in cron (min hour * * *) or HH:MM (app_timezone)"),
+        ("backup_global_retention_days", "30", "Retention days for global backups"),
+        ("backup_global_trigger", "false", "Manual trigger for global backup"),
+        ("backup_tenant_enabled", "false", "Enable automatic tenant backups"),
+        ("backup_tenant_mode", "day", "Tenant backup schedule mode: minute, hour, day, week"),
+        ("backup_tenant_every", "60", "Tenant backup interval value for minute/hour modes"),
+        ("backup_tenant_at", "02:30", "Tenant backup time (HH:MM) for day/week modes (app_timezone)"),
+        ("backup_tenant_weekday", "sun", "Tenant backup weekday for weekly mode (mon..sun)"),
+        ("backup_tenant_schedule", "30 2 * * *", "Legacy tenant backup schedule in cron (min hour * * *) or HH:MM (app_timezone)"),
+        ("backup_tenant_retention_days", "14", "Retention days for tenant backups"),
+        ("backup_tenant_trigger", "false", "Manual trigger for tenant backups"),
     ];
 
     for (key, value, description) in defaults {
@@ -1672,6 +1698,7 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
     // --- Assign Permissions to Roles ---
     // Helper to assign permission to role name
     async fn assign_perm(pool: &DbPool, role_name: &str, perm_id: &str) -> Result<(), sqlx::Error> {
+        #[cfg(feature = "postgres")]
         let role_query = "SELECT id FROM roles WHERE name = $1 AND tenant_id IS NULL";
         #[cfg(feature = "sqlite")]
         let role_query = "SELECT id FROM roles WHERE name = ? AND tenant_id IS NULL";
@@ -1864,7 +1891,8 @@ pub async fn seed_plans(pool: &DbPool) -> Result<(), sqlx::Error> {
         .execute(pool).await?;
 
         // 3. Link Features to Plans (Fetch IDs first)
-        let pid_query = "SELECT id FROM plans WHERE slug = $1"; // PG
+        #[cfg(feature = "postgres")]
+        let pid_query = "SELECT id FROM plans WHERE slug = $1";
         #[cfg(feature = "sqlite")]
         let pid_query = "SELECT id FROM plans WHERE slug = ?";
 
@@ -1897,7 +1925,8 @@ pub async fn seed_plans(pool: &DbPool) -> Result<(), sqlx::Error> {
             };
 
             for (code, val) in features_to_add {
-                let fid_query = "SELECT id FROM features WHERE code = $1"; // PG
+                #[cfg(feature = "postgres")]
+                let fid_query = "SELECT id FROM features WHERE code = $1";
                 #[cfg(feature = "sqlite")]
                 let fid_query = "SELECT id FROM features WHERE code = ?";
 

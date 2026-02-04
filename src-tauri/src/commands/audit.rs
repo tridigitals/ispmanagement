@@ -18,14 +18,25 @@ pub async fn list_audit_logs(
     audit_service: State<'_, AuditService>,
     auth_service: State<'_, AuthService>,
 ) -> Result<PaginatedResponse<crate::models::AuditLogResponse>, String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
 
     if !claims.is_super_admin {
         return Err("Unauthorized".to_string());
     }
 
-    let date_from_parsed = date_from.and_then(|d| chrono::DateTime::parse_from_rfc3339(&d).ok().map(|dt| dt.with_timezone(&chrono::Utc)));
-    let date_to_parsed = date_to.and_then(|d| chrono::DateTime::parse_from_rfc3339(&d).ok().map(|dt| dt.with_timezone(&chrono::Utc)));
+    let date_from_parsed = date_from.and_then(|d| {
+        chrono::DateTime::parse_from_rfc3339(&d)
+            .ok()
+            .map(|dt| dt.with_timezone(&chrono::Utc))
+    });
+    let date_to_parsed = date_to.and_then(|d| {
+        chrono::DateTime::parse_from_rfc3339(&d)
+            .ok()
+            .map(|dt| dt.with_timezone(&chrono::Utc))
+    });
 
     let filter = crate::models::AuditLogFilter {
         page,
@@ -38,7 +49,10 @@ pub async fn list_audit_logs(
         search,
     };
 
-    let (logs, total) = audit_service.list(filter).await.map_err(|e| e.to_string())?;
+    let (logs, total) = audit_service
+        .list(filter)
+        .await
+        .map_err(|e| e.to_string())?;
 
     Ok(PaginatedResponse {
         data: logs,

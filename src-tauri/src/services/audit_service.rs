@@ -1,6 +1,6 @@
 use crate::db::connection::DbPool;
 use crate::error::{AppError, AppResult};
- // audit_service.rs implies these might be needed if not fully qualified
+// audit_service.rs implies these might be needed if not fully qualified
 use chrono::Utc;
 // We need to import PlanService but it might cause circular deps if not careful.
 // Actually PlanService depends on DbPool, not AuditService.
@@ -15,15 +15,15 @@ pub struct AuditService {
 }
 
 impl AuditService {
-    // We defer PlanService injection or handle it carefully. 
-    // Actually, AuditService is foundational. 
+    // We defer PlanService injection or handle it carefully.
+    // Actually, AuditService is foundational.
     // If we make AuditService depend on PlanService, and PlanService depends on nothing (it doesn't rely on AuditService), we are good.
     // BUT! All other services depend on AuditService.
     // So if AuditService depends on PlanService, then:
     // User -> Audit -> Plan.
     // Plan -> (DB).
     // This seems acyclic. Safe.
-    
+
     pub fn new(pool: DbPool, plan_service: Option<PlanService>) -> Self {
         Self { pool, plan_service }
     }
@@ -104,8 +104,10 @@ impl AuditService {
                 details TEXT,
                 ip_address TEXT,
                 created_at TEXT NOT NULL
-            )"#
-        ).execute(&self.pool).await?;
+            )"#,
+        )
+        .execute(&self.pool)
+        .await?;
 
         #[cfg(feature = "postgres")]
         sqlx::query(
@@ -119,14 +121,17 @@ impl AuditService {
                 details TEXT,
                 ip_address VARCHAR(45),
                 created_at TIMESTAMPTZ NOT NULL
-            )"#
-        ).execute(&self.pool).await?;
+            )"#,
+        )
+        .execute(&self.pool)
+        .await?;
 
         // Migration: Attempt to add ip_address if it doesn't exist (ignore errors if it does)
         #[cfg(feature = "postgres")]
-        let _ = sqlx::query("ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45)")
-            .execute(&self.pool)
-            .await;
+        let _ =
+            sqlx::query("ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45)")
+                .execute(&self.pool)
+                .await;
 
         #[cfg(feature = "sqlite")]
         let _ = sqlx::query("ALTER TABLE audit_logs ADD COLUMN ip_address TEXT")
@@ -137,7 +142,10 @@ impl AuditService {
     }
 
     /// List logs with filters
-    pub async fn list(&self, filter: crate::models::AuditLogFilter) -> AppResult<(Vec<crate::models::AuditLogResponse>, i64)> {
+    pub async fn list(
+        &self,
+        filter: crate::models::AuditLogFilter,
+    ) -> AppResult<(Vec<crate::models::AuditLogResponse>, i64)> {
         // Enforce Plan Limits
         if let Some(tenant_id) = &filter.tenant_id {
             if let Some(plan_service) = &self.plan_service {
@@ -146,9 +154,11 @@ impl AuditService {
                     .await
                     .map(|f| f.has_access)
                     .unwrap_or(false); // If check fails (e.g. no plan), deny access
-                
+
                 if !has_access {
-                    return Err(AppError::Validation("Upgrade your plan to access Audit Logs.".to_string()));
+                    return Err(AppError::Validation(
+                        "Upgrade your plan to access Audit Logs.".to_string(),
+                    ));
                 }
             }
         }
@@ -161,7 +171,7 @@ impl AuditService {
         #[cfg(feature = "postgres")]
         {
             use sqlx::{Postgres, QueryBuilder, Row};
-            
+
             let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
                 r#"SELECT 
                     l.id::text, l.user_id::text, l.tenant_id::text, l.action, l.resource, l.resource_id, l.details, l.ip_address, l.created_at,
@@ -180,14 +190,14 @@ impl AuditService {
                 LEFT JOIN users ru ON l.resource = 'user' AND l.resource_id = ru.id::text
                 LEFT JOIN tenants rt ON l.resource = 'tenant' AND l.resource_id = rt.id::text
                 LEFT JOIN roles rr ON l.resource = 'roles' AND l.resource_id = rr.id::text
-                WHERE 1=1 "#
+                WHERE 1=1 "#,
             );
 
             if let Some(uid) = &filter.user_id {
                 qb.push(" AND l.user_id::text = ");
                 qb.push_bind(uid);
             }
-            
+
             if let Some(tid) = &filter.tenant_id {
                 qb.push(" AND l.tenant_id::text = ");
                 qb.push_bind(tid);
@@ -202,7 +212,7 @@ impl AuditService {
                 qb.push(" AND l.created_at >= ");
                 qb.push_bind(date_from);
             }
-            
+
             if let Some(date_to) = filter.date_to {
                 qb.push(" AND l.created_at <= ");
                 qb.push_bind(date_to);
@@ -223,14 +233,29 @@ impl AuditService {
             // Note: QueryBuilder doesn't easily clone, so we construct count separately or run window function.
             // For simplicity, we'll run a separate count query with same WHERE clauses or just simple string construction for count if needed.
             // Actually, let's just get the count first using a similar builder.
-            
+
             let mut count_qb: QueryBuilder<Postgres> = QueryBuilder::new("SELECT COUNT(*) FROM audit_logs l LEFT JOIN users u ON l.user_id::text = u.id::text WHERE 1=1 ");
-             if let Some(uid) = &filter.user_id { count_qb.push(" AND l.user_id::text = "); count_qb.push_bind(uid); }
-             if let Some(tid) = &filter.tenant_id { count_qb.push(" AND l.tenant_id::text = "); count_qb.push_bind(tid); }
-             if let Some(action) = &filter.action { count_qb.push(" AND l.action = "); count_qb.push_bind(action); }
-             if let Some(date_from) = filter.date_from { count_qb.push(" AND l.created_at >= "); count_qb.push_bind(date_from); }
-             if let Some(date_to) = filter.date_to { count_qb.push(" AND l.created_at <= "); count_qb.push_bind(date_to); }
-             if let Some(search) = &filter.search {
+            if let Some(uid) = &filter.user_id {
+                count_qb.push(" AND l.user_id::text = ");
+                count_qb.push_bind(uid);
+            }
+            if let Some(tid) = &filter.tenant_id {
+                count_qb.push(" AND l.tenant_id::text = ");
+                count_qb.push_bind(tid);
+            }
+            if let Some(action) = &filter.action {
+                count_qb.push(" AND l.action = ");
+                count_qb.push_bind(action);
+            }
+            if let Some(date_from) = filter.date_from {
+                count_qb.push(" AND l.created_at >= ");
+                count_qb.push_bind(date_from);
+            }
+            if let Some(date_to) = filter.date_to {
+                count_qb.push(" AND l.created_at <= ");
+                count_qb.push_bind(date_to);
+            }
+            if let Some(search) = &filter.search {
                 let pattern = format!("%{}%", search);
                 count_qb.push(" AND (l.resource ILIKE ");
                 count_qb.push_bind(pattern.clone());
@@ -249,20 +274,23 @@ impl AuditService {
             qb.push(" OFFSET ");
             qb.push_bind(offset as i64);
 
-            let logs = qb.build_query_as::<crate::models::AuditLogResponse>().fetch_all(&self.pool).await
+            let logs = qb
+                .build_query_as::<crate::models::AuditLogResponse>()
+                .fetch_all(&self.pool)
+                .await
                 .map_err(|e| {
                     tracing::error!("Failed to fetch audit logs: {}", e);
                     crate::error::AppError::Internal(e.to_string())
                 })?;
-            
+
             return Ok((logs, count));
         }
 
         // --- SQLite Implementation ---
         #[cfg(feature = "sqlite")]
         {
-             use sqlx::{Sqlite, QueryBuilder, Row};
-            
+            use sqlx::{QueryBuilder, Row, Sqlite};
+
             let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
                 r#"SELECT 
                     l.id, l.user_id, l.tenant_id, l.action, l.resource, l.resource_id, l.details, l.ip_address, l.created_at,
@@ -281,14 +309,14 @@ impl AuditService {
                 LEFT JOIN users ru ON l.resource = 'user' AND l.resource_id = ru.id
                 LEFT JOIN tenants rt ON l.resource = 'tenant' AND l.resource_id = rt.id
                 LEFT JOIN roles rr ON l.resource = 'roles' AND l.resource_id = rr.id
-                WHERE 1=1 "#
+                WHERE 1=1 "#,
             );
 
             if let Some(uid) = &filter.user_id {
                 qb.push(" AND l.user_id = ");
                 qb.push_bind(uid);
             }
-             if let Some(tid) = &filter.tenant_id {
+            if let Some(tid) = &filter.tenant_id {
                 qb.push(" AND l.tenant_id = ");
                 qb.push_bind(tid);
             }
@@ -317,11 +345,26 @@ impl AuditService {
 
             // Count
             let mut count_qb: QueryBuilder<Sqlite> = QueryBuilder::new("SELECT COUNT(*) FROM audit_logs l LEFT JOIN users u ON l.user_id = u.id WHERE 1=1 ");
-            if let Some(uid) = &filter.user_id { count_qb.push(" AND l.user_id = "); count_qb.push_bind(uid); }
-            if let Some(tid) = &filter.tenant_id { count_qb.push(" AND l.tenant_id = "); count_qb.push_bind(tid); }
-            if let Some(action) = &filter.action { count_qb.push(" AND l.action = "); count_qb.push_bind(action); }
-            if let Some(date_from) = filter.date_from { count_qb.push(" AND l.created_at >= "); count_qb.push_bind(date_from.to_rfc3339()); }
-            if let Some(date_to) = filter.date_to { count_qb.push(" AND l.created_at <= "); count_qb.push_bind(date_to.to_rfc3339()); }
+            if let Some(uid) = &filter.user_id {
+                count_qb.push(" AND l.user_id = ");
+                count_qb.push_bind(uid);
+            }
+            if let Some(tid) = &filter.tenant_id {
+                count_qb.push(" AND l.tenant_id = ");
+                count_qb.push_bind(tid);
+            }
+            if let Some(action) = &filter.action {
+                count_qb.push(" AND l.action = ");
+                count_qb.push_bind(action);
+            }
+            if let Some(date_from) = filter.date_from {
+                count_qb.push(" AND l.created_at >= ");
+                count_qb.push_bind(date_from.to_rfc3339());
+            }
+            if let Some(date_to) = filter.date_to {
+                count_qb.push(" AND l.created_at <= ");
+                count_qb.push_bind(date_to.to_rfc3339());
+            }
             if let Some(search) = &filter.search {
                 let pattern = format!("%{}%", search);
                 count_qb.push(" AND (l.resource LIKE ");
@@ -332,7 +375,7 @@ impl AuditService {
                 count_qb.push_bind(pattern);
                 count_qb.push(")");
             }
-            
+
             let count: i64 = count_qb.build().fetch_one(&self.pool).await?.try_get(0)?;
 
             // Order Limit Offset
@@ -341,12 +384,15 @@ impl AuditService {
             qb.push(" OFFSET ");
             qb.push_bind(offset as i64);
 
-            let logs = qb.build_query_as::<crate::models::AuditLogResponse>().fetch_all(&self.pool).await
-                 .map_err(|e| {
+            let logs = qb
+                .build_query_as::<crate::models::AuditLogResponse>()
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| {
                     tracing::error!("Failed to fetch audit logs: {}", e);
                     crate::error::AppError::Internal(e.to_string())
                 })?;
-            
+
             Ok((logs, count))
         }
     }

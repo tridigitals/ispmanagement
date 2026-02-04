@@ -1,5 +1,5 @@
 use crate::models::Tenant;
-use crate::services::{AuthService, AuditService, PlanService};
+use crate::services::{AuditService, AuthService, PlanService};
 use tauri::State;
 
 #[derive(serde::Serialize)]
@@ -13,8 +13,11 @@ pub async fn list_tenants(
     token: String,
     auth_service: State<'_, AuthService>,
 ) -> Result<TenantListResponse, String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
-    
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
     if !claims.is_super_admin {
         return Err("Unauthorized".to_string());
     }
@@ -40,8 +43,11 @@ pub async fn delete_tenant(
     auth_service: State<'_, AuthService>,
     audit_service: State<'_, AuditService>,
 ) -> Result<(), String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
-    
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
     if !claims.is_super_admin {
         return Err("Unauthorized".to_string());
     }
@@ -52,15 +58,17 @@ pub async fn delete_tenant(
         .await
         .map_err(|e| e.to_string())?;
 
-    audit_service.log(
-        Some(&claims.sub),
-        None,
-        "TENANT_DELETED",
-        "tenant",
-        Some(&id),
-        Some("Tenant deleted by Superadmin"),
-        None
-    ).await;
+    audit_service
+        .log(
+            Some(&claims.sub),
+            None,
+            "TENANT_DELETED",
+            "tenant",
+            Some(&id),
+            Some("Tenant deleted by Superadmin"),
+            None,
+        )
+        .await;
 
     Ok(())
 }
@@ -78,9 +86,11 @@ pub async fn create_tenant(
     audit_service: State<'_, AuditService>,
     plan_service: State<'_, PlanService>,
 ) -> Result<Tenant, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
 
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
-    
     if !claims.is_super_admin {
         return Err("Unauthorized".to_string());
     }
@@ -100,7 +110,8 @@ pub async fn create_tenant(
     }
 
     // Hash owner password
-    let password_hash = crate::services::AuthService::hash_password(&owner_password).map_err(|e| e.to_string())?;
+    let password_hash =
+        crate::services::AuthService::hash_password(&owner_password).map_err(|e| e.to_string())?;
     let user = crate::models::User::new(owner_email.clone(), password_hash, "Admin".to_string());
 
     // Check if email exists
@@ -131,9 +142,15 @@ pub async fn create_tenant(
         .bind(&tenant.logo_url);
 
     #[cfg(feature = "postgres")]
-    let q_t = q_t.bind(tenant.is_active).bind(tenant.created_at).bind(tenant.updated_at);
+    let q_t = q_t
+        .bind(tenant.is_active)
+        .bind(tenant.created_at)
+        .bind(tenant.updated_at);
     #[cfg(feature = "sqlite")]
-    let q_t = q_t.bind(if tenant.is_active { 1 } else { 0 }).bind(tenant.created_at.to_rfc3339()).bind(tenant.updated_at.to_rfc3339());
+    let q_t = q_t
+        .bind(if tenant.is_active { 1 } else { 0 })
+        .bind(tenant.created_at.to_rfc3339())
+        .bind(tenant.updated_at.to_rfc3339());
 
     q_t.execute(&mut *tx).await.map_err(|e| e.to_string())?;
 
@@ -155,14 +172,16 @@ pub async fn create_tenant(
     #[cfg(feature = "postgres")]
     let q_u = q_u.bind(user.created_at).bind(user.updated_at);
     #[cfg(feature = "sqlite")]
-    let q_u = q_u.bind(user.created_at.to_rfc3339()).bind(user.updated_at.to_rfc3339());
+    let q_u = q_u
+        .bind(user.created_at.to_rfc3339())
+        .bind(user.updated_at.to_rfc3339());
 
     q_u.execute(&mut *tx).await.map_err(|e| e.to_string())?;
 
     // 3. Create 'Owner' Role for this Tenant
     let role_id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now();
-    
+
     #[cfg(feature = "postgres")]
     let sql_r = "INSERT INTO roles (id, tenant_id, name, description, is_system, level, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)";
     #[cfg(feature = "sqlite")]
@@ -210,30 +229,42 @@ pub async fn create_tenant(
         Some(pid)
     } else {
         // Try to find default plan
-        let default_plan_id: Option<String> = sqlx::query_scalar("SELECT id FROM plans WHERE is_default = 1 OR is_default = true LIMIT 1")
-            .fetch_optional(&auth_service.pool)
-            .await
-            .unwrap_or(None);
-        
+        let default_plan_id: Option<String> = sqlx::query_scalar(
+            "SELECT id FROM plans WHERE is_default = 1 OR is_default = true LIMIT 1",
+        )
+        .fetch_optional(&auth_service.pool)
+        .await
+        .unwrap_or(None);
+
         default_plan_id
     };
 
     if let Some(pid) = plan_id_to_assign {
         if let Err(e) = plan_service.assign_plan_to_tenant(&tenant.id, &pid).await {
             // Log error but don't fail the request since tenant is created
-            tracing::error!("Failed to assign plan {} to tenant {}: {}", pid, tenant.id, e);
+            tracing::error!(
+                "Failed to assign plan {} to tenant {}: {}",
+                pid,
+                tenant.id,
+                e
+            );
         }
     }
 
-    audit_service.log(
-        Some(&claims.sub),
-        None,
-        "TENANT_CREATED",
-        "tenant",
-        Some(&tenant.id),
-        Some(&format!("Created tenant {} with owner {}", tenant.name, owner_email)),
-        None
-    ).await;
+    audit_service
+        .log(
+            Some(&claims.sub),
+            None,
+            "TENANT_CREATED",
+            "tenant",
+            Some(&tenant.id),
+            Some(&format!(
+                "Created tenant {} with owner {}",
+                tenant.name, owner_email
+            )),
+            None,
+        )
+        .await;
 
     Ok(tenant)
 }
@@ -249,8 +280,11 @@ pub async fn update_tenant(
     auth_service: State<'_, AuthService>,
     audit_service: State<'_, AuditService>,
 ) -> Result<Tenant, String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
-    
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
     if !claims.is_super_admin {
         return Err("Unauthorized".to_string());
     }
@@ -292,7 +326,9 @@ pub async fn update_tenant(
     #[cfg(feature = "postgres")]
     let q = q.bind(is_active).bind(chrono::Utc::now());
     #[cfg(feature = "sqlite")]
-    let q = q.bind(if is_active { 1 } else { 0 }).bind(chrono::Utc::now().to_rfc3339());
+    let q = q
+        .bind(if is_active { 1 } else { 0 })
+        .bind(chrono::Utc::now().to_rfc3339());
 
     let tenant = q
         .bind(&id)
@@ -300,15 +336,17 @@ pub async fn update_tenant(
         .await
         .map_err(|e| e.to_string())?;
 
-    audit_service.log(
-        Some(&claims.sub),
-        None,
-        "TENANT_UPDATED",
-        "tenant",
-        Some(&id),
-        Some(&format!("Updated tenant {}, active: {}", name, is_active)),
-        None
-    ).await;
+    audit_service
+        .log(
+            Some(&claims.sub),
+            None,
+            "TENANT_UPDATED",
+            "tenant",
+            Some(&id),
+            Some(&format!("Updated tenant {}, active: {}", name, is_active)),
+            None,
+        )
+        .await;
 
     Ok(tenant)
 }

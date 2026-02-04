@@ -11,9 +11,9 @@ pub struct Notification {
     pub tenant_id: Option<String>,
     pub title: String,
     pub message: String,
-    pub notification_type: String,    // "info", "success", "warning", "error"
-    pub category: String,             // "system", "team", "payment", "security"
-    pub action_url: Option<String>,   // URL to navigate when clicked
+    pub notification_type: String, // "info", "success", "warning", "error"
+    pub category: String,          // "system", "team", "payment", "security"
+    pub action_url: Option<String>, // URL to navigate when clicked
     pub is_read: bool,
     pub created_at: DateTime<Utc>,
 }
@@ -48,8 +48,8 @@ impl Notification {
 pub struct NotificationPreference {
     pub id: String,
     pub user_id: String,
-    pub channel: String,              // "in_app", "email", "push"
-    pub category: String,             // "system", "team", "payment", "security"
+    pub channel: String,  // "in_app", "email", "push"
+    pub category: String, // "system", "team", "payment", "security"
     pub enabled: bool,
     pub updated_at: DateTime<Utc>,
 }

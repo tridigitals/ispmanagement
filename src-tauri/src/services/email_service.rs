@@ -1,16 +1,16 @@
 //! Email Service - HTTP API only (SMTP disabled until Windows restart)
-//! 
+//!
 //! Providers: Resend, SendGrid, Custom Webhook
 //! Note: SMTP support requires uncommenting lettre in Cargo.toml after Windows restart
 
 use crate::error::{AppError, AppResult};
 use crate::services::SettingsService;
-use serde::Serialize;
-use tracing::info;
-use lettre::{Message, AsyncSmtpTransport, Tokio1Executor, AsyncTransport};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::transport::smtp::client::Tls;
 use lettre::transport::smtp::client::TlsParameters;
+use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
+use serde::Serialize;
+use tracing::info;
 
 /// Email service for sending emails
 #[derive(Clone)]
@@ -88,18 +88,78 @@ impl EmailService {
 
     /// Get email configuration from settings
     async fn get_config(&self) -> AppResult<EmailConfig> {
-        let provider = self.settings_service.get_value(None, "email_provider").await.ok().flatten().unwrap_or_else(|| "resend".to_string());
-        let from_email = self.settings_service.get_value(None, "email_from_address").await.ok().flatten().unwrap_or_else(|| "noreply@example.com".to_string());
-        let from_name = self.settings_service.get_value(None, "email_from_name").await.ok().flatten().unwrap_or_else(|| "System".to_string());
-        let api_key = self.settings_service.get_value(None, "email_api_key").await.ok().flatten().unwrap_or_default();
-        let webhook_url = self.settings_service.get_value(None, "email_webhook_url").await.ok().flatten().unwrap_or_default();
-        
+        let provider = self
+            .settings_service
+            .get_value(None, "email_provider")
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "resend".to_string());
+        let from_email = self
+            .settings_service
+            .get_value(None, "email_from_address")
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "noreply@example.com".to_string());
+        let from_name = self
+            .settings_service
+            .get_value(None, "email_from_name")
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "System".to_string());
+        let api_key = self
+            .settings_service
+            .get_value(None, "email_api_key")
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_default();
+        let webhook_url = self
+            .settings_service
+            .get_value(None, "email_webhook_url")
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_default();
+
         // SMTP fields (stored for future use)
-        let smtp_host = self.settings_service.get_value(None, "email_smtp_host").await.ok().flatten().unwrap_or_default();
-        let smtp_port_str = self.settings_service.get_value(None, "email_smtp_port").await.ok().flatten().unwrap_or_else(|| "587".to_string());
-        let smtp_username = self.settings_service.get_value(None, "email_smtp_username").await.ok().flatten().unwrap_or_default();
-        let smtp_password = self.settings_service.get_value(None, "email_smtp_password").await.ok().flatten().unwrap_or_default();
-        let smtp_encryption = self.settings_service.get_value(None, "email_smtp_encryption").await.ok().flatten().unwrap_or_else(|| "starttls".to_string());
+        let smtp_host = self
+            .settings_service
+            .get_value(None, "email_smtp_host")
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_default();
+        let smtp_port_str = self
+            .settings_service
+            .get_value(None, "email_smtp_port")
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "587".to_string());
+        let smtp_username = self
+            .settings_service
+            .get_value(None, "email_smtp_username")
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_default();
+        let smtp_password = self
+            .settings_service
+            .get_value(None, "email_smtp_password")
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_default();
+        let smtp_encryption = self
+            .settings_service
+            .get_value(None, "email_smtp_encryption")
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "starttls".to_string());
 
         Ok(EmailConfig {
             provider,
@@ -118,7 +178,7 @@ impl EmailService {
     /// Send email via configured provider
     pub async fn send_email(&self, to: &str, subject: &str, body: &str) -> AppResult<()> {
         let config = self.get_config().await?;
-        
+
         info!("Sending email to {} via {}", to, config.provider);
 
         match config.provider.as_str() {
@@ -126,15 +186,30 @@ impl EmailService {
             "smtp" => self.send_via_smtp(&config, to, subject, body).await,
             "sendgrid" => self.send_via_sendgrid(&config, to, subject, body).await,
             "webhook" => self.send_via_webhook(&config, to, subject, body).await,
-            _ => Err(AppError::Validation(format!("Unknown email provider: {}", config.provider))),
+            _ => Err(AppError::Validation(format!(
+                "Unknown email provider: {}",
+                config.provider
+            ))),
         }
     }
 
     /// Send via SMTP
-    async fn send_via_smtp(&self, config: &EmailConfig, to: &str, subject: &str, body: &str) -> AppResult<()> {
+    async fn send_via_smtp(
+        &self,
+        config: &EmailConfig,
+        to: &str,
+        subject: &str,
+        body: &str,
+    ) -> AppResult<()> {
         let email = Message::builder()
-            .from(format!("{} <{}>", config.from_name, config.from_email).parse().map_err(|e| AppError::Validation(format!("Invalid from address: {}", e)))?)
-            .to(to.parse().map_err(|e| AppError::Validation(format!("Invalid to address: {}", e)))?)
+            .from(
+                format!("{} <{}>", config.from_name, config.from_email)
+                    .parse()
+                    .map_err(|e| AppError::Validation(format!("Invalid from address: {}", e)))?,
+            )
+            .to(to
+                .parse()
+                .map_err(|e| AppError::Validation(format!("Invalid to address: {}", e)))?)
             .subject(subject)
             .body(body.to_string())
             .map_err(|e| AppError::Internal(format!("Failed to build email: {}", e)))?;
@@ -145,7 +220,7 @@ impl EmailService {
         // "tls" -> Wrapper/StartTLS (Port 587 usually)
         // "ssl" -> Implicit TLS (Port 465 usually)
         // "none" -> No encryption
-        
+
         let mailer_builder = AsyncSmtpTransport::<Tokio1Executor>::relay(&config.smtp_host)
             .map_err(|e| AppError::Validation(format!("Invalid SMTP host: {}", e)))?
             .port(config.smtp_port)
@@ -153,14 +228,18 @@ impl EmailService {
 
         let mailer = match config.smtp_encryption.as_str() {
             "ssl" => mailer_builder
-                .tls(Tls::Wrapper(TlsParameters::new(config.smtp_host.clone()).map_err(|e| AppError::Internal(format!("TLS error: {}", e)))?))
+                .tls(Tls::Wrapper(
+                    TlsParameters::new(config.smtp_host.clone())
+                        .map_err(|e| AppError::Internal(format!("TLS error: {}", e)))?,
+                ))
                 .build(),
             "starttls" | "tls" => mailer_builder
-                .tls(Tls::Required(TlsParameters::new(config.smtp_host.clone()).map_err(|e| AppError::Internal(format!("TLS error: {}", e)))?))
+                .tls(Tls::Required(
+                    TlsParameters::new(config.smtp_host.clone())
+                        .map_err(|e| AppError::Internal(format!("TLS error: {}", e)))?,
+                ))
                 .build(),
-             _ => mailer_builder
-                .tls(Tls::None)
-                .build(),
+            _ => mailer_builder.tls(Tls::None).build(),
         };
 
         mailer
@@ -173,9 +252,17 @@ impl EmailService {
     }
 
     /// Send via Resend API
-    async fn send_via_resend(&self, config: &EmailConfig, to: &str, subject: &str, body: &str) -> AppResult<()> {
+    async fn send_via_resend(
+        &self,
+        config: &EmailConfig,
+        to: &str,
+        subject: &str,
+        body: &str,
+    ) -> AppResult<()> {
         if config.api_key.is_empty() {
-            return Err(AppError::Validation("Resend API key not configured".to_string()));
+            return Err(AppError::Validation(
+                "Resend API key not configured".to_string(),
+            ));
         }
 
         let client = reqwest::Client::new();
@@ -204,17 +291,31 @@ impl EmailService {
     }
 
     /// Send via SendGrid API
-    async fn send_via_sendgrid(&self, config: &EmailConfig, to: &str, subject: &str, body: &str) -> AppResult<()> {
+    async fn send_via_sendgrid(
+        &self,
+        config: &EmailConfig,
+        to: &str,
+        subject: &str,
+        body: &str,
+    ) -> AppResult<()> {
         if config.api_key.is_empty() {
-            return Err(AppError::Validation("SendGrid API key not configured".to_string()));
+            return Err(AppError::Validation(
+                "SendGrid API key not configured".to_string(),
+            ));
         }
 
         let client = reqwest::Client::new();
         let request = SendGridRequest {
             personalizations: vec![SendGridPersonalization {
-                to: vec![SendGridEmail { email: to.to_string(), name: None }],
+                to: vec![SendGridEmail {
+                    email: to.to_string(),
+                    name: None,
+                }],
             }],
-            from: SendGridEmail { email: config.from_email.clone(), name: Some(config.from_name.clone()) },
+            from: SendGridEmail {
+                email: config.from_email.clone(),
+                name: Some(config.from_name.clone()),
+            },
             subject: subject.to_string(),
             content: vec![SendGridContent {
                 content_type: "text/plain".to_string(),
@@ -240,9 +341,17 @@ impl EmailService {
     }
 
     /// Send via Webhook
-    async fn send_via_webhook(&self, config: &EmailConfig, to: &str, subject: &str, body: &str) -> AppResult<()> {
+    async fn send_via_webhook(
+        &self,
+        config: &EmailConfig,
+        to: &str,
+        subject: &str,
+        body: &str,
+    ) -> AppResult<()> {
         if config.webhook_url.is_empty() {
-            return Err(AppError::Validation("Webhook URL not configured".to_string()));
+            return Err(AppError::Validation(
+                "Webhook URL not configured".to_string(),
+            ));
         }
 
         let client = reqwest::Client::new();

@@ -1,8 +1,8 @@
 //! Subscription Plan Models
 #![allow(dead_code)]
 
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
 /// Subscription Plan

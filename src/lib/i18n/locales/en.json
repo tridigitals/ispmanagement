@@ -1,1707 +1,1778 @@
 {
-    "auth": {
-        "login": {
-            "title": "Sign In",
-            "subtitle": "Access your dashboard",
-            "email_label": "Email",
-            "email_placeholder": "name@company.com",
-            "password_label": "Password",
-            "password_placeholder": "••••••••",
-            "remember_me": "Stay signed in",
-            "forgot_password": "Reset password",
-            "submit_button": "Continue",
-            "loading_button": "Signing in...",
-            "footer_text": "Need an account?",
-            "register_link": "Register here",
-            "error_wrong_tenant": "You do not have access to this workspace. Please login at your own workspace URL."
-        },
-        "register": {
-            "title": "Create Account",
-            "subtitle": "Start your journey with us",
-            "disabled_message": "Public registration is currently disabled",
-            "name_label": "Full Name",
-            "name_placeholder": "John Doe",
-            "email_label": "Email",
-            "email_placeholder": "name@company.com",
-            "password_label": "Password",
-            "password_placeholder": "••••••••",
-            "confirm_password_label": "Confirm Password",
-            "submit_button": "Create Account",
-            "loading_button": "Creating...",
-            "footer_text": "Already have an account?",
-            "login_link": "Sign in"
-        },
-        "validation": {
-            "passwords_do_not_match": "Passwords do not match",
-            "min_length": "Min {length} chars",
-            "require_uppercase": "1 uppercase",
-            "require_number": "1 number",
-            "require_special": "1 special char"
-        },
-        "2fa": {
-            "select_method": "Select Verification Method",
-            "select_method_desc": "Choose how you'd like to verify your identity",
-            "use_app": "Authenticator App",
-            "use_email": "Email Code",
-            "enter_code": "Enter Verification Code",
-            "totp_desc": "Enter the 6-digit code from your authenticator app",
-            "enter_email_code": "Enter Email Code",
-            "email_desc": "We'll send a verification code to your email",
-            "email_sent": "A verification code has been sent to your email",
-            "sending_email": "Sending verification code...",
-            "verify": "Verify",
-            "verify_and_login": "Verify & Login",
-            "resend_code": "Resend Code",
-            "code_resent": "Verification code sent!",
-            "try_another_method": "Try another method",
-            "back_to_login": "Back to Login",
-            "trust_device": "Trust this device for 30 days",
-            "invalid_code": "Invalid verification code"
-        },
-        "forgot_password": {
-            "title": "Reset Password",
-            "subtitle": "Enter your email and we'll send you a link to reset your password.",
-            "email_label": "Email Address",
-            "email_placeholder": "you@example.com",
-            "submit": "Send Reset Link",
-            "sending": "Sending...",
-            "check_email_title": "Check your email",
-            "check_email_message": "We've sent a password reset link to",
-            "back_to_login": "Back to Login"
-        },
-        "reset_password": {
-            "title": "Reset Password",
-            "subtitle": "Enter your new password below",
-            "invalid_token": "Invalid or missing reset token.",
-            "passwords_do_not_match": "Passwords do not match",
-            "min_length": "Password must be at least 8 characters",
-            "success": "Password reset successfully!",
-            "redirecting": "Redirecting to login...",
-            "new_password": "New Password",
-            "confirm_password": "Confirm Password",
-            "resetting": "Resetting...",
-            "submit": "Reset Password"
-        },
-        "verify_email": {
-            "title": "Email Verification",
-            "verifying": "Verifying your email...",
-            "invalid_link": "Invalid verification link.",
-            "success": "Email verified successfully!",
-            "redirecting": "Redirecting to dashboard...",
-            "go_to_login": "Go to Login"
-        }
+  "auth": {
+    "login": {
+      "title": "Sign In",
+      "subtitle": "Access your dashboard",
+      "email_label": "Email",
+      "email_placeholder": "name@company.com",
+      "password_label": "Password",
+      "password_placeholder": "••••••••",
+      "remember_me": "Stay signed in",
+      "forgot_password": "Reset password",
+      "submit_button": "Continue",
+      "loading_button": "Signing in...",
+      "footer_text": "Need an account?",
+      "register_link": "Register here",
+      "error_wrong_tenant": "You do not have access to this workspace. Please login at your own workspace URL."
+    },
+    "register": {
+      "title": "Create Account",
+      "subtitle": "Start your journey with us",
+      "disabled_message": "Public registration is currently disabled",
+      "name_label": "Full Name",
+      "name_placeholder": "John Doe",
+      "email_label": "Email",
+      "email_placeholder": "name@company.com",
+      "password_label": "Password",
+      "password_placeholder": "••••••••",
+      "confirm_password_label": "Confirm Password",
+      "submit_button": "Create Account",
+      "loading_button": "Creating...",
+      "footer_text": "Already have an account?",
+      "login_link": "Sign in"
+    },
+    "validation": {
+      "passwords_do_not_match": "Passwords do not match",
+      "min_length": "Min {length} chars",
+      "require_uppercase": "1 uppercase",
+      "require_number": "1 number",
+      "require_special": "1 special char"
+    },
+    "2fa": {
+      "select_method": "Select Verification Method",
+      "select_method_desc": "Choose how you'd like to verify your identity",
+      "use_app": "Authenticator App",
+      "use_email": "Email Code",
+      "enter_code": "Enter Verification Code",
+      "totp_desc": "Enter the 6-digit code from your authenticator app",
+      "enter_email_code": "Enter Email Code",
+      "email_desc": "We'll send a verification code to your email",
+      "email_sent": "A verification code has been sent to your email",
+      "sending_email": "Sending verification code...",
+      "verify": "Verify",
+      "verify_and_login": "Verify & Login",
+      "resend_code": "Resend Code",
+      "code_resent": "Verification code sent!",
+      "try_another_method": "Try another method",
+      "back_to_login": "Back to Login",
+      "trust_device": "Trust this device for 30 days",
+      "invalid_code": "Invalid verification code"
+    },
+    "forgot_password": {
+      "title": "Reset Password",
+      "subtitle": "Enter your email and we'll send you a link to reset your password.",
+      "email_label": "Email Address",
+      "email_placeholder": "you@example.com",
+      "submit": "Send Reset Link",
+      "sending": "Sending...",
+      "check_email_title": "Check your email",
+      "check_email_message": "We've sent a password reset link to",
+      "back_to_login": "Back to Login"
+    },
+    "reset_password": {
+      "title": "Reset Password",
+      "subtitle": "Enter your new password below",
+      "invalid_token": "Invalid or missing reset token.",
+      "passwords_do_not_match": "Passwords do not match",
+      "min_length": "Password must be at least 8 characters",
+      "success": "Password reset successfully!",
+      "redirecting": "Redirecting to login...",
+      "new_password": "New Password",
+      "confirm_password": "Confirm Password",
+      "resetting": "Resetting...",
+      "submit": "Reset Password"
+    },
+    "verify_email": {
+      "title": "Email Verification",
+      "verifying": "Verifying your email...",
+      "invalid_link": "Invalid verification link.",
+      "success": "Email verified successfully!",
+      "redirecting": "Redirecting to dashboard...",
+      "go_to_login": "Go to Login"
+    }
+  },
+  "common": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "clear": "Clear",
+    "close": "Close",
+    "delete": "Delete",
+    "edit": "Edit",
+    "download": "Download",
+    "next": "Next",
+    "previous": "Previous",
+    "retry": "Retry",
+    "refresh": "Refresh",
+    "reset": "Reset",
+    "upgrade_plan": "Upgrade Plan",
+    "file_saved": "File saved successfully",
+    "otp_placeholder": "000000",
+    "otp_placeholder_spaced": "000 000",
+    "active": "Active",
+    "inactive": "Inactive",
+    "all": "All",
+    "global": "Global",
+    "na": "—",
+    "per_month_short": "/mo",
+    "per_year_short": "/yr",
+    "select_all": "Select All",
+    "you": "YOU",
+    "yes": "Yes",
+    "no": "No",
+    "save": "Save",
+    "save_changes": "Save Changes",
+    "saving": "Saving...",
+    "loading": "Loading...",
+    "empty": {
+      "no_results": "No results"
+    },
+    "units": {
+      "hours": "hours",
+      "min": "min",
+      "minutes": "minutes",
+      "chars": "chars",
+      "attempts": "attempts",
+      "req_per_min": "req/min",
+      "mb": "MB",
+      "days": "days"
+    },
+    "weekdays": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    }
+  },
+  "components": {
+    "lightbox": {
+      "pdf_preview": "PDF Preview",
+      "pdf_unsupported": "Browser does not support PDF preview.",
+      "download_pdf": "Download PDF",
+      "preview_unavailable": "Preview not available",
+      "download_file": "Download File",
+      "errors": {
+        "load_failed": "Failed to load content.",
+        "load_error": "Error loading content."
+      }
+    },
+    "global_uploads": {
+      "title": "Uploads in progress",
+      "status": {
+        "failed": "Failed",
+        "done": "Done"
+      },
+      "actions": {
+        "cancel": "Cancel upload"
+      }
+    },
+    "table": {
+      "search_placeholder": "Search...",
+      "empty": "No data found"
+    },
+    "file_manager": {
+      "title": "File Manager",
+      "title_admin": "Global Storage Manager",
+      "subtitle": "Manage your organization's files and assets",
+      "subtitle_admin": "Manage uploaded files and assets across all tenants",
+      "upload": "Upload",
+      "files": "Files",
+      "loading": "Loading files...",
+      "selected": "Selected",
+      "delete_selected": "Delete Selected",
+      "search_placeholder": "Search files by name...",
+      "view": {
+        "grid": "Grid View",
+        "list": "List View"
+      },
+      "filters": {
+        "all": "All Files",
+        "images": "Images",
+        "videos": "Videos",
+        "audio": "Audio",
+        "documents": "Documents",
+        "aria_group": "File type filters",
+        "aria_filter": "Filter: {label}"
+      },
+      "empty": {
+        "title": "No Files Found",
+        "subtitle": "Try adjusting your search terms."
+      },
+      "toasts": {
+        "load_failed": "Failed to load files: {message}",
+        "deleted": "File deleted successfully"
+      },
+      "columns": {
+        "name": "Name",
+        "size": "Size",
+        "type": "Type",
+        "uploaded": "Uploaded",
+        "action": "Action"
+      },
+      "pagination": {
+        "page_of": "Page {page} of {total}"
+      },
+      "load_more": "Load More",
+      "showing_count": "Showing {current} of {total} files",
+      "confirm": {
+        "delete_one_title": "Delete File",
+        "delete_one_message": "Are you sure you want to delete this file? This action cannot be undone.",
+        "delete_many_title": "Delete {count} files",
+        "delete_many_message": "Are you sure you want to delete {count} files ({size})? This action cannot be undone.",
+        "delete_many_confirm": "Delete {count}"
+      }
+    },
+    "pagination": {
+      "rows_per_page": "Rows per page:",
+      "range": "{start}-{end} of {count}",
+      "previous_page": "Previous page",
+      "next_page": "Next page"
+    },
+    "mobile_fab": {
+      "open_menu": "Open menu"
+    },
+    "confirm_dialog": {
+      "instruction_prefix": "Type",
+      "instruction_suffix": "to confirm.",
+      "placeholder": "Type {keyword} here"
+    }
+  },
+  "pages": {
+    "dashboard": {
+      "redirecting": "Redirecting to your dashboard..."
+    },
+    "maintenance": {
+      "title": "Under Maintenance",
+      "default_message": "We're updating our systems to serve you better. Please check back soon!",
+      "working": "Working on it",
+      "thanks": "Thank you for your patience. We'll be back shortly!"
+    },
+    "unauthorized": {
+      "title": "Access Denied",
+      "sorry": "Sorry,",
+      "message": "You don't have the required permissions to view this page. This area is restricted to system administrators.",
+      "back": "Return to Safety"
+    }
+  },
+  "install": {
+    "errors": {
+      "fill_all": "Please fill in all fields",
+      "failed": "Installation failed"
     },
     "common": {
-        "back": "Back",
-        "cancel": "Cancel",
-        "clear": "Clear",
-        "close": "Close",
-        "delete": "Delete",
-        "edit": "Edit",
-        "download": "Download",
-        "next": "Next",
-        "previous": "Previous",
-        "retry": "Retry",
-        "refresh": "Refresh",
-        "reset": "Reset",
-        "upgrade_plan": "Upgrade Plan",
-        "file_saved": "File saved successfully",
-        "otp_placeholder": "000000",
-        "otp_placeholder_spaced": "000 000",
-        "active": "Active",
-        "inactive": "Inactive",
-        "all": "All",
-        "global": "Global",
-        "na": "—",
-        "per_month_short": "/mo",
-        "per_year_short": "/yr",
-        "select_all": "Select All",
-        "you": "YOU",
-        "yes": "Yes",
-        "no": "No",
-        "save": "Save",
-        "save_changes": "Save Changes",
-        "saving": "Saving...",
-        "loading": "Loading...",
-        "units": {
-            "hours": "hours",
-            "min": "min",
-            "minutes": "minutes",
-            "chars": "chars",
-            "attempts": "attempts",
-            "req_per_min": "req/min",
-            "mb": "MB"
-        }
+      "next": "Next"
     },
-    "components": {
-        "lightbox": {
-            "pdf_preview": "PDF Preview",
-            "pdf_unsupported": "Browser does not support PDF preview.",
-            "download_pdf": "Download PDF",
-            "preview_unavailable": "Preview not available",
-            "download_file": "Download File",
-            "errors": {
-                "load_failed": "Failed to load content.",
-                "load_error": "Error loading content."
-            }
-        },
-        "global_uploads": {
-            "title": "Uploads in progress",
-            "status": {
-                "failed": "Failed",
-                "done": "Done"
-            },
-            "actions": {
-                "cancel": "Cancel upload"
-            }
-        },
-        "table": {
-            "search_placeholder": "Search...",
-            "empty": "No data found"
-        },
-        "file_manager": {
-            "title": "File Manager",
-            "title_admin": "Global Storage Manager",
-            "subtitle": "Manage your organization's files and assets",
-            "subtitle_admin": "Manage uploaded files and assets across all tenants",
-            "upload": "Upload",
-            "files": "Files",
-            "loading": "Loading files...",
-            "selected": "Selected",
-            "delete_selected": "Delete Selected",
-            "search_placeholder": "Search files by name...",
-            "view": {
-                "grid": "Grid View",
-                "list": "List View"
-            },
-            "filters": {
-                "all": "All Files",
-                "images": "Images",
-                "videos": "Videos",
-                "audio": "Audio",
-                "documents": "Documents",
-                "aria_group": "File type filters",
-                "aria_filter": "Filter: {label}"
-            },
-            "empty": {
-                "title": "No Files Found",
-                "subtitle": "Try adjusting your search terms."
-            },
-            "toasts": {
-                "load_failed": "Failed to load files: {message}",
-                "deleted": "File deleted successfully"
-            },
-            "columns": {
-                "name": "Name",
-                "size": "Size",
-                "type": "Type",
-                "uploaded": "Uploaded",
-                "action": "Action"
-            },
-            "pagination": {
-                "page_of": "Page {page} of {total}"
-            },
-            "load_more": "Load More",
-            "showing_count": "Showing {current} of {total} files",
-            "confirm": {
-                "delete_one_title": "Delete File",
-                "delete_one_message": "Are you sure you want to delete this file? This action cannot be undone.",
-                "delete_many_title": "Delete {count} files",
-                "delete_many_message": "Are you sure you want to delete {count} files ({size})? This action cannot be undone.",
-                "delete_many_confirm": "Delete {count}"
-            }
-        },
-        "pagination": {
-            "rows_per_page": "Rows per page:",
-            "range": "{start}-{end} of {count}",
-            "previous_page": "Previous page",
-            "next_page": "Next page"
-        },
-        "mobile_fab": {
-            "open_menu": "Open menu"
-        },
-        "confirm_dialog": {
-            "instruction_prefix": "Type",
-            "instruction_suffix": "to confirm.",
-            "placeholder": "Type {keyword} here"
-        }
+    "welcome": {
+      "title": "Welcome to {app}",
+      "subtitle": "Let's get your application set up. We'll start by configuring the basics.",
+      "cta": "Get Started"
     },
-    "pages": {
-        "dashboard": {
-            "redirecting": "Redirecting to your dashboard..."
-        },
-        "maintenance": {
-            "title": "Under Maintenance",
-            "default_message": "We're updating our systems to serve you better. Please check back soon!",
-            "working": "Working on it",
-            "thanks": "Thank you for your patience. We'll be back shortly!"
-        },
-        "unauthorized": {
-            "title": "Access Denied",
-            "sorry": "Sorry,",
-            "message": "You don't have the required permissions to view this page. This area is restricted to system administrators.",
-            "back": "Return to Safety"
-        }
-    },
-    "install": {
-        "errors": {
-            "fill_all": "Please fill in all fields",
-            "failed": "Installation failed"
-        },
-        "common": {
-            "next": "Next"
-        },
-        "welcome": {
-            "title": "Welcome to {app}",
-            "subtitle": "Let's get your application set up. We'll start by configuring the basics.",
-            "cta": "Get Started"
-        },
-        "general": {
-            "title": "General Settings",
-            "subtitle": "Configure your application details.",
-            "app_name": "Application Name",
-            "app_name_placeholder": "My SaaS App",
-            "app_url": "Application URL",
-            "app_url_placeholder": "http://localhost:3000"
-        },
-        "admin": {
-            "title": "Create Admin Account",
-            "subtitle": "This account will have full access to the system.",
-            "full_name": "Full Name",
-            "full_name_placeholder": "John Doe",
-            "email": "Email Address",
-            "email_placeholder": "john@example.com",
-            "password": "Password",
-            "confirm_password": "Confirm Password",
-            "installing": "Installing...",
-            "complete": "Complete Setup"
-        },
-        "success": {
-            "title": "Installation Complete!",
-            "redirecting": "Redirecting you to login..."
-        }
-    },
-    "payment": {
-        "checkout": {
-            "title": "Checkout",
-            "loading": "Loading invoice...",
-            "item": "Item",
-            "total": "Total",
-            "status": "Status",
-            "tabs": {
-                "online": "Online Payment",
-                "manual": "Bank Transfer"
-            },
-            "online": {
-                "description": "Pay securely with Credit Card, GoPay, ShopeePay, or Virtual Account via Midtrans.",
-                "pay_now": "Pay Now",
-                "check_status": "Check Payment Status"
-            },
-            "manual": {
-                "instructions": "Please transfer the exact amount to one of the following accounts:",
-                "upload_hint": "Already transferred? Upload your receipt.",
-                "uploading": "Uploading...",
-                "upload": "Upload Proof of Payment"
-            },
-            "pending": {
-                "title": "Payment Verification Pending",
-                "message": "We have received your payment proof. Our team is verifying it. We will notify you once approved.",
-                "back": "Return to Dashboard"
-            },
-            "success": {
-                "title": "Payment Successful!",
-                "message": "Thank you for your payment. Your subscription has been activated.",
-                "cta": "Go to Subscription"
-            },
-            "not_found": "Invoice not found",
-            "errors": {
-                "load_failed": "Failed to load invoice",
-                "initiate_failed": "Failed to initiate payment: ",
-                "check_status_failed": "Failed to check status: ",
-                "file_too_large": "File size must be less than 5MB",
-                "upload_failed": "Upload failed: "
-            },
-            "toasts": {
-                "payment_success": "Payment successful!",
-                "waiting": "Waiting for payment...",
-                "payment_failed": "Payment failed",
-                "status_updated": "Status updated: ",
-                "current_status": "Current status: ",
-                "proof_uploaded": "Proof uploaded successfully!"
-            }
-        }
-    },
-    "sidebar": {
-        "dashboard": "Dashboard",
-        "overview": "Overview",
-        "users": "Users",
-        "team": "Team",
-        "roles": "Roles",
-        "tenants": "Tenants",
-        "plans": "Plans",
-        "invoices": "Invoices",
-        "storage": "Storage",
-        "subscription": "Subscription",
-        "audit_logs": "Audit Logs",
-        "backups": "Backups",
-        "system": "System",
-        "expand": "Expand sidebar",
-        "collapse": "Collapse sidebar",
-        "exit": "Exit",
-        "close_menu": "Close menu",
-        "super_admin": "Super Admin",
-        "settings": "Settings",
-        "user_view": "User View",
-        "admin_panel": "Admin Panel",
-        "profile": "Profile",
-        "logout": "Logout"
-    },
-    "topbar": {
-        "search_placeholder": "Search...",
-        "notifications": "Notifications",
-        "help": "Help",
-        "notifications_menu": {
-            "mark_all_read": "Mark all read",
-            "settings": "Notification settings",
-            "empty": "No notifications yet",
-            "mark_read": "Mark as read",
-            "delete": "Delete",
-            "view_all": "View all"
-        },
-        "toggle_dark": "Switch to dark mode",
-        "toggle_light": "Switch to light mode",
-        "titles": {
-            "dashboard": "Dashboard",
-            "profile": "My Profile",
-            "notifications": "Notifications",
-            "admin_overview": "Admin Overview",
-            "user_management": "User Management",
-            "global_settings": "Global Settings",
-            "settings": "Settings",
-            "team": "Team",
-            "roles": "Roles & Permissions",
-            "storage": "Storage",
-            "subscription": "Subscription",
-            "invoices": "Invoices",
-            "superadmin_dashboard": "Super Admin",
-            "tenants": "Tenants",
-            "users": "Users",
-            "plans": "Plans",
-            "audit_logs": "Audit Logs",
-            "system": "System",
-            "default": "Workspace"
-        }
-    },
-    "notifications_page": {
-        "title": "Notifications",
-        "subtitle": "Updates, alerts, and system messages.",
-        "search_placeholder": "Search notifications...",
-        "loading": "Loading notifications...",
-        "load_more": "Load more",
-        "confirm_delete": {
-            "title": "Delete notification",
-            "message": "Delete this notification? This action cannot be undone."
-        },
-        "confirm_mark_all": {
-            "title": "Mark all as read",
-            "message": "Mark all notifications as read?"
-        },
-        "filters": {
-            "aria": "Filters",
-            "all": "All",
-            "unread": "Unread"
-        },
-        "empty": {
-            "title": "You're all caught up",
-            "subtitle": "No notifications to show."
-        }
-    },
-    "notifications": {
-        "toasts": {
-            "push_not_supported": "Push notifications not supported",
-            "blocked": "Notifications are blocked. Please allow notifications in your browser settings.",
-            "permission_denied": "Permission denied. You need to allow notifications.",
-            "missing_vapid": "Configuration error: Missing VAPID key",
-            "enabled": "Push notifications enabled successfully!",
-            "disabled": "Push notifications disabled",
-            "test_sent": "Test notification sent!",
-            "test_failed": "Failed to send test notification",
-            "generic_error": "Error: {message}"
-        }
-    },
-    "utils": {
-        "download": {
-            "save_title": "Save File",
-            "downloading": "Downloading {filename}...",
-            "failed": "Download failed: {message}",
-            "failed_generic": "Download failed"
-        }
-    },
-    "superadmin": {
-        "dashboard": {
-            "loading": "Loading system data...",
-            "stats_aria": "Superadmin stats",
-            "stats": {
-                "tenants": "Tenants",
-                "active_tenants": "Active Tenants",
-                "users": "Users",
-                "system_health": "System Health",
-                "health_ok": "OK",
-                "health_down": "DB Down"
-            },
-            "quick_actions": {
-                "title": "Quick Actions",
-                "tenants": {
-                    "title": "Manage Tenants",
-                    "desc": "Create, edit, and maintain organizations."
-                },
-                "users": {
-                    "title": "Manage Users",
-                    "desc": "View global users, roles, and access."
-                },
-                "audit": {
-                    "title": "Audit Logs",
-                    "desc": "Track activity and security events."
-                },
-                "settings": {
-                    "title": "Platform Settings",
-                    "desc": "Configure policies and system defaults."
-                }
-            }
-        },
-        "audit_logs": {
-            "title": "Audit Logs",
-            "subtitle": "Track system activity and security events",
-            "count": "logs",
-            "refresh": "Refresh logs",
-            "search": "Search logs...",
-            "loading": "Loading logs...",
-            "columns": {
-                "time": "Time",
-                "action": "Action",
-                "user": "User",
-                "tenant": "Tenant",
-                "resource": "Resource",
-                "details": "Details",
-                "ip": "IP",
-                "time_ip": "Time / IP",
-                "user_tenant": "User / Tenant",
-                "action_resource": "Action / Resource"
-            },
-            "filters": {
-                "action": "Action (exact)",
-                "action_placeholder": "e.g. login, create_user",
-                "from": "From",
-                "to": "To"
-            },
-            "view": {
-                "table": "Table view",
-                "cards": "Card view"
-            },
-            "aria": {
-                "quick_ranges": "Quick ranges",
-                "view_mode": "View mode",
-                "cards": "Audit logs"
-            },
-            "actions": {
-                "expand_details": "Expand details",
-                "collapse_details": "Collapse details",
-                "expand": "Expand",
-                "collapse": "Collapse"
-            },
-            "labels": {
-                "user": "User",
-                "tenant": "Tenant",
-                "resource": "Resource",
-                "ip": "IP",
-                "details": "Details"
-            },
-            "empty": {
-                "title": "No logs found",
-                "subtitle": "Try adjusting your filters."
-            }
-        },
-        "users": {
-            "title": "Users",
-            "subtitle": "Manage global users and access",
-            "count": "users",
-            "search": "Search users...",
-            "filters": {
-                "all_roles": "All Roles",
-                "admin": "Admin",
-                "user": "User",
-                "superadmin": "Super Admin",
-                "all": "All",
-                "active": "Active",
-                "inactive": "Inactive"
-            },
-            "empty": {
-                "title": "No users found",
-                "subtitle": "Try adjusting your search or filters.",
-                "hint": "Try adjusting your search or filters."
-            },
-            "columns": {
-                "user": "User",
-                "email": "Email",
-                "role": "Role",
-                "tenant": "Tenant",
-                "status": "Status",
-                "joined": "Joined"
-            },
-            "aria": {
-                "stats": "User stats",
-                "list": "Users list"
-            },
-            "stats": {
-                "show_all": "Show all users",
-                "show_active": "Show active users",
-                "show_inactive": "Show inactive users",
-                "show_superadmins": "Show super admins",
-                "all_title": "All Users",
-                "active_title": "Active Users",
-                "inactive_title": "Inactive Users",
-                "superadmins_title": "Super Admins"
-            },
-            "view": {
-                "aria": "View mode",
-                "table": "Table view",
-                "cards": "Card view"
-            },
-            "actions": {
-                "view_details": "View details",
-                "reset_2fa": "Reset 2FA",
-                "activate_user": "Activate user",
-                "deactivate_user": "Deactivate user",
-                "activate": "Activate",
-                "deactivate": "Deactivate"
-            },
-            "status": {
-                "activate_title": "Activate User",
-                "deactivate_title": "Deactivate User",
-                "this_user": "this user",
-                "activate_message": "Activate {name}? They will be able to login again.",
-                "deactivate_message": "Deactivate {name}? They will not be able to login."
-            },
-            "reset2fa": {
-                "title": "Reset Two-Factor Authentication",
-                "message": "Reset 2FA for this user? They will be able to login without a secondary code.",
-                "confirm": "Reset 2FA"
-            },
-            "details": {
-                "title": "User Details",
-                "title_with_name": "User Details — {name}",
-                "sections": {
-                    "account": "Account",
-                    "tenant": "Tenant",
-                    "security": "Security"
-                },
-                "labels": {
-                    "name": "Name",
-                    "email": "Email",
-                    "role": "Role",
-                    "status": "Status",
-                    "created": "Created",
-                    "last_login": "Last Login",
-                    "tenant": "Tenant",
-                    "slug": "Slug",
-                    "tenant_role": "Tenant Role",
-                    "twofa_enabled": "2FA Enabled",
-                    "preferred_2fa": "Preferred 2FA"
-                }
-            },
-            "toasts": {
-                "reset_2fa_success": "Two-factor authentication has been reset",
-                "reset_2fa_failed": "Failed to reset 2FA: {message}",
-                "superadmin_cannot_deactivate": "Super Admin accounts cannot be deactivated here",
-                "cannot_deactivate_self": "You cannot deactivate your own account",
-                "activated": "User activated",
-                "deactivated": "User deactivated",
-                "update_status_failed": "Failed to update user status: {message}"
-            }
-        },
-        "tenants": {
-            "title": "Tenants",
-            "subtitle": "Manage all organizations in the platform",
-            "count": "{count} tenants",
-            "search": "Search tenants...",
-            "refreshing_title": "Refreshing...",
-            "refreshing": "Refreshing",
-            "aria": {
-                "stats": "Tenant stats",
-                "cards": "Tenant cards"
-            },
-            "stats": {
-                "show_all": "Show all tenants",
-                "show_active": "Show active tenants",
-                "show_inactive": "Show inactive tenants",
-                "all_title": "All Tenants",
-                "active_title": "Active Tenants",
-                "inactive_title": "Inactive Tenants"
-            },
-            "filters": {
-                "all": "All",
-                "active": "Active",
-                "inactive": "Inactive"
-            },
-            "view": {
-                "table": "Table view",
-                "cards": "Cards view"
-            },
-            "meta": {
-                "created": "Created"
-            },
-            "actions": {
-                "new": "New Tenant",
-                "activate": "Activate",
-                "deactivate": "Deactivate"
-            },
-            "toggle": {
-                "activate_title": "Activate Tenant",
-                "deactivate_title": "Deactivate Tenant",
-                "this_tenant": "this tenant",
-                "activate_message": "Activate {name}? Users in this tenant will regain access.",
-                "deactivate_message": "Deactivate {name}? Users in this tenant will be blocked from accessing the app."
-            },
-            "delete": {
-                "title": "Delete Tenant",
-                "message": "Are you sure you want to delete this tenant? This action cannot be undone and will remove all associated data.",
-                "confirm": "Delete Permanently"
-            },
-            "modal": {
-                "edit_title": "Edit Tenant",
-                "create_title": "Create New Tenant",
-                "sections": {
-                    "initial_subscription": "Initial Subscription",
-                    "initial_admin": "Initial Admin User"
-                },
-                "labels": {
-                    "name": "Tenant Name",
-                    "slug": "Slug (URL)",
-                    "custom_domain": "Custom Domain (Optional)",
-                    "plan": "Subscription Plan",
-                    "owner_email": "Owner Email",
-                    "owner_password": "Owner Password",
-                    "active_status": "Active Status"
-                },
-                "placeholders": {
-                    "name": "e.g. Acme Corp",
-                    "slug": "e.g. acme-corp",
-                    "custom_domain": "e.g. app.acme.com",
-                    "plan": "Select a plan",
-                    "owner_email": "admin@acme.com",
-                    "owner_password": "Strong password"
-                },
-                "actions": {
-                    "create": "Create Tenant",
-                    "update": "Update Tenant"
-                }
-            },
-            "empty": {
-                "title": "No tenants found",
-                "hint": "Try adjusting your search or filters."
-            },
-            "toasts": {
-                "updated": "Tenant updated successfully",
-                "update_failed": "Failed to update tenant: {message}",
-                "created": "Tenant created successfully",
-                "create_failed": "Failed to create tenant: {message}",
-                "deleted": "Tenant deleted successfully",
-                "delete_failed": "Failed to delete tenant: {message}",
-                "activated": "Tenant activated",
-                "deactivated": "Tenant deactivated"
-            }
-        },
-        "invoices": {
-            "aria": {
-                "stats": "Invoice stats",
-                "cards": "Invoice cards",
-                "table": "Invoices table"
-            },
-            "actions": {
-                "check_status": "Check Status",
-                "view_details": "View Details"
-            },
-            "cards": {
-                "amount": "Amount",
-                "due": "Due"
-            },
-            "list": {
-                "title": "All Invoices",
-                "subtitle": "Monitor all payments and transactions across the platform",
-                "search": "Search invoices...",
-                "loading": "Loading invoices...",
-                "empty": "No invoices found",
-                "empty_hint": "Try adjusting your search or filters.",
-                "view": {
-                    "cards": "Cards view",
-                    "table": "Table view"
-                },
-                "filters": {
-                    "all": "All",
-                    "pending": "Pending",
-                    "paid": "Paid",
-                    "failed": "Failed"
-                },
-                "columns": {
-                    "invoice_number": "Invoice #",
-                    "tenant": "Tenant",
-                    "amount": "Amount",
-                    "status": "Status",
-                    "due_date": "Due Date",
-                    "created_at": "Created At",
-                    "actions": "Actions"
-                },
-                "errors": {
-                    "load_failed": "Failed to load invoices",
-                    "check_failed": "Failed to check status: "
-                },
-                "toasts": {
-                    "status": "Invoice status: "
-                }
-            },
-            "detail": {
-                "title": "Invoice Details",
-                "back": "Back to Invoices",
-                "loading": "Loading details...",
-                "missing_id": "Missing invoice id",
-                "load_failed": "Failed to load invoice",
-                "invoice": "Invoice",
-                "tenant": "Tenant",
-                "description": "Description",
-                "amount": "Amount",
-                "created_at": "Created At",
-                "updated_at": "Updated At",
-                "manual_verification": "Manual Verification",
-                "approve_title": "Approve Payment",
-                "reject_title": "Reject Payment",
-                "approve_message": "Are you sure you want to approve this payment? This will activate the subscription immediately.",
-                "reject_message": "Are you sure you want to reject this payment? The user will be notified.",
-                "approve": "Approve",
-                "reject": "Reject",
-                "marked_as": "Invoice marked as",
-                "verify_failed": "Verification failed",
-                "already_status": "This invoice is already",
-                "payment_proof": "Payment Proof",
-                "click_enlarge": "Click to enlarge",
-                "no_proof": "No proof uploaded yet.",
-                "not_found": "Invoice not found"
-            }
-        },
-        "system": {
-            "request_metrics": {
-                "title": "Request Metrics"
-            },
-            "title": "System Health",
-            "subtitle": "Monitor platform status and metrics",
-            "loading": "Loading system health...",
-            "retry": "Retry",
-            "db_connected": "Database Connected",
-            "db_disconnected": "Database Disconnected",
-            "tables": "tables",
-            "uptime": "Uptime:",
-            "cpu_usage": "CPU Usage",
-            "memory_usage": "Memory Usage",
-            "database_tables": "Database Tables",
-            "recent_activity": "Recent Activity",
-            "no_recent_activity": "No recent activity",
-            "last_updated": "Last updated:",
-            "stats": {
-                "total_tenants": "Total Tenants",
-                "total_users": "Total Users",
-                "active_users": "Active Users",
-                "audit_logs": "Audit Logs"
-            },
-            "table_headers": {
-                "table": "Table",
-                "rows": "Rows"
-            }
-        },
-        "settings": {
-            "title": "Platform Settings",
-            "subtitle": "Global Configuration",
-            "loading": "Loading settings...",
-            "errors": {
-                "load_failed": "Failed to load settings",
-                "save_failed": "Failed to save settings",
-                "missing_test_email": "Please enter an email address",
-                "test_email_failed": "Failed to send test email: ",
-                "bank_add_failed": "Failed to add bank",
-                "bank_remove_failed": "Failed to delete bank"
-            },
-            "toasts": {
-                "saved": "Settings saved successfully",
-                "bank_added": "Bank account added",
-                "bank_removed": "Bank account removed"
-            },
-            "confirm": {
-                "are_you_sure": "Are you sure?"
-            },
-            "sections": {
-                "general": "General Settings",
-                "auth": "Authentication Policy",
-                "password": "Password Policy",
-                "security": "Security & Rate Limiting",
-                "twofa": "Two-Factor Authentication",
-                "storage": "Storage Configuration",
-                "payment": "Payment Gateway (Midtrans)",
-                "manual_bank_transfer": "Manual Bank Transfer"
-            },
-            "security": {
-                "ip_blocking": {
-                    "aria": "Enable IP Blocking",
-                    "label": "Enable IP Blocking",
-                    "desc": "Automatically block IP addresses with suspicious activity."
-                },
-                "max_login_attempts": {
-                    "label": "Max Login Attempts",
-                    "desc": "Number of failed login attempts before account lockout."
-                },
-                "lockout_duration": {
-                    "label": "Lockout Duration",
-                    "desc": "How long a user stays locked out after max failed attempts."
-                },
-                "api_rate_limit": {
-                    "label": "API Rate Limit",
-                    "desc": "Maximum API requests allowed per minute per user."
-                }
-            },
-            "twofa": {
-                "enable_2fa": {
-                    "aria": "Enable 2FA",
-                    "label": "Enable 2FA",
-                    "desc": "Allow users to set up two-factor authentication for enhanced security."
-                },
-                "enable_totp": {
-                    "aria": "Enable TOTP",
-                    "label": "TOTP (Authenticator App)",
-                    "desc": "Allow users to verify with Google Authenticator, Authy, etc."
-                },
-                "enable_email_otp": {
-                    "aria": "Enable Email OTP"
-                },
-                "email_otp": {
-                    "label": "Email OTP",
-                    "desc": "Allow users to receive verification codes via email."
-                },
-                "email_otp_expiry": {
-                    "label": "Email OTP Expiry",
-                    "desc": "How long email verification codes remain valid."
-                }
-            },
-            "auth": {
-                "allow_public_registration": {
-                    "label": "Allow Public Registration",
-                    "desc": "Allow new users to sign up freely."
-                },
-                "require_email_verification": {
-                    "label": "Require Email Verification",
-                    "desc": "Users must verify email before logging in."
-                },
-                "jwt_expiry": {
-                    "label": "JWT Expiry (Hours)",
-                    "desc": "How long an auth token remains valid."
-                },
-                "session_timeout": {
-                    "label": "Session Timeout (Minutes)",
-                    "desc": "Auto-logout after inactivity."
-                }
-            },
-            "password": {
-                "min_length": {
-                    "label": "Minimum Length"
-                },
-                "require_uppercase": {
-                    "label": "Require Uppercase"
-                },
-                "require_number": {
-                    "label": "Require Number"
-                },
-                "require_special": {
-                    "label": "Require Special Character"
-                }
-            },
-            "storage": {
-                "driver": {
-                    "label": "Storage Driver",
-                    "desc": "Choose where files are stored. Local uses the server's disk.",
-                    "options": {
-                        "local": "Local Disk",
-                        "s3": "AWS S3 / MinIO",
-                        "r2": "Cloudflare R2"
-                    }
-                },
-                "s3": {
-                    "bucket_name": "Bucket Name",
-                    "region": "Region",
-                    "region_hint": "Use 'auto' for R2.",
-                    "endpoint_url": "Endpoint URL",
-                    "endpoint_hint": "Required for R2 (https://ID.r2.cloudflarestorage.com) or MinIO.",
-                    "access_key_id": "Access Key ID",
-                    "secret_access_key": "Secret Access Key",
-                    "public_url_optional": "Public Access URL (Optional)",
-                    "public_url_hint": "CDN URL if serving files publicly."
-                },
-                "max_file_size_mb": "Max File Size (MB)",
-                "max_file_size_mb_desc": "Maximum allowed size for a single file upload.",
-                "allowed_extensions": "Allowed Extensions",
-                "allowed_extensions_desc": "Comma-separated list of allowed file extensions (e.g., jpg, png, pdf). Use * for all."
-            },
-            "payment": {
-                "midtrans": {
-                    "title": "Midtrans Gateway",
-                    "enable": {
-                        "label": "Enable Midtrans Gateway",
-                        "desc": "Allow users to pay online via Midtrans."
-                    },
-                    "merchant_id": "Merchant ID",
-                    "server_key": "Server Key",
-                    "server_key_hint": "From Midtrans Dashboard > Settings > Access Keys.",
-                    "client_key": "Client Key",
-                    "client_key_hint": "Public key for frontend Snap.js.",
-                    "production_mode": "Production Mode",
-                    "production_mode_desc": "Enable for real transactions. Disable for Sandbox."
-                },
-                "manual": {
-                    "title": "Manual Bank Transfer",
-                    "enable": {
-                        "label": "Enable Manual Transfer",
-                        "desc": "Allow users to pay via bank transfer and upload proof."
-                    },
-                    "instructions_label": "Payment Instructions",
-                    "instructions_desc": "Instructions shown to user when they select Manual Transfer.",
-                    "bank_accounts_title": "Bank Accounts"
-                }
-            },
-            "fields": {
-                "public_url": {
-                    "label": "Public Application URL",
-                    "desc": "Base URL for redirects, emails, and payment callbacks (e.g. https://app.example.com)."
-                },
-                "main_domain": {
-                    "label": "Main Domain",
-                    "desc": "The primary domain where the application is hosted (e.g. example.com). Used for domain validation and tenant routing."
-                },
-                "currency": {
-                    "label": "Default Currency",
-                    "desc": "Currency used for plan pricing and invoice display (ISO 4217, e.g. IDR, USD)."
-                },
-                "maintenance_mode": {
-                    "label": "Enable Maintenance Mode",
-                    "desc": "When enabled, all users except superadmins will see a maintenance page."
-                },
-                "maintenance_message": {
-                    "label": "Maintenance Message",
-                    "desc": "The message displayed to users when maintenance mode is active."
-                }
-            },
-            "placeholders": {
-                "url": "https://...",
-                "domain": "example.com",
-                "public_url": "https://cdn.example.com",
-                "maintenance_message": "Enter maintenance message...",
-                "manual_instructions": "Please transfer to one of the bank accounts below and upload proof.",
-                "s3_bucket": "e.g. my-app-uploads",
-                "s3_region": "us-east-1",
-                "extensions": "jpg, png, pdf...",
-                "bank_name": "Bank Name (e.g. BCA)",
-                "bank_account_number": "Account Number",
-                "bank_account_holder": "Account Holder"
-            },
-            "actions": {
-                "remove": "Remove",
-                "add": "Add",
-                "reset": "Reset",
-                "save": "Save Changes",
-                "saving": "Saving..."
-            },
-            "alerting": {
-                "title": "Error Alerting",
-                "enabled": {
-                    "label": "Enable Alerting",
-                    "desc": "Send email alerts when error thresholds are exceeded."
-                },
-                "email": {
-                    "label": "Alert Email",
-                    "desc": "Email address to receive alerts."
-                },
-                "error_threshold": {
-                    "label": "Error Rate Threshold (%)",
-                    "desc": "Alert when error rate exceeds this percentage."
-                },
-                "rate_limit_threshold": {
-                    "label": "Rate Limit Threshold",
-                    "desc": "Alert when rate-limited requests exceed this count."
-                },
-                "response_time_threshold": {
-                    "label": "P95 Response Time Threshold (ms)",
-                    "desc": "Alert when P95 response time exceeds this value."
-                },
-                "cooldown": {
-                    "label": "Alert Cooldown (minutes)",
-                    "desc": "Minutes to wait before sending the same alert type again."
-                }
-            },
-            "bank": {
-                "add_new_account": "Add New Account",
-                "empty": "No bank accounts added yet.",
-                "table": {
-                    "bank": "Bank",
-                    "number": "Number",
-                    "holder": "Holder",
-                    "action": "Action"
-                }
-            },
-            "categories": {
-                "general": "General & Maintenance",
-                "auth": "Authentication",
-                "password": "Password Policy",
-                "security": "Security & Rate Limiting",
-                "storage": "Storage Configuration",
-                "payment": "Payment Gateway",
-                "alerting": "Error Alerting"
-            }
-        },
-        "plans": {
-            "page_title": "Plans | Superadmin",
-            "title": "Subscription Plans",
-            "subtitle": "Manage pricing tiers and plan status",
-            "search": "Search plans...",
-            "loading": "Loading plans...",
-            "actions": {
-                "create": "Create plan",
-                "activate": "Activate",
-                "deactivate": "Deactivate",
-                "set_default": "Set as default",
-                "already_default": "Already default"
-            },
-            "price": {
-                "free": "Free"
-            },
-            "aria": {
-                "stats": "Plan stats",
-                "cards": "Plan cards",
-                "table": "Plans table"
-            },
-            "stats": {
-                "show_all": "Show all plans",
-                "show_active": "Show active plans",
-                "show_inactive": "Show inactive plans",
-                "current_default": "Current default plan",
-                "all_title": "All Plans",
-                "active_title": "Active",
-                "inactive_title": "Inactive",
-                "default_title": "Default"
-            },
-            "filters": {
-                "all": "All",
-                "active": "Active",
-                "inactive": "Inactive"
-            },
-            "view": {
-                "cards": "Cards view",
-                "table": "Table view"
-            },
-            "badges": {
-                "default_title": "Default plan",
-                "default": "Default"
-            },
-            "refreshing_title": "Refreshing...",
-            "refreshing": "Refreshing",
-            "errors": {
-                "load_failed": "Failed to load data",
-                "default_cannot_deactivate": "Default plan cannot be deactivated. Set another default first."
-            },
-            "confirm": {
-                "delete_title": "Delete Plan",
-                "delete_message": "Delete \"{name}\"? This action cannot be undone.",
-                "activate_title": "Activate Plan",
-                "activate_message": "Activate \"{name}\"? Tenants can be assigned to it again.",
-                "deactivate_title": "Deactivate Plan",
-                "deactivate_message": "Deactivate \"{name}\"? Tenants can no longer be assigned to it.",
-                "default_title": "Set Default Plan",
-                "default_message": "Make \"{name}\" the default plan for new tenants?"
-            },
-            "toasts": {
-                "deleted": "Plan deleted",
-                "activated": "Plan activated",
-                "deactivated": "Plan deactivated",
-                "default_updated": "Default plan updated"
-            },
-            "empty": {
-                "title": "No plans found",
-                "subtitle": "Try adjusting your search or filters.",
-                "description": "No description"
-            },
-            "editor": {
-                "head": {
-                    "new": "New Plan"
-                },
-                "header": {
-                    "create_title": "Create New Plan",
-                    "edit_title": "Edit {name}"
-                },
-                "aria": {
-                    "actions": "Plan actions",
-                    "tabs": "Plan editor tabs"
-                },
-                "actions": {
-                    "save": "Save Plan"
-                },
-                "tabs": {
-                    "general": "General",
-                    "features": "Features & Limits"
-                },
-                "fields": {
-                    "name": "Plan Name",
-                    "slug": "Slug (Code)",
-                    "description": "Description",
-                    "sort_order": "Sort Order"
-                },
-                "placeholders": {
-                    "name": "e.g. Pro Plan",
-                    "slug": "e.g. pro-plan"
-                },
-                "help": {
-                    "slug": "Unique identifier used in code/API."
-                },
-                "toasts": {
-                    "created": "Plan created successfully",
-                    "updated": "Plan updated successfully"
-                },
-                "errors": {
-                    "save_failed": "Failed to save plan"
-                }
-            }
-        }
-    },
-    "dashboard": {
-        "greeting": {
-            "morning": "Good Morning",
-            "afternoon": "Good Afternoon",
-            "evening": "Good Evening",
-            "welcome_message": "Here's what's happening with your account today."
-        },
-        "manage_files": "Manage Files",
-        "generate_report": "Generate Report",
-        "admin_mode": {
-            "title": "Administrator Mode",
-            "description": "You have system-wide permissions. Access management tools here."
-        },
-        "stats": {
-            "account_role": "Account Role",
-            "member_since": "Member Since",
-            "system_status": "System Status",
-            "active": "Active"
-        },
-        "recent_activity": {
-            "title": "Recent Activity",
-            "view_all": "View All",
-            "loading": "Loading activity...",
-            "empty": {
-                "title": "No activity yet",
-                "description": "When you start using the app, your activity will appear here.",
-                "learn_more": "Learn More"
-            }
-        },
-        "quick_actions": {
-            "title": "Quick Actions",
-            "update_profile": "Update Profile",
-            "check_messages": "Check Messages",
-            "security_settings": "Security Settings",
-            "contact_support": "Contact Support"
-        }
-    },
-    "profile": {
-        "title": "Settings",
-        "subtitle": "Manage your account settings and preferences.",
-        "fallback": {
-            "user": "User",
-            "member": "Member"
-        },
-        "tabs": {
-            "general": "General",
-            "security": "Security",
-            "preferences": "Preferences",
-            "notifications": "Notifications"
-        },
-        "general": {
-            "title": "Profile Information",
-            "subtitle": "Update your account details and public profile.",
-            "change_avatar": "Change Avatar",
-            "your_name": "Your Name",
-            "role_label": "Role",
-            "display_name": "Display Name",
-            "display_name_placeholder": "Enter your full name",
-            "email_address": "Email Address",
-            "email_placeholder": "name@example.com",
-            "save_button": "Save Changes",
-            "saving": "Saving..."
-        },
-        "security": {
-            "title": "Password & Security",
-            "subtitle": "Manage your password and security settings.",
-            "current_password": "Current Password",
-            "new_password": "New Password",
-            "confirm_password": "Confirm Password",
-            "password_placeholder": "••••••••",
-            "requirements_title": "Password requirements:",
-            "req_length": "At least {length} characters long",
-            "req_uppercase": "One uppercase letter",
-            "req_number": "One number",
-            "req_special": "One special character",
-            "update_button": "Update Password",
-            "updating": "Updating...",
-            "twofa": {
-                "title": "Two-Factor Authentication",
-                "subtitle": "Protect your account with an extra layer of security.",
-                "enabled_title": "2FA is Enabled",
-                "enabled_desc": "Your account is secured with 2FA.",
-                "recovery_title": "Save your Recovery Codes!",
-                "recovery": {
-                    "saved_button": "I have saved them"
-                },
-                "disable_title": "Disable 2FA",
-                "methods": {
-                    "authenticator_app": "Authenticator App",
-                    "email_verification": "Email Verification"
-                },
-                "disable": {
-                    "placeholder": "Enter authentication code"
-                }
-            }
-        },
-        "preferences": {
-            "title": "Appearance",
-            "subtitle": "Customize the look and feel of the application.",
-            "dark_mode": "Dark Mode",
-            "dark_mode_desc": "Toggle between dark and light themes."
-        },
-        "notifications": {
-            "title": "Notification Preferences",
-            "subtitle": "Customize how and when you want to be notified.",
-            "view_all": "View all",
-            "test": "Test Notification",
-            "push": {
-                "active_title": "Push Notifications Active",
-                "active_desc": "You are subscribed to real-time updates on this device.",
-                "disable": "Disable",
-                "enable_title": "Enable Push Notifications",
-                "enable_desc": "Get real-time updates even when the app is closed.",
-                "enable": "Enable Push"
-            },
-            "channels": {
-                "in_app": "In-App",
-                "email": "Email",
-                "push": "Push",
-                "required": "Required"
-            },
-            "categories": {
-                "system": {
-                    "label": "System Updates",
-                    "desc": "Maintenance & announcements"
-                },
-                "team": {
-                    "label": "Team Activity",
-                    "desc": "Member changes & invites"
-                },
-                "payment": {
-                    "label": "Billing",
-                    "desc": "Invoices & subscriptions"
-                },
-                "security": {
-                    "label": "Security",
-                    "desc": "Login alerts & password changes"
-                }
-            }
-        },
-        "messages": {
-            "profile_updated": "Profile updated successfully!",
-            "password_changed": "Password changed successfully!",
-            "password_mismatch": "New passwords do not match",
-            "update_failed": "Failed to update profile",
-            "change_password_failed": "Failed to change password",
-            "twofa_required": "Your organization requires Two-Factor Authentication. Please enable it to continue.",
-            "2fa_method_totp": "2FA method changed to Authenticator App",
-            "2fa_method_email": "2FA method changed to Email"
-        }
+    "general": {
+      "title": "General Settings",
+      "subtitle": "Configure your application details.",
+      "app_name": "Application Name",
+      "app_name_placeholder": "My SaaS App",
+      "app_url": "Application URL",
+      "app_url_placeholder": "http://localhost:3000"
     },
     "admin": {
-        "roles": {
-            "title": "All Roles",
-            "subtitle": "Manage role definitions and permissions",
-            "count": "roles",
-            "search": "Search roles...",
-            "empty": "No roles found",
-            "permissions_settings": "Permissions Settings",
-            "columns": {
-                "name": "Role Name",
-                "type": "Type",
-                "level": "Level",
-                "permissions": "Permissions"
-            },
-            "badges": {
-                "system": "System",
-                "custom": "Custom"
-            },
-            "level_prefix": "Lvl",
-            "permissions": "permissions",
-            "actions": {
-                "create": "Create Role",
-                "edit": "Edit Role",
-                "delete": "Delete Role",
-                "delete_short": "Delete",
-                "save": "Save Role"
-            },
-            "delete": {
-                "title": "Delete Role",
-                "message": "Are you sure you want to permanently delete the role \"{name}\"? All users assigned to this role might lose permissions.",
-                "confirm": "Delete Role"
-            },
-            "placeholders": {
-                "name": "e.g. Editor",
-                "description": "Role description"
-            },
-            "form": {
-                "name_label": "Role Name",
-                "description_label": "Description",
-                "level_label": "Level",
-                "system_name_locked": "System role names cannot be changed"
-            },
-            "toasts": {
-                "created": "Role created successfully",
-                "updated": "Role updated successfully",
-                "deleted": "Role deleted successfully"
-            },
-            "errors": {
-                "save_failed": "Failed to save role",
-                "delete_failed": "Failed to delete role: "
-            }
+      "title": "Create Admin Account",
+      "subtitle": "This account will have full access to the system.",
+      "full_name": "Full Name",
+      "full_name_placeholder": "John Doe",
+      "email": "Email Address",
+      "email_placeholder": "john@example.com",
+      "password": "Password",
+      "confirm_password": "Confirm Password",
+      "installing": "Installing...",
+      "complete": "Complete Setup"
+    },
+    "success": {
+      "title": "Installation Complete!",
+      "redirecting": "Redirecting you to login..."
+    }
+  },
+  "payment": {
+    "checkout": {
+      "title": "Checkout",
+      "loading": "Loading invoice...",
+      "item": "Item",
+      "total": "Total",
+      "status": "Status",
+      "tabs": {
+        "online": "Online Payment",
+        "manual": "Bank Transfer"
+      },
+      "online": {
+        "description": "Pay securely with Credit Card, GoPay, ShopeePay, or Virtual Account via Midtrans.",
+        "pay_now": "Pay Now",
+        "check_status": "Check Payment Status"
+      },
+      "manual": {
+        "instructions": "Please transfer the exact amount to one of the following accounts:",
+        "upload_hint": "Already transferred? Upload your receipt.",
+        "uploading": "Uploading...",
+        "upload": "Upload Proof of Payment"
+      },
+      "pending": {
+        "title": "Payment Verification Pending",
+        "message": "We have received your payment proof. Our team is verifying it. We will notify you once approved.",
+        "back": "Return to Dashboard"
+      },
+      "success": {
+        "title": "Payment Successful!",
+        "message": "Thank you for your payment. Your subscription has been activated.",
+        "cta": "Go to Subscription"
+      },
+      "not_found": "Invoice not found",
+      "errors": {
+        "load_failed": "Failed to load invoice",
+        "initiate_failed": "Failed to initiate payment: ",
+        "check_status_failed": "Failed to check status: ",
+        "file_too_large": "File size must be less than 5MB",
+        "upload_failed": "Upload failed: "
+      },
+      "toasts": {
+        "payment_success": "Payment successful!",
+        "waiting": "Waiting for payment...",
+        "payment_failed": "Payment failed",
+        "status_updated": "Status updated: ",
+        "current_status": "Current status: ",
+        "proof_uploaded": "Proof uploaded successfully!"
+      }
+    }
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "overview": "Overview",
+    "users": "Users",
+    "team": "Team",
+    "roles": "Roles",
+    "tenants": "Tenants",
+    "plans": "Plans",
+    "invoices": "Invoices",
+    "storage": "Storage",
+    "subscription": "Subscription",
+    "audit_logs": "Audit Logs",
+    "backups": "Backups",
+    "system": "System",
+    "expand": "Expand sidebar",
+    "collapse": "Collapse sidebar",
+    "exit": "Exit",
+    "close_menu": "Close menu",
+    "super_admin": "Super Admin",
+    "settings": "Settings",
+    "user_view": "User View",
+    "admin_panel": "Admin Panel",
+    "profile": "Profile",
+    "logout": "Logout"
+  },
+  "topbar": {
+    "search_placeholder": "Search...",
+    "notifications": "Notifications",
+    "help": "Help",
+    "notifications_menu": {
+      "mark_all_read": "Mark all read",
+      "settings": "Notification settings",
+      "empty": "No notifications yet",
+      "mark_read": "Mark as read",
+      "delete": "Delete",
+      "view_all": "View all"
+    },
+    "toggle_dark": "Switch to dark mode",
+    "toggle_light": "Switch to light mode",
+    "titles": {
+      "dashboard": "Dashboard",
+      "profile": "My Profile",
+      "notifications": "Notifications",
+      "admin_overview": "Admin Overview",
+      "user_management": "User Management",
+      "global_settings": "Global Settings",
+      "settings": "Settings",
+      "team": "Team",
+      "roles": "Roles & Permissions",
+      "storage": "Storage",
+      "subscription": "Subscription",
+      "invoices": "Invoices",
+      "superadmin_dashboard": "Super Admin",
+      "tenants": "Tenants",
+      "users": "Users",
+      "plans": "Plans",
+      "audit_logs": "Audit Logs",
+      "system": "System",
+      "default": "Workspace"
+    }
+  },
+  "notifications_page": {
+    "title": "Notifications",
+    "subtitle": "Updates, alerts, and system messages.",
+    "search_placeholder": "Search notifications...",
+    "loading": "Loading notifications...",
+    "load_more": "Load more",
+    "confirm_delete": {
+      "title": "Delete notification",
+      "message": "Delete this notification? This action cannot be undone."
+    },
+    "confirm_mark_all": {
+      "title": "Mark all as read",
+      "message": "Mark all notifications as read?"
+    },
+    "filters": {
+      "aria": "Filters",
+      "all": "All",
+      "unread": "Unread"
+    },
+    "empty": {
+      "title": "You're all caught up",
+      "subtitle": "No notifications to show."
+    }
+  },
+  "notifications": {
+    "toasts": {
+      "push_not_supported": "Push notifications not supported",
+      "blocked": "Notifications are blocked. Please allow notifications in your browser settings.",
+      "permission_denied": "Permission denied. You need to allow notifications.",
+      "missing_vapid": "Configuration error: Missing VAPID key",
+      "enabled": "Push notifications enabled successfully!",
+      "disabled": "Push notifications disabled",
+      "test_sent": "Test notification sent!",
+      "test_failed": "Failed to send test notification",
+      "generic_error": "Error: {message}"
+    }
+  },
+  "utils": {
+    "download": {
+      "save_title": "Save File",
+      "downloading": "Downloading {filename}...",
+      "failed": "Download failed: {message}",
+      "failed_generic": "Download failed"
+    }
+  },
+  "superadmin": {
+    "dashboard": {
+      "loading": "Loading system data...",
+      "stats_aria": "Superadmin stats",
+      "stats": {
+        "tenants": "Tenants",
+        "active_tenants": "Active Tenants",
+        "users": "Users",
+        "system_health": "System Health",
+        "health_ok": "OK",
+        "health_down": "DB Down"
+      },
+      "quick_actions": {
+        "title": "Quick Actions",
+        "tenants": {
+          "title": "Manage Tenants",
+          "desc": "Create, edit, and maintain organizations."
         },
-        "overview": {
-            "loading": "Loading system data...",
-            "stats": {
-                "team_members": "Team Members",
-                "global_settings": "Global Settings",
-                "used": "used",
-                "free": "Free",
-                "plan_status": "Plan Status"
-            },
-            "quick_actions": {
-                "title": "Quick Actions",
-                "team": {
-                    "title": "Manage Team",
-                    "desc": "View, edit, and invite team members."
-                },
-                "roles": {
-                    "title": "Roles & Permissions",
-                    "desc": "Manage roles and access control."
-                },
-                "settings": {
-                    "title": "Global Settings",
-                    "desc": "Configure application policies and defaults."
-                },
-                "billing": {
-                    "title": "Billing",
-                    "desc": "Manage subscription and invoices."
-                }
-            }
+        "users": {
+          "title": "Manage Users",
+          "desc": "View global users, roles, and access."
         },
-        "subscription": {
-            "tabs": {
-                "overview": "Overview",
-                "plans": "Available Plans",
-                "history": "Payment History"
-            },
-            "loading": "Loading details...",
-            "errors": {
-                "load_failed": "Failed to load subscription details",
-                "create_invoice_failed": "Failed to create invoice"
-            },
-            "toasts": {
-                "invoice_created": "Invoice created"
-            },
-            "common": {
-                "free": "Free",
-                "unlimited": "Unlimited",
-                "base": "Base:",
-                "fx": "FX:",
-                "fx_updating": "Updating FX…",
-                "fx_unavailable": "FX unavailable",
-                "per_month": "/ month"
-            },
-            "overview": {
-                "plan_suffix": "Plan",
-                "current_active": "Current active subscription",
-                "usage_title": "Resource Usage",
-                "storage": "Storage",
-                "team_members": "Team Members",
-                "billing_details": "Billing Details",
-                "active_until": "Active Until",
-                "lifetime": "Lifetime",
-                "billing_cycle": "Billing Cycle",
-                "billing_cycle_paid": "Monthly / Yearly",
-                "billing_cycle_free": "Free Tier",
-                "includes": "Includes"
-            },
-            "plans": {
-                "select_title": "Select a Plan",
-                "current": "Current Plan",
-                "upgrade": "Upgrade"
-            },
-            "features": {
-                "free": {
-                    "community_support": "Community Support",
-                    "basic_analytics": "Basic Analytics",
-                    "subdomain_only": "Subdomain Only"
-                },
-                "pro": {
-                    "priority_support": "Priority Support",
-                    "advanced_analytics": "Advanced Analytics",
-                    "custom_domain": "Custom Domain",
-                    "remove_branding": "Remove Branding"
-                },
-                "enterprise": {
-                    "dedicated_support": "24/7 Dedicated Support",
-                    "audit_logs": "Audit Logs",
-                    "custom_domain": "Custom Domain",
-                    "sso_security": "SSO & Security",
-                    "api_access": "API Access"
-                }
-            },
-            "invoices": {
-                "invoice_number": "Invoice #",
-                "description": "Description",
-                "amount": "Amount",
-                "status": "Status",
-                "due_date": "Due Date",
-                "actions": "Actions",
-                "search_placeholder": "Search invoices...",
-                "pay": "Pay",
-                "view_details": "View Details"
-            }
-        },
-        "invoices": {
-            "title": "Billing & Invoices",
-            "subtitle": "View and manage your subscription payments",
-            "search_placeholder": "Search invoices...",
-            "pay_now": "Pay Now",
-            "view_details": "View Details",
-            "columns": {
-                "invoice_number": "Invoice #",
-                "description": "Description",
-                "amount": "Amount",
-                "status": "Status",
-                "due_date": "Due Date"
-            },
-            "toasts": {
-                "load_failed": "Failed to load invoices"
-            }
+        "audit": {
+          "title": "Audit Logs",
+          "desc": "Track activity and security events."
         },
         "settings": {
-            "title": "Global Settings",
-            "subtitle": "Manage application configuration, security, and integrations.",
-            "save_success": "Changes saved successfully",
-            "save_error": "Failed to save settings",
-            "load_error": "Failed to load settings",
-            "reset_button": "Reset",
-            "save_button": "Save Changes",
-            "saving": "Saving...",
-            "toasts": {
-                "load_failed": "Failed to load settings",
-                "logo_uploaded": "Logo uploaded",
-                "logo_upload_failed": "Failed to upload logo",
-                "saved": "Settings saved",
-                "save_failed": "Failed to save settings"
-            },
-            "placeholders": {
-                "custom_domain": "e.g. app.yourcompany.com",
-                "locked": "Locked"
-            },
-            "subtitle_dynamic": "Manage your {tab} settings",
-            "branding": {
-                "custom_domain_help_prefix": "Point your domain's CNAME record to",
-                "custom_domain_help_suffix": "(or configured alias).",
-                "custom_domain_pro_title": "Custom Domain is a Pro Feature",
-                "custom_domain_pro_desc": "Upgrade your plan to use your own domain name."
-            },
-            "security": {
-                "enforce_2fa_desc": "Require all members of this organization to enable 2FA before accessing the dashboard."
-            },
-            "storage": {
-                "select_provider": "Select Storage Provider"
-            },
-            "email": {
-                "provider_label": "Email Delivery Provider",
-                "connection_details": "Connection Details",
-                "placeholders": {
-                    "from_name": "e.g. Acme Support",
-                    "from_address": "noreply@yourdomain.com",
-                    "smtp_host": "smtp.mailtrap.io",
-                    "smtp_port": "587"
-                },
-                "test": {
-                    "recipient_placeholder": "Enter recipient email",
-                    "sending": "Sending...",
-                    "send": "Send Test"
-                }
-            },
-            "payment": {
-                "methods_label": "Payment Methods",
-                "midtrans": {
-                    "merchant_id": "Merchant ID",
-                    "client_key": "Client Key",
-                    "server_key": "Server Key"
-                },
-                "manual": {
-                    "add_one": "Add One",
-                    "instructions_label": "Payment Instructions",
-                    "placeholder_instructions": "Please transfer to BCA 1234567890 a/n PT Company...",
-                    "bank_accounts": "Bank Accounts",
-                    "add_bank": "Add Bank",
-                    "bank_form": {
-                        "bank_name_label": "Bank Name",
-                        "bank_name_placeholder": "Bank Name (e.g. BCA)",
-                        "account_number_label": "Account Number",
-                        "account_number_placeholder": "Account Number",
-                        "account_holder_label": "Account Holder Name",
-                        "account_holder_placeholder": "Account Holder Name",
-                        "add": "Add",
-                        "add_account": "Add Account",
-                        "remove_account": "Remove Account"
-                    }
-                }
-            },
-            "categories": {
-                "general": "General",
-                "storage": "Storage",
-                "auth": "Authentication",
-                "security": "Security",
-                "email": "Email",
-                "branding": "Branding & Domain",
-                "payment": "Payments"
-            },
-            "keys": {
-                "app_name": "App Name",
-                "app_description": "App Description",
-                "app_version": "App Version",
-                "organization_name": "Organization Name",
-                "custom_domain": "Custom Domain",
-                "support_email": "Support Email",
-                "default_locale": "Default Language",
-                "currency_symbol": "Currency Symbol",
-                "maintenance_mode": "Maintenance Mode",
-                "app_logo_path": "App Logo",
-                "storage_provider": "Storage Provider",
-                "storage_local_path": "Local Path",
-                "storage_s3_bucket": "Bucket Name",
-                "storage_s3_region": "Region",
-                "auth_allow_registration": "Allow Registration",
-                "auth_require_email_verification": "Require Email Verification",
-                "auth_jwt_expiry_hours": "JWT Expiry (Hours)",
-                "auth_session_timeout_minutes": "Session Timeout (Minutes)",
-                "auth_password_min_length": "Min Password Length",
-                "auth_password_require_uppercase": "Require Uppercase",
-                "auth_password_require_number": "Require Number",
-                "auth_password_require_special": "Require Special Char",
-                "auth_max_login_attempts": "Max Login Attempts",
-                "auth_lockout_duration_minutes": "Lockout Duration (Minutes)",
-                "auth_logout_all_on_password_change": "Logout All on Password Change",
-                "email_provider": "Email Provider",
-                "email_smtp_host": "SMTP Host",
-                "email_smtp_port": "SMTP Port",
-                "email_smtp_username": "SMTP Username",
-                "email_smtp_password": "SMTP Password",
-                "email_smtp_encryption": "Encryption",
-                "email_api_key": "API Key",
-                "email_from_address": "From Address",
-                "email_from_name": "From Name"
-            },
-            "test_email": {
-                "title": "Test Email Configuration",
-                "description": "Save your changes first, then send a test email to verify your SMTP settings.",
-                "placeholder": "Enter email address",
-                "button": "Send Test Email",
-                "sending": "Sending..."
-            },
-            "sections": {
-                "enforce_2fa": "Enforce Two-Factor Authentication",
-                "configuration": "Configuration",
-                "sender_info": "Sender Information",
-                "test_configuration": "Test Configuration",
-                "midtrans": "Midtrans Payment Gateway",
-                "bank_transfer_manual": "Bank Transfer (Manual)"
-            }
+          "title": "Platform Settings",
+          "desc": "Configure policies and system defaults."
+        }
+      }
+    },
+    "audit_logs": {
+      "title": "Audit Logs",
+      "subtitle": "Track system activity and security events",
+      "count": "logs",
+      "refresh": "Refresh logs",
+      "search": "Search logs...",
+      "loading": "Loading logs...",
+      "columns": {
+        "time": "Time",
+        "action": "Action",
+        "user": "User",
+        "tenant": "Tenant",
+        "resource": "Resource",
+        "details": "Details",
+        "ip": "IP",
+        "time_ip": "Time / IP",
+        "user_tenant": "User / Tenant",
+        "action_resource": "Action / Resource"
+      },
+      "filters": {
+        "action": "Action (exact)",
+        "action_placeholder": "e.g. login, create_user",
+        "from": "From",
+        "to": "To"
+      },
+      "view": {
+        "table": "Table view",
+        "cards": "Card view"
+      },
+      "aria": {
+        "quick_ranges": "Quick ranges",
+        "view_mode": "View mode",
+        "cards": "Audit logs"
+      },
+      "actions": {
+        "expand_details": "Expand details",
+        "collapse_details": "Collapse details",
+        "expand": "Expand",
+        "collapse": "Collapse"
+      },
+      "labels": {
+        "user": "User",
+        "tenant": "Tenant",
+        "resource": "Resource",
+        "ip": "IP",
+        "details": "Details"
+      },
+      "empty": {
+        "title": "No logs found",
+        "subtitle": "Try adjusting your filters."
+      }
+    },
+    "users": {
+      "title": "Users",
+      "subtitle": "Manage global users and access",
+      "count": "users",
+      "search": "Search users...",
+      "filters": {
+        "all_roles": "All Roles",
+        "admin": "Admin",
+        "user": "User",
+        "superadmin": "Super Admin",
+        "all": "All",
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "empty": {
+        "title": "No users found",
+        "subtitle": "Try adjusting your search or filters.",
+        "hint": "Try adjusting your search or filters."
+      },
+      "columns": {
+        "user": "User",
+        "email": "Email",
+        "role": "Role",
+        "tenant": "Tenant",
+        "status": "Status",
+        "joined": "Joined"
+      },
+      "aria": {
+        "stats": "User stats",
+        "list": "Users list"
+      },
+      "stats": {
+        "show_all": "Show all users",
+        "show_active": "Show active users",
+        "show_inactive": "Show inactive users",
+        "show_superadmins": "Show super admins",
+        "all_title": "All Users",
+        "active_title": "Active Users",
+        "inactive_title": "Inactive Users",
+        "superadmins_title": "Super Admins"
+      },
+      "view": {
+        "aria": "View mode",
+        "table": "Table view",
+        "cards": "Card view"
+      },
+      "actions": {
+        "view_details": "View details",
+        "reset_2fa": "Reset 2FA",
+        "activate_user": "Activate user",
+        "deactivate_user": "Deactivate user",
+        "activate": "Activate",
+        "deactivate": "Deactivate"
+      },
+      "status": {
+        "activate_title": "Activate User",
+        "deactivate_title": "Deactivate User",
+        "this_user": "this user",
+        "activate_message": "Activate {name}? They will be able to login again.",
+        "deactivate_message": "Deactivate {name}? They will not be able to login."
+      },
+      "reset2fa": {
+        "title": "Reset Two-Factor Authentication",
+        "message": "Reset 2FA for this user? They will be able to login without a secondary code.",
+        "confirm": "Reset 2FA"
+      },
+      "details": {
+        "title": "User Details",
+        "title_with_name": "User Details — {name}",
+        "sections": {
+          "account": "Account",
+          "tenant": "Tenant",
+          "security": "Security"
+        },
+        "labels": {
+          "name": "Name",
+          "email": "Email",
+          "role": "Role",
+          "status": "Status",
+          "created": "Created",
+          "last_login": "Last Login",
+          "tenant": "Tenant",
+          "slug": "Slug",
+          "tenant_role": "Tenant Role",
+          "twofa_enabled": "2FA Enabled",
+          "preferred_2fa": "Preferred 2FA"
+        }
+      },
+      "toasts": {
+        "reset_2fa_success": "Two-factor authentication has been reset",
+        "reset_2fa_failed": "Failed to reset 2FA: {message}",
+        "superadmin_cannot_deactivate": "Super Admin accounts cannot be deactivated here",
+        "cannot_deactivate_self": "You cannot deactivate your own account",
+        "activated": "User activated",
+        "deactivated": "User deactivated",
+        "update_status_failed": "Failed to update user status: {message}"
+      }
+    },
+    "tenants": {
+      "title": "Tenants",
+      "subtitle": "Manage all organizations in the platform",
+      "count": "{count} tenants",
+      "search": "Search tenants...",
+      "refreshing_title": "Refreshing...",
+      "refreshing": "Refreshing",
+      "aria": {
+        "stats": "Tenant stats",
+        "cards": "Tenant cards"
+      },
+      "stats": {
+        "show_all": "Show all tenants",
+        "show_active": "Show active tenants",
+        "show_inactive": "Show inactive tenants",
+        "all_title": "All Tenants",
+        "active_title": "Active Tenants",
+        "inactive_title": "Inactive Tenants"
+      },
+      "filters": {
+        "all": "All",
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "view": {
+        "table": "Table view",
+        "cards": "Cards view"
+      },
+      "meta": {
+        "created": "Created"
+      },
+      "actions": {
+        "new": "New Tenant",
+        "activate": "Activate",
+        "deactivate": "Deactivate"
+      },
+      "toggle": {
+        "activate_title": "Activate Tenant",
+        "deactivate_title": "Deactivate Tenant",
+        "this_tenant": "this tenant",
+        "activate_message": "Activate {name}? Users in this tenant will regain access.",
+        "deactivate_message": "Deactivate {name}? Users in this tenant will be blocked from accessing the app."
+      },
+      "delete": {
+        "title": "Delete Tenant",
+        "message": "Are you sure you want to delete this tenant? This action cannot be undone and will remove all associated data.",
+        "confirm": "Delete Permanently"
+      },
+      "modal": {
+        "edit_title": "Edit Tenant",
+        "create_title": "Create New Tenant",
+        "sections": {
+          "initial_subscription": "Initial Subscription",
+          "initial_admin": "Initial Admin User"
+        },
+        "labels": {
+          "name": "Tenant Name",
+          "slug": "Slug (URL)",
+          "custom_domain": "Custom Domain (Optional)",
+          "plan": "Subscription Plan",
+          "owner_email": "Owner Email",
+          "owner_password": "Owner Password",
+          "active_status": "Active Status"
+        },
+        "placeholders": {
+          "name": "e.g. Acme Corp",
+          "slug": "e.g. acme-corp",
+          "custom_domain": "e.g. app.acme.com",
+          "plan": "Select a plan",
+          "owner_email": "admin@acme.com",
+          "owner_password": "Strong password"
+        },
+        "actions": {
+          "create": "Create Tenant",
+          "update": "Update Tenant"
+        }
+      },
+      "empty": {
+        "title": "No tenants found",
+        "hint": "Try adjusting your search or filters."
+      },
+      "toasts": {
+        "updated": "Tenant updated successfully",
+        "update_failed": "Failed to update tenant: {message}",
+        "created": "Tenant created successfully",
+        "create_failed": "Failed to create tenant: {message}",
+        "deleted": "Tenant deleted successfully",
+        "delete_failed": "Failed to delete tenant: {message}",
+        "activated": "Tenant activated",
+        "deactivated": "Tenant deactivated"
+      }
+    },
+    "invoices": {
+      "aria": {
+        "stats": "Invoice stats",
+        "cards": "Invoice cards",
+        "table": "Invoices table"
+      },
+      "actions": {
+        "check_status": "Check Status",
+        "view_details": "View Details"
+      },
+      "cards": {
+        "amount": "Amount",
+        "due": "Due"
+      },
+      "list": {
+        "title": "All Invoices",
+        "subtitle": "Monitor all payments and transactions across the platform",
+        "search": "Search invoices...",
+        "loading": "Loading invoices...",
+        "empty": "No invoices found",
+        "empty_hint": "Try adjusting your search or filters.",
+        "view": {
+          "cards": "Cards view",
+          "table": "Table view"
+        },
+        "filters": {
+          "all": "All",
+          "pending": "Pending",
+          "paid": "Paid",
+          "failed": "Failed"
+        },
+        "columns": {
+          "invoice_number": "Invoice #",
+          "tenant": "Tenant",
+          "amount": "Amount",
+          "status": "Status",
+          "due_date": "Due Date",
+          "created_at": "Created At",
+          "actions": "Actions"
+        },
+        "errors": {
+          "load_failed": "Failed to load invoices",
+          "check_failed": "Failed to check status: "
+        },
+        "toasts": {
+          "status": "Invoice status: "
+        }
+      },
+      "detail": {
+        "title": "Invoice Details",
+        "back": "Back to Invoices",
+        "loading": "Loading details...",
+        "missing_id": "Missing invoice id",
+        "load_failed": "Failed to load invoice",
+        "invoice": "Invoice",
+        "tenant": "Tenant",
+        "description": "Description",
+        "amount": "Amount",
+        "created_at": "Created At",
+        "updated_at": "Updated At",
+        "manual_verification": "Manual Verification",
+        "approve_title": "Approve Payment",
+        "reject_title": "Reject Payment",
+        "approve_message": "Are you sure you want to approve this payment? This will activate the subscription immediately.",
+        "reject_message": "Are you sure you want to reject this payment? The user will be notified.",
+        "approve": "Approve",
+        "reject": "Reject",
+        "marked_as": "Invoice marked as",
+        "verify_failed": "Verification failed",
+        "already_status": "This invoice is already",
+        "payment_proof": "Payment Proof",
+        "click_enlarge": "Click to enlarge",
+        "no_proof": "No proof uploaded yet.",
+        "not_found": "Invoice not found"
+      }
+    },
+    "system": {
+      "request_metrics": {
+        "title": "Request Metrics"
+      },
+      "title": "System Health",
+      "subtitle": "Monitor platform status and metrics",
+      "loading": "Loading system health...",
+      "retry": "Retry",
+      "db_connected": "Database Connected",
+      "db_disconnected": "Database Disconnected",
+      "tables": "tables",
+      "uptime": "Uptime:",
+      "cpu_usage": "CPU Usage",
+      "memory_usage": "Memory Usage",
+      "database_tables": "Database Tables",
+      "recent_activity": "Recent Activity",
+      "no_recent_activity": "No recent activity",
+      "last_updated": "Last updated:",
+      "stats": {
+        "total_tenants": "Total Tenants",
+        "total_users": "Total Users",
+        "active_users": "Active Users",
+        "audit_logs": "Audit Logs"
+      },
+      "table_headers": {
+        "table": "Table",
+        "rows": "Rows"
+      }
+    },
+    "settings": {
+      "title": "Platform Settings",
+      "subtitle": "Global Configuration",
+      "loading": "Loading settings...",
+      "errors": {
+        "load_failed": "Failed to load settings",
+        "save_failed": "Failed to save settings",
+        "missing_test_email": "Please enter an email address",
+        "test_email_failed": "Failed to send test email: ",
+        "bank_add_failed": "Failed to add bank",
+        "bank_remove_failed": "Failed to delete bank"
+      },
+      "toasts": {
+        "saved": "Settings saved successfully",
+        "bank_added": "Bank account added",
+        "bank_removed": "Bank account removed"
+      },
+      "confirm": {
+        "are_you_sure": "Are you sure?"
+      },
+      "sections": {
+        "general": "General Settings",
+        "auth": "Authentication Policy",
+        "password": "Password Policy",
+        "security": "Security & Rate Limiting",
+        "twofa": "Two-Factor Authentication",
+        "storage": "Storage Configuration",
+        "payment": "Payment Gateway (Midtrans)",
+        "manual_bank_transfer": "Manual Bank Transfer",
+        "backup_global": "Global Backups",
+        "backup_tenant": "Tenant Backups"
+      },
+      "security": {
+        "ip_blocking": {
+          "aria": "Enable IP Blocking",
+          "label": "Enable IP Blocking",
+          "desc": "Automatically block IP addresses with suspicious activity."
+        },
+        "max_login_attempts": {
+          "label": "Max Login Attempts",
+          "desc": "Number of failed login attempts before account lockout."
+        },
+        "lockout_duration": {
+          "label": "Lockout Duration",
+          "desc": "How long a user stays locked out after max failed attempts."
+        },
+        "api_rate_limit": {
+          "label": "API Rate Limit",
+          "desc": "Maximum API requests allowed per minute per user."
+        }
+      },
+      "twofa": {
+        "enable_2fa": {
+          "aria": "Enable 2FA",
+          "label": "Enable 2FA",
+          "desc": "Allow users to set up two-factor authentication for enhanced security."
+        },
+        "enable_totp": {
+          "aria": "Enable TOTP",
+          "label": "TOTP (Authenticator App)",
+          "desc": "Allow users to verify with Google Authenticator, Authy, etc."
+        },
+        "enable_email_otp": {
+          "aria": "Enable Email OTP"
+        },
+        "email_otp": {
+          "label": "Email OTP",
+          "desc": "Allow users to receive verification codes via email."
+        },
+        "email_otp_expiry": {
+          "label": "Email OTP Expiry",
+          "desc": "How long email verification codes remain valid."
+        }
+      },
+      "auth": {
+        "allow_public_registration": {
+          "label": "Allow Public Registration",
+          "desc": "Allow new users to sign up freely."
+        },
+        "require_email_verification": {
+          "label": "Require Email Verification",
+          "desc": "Users must verify email before logging in."
+        },
+        "jwt_expiry": {
+          "label": "JWT Expiry (Hours)",
+          "desc": "How long an auth token remains valid."
+        },
+        "session_timeout": {
+          "label": "Session Timeout (Minutes)",
+          "desc": "Auto-logout after inactivity."
+        }
+      },
+      "password": {
+        "min_length": {
+          "label": "Minimum Length"
+        },
+        "require_uppercase": {
+          "label": "Require Uppercase"
+        },
+        "require_number": {
+          "label": "Require Number"
+        },
+        "require_special": {
+          "label": "Require Special Character"
+        }
+      },
+      "storage": {
+        "driver": {
+          "label": "Storage Driver",
+          "desc": "Choose where files are stored. Local uses the server's disk.",
+          "options": {
+            "local": "Local Disk",
+            "s3": "AWS S3 / MinIO",
+            "r2": "Cloudflare R2"
+          }
+        },
+        "s3": {
+          "bucket_name": "Bucket Name",
+          "region": "Region",
+          "region_hint": "Use 'auto' for R2.",
+          "endpoint_url": "Endpoint URL",
+          "endpoint_hint": "Required for R2 (https://ID.r2.cloudflarestorage.com) or MinIO.",
+          "access_key_id": "Access Key ID",
+          "secret_access_key": "Secret Access Key",
+          "public_url_optional": "Public Access URL (Optional)",
+          "public_url_hint": "CDN URL if serving files publicly."
+        },
+        "max_file_size_mb": "Max File Size (MB)",
+        "max_file_size_mb_desc": "Maximum allowed size for a single file upload.",
+        "allowed_extensions": "Allowed Extensions",
+        "allowed_extensions_desc": "Comma-separated list of allowed file extensions (e.g., jpg, png, pdf). Use * for all."
+      },
+      "payment": {
+        "midtrans": {
+          "title": "Midtrans Gateway",
+          "enable": {
+            "label": "Enable Midtrans Gateway",
+            "desc": "Allow users to pay online via Midtrans."
+          },
+          "merchant_id": "Merchant ID",
+          "server_key": "Server Key",
+          "server_key_hint": "From Midtrans Dashboard > Settings > Access Keys.",
+          "client_key": "Client Key",
+          "client_key_hint": "Public key for frontend Snap.js.",
+          "production_mode": "Production Mode",
+          "production_mode_desc": "Enable for real transactions. Disable for Sandbox."
+        },
+        "manual": {
+          "title": "Manual Bank Transfer",
+          "enable": {
+            "label": "Enable Manual Transfer",
+            "desc": "Allow users to pay via bank transfer and upload proof."
+          },
+          "instructions_label": "Payment Instructions",
+          "instructions_desc": "Instructions shown to user when they select Manual Transfer.",
+          "bank_accounts_title": "Bank Accounts"
+        }
+      },
+      "fields": {
+        "public_url": {
+          "label": "Public Application URL",
+          "desc": "Base URL for redirects, emails, and payment callbacks (e.g. https://app.example.com)."
+        },
+        "main_domain": {
+          "label": "Main Domain",
+          "desc": "The primary domain where the application is hosted (e.g. example.com). Used for domain validation and tenant routing."
+        },
+        "currency": {
+          "label": "Default Currency",
+          "desc": "Currency used for plan pricing and invoice display (ISO 4217, e.g. IDR, USD)."
+        },
+        "maintenance_mode": {
+          "label": "Enable Maintenance Mode",
+          "desc": "When enabled, all users except superadmins will see a maintenance page."
+        },
+        "maintenance_message": {
+          "label": "Maintenance Message",
+          "desc": "The message displayed to users when maintenance mode is active."
+        },
+        "timezone": {
+          "label": "Timezone",
+          "desc": "Used to interpret schedule times (e.g. backups). Choose an IANA timezone.",
+          "search": "Search timezone..."
+        }
+      },
+      "placeholders": {
+        "url": "https://...",
+        "domain": "example.com",
+        "public_url": "https://cdn.example.com",
+        "maintenance_message": "Enter maintenance message...",
+        "manual_instructions": "Please transfer to one of the bank accounts below and upload proof.",
+        "s3_bucket": "e.g. my-app-uploads",
+        "s3_region": "us-east-1",
+        "extensions": "jpg, png, pdf...",
+        "bank_name": "Bank Name (e.g. BCA)",
+        "bank_account_number": "Account Number",
+        "bank_account_holder": "Account Holder"
+      },
+      "actions": {
+        "remove": "Remove",
+        "add": "Add",
+        "reset": "Reset",
+        "save": "Save Changes",
+        "saving": "Saving..."
+      },
+      "alerting": {
+        "title": "Error Alerting",
+        "enabled": {
+          "label": "Enable Alerting",
+          "desc": "Send email alerts when error thresholds are exceeded."
+        },
+        "email": {
+          "label": "Alert Email",
+          "desc": "Email address to receive alerts."
+        },
+        "error_threshold": {
+          "label": "Error Rate Threshold (%)",
+          "desc": "Alert when error rate exceeds this percentage."
+        },
+        "rate_limit_threshold": {
+          "label": "Rate Limit Threshold",
+          "desc": "Alert when rate-limited requests exceed this count."
+        },
+        "response_time_threshold": {
+          "label": "P95 Response Time Threshold (ms)",
+          "desc": "Alert when P95 response time exceeds this value."
+        },
+        "cooldown": {
+          "label": "Alert Cooldown (minutes)",
+          "desc": "Minutes to wait before sending the same alert type again."
+        }
+      },
+      "bank": {
+        "add_new_account": "Add New Account",
+        "empty": "No bank accounts added yet.",
+        "table": {
+          "bank": "Bank",
+          "number": "Number",
+          "holder": "Holder",
+          "action": "Action"
+        }
+      },
+      "categories": {
+        "general": "General & Maintenance",
+        "auth": "Authentication",
+        "password": "Password Policy",
+        "security": "Security & Rate Limiting",
+        "storage": "Storage Configuration",
+        "payment": "Payment Gateway",
+        "alerting": "Error Alerting",
+        "backup": "Backups"
+      },
+      "backups": {
+        "schedule_desc": "Use cron format (min hour * * *) or HH:MM. Example: 0 2 * * *",
+        "retention_desc": "Old backups older than this will be deleted automatically.",
+        "global": {
+          "enable": "Enable Global Backup Schedule",
+          "enable_desc": "Run automatic global backups on a simple schedule (uses app timezone).",
+          "enable_aria": "Enable global backup schedule",
+          "schedule": "Schedule",
+          "retention": "Retention (days)",
+          "run_now": "Run Global Backup Now",
+          "run_now_desc": "Queue a one-time global backup on the scheduler.",
+          "run_now_btn": "Run Now"
+        },
+        "tenant": {
+          "enable": "Enable Tenant Backup Schedule",
+          "enable_desc": "Run automatic backups for tenant data on a simple schedule (uses app timezone).",
+          "enable_aria": "Enable tenant backup schedule",
+          "schedule": "Schedule",
+          "retention": "Retention (days)",
+          "run_now": "Run Tenant Backups Now",
+          "run_now_desc": "Queue one-time backups for all active tenants.",
+          "run_now_btn": "Run Now"
+        },
+        "mode": {
+          "label": "Schedule Type",
+          "desc": "Choose how often backups are created."
+        },
+        "modes": {
+          "minute": "Every N minutes",
+          "hour": "Every N hours",
+          "day": "Daily at a time",
+          "week": "Weekly at a time"
+        },
+        "every": {
+          "label": "Every",
+          "desc": "Interval value. Example: 15 minutes or 6 hours."
+        },
+        "at": {
+          "label": "At",
+          "desc": "Time of day to run the backup."
+        },
+        "weekday": {
+          "label": "Weekday",
+          "desc": "Day of week to run the backup."
+        },
+        "timezone": {
+          "label": "Timezone",
+          "desc": "Used to interpret daily/weekly schedule times."
+        }
+      }
+    },
+    "plans": {
+      "page_title": "Plans | Superadmin",
+      "title": "Subscription Plans",
+      "subtitle": "Manage pricing tiers and plan status",
+      "search": "Search plans...",
+      "loading": "Loading plans...",
+      "actions": {
+        "create": "Create plan",
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "set_default": "Set as default",
+        "already_default": "Already default"
+      },
+      "price": {
+        "free": "Free"
+      },
+      "aria": {
+        "stats": "Plan stats",
+        "cards": "Plan cards",
+        "table": "Plans table"
+      },
+      "stats": {
+        "show_all": "Show all plans",
+        "show_active": "Show active plans",
+        "show_inactive": "Show inactive plans",
+        "current_default": "Current default plan",
+        "all_title": "All Plans",
+        "active_title": "Active",
+        "inactive_title": "Inactive",
+        "default_title": "Default"
+      },
+      "filters": {
+        "all": "All",
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "view": {
+        "cards": "Cards view",
+        "table": "Table view"
+      },
+      "badges": {
+        "default_title": "Default plan",
+        "default": "Default"
+      },
+      "refreshing_title": "Refreshing...",
+      "refreshing": "Refreshing",
+      "errors": {
+        "load_failed": "Failed to load data",
+        "default_cannot_deactivate": "Default plan cannot be deactivated. Set another default first."
+      },
+      "confirm": {
+        "delete_title": "Delete Plan",
+        "delete_message": "Delete \"{name}\"? This action cannot be undone.",
+        "activate_title": "Activate Plan",
+        "activate_message": "Activate \"{name}\"? Tenants can be assigned to it again.",
+        "deactivate_title": "Deactivate Plan",
+        "deactivate_message": "Deactivate \"{name}\"? Tenants can no longer be assigned to it.",
+        "default_title": "Set Default Plan",
+        "default_message": "Make \"{name}\" the default plan for new tenants?"
+      },
+      "toasts": {
+        "deleted": "Plan deleted",
+        "activated": "Plan activated",
+        "deactivated": "Plan deactivated",
+        "default_updated": "Default plan updated"
+      },
+      "empty": {
+        "title": "No plans found",
+        "subtitle": "Try adjusting your search or filters.",
+        "description": "No description"
+      },
+      "editor": {
+        "head": {
+          "new": "New Plan"
+        },
+        "header": {
+          "create_title": "Create New Plan",
+          "edit_title": "Edit {name}"
+        },
+        "aria": {
+          "actions": "Plan actions",
+          "tabs": "Plan editor tabs"
+        },
+        "actions": {
+          "save": "Save Plan"
+        },
+        "tabs": {
+          "general": "General",
+          "features": "Features & Limits"
+        },
+        "fields": {
+          "name": "Plan Name",
+          "slug": "Slug (Code)",
+          "description": "Description",
+          "sort_order": "Sort Order"
+        },
+        "placeholders": {
+          "name": "e.g. Pro Plan",
+          "slug": "e.g. pro-plan"
+        },
+        "help": {
+          "slug": "Unique identifier used in code/API."
+        },
+        "toasts": {
+          "created": "Plan created successfully",
+          "updated": "Plan updated successfully"
+        },
+        "errors": {
+          "save_failed": "Failed to save plan"
+        }
+      }
+    }
+  },
+  "dashboard": {
+    "greeting": {
+      "morning": "Good Morning",
+      "afternoon": "Good Afternoon",
+      "evening": "Good Evening",
+      "welcome_message": "Here's what's happening with your account today."
+    },
+    "manage_files": "Manage Files",
+    "generate_report": "Generate Report",
+    "admin_mode": {
+      "title": "Administrator Mode",
+      "description": "You have system-wide permissions. Access management tools here."
+    },
+    "stats": {
+      "account_role": "Account Role",
+      "member_since": "Member Since",
+      "system_status": "System Status",
+      "active": "Active"
+    },
+    "recent_activity": {
+      "title": "Recent Activity",
+      "view_all": "View All",
+      "loading": "Loading activity...",
+      "empty": {
+        "title": "No activity yet",
+        "description": "When you start using the app, your activity will appear here.",
+        "learn_more": "Learn More"
+      }
+    },
+    "quick_actions": {
+      "title": "Quick Actions",
+      "update_profile": "Update Profile",
+      "check_messages": "Check Messages",
+      "security_settings": "Security Settings",
+      "contact_support": "Contact Support"
+    }
+  },
+  "profile": {
+    "title": "Settings",
+    "subtitle": "Manage your account settings and preferences.",
+    "fallback": {
+      "user": "User",
+      "member": "Member"
+    },
+    "tabs": {
+      "general": "General",
+      "security": "Security",
+      "preferences": "Preferences",
+      "notifications": "Notifications"
+    },
+    "general": {
+      "title": "Profile Information",
+      "subtitle": "Update your account details and public profile.",
+      "change_avatar": "Change Avatar",
+      "your_name": "Your Name",
+      "role_label": "Role",
+      "display_name": "Display Name",
+      "display_name_placeholder": "Enter your full name",
+      "email_address": "Email Address",
+      "email_placeholder": "name@example.com",
+      "save_button": "Save Changes",
+      "saving": "Saving..."
+    },
+    "security": {
+      "title": "Password & Security",
+      "subtitle": "Manage your password and security settings.",
+      "current_password": "Current Password",
+      "new_password": "New Password",
+      "confirm_password": "Confirm Password",
+      "password_placeholder": "••••••••",
+      "requirements_title": "Password requirements:",
+      "req_length": "At least {length} characters long",
+      "req_uppercase": "One uppercase letter",
+      "req_number": "One number",
+      "req_special": "One special character",
+      "update_button": "Update Password",
+      "updating": "Updating...",
+      "twofa": {
+        "title": "Two-Factor Authentication",
+        "subtitle": "Protect your account with an extra layer of security.",
+        "enabled_title": "2FA is Enabled",
+        "enabled_desc": "Your account is secured with 2FA.",
+        "recovery_title": "Save your Recovery Codes!",
+        "recovery": {
+          "saved_button": "I have saved them"
+        },
+        "disable_title": "Disable 2FA",
+        "methods": {
+          "authenticator_app": "Authenticator App",
+          "email_verification": "Email Verification"
+        },
+        "disable": {
+          "placeholder": "Enter authentication code"
+        }
+      }
+    },
+    "preferences": {
+      "title": "Appearance",
+      "subtitle": "Customize the look and feel of the application.",
+      "dark_mode": "Dark Mode",
+      "dark_mode_desc": "Toggle between dark and light themes."
+    },
+    "notifications": {
+      "title": "Notification Preferences",
+      "subtitle": "Customize how and when you want to be notified.",
+      "view_all": "View all",
+      "test": "Test Notification",
+      "push": {
+        "active_title": "Push Notifications Active",
+        "active_desc": "You are subscribed to real-time updates on this device.",
+        "disable": "Disable",
+        "enable_title": "Enable Push Notifications",
+        "enable_desc": "Get real-time updates even when the app is closed.",
+        "enable": "Enable Push"
+      },
+      "channels": {
+        "in_app": "In-App",
+        "email": "Email",
+        "push": "Push",
+        "required": "Required"
+      },
+      "categories": {
+        "system": {
+          "label": "System Updates",
+          "desc": "Maintenance & announcements"
         },
         "team": {
-            "title": "Team Members",
-            "subtitle": "Manage your organization members and access",
-            "count": "{count} members",
-            "search": "Search members...",
-            "invite_button": "Add Member",
-            "add_member_modal_title": "Add Team Member",
-            "name_label": "Name",
-            "email_label": "Email",
-            "password_label": "Password (Optional)",
-            "role_label": "Role",
-            "cancel": "Cancel",
-            "submit": "Add Member",
-            "columns": {
-                "member": "Member",
-                "role": "Role",
-                "status": "Status",
-                "created_at": "Date Added"
-            },
-            "filters": {
-                "all_roles": "All Roles",
-                "all": "All",
-                "active": "Active",
-                "inactive": "Inactive"
-            },
-            "stats": {
-                "show_all": "Show all members",
-                "show_active": "Show active members",
-                "show_inactive": "Show inactive members",
-                "total_title": "Total Members",
-                "active_title": "Active Members",
-                "inactive_title": "Inactive Members"
-            },
-            "actions": {
-                "edit_role": "Edit Role",
-                "remove_member": "Remove Member"
-            },
-            "roles": {
-                "member": "Member"
-            },
-            "placeholders": {
-                "name": "John Doe",
-                "email": "colleague@company.com",
-                "password_auto": "Auto-generated if empty"
-            },
-            "remove": {
-                "title": "Remove Team Member",
-                "message": "Are you sure you want to remove {name} from the team? They will lose access immediately.",
-                "confirm": "Remove Member"
-            },
-            "edit_role": {
-                "title": "Edit Member Role",
-                "member_name": "Member Name",
-                "role_label": "Role"
-            },
-            "toasts": {
-                "load_failed": "Failed to load team data",
-                "added": "Team member added successfully",
-                "add_failed": "Failed to add member: {message}",
-                "removed": "Member removed successfully",
-                "remove_failed": "Failed to remove member: {message}",
-                "role_updated": "Member role updated successfully",
-                "role_update_failed": "Failed to update role: {message}"
-            },
-            "empty": {
-                "title": "No Team Members Yet",
-                "description": "Add your colleagues to collaborate on this workspace.",
-                "no_results": "No members found",
-                "try_adjusting": "Try adjusting your search or filters."
-            }
+          "label": "Team Activity",
+          "desc": "Member changes & invites"
+        },
+        "payment": {
+          "label": "Billing",
+          "desc": "Invoices & subscriptions"
+        },
+        "security": {
+          "label": "Security",
+          "desc": "Login alerts & password changes"
         }
+      }
+    },
+    "messages": {
+      "profile_updated": "Profile updated successfully!",
+      "password_changed": "Password changed successfully!",
+      "password_mismatch": "New passwords do not match",
+      "update_failed": "Failed to update profile",
+      "change_password_failed": "Failed to change password",
+      "twofa_required": "Your organization requires Two-Factor Authentication. Please enable it to continue.",
+      "2fa_method_totp": "2FA method changed to Authenticator App",
+      "2fa_method_email": "2FA method changed to Email"
     }
+  },
+  "admin": {
+    "roles": {
+      "title": "All Roles",
+      "subtitle": "Manage role definitions and permissions",
+      "count": "roles",
+      "search": "Search roles...",
+      "empty": "No roles found",
+      "permissions_settings": "Permissions Settings",
+      "columns": {
+        "name": "Role Name",
+        "type": "Type",
+        "level": "Level",
+        "permissions": "Permissions"
+      },
+      "badges": {
+        "system": "System",
+        "custom": "Custom"
+      },
+      "level_prefix": "Lvl",
+      "permissions": "permissions",
+      "actions": {
+        "create": "Create Role",
+        "edit": "Edit Role",
+        "delete": "Delete Role",
+        "delete_short": "Delete",
+        "save": "Save Role"
+      },
+      "delete": {
+        "title": "Delete Role",
+        "message": "Are you sure you want to permanently delete the role \"{name}\"? All users assigned to this role might lose permissions.",
+        "confirm": "Delete Role"
+      },
+      "placeholders": {
+        "name": "e.g. Editor",
+        "description": "Role description"
+      },
+      "form": {
+        "name_label": "Role Name",
+        "description_label": "Description",
+        "level_label": "Level",
+        "system_name_locked": "System role names cannot be changed"
+      },
+      "toasts": {
+        "created": "Role created successfully",
+        "updated": "Role updated successfully",
+        "deleted": "Role deleted successfully"
+      },
+      "errors": {
+        "save_failed": "Failed to save role",
+        "delete_failed": "Failed to delete role: "
+      }
+    },
+    "overview": {
+      "loading": "Loading system data...",
+      "stats": {
+        "team_members": "Team Members",
+        "global_settings": "Global Settings",
+        "used": "used",
+        "free": "Free",
+        "plan_status": "Plan Status"
+      },
+      "quick_actions": {
+        "title": "Quick Actions",
+        "team": {
+          "title": "Manage Team",
+          "desc": "View, edit, and invite team members."
+        },
+        "roles": {
+          "title": "Roles & Permissions",
+          "desc": "Manage roles and access control."
+        },
+        "settings": {
+          "title": "Global Settings",
+          "desc": "Configure application policies and defaults."
+        },
+        "billing": {
+          "title": "Billing",
+          "desc": "Manage subscription and invoices."
+        }
+      }
+    },
+    "subscription": {
+      "tabs": {
+        "overview": "Overview",
+        "plans": "Available Plans",
+        "history": "Payment History"
+      },
+      "loading": "Loading details...",
+      "errors": {
+        "load_failed": "Failed to load subscription details",
+        "create_invoice_failed": "Failed to create invoice"
+      },
+      "toasts": {
+        "invoice_created": "Invoice created"
+      },
+      "common": {
+        "free": "Free",
+        "unlimited": "Unlimited",
+        "base": "Base:",
+        "fx": "FX:",
+        "fx_updating": "Updating FX…",
+        "fx_unavailable": "FX unavailable",
+        "per_month": "/ month"
+      },
+      "overview": {
+        "plan_suffix": "Plan",
+        "current_active": "Current active subscription",
+        "usage_title": "Resource Usage",
+        "storage": "Storage",
+        "team_members": "Team Members",
+        "billing_details": "Billing Details",
+        "active_until": "Active Until",
+        "lifetime": "Lifetime",
+        "billing_cycle": "Billing Cycle",
+        "billing_cycle_paid": "Monthly / Yearly",
+        "billing_cycle_free": "Free Tier",
+        "includes": "Includes"
+      },
+      "plans": {
+        "select_title": "Select a Plan",
+        "current": "Current Plan",
+        "upgrade": "Upgrade"
+      },
+      "features": {
+        "free": {
+          "community_support": "Community Support",
+          "basic_analytics": "Basic Analytics",
+          "subdomain_only": "Subdomain Only"
+        },
+        "pro": {
+          "priority_support": "Priority Support",
+          "advanced_analytics": "Advanced Analytics",
+          "custom_domain": "Custom Domain",
+          "remove_branding": "Remove Branding"
+        },
+        "enterprise": {
+          "dedicated_support": "24/7 Dedicated Support",
+          "audit_logs": "Audit Logs",
+          "custom_domain": "Custom Domain",
+          "sso_security": "SSO & Security",
+          "api_access": "API Access"
+        }
+      },
+      "invoices": {
+        "invoice_number": "Invoice #",
+        "description": "Description",
+        "amount": "Amount",
+        "status": "Status",
+        "due_date": "Due Date",
+        "actions": "Actions",
+        "search_placeholder": "Search invoices...",
+        "pay": "Pay",
+        "view_details": "View Details"
+      }
+    },
+    "invoices": {
+      "title": "Billing & Invoices",
+      "subtitle": "View and manage your subscription payments",
+      "search_placeholder": "Search invoices...",
+      "pay_now": "Pay Now",
+      "view_details": "View Details",
+      "columns": {
+        "invoice_number": "Invoice #",
+        "description": "Description",
+        "amount": "Amount",
+        "status": "Status",
+        "due_date": "Due Date"
+      },
+      "toasts": {
+        "load_failed": "Failed to load invoices"
+      }
+    },
+    "settings": {
+      "title": "Global Settings",
+      "subtitle": "Manage application configuration, security, and integrations.",
+      "save_success": "Changes saved successfully",
+      "save_error": "Failed to save settings",
+      "load_error": "Failed to load settings",
+      "reset_button": "Reset",
+      "save_button": "Save Changes",
+      "saving": "Saving...",
+      "toasts": {
+        "load_failed": "Failed to load settings",
+        "logo_uploaded": "Logo uploaded",
+        "logo_upload_failed": "Failed to upload logo",
+        "saved": "Settings saved",
+        "save_failed": "Failed to save settings"
+      },
+      "placeholders": {
+        "custom_domain": "e.g. app.yourcompany.com",
+        "locked": "Locked"
+      },
+      "subtitle_dynamic": "Manage your {tab} settings",
+      "branding": {
+        "custom_domain_help_prefix": "Point your domain's CNAME record to",
+        "custom_domain_help_suffix": "(or configured alias).",
+        "custom_domain_pro_title": "Custom Domain is a Pro Feature",
+        "custom_domain_pro_desc": "Upgrade your plan to use your own domain name."
+      },
+      "security": {
+        "enforce_2fa_desc": "Require all members of this organization to enable 2FA before accessing the dashboard."
+      },
+      "storage": {
+        "select_provider": "Select Storage Provider"
+      },
+      "email": {
+        "provider_label": "Email Delivery Provider",
+        "connection_details": "Connection Details",
+        "placeholders": {
+          "from_name": "e.g. Acme Support",
+          "from_address": "noreply@yourdomain.com",
+          "smtp_host": "smtp.mailtrap.io",
+          "smtp_port": "587"
+        },
+        "test": {
+          "recipient_placeholder": "Enter recipient email",
+          "sending": "Sending...",
+          "send": "Send Test"
+        }
+      },
+      "payment": {
+        "methods_label": "Payment Methods",
+        "midtrans": {
+          "merchant_id": "Merchant ID",
+          "client_key": "Client Key",
+          "server_key": "Server Key"
+        },
+        "manual": {
+          "add_one": "Add One",
+          "instructions_label": "Payment Instructions",
+          "placeholder_instructions": "Please transfer to BCA 1234567890 a/n PT Company...",
+          "bank_accounts": "Bank Accounts",
+          "add_bank": "Add Bank",
+          "bank_form": {
+            "bank_name_label": "Bank Name",
+            "bank_name_placeholder": "Bank Name (e.g. BCA)",
+            "account_number_label": "Account Number",
+            "account_number_placeholder": "Account Number",
+            "account_holder_label": "Account Holder Name",
+            "account_holder_placeholder": "Account Holder Name",
+            "add": "Add",
+            "add_account": "Add Account",
+            "remove_account": "Remove Account"
+          }
+        }
+      },
+      "categories": {
+        "general": "General",
+        "storage": "Storage",
+        "auth": "Authentication",
+        "security": "Security",
+        "email": "Email",
+        "branding": "Branding & Domain",
+        "payment": "Payments"
+      },
+      "keys": {
+        "app_name": "App Name",
+        "app_description": "App Description",
+        "app_version": "App Version",
+        "organization_name": "Organization Name",
+        "custom_domain": "Custom Domain",
+        "support_email": "Support Email",
+        "default_locale": "Default Language",
+        "currency_symbol": "Currency Symbol",
+        "maintenance_mode": "Maintenance Mode",
+        "app_logo_path": "App Logo",
+        "storage_provider": "Storage Provider",
+        "storage_local_path": "Local Path",
+        "storage_s3_bucket": "Bucket Name",
+        "storage_s3_region": "Region",
+        "auth_allow_registration": "Allow Registration",
+        "auth_require_email_verification": "Require Email Verification",
+        "auth_jwt_expiry_hours": "JWT Expiry (Hours)",
+        "auth_session_timeout_minutes": "Session Timeout (Minutes)",
+        "auth_password_min_length": "Min Password Length",
+        "auth_password_require_uppercase": "Require Uppercase",
+        "auth_password_require_number": "Require Number",
+        "auth_password_require_special": "Require Special Char",
+        "auth_max_login_attempts": "Max Login Attempts",
+        "auth_lockout_duration_minutes": "Lockout Duration (Minutes)",
+        "auth_logout_all_on_password_change": "Logout All on Password Change",
+        "email_provider": "Email Provider",
+        "email_smtp_host": "SMTP Host",
+        "email_smtp_port": "SMTP Port",
+        "email_smtp_username": "SMTP Username",
+        "email_smtp_password": "SMTP Password",
+        "email_smtp_encryption": "Encryption",
+        "email_api_key": "API Key",
+        "email_from_address": "From Address",
+        "email_from_name": "From Name"
+      },
+      "test_email": {
+        "title": "Test Email Configuration",
+        "description": "Save your changes first, then send a test email to verify your SMTP settings.",
+        "placeholder": "Enter email address",
+        "button": "Send Test Email",
+        "sending": "Sending..."
+      },
+      "sections": {
+        "enforce_2fa": "Enforce Two-Factor Authentication",
+        "configuration": "Configuration",
+        "sender_info": "Sender Information",
+        "test_configuration": "Test Configuration",
+        "midtrans": "Midtrans Payment Gateway",
+        "bank_transfer_manual": "Bank Transfer (Manual)"
+      }
+    },
+    "team": {
+      "title": "Team Members",
+      "subtitle": "Manage your organization members and access",
+      "count": "{count} members",
+      "search": "Search members...",
+      "invite_button": "Add Member",
+      "add_member_modal_title": "Add Team Member",
+      "name_label": "Name",
+      "email_label": "Email",
+      "password_label": "Password (Optional)",
+      "role_label": "Role",
+      "cancel": "Cancel",
+      "submit": "Add Member",
+      "columns": {
+        "member": "Member",
+        "role": "Role",
+        "status": "Status",
+        "created_at": "Date Added"
+      },
+      "filters": {
+        "all_roles": "All Roles",
+        "all": "All",
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "stats": {
+        "show_all": "Show all members",
+        "show_active": "Show active members",
+        "show_inactive": "Show inactive members",
+        "total_title": "Total Members",
+        "active_title": "Active Members",
+        "inactive_title": "Inactive Members"
+      },
+      "actions": {
+        "edit_role": "Edit Role",
+        "remove_member": "Remove Member"
+      },
+      "roles": {
+        "member": "Member"
+      },
+      "placeholders": {
+        "name": "John Doe",
+        "email": "colleague@company.com",
+        "password_auto": "Auto-generated if empty"
+      },
+      "remove": {
+        "title": "Remove Team Member",
+        "message": "Are you sure you want to remove {name} from the team? They will lose access immediately.",
+        "confirm": "Remove Member"
+      },
+      "edit_role": {
+        "title": "Edit Member Role",
+        "member_name": "Member Name",
+        "role_label": "Role"
+      },
+      "toasts": {
+        "load_failed": "Failed to load team data",
+        "added": "Team member added successfully",
+        "add_failed": "Failed to add member: {message}",
+        "removed": "Member removed successfully",
+        "remove_failed": "Failed to remove member: {message}",
+        "role_updated": "Member role updated successfully",
+        "role_update_failed": "Failed to update role: {message}"
+      },
+      "empty": {
+        "title": "No Team Members Yet",
+        "description": "Add your colleagues to collaborate on this workspace.",
+        "no_results": "No members found",
+        "try_adjusting": "Try adjusting your search or filters."
+      }
+    }
+  }
 }

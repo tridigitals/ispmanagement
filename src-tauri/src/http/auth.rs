@@ -494,8 +494,11 @@ pub async fn verify_email_2fa_setup(
         .ok_or_else(|| crate::error::AppError::Unauthorized)?;
 
     let claims = state.auth_service.validate_token(auth_header).await?;
-    
-    state.auth_service.verify_email_2fa_setup(&claims.sub, &payload.code).await?;
+
+    state
+        .auth_service
+        .verify_email_2fa_setup(&claims.sub, &payload.code)
+        .await?;
 
     Ok(Json(json!({
         "success": true

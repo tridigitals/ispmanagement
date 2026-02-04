@@ -2,7 +2,7 @@
 
 use crate::db::connection::DbPool;
 use crate::error::{AppError, AppResult};
-use crate::models::{LoginDto, RegisterDto, User, UserResponse, TrustedDevice};
+use crate::models::{LoginDto, RegisterDto, TrustedDevice, User, UserResponse};
 use crate::services::{AuditService, EmailService, SettingsService};
 use argon2::{
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
@@ -1642,6 +1642,7 @@ impl AuthService {
         }
 
         // DB Update: Clear all 2FA related fields
+        #[cfg(feature = "postgres")]
         let query = "UPDATE users SET two_factor_enabled = false, totp_enabled = false, email_2fa_enabled = false, two_factor_secret = NULL, two_factor_recovery_codes = NULL, email_otp_code = NULL, email_otp_expires = NULL, preferred_2fa_method = 'totp', updated_at = $1 WHERE id = $2";
 
         #[cfg(feature = "postgres")]
@@ -1890,6 +1891,7 @@ impl AuthService {
         }
 
         // Update DB
+        #[cfg(feature = "postgres")]
         let query = "UPDATE users SET preferred_2fa_method = $1, updated_at = $2 WHERE id = $3";
         #[cfg(feature = "postgres")]
         sqlx::query(query)
@@ -1939,6 +1941,7 @@ impl AuthService {
         }
 
         // Clear OTP & Enable 2FA
+        #[cfg(feature = "postgres")]
         let query = "UPDATE users SET email_otp_code = NULL, email_otp_expires = NULL, two_factor_enabled = true, email_2fa_enabled = true, preferred_2fa_method = 'email', updated_at = $1 WHERE id = $2";
 
         #[cfg(feature = "postgres")]
@@ -2118,6 +2121,7 @@ impl AuthService {
         actor_id: Option<&str>,
         ip_address: Option<&str>,
     ) -> AppResult<()> {
+        #[cfg(feature = "postgres")]
         let query = "UPDATE users SET two_factor_enabled = false, two_factor_secret = NULL, two_factor_recovery_codes = NULL, email_otp_code = NULL, email_otp_expires = NULL, preferred_2fa_method = 'totp', updated_at = $1 WHERE id = $2";
 
         #[cfg(feature = "postgres")]
@@ -2165,27 +2169,31 @@ impl AuthService {
 
     /// List all trusted devices for a user
     pub async fn list_trusted_devices(&self, user_id: &str) -> AppResult<Vec<TrustedDevice>> {
-        let devices = sqlx::query_as::<_, TrustedDevice>("SELECT * FROM trusted_devices WHERE user_id = $1 ORDER BY last_used_at DESC")
-            .bind(user_id)
-            .fetch_all(&self.pool)
-            .await?;
+        let devices = sqlx::query_as::<_, TrustedDevice>(
+            "SELECT * FROM trusted_devices WHERE user_id = $1 ORDER BY last_used_at DESC",
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await?;
         Ok(devices)
     }
 
     /// Revoke a specific trusted device for a user
     pub async fn revoke_trusted_device(&self, user_id: &str, device_id: &str) -> AppResult<()> {
-        let rows_affected = sqlx::query("DELETE FROM trusted_devices WHERE id = $1 AND user_id = $2")
-            .bind(device_id)
-            .bind(user_id)
-            .execute(&self.pool)
-            .await?
-            .rows_affected();
+        let rows_affected =
+            sqlx::query("DELETE FROM trusted_devices WHERE id = $1 AND user_id = $2")
+                .bind(device_id)
+                .bind(user_id)
+                .execute(&self.pool)
+                .await?
+                .rows_affected();
 
         if rows_affected == 0 {
-            return Err(AppError::NotFound("Device not found or permission denied".to_string()));
+            return Err(AppError::NotFound(
+                "Device not found or permission denied".to_string(),
+            ));
         }
 
         Ok(())
     }
 }
-

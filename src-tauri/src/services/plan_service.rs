@@ -10,8 +10,6 @@ use uuid::Uuid;
 
 #[cfg(feature = "postgres")]
 use sqlx::Postgres;
-#[cfg(feature = "sqlite")]
-use sqlx::Sqlite;
 
 #[derive(Clone)]
 pub struct PlanService {

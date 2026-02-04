@@ -50,6 +50,7 @@ zip = "0.6"
 
 # Date/Time
 chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
 
 # Hashing
 sha2 = "0.10"

@@ -17,209 +17,226 @@ export const authVersion = writable(0);
 
 // Get stored values (check local then session)
 function getStoredToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    const local = localStorage.getItem(TOKEN_KEY);
-    const session = sessionStorage.getItem(TOKEN_KEY);
-    return local || session;
+  if (typeof window === 'undefined') return null;
+  const local = localStorage.getItem(TOKEN_KEY);
+  const session = sessionStorage.getItem(TOKEN_KEY);
+  return local || session;
 }
 
 function getStoredUser(): User | null {
-    if (typeof window === 'undefined') return null;
-    const stored = localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY);
-    return stored ? JSON.parse(stored) : null;
+  if (typeof window === 'undefined') return null;
+  const stored = localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY);
+  return stored ? JSON.parse(stored) : null;
 }
 
 function getStoredTenant(): Tenant | null {
-    if (typeof window === 'undefined') return null;
-    const stored = localStorage.getItem(TENANT_KEY) || sessionStorage.getItem(TENANT_KEY);
-    return stored ? JSON.parse(stored) : null;
+  if (typeof window === 'undefined') return null;
+  const stored = localStorage.getItem(TENANT_KEY) || sessionStorage.getItem(TENANT_KEY);
+  return stored ? JSON.parse(stored) : null;
 }
 
 // Create stores
 export const token = writable<string | null>(getStoredToken());
 export const user = writable<User | null>(getStoredUser());
 export const tenant = writable<Tenant | null>(getStoredTenant());
-export const isAuthenticated = derived(token, $token => !!$token);
+export const isAuthenticated = derived(token, ($token) => !!$token);
 
 // Derived store to check if 2FA setup is required by tenant but not enabled by user
 export const is2FARequiredButDisabled = derived([user, tenant], ([$user, $tenant]) => {
-    if (!$user || !$tenant) return false;
-    // Super Admins bypass enforcement
-    if ($user.is_super_admin) return false;
-    return $tenant.enforce_2fa && !$user.two_factor_enabled;
+  if (!$user || !$tenant) return false;
+  // Super Admins bypass enforcement
+  if ($user.is_super_admin) return false;
+  return $tenant.enforce_2fa && !$user.two_factor_enabled;
 });
 
 // isAdmin is now permission-based: checks for 'admin:access' permission OR wildcard '*'
-export const isAdmin = derived(user, $user => {
-    if (!$user) return false;
-    if ($user.is_super_admin) return true;
-    // Check for admin access permission or wildcard
-    return $user.permissions?.includes('admin:access') || $user.permissions?.includes('*');
+export const isAdmin = derived(user, ($user) => {
+  if (!$user) return false;
+  if ($user.is_super_admin) return true;
+  // Check for admin access permission or wildcard
+  return $user.permissions?.includes('admin:access') || $user.permissions?.includes('*');
 });
 
-export const isSuperAdmin = derived(user, $user => ($user as any)?.is_super_admin === true);
+export const isSuperAdmin = derived(user, ($user) => ($user as any)?.is_super_admin === true);
 
 // Permission helper
-export const can = derived(user, $user => {
-    return (action: string, resource: string) => {
-        if (!$user) return false;
-        // Super admins or Owners typically bypass, but let's stick to permission list
-        if ($user.is_super_admin) return true;
+export const can = derived(user, ($user) => {
+  return (action: string, resource: string) => {
+    if (!$user) return false;
+    // Super admins or Owners typically bypass, but let's stick to permission list
+    if ($user.is_super_admin) return true;
 
-        // Explicitly allow Owner role to bypass permission checks
-        if ($user.role === 'Owner' || $user.role === 'owner') return true;
+    // Explicitly allow Owner role to bypass permission checks
+    if ($user.role === 'Owner' || $user.role === 'owner') return true;
 
-        // Check for specific permission "resource:action" or wildcard "resource:*"
-        const perm = `${resource}:${action}`;
-        const wildcard = `${resource}:*`;
-        return $user.permissions?.includes(perm) || $user.permissions?.includes(wildcard) || $user.permissions?.includes('*');
-    };
+    // Check for specific permission "resource:action" or wildcard "resource:*"
+    const perm = `${resource}:${action}`;
+    const wildcard = `${resource}:*`;
+    return (
+      $user.permissions?.includes(perm) ||
+      $user.permissions?.includes(wildcard) ||
+      $user.permissions?.includes('*')
+    );
+  };
 });
 
 // Reactively update logo and settings when token changes
-token.subscribe(value => {
-    if (typeof window !== 'undefined') {
-        // Only refresh logo and settings when logging IN (token exists)
-        if (value) {
-            appLogo.refresh(value);
-            appSettings.refresh();
-        } else {
-            // On logout, reset settings to default (secure by default)
-            appSettings.reset();
-        }
+token.subscribe((value) => {
+  if (typeof window !== 'undefined') {
+    // Only refresh logo and settings when logging IN (token exists)
+    if (value) {
+      appLogo.refresh(value);
+      appSettings.refresh();
+    } else {
+      // On logout, reset settings to default (secure by default)
+      appSettings.reset();
     }
+  }
 });
 
 // Helper to determine active storage
 function getActiveStorage(): Storage | null {
-    if (typeof window === 'undefined') return null;
-    if (localStorage.getItem(TOKEN_KEY)) return localStorage;
-    if (sessionStorage.getItem(TOKEN_KEY)) return sessionStorage;
-    return null; // Not logged in or no storage
+  if (typeof window === 'undefined') return null;
+  if (localStorage.getItem(TOKEN_KEY)) return localStorage;
+  if (sessionStorage.getItem(TOKEN_KEY)) return sessionStorage;
+  return null; // Not logged in or no storage
 }
 
 // Persist user changes to the active storage
-user.subscribe(value => {
-    if (typeof window === 'undefined') return;
-    const storage = getActiveStorage();
-    if (storage && value) {
-        storage.setItem(USER_KEY, JSON.stringify(value));
-    } else if (storage && !value) {
-        storage.removeItem(USER_KEY);
-    }
+user.subscribe((value) => {
+  if (typeof window === 'undefined') return;
+  const storage = getActiveStorage();
+  if (storage && value) {
+    storage.setItem(USER_KEY, JSON.stringify(value));
+  } else if (storage && !value) {
+    storage.removeItem(USER_KEY);
+  }
 });
 
 // Persist tenant changes to active storage
-tenant.subscribe(value => {
-    if (typeof window === 'undefined') return;
-    const storage = getActiveStorage();
-    if (storage && value) {
-        storage.setItem(TENANT_KEY, JSON.stringify(value));
-    } else if (storage && !value) {
-        storage.removeItem(TENANT_KEY);
-    }
+tenant.subscribe((value) => {
+  if (typeof window === 'undefined') return;
+  const storage = getActiveStorage();
+  if (storage && value) {
+    storage.setItem(TENANT_KEY, JSON.stringify(value));
+  } else if (storage && !value) {
+    storage.removeItem(TENANT_KEY);
+  }
 });
 
 // Auth actions
-export async function login(email: string, password: string, remember: boolean = true): Promise<AuthResponse> {
-    const response = await auth.login(email, password);
-    if (response.token) {
-        setAuthData(response.token, response.user, remember, response.tenant);
-    }
-    return response;
+export async function login(
+  email: string,
+  password: string,
+  remember: boolean = true,
+): Promise<AuthResponse> {
+  const response = await auth.login(email, password);
+  if (response.token) {
+    setAuthData(response.token, response.user, remember, response.tenant);
+  }
+  return response;
 }
 
-export async function register(email: string, password: string, name: string): Promise<AuthResponse> {
-    const response = await auth.register(email, password, name);
-    // Default to remember=true for registration, or could be passed
-    if (response.token) {
-        setAuthData(response.token, response.user, true, response.tenant);
-    }
-    return response;
+export async function register(
+  email: string,
+  password: string,
+  name: string,
+): Promise<AuthResponse> {
+  const response = await auth.register(email, password, name);
+  // Default to remember=true for registration, or could be passed
+  if (response.token) {
+    setAuthData(response.token, response.user, true, response.tenant);
+  }
+  return response;
 }
 
-export function setAuthData(newToken: string, newUser: User, remember: boolean, newTenant?: Tenant) {
-    token.set(newToken);
-    user.set(newUser);
-    if (newTenant) tenant.set(newTenant);
+export function setAuthData(
+  newToken: string,
+  newUser: User,
+  remember: boolean,
+  newTenant?: Tenant,
+) {
+  token.set(newToken);
+  user.set(newUser);
+  if (newTenant) tenant.set(newTenant);
 
-    if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return;
 
-    // Clear both first to ensure no duplicates
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    localStorage.removeItem(TENANT_KEY);
-    sessionStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(USER_KEY);
-    sessionStorage.removeItem(TENANT_KEY);
+  // Clear both first to ensure no duplicates
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(TENANT_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(USER_KEY);
+  sessionStorage.removeItem(TENANT_KEY);
 
-    const storage = remember ? localStorage : sessionStorage;
+  const storage = remember ? localStorage : sessionStorage;
 
-    storage.setItem(TOKEN_KEY, newToken);
-    storage.setItem(USER_KEY, JSON.stringify(newUser));
-    if (newTenant) {
-        storage.setItem(TENANT_KEY, JSON.stringify(newTenant));
-    }
+  storage.setItem(TOKEN_KEY, newToken);
+  storage.setItem(USER_KEY, JSON.stringify(newUser));
+  if (newTenant) {
+    storage.setItem(TENANT_KEY, JSON.stringify(newTenant));
+  }
 }
 
 export function logout(): void {
-    token.set(null);
-    user.set(null);
-    tenant.set(null);
+  token.set(null);
+  user.set(null);
+  tenant.set(null);
 
-    if (typeof window === 'undefined') return;
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    localStorage.removeItem(TENANT_KEY);
-    sessionStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(USER_KEY);
-    sessionStorage.removeItem(TENANT_KEY);
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(TENANT_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(USER_KEY);
+  sessionStorage.removeItem(TENANT_KEY);
 }
 
 export async function checkAuth(): Promise<boolean> {
-    const currentToken = getStoredToken();
-    if (!currentToken) return false;
+  const currentToken = getStoredToken();
+  if (!currentToken) return false;
 
-    try {
-        const isValid = await auth.validateToken(currentToken);
-        if (!isValid) {
-            logout();
-            return false;
-        }
-
-        // Refresh user data from backend
-        const currentUser = await auth.getCurrentUser(currentToken);
-        user.set(currentUser);
-
-        // Fetch current tenant info if logged in
-        try {
-            const currentTenant = await api.tenant.getSelf();
-            tenant.set(currentTenant);
-        } catch (e) {
-            // Ignore if tenant fetch fails (e.g. no tenant assigned yet)
-        }
-
-        // Increment auth version to force reactive components to re-render
-        authVersion.update(v => v + 1);
-
-        // Also update storage so components get fresh data
-        const storage = localStorage.getItem(TOKEN_KEY) ? localStorage : sessionStorage;
-        if (currentUser) {
-            storage.setItem(USER_KEY, JSON.stringify(currentUser));
-        }
-        const $tenant = get(tenant);
-        if ($tenant) {
-            storage.setItem(TENANT_KEY, JSON.stringify($tenant));
-        }
-
-        return true;
-    } catch (e) {
-        logout();
-        return false;
+  try {
+    const isValid = await auth.validateToken(currentToken);
+    if (!isValid) {
+      logout();
+      return false;
     }
+
+    // Refresh user data from backend
+    const currentUser = await auth.getCurrentUser(currentToken);
+    user.set(currentUser);
+
+    // Fetch current tenant info if logged in
+    try {
+      const currentTenant = await api.tenant.getSelf();
+      tenant.set(currentTenant);
+    } catch (e) {
+      // Ignore if tenant fetch fails (e.g. no tenant assigned yet)
+    }
+
+    // Increment auth version to force reactive components to re-render
+    authVersion.update((v) => v + 1);
+
+    // Also update storage so components get fresh data
+    const storage = localStorage.getItem(TOKEN_KEY) ? localStorage : sessionStorage;
+    if (currentUser) {
+      storage.setItem(USER_KEY, JSON.stringify(currentUser));
+    }
+    const $tenant = get(tenant);
+    if ($tenant) {
+      storage.setItem(TENANT_KEY, JSON.stringify($tenant));
+    }
+
+    return true;
+  } catch (e) {
+    logout();
+    return false;
+  }
 }
 
 // Get current token (for API calls)
 export function getToken(): string | null {
-    return getStoredToken();
+  return getStoredToken();
 }

@@ -1,10 +1,10 @@
 //! Plan Management Commands (Superadmin only)
 
-use crate::services::{AuthService, PlanService};
 use crate::models::{
-    Plan, PlanWithFeatures, FeatureDefinition, TenantSubscription, FeatureAccess,
-    CreatePlanRequest, UpdatePlanRequest, TenantSubscriptionDetails,
+    CreatePlanRequest, FeatureAccess, FeatureDefinition, Plan, PlanWithFeatures,
+    TenantSubscription, TenantSubscriptionDetails, UpdatePlanRequest,
 };
+use crate::services::{AuthService, PlanService};
 use tauri::State;
 
 /// Get detailed tenant subscription info (Usage vs Limits)
@@ -15,19 +15,25 @@ pub async fn get_tenant_subscription_details(
     auth_service: State<'_, AuthService>,
     plan_service: State<'_, PlanService>,
 ) -> Result<TenantSubscriptionDetails, String> {
-    let claims = auth_service.validate_token(&token).await
+    let claims = auth_service
+        .validate_token(&token)
+        .await
         .map_err(|e| e.to_string())?;
-    
+
     let target_tenant_id = if let Some(tid) = tenant_id {
         if !claims.is_super_admin && claims.tenant_id.as_deref() != Some(&tid) {
             return Err("Unauthorized".to_string());
         }
         tid
     } else {
-        claims.tenant_id.ok_or_else(|| "No tenant context".to_string())?
+        claims
+            .tenant_id
+            .ok_or_else(|| "No tenant context".to_string())?
     };
 
-    plan_service.get_tenant_subscription_details(&target_tenant_id).await
+    plan_service
+        .get_tenant_subscription_details(&target_tenant_id)
+        .await
         .map_err(|e| e.to_string())
 }
 
@@ -38,14 +44,17 @@ pub async fn list_plans(
     auth_service: State<'_, AuthService>,
     plan_service: State<'_, PlanService>,
 ) -> Result<Vec<Plan>, String> {
-    let claims = auth_service.validate_token(&token).await
+    let claims = auth_service
+        .validate_token(&token)
+        .await
         .map_err(|e| e.to_string())?;
-    
+
     if claims.is_super_admin {
-        plan_service.list_plans().await
-            .map_err(|e| e.to_string())
+        plan_service.list_plans().await.map_err(|e| e.to_string())
     } else {
-        plan_service.list_active_plans().await
+        plan_service
+            .list_active_plans()
+            .await
             .map_err(|e| e.to_string())
     }
 }
@@ -58,14 +67,18 @@ pub async fn get_plan(
     auth_service: State<'_, AuthService>,
     plan_service: State<'_, PlanService>,
 ) -> Result<Option<PlanWithFeatures>, String> {
-    let claims = auth_service.validate_token(&token).await
+    let claims = auth_service
+        .validate_token(&token)
+        .await
         .map_err(|e| e.to_string())?;
-    
+
     if !claims.is_super_admin {
         return Err("Unauthorized: Superadmin access required".to_string());
     }
 
-    plan_service.get_plan_with_features(&plan_id).await
+    plan_service
+        .get_plan_with_features(&plan_id)
+        .await
         .map_err(|e| e.to_string())
 }
 
@@ -84,9 +97,11 @@ pub async fn create_plan(
     auth_service: State<'_, AuthService>,
     plan_service: State<'_, PlanService>,
 ) -> Result<Plan, String> {
-    let claims = auth_service.validate_token(&token).await
+    let claims = auth_service
+        .validate_token(&token)
+        .await
         .map_err(|e| e.to_string())?;
-    
+
     if !claims.is_super_admin {
         return Err("Unauthorized: Superadmin access required".to_string());
     }
@@ -102,7 +117,9 @@ pub async fn create_plan(
         sort_order,
     };
 
-    plan_service.create_plan(req).await
+    plan_service
+        .create_plan(req)
+        .await
         .map_err(|e| e.to_string())
 }
 
@@ -122,9 +139,11 @@ pub async fn update_plan(
     auth_service: State<'_, AuthService>,
     plan_service: State<'_, PlanService>,
 ) -> Result<Plan, String> {
-    let claims = auth_service.validate_token(&token).await
+    let claims = auth_service
+        .validate_token(&token)
+        .await
         .map_err(|e| e.to_string())?;
-    
+
     if !claims.is_super_admin {
         return Err("Unauthorized: Superadmin access required".to_string());
     }
@@ -140,7 +159,9 @@ pub async fn update_plan(
         sort_order,
     };
 
-    plan_service.update_plan(&plan_id, req).await
+    plan_service
+        .update_plan(&plan_id, req)
+        .await
         .map_err(|e| e.to_string())
 }
 
@@ -152,14 +173,18 @@ pub async fn delete_plan(
     auth_service: State<'_, AuthService>,
     plan_service: State<'_, PlanService>,
 ) -> Result<(), String> {
-    let claims = auth_service.validate_token(&token).await
+    let claims = auth_service
+        .validate_token(&token)
+        .await
         .map_err(|e| e.to_string())?;
-    
+
     if !claims.is_super_admin {
         return Err("Unauthorized: Superadmin access required".to_string());
     }
 
-    plan_service.delete_plan(&plan_id).await
+    plan_service
+        .delete_plan(&plan_id)
+        .await
         .map_err(|e| e.to_string())
 }
 
@@ -170,14 +195,18 @@ pub async fn list_features(
     auth_service: State<'_, AuthService>,
     plan_service: State<'_, PlanService>,
 ) -> Result<Vec<FeatureDefinition>, String> {
-    let claims = auth_service.validate_token(&token).await
+    let claims = auth_service
+        .validate_token(&token)
+        .await
         .map_err(|e| e.to_string())?;
-    
+
     if !claims.is_super_admin {
         return Err("Unauthorized: Superadmin access required".to_string());
     }
 
-    plan_service.list_feature_definitions().await
+    plan_service
+        .list_feature_definitions()
+        .await
         .map_err(|e| e.to_string())
 }
 
@@ -193,14 +222,18 @@ pub async fn set_plan_feature(
     auth_service: State<'_, AuthService>,
     plan_service: State<'_, PlanService>,
 ) -> Result<(), String> {
-    let claims = auth_service.validate_token(&token).await
+    let claims = auth_service
+        .validate_token(&token)
+        .await
         .map_err(|e| e.to_string())?;
-    
+
     if !claims.is_super_admin {
         return Err("Unauthorized: Superadmin access required".to_string());
     }
 
-    plan_service.set_plan_feature(&plan_id, &feature_id, &value).await
+    plan_service
+        .set_plan_feature(&plan_id, &feature_id, &value)
+        .await
         .map_err(|e| e.to_string())
 }
 
@@ -213,14 +246,18 @@ pub async fn assign_plan_to_tenant(
     auth_service: State<'_, AuthService>,
     plan_service: State<'_, PlanService>,
 ) -> Result<TenantSubscription, String> {
-    let claims = auth_service.validate_token(&token).await
+    let claims = auth_service
+        .validate_token(&token)
+        .await
         .map_err(|e| e.to_string())?;
-    
+
     if !claims.is_super_admin {
         return Err("Unauthorized: Superadmin access required".to_string());
     }
 
-    plan_service.assign_plan_to_tenant(&tenant_id, &plan_id).await
+    plan_service
+        .assign_plan_to_tenant(&tenant_id, &plan_id)
+        .await
         .map_err(|e| e.to_string())
 }
 
@@ -232,15 +269,19 @@ pub async fn get_tenant_subscription(
     auth_service: State<'_, AuthService>,
     plan_service: State<'_, PlanService>,
 ) -> Result<Option<TenantSubscription>, String> {
-    let claims = auth_service.validate_token(&token).await
+    let claims = auth_service
+        .validate_token(&token)
+        .await
         .map_err(|e| e.to_string())?;
-    
+
     // Allow superadmin or if checking own tenant
     if !claims.is_super_admin && claims.tenant_id.as_deref() != Some(&tenant_id) {
         return Err("Unauthorized".to_string());
     }
 
-    plan_service.get_tenant_subscription(&tenant_id).await
+    plan_service
+        .get_tenant_subscription(&tenant_id)
+        .await
         .map_err(|e| e.to_string())
 }
 
@@ -253,14 +294,18 @@ pub async fn check_feature_access(
     auth_service: State<'_, AuthService>,
     plan_service: State<'_, PlanService>,
 ) -> Result<FeatureAccess, String> {
-    let claims = auth_service.validate_token(&token).await
+    let claims = auth_service
+        .validate_token(&token)
+        .await
         .map_err(|e| e.to_string())?;
-    
+
     // Allow superadmin or if checking own tenant
     if !claims.is_super_admin && claims.tenant_id.as_deref() != Some(&tenant_id) {
         return Err("Unauthorized".to_string());
     }
 
-    plan_service.check_feature_access(&tenant_id, &feature_code).await
+    plan_service
+        .check_feature_access(&tenant_id, &feature_code)
+        .await
         .map_err(|e| e.to_string())
 }

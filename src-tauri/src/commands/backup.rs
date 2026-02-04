@@ -22,10 +22,15 @@ pub async fn list_backups(
         return Ok(backups);
     }
 
-    let tenant_id = claims.tenant_id.as_ref().ok_or(crate::error::AppError::Forbidden(
-        "Tenant context missing".to_string(),
-    ))?;
-    let perms = auth_service.get_user_permissions(&claims.sub, tenant_id).await?;
+    let tenant_id = claims
+        .tenant_id
+        .as_ref()
+        .ok_or(crate::error::AppError::Forbidden(
+            "Tenant context missing".to_string(),
+        ))?;
+    let perms = auth_service
+        .get_user_permissions(&claims.sub, tenant_id)
+        .await?;
     let can_read = perms
         .iter()
         .any(|p| p == "*" || p == "backups:read" || p == "backups:*");
@@ -97,8 +102,12 @@ pub async fn create_backup(
                     ));
                 }
 
-                let perms = auth_service.get_user_permissions(&claims.sub, claim_tid).await?;
-                let can_create = perms.iter().any(|p| p == "*" || p == "backups:create" || p == "backups:*");
+                let perms = auth_service
+                    .get_user_permissions(&claims.sub, claim_tid)
+                    .await?;
+                let can_create = perms
+                    .iter()
+                    .any(|p| p == "*" || p == "backups:create" || p == "backups:*");
                 if !can_create {
                     return Err(crate::error::AppError::Forbidden(
                         "Missing permission backups:create".to_string(),
@@ -129,10 +138,15 @@ pub async fn delete_backup(
 ) -> AppResult<()> {
     let claims = auth_service.validate_token(&args.token).await?;
     if !claims.is_super_admin {
-        let tenant_id = claims.tenant_id.as_ref().ok_or(crate::error::AppError::Forbidden(
-            "Tenant context missing".to_string(),
-        ))?;
-        let perms = auth_service.get_user_permissions(&claims.sub, tenant_id).await?;
+        let tenant_id = claims
+            .tenant_id
+            .as_ref()
+            .ok_or(crate::error::AppError::Forbidden(
+                "Tenant context missing".to_string(),
+            ))?;
+        let perms = auth_service
+            .get_user_permissions(&claims.sub, tenant_id)
+            .await?;
         let can_delete = perms
             .iter()
             .any(|p| p == "*" || p == "backups:delete" || p == "backups:*");
@@ -173,7 +187,9 @@ pub async fn restore_backup_from_file(
     // 2) Restore
     let zip_path = std::path::PathBuf::from(path);
     if !zip_path.exists() {
-        return Err(crate::error::AppError::NotFound("File not found".to_string()));
+        return Err(crate::error::AppError::NotFound(
+            "File not found".to_string(),
+        ));
     }
 
     if claims.is_super_admin {
@@ -184,7 +200,11 @@ pub async fn restore_backup_from_file(
             .and_then(|name| {
                 if name.starts_with("tenant_") {
                     let parts: Vec<&str> = name.split('_').collect();
-                    if parts.len() >= 3 { Some(parts[1].to_string()) } else { None }
+                    if parts.len() >= 3 {
+                        Some(parts[1].to_string())
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
@@ -194,9 +214,12 @@ pub async fn restore_backup_from_file(
             .restore_from_zip(zip_path, tenant_id.as_deref())
             .await
     } else {
-        let tenant_id = claims.tenant_id.as_ref().ok_or(crate::error::AppError::Forbidden(
-            "Tenant context missing".to_string(),
-        ))?;
+        let tenant_id = claims
+            .tenant_id
+            .as_ref()
+            .ok_or(crate::error::AppError::Forbidden(
+                "Tenant context missing".to_string(),
+            ))?;
         service.restore_from_zip(zip_path, Some(tenant_id)).await
     }
 }
@@ -227,9 +250,14 @@ pub async fn restore_local_backup_command(
             .restore_local_backup(filename, tenant_id.as_deref())
             .await
     } else {
-        let tenant_id = claims.tenant_id.as_ref().ok_or(crate::error::AppError::Forbidden(
-            "Tenant context missing".to_string(),
-        ))?;
-        service.restore_local_backup(filename, Some(tenant_id)).await
+        let tenant_id = claims
+            .tenant_id
+            .as_ref()
+            .ok_or(crate::error::AppError::Forbidden(
+                "Tenant context missing".to_string(),
+            ))?;
+        service
+            .restore_local_backup(filename, Some(tenant_id))
+            .await
     }
 }

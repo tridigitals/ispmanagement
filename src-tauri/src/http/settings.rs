@@ -27,6 +27,7 @@ pub struct PublicSettings {
     pub app_name: Option<String>,
     pub app_description: Option<String>,
     pub default_locale: Option<String>,
+    pub app_timezone: Option<String>,
     pub currency_code: Option<String>,
     pub maintenance_mode: bool,
     pub maintenance_message: Option<String>,
@@ -49,6 +50,10 @@ pub async fn get_public_settings(
     let default_locale = state
         .settings_service
         .get_value(None, "default_locale")
+        .await?;
+    let app_timezone = state
+        .settings_service
+        .get_value(None, "app_timezone")
         .await?;
     let currency_code = state
         .settings_service
@@ -94,6 +99,7 @@ pub async fn get_public_settings(
         app_name,
         app_description,
         default_locale,
+        app_timezone,
         currency_code,
         maintenance_mode,
         maintenance_message,

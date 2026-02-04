@@ -1,31 +1,31 @@
 <script lang="ts">
-  import { login, isAuthenticated, isAdmin, user } from "$lib/stores/auth";
-  import { appSettings } from "$lib/stores/settings";
-  import { appLogo } from "$lib/stores/logo";
-  import { goto } from "$app/navigation";
-  import { page } from "$app/stores";
-  import { onMount } from "svelte";
-  import { fade, fly } from "svelte/transition";
-  import { get, derived } from "svelte/store";
-  import { t } from "svelte-i18n";
-  import Icon from "$lib/components/ui/Icon.svelte";
+  import { login, isAuthenticated, isAdmin, user } from '$lib/stores/auth';
+  import { appSettings } from '$lib/stores/settings';
+  import { appLogo } from '$lib/stores/logo';
+  import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
+  import { onMount } from 'svelte';
+  import { fade, fly } from 'svelte/transition';
+  import { get, derived } from 'svelte/store';
+  import { t } from 'svelte-i18n';
+  import Icon from '$lib/components/ui/Icon.svelte';
 
-  let email = "";
-  let password = "";
+  let email = '';
+  let password = '';
   let rememberMe = true;
-  let error = "";
+  let error = '';
   let loading = false;
-  let activeField = "";
+  let activeField = '';
 
   let showPassword = false;
 
-  $: appName = $appSettings.app_name || "Platform Core";
+  $: appName = $appSettings.app_name || 'Platform Core';
   $: appDescription =
     $appSettings.app_description ||
-    "Enterprise-grade boilerplate built with Rust and SvelteKit. Secure, scalable, and lightweight.";
+    'Enterprise-grade boilerplate built with Rust and SvelteKit. Secure, scalable, and lightweight.';
 
   // Derived store for registration allowed state - secure by default
-  const allowRegistration = derived(appSettings, $s => $s.auth?.allow_registration === true);
+  const allowRegistration = derived(appSettings, ($s) => $s.auth?.allow_registration === true);
 
   onMount(async () => {
     await Promise.all([appSettings.init(), appLogo.init()]);
@@ -41,14 +41,14 @@
           goto(`/${slug}/dashboard`);
         }
       } else {
-        goto("/dashboard");
+        goto('/dashboard');
       }
     }
   });
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
-    error = "";
+    error = '';
     loading = true;
 
     try {
@@ -57,25 +57,25 @@
 
       if (slug) {
         // If the current domain already matches the user's tenant slug, avoid adding it to the path
-        const currentSlug = $page.url.pathname.split("/")[1] || "";
+        const currentSlug = $page.url.pathname.split('/')[1] || '';
         // OR better yet, check against domain map if we had one client side
         // For now, simpler check:
         if ($page.url.hostname.includes(slug)) {
           // Check if we are ALREADY on the tenant domain
-          if (response.user.role === "admin") {
+          if (response.user.role === 'admin') {
             goto(`/admin`);
           } else {
             goto(`/dashboard`);
           }
         } else {
-          if (response.user.role === "admin") {
+          if (response.user.role === 'admin') {
             goto(`/${slug}/admin`);
           } else {
             goto(`/${slug}/dashboard`);
           }
         }
       } else {
-        goto("/dashboard"); // Fallback
+        goto('/dashboard'); // Fallback
       }
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
@@ -89,8 +89,8 @@
   <div class="form-section">
     <div class="form-wrapper">
       <div class="form-header">
-        <h2>{$t("auth.login.title")}</h2>
-        <p>{$t("auth.login.subtitle")}</p>
+        <h2>{$t('auth.login.title')}</h2>
+        <p>{$t('auth.login.subtitle')}</p>
       </div>
 
       {#if error}
@@ -100,33 +100,33 @@
       {/if}
 
       <form on:submit={handleSubmit}>
-        <div class="input-group" class:focus={activeField === "email"}>
-          <label for="email">{$t("auth.login.email_label")}</label>
+        <div class="input-group" class:focus={activeField === 'email'}>
+          <label for="email">{$t('auth.login.email_label')}</label>
           <div class="field">
             <span class="icon"><Icon name="mail" size={18} /></span>
             <input
               type="email"
               id="email"
               bind:value={email}
-              on:focus={() => (activeField = "email")}
-              on:blur={() => (activeField = "")}
-              placeholder={$t("auth.login.email_placeholder")}
+              on:focus={() => (activeField = 'email')}
+              on:blur={() => (activeField = '')}
+              placeholder={$t('auth.login.email_placeholder')}
               required
             />
           </div>
         </div>
 
-        <div class="input-group" class:focus={activeField === "password"}>
-          <label for="password">{$t("auth.login.password_label")}</label>
+        <div class="input-group" class:focus={activeField === 'password'}>
+          <label for="password">{$t('auth.login.password_label')}</label>
           <div class="field">
             <span class="icon"><Icon name="lock" size={18} /></span>
             <input
-              type={showPassword ? "text" : "password"}
+              type={showPassword ? 'text' : 'password'}
               id="password"
               bind:value={password}
-              on:focus={() => (activeField = "password")}
-              on:blur={() => (activeField = "")}
-              placeholder={$t("auth.login.password_placeholder")}
+              on:focus={() => (activeField = 'password')}
+              on:blur={() => (activeField = '')}
+              placeholder={$t('auth.login.password_placeholder')}
               required
               class="password-input"
             />
@@ -136,7 +136,7 @@
               on:click={() => (showPassword = !showPassword)}
               tabindex="-1"
             >
-              <Icon name={showPassword ? "eye-off" : "eye"} size={18} />
+              <Icon name={showPassword ? 'eye-off' : 'eye'} size={18} />
             </button>
           </div>
         </div>
@@ -145,24 +145,24 @@
           <label class="checkbox">
             <input type="checkbox" bind:checked={rememberMe} />
             <span class="checkmark"></span>
-            <span>{$t("auth.login.remember_me")}</span>
+            <span>{$t('auth.login.remember_me')}</span>
           </label>
-          <a href="/forgot-password">{$t("auth.login.forgot_password")}</a>
+          <a href="/forgot-password">{$t('auth.login.forgot_password')}</a>
         </div>
 
         <button type="submit" class="btn-primary" disabled={loading}>
           {#if loading}
             <div class="spinner"></div>
           {:else}
-            {$t("auth.login.submit_button")}
+            {$t('auth.login.submit_button')}
           {/if}
         </button>
       </form>
 
       {#if $allowRegistration}
         <p class="footer-text">
-          {$t("auth.login.footer_text")}
-          <a href="/register">{$t("auth.login.register_link")}</a>
+          {$t('auth.login.footer_text')}
+          <a href="/register">{$t('auth.login.register_link')}</a>
         </p>
       {/if}
     </div>
@@ -313,7 +313,7 @@
   }
 
   .checkbox input:checked + .checkmark::after {
-    content: "";
+    content: '';
     position: absolute;
     left: 5px;
     top: 2px;
@@ -405,4 +405,3 @@
     }
   }
 </style>
-

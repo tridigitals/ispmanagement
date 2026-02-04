@@ -1,10 +1,11 @@
 use saas_tauri_lib::{
     db::connection::{init_db, seed_defaults},
     http::{self, WsHub},
+    services::backup::BackupScheduler,
     services::{
-        metrics_service::MetricsService, AuditService, AuthService, EmailService,
+        metrics_service::MetricsService, AuditService, AuthService, BackupService, EmailService,
         NotificationService, PaymentService, PlanService, RoleService, SettingsService,
-        StorageService, SystemService, TeamService, UserService, BackupService,
+        StorageService, SystemService, TeamService, UserService,
     },
 };
 use std::env;
@@ -92,6 +93,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         NotificationService::new(pool.clone(), ws_hub.clone(), email_service.clone());
     let payment_service = PaymentService::new(pool.clone(), notification_service.clone());
     let backup_service = BackupService::new(pool.clone(), app_data_dir.clone());
+    let scheduler = BackupScheduler::new(
+        pool.clone(),
+        backup_service.clone(),
+        settings_service.clone(),
+    );
+    scheduler.start().await;
 
     plan_service.seed_default_features().await?;
 

@@ -1,9 +1,9 @@
+use super::AppState;
+use crate::models::Tenant;
 use axum::{
     extract::{Path, Query, State},
     Json,
 };
-use crate::models::Tenant;
-use super::AppState;
 
 pub async fn get_tenant_by_slug(
     State(state): State<AppState>,
@@ -51,6 +51,8 @@ pub async fn lookup_tenant_by_domain(
 
     match tenant {
         Some(t) => Ok(Json(t)),
-        None => Err(crate::error::AppError::NotFound("Tenant not found".to_string())),
+        None => Err(crate::error::AppError::NotFound(
+            "Tenant not found".to_string(),
+        )),
     }
 }

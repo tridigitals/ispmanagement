@@ -1,25 +1,24 @@
-use axum::{
-    extract::State,
-    http::HeaderMap,
-    Json,
-};
-use serde::Deserialize;
-use crate::models::Tenant;
-use crate::error::AppError;
 use super::AppState;
+use crate::error::AppError;
+use crate::models::Tenant;
+use axum::{extract::State, http::HeaderMap, Json};
 use chrono::Utc;
+use serde::Deserialize;
 
 pub async fn get_current_tenant(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<Tenant>, AppError> {
-    let auth_header = headers.get("Authorization")
+    let auth_header = headers
+        .get("Authorization")
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.strip_prefix("Bearer "))
         .ok_or_else(|| AppError::Unauthorized)?;
 
     let claims = state.auth_service.validate_token(auth_header).await?;
-    let tenant_id = claims.tenant_id.ok_or_else(|| AppError::Validation("Not a tenant user".to_string()))?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| AppError::Validation("Not a tenant user".to_string()))?;
 
     let tenant: Tenant = sqlx::query_as("SELECT * FROM tenants WHERE id = $1")
         .bind(&tenant_id)
@@ -42,13 +41,16 @@ pub async fn update_current_tenant(
     headers: HeaderMap,
     Json(payload): Json<UpdateTenantSelfRequest>,
 ) -> Result<Json<Tenant>, AppError> {
-    let auth_header = headers.get("Authorization")
+    let auth_header = headers
+        .get("Authorization")
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.strip_prefix("Bearer "))
         .ok_or_else(|| AppError::Unauthorized)?;
 
     let claims = state.auth_service.validate_token(auth_header).await?;
-    let tenant_id = claims.tenant_id.ok_or_else(|| AppError::Validation("Not a tenant user".to_string()))?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| AppError::Validation("Not a tenant user".to_string()))?;
 
     // 1. Get Current Tenant
     let current: Tenant = sqlx::query_as("SELECT * FROM tenants WHERE id = $1")
@@ -59,10 +61,15 @@ pub async fn update_current_tenant(
     // 2. Check Feature Access for Custom Domain
     if let Some(ref domain) = payload.custom_domain {
         if current.custom_domain.as_ref() != Some(domain) {
-            let access = state.plan_service.check_feature_access(&tenant_id, "custom_domain").await
+            let access = state
+                .plan_service
+                .check_feature_access(&tenant_id, "custom_domain")
+                .await
                 .map_err(|e| AppError::Internal(e.to_string()))?;
             if !access.has_access {
-                return Err(AppError::Forbidden("Your plan does not support Custom Domains. Please upgrade.".to_string()));
+                return Err(AppError::Forbidden(
+                    "Your plan does not support Custom Domains. Please upgrade.".to_string(),
+                ));
             }
         }
     }

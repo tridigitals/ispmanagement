@@ -1,725 +1,697 @@
 <script lang="ts">
-    import { user, isAdmin, can } from "$lib/stores/auth";
-    import { goto } from "$app/navigation";
-    import { page } from "$app/stores";
-    import { onMount } from "svelte";
-    import { t } from "svelte-i18n";
-    import Icon from "$lib/components/ui/Icon.svelte";
-    import { getSlugFromDomain } from "$lib/utils/domain";
-    import { timeAgo } from "$lib/utils/date";
-    import {
-        notifications,
-        loading as notificationsLoading,
-        loadNotifications,
-    } from "$lib/stores/notifications";
+  import { user, isAdmin, can } from '$lib/stores/auth';
+  import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
+  import { onMount } from 'svelte';
+  import { t } from 'svelte-i18n';
+  import Icon from '$lib/components/ui/Icon.svelte';
+  import { getSlugFromDomain } from '$lib/utils/domain';
+  import { formatDate, timeAgo } from '$lib/utils/date';
+  import { appSettings } from '$lib/stores/settings';
+  import {
+    notifications,
+    loading as notificationsLoading,
+    loadNotifications,
+  } from '$lib/stores/notifications';
 
-    onMount(() => {
-        // Auth handled by layout
-        // Load a small slice of activity without blocking first paint.
-        void loadNotifications(1);
-    });
+  onMount(() => {
+    // Auth handled by layout
+    // Load a small slice of activity without blocking first paint.
+    void loadNotifications(1);
+  });
 
-    const greeting = () => {
-        const hour = new Date().getHours();
-        if (hour < 12) return $t("dashboard.greeting.morning");
-        if (hour < 17) return $t("dashboard.greeting.afternoon");
-        return $t("dashboard.greeting.evening");
-    };
+  const greeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return $t('dashboard.greeting.morning');
+    if (hour < 17) return $t('dashboard.greeting.afternoon');
+    return $t('dashboard.greeting.evening');
+  };
 
-    // Tenant prefix helper (supports custom domain mode)
-    let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
-    let isCustomDomain = $derived(domainSlug && domainSlug === $user?.tenant_slug);
-    let tenantPrefix = $derived(
-        $user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : "",
-    );
+  // Tenant prefix helper (supports custom domain mode)
+  let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
+  let isCustomDomain = $derived(domainSlug && domainSlug === $user?.tenant_slug);
+  let tenantPrefix = $derived($user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : '');
 
-    let recent = $derived($notifications.slice(0, 6));
+  let recent = $derived($notifications.slice(0, 6));
 
-    function openNotification(n: any) {
-        if (n?.action_url) goto(resolveActionUrl(n.action_url));
-        else goto(`${tenantPrefix}/notifications`);
+  function openNotification(n: any) {
+    if (n?.action_url) goto(resolveActionUrl(n.action_url));
+    else goto(`${tenantPrefix}/notifications`);
+  }
+
+  function resolveActionUrl(actionUrl: string) {
+    if (!actionUrl || !tenantPrefix) return actionUrl;
+    if (actionUrl.startsWith(tenantPrefix + '/')) return actionUrl;
+    if (
+      actionUrl.startsWith('/admin') ||
+      actionUrl.startsWith('/dashboard') ||
+      actionUrl.startsWith('/profile') ||
+      actionUrl.startsWith('/notifications')
+    ) {
+      return `${tenantPrefix}${actionUrl}`;
     }
+    return actionUrl;
+  }
 
-    function resolveActionUrl(actionUrl: string) {
-        if (!actionUrl || !tenantPrefix) return actionUrl;
-        if (actionUrl.startsWith(tenantPrefix + "/")) return actionUrl;
-        if (
-            actionUrl.startsWith("/admin") ||
-            actionUrl.startsWith("/dashboard") ||
-            actionUrl.startsWith("/profile") ||
-            actionUrl.startsWith("/notifications")
-        ) {
-            return `${tenantPrefix}${actionUrl}`;
-        }
-        return actionUrl;
-    }
-
-    function iconForType(type: string) {
-        if (type === "success") return "check-circle";
-        if (type === "warning") return "alert-triangle";
-        if (type === "error") return "alert-circle";
-        return "info";
-    }
+  function iconForType(type: string) {
+    if (type === 'success') return 'check-circle';
+    if (type === 'warning') return 'alert-triangle';
+    if (type === 'error') return 'alert-circle';
+    return 'info';
+  }
 </script>
 
 <div class="dashboard-content fade-in">
-    <header class="welcome-header">
-        <div class="welcome-text">
-            <h1>{greeting()}, {$user?.name}!</h1>
-            <p>{$t("dashboard.greeting.welcome_message")}</p>
-        </div>
-        <div class="header-actions">
-            {#if $can("upload", "storage")}
-                <button
-                    class="btn btn-primary"
-                    onclick={() => goto(`${tenantPrefix}/storage`)}
-                >
-                    <Icon name="hard-drive" size={16} />
-                    {$t("dashboard.manage_files") || "Manage Files"}
-                </button>
-            {/if}
-        </div>
-    </header>
+  <header class="welcome-header">
+    <div class="welcome-text">
+      <h1>{greeting()}, {$user?.name}!</h1>
+      <p>{$t('dashboard.greeting.welcome_message')}</p>
+    </div>
+    <div class="header-actions">
+      {#if $can('upload', 'storage')}
+        <button class="btn btn-primary" onclick={() => goto(`${tenantPrefix}/storage`)}>
+          <Icon name="hard-drive" size={16} />
+          {$t('dashboard.manage_files') || 'Manage Files'}
+        </button>
+      {/if}
+    </div>
+  </header>
 
-    {#if $isAdmin}
-        <div
-            class="admin-banner"
-            onclick={() => goto(`${tenantPrefix}/admin`)}
-            onkeydown={(e) => e.key === "Enter" && goto(`${tenantPrefix}/admin`)}
-            role="button"
-            tabindex="0"
+  {#if $isAdmin}
+    <div
+      class="admin-banner"
+      onclick={() => goto(`${tenantPrefix}/admin`)}
+      onkeydown={(e) => e.key === 'Enter' && goto(`${tenantPrefix}/admin`)}
+      role="button"
+      tabindex="0"
+    >
+      <div class="banner-content">
+        <div class="banner-icon">
+          <Icon name="shield" size={24} />
+        </div>
+        <div>
+          <h3>{$t('dashboard.admin_mode.title')}</h3>
+          <p>{$t('dashboard.admin_mode.description')}</p>
+        </div>
+      </div>
+      <Icon name="arrow-right" size={20} />
+    </div>
+  {/if}
+
+  <!-- Stats Row (User Focused) -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="icon-wrapper primary">
+          <Icon name="profile" size={20} />
+        </div>
+      </div>
+      <div class="stat-body">
+        <span class="stat-value">{$user?.role}</span>
+        <span class="stat-label">{$t('dashboard.stats.account_role')}</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="icon-wrapper success">
+          <Icon name="calendar" size={20} />
+        </div>
+      </div>
+      <div class="stat-body">
+        <span class="stat-value"
+          >{formatDate($user?.created_at || Date.now(), {
+            timeZone: $appSettings.app_timezone,
+          })}</span
         >
-            <div class="banner-content">
-                <div class="banner-icon">
-                    <Icon name="shield" size={24} />
-                </div>
-                <div>
-                    <h3>{$t("dashboard.admin_mode.title")}</h3>
-                    <p>{$t("dashboard.admin_mode.description")}</p>
-                </div>
-            </div>
-            <Icon name="arrow-right" size={20} />
-        </div>
-    {/if}
-
-    <!-- Stats Row (User Focused) -->
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="icon-wrapper primary">
-                    <Icon name="profile" size={20} />
-                </div>
-            </div>
-            <div class="stat-body">
-                <span class="stat-value">{$user?.role}</span>
-                <span class="stat-label">{$t("dashboard.stats.account_role")}</span>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="icon-wrapper success">
-                    <Icon name="calendar" size={20} />
-                </div>
-            </div>
-            <div class="stat-body">
-                <span class="stat-value">{new Date($user?.created_at || Date.now()).toLocaleDateString()}</span>
-                <span class="stat-label">{$t("dashboard.stats.member_since")}</span>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="icon-wrapper info">
-                    <Icon name="check" size={20} />
-                </div>
-            </div>
-            <div class="stat-body">
-                <span class="stat-value">{$t("dashboard.stats.active")}</span>
-                <span class="stat-label">{$t("dashboard.stats.system_status")}</span>
-            </div>
-        </div>
+        <span class="stat-label">{$t('dashboard.stats.member_since')}</span>
+      </div>
     </div>
 
-    <div class="main-grid">
-        <section class="activity-section">
-            <div class="section-header">
-                <h2>{$t("dashboard.recent_activity.title")}</h2>
-                <button
-                    class="text-btn"
-                    onclick={() => goto(`${tenantPrefix}/notifications`)}
-                >
-                    {$t("dashboard.recent_activity.view_all")}
-                </button>
-            </div>
-
-            <div class="card activity-card">
-                {#if $notificationsLoading && recent.length === 0}
-                    <div class="loading-state">
-                        <div class="spinner"></div>
-                        <p class="muted">
-                            {$t("dashboard.recent_activity.loading") ||
-                                ($t("common.loading") || "Loading...")}
-                        </p>
-                    </div>
-                {:else if recent.length === 0}
-                    <div class="empty-state">
-                        <div class="empty-icon-circle">
-                            <Icon name="bell" size={32} />
-                        </div>
-                        <h3>{$t("dashboard.recent_activity.empty.title")}</h3>
-                        <p>{$t("dashboard.recent_activity.empty.description")}</p>
-                        <button
-                            class="btn btn-secondary mt-4"
-                            onclick={() => goto(`${tenantPrefix}/notifications`)}
-                        >
-                            {$t("dashboard.recent_activity.empty.learn_more")}
-                        </button>
-                    </div>
-                {:else}
-                    <ul class="activity-list">
-                        {#each recent as n (n.id)}
-                            <li class="activity-li">
-                                <button
-                                    type="button"
-                                    class="activity-item"
-                                    onclick={() => openNotification(n)}
-                                >
-                                    <div
-                                        class="activity-icon {n.notification_type}"
-                                    >
-                                        <Icon
-                                            name={iconForType(
-                                                n.notification_type,
-                                            )}
-                                            size={16}
-                                        />
-                                    </div>
-                                    <div class="activity-text">
-                                        <div class="activity-row">
-                                            <span class="activity-title"
-                                                >{n.title}</span
-                                            >
-                                            <span class="activity-time"
-                                                >{timeAgo(n.created_at)}</span
-                                            >
-                                        </div>
-                                        {#if n.message}
-                                            <div class="activity-msg">
-                                                {n.message}
-                                            </div>
-                                        {/if}
-                                    </div>
-                                </button>
-                            </li>
-                        {/each}
-                    </ul>
-                {/if}
-            </div>
-        </section>
-
-        <aside class="quick-actions">
-            <div class="section-header">
-                <h2>{$t("dashboard.quick_actions.title")}</h2>
-            </div>
-            <div class="actions-list">
-                <button
-                    class="action-item"
-                    onclick={() => goto(`${tenantPrefix}/profile`)}
-                >
-                    <Icon name="profile" size={18} />
-                    {$t("dashboard.quick_actions.update_profile")}
-                </button>
-                <button
-                    class="action-item"
-                    onclick={() => goto(`${tenantPrefix}/notifications`)}
-                >
-                    <Icon name="mail" size={18} />
-                    {$t("dashboard.quick_actions.check_messages")}
-                </button>
-                <button
-                    class="action-item"
-                    onclick={() => goto(`${tenantPrefix}/profile?tab=security`)}
-                >
-                    <Icon name="lock" size={18} />
-                    {$t("dashboard.quick_actions.security_settings")}
-                </button>
-                <button
-                    class="action-item"
-                    onclick={() =>
-                        goto(`${tenantPrefix}/profile?tab=notifications`)}
-                >
-                    <Icon name="help-circle" size={18} />
-                    {$t("dashboard.quick_actions.contact_support")}
-                </button>
-            </div>
-        </aside>
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="icon-wrapper info">
+          <Icon name="check" size={20} />
+        </div>
+      </div>
+      <div class="stat-body">
+        <span class="stat-value">{$t('dashboard.stats.active')}</span>
+        <span class="stat-label">{$t('dashboard.stats.system_status')}</span>
+      </div>
     </div>
+  </div>
+
+  <div class="main-grid">
+    <section class="activity-section">
+      <div class="section-header">
+        <h2>{$t('dashboard.recent_activity.title')}</h2>
+        <button class="text-btn" onclick={() => goto(`${tenantPrefix}/notifications`)}>
+          {$t('dashboard.recent_activity.view_all')}
+        </button>
+      </div>
+
+      <div class="card activity-card">
+        {#if $notificationsLoading && recent.length === 0}
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p class="muted">
+              {$t('dashboard.recent_activity.loading') || $t('common.loading') || 'Loading...'}
+            </p>
+          </div>
+        {:else if recent.length === 0}
+          <div class="empty-state">
+            <div class="empty-icon-circle">
+              <Icon name="bell" size={32} />
+            </div>
+            <h3>{$t('dashboard.recent_activity.empty.title')}</h3>
+            <p>{$t('dashboard.recent_activity.empty.description')}</p>
+            <button
+              class="btn btn-secondary mt-4"
+              onclick={() => goto(`${tenantPrefix}/notifications`)}
+            >
+              {$t('dashboard.recent_activity.empty.learn_more')}
+            </button>
+          </div>
+        {:else}
+          <ul class="activity-list">
+            {#each recent as n (n.id)}
+              <li class="activity-li">
+                <button type="button" class="activity-item" onclick={() => openNotification(n)}>
+                  <div class="activity-icon {n.notification_type}">
+                    <Icon name={iconForType(n.notification_type)} size={16} />
+                  </div>
+                  <div class="activity-text">
+                    <div class="activity-row">
+                      <span class="activity-title">{n.title}</span>
+                      <span class="activity-time">{timeAgo(n.created_at)}</span>
+                    </div>
+                    {#if n.message}
+                      <div class="activity-msg">
+                        {n.message}
+                      </div>
+                    {/if}
+                  </div>
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+    </section>
+
+    <aside class="quick-actions">
+      <div class="section-header">
+        <h2>{$t('dashboard.quick_actions.title')}</h2>
+      </div>
+      <div class="actions-list">
+        <button class="action-item" onclick={() => goto(`${tenantPrefix}/profile`)}>
+          <Icon name="profile" size={18} />
+          {$t('dashboard.quick_actions.update_profile')}
+        </button>
+        <button class="action-item" onclick={() => goto(`${tenantPrefix}/notifications`)}>
+          <Icon name="mail" size={18} />
+          {$t('dashboard.quick_actions.check_messages')}
+        </button>
+        <button class="action-item" onclick={() => goto(`${tenantPrefix}/profile?tab=security`)}>
+          <Icon name="lock" size={18} />
+          {$t('dashboard.quick_actions.security_settings')}
+        </button>
+        <button
+          class="action-item"
+          onclick={() => goto(`${tenantPrefix}/profile?tab=notifications`)}
+        >
+          <Icon name="help-circle" size={18} />
+          {$t('dashboard.quick_actions.contact_support')}
+        </button>
+      </div>
+    </aside>
+  </div>
 </div>
 
 <style>
+  .dashboard-content {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  @media (max-width: 640px) {
     .dashboard-content {
-        padding: 2rem;
-        max-width: 1200px;
-        margin: 0 auto;
-        display: flex;
-        flex-direction: column;
-        gap: 2rem;
+      padding: 1rem;
+      gap: 1.5rem;
     }
 
-    @media (max-width: 640px) {
-        .dashboard-content {
-            padding: 1rem;
-            gap: 1.5rem;
-        }
-
-        .welcome-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 1rem;
-        }
-
-        .header-actions {
-            width: 100%;
-        }
-
-        .header-actions .btn {
-            width: 100%;
-            justify-content: center;
-        }
-    }
-
-    /* Header */
     .welcome-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        margin-bottom: 0.5rem;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
     }
 
-    .welcome-text h1 {
-        font-size: 1.85rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin: 0 0 0.5rem 0;
+    .header-actions {
+      width: 100%;
     }
 
-    .welcome-text p {
-        color: var(--text-secondary);
-        font-size: 1rem;
-        margin: 0;
+    .header-actions .btn {
+      width: 100%;
+      justify-content: center;
     }
+  }
 
-    /* Admin Banner */
-    .admin-banner {
-        background: var(--color-primary);
-        color: white;
-        border-radius: var(--radius-lg);
-        padding: 1.25rem 1.5rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
-    }
+  /* Header */
+  .welcome-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 0.5rem;
+  }
 
-    .admin-banner:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
-    }
+  .welcome-text h1 {
+    font-size: 1.85rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 0.5rem 0;
+  }
 
-    .banner-content {
-        display: flex;
-        align-items: center;
-        gap: 1.25rem;
-    }
+  .welcome-text p {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    margin: 0;
+  }
 
-    .banner-icon {
-        background: rgba(255, 255, 255, 0.2);
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
+  /* Admin Banner */
+  .admin-banner {
+    background: var(--color-primary);
+    color: white;
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition:
+      transform 0.2s,
+      box-shadow 0.2s;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+  }
 
-    .banner-content h3 {
-        margin: 0 0 0.15rem 0;
-        font-size: 1.1rem;
-        font-weight: 600;
-    }
+  .admin-banner:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
+  }
 
-    .banner-content p {
-        margin: 0;
-        font-size: 0.9rem;
-        opacity: 0.9;
-    }
+  .banner-content {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
 
-    /* Stats Grid */
+  .banner-icon {
+    background: rgba(255, 255, 255, 0.2);
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .banner-content h3 {
+    margin: 0 0 0.15rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .banner-content p {
+    margin: 0;
+    font-size: 0.9rem;
+    opacity: 0.9;
+  }
+
+  /* Stats Grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+
+  @media (max-width: 640px) {
     .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 1.5rem;
+      grid-template-columns: 1fr;
+      gap: 1rem;
     }
+  }
 
-    @media (max-width: 640px) {
-        .stats-grid {
-            grid-template-columns: 1fr;
-            gap: 1rem;
-        }
-    }
+  .stat-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    transition: border-color 0.2s;
+  }
 
-    .stat-card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
-        padding: 1.5rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1.25rem;
-        transition: border-color 0.2s;
-    }
+  .stat-card:hover {
+    border-color: var(--color-primary);
+  }
 
-    .stat-card:hover {
-        border-color: var(--color-primary);
-    }
+  .stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
 
-    .stat-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
+  .icon-wrapper {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 
-    .icon-wrapper {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
+  .icon-wrapper.primary {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--color-primary);
+  }
+  .icon-wrapper.success {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+  }
+  .icon-wrapper.info {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+  }
 
-    .icon-wrapper.primary {
-        background: rgba(99, 102, 241, 0.1);
-        color: var(--color-primary);
-    }
-    .icon-wrapper.success {
-        background: rgba(34, 197, 94, 0.1);
-        color: #22c55e;
-    }
-    .icon-wrapper.info {
-        background: rgba(59, 130, 246, 0.1);
-        color: #3b82f6;
-    }
+  .stat-body {
+    display: flex;
+    flex-direction: column;
+  }
 
-    .stat-body {
-        display: flex;
-        flex-direction: column;
-    }
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-transform: capitalize;
+  }
 
-    .stat-value {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        text-transform: capitalize;
-    }
+  .stat-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
 
-    .stat-label {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        font-weight: 500;
-    }
+  /* Main Grid */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+  }
 
-    /* Main Grid */
+  @media (max-width: 900px) {
     .main-grid {
-        display: grid;
-        grid-template-columns: 2fr 1fr;
-        gap: 2rem;
+      grid-template-columns: 1fr;
     }
+  }
 
-    @media (max-width: 900px) {
-        .main-grid {
-            grid-template-columns: 1fr;
-        }
-    }
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
 
-    .section-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
-    }
+  .section-header h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+  }
 
-    .section-header h2 {
-        font-size: 1.15rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin: 0;
-    }
+  .text-btn {
+    background: transparent;
+    border: none;
+    color: var(--color-primary);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
 
-    .text-btn {
-        background: transparent;
-        border: none;
-        color: var(--color-primary);
-        font-size: 0.875rem;
-        font-weight: 600;
-        cursor: pointer;
-    }
+  /* Activity Card */
+  .activity-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    min-height: 300px;
+    overflow: hidden;
+  }
 
-    /* Activity Card */
-    .activity-card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
-        min-height: 300px;
-        overflow: hidden;
-    }
+  .empty-state {
+    text-align: center;
+    padding: 2rem;
+    max-width: 320px;
+    margin: 0 auto;
+  }
 
-    .empty-state {
-        text-align: center;
-        padding: 2rem;
-        max-width: 320px;
-        margin: 0 auto;
-    }
+  .empty-icon-circle {
+    width: 64px;
+    height: 64px;
+    background: var(--bg-tertiary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: var(--text-secondary);
+    opacity: 0.5;
+  }
 
-    .empty-icon-circle {
-        width: 64px;
-        height: 64px;
-        background: var(--bg-tertiary);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 1.5rem;
-        color: var(--text-secondary);
-        opacity: 0.5;
-    }
+  .empty-state h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
 
-    .empty-state h3 {
-        font-size: 1.1rem;
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-    }
+  .empty-state p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
 
-    .empty-state p {
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-        line-height: 1.5;
-    }
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    gap: 0.75rem;
+    padding: 2rem;
+  }
 
-    .loading-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 300px;
-        gap: 0.75rem;
-        padding: 2rem;
-    }
+  .muted {
+    color: var(--text-secondary);
+    margin: 0;
+  }
 
-    .muted {
-        color: var(--text-secondary);
-        margin: 0;
-    }
+  .activity-list {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
 
-    .activity-list {
-        display: flex;
-        flex-direction: column;
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
+  .activity-li {
+    border-bottom: 1px solid var(--border-color);
+  }
 
-    .activity-li {
-        border-bottom: 1px solid var(--border-color);
-    }
+  .activity-li:last-child {
+    border-bottom: 0;
+  }
 
-    .activity-li:last-child {
-        border-bottom: 0;
-    }
+  .activity-item {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    padding: 1rem;
+    display: flex;
+    gap: 0.9rem;
+    align-items: flex-start;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s;
+    color: inherit;
+  }
 
-    .activity-item {
-        width: 100%;
-        background: transparent;
-        border: 0;
-        padding: 1rem;
-        display: flex;
-        gap: 0.9rem;
-        align-items: flex-start;
-        text-align: left;
-        cursor: pointer;
-        transition: background 0.15s;
-        color: inherit;
-    }
+  .activity-item:hover {
+    background: var(--bg-hover);
+  }
 
-    .activity-item:hover {
-        background: var(--bg-hover);
-    }
+  .activity-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
 
-    .activity-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(255, 255, 255, 0.04);
-        color: var(--text-secondary);
-        flex-shrink: 0;
-        margin-top: 2px;
-    }
+  .activity-icon.success {
+    color: var(--color-success);
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.25);
+  }
 
-    .activity-icon.success {
-        color: var(--color-success);
-        background: rgba(16, 185, 129, 0.12);
-        border-color: rgba(16, 185, 129, 0.25);
-    }
+  .activity-icon.warning {
+    color: var(--color-warning);
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.25);
+  }
 
-    .activity-icon.warning {
-        color: var(--color-warning);
-        background: rgba(245, 158, 11, 0.12);
-        border-color: rgba(245, 158, 11, 0.25);
-    }
+  .activity-icon.error {
+    color: var(--color-danger);
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.25);
+  }
 
-    .activity-icon.error {
-        color: var(--color-danger);
-        background: rgba(239, 68, 68, 0.12);
-        border-color: rgba(239, 68, 68, 0.25);
-    }
+  .activity-text {
+    flex: 1;
+    min-width: 0;
+  }
 
-    .activity-text {
-        flex: 1;
-        min-width: 0;
-    }
+  .activity-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
 
-    .activity-row {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        gap: 0.75rem;
-    }
+  .activity-title {
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
-    .activity-title {
-        font-weight: 700;
-        color: var(--text-primary);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
+  .activity-time {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+  }
 
-    .activity-time {
-        font-size: 0.8rem;
-        color: var(--text-tertiary);
-        flex-shrink: 0;
-    }
+  .activity-msg {
+    margin-top: 0.25rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
 
-    .activity-msg {
-        margin-top: 0.25rem;
-        font-size: 0.9rem;
-        color: var(--text-secondary);
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-    }
+  /* Quick Actions */
+  .actions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
 
-    /* Quick Actions */
-    .actions-list {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-    }
+  .action-item {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+  }
 
-    .action-item {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-md);
-        padding: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        font-size: 0.9rem;
-        font-weight: 500;
-        color: var(--text-primary);
-        cursor: pointer;
-        transition: all 0.2s;
-        text-align: left;
-    }
+  .action-item:hover {
+    border-color: var(--color-primary);
+    background: var(--bg-hover);
+    transform: translateX(4px);
+  }
 
-    .action-item:hover {
-        border-color: var(--color-primary);
-        background: var(--bg-hover);
-        transform: translateX(4px);
-    }
+  /* Buttons */
+  .btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+  }
 
-    /* Buttons */
-    .btn {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.6rem 1.2rem;
-        border-radius: 8px;
-        font-size: 0.9rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
-        border: none;
-    }
+  .btn-primary {
+    background: var(--color-primary);
+    color: white;
+  }
 
-    .btn-primary {
-        background: var(--color-primary);
-        color: white;
-    }
+  .btn-primary:hover {
+    filter: brightness(1.1);
+  }
 
-    .btn-primary:hover {
-        filter: brightness(1.1);
-    }
+  .btn-secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
 
-    .btn-secondary {
-        background: var(--bg-tertiary);
-        color: var(--text-primary);
-    }
+  .btn-secondary:hover {
+    background: var(--bg-hover);
+  }
 
-    .btn-secondary:hover {
-        background: var(--bg-hover);
-    }
+  .mt-4 {
+    margin-top: 1rem;
+  }
 
-    .mt-4 {
-        margin-top: 1rem;
-    }
+  .fade-in {
+    animation: fadeIn 0.4s ease-out;
+  }
 
-    .fade-in {
-        animation: fadeIn 0.4s ease-out;
-    }
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
 
-    .spinner {
-        width: 18px;
-        height: 18px;
-        border: 2px solid var(--border-color);
-        border-top-color: var(--color-primary);
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
     }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
     }
-
-    @keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
-    }
+  }
 </style>
-

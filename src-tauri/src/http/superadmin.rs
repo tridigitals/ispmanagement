@@ -1,3 +1,5 @@
+use super::AppState;
+use crate::models::Tenant;
 use axum::{
     extract::{Path, State},
     http::HeaderMap,
@@ -5,8 +7,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use crate::models::Tenant;
-use super::AppState;
 
 #[derive(Serialize)]
 pub struct TenantListResponse {
@@ -27,18 +27,22 @@ pub struct CreateTenantRequest {
 // ...
 
 // Helper to check super admin permission
-async fn check_super_admin(state: &AppState, headers: &HeaderMap) -> Result<(), crate::error::AppError> {
-    let token = headers.get("Authorization")
+async fn check_super_admin(
+    state: &AppState,
+    headers: &HeaderMap,
+) -> Result<(), crate::error::AppError> {
+    let token = headers
+        .get("Authorization")
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.strip_prefix("Bearer "))
         .ok_or(crate::error::AppError::Unauthorized)?;
 
     let claims = state.auth_service.validate_token(token).await?;
-    
+
     if !claims.is_super_admin {
         return Err(crate::error::AppError::Unauthorized);
     }
-    
+
     Ok(())
 }
 
@@ -85,7 +89,7 @@ pub async fn create_tenant(
     // 1. Create Tenant object
     let mut tenant = Tenant::new(payload.name, payload.slug);
     tenant.custom_domain = payload.custom_domain;
-    
+
     // Check if slug exists
     let exists: bool = sqlx::query_scalar("SELECT count(*) > 0 FROM tenants WHERE slug = $1")
         .bind(&tenant.slug)
@@ -93,13 +97,15 @@ pub async fn create_tenant(
         .await?;
 
     if exists {
-        return Err(crate::error::AppError::Validation("Slug already exists".to_string()));
+        return Err(crate::error::AppError::Validation(
+            "Slug already exists".to_string(),
+        ));
     }
 
     // 2. Hash owner password
     let password_hash = crate::services::AuthService::hash_password(&payload.owner_password)?;
     let user = crate::models::User::new(payload.owner_email, password_hash, "Admin".to_string());
-    
+
     // Check if email exists
     let user_exists: bool = sqlx::query_scalar("SELECT count(*) > 0 FROM users WHERE email = $1")
         .bind(&user.email)
@@ -107,7 +113,9 @@ pub async fn create_tenant(
         .await?;
 
     if user_exists {
-        return Err(crate::error::AppError::Validation("User email already exists".to_string()));
+        return Err(crate::error::AppError::Validation(
+            "User email already exists".to_string(),
+        ));
     }
 
     // 3. Start Transaction
@@ -186,7 +194,9 @@ pub async fn update_tenant(
         .await?;
 
     if !existing {
-        return Err(crate::error::AppError::NotFound("Tenant not found".to_string()));
+        return Err(crate::error::AppError::NotFound(
+            "Tenant not found".to_string(),
+        ));
     }
 
     // Check if slug exists (if changed)
@@ -197,7 +207,9 @@ pub async fn update_tenant(
 
     if let Some(slug_owner_id) = slug_owner {
         if slug_owner_id != id {
-            return Err(crate::error::AppError::Validation("Slug already taken".to_string()));
+            return Err(crate::error::AppError::Validation(
+                "Slug already taken".to_string(),
+            ));
         }
     }
 

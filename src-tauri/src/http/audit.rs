@@ -1,10 +1,10 @@
+use crate::http::AppState;
+use crate::models::PaginatedResponse;
 use axum::{
-    extract::{State, Query},
+    extract::{Query, State},
     http::HeaderMap,
     Json,
 };
-use crate::http::AppState;
-use crate::models::PaginatedResponse;
 
 #[derive(serde::Deserialize)]
 pub struct AuditLogQuery {
@@ -17,7 +17,7 @@ pub struct AuditLogQuery {
     date_from: Option<String>, // Query params are strings, we need to parse dates? Axum handles parsing if type is valid, but ISO strings might need handling. better to verify.
     // If we use AuditLogFilter directly, we need to make sure serde parses it correctly from Query.
     // Axum Query uses serde_urlencoded, which handles basic types.
-    // If AuditLogFilter uses DateTime<Utc>, we need feature = "serde" in chrono. 
+    // If AuditLogFilter uses DateTime<Utc>, we need feature = "serde" in chrono.
     // It should work if JSON format is standard.
     // However, safest for query is String and parse manually or use chrono defaults.
     date_to: Option<String>,
@@ -27,8 +27,16 @@ pub struct AuditLogQuery {
 // Map Query to Filter
 impl Into<crate::models::AuditLogFilter> for AuditLogQuery {
     fn into(self) -> crate::models::AuditLogFilter {
-        let date_from = self.date_from.and_then(|d| chrono::DateTime::parse_from_rfc3339(&d).ok().map(|dt| dt.with_timezone(&chrono::Utc)));
-        let date_to = self.date_to.and_then(|d| chrono::DateTime::parse_from_rfc3339(&d).ok().map(|dt| dt.with_timezone(&chrono::Utc)));
+        let date_from = self.date_from.and_then(|d| {
+            chrono::DateTime::parse_from_rfc3339(&d)
+                .ok()
+                .map(|dt| dt.with_timezone(&chrono::Utc))
+        });
+        let date_to = self.date_to.and_then(|d| {
+            chrono::DateTime::parse_from_rfc3339(&d)
+                .ok()
+                .map(|dt| dt.with_timezone(&chrono::Utc))
+        });
 
         crate::models::AuditLogFilter {
             page: self.page,
@@ -44,26 +52,39 @@ impl Into<crate::models::AuditLogFilter> for AuditLogQuery {
 }
 
 fn extract_token(headers: &HeaderMap) -> Result<String, (axum::http::StatusCode, String)> {
-    headers.get("Authorization")
+    headers
+        .get("Authorization")
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.strip_prefix("Bearer "))
         .map(|s| s.to_string())
-        .ok_or((axum::http::StatusCode::UNAUTHORIZED, "Missing or invalid Authorization header".to_string()))
+        .ok_or((
+            axum::http::StatusCode::UNAUTHORIZED,
+            "Missing or invalid Authorization header".to_string(),
+        ))
 }
 
 pub async fn list_audit_logs(
     State(state): State<AppState>,
     headers: HeaderMap,
     Query(query): Query<AuditLogQuery>,
-) -> Result<Json<PaginatedResponse<crate::models::AuditLogResponse>>, (axum::http::StatusCode, String)> {
+) -> Result<
+    Json<PaginatedResponse<crate::models::AuditLogResponse>>,
+    (axum::http::StatusCode, String),
+> {
     let auth_service = &state.auth_service;
     let audit_service = &state.audit_service;
 
     let token = extract_token(&headers)?;
-    let claims = auth_service.validate_token(&token).await.map_err(|e| (axum::http::StatusCode::UNAUTHORIZED, e.to_string()))?;
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| (axum::http::StatusCode::UNAUTHORIZED, e.to_string()))?;
 
     if !claims.is_super_admin {
-        return Err((axum::http::StatusCode::FORBIDDEN, "Unauthorized".to_string()));
+        return Err((
+            axum::http::StatusCode::FORBIDDEN,
+            "Unauthorized".to_string(),
+        ));
     }
 
     let filter: crate::models::AuditLogFilter = query.into();

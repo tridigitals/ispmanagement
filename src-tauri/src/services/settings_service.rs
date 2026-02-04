@@ -15,7 +15,10 @@ pub struct SettingsService {
 
 impl SettingsService {
     pub fn new(pool: DbPool, audit_service: AuditService) -> Self {
-        Self { pool, audit_service }
+        Self {
+            pool,
+            audit_service,
+        }
     }
 
     /// Get all settings for a tenant (or global if tenant_id is None)
@@ -35,7 +38,11 @@ impl SettingsService {
     }
 
     /// Get setting by key and tenant
-    pub async fn get_by_key(&self, tenant_id: Option<&str>, key: &str) -> AppResult<Option<Setting>> {
+    pub async fn get_by_key(
+        &self,
+        tenant_id: Option<&str>,
+        key: &str,
+    ) -> AppResult<Option<Setting>> {
         let setting = if let Some(tid) = tenant_id {
             sqlx::query_as("SELECT * FROM settings WHERE tenant_id = $1 AND key = $2")
                 .bind(tid)
@@ -59,7 +66,13 @@ impl SettingsService {
     }
 
     /// Upsert (insert or update) setting for a tenant
-    pub async fn upsert(&self, tenant_id: Option<String>, dto: UpsertSettingDto, actor_id: Option<&str>, ip_address: Option<&str>) -> AppResult<Setting> {
+    pub async fn upsert(
+        &self,
+        tenant_id: Option<String>,
+        dto: UpsertSettingDto,
+        actor_id: Option<&str>,
+        ip_address: Option<&str>,
+    ) -> AppResult<Setting> {
         let now = Utc::now();
 
         // Check if verify setting exists
@@ -86,7 +99,11 @@ impl SettingsService {
                 #[cfg(not(feature = "postgres"))]
                 let query = query.bind(setting.updated_at.to_rfc3339());
 
-                query.bind(tid).bind(&setting.key).execute(&self.pool).await?;
+                query
+                    .bind(tid)
+                    .bind(&setting.key)
+                    .execute(&self.pool)
+                    .await?;
             } else {
                 let query = sqlx::query(
                     "UPDATE settings SET value = $1, description = $2, updated_at = $3 WHERE tenant_id IS NULL AND key = $4"
@@ -103,20 +120,30 @@ impl SettingsService {
             }
 
             // Audit
-            self.audit_service.log(
-                actor_id,
-                tenant_id.as_deref(),
-                "SETTING_UPDATE",
-                "settings",
-                Some(&setting.key),
-                Some(&format!("Updated setting {} = {}", setting.key, setting.value)),
-                ip_address
-            ).await;
+            self.audit_service
+                .log(
+                    actor_id,
+                    tenant_id.as_deref(),
+                    "SETTING_UPDATE",
+                    "settings",
+                    Some(&setting.key),
+                    Some(&format!(
+                        "Updated setting {} = {}",
+                        setting.key, setting.value
+                    )),
+                    ip_address,
+                )
+                .await;
 
             Ok(setting)
         } else {
             // Insert new
-            let setting = Setting::new(tenant_id.clone(), dto.key.clone(), dto.value.clone(), dto.description.clone());
+            let setting = Setting::new(
+                tenant_id.clone(),
+                dto.key.clone(),
+                dto.value.clone(),
+                dto.description.clone(),
+            );
 
             let query = sqlx::query(
                 r#"
@@ -131,9 +158,7 @@ impl SettingsService {
             .bind(&setting.description);
 
             #[cfg(feature = "postgres")]
-            let query = query
-                .bind(setting.created_at)
-                .bind(setting.updated_at);
+            let query = query.bind(setting.created_at).bind(setting.updated_at);
 
             #[cfg(not(feature = "postgres"))]
             let query = query
@@ -143,22 +168,33 @@ impl SettingsService {
             query.execute(&self.pool).await?;
 
             // Audit
-            self.audit_service.log(
-                actor_id,
-                tenant_id.as_deref(),
-                "SETTING_CREATE",
-                "settings",
-                Some(&setting.key),
-                Some(&format!("Created setting {} = {}", setting.key, setting.value)),
-                ip_address
-            ).await;
+            self.audit_service
+                .log(
+                    actor_id,
+                    tenant_id.as_deref(),
+                    "SETTING_CREATE",
+                    "settings",
+                    Some(&setting.key),
+                    Some(&format!(
+                        "Created setting {} = {}",
+                        setting.key, setting.value
+                    )),
+                    ip_address,
+                )
+                .await;
 
             Ok(setting)
         }
     }
 
     /// Delete setting by key and tenant
-    pub async fn delete(&self, tenant_id: Option<&str>, key: &str, actor_id: Option<&str>, ip_address: Option<&str>) -> AppResult<()> {
+    pub async fn delete(
+        &self,
+        tenant_id: Option<&str>,
+        key: &str,
+        actor_id: Option<&str>,
+        ip_address: Option<&str>,
+    ) -> AppResult<()> {
         let result = if let Some(tid) = tenant_id {
             sqlx::query("DELETE FROM settings WHERE tenant_id = $1 AND key = $2")
                 .bind(tid)
@@ -177,15 +213,17 @@ impl SettingsService {
         }
 
         // Audit
-        self.audit_service.log(
-            actor_id,
-            tenant_id,
-            "SETTING_DELETE",
-            "settings",
-            Some(key),
-            Some(&format!("Deleted setting {}", key)),
-            ip_address
-        ).await;
+        self.audit_service
+            .log(
+                actor_id,
+                tenant_id,
+                "SETTING_DELETE",
+                "settings",
+                Some(key),
+                Some(&format!("Deleted setting {}", key)),
+                ip_address,
+            )
+            .await;
 
         Ok(())
     }

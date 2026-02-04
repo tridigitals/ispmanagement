@@ -1,0 +1,518 @@
+    Checking saas-tauri v0.1.0 (C:\Users\TRI\Documents\RustTauri\src-tauri)
+error: empty line after outer attribute
+  --> src\commands\users.rs:9:1
+   |
+ 9 | / /// Paginated response wrapper
+10 | |
+   | |_^
+...
+13 |   pub async fn list_users(
+   |   ----------------------- the attribute applies to this function
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#empty_line_after_outer_attr
+   = note: `-D clippy::empty-line-after-outer-attr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::empty_line_after_outer_attr)]`
+   = help: if the empty line is unintentional, remove it
+
+error: unused import: `std::thread::sleep`
+   --> src\services\rate_limiter.rs:152:9
+    |
+152 |     use std::thread::sleep;
+    |         ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D unused-imports` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: empty line after doc comment
+   --> src\services\storage_service.rs:917:5
+    |
+917 | /     /// --- Chunked Upload Methods ---
+918 | |
+    | |_^
+...
+921 |       pub async fn init_chunk_session(&self) -> AppResult<String> {
+    |       ------------------------------- the comment documents this function
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#empty_line_after_doc_comments
+    = note: `-D clippy::empty-line-after-doc-comments` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::empty_line_after_doc_comments)]`
+    = help: if the empty line is unintentional, remove it
+help: if the documentation should include the empty line include it in the comment
+    |
+918 |     ///
+    |
+
+error: function `get_string_setting` is never used
+    --> src\services\backup.rs:1721:10
+     |
+1721 | async fn get_string_setting(
+     |          ^^^^^^^^^^^^^^^^^^
+     |
+     = note: `-D dead-code` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(dead_code)]`
+
+error: this function has too many arguments (11/7)
+  --> src\commands\audit.rs:8:1
+   |
+ 8 | / pub async fn list_audit_logs(
+ 9 | |     token: String,
+10 | |     page: Option<u32>,
+11 | |     per_page: Option<u32>,
+...  |
+19 | |     auth_service: State<'_, AuthService>,
+20 | | ) -> Result<PaginatedResponse<crate::models::AuditLogResponse>, String> {
+   | |_______________________________________________________________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#too_many_arguments
+   = note: `-D clippy::too-many-arguments` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::too_many_arguments)]`
+
+error: this function has too many arguments (11/7)
+  --> src\commands\plans.rs:87:1
+   |
+87 | / pub async fn create_plan(
+88 | |     token: String,
+89 | |     name: String,
+90 | |     slug: String,
+...  |
+98 | |     plan_service: State<'_, PlanService>,
+99 | | ) -> Result<Plan, String> {
+   | |_________________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#too_many_arguments
+
+error: this function has too many arguments (12/7)
+   --> src\commands\plans.rs:128:1
+    |
+128 | / pub async fn update_plan(
+129 | |     token: String,
+130 | |     plan_id: String,
+131 | |     name: Option<String>,
+...   |
+140 | |     plan_service: State<'_, PlanService>,
+141 | | ) -> Result<Plan, String> {
+    | |_________________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#too_many_arguments
+
+error: this function has too many arguments (8/7)
+  --> src\commands\roles.rs:67:1
+   |
+67 | / pub async fn create_new_role(
+68 | |     token: String,
+69 | |     name: String,
+70 | |     description: Option<String>,
+...  |
+75 | |     ws_hub: State<'_, Arc<WsHub>>,
+76 | | ) -> Result<RoleWithPermissions, String> {
+   | |________________________________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#too_many_arguments
+
+error: this function has too many arguments (9/7)
+   --> src\commands\roles.rs:115:1
+    |
+115 | / pub async fn update_existing_role(
+116 | |     token: String,
+117 | |     role_id: String,
+118 | |     name: Option<String>,
+...   |
+124 | |     ws_hub: State<'_, Arc<WsHub>>,
+125 | | ) -> Result<RoleWithPermissions, String> {
+    | |________________________________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#too_many_arguments
+
+error: this function has too many arguments (10/7)
+  --> src\commands\superadmin.rs:77:1
+   |
+77 | / pub async fn create_tenant(
+78 | |     token: String,
+79 | |     name: String,
+80 | |     slug: String,
+...  |
+87 | |     plan_service: State<'_, PlanService>,
+88 | | ) -> Result<Tenant, String> {
+   | |___________________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#too_many_arguments
+
+error: this function has too many arguments (8/7)
+   --> src\commands\superadmin.rs:273:1
+    |
+273 | / pub async fn update_tenant(
+274 | |     token: String,
+275 | |     id: String,
+276 | |     name: String,
+...   |
+281 | |     audit_service: State<'_, AuditService>,
+282 | | ) -> Result<Tenant, String> {
+    | |___________________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#too_many_arguments
+
+error: this function has too many arguments (8/7)
+   --> src\commands\users.rs:106:1
+    |
+106 | / pub async fn update_user(
+107 | |     token: String,
+108 | |     id: String,
+109 | |     email: Option<String>,
+...   |
+114 | |     auth_service: State<'_, AuthService>,
+115 | | ) -> Result<UserResponse, String> {
+    | |_________________________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#too_many_arguments
+
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> src\http\audit.rs:28:1
+   |
+28 | impl Into<crate::models::AuditLogFilter> for AuditLogQuery {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#from_over_into
+   = note: `-D clippy::from-over-into` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::from_over_into)]`
+help: replace the `Into` implementation with `From<http::audit::AuditLogQuery>`
+   |
+28 ~ impl From<AuditLogQuery> for crate::models::AuditLogFilter {
+29 ~     fn from(val: AuditLogQuery) -> Self {
+30 ~         let date_from = val.date_from.and_then(|d| {
+31 |             chrono::DateTime::parse_from_rfc3339(&d)
+...
+34 |         });
+35 ~         let date_to = val.date_to.and_then(|d| {
+36 |             chrono::DateTime::parse_from_rfc3339(&d)
+...
+41 |         crate::models::AuditLogFilter {
+42 ~             page: val.page,
+43 ~             per_page: val.per_page,
+44 ~             user_id: val.user_id,
+45 ~             tenant_id: val.tenant_id,
+46 ~             action: val.action,
+47 |             date_from,
+48 |             date_to,
+49 ~             search: val.search,
+   |
+
+error: unneeded `return` statement
+  --> src\http\backup.rs:83:5
+   |
+83 |     return Ok(Json(filtered));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#needless_return
+   = note: `-D clippy::needless-return` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_return)]`
+help: remove `return`
+   |
+83 -     return Ok(Json(filtered));
+83 +     Ok(Json(filtered))
+   |
+
+error: redundant pattern matching, consider using `is_err()`
+   --> src\http\storage.rs:162:28
+    |
+162 |                     if let Err(_) = file.seek(std::io::SeekFrom::Start(start)).await {
+    |                     -------^^^^^^--------------------------------------------------- help: try: `if (file.seek(std::io::SeekFrom::Start(start)).await).is_err()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#redundant_pattern_matching
+    = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
+
+error: redundant closure
+  --> src\http\team.rs:73:18
+   |
+73 |         .map_err(|e| crate::error::AppError::Internal(e))?;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the tuple variant itself: `crate::error::AppError::Internal`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#redundant_closure
+   = note: `-D clippy::redundant-closure` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_closure)]`
+
+error: redundant closure
+  --> src\http\team.rs:78:18
+   |
+78 |         .map_err(|e| crate::error::AppError::Internal(e))?;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the tuple variant itself: `crate::error::AppError::Internal`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#redundant_closure
+
+error: redundant closure
+  --> src\http\team.rs:98:18
+   |
+98 |         .map_err(|e| crate::error::AppError::Internal(e))?;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the tuple variant itself: `crate::error::AppError::Internal`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#redundant_closure
+
+error: redundant closure
+   --> src\http\team.rs:144:18
+    |
+144 |         .map_err(|e| crate::error::AppError::Internal(e))?;
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the tuple variant itself: `crate::error::AppError::Internal`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#redundant_closure
+
+error: redundant closure
+   --> src\http\team.rs:176:18
+    |
+176 |         .map_err(|e| crate::error::AppError::Internal(e))?;
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the tuple variant itself: `crate::error::AppError::Internal`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#redundant_closure
+
+error: this function has too many arguments (18/7)
+  --> src\http\mod.rs:67:1
+   |
+67 | / pub async fn start_server(
+68 | |     auth_service: AuthService,
+69 | |     user_service: UserService,
+70 | |     settings_service: SettingsService,
+...  |
+85 | |     metrics_service: Arc<crate::services::metrics_service::MetricsService>,
+86 | | ) {
+   | |_^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#too_many_arguments
+
+error: use of `or_insert_with` to construct default value
+  --> src\services\rate_limiter.rs:61:58
+   |
+61 |         let timestamps = requests.entry(key.to_string()).or_insert_with(Vec::new);
+   |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `or_default()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#unwrap_or_default
+   = note: `-D clippy::unwrap-or-default` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unwrap_or_default)]`
+
+error: this function has too many arguments (8/7)
+   --> src\services\team_service.rs:142:5
+    |
+142 | /     pub async fn add_member(
+143 | |         &self,
+144 | |         tenant_id: &str,
+145 | |         email: &str,
+...   |
+150 | |         ip_address: Option<&str>,
+151 | |     ) -> Result<TeamMemberWithUser, String> {
+    | |___________________________________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#too_many_arguments
+
+error: this function has too many arguments (8/7)
+  --> src\services\audit_service.rs:37:5
+   |
+37 | /     pub async fn log(
+38 | |         &self,
+39 | |         user_id: Option<&str>,
+40 | |         tenant_id: Option<&str>,
+...  |
+45 | |         ip_address: Option<&str>,
+46 | |     ) {
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#too_many_arguments
+
+error: unneeded `return` statement
+   --> src\services\audit_service.rs:286:13
+    |
+286 |             return Ok((logs, count));
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#needless_return
+help: remove `return`
+    |
+286 -             return Ok((logs, count));
+286 +             Ok((logs, count))
+    |
+
+error: redundant closure
+  --> src\services\backup.rs:78:30
+   |
+78 |                         .map(|t| chrono::DateTime::from(t))
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the associated function itself: `chrono::DateTime::from`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#redundant_closure
+
+error: redundant closure
+   --> src\services\backup.rs:126:34
+    |
+126 | ...                   .map(|t| chrono::DateTime::from(t))
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the associated function itself: `chrono::DateTime::from`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#redundant_closure
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+   --> src\services\backup.rs:784:42
+    |
+784 |                     serde_json::from_str(&contents).map_err(|e| {
+    |                                          ^^^^^^^^^ help: change this to: `contents`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#needless_borrow
+    = note: `-D clippy::needless-borrow` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::needless_borrow)]`
+
+error: this `if` statement can be collapsed
+    --> src\services\backup.rs:1095:33
+     |
+1095 | / ...                   if !bound {
+1096 | | ...                       if is_time_col(col_name) {
+1097 | | ...                           if let Some(dt) = parse_datetime_utc(&s) {
+1098 | | ...                               q = q.bind(dt);
+...    |
+1102 | | ...                   }
+     | |_______________________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#collapsible_if
+     = note: `-D clippy::collapsible-if` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+     |
+1095 ~                                 if !bound
+1096 ~                                     && is_time_col(col_name) {
+1097 |                                         if let Some(dt) = parse_datetime_utc(&s) {
+ ...
+1100 |                                         }
+1101 ~                                     }
+     |
+
+error: this function has too many arguments (8/7)
+  --> src\services\notification_service.rs:37:5
+   |
+37 | /     pub async fn create_notification(
+38 | |         &self,
+39 | |         user_id: String,
+40 | |         tenant_id: Option<String>,
+...  |
+45 | |         action_url: Option<String>,
+46 | |     ) -> AppResult<Notification> {
+   | |________________________________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#too_many_arguments
+
+error: useless use of `format!`
+   --> src\services\payment_service.rs:703:30
+    |
+703 |                         Some(format!("/admin/subscription")), // action_url
+    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `"/admin/subscription".to_string()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#useless_format
+    = note: `-D clippy::useless-format` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::useless_format)]`
+
+error: useless use of `format!`
+   --> src\services\payment_service.rs:738:30
+    |
+738 |                         Some(format!("/superadmin/invoices")),
+    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `"/superadmin/invoices".to_string()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#useless_format
+
+error: useless use of `format!`
+   --> src\services\payment_service.rs:891:26
+    |
+891 |                     Some(format!("/superadmin/invoices")),
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `"/superadmin/invoices".to_string()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#useless_format
+
+error: called `unwrap` on `tenant_id` after checking its variant with `is_some`
+   --> src\services\payment_service.rs:928:23
+    |
+925 |         let q = if tenant_id.is_some() {
+    |                 ---------------------- help: try: `if let Some(<item>) = tenant_id`
+...
+928 |                 .bind(tenant_id.unwrap())
+    |                       ^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#unnecessary_unwrap
+    = note: `-D clippy::unnecessary-unwrap` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_unwrap)]`
+
+error: match expression looks like `matches!` macro
+   --> src\services\storage_service.rs:125:33
+    |
+125 |           let use_tenant_config = match tenant_driver.as_deref() {
+    |  _________________________________^
+126 | |             Some("s3") | Some("r2") => true,
+127 | |             _ => false,
+128 | |         };
+    | |_________^ help: try: `matches!(tenant_driver.as_deref(), Some("s3") | Some("r2"))`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#match_like_matches_macro
+    = note: `-D clippy::match-like-matches-macro` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::match_like_matches_macro)]`
+
+error: called `unwrap` on `search` after checking its variant with `is_some`
+   --> src\services\storage_service.rs:617:47
+    |
+616 |             let data_rows: Vec<sqlx::postgres::PgRow> = if search.is_some() {
+    |                                                         ------------------- help: try: `if let Some(<item>) = &search`
+617 |                 let pattern = format!("%{}%", search.as_ref().unwrap());
+    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#unnecessary_unwrap
+
+error: doc list item without indentation
+   --> src\services\storage_service.rs:920:9
+    |
+920 |     /// Returns: upload_id
+    |         ^
+    |
+    = help: if this is supposed to be its own paragraph, add a blank line
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#doc_lazy_continuation
+    = note: `-D clippy::doc-lazy-continuation` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::doc_lazy_continuation)]`
+help: indent this line
+    |
+920 |     ///    Returns: upload_id
+    |         +++
+
+error: useless use of `vec!`
+   --> src\services\backup.rs:794:56
+    |
+794 |                       let tenant_tables_with_tenant_id = vec![
+    |  ________________________________________________________^
+795 | |                         "settings",
+796 | |                         "invoices",
+797 | |                         "file_records",
+...   |
+801 | |                         "notifications",
+802 | |                     ];
+    | |_____________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#useless_vec
+    = note: `-D clippy::useless-vec` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::useless_vec)]`
+help: you can use an array directly
+    |
+794 ~                     let tenant_tables_with_tenant_id = ["settings",
+795 +                         "invoices",
+796 +                         "file_records",
+797 +                         "audit_logs",
+798 +                         "roles",
+799 +                         "tenant_members",
+800 ~                         "notifications"];
+    |
+
+error: useless use of `vec!`
+   --> src\services\backup.rs:804:59
+    |
+804 |                     let tenant_tables_without_tenant_id = vec!["role_permissions"];
+    |                                                           ^^^^^^^^^^^^^^^^^^^^^^^^ help: you can use an array directly: `["role_permissions"]`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#useless_vec
+
+error: useless use of `vec!`
+   --> src\services\backup.rs:807:25
+    |
+807 |                         vec!["notification_preferences", "push_subscriptions"];
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can use an array directly: `["notification_preferences", "push_subscriptions"]`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#useless_vec
+
+error: could not compile `saas-tauri` (lib) due to 39 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `saas-tauri` (lib test) due to 40 previous errors

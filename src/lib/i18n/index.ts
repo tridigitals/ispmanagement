@@ -9,6 +9,6 @@ const browserLocale = getLocaleFromNavigator();
 const normalizedLocale = browserLocale ? browserLocale.replace('_', '-') : 'en';
 
 init({
-    fallbackLocale: 'en',
-    initialLocale: normalizedLocale || 'en',
+  fallbackLocale: 'en',
+  initialLocale: normalizedLocale || 'en',
 });

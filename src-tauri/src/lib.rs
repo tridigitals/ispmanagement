@@ -1,21 +1,24 @@
 //! SaaS Boilerplate - Main Library Entry Point (Rebuild Triggered)
-//! 
+//!
 //! This is the core library for the Tauri application.
 //! It wires together all modules: database, services, and commands.
 
 pub mod commands;
 pub mod db;
 pub mod error;
+pub mod http;
 pub mod models;
 pub mod services;
-pub mod http;
 
-use commands::*;
 use commands::audit::list_audit_logs;
+use commands::*;
 use db::connection::{init_db, seed_defaults};
-use services::{AuthService, EmailService, SettingsService, UserService, TeamService, AuditService, RoleService, SystemService, PlanService, PaymentService, NotificationService, BackupService};
-use services::metrics_service::MetricsService;
 use services::backup::BackupScheduler;
+use services::metrics_service::MetricsService;
+use services::{
+    AuditService, AuthService, BackupService, EmailService, NotificationService, PaymentService,
+    PlanService, RoleService, SettingsService, SystemService, TeamService, UserService,
+};
 use tauri::Manager;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -24,14 +27,16 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 fn init_logging() {
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())
-        .with(tracing_subscriber::EnvFilter::from_default_env()
-            .add_directive("saas_tauri=debug".parse().unwrap()))
+        .with(
+            tracing_subscriber::EnvFilter::from_default_env()
+                .add_directive("saas_tauri=debug".parse().unwrap()),
+        )
         .init();
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 #[allow(unknown_lints)]
-#[allow(clippy::all)] 
+#[allow(clippy::all)]
 pub fn run() {
     init_logging();
     info!("Starting Application");
@@ -47,7 +52,8 @@ pub fn run() {
     #[cfg(not(debug_assertions))]
     {
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            let _ = app.get_webview_window("main")
+            let _ = app
+                .get_webview_window("main")
                 .expect("no main window")
                 .set_focus();
         }));
@@ -56,9 +62,9 @@ pub fn run() {
     builder
         .setup(|app| {
             let app_handle = app.handle().clone();
-            
+
             // Get app data directory
-            
+
             // Force Open DevTools (Debugging Production Issue)
             if let Some(window) = app.get_webview_window("main") {
                 window.open_devtools();
@@ -87,7 +93,7 @@ pub fn run() {
             // =========================================================
             // CONFIGURATION LOADING STRATEGY
             // =========================================================
-            
+
             #[cfg(debug_assertions)]
             {
                 // DEVELOPMENT MODE: Always use the project's local .env file
@@ -95,7 +101,7 @@ pub fn run() {
                 // Search in CWD (src-tauri) and Parent (project root)
                 let cwd = std::env::current_dir().unwrap_or_default();
                 let params = vec![cwd.join(".env"), cwd.join("../.env")];
-                
+
                 let mut loaded = false;
                 for path in params {
                     if path.exists() {
@@ -106,7 +112,7 @@ pub fn run() {
                         }
                     }
                 }
-                
+
                 if !loaded {
                     tracing::warn!("(DEV) Could not find local .env in {:?} or parent. Please ensure it exists.", cwd);
                 }
@@ -116,7 +122,7 @@ pub fn run() {
             {
                 // PRODUCTION MODE: Use AppData (Secure)
                 let env_path = app_data_dir.join(".env");
-                
+
                 if !env_path.exists() {
                     // Create default .env if not exists
                     let default_content = r#"# Application Configuration
@@ -179,7 +185,7 @@ pub fn run() {
 
                 // Initialize App Data Dir for Storage
                 let app_data_dir = app_handle.path().app_data_dir().unwrap_or(std::path::PathBuf::from("app_data"));
-                
+
                 let settings_service = SettingsService::new(pool.clone(), audit_service.clone());
                 let email_service = EmailService::new(settings_service.clone());
                 let auth_service = AuthService::new(pool.clone(), jwt_secret, email_service.clone(), audit_service.clone(), settings_service.clone());
@@ -189,17 +195,17 @@ pub fn run() {
                 let system_service = SystemService::new(pool.clone(), metrics_service.clone());
                 let storage_service = crate::services::StorageService::new(pool.clone(), plan_service.clone(), app_data_dir.clone());
                 let backup_service = BackupService::new(pool.clone(), app_data_dir.clone());
-                
+
                 // Start Backup Scheduler
-                let scheduler = BackupScheduler::new(pool.clone(), backup_service.clone());
+                let scheduler = BackupScheduler::new(pool.clone(), backup_service.clone(), settings_service.clone());
                 scheduler.start().await;
 
                 // Create WebSocket hub for real-time sync (shared between HTTP and Tauri)
                 let ws_hub = std::sync::Arc::new(http::WsHub::new());
-                
+
                 let notification_service = NotificationService::new(pool.clone(), ws_hub.clone(), email_service.clone());
                 let payment_service = PaymentService::new(pool.clone(), notification_service.clone());
-                
+
                 // Seed default features
                 plan_service.seed_default_features()
                     .await
@@ -229,21 +235,21 @@ pub fn run() {
                 let app_dir = app_data_dir.clone();
                 tauri::async_runtime::spawn(async move {
                     http::start_server(
-                        auth_service, 
-                        user_service, 
-                        settings_service, 
-                        email_service, 
-                        team_service, 
-                        role_service, 
-                        audit_service, 
-                        system_service, 
-                        plan_service, 
+                        auth_service,
+                        user_service,
+                        settings_service,
+                        email_service,
+                        team_service,
+                        role_service,
+                        audit_service,
+                        system_service,
+                        plan_service,
                         storage_service,
-                        payment_service, 
+                        payment_service,
                         notification_service,
                         backup_service,
-                        ws_hub, 
-                        app_dir, 
+                        ws_hub,
+                        app_dir,
                         3000,
                         pool.clone(),
                         metrics_service,
@@ -259,7 +265,7 @@ pub fn run() {
                 tracing::warn!("!!! BACKEND INITIALIZATION SKIPPED: {} !!!", e);
                 tracing::warn!("This is expected if you are running as a Remote Client without a local database.");
                 tracing::warn!("The application will continue in Client-Only mode.");
-                
+
                 // We do NOT exit here anymore. We allow the app to launch.
                 // If the frontend tries to use local backend features, they will fail (gracefully or with errors),
                 // but if VITE_USE_REMOTE_API is true, everything will work fine.
@@ -399,16 +405,15 @@ pub fn run() {
                                 ])
                                 .run(tauri::generate_context!())
                                 .expect("error while running tauri application");
-                        }
+}
 
 #[cfg(windows)]
 fn show_error_dialog(message: &str) {
     let script = format!(
-        "Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('{}', 'Startup Error', 'OK', 'Error')", 
+        "Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('{}', 'Startup Error', 'OK', 'Error')",
         message.replace("'", "''")
     );
     let _ = std::process::Command::new("powershell")
         .args(["-NoProfile", "-Command", &script])
         .spawn();
 }
-                        

@@ -1,14 +1,14 @@
+use super::AppState;
+use crate::http::auth::extract_ip;
+use crate::models::{CreateUserDto, PaginatedResponse, UpdateUserDto, UserResponse};
 use axum::{
-    extract::{Path, Query, State, ConnectInfo},
+    extract::{ConnectInfo, Path, Query, State},
     http::HeaderMap,
     Json,
 };
-use std::net::SocketAddr;
 use serde::Deserialize;
 use serde_json::json;
-use crate::models::{CreateUserDto, UpdateUserDto, UserResponse, PaginatedResponse};
-use super::AppState;
-use crate::http::auth::extract_ip;
+use std::net::SocketAddr;
 
 #[derive(Deserialize)]
 pub struct ListUsersQuery {
@@ -18,7 +18,8 @@ pub struct ListUsersQuery {
 }
 
 fn extract_token(headers: &HeaderMap) -> Result<String, crate::error::AppError> {
-    headers.get("Authorization")
+    headers
+        .get("Authorization")
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.strip_prefix("Bearer "))
         .map(|s| s.to_string())
@@ -53,7 +54,7 @@ pub async fn get_user(
 ) -> Result<Json<UserResponse>, crate::error::AppError> {
     let token = extract_token(&headers)?;
     state.auth_service.check_admin(&token).await?;
-    
+
     let user = state.user_service.get_by_id(&id).await?;
     Ok(Json(user))
 }
@@ -83,10 +84,16 @@ pub async fn create_user(
     };
 
     if let Err(e) = dto.validate() {
-        return Err(crate::error::AppError::Validation(format!("Validation error: {}", e)));
+        return Err(crate::error::AppError::Validation(format!(
+            "Validation error: {}",
+            e
+        )));
     }
 
-    let user = state.user_service.create(dto, Some(&claims.sub), Some(&ip)).await?;
+    let user = state
+        .user_service
+        .create(dto, Some(&claims.sub), Some(&ip))
+        .await?;
     Ok(Json(user))
 }
 
@@ -130,10 +137,16 @@ pub async fn update_user(
     };
 
     if let Err(e) = dto.validate() {
-        return Err(crate::error::AppError::Validation(format!("Validation error: {}", e)));
+        return Err(crate::error::AppError::Validation(format!(
+            "Validation error: {}",
+            e
+        )));
     }
 
-    let user = state.user_service.update(&id, dto, Some(&claims.sub), Some(&ip)).await?;
+    let user = state
+        .user_service
+        .update(&id, dto, Some(&claims.sub), Some(&ip))
+        .await?;
     Ok(Json(user))
 }
 
@@ -146,7 +159,10 @@ pub async fn delete_user(
     let token = extract_token(&headers)?;
     let claims = state.auth_service.check_admin(&token).await?;
     let ip = extract_ip(&headers, addr);
-    
-    state.user_service.delete(&id, Some(&claims.sub), Some(&ip)).await?;
+
+    state
+        .user_service
+        .delete(&id, Some(&claims.sub), Some(&ip))
+        .await?;
     Ok(Json(json!({"message": "User deleted"})))
 }

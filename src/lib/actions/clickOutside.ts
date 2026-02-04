@@ -3,26 +3,26 @@
  * Usage: use:clickOutside={{ callback: () => close() }}
  */
 export interface ClickOutsideParams {
-    callback: () => void;
+  callback: () => void;
 }
 
 export function clickOutside(node: HTMLElement, params: ClickOutsideParams) {
-    let { callback } = params;
+  let { callback } = params;
 
-    const handleClick = (event: MouseEvent) => {
-        if (node && !node.contains(event.target as Node) && !event.defaultPrevented) {
-            callback();
-        }
-    };
+  const handleClick = (event: MouseEvent) => {
+    if (node && !node.contains(event.target as Node) && !event.defaultPrevented) {
+      callback();
+    }
+  };
 
-    document.addEventListener('click', handleClick, true);
+  document.addEventListener('click', handleClick, true);
 
-    return {
-        update(newParams: ClickOutsideParams) {
-            callback = newParams.callback;
-        },
-        destroy() {
-            document.removeEventListener('click', handleClick, true);
-        }
-    };
+  return {
+    update(newParams: ClickOutsideParams) {
+      callback = newParams.callback;
+    },
+    destroy() {
+      document.removeEventListener('click', handleClick, true);
+    },
+  };
 }

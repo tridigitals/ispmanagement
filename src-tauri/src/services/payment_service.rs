@@ -57,8 +57,9 @@ impl PaymentService {
 
         let (final_amount, fx_rate, fx_source, fx_fetched_at) =
             if currency_code != base_currency_code {
-                let (rate, fetched_at, source) =
-                    self.get_fx_rate(&base_currency_code, &currency_code, Some(tenant_id)).await?;
+                let (rate, fetched_at, source) = self
+                    .get_fx_rate(&base_currency_code, &currency_code, Some(tenant_id))
+                    .await?;
                 let converted = amount * rate;
                 (
                     self.round_amount(converted, &currency_code),
@@ -67,12 +68,7 @@ impl PaymentService {
                     Some(fetched_at),
                 )
             } else {
-                (
-                    self.round_amount(amount, &currency_code),
-                    None,
-                    None,
-                    None,
-                )
+                (self.round_amount(amount, &currency_code), None, None, None)
             };
 
         #[cfg(feature = "postgres")]
@@ -702,8 +698,8 @@ impl PaymentService {
                         Some(invoice.tenant_id.clone()),
                         title.clone(),
                         message.clone(),
-                        "info".to_string(),                           // type
-                        "billing".to_string(),                        // category
+                        "info".to_string(),                   // type
+                        "billing".to_string(),                // category
                         Some(format!("/admin/subscription")), // action_url
                     )
                     .await;
@@ -927,11 +923,9 @@ impl PaymentService {
     async fn get_setting_value(&self, tenant_id: Option<&str>, key: &str) -> Option<String> {
         #[cfg(feature = "postgres")]
         let q = if tenant_id.is_some() {
-            sqlx::query_scalar(
-                "SELECT value FROM settings WHERE key = $1 AND tenant_id = $2",
-            )
-            .bind(key)
-            .bind(tenant_id.unwrap())
+            sqlx::query_scalar("SELECT value FROM settings WHERE key = $1 AND tenant_id = $2")
+                .bind(key)
+                .bind(tenant_id.unwrap())
         } else {
             sqlx::query_scalar("SELECT value FROM settings WHERE key = $1 AND tenant_id IS NULL")
                 .bind(key)
@@ -939,11 +933,9 @@ impl PaymentService {
 
         #[cfg(feature = "sqlite")]
         let q = if tenant_id.is_some() {
-            sqlx::query_scalar(
-                "SELECT value FROM settings WHERE key = ? AND tenant_id = ?",
-            )
-            .bind(key)
-            .bind(tenant_id.unwrap())
+            sqlx::query_scalar("SELECT value FROM settings WHERE key = ? AND tenant_id = ?")
+                .bind(key)
+                .bind(tenant_id.unwrap())
         } else {
             sqlx::query_scalar("SELECT value FROM settings WHERE key = ? AND tenant_id IS NULL")
                 .bind(key)
@@ -1000,8 +992,8 @@ impl PaymentService {
         .unwrap_or(None);
 
         #[cfg(feature = "sqlite")]
-        let cached: Option<(f64, chrono::DateTime<chrono::Utc>, String)> = cached
-            .and_then(|(rate, fetched_at, source)| {
+        let cached: Option<(f64, chrono::DateTime<chrono::Utc>, String)> =
+            cached.and_then(|(rate, fetched_at, source)| {
                 chrono::DateTime::parse_from_rfc3339(&fetched_at)
                     .ok()
                     .map(|dt| (rate, dt.with_timezone(&chrono::Utc), source))
@@ -1035,10 +1027,7 @@ impl PaymentService {
             .and_then(|v| v.as_f64())
             .ok_or_else(|| AppError::Internal("FX rate missing in response".to_string()))?;
 
-        let markup_setting = match self
-            .get_setting_value(tenant_id, "fx_markup_bps")
-            .await
-        {
+        let markup_setting = match self.get_setting_value(tenant_id, "fx_markup_bps").await {
             Some(v) => Some(v),
             None => self.get_setting_value(None, "fx_markup_bps").await,
         };

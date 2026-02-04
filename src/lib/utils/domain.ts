@@ -8,57 +8,61 @@
 // We might need to rely on a global config object injected at build time or assume a convention.
 
 export function getSlugFromDomain(hostname: string): string | null {
-    // Development overrides
-    if (hostname.includes('localhost') || hostname.includes('127.0.0.1') || hostname.includes('tauri')) {
-        return null; // Don't rewrite localhost
+  // Development overrides
+  if (
+    hostname.includes('localhost') ||
+    hostname.includes('127.0.0.1') ||
+    hostname.includes('tauri')
+  ) {
+    return null; // Don't rewrite localhost
+  }
+
+  // TEST ONLY: Force localhost -> tridigitals
+  // if (hostname.includes('localhost')) {
+  //     return 'tridigitals';
+  // }
+
+  // Example: dashboard.tridigitals.com -> tridigitals
+  // Checks for subdomains
+  const parts = hostname.split('.');
+  if (parts.length >= 3) {
+    // Assuming structure: [slug].[app].[com]
+    // return parts[0];
+  }
+
+  // Check LocalStorage cache (Dynamic mappings from first-visit check)
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const cache = JSON.parse(localStorage.getItem('tenant_domain_map') || '{}');
+      if (cache[hostname]) {
+        return cache[hostname];
+      }
+    } catch (e) {
+      console.error('Failed to parse domain map cache', e);
     }
+  }
 
-    // TEST ONLY: Force localhost -> tridigitals
-    // if (hostname.includes('localhost')) {
-    //     return 'tridigitals';
-    // }
+  // Example Hardcoded Mapping (Keep as fallback or remove if desired)
+  const domainMap: Record<string, string> = {
+    'dashboard.tridigitals.com': 'tridigitals',
+    'saas.tridigitals.com': 'tridigitals',
+    'my.custom-domain.com': 'another-tenant',
+  };
 
-    // Example: dashboard.tridigitals.com -> tridigitals
-    // Checks for subdomains
-    const parts = hostname.split('.');
-    if (parts.length >= 3) {
-        // Assuming structure: [slug].[app].[com]
-        // return parts[0]; 
-    }
-
-    // Check LocalStorage cache (Dynamic mappings from first-visit check)
-    if (typeof localStorage !== 'undefined') {
-        try {
-            const cache = JSON.parse(localStorage.getItem('tenant_domain_map') || '{}');
-            if (cache[hostname]) {
-                return cache[hostname];
-            }
-        } catch (e) {
-            console.error('Failed to parse domain map cache', e);
-        }
-    }
-
-    // Example Hardcoded Mapping (Keep as fallback or remove if desired)
-    const domainMap: Record<string, string> = {
-        'dashboard.tridigitals.com': 'tridigitals',
-        'saas.tridigitals.com': 'tridigitals',
-        'my.custom-domain.com': 'another-tenant'
-    };
-
-    return domainMap[hostname] || null;
+  return domainMap[hostname] || null;
 }
 
 /**
  * Helper to cache a new domain mapping
  */
 export function cacheDomainMapping(domain: string, slug: string) {
-    if (typeof localStorage === 'undefined') return;
+  if (typeof localStorage === 'undefined') return;
 
-    try {
-        const cache = JSON.parse(localStorage.getItem('tenant_domain_map') || '{}');
-        cache[domain] = slug;
-        localStorage.setItem('tenant_domain_map', JSON.stringify(cache));
-    } catch (e) {
-        console.error('Failed to update domain map cache', e);
-    }
+  try {
+    const cache = JSON.parse(localStorage.getItem('tenant_domain_map') || '{}');
+    cache[domain] = slug;
+    localStorage.setItem('tenant_domain_map', JSON.stringify(cache));
+  } catch (e) {
+    console.error('Failed to update domain map cache', e);
+  }
 }
