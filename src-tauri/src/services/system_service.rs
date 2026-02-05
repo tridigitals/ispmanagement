@@ -12,6 +12,8 @@ use std::time::{Duration, Instant};
 use sysinfo::System;
 use tokio::sync::RwLock;
 
+use crate::services::SettingsService;
+
 #[derive(Debug, Serialize, Clone)]
 pub struct DatabaseStats {
     pub is_connected: bool,
@@ -59,6 +61,70 @@ pub struct SystemHealth {
     pub collected_at: DateTime<Utc>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub request_metrics: Option<crate::services::metrics_service::RequestMetrics>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct MigrationItem {
+    pub version: i64,
+    pub description: String,
+    pub installed_on: DateTime<Utc>,
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub execution_time_ms: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct MigrationSummary {
+    pub resolved_count: i64,
+    pub applied_count: i64,
+    pub pending_count: i64,
+    pub missing_count: i64,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub pending_versions: Vec<i64>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub missing_versions: Vec<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_applied_version: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct SettingsSnapshot {
+    pub app_name: Option<String>,
+    pub app_public_url: Option<String>,
+    pub app_timezone: Option<String>,
+    pub base_currency_code: Option<String>,
+    pub currency_code: Option<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct BackupSnapshot {
+    pub global_enabled: bool,
+    pub global_mode: Option<String>,
+    pub global_every: Option<i64>,
+    pub global_at: Option<String>,
+    pub global_weekday: Option<String>,
+    pub global_retention_days: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub global_last_run_utc: Option<DateTime<Utc>>,
+
+    pub tenant_enabled: bool,
+    pub tenant_mode: Option<String>,
+    pub tenant_every: Option<i64>,
+    pub tenant_at: Option<String>,
+    pub tenant_weekday: Option<String>,
+    pub tenant_retention_days: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct SystemDiagnostics {
+    pub database: DatabaseStats,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub database_server_version: Option<String>,
+    pub migrations: MigrationSummary,
+    pub applied_migrations: Vec<MigrationItem>,
+    pub settings: SettingsSnapshot,
+    pub backups: BackupSnapshot,
+    pub collected_at: DateTime<Utc>,
 }
 
 #[derive(Clone)]
@@ -132,6 +198,92 @@ impl SystemService {
         Ok(health)
     }
 
+    pub async fn get_system_diagnostics(
+        &self,
+        settings_service: &SettingsService,
+    ) -> Result<SystemDiagnostics, sqlx::Error> {
+        let database = self.get_database_stats().await?;
+
+        let database_server_version = if database.is_connected {
+            #[cfg(feature = "postgres")]
+            {
+                sqlx::query_scalar::<_, String>("SELECT version()")
+                    .fetch_one(&self.pool)
+                    .await
+                    .ok()
+            }
+            #[cfg(feature = "sqlite")]
+            {
+                sqlx::query_scalar::<_, String>("SELECT sqlite_version()")
+                    .fetch_one(&self.pool)
+                    .await
+                    .ok()
+            }
+        } else {
+            None
+        };
+
+        // Migrations: applied from DB + resolved from embedded migrator
+        let applied_migrations = self.get_applied_migrations().await.unwrap_or_default();
+        let latest_applied_version = applied_migrations.last().map(|m| m.version);
+
+        // Resolved migrations from embedded files. If this fails for any reason, treat as unknown.
+        let resolved_versions = self.get_resolved_migration_versions();
+
+        use std::collections::HashSet;
+        let applied_set: HashSet<i64> = applied_migrations.iter().map(|m| m.version).collect();
+        let resolved_set: HashSet<i64> = resolved_versions.iter().copied().collect();
+
+        let mut pending_versions: Vec<i64> =
+            resolved_set.difference(&applied_set).copied().collect();
+        pending_versions.sort_unstable();
+        let mut missing_versions: Vec<i64> =
+            applied_set.difference(&resolved_set).copied().collect();
+        missing_versions.sort_unstable();
+
+        let migrations = MigrationSummary {
+            resolved_count: resolved_versions.len() as i64,
+            applied_count: applied_migrations.len() as i64,
+            pending_count: pending_versions.len() as i64,
+            missing_count: missing_versions.len() as i64,
+            pending_versions,
+            missing_versions,
+            latest_applied_version,
+        };
+
+        let settings = SettingsSnapshot {
+            app_name: settings_service.get_value(None, "app_name").await.ok().flatten(),
+            app_public_url: settings_service
+                .get_value(None, "app_public_url")
+                .await
+                .ok()
+                .flatten(),
+            app_timezone: settings_service.get_value(None, "app_timezone").await.ok().flatten(),
+            base_currency_code: settings_service
+                .get_value(None, "base_currency_code")
+                .await
+                .ok()
+                .flatten(),
+            currency_code: settings_service
+                .get_value(None, "currency_code")
+                .await
+                .ok()
+                .flatten(),
+        };
+
+        let backups = self.get_backup_snapshot(settings_service).await;
+
+        Ok(SystemDiagnostics {
+            database,
+            database_server_version,
+            migrations,
+            applied_migrations,
+            settings,
+            backups,
+            collected_at: Utc::now(),
+        })
+    }
+
     async fn get_database_stats(&self) -> Result<DatabaseStats, sqlx::Error> {
         // Test connection with simple query
         let is_connected = sqlx::query_scalar::<_, i32>("SELECT 1")
@@ -174,6 +326,107 @@ impl SystemService {
             users_count,
             audit_logs_count,
         })
+    }
+
+    fn get_resolved_migration_versions(&self) -> Vec<i64> {
+        // Best-effort: if the migrations aren't available (shouldn't happen in dev),
+        // diagnostics will still show applied migrations from DB.
+        static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
+
+        MIGRATOR.iter().map(|m| m.version).collect()
+    }
+
+    async fn get_applied_migrations(&self) -> Result<Vec<MigrationItem>, sqlx::Error> {
+        #[derive(sqlx::FromRow)]
+        struct Row {
+            version: i64,
+            description: String,
+            installed_on: DateTime<Utc>,
+            success: bool,
+            execution_time: Option<i64>,
+        }
+
+        let rows: Vec<Row> = match sqlx::query_as::<_, Row>(
+            "SELECT version, description, installed_on, success, execution_time FROM _sqlx_migrations ORDER BY version",
+        )
+        .fetch_all(&self.pool)
+        .await
+        {
+            Ok(r) => r,
+            Err(e) => {
+                // Missing table on fresh DB before migrations: treat as none.
+                #[cfg(feature = "postgres")]
+                if let sqlx::Error::Database(db) = &e {
+                    if db.code().as_deref() == Some("42P01") {
+                        return Ok(Vec::new());
+                    }
+                }
+                return Err(e);
+            }
+        };
+
+        Ok(rows
+            .into_iter()
+            .map(|r| MigrationItem {
+                version: r.version,
+                description: r.description,
+                installed_on: r.installed_on,
+                success: r.success,
+                execution_time_ms: r.execution_time.map(|v| v / 1_000_000),
+            })
+            .collect())
+    }
+
+    async fn get_backup_snapshot(&self, settings_service: &SettingsService) -> BackupSnapshot {
+        let get_str = |k: &'static str| async move {
+            settings_service.get_value(None, k).await.ok().flatten()
+        };
+
+        let get_bool = |k: &'static str| async move {
+            settings_service
+                .get_value(None, k)
+                .await
+                .ok()
+                .flatten()
+                .map(|v| v == "true")
+                .unwrap_or(false)
+        };
+
+        let get_i64 = |k: &'static str| async move {
+            settings_service
+                .get_value(None, k)
+                .await
+                .ok()
+                .flatten()
+                .and_then(|v| v.parse::<i64>().ok())
+        };
+
+        let global_enabled = get_bool("backup_global_enabled").await;
+        let tenant_enabled = get_bool("backup_tenant_enabled").await;
+
+        let global_last_run_utc = settings_service
+            .get_value(None, "backup_global_last_run")
+            .await
+            .ok()
+            .flatten()
+            .and_then(|raw| chrono::DateTime::parse_from_rfc3339(&raw).ok())
+            .map(|dt| dt.with_timezone(&Utc));
+
+        BackupSnapshot {
+            global_enabled,
+            global_mode: get_str("backup_global_mode").await,
+            global_every: get_i64("backup_global_every").await,
+            global_at: get_str("backup_global_at").await,
+            global_weekday: get_str("backup_global_weekday").await,
+            global_retention_days: get_i64("backup_global_retention_days").await,
+            global_last_run_utc,
+            tenant_enabled,
+            tenant_mode: get_str("backup_tenant_mode").await,
+            tenant_every: get_i64("backup_tenant_every").await,
+            tenant_at: get_str("backup_tenant_at").await,
+            tenant_weekday: get_str("backup_tenant_weekday").await,
+            tenant_retention_days: get_i64("backup_tenant_retention_days").await,
+        }
     }
 
     async fn get_table_info(&self) -> Result<Vec<TableInfo>, sqlx::Error> {

@@ -1,1 +1,0 @@
-ALTER TABLE tenants ADD COLUMN storage_usage BIGINT NOT NULL DEFAULT 0;

@@ -109,6 +109,14 @@ Edit `.env` with your configuration.
 docker-compose up -d
 ```
 
+### 3a. (Optional) Seed Dev Data
+
+This will create a `superadmin@local` user and a default tenant so you can skip the install wizard during development.
+
+```bash
+npm run db:seed:dev
+```
+
 ### 4. Run Development Server
 
 ```bash

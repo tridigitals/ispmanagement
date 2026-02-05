@@ -78,6 +78,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       delete_tenant: { method: 'DELETE', path: '/superadmin/tenants/:id' },
       list_audit_logs: { method: 'GET', path: '/superadmin/audit-logs' },
       get_system_health: { method: 'GET', path: '/superadmin/system' },
+      get_system_diagnostics: { method: 'GET', path: '/superadmin/diagnostics' },
       // Settings
       get_logo: { method: 'GET', path: '/settings/logo' },
       get_all_settings: { method: 'GET', path: '/settings' },
@@ -624,6 +625,9 @@ export const superadmin = {
 
   getSystemHealth: (): Promise<any> =>
     safeInvoke('get_system_health', { token: getTokenOrThrow() }),
+
+  getSystemDiagnostics: (): Promise<any> =>
+    safeInvoke('get_system_diagnostics', { token: getTokenOrThrow() }),
 };
 
 // Public API (No Auth)

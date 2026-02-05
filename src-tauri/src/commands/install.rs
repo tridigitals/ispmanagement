@@ -1,4 +1,6 @@
-use crate::models::{CreateUserDto, Tenant, TenantMember, UpdateUserDto, UpsertSettingDto, UserResponse};
+use crate::models::{
+    CreateUserDto, Tenant, TenantMember, UpdateUserDto, UpsertSettingDto, UserResponse,
+};
 use crate::services::{AuthService, SettingsService, UserService};
 use tauri::State;
 use uuid::Uuid;

@@ -346,6 +346,7 @@ pub fn run() {
                                     list_audit_logs,
                                     // System Health commands
                                     get_system_health,
+                                    get_system_diagnostics,
                                     // Plan commands
                                     list_plans,
                                     get_plan,

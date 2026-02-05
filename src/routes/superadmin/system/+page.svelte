@@ -16,10 +16,15 @@
   import SystemStatsGrid from '$lib/components/superadmin/system/SystemStatsGrid.svelte';
   import DatabaseTables from '$lib/components/superadmin/system/DatabaseTables.svelte';
   import RecentActivity from '$lib/components/superadmin/system/RecentActivity.svelte';
+  import SystemDiagnosticsPanel from '$lib/components/superadmin/system/SystemDiagnosticsPanel.svelte';
 
+  let activeView = $state<'health' | 'diagnostics'>('health');
   let health = $state<SystemHealth | null>(null);
   let loading = $state(true);
   let error = $state('');
+  let diagnostics = $state<any | null>(null);
+  let diagLoading = $state(false);
+  let diagError = $state('');
   let refreshInterval: ReturnType<typeof setInterval>;
 
   onMount(() => {
@@ -42,7 +47,9 @@
       void loadHealth();
     }
     // Auto-refresh every 30 seconds
-    refreshInterval = setInterval(loadHealth, 30000);
+    refreshInterval = setInterval(() => {
+      if (activeView === 'health') void loadHealth();
+    }, 30000);
 
     return () => {
       if (unsubscribe) unsubscribe();
@@ -62,6 +69,31 @@
       loading = false;
     }
   }
+
+  async function loadDiagnostics() {
+    diagLoading = true;
+    try {
+      diagnostics = await api.superadmin.getSystemDiagnostics();
+      diagError = '';
+    } catch (e: any) {
+      console.error('Failed to load diagnostics:', e);
+      diagError = e.message || 'Failed to load diagnostics';
+    } finally {
+      diagLoading = false;
+    }
+  }
+
+  function switchView(view: 'health' | 'diagnostics') {
+    activeView = view;
+    if (view === 'diagnostics' && !diagnostics && !diagLoading) {
+      void loadDiagnostics();
+    }
+  }
+
+  function refreshCurrent() {
+    if (activeView === 'health') void loadHealth();
+    else void loadDiagnostics();
+  }
 </script>
 
 <div class="page-container fade-in">
@@ -71,10 +103,18 @@
       <p class="subtitle">
         {$t('superadmin.system.subtitle') || 'Monitor platform status and metrics'}
       </p>
+      <div class="view-toggle" role="group" aria-label="System views">
+        <button class:active={activeView === 'health'} onclick={() => switchView('health')}>
+          {$t('superadmin.system.tabs.health') || 'Health'}
+        </button>
+        <button class:active={activeView === 'diagnostics'} onclick={() => switchView('diagnostics')}>
+          {$t('superadmin.system.tabs.diagnostics') || 'Diagnostics'}
+        </button>
+      </div>
     </div>
     <button
       class="btn-refresh"
-      onclick={loadHealth}
+      onclick={refreshCurrent}
       title={$t('common.refresh') || 'Refresh'}
       aria-label={$t('common.refresh') || 'Refresh'}
     >
@@ -82,37 +122,58 @@
     </button>
   </div>
 
-  {#if loading && !health}
-    <div class="loading-state">
-      <div class="spinner"></div>
-      <p>
-        {$t('superadmin.system.loading') || 'Loading system health...'}
-      </p>
-    </div>
-  {:else if error}
-    <div class="error-card">
-      <Icon name="alert-circle" size={24} />
-      <p>{error}</p>
-      <button class="btn btn-primary" onclick={loadHealth}>
-        {$t('superadmin.system.retry') || 'Retry'}
-      </button>
-    </div>
-  {:else if health}
-    <SystemStatusBanner {health} />
-    <SystemResources {health} />
-    <RequestMetrics {health} />
-    <SystemStatsGrid {health} />
+  {#if activeView === 'health'}
+    {#if loading && !health}
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>
+          {$t('superadmin.system.loading') || 'Loading system health...'}
+        </p>
+      </div>
+    {:else if error}
+      <div class="error-card">
+        <Icon name="alert-circle" size={24} />
+        <p>{error}</p>
+        <button class="btn btn-primary" onclick={loadHealth}>
+          {$t('superadmin.system.retry') || 'Retry'}
+        </button>
+      </div>
+    {:else if health}
+      <SystemStatusBanner {health} />
+      <SystemResources {health} />
+      <RequestMetrics {health} />
+      <SystemStatsGrid {health} />
 
-    <div class="grid-2">
-      <DatabaseTables {health} />
-      <RecentActivity {health} />
-    </div>
+      <div class="grid-2">
+        <DatabaseTables {health} />
+        <RecentActivity {health} />
+      </div>
 
-    <div class="last-updated">
-      <Icon name="clock" size={14} />
-      {$t('superadmin.system.last_updated') || 'Last updated:'}
-      {formatDateTime(health.collected_at, { timeZone: $appSettings.app_timezone })}
-    </div>
+      <div class="last-updated">
+        <Icon name="clock" size={14} />
+        {$t('superadmin.system.last_updated') || 'Last updated:'}
+        {formatDateTime(health.collected_at, { timeZone: $appSettings.app_timezone })}
+      </div>
+    {/if}
+  {:else}
+    {#if diagLoading && !diagnostics}
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>
+          {$t('superadmin.system.diagnostics.loading') || 'Loading diagnostics...'}
+        </p>
+      </div>
+    {:else if diagError}
+      <div class="error-card">
+        <Icon name="alert-circle" size={24} />
+        <p>{diagError}</p>
+        <button class="btn btn-primary" onclick={loadDiagnostics}>
+          {$t('superadmin.system.retry') || 'Retry'}
+        </button>
+      </div>
+    {:else if diagnostics}
+      <SystemDiagnosticsPanel diagnostics={diagnostics} />
+    {/if}
   {/if}
 </div>
 
@@ -141,6 +202,39 @@
     color: var(--text-secondary);
     font-size: 0.95rem;
     margin: 0;
+  }
+
+  .view-toggle {
+    display: inline-flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding: 0.35rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .view-toggle button {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    padding: 0.45rem 0.75rem;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.85rem;
+    transition: 0.15s ease;
+  }
+
+  .view-toggle button:hover {
+    color: var(--text-primary);
+    border-color: rgba(99, 102, 241, 0.25);
+  }
+
+  .view-toggle button.active {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.35);
+    color: var(--text-primary);
   }
 
   .btn-refresh {

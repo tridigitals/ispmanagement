@@ -993,10 +993,7 @@ impl BackupService {
                         if table != "audit_logs" {
                             return false;
                         }
-                        matches!(
-                            col.to_lowercase().as_str(),
-                            "id" | "user_id" | "tenant_id"
-                        )
+                        matches!(col.to_lowercase().as_str(), "id" | "user_id" | "tenant_id")
                     }
 
                     for (col_name, v) in col_names.iter().zip(values.into_iter()) {

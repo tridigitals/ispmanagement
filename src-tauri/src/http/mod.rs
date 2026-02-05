@@ -300,6 +300,7 @@ pub async fn start_server(
         )
         .route("/api/superadmin/audit-logs", get(audit::list_audit_logs))
         .route("/api/superadmin/system", get(system::get_system_health))
+        .route("/api/superadmin/diagnostics", get(system::get_system_diagnostics))
         // Plans Routes
         .nest("/api/plans", plans::plan_routes())
         // Payment Routes

@@ -96,6 +96,8 @@
     "cancel": "Batal",
     "clear": "Bersihkan",
     "close": "Tutup",
+    "copied": "Tersalin",
+    "copy_failed": "Gagal menyalin",
     "delete": "Hapus",
     "edit": "Edit",
     "download": "Unduh",
@@ -849,6 +851,21 @@
       }
     },
     "system": {
+      "tabs": {
+        "health": "Kesehatan",
+        "diagnostics": "Diagnostik"
+      },
+      "diagnostics": {
+        "loading": "Memuat diagnostik...",
+        "database": "Database",
+        "migrations": "Migrasi",
+        "applied": "Terpasang",
+        "resolved": "Tersedia",
+        "show_applied": "Tampilkan migrasi terpasang",
+        "platform": "Pengaturan Platform",
+        "backups": "Backup",
+        "collected_at": "Diambil pada:"
+      },
       "request_metrics": {
         "title": "Metrik Permintaan"
       },

@@ -96,6 +96,8 @@
     "cancel": "Cancel",
     "clear": "Clear",
     "close": "Close",
+    "copied": "Copied",
+    "copy_failed": "Copy failed",
     "delete": "Delete",
     "edit": "Edit",
     "download": "Download",
@@ -801,6 +803,21 @@
       }
     },
     "system": {
+      "tabs": {
+        "health": "Health",
+        "diagnostics": "Diagnostics"
+      },
+      "diagnostics": {
+        "loading": "Loading diagnostics...",
+        "database": "Database",
+        "migrations": "Migrations",
+        "applied": "Applied",
+        "resolved": "Resolved",
+        "show_applied": "Show applied migrations",
+        "platform": "Platform Settings",
+        "backups": "Backups",
+        "collected_at": "Collected at:"
+      },
       "request_metrics": {
         "title": "Request Metrics"
       },

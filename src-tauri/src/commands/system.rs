@@ -1,8 +1,8 @@
 //! System Health Tauri Commands
 
 use crate::services::metrics_service::MetricsService;
-use crate::services::system_service::SystemHealth;
-use crate::services::{AuthService, SystemService};
+use crate::services::system_service::{SystemDiagnostics, SystemHealth};
+use crate::services::{AuthService, SettingsService, SystemService};
 use std::sync::Arc;
 use tauri::State;
 
@@ -32,4 +32,26 @@ pub async fn get_system_health(
     health.request_metrics = Some(metrics_service.get_metrics());
 
     Ok(health)
+}
+
+#[tauri::command]
+pub async fn get_system_diagnostics(
+    token: String,
+    auth_service: State<'_, AuthService>,
+    system_service: State<'_, SystemService>,
+    settings_service: State<'_, SettingsService>,
+) -> Result<SystemDiagnostics, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !claims.is_super_admin {
+        return Err("Unauthorized: Super Admin access required".to_string());
+    }
+
+    system_service
+        .get_system_diagnostics(&settings_service)
+        .await
+        .map_err(|e| e.to_string())
 }

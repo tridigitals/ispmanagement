@@ -1,7 +1,7 @@
 //! System Health HTTP Endpoints
 
 use super::AppState;
-use crate::services::system_service::SystemHealth;
+use crate::services::system_service::{SystemDiagnostics, SystemHealth};
 use axum::{extract::State, http::HeaderMap, Json};
 
 // Helper to check super admin permission
@@ -36,4 +36,18 @@ pub async fn get_system_health(
     health.request_metrics = Some(state.metrics_service.get_metrics());
 
     Ok(Json(health))
+}
+
+pub async fn get_system_diagnostics(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<SystemDiagnostics>, crate::error::AppError> {
+    check_super_admin(&state, &headers).await?;
+
+    let diag = state
+        .system_service
+        .get_system_diagnostics(&state.settings_service)
+        .await?;
+
+    Ok(Json(diag))
 }
