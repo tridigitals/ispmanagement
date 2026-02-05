@@ -912,7 +912,11 @@ impl BackupService {
                     let ins_query = format!(
                         "INSERT INTO {} ({}) VALUES ({})",
                         table_name,
-                        col_names.join(", "),
+                        col_names
+                            .iter()
+                            .map(|c| format!("\"{}\"", c.replace('\"', "\"\"")))
+                            .collect::<Vec<_>>()
+                            .join(", "),
                         placeholders.join(", ")
                     );
 
@@ -946,50 +950,10 @@ impl BackupService {
                         .await
                         .ok();
                     let mut q = sqlx::query(&ins_query);
-                    fn parse_datetime_utc(s: &str) -> Option<DateTime<Utc>> {
-                        // 1) RFC3339 / ISO
-                        if let Ok(dt) = DateTime::parse_from_rfc3339(s) {
-                            return Some(dt.with_timezone(&Utc));
-                        }
-
-                        // 2) Common Postgres-ish formats
-                        let offset_fmts = [
-                            "%Y-%m-%d %H:%M:%S%.f%:z",
-                            "%Y-%m-%d %H:%M:%S%:z",
-                            "%Y-%m-%d %H:%M:%S%.f%z",
-                            "%Y-%m-%d %H:%M:%S%z",
-                            "%Y-%m-%d %H:%M:%S%.f %:z",
-                            "%Y-%m-%d %H:%M:%S %:z",
-                        ];
-                        for fmt in offset_fmts {
-                            if let Ok(dt) = DateTime::parse_from_str(s, fmt) {
-                                return Some(dt.with_timezone(&Utc));
-                            }
-                        }
-
-                        // 3) Space + trailing Z (e.g. "2026-02-03 02:30:05.295199Z")
-                        let z_fmts = ["%Y-%m-%d %H:%M:%S%.fZ", "%Y-%m-%d %H:%M:%SZ"];
-                        for fmt in z_fmts {
-                            if let Ok(ndt) = NaiveDateTime::parse_from_str(s, fmt) {
-                                return Some(DateTime::<Utc>::from_naive_utc_and_offset(ndt, Utc));
-                            }
-                        }
-
-                        // 4) Naive datetime (assume UTC)
-                        let naive_fmts = ["%Y-%m-%d %H:%M:%S%.f", "%Y-%m-%d %H:%M:%S"];
-                        for fmt in naive_fmts {
-                            if let Ok(ndt) = NaiveDateTime::parse_from_str(s, fmt) {
-                                return Some(DateTime::<Utc>::from_naive_utc_and_offset(ndt, Utc));
-                            }
-                        }
-
-                        // 5) Date-only (assume midnight UTC)
-                        if let Ok(d) = NaiveDate::parse_from_str(s, "%Y-%m-%d") {
-                            let ndt = d.and_hms_opt(0, 0, 0)?;
-                            return Some(DateTime::<Utc>::from_naive_utc_and_offset(ndt, Utc));
-                        }
-
-                        None
+                    fn sanitize_text_for_db(s: &str) -> String {
+                        // Postgres TEXT/VARCHAR cannot contain NUL (0x00). Some legacy backups or
+                        // accidental binary payloads may include it; strip so restore can continue.
+                        s.chars().filter(|c| *c != '\u{0}').collect()
                     }
 
                     fn numeric_kind(name: &str) -> Option<&'static str> {
@@ -1023,18 +987,24 @@ impl BackupService {
                             || lc.contains("payload")
                     }
 
-                    fn is_uuid_col(name: &str) -> bool {
-                        let lc = name.to_lowercase();
-                        (lc == "id" || lc.ends_with("_id"))
-                            && lc != "resource_id"
-                            && lc != "external_id"
+                    fn is_uuid_col(table: &str, col: &str) -> bool {
+                        // In our schema, almost all IDs are stored as TEXT for cross-DB compatibility.
+                        // The only UUID-typed columns are in `audit_logs`.
+                        if table != "audit_logs" {
+                            return false;
+                        }
+                        matches!(
+                            col.to_lowercase().as_str(),
+                            "id" | "user_id" | "tenant_id"
+                        )
                     }
 
                     for (col_name, v) in col_names.iter().zip(values.into_iter()) {
                         match v {
                             serde_json::Value::String(s) => {
+                                let s = sanitize_text_for_db(&s);
                                 let mut bound = false;
-                                let is_uuid = is_uuid_col(col_name);
+                                let is_uuid = is_uuid_col(table_name, col_name);
                                 let is_id = col_name.eq_ignore_ascii_case("id");
 
                                 // Handle string "null"/empty early
@@ -1098,22 +1068,12 @@ impl BackupService {
                                     bound = true;
                                 }
 
-                                // 2) Timestamp-ish columns
-                                if !bound {
-                                    if is_time_col(col_name) {
-                                        if let Some(dt) = parse_datetime_utc(&s) {
-                                            q = q.bind(dt);
-                                            bound = true;
-                                        }
-                                    }
-                                }
-
-                                // 3) Fallback: if it looks like a datetime, try anyway
-                                if !bound && s.len() >= 19 {
-                                    if let Some(dt) = parse_datetime_utc(&s) {
-                                        q = q.bind(dt);
-                                        bound = true;
-                                    }
+                                // Timestamp-ish columns:
+                                // We generate `$N::timestamptz` placeholders for string timestamp columns,
+                                // so binding the raw string is sufficient (and avoids binary format pitfalls).
+                                if !bound && is_time_col(col_name) {
+                                    q = q.bind(s.clone());
+                                    bound = true;
                                 }
 
                                 if !bound {
@@ -1148,7 +1108,7 @@ impl BackupService {
                             }
                             serde_json::Value::Bool(b) => q = q.bind(b),
                             serde_json::Value::Null => {
-                                if is_uuid_col(col_name) {
+                                if is_uuid_col(table_name, col_name) {
                                     if col_name.eq_ignore_ascii_case("id") {
                                         q = q.bind(uuid::Uuid::new_v4());
                                     } else {
@@ -1195,11 +1155,11 @@ impl BackupService {
                     }
                     if let Err(e) = q.execute(&mut *tx).await {
                         let err_str = e.to_string();
-                        if err_str.contains("invalid byte sequence for encoding \"UTF8\"")
-                            && target_tenant_id.is_some()
-                        {
-                            error!(
-                                "Skipping row due to invalid UTF8: table={} cols={:?} vals={:?} err={}",
+                        if err_str.contains("invalid byte sequence for encoding \"UTF8\"") {
+                            // Most commonly this is a NUL byte (0x00) in a text field. We attempt
+                            // to sanitize strings, but keep this as a final safety net.
+                            warn!(
+                                "Skipping row due to invalid text bytes: table={} cols={:?} vals={:?} err={}",
                                 table_name,
                                 col_names,
                                 debug_vals,
@@ -1293,6 +1253,7 @@ impl BackupScheduler {
         tokio::spawn(async move {
             info!("Backup Scheduler started.");
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60)); // Check every minute
+            let mut warned_missing_schema = false;
 
             loop {
                 interval.tick().await;
@@ -1300,14 +1261,36 @@ impl BackupScheduler {
                 // 1. Check Global Schedule
                 if let Err(e) = Self::check_and_run_global(&pool, &service, &settings_service).await
                 {
-                    error!("Global backup schedule check failed: {}", e);
+                    if e.contains("relation \"settings\" does not exist")
+                        || e.contains("relation \"tenants\" does not exist")
+                    {
+                        if !warned_missing_schema {
+                            warned_missing_schema = true;
+                            warn!(
+                                "Backup scheduler paused: database schema not migrated yet (missing settings/tenants tables)."
+                            );
+                        }
+                    } else {
+                        error!("Global backup schedule check failed: {}", e);
+                    }
                 }
 
                 // 2. Check Tenant Schedules
                 if let Err(e) =
                     Self::check_and_run_tenants(&pool, &service, &settings_service).await
                 {
-                    error!("Tenant backup schedule check failed: {}", e);
+                    if e.contains("relation \"settings\" does not exist")
+                        || e.contains("relation \"tenants\" does not exist")
+                    {
+                        if !warned_missing_schema {
+                            warned_missing_schema = true;
+                            warn!(
+                                "Backup scheduler paused: database schema not migrated yet (missing settings/tenants tables)."
+                            );
+                        }
+                    } else {
+                        error!("Tenant backup schedule check failed: {}", e);
+                    }
                 }
             }
         });

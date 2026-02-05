@@ -49,10 +49,6 @@ impl AuditService {
         let id = uuid::Uuid::new_v4();
         let now = Utc::now();
 
-        // Ensure table exists (Quick fix for no migration runner)
-        // ideally this should be done once on startup, but for safety in this dev env:
-        let _ = self.ensure_table().await;
-
         let query = r#"
             INSERT INTO audit_logs (id, user_id, tenant_id, action, resource, resource_id, details, ip_address, created_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -89,56 +85,6 @@ impl AuditService {
         if let Err(e) = res.execute(&self.pool).await {
             eprintln!("Failed to write audit log: {}", e);
         }
-    }
-
-    pub async fn ensure_table(&self) -> AppResult<()> {
-        #[cfg(feature = "sqlite")]
-        sqlx::query(
-            r#"CREATE TABLE IF NOT EXISTS audit_logs (
-                id TEXT PRIMARY KEY,
-                user_id TEXT,
-                tenant_id TEXT,
-                action TEXT NOT NULL,
-                resource TEXT NOT NULL,
-                resource_id TEXT,
-                details TEXT,
-                ip_address TEXT,
-                created_at TEXT NOT NULL
-            )"#,
-        )
-        .execute(&self.pool)
-        .await?;
-
-        #[cfg(feature = "postgres")]
-        sqlx::query(
-            r#"CREATE TABLE IF NOT EXISTS audit_logs (
-                id UUID PRIMARY KEY,
-                user_id UUID,
-                tenant_id UUID,
-                action VARCHAR(255) NOT NULL,
-                resource VARCHAR(255) NOT NULL,
-                resource_id TEXT,
-                details TEXT,
-                ip_address VARCHAR(45),
-                created_at TIMESTAMPTZ NOT NULL
-            )"#,
-        )
-        .execute(&self.pool)
-        .await?;
-
-        // Migration: Attempt to add ip_address if it doesn't exist (ignore errors if it does)
-        #[cfg(feature = "postgres")]
-        let _ =
-            sqlx::query("ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45)")
-                .execute(&self.pool)
-                .await;
-
-        #[cfg(feature = "sqlite")]
-        let _ = sqlx::query("ALTER TABLE audit_logs ADD COLUMN ip_address TEXT")
-            .execute(&self.pool)
-            .await;
-
-        Ok(())
     }
 
     /// List logs with filters

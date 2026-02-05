@@ -155,6 +155,7 @@ pub async fn start_server(
 
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(30));
+        let mut warned_missing_schema = false;
         loop {
             interval.tick().await;
 
@@ -165,6 +166,7 @@ pub async fn start_server(
 
             match rows {
                 Ok(domains) => {
+                    warned_missing_schema = false;
                     let mut new_custom_domains = HashSet::new();
                     for (d,) in domains {
                         let url_str = if d.starts_with("http") {
@@ -195,7 +197,21 @@ pub async fn start_server(
                     }
                 }
                 Err(e) => {
-                    tracing::error!("Failed to refresh CORS domains: {}", e);
+                    let is_undefined_table = e
+                        .as_database_error()
+                        .and_then(|db| db.code().map(|c| c == "42P01"))
+                        .unwrap_or(false);
+
+                    if is_undefined_table {
+                        if !warned_missing_schema {
+                            warned_missing_schema = true;
+                            tracing::warn!(
+                                "CORS domain refresh skipped: database schema not migrated yet (missing tenants table)."
+                            );
+                        }
+                    } else {
+                        tracing::error!("Failed to refresh CORS domains: {}", e);
+                    }
                 }
             }
         }
