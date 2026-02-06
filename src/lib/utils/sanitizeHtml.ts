@@ -52,8 +52,9 @@ export function stripHtmlToText(input: string) {
 export function sanitizeHtml(input: string) {
   if (typeof document === 'undefined') return String(input || '');
 
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(String(input || ''), 'text/html');
+  // DOMParser can behave inconsistently across webviews; avoid relying on `doc.body`.
+  const root = document.createElement('div');
+  root.innerHTML = String(input || '');
 
   const walk = (node: Node) => {
     if (node.nodeType === Node.ELEMENT_NODE) {
@@ -112,7 +113,6 @@ export function sanitizeHtml(input: string) {
     }
   };
 
-  walk(doc.body);
-  return doc.body.innerHTML;
+  walk(root);
+  return root.innerHTML;
 }
-
