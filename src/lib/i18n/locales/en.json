@@ -364,6 +364,7 @@
     "backups": "Backups",
     "system": "System",
     "support": "Support",
+    "announcements": "Announcements",
     "expand": "Expand sidebar",
     "collapse": "Collapse sidebar",
     "exit": "Exit",
@@ -483,6 +484,67 @@
     },
     "create": {
       "title": "Create Ticket"
+    }
+  },
+  "announcements": {
+    "title": "Announcements",
+    "subtitle": "Broadcast messages to users as banners and notifications.",
+    "feed_subtitle": "Product updates, maintenance windows, and important notices.",
+    "banner_aria": "Announcements",
+    "more": "+{count} more",
+    "not_found": "Announcement not found.",
+    "ends": "Ends",
+    "scopes": {
+      "tenant": "Tenant",
+      "global": "Global"
+    },
+    "audiences": {
+      "all": "All users",
+      "admins": "Admins only"
+    },
+    "modes": {
+      "post": "Post",
+      "banner": "Banner"
+    },
+    "severity": {
+      "info": "Info",
+      "success": "Success",
+      "warning": "Warning",
+      "error": "Error"
+    },
+    "fields": {
+      "scope": "Scope",
+      "audience": "Audience",
+      "severity": "Severity",
+      "mode": "Mode",
+      "deliver_in_app": "Deliver in-app",
+      "deliver_in_app_desc": "Show to users in the app and send a notification.",
+      "deliver_email": "Send email",
+      "deliver_email_desc": "Send this announcement to all recipients via email (ignores preferences).",
+      "title": "Title",
+      "body": "Body",
+      "starts_at": "Starts at",
+      "ends_at": "Ends at"
+    },
+    "actions": {
+      "publish": "Publish",
+      "read": "Read"
+    },
+    "create": {
+      "title": "Create broadcast"
+    },
+    "list": {
+      "title": "History"
+    },
+    "empty": "No announcements yet.",
+    "empty_feed": "No announcements yet.",
+    "confirm_delete": "Delete this announcement?",
+    "hints": {
+      "schedule": "Leave dates empty to publish immediately. End date controls when the banner stops showing."
+    },
+    "toasts": {
+      "created": "Announcement created",
+      "deleted": "Deleted"
     }
   },
   "notifications_page": {

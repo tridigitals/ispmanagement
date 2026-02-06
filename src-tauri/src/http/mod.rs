@@ -34,6 +34,7 @@ pub mod settings;
 pub mod storage;
 pub mod superadmin;
 pub mod support;
+pub mod announcements;
 pub mod system;
 pub mod team;
 pub mod tenant;
@@ -325,6 +326,8 @@ pub async fn start_server(
         .nest("/api/payment", payment::router())
         // Notification Routes
         .nest("/api/notifications", notifications::router())
+        // Announcements (banner + admin broadcast)
+        .nest("/api/announcements", announcements::router())
         // Settings Routes
         .route(
             "/api/settings",

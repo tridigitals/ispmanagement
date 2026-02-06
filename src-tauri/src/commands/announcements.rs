@@ -1,0 +1,734 @@
+//! Announcements / Broadcasts (tenant + global)
+
+use crate::http::{WsEvent, WsHub};
+use crate::models::{Announcement, CreateAnnouncementDto, UpdateAnnouncementDto};
+use crate::services::{AuthService, NotificationService};
+use chrono::Utc;
+use std::collections::HashSet;
+use tauri::State;
+use uuid::Uuid;
+
+fn norm_severity(s: Option<String>) -> String {
+    match s.as_deref() {
+        Some("info") | Some("success") | Some("warning") | Some("error") => s.unwrap(),
+        _ => "info".to_string(),
+    }
+}
+
+fn norm_audience(a: Option<String>) -> String {
+    match a.as_deref() {
+        Some("all") | Some("admins") => a.unwrap(),
+        _ => "all".to_string(),
+    }
+}
+
+fn norm_mode(m: Option<String>) -> String {
+    match m.as_deref() {
+        Some("post") | Some("banner") => m.unwrap(),
+        _ => "post".to_string(),
+    }
+}
+
+fn norm_format(f: Option<String>) -> String {
+    match f.as_deref() {
+        Some("plain") | Some("markdown") => f.unwrap(),
+        _ => "plain".to_string(),
+    }
+}
+
+#[cfg(feature = "postgres")]
+async fn tenant_admin_user_ids(
+    pool: &sqlx::Pool<sqlx::Postgres>,
+    tenant_id: &str,
+) -> Result<Vec<String>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT tm.user_id
+        FROM tenant_members tm
+        JOIN role_permissions rp ON rp.role_id = tm.role_id
+        WHERE tm.tenant_id = $1
+          AND tm.role_id IS NOT NULL
+          AND rp.permission_id = ANY($2)
+    "#,
+    )
+    .bind(tenant_id)
+    .bind(&["admin:access", "admin:*", "*"])
+    .fetch_all(pool)
+    .await
+}
+
+#[cfg(feature = "postgres")]
+async fn tenant_user_ids(
+    pool: &sqlx::Pool<sqlx::Postgres>,
+    tenant_id: &str,
+) -> Result<Vec<String>, sqlx::Error> {
+    sqlx::query_scalar("SELECT DISTINCT user_id FROM tenant_members WHERE tenant_id = $1")
+        .bind(tenant_id)
+        .fetch_all(pool)
+        .await
+}
+
+async fn send_announcement_notifications(
+    pool: &crate::db::DbPool,
+    notification_service: &NotificationService,
+    announcement: &Announcement,
+) {
+    if !announcement.deliver_in_app {
+        return;
+    }
+
+    let mut recipients: HashSet<String> = HashSet::new();
+
+    #[cfg(feature = "postgres")]
+    {
+        if let Some(tid) = announcement.tenant_id.as_deref() {
+            if announcement.audience == "admins" {
+                recipients.extend(tenant_admin_user_ids(pool, tid).await.unwrap_or_default());
+            } else {
+                recipients.extend(tenant_user_ids(pool, tid).await.unwrap_or_default());
+            }
+        } else {
+            let ids: Vec<String> = sqlx::query_scalar("SELECT id FROM users WHERE is_active = true")
+                .fetch_all(pool)
+                .await
+                .unwrap_or_default();
+            recipients.extend(ids);
+        }
+    }
+
+    let title = announcement.title.clone();
+    let msg = if announcement.body.len() > 180 {
+        format!("{}…", &announcement.body[..180])
+    } else {
+        announcement.body.clone()
+    };
+
+    for uid in recipients {
+        let _ = notification_service
+            .create_notification(
+                uid,
+                announcement.tenant_id.clone(),
+                title.clone(),
+                msg.clone(),
+                announcement.severity.clone(),
+                "announcement".to_string(),
+                Some(format!("/announcements/{}", announcement.id)),
+            )
+            .await;
+    }
+}
+
+#[cfg(feature = "postgres")]
+async fn send_announcement_emails(
+    pool: &crate::db::DbPool,
+    notification_service: &NotificationService,
+    announcement: &Announcement,
+) {
+    if !announcement.deliver_email {
+        return;
+    }
+
+    let mut recipients: HashSet<String> = HashSet::new();
+
+    if let Some(tid) = announcement.tenant_id.as_deref() {
+        if announcement.audience == "admins" {
+            recipients.extend(tenant_admin_user_ids(pool, tid).await.unwrap_or_default());
+        } else {
+            recipients.extend(tenant_user_ids(pool, tid).await.unwrap_or_default());
+        }
+    } else {
+        let ids: Vec<String> = sqlx::query_scalar("SELECT id FROM users WHERE is_active = true")
+            .fetch_all(pool)
+            .await
+            .unwrap_or_default();
+        recipients.extend(ids);
+    }
+
+    let mut ids: Vec<String> = recipients.into_iter().collect();
+    ids.sort();
+
+    let subject = format!("[Announcement] {}", announcement.title);
+
+    let mut body = String::new();
+    body.push_str(&announcement.title);
+    body.push_str("\n\n");
+    body.push_str(&announcement.body);
+
+    if let Some(tid) = announcement.tenant_id.as_deref() {
+        let main_domain: Option<String> = sqlx::query_scalar(
+            "SELECT value FROM settings WHERE tenant_id IS NULL AND key = 'app_main_domain' LIMIT 1",
+        )
+        .fetch_optional(pool)
+        .await
+        .unwrap_or(None);
+
+        let slug: Option<String> =
+            sqlx::query_scalar("SELECT slug FROM tenants WHERE id = $1 LIMIT 1")
+                .bind(tid)
+                .fetch_optional(pool)
+                .await
+                .unwrap_or(None);
+
+        if let (Some(domain), Some(slug)) = (main_domain, slug) {
+            body.push_str("\n\nOpen in app:\n");
+            body.push_str(&format!(
+                "https://{}/{}/announcements/{}",
+                domain, slug, announcement.id
+            ));
+            body.push('\n');
+        }
+    }
+
+    let _ = notification_service
+        .force_send_email_to_users(&ids, &subject, &body)
+        .await;
+}
+
+#[tauri::command]
+pub async fn list_active_announcements(
+    token: String,
+    auth_service: State<'_, AuthService>,
+) -> Result<Vec<Announcement>, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let tenant_id = claims.tenant_id.clone();
+    let user_id = claims.sub.clone();
+
+    let is_admin = if let Some(tid) = tenant_id.as_deref() {
+        auth_service
+            .has_permission(&user_id, tid, "admin", "access")
+            .await
+            .unwrap_or(false)
+    } else {
+        false
+    } || claims.is_super_admin;
+
+    let now = Utc::now();
+
+    #[cfg(feature = "postgres")]
+    let rows: Vec<Announcement> = sqlx::query_as(
+        r#"
+        SELECT a.*
+        FROM announcements a
+        LEFT JOIN announcement_dismissals d
+          ON d.announcement_id = a.id AND d.user_id = $1
+        WHERE d.id IS NULL
+          AND ($2::text IS NULL OR a.tenant_id IS NULL OR a.tenant_id = $2)
+          AND a.deliver_in_app = true
+          AND a.starts_at <= $3
+          AND (a.ends_at IS NULL OR a.ends_at > $3)
+          AND (
+            a.audience = 'all'
+            OR (a.audience = 'admins' AND $4 = true)
+          )
+        ORDER BY a.starts_at DESC
+        LIMIT 5
+    "#,
+    )
+    .bind(&user_id)
+    .bind(tenant_id.as_deref())
+    .bind(now)
+    .bind(is_admin)
+    .fetch_all(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    #[cfg(not(feature = "postgres"))]
+    let rows: Vec<Announcement> = Vec::new();
+
+    Ok(rows)
+}
+
+#[tauri::command]
+pub async fn get_announcement(
+    token: String,
+    id: String,
+    auth_service: State<'_, AuthService>,
+) -> Result<Announcement, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let tenant_id = claims.tenant_id.clone();
+    let user_id = claims.sub.clone();
+
+    let is_admin = if let Some(tid) = tenant_id.as_deref() {
+        auth_service
+            .has_permission(&user_id, tid, "admin", "access")
+            .await
+            .unwrap_or(false)
+    } else {
+        false
+    } || claims.is_super_admin;
+
+    let can_manage = if let Some(tid) = tenant_id.as_deref() {
+        auth_service
+            .has_permission(&user_id, tid, "announcements", "manage")
+            .await
+            .unwrap_or(false)
+    } else {
+        false
+    } || claims.is_super_admin;
+
+    let now = Utc::now();
+
+    #[cfg(feature = "postgres")]
+    let row: Announcement = if can_manage {
+        sqlx::query_as(
+            r#"
+            SELECT *
+            FROM announcements
+            WHERE id = $1
+              AND ($2::text IS NULL OR tenant_id IS NULL OR tenant_id = $2)
+        "#,
+        )
+        .bind(&id)
+        .bind(tenant_id.as_deref())
+        .fetch_one(&auth_service.pool)
+        .await
+        .map_err(|e| e.to_string())?
+    } else {
+        sqlx::query_as(
+            r#"
+            SELECT *
+            FROM announcements
+            WHERE id = $1
+              AND deliver_in_app = true
+              AND ($2::text IS NULL OR tenant_id IS NULL OR tenant_id = $2)
+              AND starts_at <= $3
+              AND (ends_at IS NULL OR ends_at > $3 OR notified_at IS NOT NULL)
+              AND (
+                audience = 'all'
+                OR (audience = 'admins' AND $4 = true)
+              )
+        "#,
+        )
+        .bind(&id)
+        .bind(tenant_id.as_deref())
+        .bind(now)
+        .bind(is_admin)
+        .fetch_one(&auth_service.pool)
+        .await
+        .map_err(|e| e.to_string())?
+    };
+
+    #[cfg(not(feature = "postgres"))]
+    let row: Announcement = Announcement {
+        id,
+        tenant_id,
+        created_by: None,
+        title: "".into(),
+        body: "".into(),
+        severity: "info".into(),
+        audience: "all".into(),
+        mode: "post".into(),
+        format: "plain".into(),
+        deliver_in_app: true,
+        deliver_email: false,
+        starts_at: now,
+        ends_at: None,
+        notified_at: None,
+        created_at: now,
+        updated_at: now,
+    };
+
+    Ok(row)
+}
+
+#[tauri::command]
+pub async fn dismiss_announcement(
+    token: String,
+    id: String,
+    auth_service: State<'_, AuthService>,
+) -> Result<(), String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let now = Utc::now();
+    let did = Uuid::new_v4().to_string();
+
+    #[cfg(feature = "postgres")]
+    {
+        let _ = sqlx::query(
+            r#"
+            INSERT INTO announcement_dismissals (id, announcement_id, user_id, dismissed_at)
+            VALUES ($1,$2,$3,$4)
+            ON CONFLICT (user_id, announcement_id) DO NOTHING
+        "#,
+        )
+        .bind(&did)
+        .bind(&id)
+        .bind(&claims.sub)
+        .bind(now)
+        .execute(&auth_service.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn list_announcements_admin(
+    token: String,
+    scope: Option<String>,
+    auth_service: State<'_, AuthService>,
+) -> Result<Vec<Announcement>, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or_else(|| "Tenant context required".to_string())?;
+
+    auth_service
+        .check_permission(&claims.sub, &tenant_id, "announcements", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let scope = scope.unwrap_or_else(|| "tenant".to_string());
+
+    #[cfg(feature = "postgres")]
+    let rows: Vec<Announcement> = match scope.as_str() {
+        "global" if claims.is_super_admin => sqlx::query_as(
+            "SELECT * FROM announcements WHERE tenant_id IS NULL ORDER BY created_at DESC LIMIT 200",
+        )
+        .fetch_all(&auth_service.pool)
+        .await
+        .map_err(|e| e.to_string())?,
+        "all" if claims.is_super_admin => sqlx::query_as(
+            "SELECT * FROM announcements ORDER BY created_at DESC LIMIT 200",
+        )
+        .fetch_all(&auth_service.pool)
+        .await
+        .map_err(|e| e.to_string())?,
+        _ => sqlx::query_as(
+            "SELECT * FROM announcements WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 200",
+        )
+        .bind(&tenant_id)
+        .fetch_all(&auth_service.pool)
+        .await
+        .map_err(|e| e.to_string())?,
+    };
+
+    #[cfg(not(feature = "postgres"))]
+    let rows: Vec<Announcement> = Vec::new();
+
+    Ok(rows)
+}
+
+#[tauri::command]
+pub async fn create_announcement_admin(
+    token: String,
+    dto: CreateAnnouncementDto,
+    auth_service: State<'_, AuthService>,
+    notification_service: State<'_, NotificationService>,
+) -> Result<Announcement, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let tenant_id = claims.tenant_id.clone();
+    let scope = dto.scope.clone().unwrap_or_else(|| "tenant".to_string());
+    let target_tenant_id = if scope == "global" {
+        if !claims.is_super_admin {
+            return Err("Forbidden".to_string());
+        }
+        None
+    } else {
+        let tid = tenant_id.ok_or_else(|| "Tenant context required".to_string())?;
+        Some(tid)
+    };
+
+    if let Some(tid) = target_tenant_id.as_deref() {
+        auth_service
+            .check_permission(&claims.sub, tid, "announcements", "manage")
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+
+    if dto.title.trim().is_empty() || dto.body.trim().is_empty() {
+        return Err("Title and body are required".to_string());
+    }
+
+    let now = Utc::now();
+    let starts_at = dto.starts_at.unwrap_or(now);
+    let ends_at = dto.ends_at;
+    if let Some(e) = ends_at {
+        if e <= starts_at {
+            return Err("ends_at must be after starts_at".to_string());
+        }
+    }
+
+    let id = Uuid::new_v4().to_string();
+    let severity = norm_severity(dto.severity);
+    let audience = norm_audience(dto.audience);
+    let mode = norm_mode(dto.mode);
+    let format = norm_format(dto.format);
+    let deliver_in_app = dto.deliver_in_app.unwrap_or(true);
+    let deliver_email = dto.deliver_email.unwrap_or(false);
+
+    #[cfg(feature = "postgres")]
+    let mut ann: Announcement = sqlx::query_as(
+        r#"
+        INSERT INTO announcements
+          (id, tenant_id, created_by, title, body, severity, audience, mode, format, deliver_in_app, deliver_email, starts_at, ends_at, notified_at, created_at, updated_at)
+        VALUES
+          ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NULL,$14,$15)
+        RETURNING *
+    "#,
+    )
+    .bind(&id)
+    .bind(target_tenant_id.clone())
+    .bind(Some(claims.sub.clone()))
+    .bind(dto.title.trim())
+    .bind(dto.body.trim())
+    .bind(&severity)
+    .bind(&audience)
+    .bind(&mode)
+    .bind(&format)
+    .bind(deliver_in_app)
+    .bind(deliver_email)
+    .bind(starts_at)
+    .bind(ends_at)
+    .bind(now)
+    .bind(now)
+    .fetch_one(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    #[cfg(not(feature = "postgres"))]
+    let mut ann: Announcement = Announcement {
+        id,
+        tenant_id: target_tenant_id.clone(),
+        created_by: Some(claims.sub.clone()),
+        title: dto.title,
+        body: dto.body,
+        severity,
+        audience,
+        mode,
+        format,
+        deliver_in_app,
+        deliver_email,
+        starts_at,
+        ends_at,
+        notified_at: None,
+        created_at: now,
+        updated_at: now,
+    };
+
+    if starts_at <= now
+        && ends_at.map(|e| e > now).unwrap_or(true)
+        && (deliver_in_app || deliver_email)
+    {
+        send_announcement_notifications(&auth_service.pool, &notification_service, &ann).await;
+
+        #[cfg(feature = "postgres")]
+        {
+            send_announcement_emails(&auth_service.pool, &notification_service, &ann).await;
+            ann = sqlx::query_as("UPDATE announcements SET notified_at = $1 WHERE id = $2 RETURNING *")
+                .bind(now)
+                .bind(&ann.id)
+                .fetch_one(&auth_service.pool)
+                .await
+                .map_err(|e| e.to_string())?;
+        }
+    }
+
+    Ok(ann)
+}
+
+#[tauri::command]
+pub async fn update_announcement_admin(
+    token: String,
+    id: String,
+    dto: UpdateAnnouncementDto,
+    auth_service: State<'_, AuthService>,
+) -> Result<Announcement, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or_else(|| "Tenant context required".to_string())?;
+
+    auth_service
+        .check_permission(&claims.sub, &tenant_id, "announcements", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    #[cfg(feature = "postgres")]
+    let existing: Announcement = sqlx::query_as(
+        "SELECT * FROM announcements WHERE id = $1 AND (tenant_id = $2 OR ($3 = true AND tenant_id IS NULL))",
+    )
+    .bind(&id)
+    .bind(&tenant_id)
+    .bind(claims.is_super_admin)
+    .fetch_one(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let now = Utc::now();
+    let title = dto.title.unwrap_or(existing.title);
+    let body = dto.body.unwrap_or(existing.body);
+    let severity = if dto.severity.is_some() {
+        norm_severity(dto.severity)
+    } else {
+        existing.severity
+    };
+    let audience = if dto.audience.is_some() {
+        norm_audience(dto.audience)
+    } else {
+        existing.audience
+    };
+    let mode = if dto.mode.is_some() {
+        norm_mode(dto.mode)
+    } else {
+        existing.mode
+    };
+    let format = if dto.format.is_some() {
+        norm_format(dto.format)
+    } else {
+        existing.format
+    };
+    let deliver_in_app = dto.deliver_in_app.unwrap_or(existing.deliver_in_app);
+    let deliver_email = dto.deliver_email.unwrap_or(existing.deliver_email);
+    let starts_at = dto.starts_at.unwrap_or(existing.starts_at);
+    let ends_at = dto.ends_at.or(existing.ends_at);
+    if let Some(e) = ends_at {
+        if e <= starts_at {
+            return Err("ends_at must be after starts_at".to_string());
+        }
+    }
+
+    #[cfg(feature = "postgres")]
+    let ann: Announcement = sqlx::query_as(
+        r#"
+        UPDATE announcements
+        SET title = $1,
+            body = $2,
+            severity = $3,
+            audience = $4,
+            mode = $5,
+            format = $6,
+            deliver_in_app = $7,
+            deliver_email = $8,
+            starts_at = $9,
+            ends_at = $10,
+            updated_at = $11
+        WHERE id = $12
+        RETURNING *
+    "#,
+    )
+    .bind(title.trim())
+    .bind(body.trim())
+    .bind(severity)
+    .bind(audience)
+    .bind(mode)
+    .bind(format)
+    .bind(deliver_in_app)
+    .bind(deliver_email)
+    .bind(starts_at)
+    .bind(ends_at)
+    .bind(now)
+    .bind(&id)
+    .fetch_one(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    Ok(ann)
+}
+
+#[tauri::command]
+pub async fn delete_announcement_admin(
+    token: String,
+    id: String,
+    auth_service: State<'_, AuthService>,
+) -> Result<(), String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or_else(|| "Tenant context required".to_string())?;
+
+    auth_service
+        .check_permission(&claims.sub, &tenant_id, "announcements", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    #[cfg(feature = "postgres")]
+    {
+        let _ = sqlx::query(
+            "DELETE FROM announcements WHERE id = $1 AND (tenant_id = $2 OR ($3 = true AND tenant_id IS NULL))",
+        )
+        .bind(&id)
+        .bind(&tenant_id)
+        .bind(claims.is_super_admin)
+        .execute(&auth_service.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
+#[cfg(feature = "postgres")]
+#[tauri::command]
+pub async fn process_due_announcements_command(
+    auth_service: State<'_, AuthService>,
+    notification_service: State<'_, NotificationService>,
+    ws_hub: State<'_, std::sync::Arc<WsHub>>,
+) -> Result<(), String> {
+    let now = Utc::now();
+    let due: Vec<Announcement> = sqlx::query_as(
+        r#"
+        SELECT *
+        FROM announcements
+        WHERE starts_at <= $1
+          AND notified_at IS NULL
+          AND (ends_at IS NULL OR ends_at > $1)
+          AND (deliver_in_app = true OR deliver_email = true)
+        ORDER BY starts_at ASC
+        LIMIT 50
+    "#,
+    )
+    .bind(now)
+    .fetch_all(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    for ann in due {
+        send_announcement_notifications(&auth_service.pool, &notification_service, &ann).await;
+        send_announcement_emails(&auth_service.pool, &notification_service, &ann).await;
+        let _ = sqlx::query(
+            "UPDATE announcements SET notified_at = $1 WHERE id = $2 AND notified_at IS NULL",
+        )
+        .bind(now)
+        .bind(&ann.id)
+        .execute(&auth_service.pool)
+        .await;
+
+        // Nudge clients via WS so banner can refresh quickly (client-side filter still applies).
+        // We only send a broad hint; individual users will refresh via NotificationReceived too.
+        ws_hub.broadcast(WsEvent::PermissionsChanged);
+    }
+
+    Ok(())
+}

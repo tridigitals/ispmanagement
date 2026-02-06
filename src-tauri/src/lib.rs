@@ -16,7 +16,7 @@ use db::connection::{init_db, seed_defaults};
 use services::backup::BackupScheduler;
 use services::metrics_service::MetricsService;
 use services::{
-    AuditService, AuthService, BackupService, EmailService, NotificationService, PaymentService,
+    AnnouncementScheduler, AuditService, AuthService, BackupService, EmailService, NotificationService, PaymentService,
     PlanService, RoleService, SettingsService, SystemService, TeamService, UserService,
 };
 use tauri::Manager;
@@ -205,6 +205,11 @@ pub fn run() {
 
                 let notification_service = NotificationService::new(pool.clone(), ws_hub.clone(), email_service.clone());
                 let payment_service = PaymentService::new(pool.clone(), notification_service.clone());
+
+                // Start Announcement Scheduler (scheduled broadcasts -> notifications)
+                let announcement_scheduler =
+                    AnnouncementScheduler::new(pool.clone(), notification_service.clone());
+                announcement_scheduler.start().await;
 
                 // Seed default features
                 plan_service.seed_default_features()
@@ -410,6 +415,14 @@ pub fn run() {
                                     get_support_ticket,
                                     reply_support_ticket,
                                     update_support_ticket,
+                                    // Announcements
+                                    list_active_announcements,
+                                    get_announcement,
+                                    dismiss_announcement,
+                                    list_announcements_admin,
+                                    create_announcement_admin,
+                                    update_announcement_admin,
+                                    delete_announcement_admin,
                                 ])
                                 .run(tauri::generate_context!())
                                 .expect("error while running tauri application");

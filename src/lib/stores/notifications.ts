@@ -354,6 +354,15 @@ export function handleNotificationReceived(notification: Notification) {
       console.error('Failed to trigger Web Notification:', e);
     }
   }
+
+  // Nudge announcement banner refresh when a broadcast is delivered.
+  if (notification.category === 'announcement') {
+    try {
+      window.dispatchEvent(new CustomEvent('announcements_changed'));
+    } catch {
+      // ignore
+    }
+  }
 }
 
 export function handleUnreadCountUpdated(count: number) {

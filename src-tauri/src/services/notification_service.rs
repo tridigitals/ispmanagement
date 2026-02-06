@@ -33,6 +33,46 @@ impl NotificationService {
         }
     }
 
+    /// Send an email immediately, bypassing notification preferences.
+    ///
+    /// Used for "forced" deliveries such as admin-triggered broadcasts.
+    pub async fn force_send_email(&self, to: &str, subject: &str, body: &str) -> AppResult<()> {
+        self.email_service.send_email(to, subject, body).await
+    }
+
+    /// Send an email to a set of users (by user_id), bypassing preferences.
+    #[cfg(feature = "postgres")]
+    pub async fn force_send_email_to_users(
+        &self,
+        user_ids: &[String],
+        subject: &str,
+        body: &str,
+    ) -> AppResult<()> {
+        if user_ids.is_empty() {
+            return Ok(());
+        }
+
+        let emails: Vec<String> = sqlx::query_scalar(
+            "SELECT email FROM users WHERE id = ANY($1) AND is_active = true",
+        )
+        .bind(user_ids)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let email_service = self.email_service.clone();
+        let subject = subject.to_string();
+        let body = body.to_string();
+
+        tokio::spawn(async move {
+            for email in emails {
+                let _ = email_service.send_email(&email, &subject, &body).await;
+            }
+        });
+
+        Ok(())
+    }
+
     /// Create and send a notification
     pub async fn create_notification(
         &self,

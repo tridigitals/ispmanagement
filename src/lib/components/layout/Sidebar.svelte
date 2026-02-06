@@ -32,6 +32,12 @@
         show: true,
       },
       {
+        label: $t('sidebar.announcements') || 'Announcements',
+        icon: 'megaphone',
+        href: `${tenantPrefix}/announcements`,
+        show: true,
+      },
+      {
         label: $t('sidebar.support') || 'Support',
         icon: 'life-buoy',
         href: `${tenantPrefix}/support`,
@@ -133,6 +139,12 @@
         icon: 'folder',
         href: `${tenantPrefix}/admin/storage`,
         show: true,
+      },
+      {
+        label: $t('sidebar.announcements') || 'Announcements',
+        icon: 'megaphone',
+        href: `${tenantPrefix}/admin/announcements`,
+        show: $can('manage', 'announcements'),
       },
       {
         label: $t('sidebar.backups') || 'Backups',

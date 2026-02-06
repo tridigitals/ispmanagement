@@ -364,6 +364,7 @@
     "backups": "Cadangan",
     "system": "Sistem",
     "support": "Dukungan",
+    "announcements": "Pengumuman",
     "expand": "Perluas sidebar",
     "collapse": "Ciutkan sidebar",
     "exit": "Keluar",
@@ -483,6 +484,67 @@
     },
     "create": {
       "title": "Buat Tiket"
+    }
+  },
+  "announcements": {
+    "title": "Pengumuman",
+    "subtitle": "Kirim broadcast sebagai banner dan notifikasi.",
+    "feed_subtitle": "Pembaruan produk, jadwal maintenance, dan info penting.",
+    "banner_aria": "Pengumuman",
+    "more": "+{count} lainnya",
+    "not_found": "Pengumuman tidak ditemukan.",
+    "ends": "Berakhir",
+    "scopes": {
+      "tenant": "Tenant",
+      "global": "Global"
+    },
+    "audiences": {
+      "all": "Semua pengguna",
+      "admins": "Admin saja"
+    },
+    "modes": {
+      "post": "Posting",
+      "banner": "Banner"
+    },
+    "severity": {
+      "info": "Info",
+      "success": "Sukses",
+      "warning": "Peringatan",
+      "error": "Error"
+    },
+    "fields": {
+      "scope": "Cakupan",
+      "audience": "Target",
+      "severity": "Tipe",
+      "mode": "Mode",
+      "deliver_in_app": "Kirim di aplikasi",
+      "deliver_in_app_desc": "Tampilkan di aplikasi dan kirim notifikasi.",
+      "deliver_email": "Kirim email",
+      "deliver_email_desc": "Kirim pengumuman ini ke semua penerima via email (abaikan preferensi).",
+      "title": "Judul",
+      "body": "Isi",
+      "starts_at": "Mulai",
+      "ends_at": "Berakhir"
+    },
+    "actions": {
+      "publish": "Publikasikan",
+      "read": "Baca"
+    },
+    "create": {
+      "title": "Buat broadcast"
+    },
+    "list": {
+      "title": "Riwayat"
+    },
+    "empty": "Belum ada pengumuman.",
+    "empty_feed": "Belum ada pengumuman.",
+    "confirm_delete": "Hapus pengumuman ini?",
+    "hints": {
+      "schedule": "Kosongkan tanggal untuk publish sekarang. Tanggal berakhir mengatur kapan banner berhenti tampil."
+    },
+    "toasts": {
+      "created": "Pengumuman dibuat",
+      "deleted": "Dihapus"
     }
   },
   "notifications_page": {

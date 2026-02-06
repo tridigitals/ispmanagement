@@ -66,6 +66,7 @@
       actionUrl.startsWith('/admin') ||
       actionUrl.startsWith('/support') ||
       actionUrl.startsWith('/dashboard') ||
+      actionUrl.startsWith('/announcements') ||
       actionUrl.startsWith('/profile') ||
       actionUrl.startsWith('/notifications')
     ) {

@@ -1,6 +1,7 @@
 <script lang="ts">
   import Sidebar from '$lib/components/layout/Sidebar.svelte';
   import Topbar from '$lib/components/layout/Topbar.svelte';
+  import AnnouncementBanner from '$lib/components/layout/AnnouncementBanner.svelte';
   import { isAuthenticated, isSuperAdmin, is2FARequiredButDisabled } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import { page } from '$app/stores';
@@ -73,6 +74,7 @@
   <div class="main-viewport">
     <div class="content-surface">
       <Topbar onMobileMenuClick={() => (mobileOpen = !mobileOpen)} />
+      <AnnouncementBanner />
       <div class="scroll-area">
         {@render children()}
       </div>

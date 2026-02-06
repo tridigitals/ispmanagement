@@ -161,6 +161,15 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       unsubscribe_push: { method: 'POST', path: '/notifications/push/unsubscribe' },
       send_test_notification: { method: 'POST', path: '/notifications/test' },
 
+      // Announcements
+      list_active_announcements: { method: 'GET', path: '/announcements/active' },
+      get_announcement: { method: 'GET', path: '/announcements/:id' },
+      dismiss_announcement: { method: 'POST', path: '/announcements/:id/dismiss' },
+      list_announcements_admin: { method: 'GET', path: '/announcements/admin' },
+      create_announcement_admin: { method: 'POST', path: '/announcements/admin' },
+      update_announcement_admin: { method: 'PUT', path: '/announcements/admin/:id' },
+      delete_announcement_admin: { method: 'DELETE', path: '/announcements/admin/:id' },
+
       // Tenant
       get_current_tenant: { method: 'GET', path: '/tenant/me' },
       update_current_tenant: { method: 'PUT', path: '/tenant/me' },
@@ -466,6 +475,53 @@ export interface SupportTicketDetail {
   messages: SupportTicketMessage[];
 }
 
+export interface Announcement {
+  id: string;
+  tenant_id: string | null;
+  created_by: string | null;
+  title: string;
+  body: string;
+  severity: string;
+  audience: string;
+  mode: 'post' | 'banner';
+  format: 'plain' | 'markdown';
+  deliver_in_app: boolean;
+  deliver_email: boolean;
+  starts_at: string;
+  ends_at: string | null;
+  notified_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateAnnouncementDto {
+  scope?: 'tenant' | 'global';
+  tenant_id?: string | null;
+  title: string;
+  body: string;
+  severity?: 'info' | 'success' | 'warning' | 'error';
+  audience?: 'all' | 'admins';
+  mode?: 'post' | 'banner';
+  format?: 'plain' | 'markdown';
+  deliver_in_app?: boolean;
+  deliver_email?: boolean;
+  starts_at?: string | null;
+  ends_at?: string | null;
+}
+
+export interface UpdateAnnouncementDto {
+  title?: string;
+  body?: string;
+  severity?: 'info' | 'success' | 'warning' | 'error';
+  audience?: 'all' | 'admins';
+  mode?: 'post' | 'banner';
+  format?: 'plain' | 'markdown';
+  deliver_in_app?: boolean;
+  deliver_email?: boolean;
+  starts_at?: string | null;
+  ends_at?: string | null;
+}
+
 // Auth API
 export const auth = {
   register: (email: string, password: string, name: string): Promise<AuthResponse> =>
@@ -755,6 +811,22 @@ export const support = {
     }),
 };
 
+export const announcements = {
+  listActive: (): Promise<Announcement[]> => safeInvoke('list_active_announcements', { token: getTokenOrThrow() }),
+  get: (id: string): Promise<Announcement> => safeInvoke('get_announcement', { token: getTokenOrThrow(), id }),
+  dismiss: (id: string): Promise<void> =>
+    safeInvoke('dismiss_announcement', { token: getTokenOrThrow(), id }),
+
+  listAdmin: (scope?: 'tenant' | 'global' | 'all'): Promise<Announcement[]> =>
+    safeInvoke('list_announcements_admin', { token: getTokenOrThrow(), scope }),
+  createAdmin: (dto: CreateAnnouncementDto): Promise<Announcement> =>
+    safeInvoke('create_announcement_admin', { token: getTokenOrThrow(), dto }),
+  updateAdmin: (id: string, dto: UpdateAnnouncementDto): Promise<Announcement> =>
+    safeInvoke('update_announcement_admin', { token: getTokenOrThrow(), id, dto }),
+  deleteAdmin: (id: string): Promise<void> =>
+    safeInvoke('delete_announcement_admin', { token: getTokenOrThrow(), id }),
+};
+
 // Public API (No Auth)
 export const publicApi = {
   getTenant: (slug: string): Promise<any> => safeInvoke('get_tenant_by_slug', { slug }),
@@ -1015,7 +1087,7 @@ export interface Notification {
   title: string;
   message: string;
   notification_type: 'info' | 'success' | 'warning' | 'error';
-  category: 'system' | 'team' | 'payment' | 'security';
+  category: 'system' | 'team' | 'payment' | 'security' | 'support' | 'announcement' | string;
   action_url: string | null;
   is_read: boolean;
   created_at: string;
@@ -1034,7 +1106,7 @@ export interface NotificationPreference {
   id: string;
   user_id: string;
   channel: 'in_app' | 'email' | 'push';
-  category: 'system' | 'team' | 'payment' | 'security';
+  category: 'system' | 'team' | 'payment' | 'security' | 'support' | 'announcement' | string;
   enabled: boolean;
   updated_at: string;
 }
@@ -1351,6 +1423,7 @@ export const api = {
   team,
   superadmin,
   support,
+  announcements,
   settings,
   install,
   plans,

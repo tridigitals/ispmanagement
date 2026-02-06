@@ -66,6 +66,7 @@
     Cloud,
     Zap,
     Send,
+    Megaphone,
     MessageCircle,
     Landmark,
     Circle,
@@ -169,6 +170,7 @@
     smartphone: Smartphone,
     monitor: Monitor,
     'message-circle': MessageCircle,
+    megaphone: Megaphone,
   };
 
   let IconComponent = $derived(icons[name] || HelpCircle);

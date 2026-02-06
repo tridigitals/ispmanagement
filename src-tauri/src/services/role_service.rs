@@ -56,6 +56,9 @@ impl RoleService {
             ),
             ("support", "assign", "Assign support tickets"),
             ("support", "internal", "Post internal support notes"),
+            // Announcements
+            ("announcements", "read", "Read announcements"),
+            ("announcements", "manage", "Create/update announcements"),
         ]
     }
 
@@ -91,6 +94,8 @@ impl RoleService {
                     "support:update",
                     "support:assign",
                     "support:internal",
+                    "announcements:read",
+                    "announcements:manage",
                 ],
             ),
             (
@@ -118,6 +123,8 @@ impl RoleService {
                     "support:update",
                     "support:assign",
                     "support:internal",
+                    "announcements:read",
+                    "announcements:manage",
                 ],
             ),
             (
@@ -130,6 +137,7 @@ impl RoleService {
                     "support:create",
                     "support:read",
                     "support:reply",
+                    "announcements:read",
                 ],
             ),
             ("Viewer", "Read-only access", true, vec!["dashboard:read"]),
@@ -202,45 +210,48 @@ impl RoleService {
                     .fetch_optional(&self.pool)
                     .await?;
 
-            if existing.is_some() {
-                continue; // Role already exists
-            }
+            let role_id = if let Some((rid,)) = existing {
+                // Keep existing system roles, but still ensure they receive any newly added default permissions.
+                rid
+            } else {
+                let role_id = Uuid::new_v4().to_string();
 
-            let role_id = Uuid::new_v4().to_string();
+                // Insert role
+                #[cfg(feature = "postgres")]
+                {
+                    sqlx::query(r#"
+                        INSERT INTO roles (id, tenant_id, name, description, is_system, created_at, updated_at)
+                        VALUES ($1, NULL, $2, $3, $4, $5, $6)
+                    "#)
+                    .bind(&role_id)
+                    .bind(name)
+                    .bind(description)
+                    .bind(is_system)
+                    .bind(now)
+                    .bind(now)
+                    .execute(&self.pool)
+                    .await?;
+                }
 
-            // Insert role
-            #[cfg(feature = "postgres")]
-            {
-                sqlx::query(r#"
-                    INSERT INTO roles (id, tenant_id, name, description, is_system, created_at, updated_at)
-                    VALUES ($1, NULL, $2, $3, $4, $5, $6)
-                "#)
-                .bind(&role_id)
-                .bind(name)
-                .bind(description)
-                .bind(is_system)
-                .bind(now)
-                .bind(now)
-                .execute(&self.pool)
-                .await?;
-            }
+                #[cfg(feature = "sqlite")]
+                {
+                    let now_str = now.to_rfc3339();
+                    sqlx::query(r#"
+                        INSERT INTO roles (id, tenant_id, name, description, is_system, created_at, updated_at)
+                        VALUES (?, NULL, ?, ?, ?, ?, ?)
+                    "#)
+                    .bind(&role_id)
+                    .bind(name)
+                    .bind(description)
+                    .bind(is_system as i32)
+                    .bind(&now_str)
+                    .bind(&now_str)
+                    .execute(&self.pool)
+                    .await?;
+                }
 
-            #[cfg(feature = "sqlite")]
-            {
-                let now_str = now.to_rfc3339();
-                sqlx::query(r#"
-                    INSERT INTO roles (id, tenant_id, name, description, is_system, created_at, updated_at)
-                    VALUES (?, NULL, ?, ?, ?, ?, ?)
-                "#)
-                .bind(&role_id)
-                .bind(name)
-                .bind(description)
-                .bind(is_system as i32)
-                .bind(&now_str)
-                .bind(&now_str)
-                .execute(&self.pool)
-                .await?;
-            }
+                role_id
+            };
 
             // Link permissions to role
             for perm_key in permission_keys {

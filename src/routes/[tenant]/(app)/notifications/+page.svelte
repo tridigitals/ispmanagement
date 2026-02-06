@@ -71,12 +71,26 @@
       actionUrl.startsWith('/admin') ||
       actionUrl.startsWith('/support') ||
       actionUrl.startsWith('/dashboard') ||
+      actionUrl.startsWith('/announcements') ||
       actionUrl.startsWith('/profile') ||
       actionUrl.startsWith('/notifications')
     ) {
       return `${tenantPrefix}${actionUrl}`;
     }
     return actionUrl;
+  }
+
+  function getIconForType(type: string) {
+    switch (type) {
+      case 'success':
+        return 'check-circle';
+      case 'warning':
+        return 'alert-circle';
+      case 'error':
+        return 'alert-circle';
+      default:
+        return 'info';
+    }
   }
 
   // Confirm dialogs
@@ -234,7 +248,9 @@
           <article class="item" class:unread={!n.is_read}>
             <button type="button" class="item-main" onclick={() => handleClick(n)}>
               <div class="left">
-                <div class="type-dot {n.notification_type}"></div>
+                <div class="type-icon {n.notification_type}">
+                  <Icon name={getIconForType(n.notification_type)} size={16} />
+                </div>
                 <div class="text">
                   <div class="row">
                     <div class="title">{n.title}</div>
@@ -526,22 +542,31 @@
   }
 
   .type-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 999px;
-    margin-top: 7px;
-    flex-shrink: 0;
-    background: var(--color-info);
+    display: none;
   }
 
-  .type-dot.success {
-    background: var(--color-success);
+  .type-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    margin-top: 1px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--color-info);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
   }
-  .type-dot.warning {
-    background: var(--color-warning);
+
+  .type-icon.success {
+    color: var(--color-success);
   }
-  .type-dot.error {
-    background: var(--color-danger);
+  .type-icon.warning {
+    color: var(--color-warning);
+  }
+  .type-icon.error {
+    color: var(--color-danger);
   }
 
   .text {
