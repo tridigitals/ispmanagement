@@ -479,12 +479,13 @@ export interface Announcement {
   id: string;
   tenant_id: string | null;
   created_by: string | null;
+  cover_file_id?: string | null;
   title: string;
   body: string;
   severity: string;
   audience: string;
   mode: 'post' | 'banner';
-  format: 'plain' | 'markdown';
+  format: 'plain' | 'markdown' | 'html';
   deliver_in_app: boolean;
   deliver_email: boolean;
   starts_at: string;
@@ -497,12 +498,13 @@ export interface Announcement {
 export interface CreateAnnouncementDto {
   scope?: 'tenant' | 'global';
   tenant_id?: string | null;
+  cover_file_id?: string | null;
   title: string;
   body: string;
   severity?: 'info' | 'success' | 'warning' | 'error';
   audience?: 'all' | 'admins';
   mode?: 'post' | 'banner';
-  format?: 'plain' | 'markdown';
+  format?: 'plain' | 'markdown' | 'html';
   deliver_in_app?: boolean;
   deliver_email?: boolean;
   starts_at?: string | null;
@@ -510,12 +512,13 @@ export interface CreateAnnouncementDto {
 }
 
 export interface UpdateAnnouncementDto {
+  cover_file_id?: string | null;
   title?: string;
   body?: string;
   severity?: 'info' | 'success' | 'warning' | 'error';
   audience?: 'all' | 'admins';
   mode?: 'post' | 'banner';
-  format?: 'plain' | 'markdown';
+  format?: 'plain' | 'markdown' | 'html';
   deliver_in_app?: boolean;
   deliver_email?: boolean;
   starts_at?: string | null;

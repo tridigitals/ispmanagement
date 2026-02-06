@@ -517,6 +517,7 @@
       "audience": "Target",
       "severity": "Tipe",
       "mode": "Mode",
+      "cover": "Gambar cover (opsional)",
       "deliver_in_app": "Kirim di aplikasi",
       "deliver_in_app_desc": "Tampilkan di aplikasi dan kirim notifikasi.",
       "deliver_email": "Kirim email",
@@ -525,6 +526,9 @@
       "body": "Isi",
       "starts_at": "Mulai",
       "ends_at": "Berakhir"
+    },
+    "placeholders": {
+      "body": "Tulis pesan yang jelas dan singkat..."
     },
     "actions": {
       "publish": "Publikasikan",
@@ -540,11 +544,13 @@
     "empty_feed": "Belum ada pengumuman.",
     "confirm_delete": "Hapus pengumuman ini?",
     "hints": {
-      "schedule": "Kosongkan tanggal untuk publish sekarang. Tanggal berakhir mengatur kapan banner berhenti tampil."
+      "schedule": "Kosongkan tanggal untuk publish sekarang. Tanggal berakhir mengatur kapan banner berhenti tampil.",
+      "rich": "Tip: Buat singkat dan jelas. Link boleh; gambar sebaiknya lewat cover."
     },
     "toasts": {
       "created": "Pengumuman dibuat",
-      "deleted": "Dihapus"
+      "deleted": "Dihapus",
+      "delivery_required": "Pilih minimal 1 channel pengiriman."
     }
   },
   "notifications_page": {

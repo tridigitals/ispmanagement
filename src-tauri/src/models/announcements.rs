@@ -5,6 +5,7 @@ pub struct Announcement {
     pub id: String,
     pub tenant_id: Option<String>,
     pub created_by: Option<String>,
+    pub cover_file_id: Option<String>,
     pub title: String,
     pub body: String,
     pub severity: String,
@@ -24,6 +25,7 @@ pub struct Announcement {
 pub struct CreateAnnouncementDto {
     pub scope: Option<String>, // "tenant" | "global"
     pub tenant_id: Option<String>,
+    pub cover_file_id: Option<String>,
     pub title: String,
     pub body: String,
     pub severity: Option<String>, // info|success|warning|error
@@ -38,6 +40,7 @@ pub struct CreateAnnouncementDto {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct UpdateAnnouncementDto {
+    pub cover_file_id: Option<Option<String>>,
     pub title: Option<String>,
     pub body: Option<String>,
     pub severity: Option<String>,

@@ -11,6 +11,20 @@ use serde::Deserialize;
 use std::collections::HashSet;
 use uuid::Uuid;
 
+fn strip_html_tags(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut in_tag = false;
+    for ch in input.chars() {
+        match ch {
+            '<' => in_tag = true,
+            '>' => in_tag = false,
+            _ if !in_tag => out.push(ch),
+            _ => {}
+        }
+    }
+    out.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
 fn norm_severity(s: Option<String>) -> String {
     match s.as_deref() {
         Some("info") | Some("success") | Some("warning") | Some("error") => s.unwrap(),
@@ -34,7 +48,7 @@ fn norm_mode(m: Option<String>) -> String {
 
 fn norm_format(f: Option<String>) -> String {
     match f.as_deref() {
-        Some("plain") | Some("markdown") => f.unwrap(),
+        Some("plain") | Some("markdown") | Some("html") => f.unwrap(),
         _ => "plain".to_string(),
     }
 }
@@ -178,6 +192,7 @@ pub async fn get_one(
         id,
         tenant_id,
         created_by: None,
+        cover_file_id: None,
         title: "".into(),
         body: "".into(),
         severity: "info".into(),
@@ -355,10 +370,16 @@ async fn send_announcement_notifications(
     }
 
     let title = announcement.title.clone();
-    let msg = if announcement.body.len() > 180 {
-        format!("{}…", &announcement.body[..180])
+    let plain = if announcement.format == "html" {
+        strip_html_tags(&announcement.body)
     } else {
         announcement.body.clone()
+    };
+    let msg = if plain.chars().count() > 180 {
+        let short: String = plain.chars().take(180).collect();
+        format!("{}…", short)
+    } else {
+        plain
     };
 
     for uid in recipients {
@@ -412,7 +433,11 @@ async fn send_announcement_emails(
     let mut body = String::new();
     body.push_str(&announcement.title);
     body.push_str("\n\n");
-    body.push_str(&announcement.body);
+    if announcement.format == "html" {
+        body.push_str(&strip_html_tags(&announcement.body));
+    } else {
+        body.push_str(&announcement.body);
+    }
 
     if let Some(tid) = announcement.tenant_id.as_deref() {
         let main_domain: Option<String> = sqlx::query_scalar(
@@ -502,20 +527,22 @@ pub async fn create_announcement(
     let format = norm_format(dto.format);
     let deliver_in_app = dto.deliver_in_app.unwrap_or(true);
     let deliver_email = dto.deliver_email.unwrap_or(false);
+    let cover_file_id = dto.cover_file_id.clone();
 
     #[cfg(feature = "postgres")]
     let mut ann: Announcement = sqlx::query_as(
         r#"
         INSERT INTO announcements
-          (id, tenant_id, created_by, title, body, severity, audience, mode, format, deliver_in_app, deliver_email, starts_at, ends_at, notified_at, created_at, updated_at)
+          (id, tenant_id, created_by, cover_file_id, title, body, severity, audience, mode, format, deliver_in_app, deliver_email, starts_at, ends_at, notified_at, created_at, updated_at)
         VALUES
-          ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NULL,$14,$15)
+          ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NULL,$15,$16)
         RETURNING *
     "#,
     )
     .bind(&id)
     .bind(target_tenant_id.clone())
     .bind(Some(claims.sub.clone()))
+    .bind(cover_file_id.clone())
     .bind(dto.title.trim())
     .bind(dto.body.trim())
     .bind(&severity)
@@ -536,6 +563,7 @@ pub async fn create_announcement(
         id,
         tenant_id: target_tenant_id.clone(),
         created_by: Some(claims.sub.clone()),
+        cover_file_id,
         title: dto.title,
         body: dto.body,
         severity,
@@ -607,6 +635,7 @@ pub async fn update_announcement(
         id: id.clone(),
         tenant_id: Some(tenant_id.clone()),
         created_by: None,
+        cover_file_id: None,
         title: "".into(),
         body: "".into(),
         severity: "info".into(),
@@ -623,6 +652,7 @@ pub async fn update_announcement(
     };
 
     let now = Utc::now();
+    let cover_file_id = dto.cover_file_id.unwrap_or(existing.cover_file_id);
     let title = dto.title.unwrap_or(existing.title);
     let body = dto.body.unwrap_or(existing.body);
     let severity = if dto.severity.is_some() {
@@ -661,21 +691,23 @@ pub async fn update_announcement(
     let ann: Announcement = sqlx::query_as(
         r#"
         UPDATE announcements
-        SET title = $1,
-            body = $2,
-            severity = $3,
-            audience = $4,
-            mode = $5,
-            format = $6,
-            deliver_in_app = $7,
-            deliver_email = $8,
-            starts_at = $9,
-            ends_at = $10,
-            updated_at = $11
-        WHERE id = $12
+        SET cover_file_id = $1,
+            title = $2,
+            body = $3,
+            severity = $4,
+            audience = $5,
+            mode = $6,
+            format = $7,
+            deliver_in_app = $8,
+            deliver_email = $9,
+            starts_at = $10,
+            ends_at = $11,
+            updated_at = $12
+        WHERE id = $13
         RETURNING *
     "#,
     )
+    .bind(cover_file_id)
     .bind(title.trim())
     .bind(body.trim())
     .bind(severity)

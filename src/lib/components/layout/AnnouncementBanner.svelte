@@ -13,6 +13,7 @@
   import { page } from '$app/stores';
   import { user, tenant } from '$lib/stores/auth';
   import { getSlugFromDomain } from '$lib/utils/domain';
+  import { stripHtmlToText } from '$lib/utils/sanitizeHtml';
 
   let maxVisible = 2;
 
@@ -62,7 +63,7 @@
         </div>
         <div class="content">
           <div class="title">{a.title}</div>
-          <div class="body">{a.body}</div>
+          <div class="body">{stripHtmlToText(a.body)}</div>
         </div>
         <button
           class="read"

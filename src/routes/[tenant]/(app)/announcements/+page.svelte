@@ -8,12 +8,18 @@
   import { appSettings } from '$lib/stores/settings';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
+  import { stripHtmlToText } from '$lib/utils/sanitizeHtml';
+
+  const forceRemote = import.meta.env.VITE_USE_REMOTE_API === 'true';
+  const API_BASE = forceRemote
+    ? import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+    : 'http://localhost:3000/api';
 
   let rows = $state<Announcement[]>([]);
   let loading = $state(true);
 
   function snippet(body: string) {
-    const s = String(body || '').trim();
+    const s = stripHtmlToText(body || '');
     if (s.length <= 220) return s;
     return s.slice(0, 220) + '…';
   }
@@ -86,6 +92,15 @@
     <div class="feed">
       {#each rows as a (a.id)}
         <button class="post" type="button" onclick={() => openDetail(a.id)}>
+          {#if a.cover_file_id}
+            <div class="cover">
+              <img
+                src={`${API_BASE}/storage/files/${a.cover_file_id}/content`}
+                alt=""
+                loading="lazy"
+              />
+            </div>
+          {/if}
           <div class="meta">
             <span class="pill {a.severity}">
               <Icon name={badgeIcon(a.severity)} size={14} />
@@ -156,6 +171,26 @@
       rgba(255, 255, 255, 0.02);
     box-shadow: var(--shadow-sm);
     cursor: pointer;
+    overflow: hidden;
+  }
+
+  .cover {
+    margin: -1rem -1.05rem 0.85rem;
+    height: 140px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  :global([data-theme='light']) .cover {
+    border-bottom-color: rgba(0, 0, 0, 0.06);
+    background: rgba(0, 0, 0, 0.04);
+  }
+
+  .cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
 
   :global([data-theme='light']) .post {

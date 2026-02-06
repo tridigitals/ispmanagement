@@ -9,8 +9,10 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import Select from '$lib/components/ui/Select.svelte';
   import Toggle from '$lib/components/ui/Toggle.svelte';
+  import RichTextEditor from '$lib/components/ui/RichTextEditor.svelte';
   import { formatDateTime } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
+  import { stripHtmlToText } from '$lib/utils/sanitizeHtml';
 
   let loading = $state(true);
   let saving = $state(false);
@@ -26,6 +28,8 @@
   let body = $state('');
   let startsAt = $state<string>('');
   let endsAt = $state<string>('');
+  let coverFile = $state<File | null>(null);
+  let coverPreviewUrl = $state<string>('');
 
   const scopeOptions = [
     { label: get(t)('announcements.scopes.tenant') || 'Tenant', value: 'tenant' },
@@ -82,17 +86,28 @@
   }
 
   async function create() {
-    if (!title.trim() || !body.trim()) return;
+    if (!title.trim() || stripHtmlToText(body).length === 0) return;
+    if (!deliverInApp && !deliverEmail) {
+      toast.error(get(t)('announcements.toasts.delivery_required') || 'Choose at least one delivery channel.');
+      return;
+    }
     saving = true;
     try {
+      let coverFileId: string | null = null;
+      if (coverFile) {
+        const rec = await api.storage.uploadFile(coverFile);
+        coverFileId = rec.id;
+      }
+
       const dto: CreateAnnouncementDto = {
         scope: $isSuperAdmin ? scope : 'tenant',
+        cover_file_id: coverFileId,
         title: title.trim(),
         body: body.trim(),
         severity,
         audience,
         mode,
-        format: 'plain',
+        format: 'html',
         deliver_in_app: deliverInApp,
         deliver_email: deliverEmail,
         starts_at: toIsoOrNull(startsAt),
@@ -108,12 +123,22 @@
       mode = 'post';
       deliverInApp = true;
       deliverEmail = false;
+      coverFile = null;
+      coverPreviewUrl = '';
       await load();
     } catch (e: any) {
       toast.error(e?.message || e);
     } finally {
       saving = false;
     }
+  }
+
+  function onPickCover(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const f = (input.files || [])[0] || null;
+    coverFile = f;
+    if (coverPreviewUrl) URL.revokeObjectURL(coverPreviewUrl);
+    coverPreviewUrl = f ? URL.createObjectURL(f) : '';
   }
 
   async function remove(id: string) {
@@ -170,6 +195,15 @@
           bind:value={mode}
           options={modeOptions}
         />
+        <label class="label">
+          {$t('announcements.fields.cover') || 'Cover image (optional)'}
+          <input class="input" type="file" accept="image/*" onchange={onPickCover} />
+          {#if coverPreviewUrl}
+            <div class="cover-preview">
+              <img src={coverPreviewUrl} alt="cover preview" />
+            </div>
+          {/if}
+        </label>
         <div class="row delivery">
           <div class="delivery-item">
             <div class="delivery-text">
@@ -200,15 +234,14 @@
           {$t('announcements.fields.title') || 'Title'}
           <input class="input" bind:value={title} placeholder="e.g. Planned maintenance" />
         </label>
-        <label class="label">
-          {$t('announcements.fields.body') || 'Body'}
-          <textarea
-            class="textarea"
-            rows="4"
-            bind:value={body}
-            placeholder="Write something clear and short…"
-          ></textarea>
-        </label>
+        <RichTextEditor
+          label={$t('announcements.fields.body') || 'Body'}
+          bind:value={body}
+          placeholder={$t('announcements.placeholders.body') || 'Write something clear and short…'}
+          help={$t('announcements.hints.rich') ||
+            'Tip: Keep it concise. Links are allowed; images should be added as cover.'}
+          minHeight={190}
+        />
         <div class="row">
           <label class="label">
             {$t('announcements.fields.starts_at') || 'Starts at'}
@@ -413,6 +446,21 @@
     color: var(--text-secondary);
     font-weight: 650;
     line-height: 1.35;
+  }
+
+  .cover-preview {
+    margin-top: 0.6rem;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .cover-preview img {
+    display: block;
+    width: 100%;
+    max-height: 160px;
+    object-fit: cover;
   }
 
   @media (max-width: 520px) {

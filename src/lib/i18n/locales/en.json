@@ -517,6 +517,7 @@
       "audience": "Audience",
       "severity": "Severity",
       "mode": "Mode",
+      "cover": "Cover image (optional)",
       "deliver_in_app": "Deliver in-app",
       "deliver_in_app_desc": "Show to users in the app and send a notification.",
       "deliver_email": "Send email",
@@ -525,6 +526,9 @@
       "body": "Body",
       "starts_at": "Starts at",
       "ends_at": "Ends at"
+    },
+    "placeholders": {
+      "body": "Write something clear and short..."
     },
     "actions": {
       "publish": "Publish",
@@ -540,11 +544,13 @@
     "empty_feed": "No announcements yet.",
     "confirm_delete": "Delete this announcement?",
     "hints": {
-      "schedule": "Leave dates empty to publish immediately. End date controls when the banner stops showing."
+      "schedule": "Leave dates empty to publish immediately. End date controls when the banner stops showing.",
+      "rich": "Tip: Keep it concise. Links are allowed; images should be added as cover."
     },
     "toasts": {
       "created": "Announcement created",
-      "deleted": "Deleted"
+      "deleted": "Deleted",
+      "delivery_required": "Choose at least one delivery channel."
     }
   },
   "notifications_page": {

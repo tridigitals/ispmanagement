@@ -5,10 +5,15 @@ export type Announcement = {
   id: string;
   tenant_id: string | null;
   created_by: string | null;
+  cover_file_id?: string | null;
   title: string;
   body: string;
   severity: 'info' | 'success' | 'warning' | 'error' | string;
   audience: 'all' | 'admins' | string;
+  mode?: 'post' | 'banner' | string;
+  format?: 'plain' | 'markdown' | 'html' | string;
+  deliver_in_app?: boolean;
+  deliver_email?: boolean;
   starts_at: string;
   ends_at: string | null;
   notified_at: string | null;
@@ -47,4 +52,3 @@ export async function dismissAnnouncement(id: string) {
 export function hasActiveAnnouncements() {
   return get(activeAnnouncements).length > 0;
 }
-

@@ -10,6 +10,7 @@
   import { user, tenant } from '$lib/stores/auth';
   import { formatDateTime } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
+  import { sanitizeHtml } from '$lib/utils/sanitizeHtml';
 
   let loading = $state(true);
   let ann = $state<Announcement | null>(null);
@@ -22,6 +23,11 @@
   let tenantPrefix = $derived(
     effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
   );
+
+  const forceRemote = import.meta.env.VITE_USE_REMOTE_API === 'true';
+  const API_BASE = forceRemote
+    ? import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+    : 'http://localhost:3000/api';
 
   function iconForSeverity(sev: string) {
     switch (sev) {
@@ -77,6 +83,15 @@
     </div>
   {:else}
     <article class="post {ann.severity}">
+      {#if ann.cover_file_id}
+        <div class="cover">
+          <img
+            src={`${API_BASE}/storage/files/${ann.cover_file_id}/content`}
+            alt=""
+            loading="lazy"
+          />
+        </div>
+      {/if}
       <header class="top">
         <div class="meta">
           <span class="pill {ann.severity}">
@@ -99,9 +114,15 @@
         <h1 class="title">{ann.title}</h1>
       </header>
 
-      <div class="body" class:mono={ann.format === 'plain'}>
-        {ann.body}
-      </div>
+      {#if ann.format === 'html'}
+        <div class="body prose">
+          {@html sanitizeHtml(ann.body)}
+        </div>
+      {:else}
+        <div class="body" class:mono={ann.format === 'plain'}>
+          {ann.body}
+        </div>
+      {/if}
     </article>
   {/if}
 </div>
@@ -116,6 +137,25 @@
       rgba(255, 255, 255, 0.02);
     box-shadow: var(--shadow-md);
     overflow: hidden;
+  }
+
+  .cover {
+    margin: -1.25rem -1.25rem 1rem;
+    height: 220px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  :global([data-theme='light']) .cover {
+    border-bottom-color: rgba(0, 0, 0, 0.06);
+    background: rgba(0, 0, 0, 0.04);
+  }
+
+  .cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
 
   :global([data-theme='light']) .post {
@@ -210,6 +250,52 @@
     white-space: pre-wrap;
   }
 
+  .prose :global(p) {
+    margin: 0.85rem 0;
+  }
+
+  .prose :global(ul),
+  .prose :global(ol) {
+    margin: 0.75rem 0;
+    padding-left: 1.2rem;
+  }
+
+  .prose :global(li) {
+    margin: 0.3rem 0;
+  }
+
+  .prose :global(blockquote) {
+    margin: 0.9rem 0;
+    padding: 0.75rem 0.9rem;
+    border-left: 3px solid rgba(99, 102, 241, 0.55);
+    background: rgba(99, 102, 241, 0.08);
+    border-radius: 12px;
+    color: var(--text-primary);
+  }
+
+  .prose :global(pre) {
+    margin: 0.9rem 0;
+    padding: 0.85rem 0.95rem;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.35);
+    overflow: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+      'Courier New', monospace;
+  }
+
+  :global([data-theme='light']) .prose :global(pre) {
+    border-color: rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, 0.06);
+  }
+
+  .prose :global(a) {
+    color: var(--color-primary);
+    font-weight: 800;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
   .body.mono {
     font-variant-ligatures: none;
   }
@@ -226,4 +312,3 @@
     gap: 0.65rem;
   }
 </style>
-

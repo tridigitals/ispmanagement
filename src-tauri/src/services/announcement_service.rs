@@ -5,6 +5,20 @@ use chrono::Utc;
 use std::collections::HashSet;
 use tracing::{error, info, warn};
 
+fn strip_html_tags(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut in_tag = false;
+    for ch in input.chars() {
+        match ch {
+            '<' => in_tag = true,
+            '>' => in_tag = false,
+            _ if !in_tag => out.push(ch),
+            _ => {}
+        }
+    }
+    out.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
 #[derive(Clone)]
 pub struct AnnouncementScheduler {
     pool: DbPool,
@@ -116,10 +130,16 @@ impl AnnouncementScheduler {
         }
 
         let title = announcement.title.clone();
-        let msg = if announcement.body.len() > 180 {
-            format!("{}…", &announcement.body[..180])
+        let plain = if announcement.format == "html" {
+            strip_html_tags(&announcement.body)
         } else {
             announcement.body.clone()
+        };
+        let msg = if plain.chars().count() > 180 {
+            let short: String = plain.chars().take(180).collect();
+            format!("{}…", short)
+        } else {
+            plain
         };
 
         for uid in recipients {
@@ -171,7 +191,11 @@ impl AnnouncementScheduler {
         let mut body = String::new();
         body.push_str(&announcement.title);
         body.push_str("\n\n");
-        body.push_str(&announcement.body);
+        if announcement.format == "html" {
+            body.push_str(&strip_html_tags(&announcement.body));
+        } else {
+            body.push_str(&announcement.body);
+        }
 
         // Best-effort include a link if app_main_domain is configured and announcement is tenant-scoped.
         if let Some(tid) = announcement.tenant_id.as_deref() {
