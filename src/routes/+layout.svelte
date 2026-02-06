@@ -15,6 +15,7 @@
   import { Toaster } from 'svelte-sonner';
   import GlobalUploads from '$lib/components/layout/GlobalUploads.svelte';
   import { getSlugFromDomain } from '$lib/utils/domain';
+  import { browser } from '$app/environment';
 
   let loading = true;
   let i18nReady = false;
@@ -134,6 +135,14 @@
   onDestroy(() => {
     disconnectWebSocket();
   });
+
+  // Keep WS connection in sync with auth state (important after login without full reload).
+  $: if (browser && $isAuthenticated) {
+    connectWebSocket();
+    refreshUnreadCount();
+  } else if (browser && !$isAuthenticated) {
+    disconnectWebSocket();
+  }
 </script>
 
 <svelte:head>

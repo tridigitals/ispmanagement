@@ -107,7 +107,10 @@
         <button class:active={activeView === 'health'} onclick={() => switchView('health')}>
           {$t('superadmin.system.tabs.health') || 'Health'}
         </button>
-        <button class:active={activeView === 'diagnostics'} onclick={() => switchView('diagnostics')}>
+        <button
+          class:active={activeView === 'diagnostics'}
+          onclick={() => switchView('diagnostics')}
+        >
           {$t('superadmin.system.tabs.diagnostics') || 'Diagnostics'}
         </button>
       </div>
@@ -155,25 +158,23 @@
         {formatDateTime(health.collected_at, { timeZone: $appSettings.app_timezone })}
       </div>
     {/if}
-  {:else}
-    {#if diagLoading && !diagnostics}
-      <div class="loading-state">
-        <div class="spinner"></div>
-        <p>
-          {$t('superadmin.system.diagnostics.loading') || 'Loading diagnostics...'}
-        </p>
-      </div>
-    {:else if diagError}
-      <div class="error-card">
-        <Icon name="alert-circle" size={24} />
-        <p>{diagError}</p>
-        <button class="btn btn-primary" onclick={loadDiagnostics}>
-          {$t('superadmin.system.retry') || 'Retry'}
-        </button>
-      </div>
-    {:else if diagnostics}
-      <SystemDiagnosticsPanel diagnostics={diagnostics} />
-    {/if}
+  {:else if diagLoading && !diagnostics}
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>
+        {$t('superadmin.system.diagnostics.loading') || 'Loading diagnostics...'}
+      </p>
+    </div>
+  {:else if diagError}
+    <div class="error-card">
+      <Icon name="alert-circle" size={24} />
+      <p>{diagError}</p>
+      <button class="btn btn-primary" onclick={loadDiagnostics}>
+        {$t('superadmin.system.retry') || 'Retry'}
+      </button>
+    </div>
+  {:else if diagnostics}
+    <SystemDiagnosticsPanel {diagnostics} />
   {/if}
 </div>
 

@@ -79,6 +79,14 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       list_audit_logs: { method: 'GET', path: '/superadmin/audit-logs' },
       get_system_health: { method: 'GET', path: '/superadmin/system' },
       get_system_diagnostics: { method: 'GET', path: '/superadmin/diagnostics' },
+
+      // Support Tickets
+      list_support_tickets: { method: 'GET', path: '/support/tickets' },
+      get_support_ticket_stats: { method: 'GET', path: '/support/tickets/stats' },
+      create_support_ticket: { method: 'POST', path: '/support/tickets' },
+      get_support_ticket: { method: 'GET', path: '/support/tickets/:id' },
+      reply_support_ticket: { method: 'POST', path: '/support/tickets/:id/messages' },
+      update_support_ticket: { method: 'PUT', path: '/support/tickets/:id' },
       // Settings
       get_logo: { method: 'GET', path: '/settings/logo' },
       get_all_settings: { method: 'GET', path: '/settings' },
@@ -407,6 +415,57 @@ export interface AuditLog {
   tenant_name?: string;
 }
 
+export interface SupportTicketListItem {
+  id: string;
+  tenant_id: string;
+  created_by: string | null;
+  created_by_name?: string | null;
+  subject: string;
+  status: 'open' | 'pending' | 'closed' | string;
+  priority: 'low' | 'normal' | 'high' | 'urgent' | string;
+  assigned_to: string | null;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+  message_count: number;
+  last_message_at: string | null;
+}
+
+export interface SupportTicketStats {
+  all: number;
+  open: number;
+  pending: number;
+  closed: number;
+}
+
+export interface SupportTicketMessage {
+  id: string;
+  ticket_id: string;
+  author_id: string | null;
+  body: string;
+  is_internal: boolean;
+  created_at: string;
+  attachments: FileRecord[];
+}
+
+export interface SupportTicket {
+  id: string;
+  tenant_id: string;
+  created_by: string | null;
+  subject: string;
+  status: string;
+  priority: string;
+  assigned_to: string | null;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+}
+
+export interface SupportTicketDetail {
+  ticket: SupportTicket;
+  messages: SupportTicketMessage[];
+}
+
 // Auth API
 export const auth = {
   register: (email: string, password: string, name: string): Promise<AuthResponse> =>
@@ -628,6 +687,72 @@ export const superadmin = {
 
   getSystemDiagnostics: (): Promise<any> =>
     safeInvoke('get_system_diagnostics', { token: getTokenOrThrow() }),
+};
+
+export const support = {
+  list: (params?: {
+    status?: string;
+    search?: string;
+    page?: number;
+    perPage?: number;
+  }): Promise<PaginatedResponse<SupportTicketListItem>> =>
+    safeInvoke('list_support_tickets', {
+      token: getTokenOrThrow(),
+      status: params?.status,
+      search: params?.search,
+      page: params?.page,
+      per_page: params?.perPage,
+    }),
+
+  stats: (): Promise<SupportTicketStats> =>
+    safeInvoke('get_support_ticket_stats', { token: getTokenOrThrow() }),
+
+  create: (
+    subject: string,
+    message: string,
+    priority?: string,
+    attachmentIds?: string[],
+  ): Promise<SupportTicketDetail> =>
+    safeInvoke('create_support_ticket', {
+      token: getTokenOrThrow(),
+      subject,
+      message,
+      priority,
+      attachmentIds,
+      attachment_ids: attachmentIds,
+    }),
+
+  get: (id: string): Promise<SupportTicketDetail> =>
+    safeInvoke('get_support_ticket', { token: getTokenOrThrow(), id }),
+
+  reply: (
+    id: string,
+    message: string,
+    isInternal?: boolean,
+    attachmentIds?: string[],
+  ): Promise<SupportTicketMessage> =>
+    safeInvoke('reply_support_ticket', {
+      token: getTokenOrThrow(),
+      id,
+      message,
+      isInternal,
+      is_internal: isInternal,
+      attachmentIds,
+      attachment_ids: attachmentIds,
+    }),
+
+  update: (
+    id: string,
+    data: { status?: string; priority?: string; assignedTo?: string | null },
+  ): Promise<SupportTicket> =>
+    safeInvoke('update_support_ticket', {
+      token: getTokenOrThrow(),
+      id,
+      status: data.status,
+      priority: data.priority,
+      assignedTo: data.assignedTo ?? undefined,
+      assigned_to: data.assignedTo ?? undefined,
+    }),
 };
 
 // Public API (No Auth)
@@ -1225,6 +1350,7 @@ export const api = {
   roles,
   team,
   superadmin,
+  support,
   settings,
   install,
   plans,

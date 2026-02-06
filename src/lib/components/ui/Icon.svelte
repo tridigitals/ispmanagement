@@ -18,6 +18,7 @@
     Search,
     Bell,
     HelpCircle,
+    LifeBuoy,
     Database,
     Rocket,
     Mail,
@@ -65,6 +66,7 @@
     Cloud,
     Zap,
     Send,
+    MessageCircle,
     Landmark,
     Circle,
     TrendingUp,
@@ -105,6 +107,7 @@
     search: Search,
     bell: Bell,
     'help-circle': HelpCircle,
+    'life-buoy': LifeBuoy,
     database: Database,
     app: Rocket,
     mail: Mail,
@@ -165,6 +168,7 @@
     save: Save,
     smartphone: Smartphone,
     monitor: Monitor,
+    'message-circle': MessageCircle,
   };
 
   let IconComponent = $derived(icons[name] || HelpCircle);

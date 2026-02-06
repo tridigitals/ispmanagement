@@ -100,7 +100,9 @@
     "copy_failed": "Gagal menyalin",
     "delete": "Hapus",
     "edit": "Edit",
+    "open": "Buka",
     "download": "Unduh",
+    "load_more": "Muat lagi",
     "next": "Berikutnya",
     "previous": "Sebelumnya",
     "retry": "Coba Lagi",
@@ -152,6 +154,7 @@
     "lightbox": {
       "pdf_preview": "Pratinjau PDF",
       "pdf_unsupported": "Browser tidak mendukung pratinjau PDF.",
+      "pdf_blank_warning": "Pratinjau terlihat kosong. Coba unduh/buka file.",
       "download_pdf": "Unduh PDF",
       "preview_unavailable": "Pratinjau tidak tersedia",
       "download_file": "Unduh File",
@@ -360,6 +363,7 @@
     "audit_logs": "Log Audit",
     "backups": "Cadangan",
     "system": "Sistem",
+    "support": "Dukungan",
     "expand": "Perluas sidebar",
     "collapse": "Ciutkan sidebar",
     "exit": "Keluar",
@@ -404,7 +408,81 @@
       "plans": "Paket",
       "audit_logs": "Log Audit",
       "system": "Sistem",
+      "support": "Dukungan",
       "default": "Ruang Kerja"
+    }
+  },
+  "support": {
+    "title": "Tiket Dukungan",
+    "subtitle": "Dapatkan bantuan dari tim Anda atau admin platform.",
+    "search_placeholder": "Cari tiket...",
+    "loading": "Memuat tiket...",
+    "loading_detail": "Memuat tiket...",
+    "actions": {
+      "new": "Tiket Baru",
+      "create": "Buat",
+      "creating": "Membuat...",
+      "send": "Kirim",
+      "sending": "Mengirim..."
+    },
+    "fields": {
+      "subject": "Subjek",
+      "subject_placeholder": "mis. Tidak bisa login ke akun saya",
+      "message": "Pesan",
+      "message_placeholder": "Jelaskan masalah atau permintaan Anda...",
+      "attachments": "Lampiran",
+      "reply": "Balas",
+      "reply_placeholder": "Tulis balasan Anda..."
+    },
+    "filters": {
+      "aria": "Filter tiket",
+      "all": "Semua",
+      "open": "Buka",
+      "pending": "Menunggu",
+      "closed": "Selesai"
+    },
+    "stats": {
+      "total": "Total"
+    },
+    "empty": {
+      "title": "Belum ada tiket",
+      "subtitle": "Buat tiket jika Anda butuh bantuan atau punya permintaan."
+    },
+    "toasts": {
+      "created": "Tiket dibuat",
+      "create_failed": "Gagal membuat: {message}",
+      "replied": "Balasan terkirim",
+      "reply_failed": "Gagal membalas: {message}",
+      "ticket_closed": "Tiket sudah ditutup"
+    },
+    "status": {
+      "open": "Buka",
+      "pending": "Menunggu",
+      "closed": "Selesai"
+    },
+    "priorities": {
+      "low": "Rendah",
+      "normal": "Normal",
+      "high": "Tinggi",
+      "urgent": "Mendesak"
+    },
+    "tags": {
+      "internal": "Internal"
+    },
+    "labels": {
+      "support": "Dukungan",
+      "customer": "Pelanggan",
+      "staff": "Staf"
+    },
+    "detail": {
+      "updated": "Diperbarui",
+      "not_found": "Tiket tidak ditemukan",
+      "thread": "Percakapan",
+      "messages": "pesan",
+      "closed_notice": "Tiket ini sudah ditutup. Kamu tidak bisa membalas."
+    },
+    "create": {
+      "title": "Buat Tiket"
     }
   },
   "notifications_page": {
@@ -1431,6 +1509,10 @@
           "label": "Pembaruan Sistem",
           "desc": "Pemeliharaan & pengumuman"
         },
+        "support": {
+          "label": "Tiket Bantuan",
+          "desc": "Tiket baru & balasan"
+        },
         "team": {
           "label": "Aktivitas Tim",
           "desc": "Perubahan anggota & undangan"
@@ -1506,6 +1588,36 @@
       "errors": {
         "save_failed": "Gagal menyimpan peran",
         "delete_failed": "Gagal menghapus peran: "
+      }
+    },
+    "support": {
+      "title": "Tiket Dukungan",
+      "subtitle": "Kelola permintaan dukungan tenant",
+      "search": "Cari tiket...",
+      "empty": "Tidak ada tiket",
+      "columns": {
+        "subject": "Subjek",
+        "user": "User",
+        "status": "Status",
+        "priority": "Prioritas",
+        "updated": "Diperbarui",
+        "messages": "Pesan"
+      },
+      "panels": {
+        "manage": "Kelola",
+        "reply": "Balas"
+      },
+      "fields": {
+        "status": "Status",
+        "priority": "Prioritas",
+        "assignee": "Penanggung Jawab",
+        "internal": "Catatan internal"
+      },
+      "hints": {
+        "assign": "Penanggung jawab menggunakan user_id anggota tim. Kosongkan jika tidak ditugaskan."
+      },
+      "toasts": {
+        "updated": "Tiket diperbarui"
       }
     },
     "overview": {

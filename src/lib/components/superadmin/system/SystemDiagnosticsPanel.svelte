@@ -36,7 +36,10 @@
     <section class="card">
       <div class="card-head">
         <h2>{$t('superadmin.system.diagnostics.database') || 'Database'}</h2>
-        <span class:ok={diagnostics.database?.is_connected} class:bad={!diagnostics.database?.is_connected}>
+        <span
+          class:ok={diagnostics.database?.is_connected}
+          class:bad={!diagnostics.database?.is_connected}
+        >
           {diagnostics.database?.is_connected
             ? $t('superadmin.system.db_connected') || 'Database Connected'
             : $t('superadmin.system.db_disconnected') || 'Database Disconnected'}
@@ -46,14 +49,19 @@
       <div class="kv">
         <div class="row">
           <div class="k">Type</div>
-          <div class="v">{diagnostics.database?.database_type || ($t('common.na') || '—')}</div>
+          <div class="v">{diagnostics.database?.database_type || $t('common.na') || '—'}</div>
         </div>
         <div class="row">
           <div class="k">Server</div>
           <div class="v">
-            <span class="mono">{diagnostics.database_server_version || ($t('common.na') || '—')}</span>
+            <span class="mono">{diagnostics.database_server_version || $t('common.na') || '—'}</span
+            >
             {#if diagnostics.database_server_version}
-              <button class="icon-btn" onclick={() => copy(diagnostics.database_server_version)} title="Copy">
+              <button
+                class="icon-btn"
+                onclick={() => copy(diagnostics.database_server_version)}
+                title="Copy"
+              >
                 <Icon name="copy" size={14} />
               </button>
             {/if}
@@ -120,12 +128,16 @@
       <div class="kv">
         <div class="row">
           <div class="k">Latest Applied</div>
-          <div class="v mono">{diagnostics.migrations?.latest_applied_version ?? ($t('common.na') || '—')}</div>
+          <div class="v mono">
+            {diagnostics.migrations?.latest_applied_version ?? ($t('common.na') || '—')}
+          </div>
         </div>
       </div>
 
       <details class="details">
-        <summary>{$t('superadmin.system.diagnostics.show_applied') || 'Show applied migrations'}</summary>
+        <summary
+          >{$t('superadmin.system.diagnostics.show_applied') || 'Show applied migrations'}</summary
+        >
         <div class="table-wrap">
           <table>
             <thead>
@@ -166,14 +178,20 @@
       <div class="kv">
         <div class="row">
           <div class="k">App Name</div>
-          <div class="v">{diagnostics.settings?.app_name || ($t('common.na') || '—')}</div>
+          <div class="v">{diagnostics.settings?.app_name || $t('common.na') || '—'}</div>
         </div>
         <div class="row">
           <div class="k">Public URL</div>
           <div class="v">
-            <span class="mono">{diagnostics.settings?.app_public_url || ($t('common.na') || '—')}</span>
+            <span class="mono"
+              >{diagnostics.settings?.app_public_url || $t('common.na') || '—'}</span
+            >
             {#if diagnostics.settings?.app_public_url}
-              <button class="icon-btn" onclick={() => copy(diagnostics.settings.app_public_url)} title="Copy">
+              <button
+                class="icon-btn"
+                onclick={() => copy(diagnostics.settings.app_public_url)}
+                title="Copy"
+              >
                 <Icon name="copy" size={14} />
               </button>
             {/if}
@@ -181,15 +199,17 @@
         </div>
         <div class="row">
           <div class="k">Timezone</div>
-          <div class="v mono">{diagnostics.settings?.app_timezone || ($t('common.na') || '—')}</div>
+          <div class="v mono">{diagnostics.settings?.app_timezone || $t('common.na') || '—'}</div>
         </div>
         <div class="row">
           <div class="k">Base Currency</div>
-          <div class="v mono">{diagnostics.settings?.base_currency_code || ($t('common.na') || '—')}</div>
+          <div class="v mono">
+            {diagnostics.settings?.base_currency_code || $t('common.na') || '—'}
+          </div>
         </div>
         <div class="row">
           <div class="k">Display Currency</div>
-          <div class="v mono">{diagnostics.settings?.currency_code || ($t('common.na') || '—')}</div>
+          <div class="v mono">{diagnostics.settings?.currency_code || $t('common.na') || '—'}</div>
         </div>
       </div>
     </section>
@@ -216,7 +236,8 @@
             {#if diagnostics.backups?.global_mode === 'minute' || diagnostics.backups?.global_mode === 'hour'}
               /{diagnostics.backups?.global_every ?? '—'}
             {:else}
-              @{diagnostics.backups?.global_at || '—'} {diagnostics.backups?.global_weekday ? `(${diagnostics.backups.global_weekday})` : ''}
+              @{diagnostics.backups?.global_at || '—'}
+              {diagnostics.backups?.global_weekday ? `(${diagnostics.backups.global_weekday})` : ''}
             {/if}
           </div>
         </div>
@@ -230,7 +251,9 @@
         </div>
         <div class="row">
           <div class="k">Retention</div>
-          <div class="v mono">{diagnostics.backups?.global_retention_days ?? ($t('common.na') || '—')} days</div>
+          <div class="v mono">
+            {diagnostics.backups?.global_retention_days ?? ($t('common.na') || '—')} days
+          </div>
         </div>
 
         <div class="divider"></div>
@@ -252,13 +275,16 @@
             {#if diagnostics.backups?.tenant_mode === 'minute' || diagnostics.backups?.tenant_mode === 'hour'}
               /{diagnostics.backups?.tenant_every ?? '—'}
             {:else}
-              @{diagnostics.backups?.tenant_at || '—'} {diagnostics.backups?.tenant_weekday ? `(${diagnostics.backups.tenant_weekday})` : ''}
+              @{diagnostics.backups?.tenant_at || '—'}
+              {diagnostics.backups?.tenant_weekday ? `(${diagnostics.backups.tenant_weekday})` : ''}
             {/if}
           </div>
         </div>
         <div class="row">
           <div class="k">Retention</div>
-          <div class="v mono">{diagnostics.backups?.tenant_retention_days ?? ($t('common.na') || '—')} days</div>
+          <div class="v mono">
+            {diagnostics.backups?.tenant_retention_days ?? ($t('common.na') || '—')} days
+          </div>
         </div>
       </div>
     </section>
@@ -352,7 +378,8 @@
   }
 
   .mono {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
       monospace;
     font-size: 0.9rem;
     overflow: hidden;
@@ -526,4 +553,3 @@
     }
   }
 </style>
-

@@ -501,6 +501,8 @@ impl NotificationService {
         // 1. In-App: Send WS Event
         if should_send("in_app", &notif.category) {
             let event = crate::http::WsEvent::NotificationReceived {
+                user_id: notif.user_id.clone(),
+                tenant_id: notif.tenant_id.clone(),
                 id: notif.id.clone(),
                 title: notif.title.clone(),
                 message: notif.message.clone(),
@@ -513,7 +515,10 @@ impl NotificationService {
 
             if let Ok(count) = self.get_unread_count(&notif.user_id).await {
                 self.ws_hub
-                    .broadcast(crate::http::WsEvent::UnreadCountUpdated { count });
+                    .broadcast(crate::http::WsEvent::UnreadCountUpdated {
+                        user_id: notif.user_id.clone(),
+                        count,
+                    });
             }
         }
 

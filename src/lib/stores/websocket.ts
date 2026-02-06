@@ -5,7 +5,7 @@
  * When permission-related events are received, triggers checkAuth to refresh user data.
  */
 import { writable, get } from 'svelte/store';
-import { checkAuth, authVersion, token, isSuperAdmin } from './auth';
+import { checkAuth, authVersion, token, isSuperAdmin, user } from './auth';
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
 import {
@@ -33,6 +33,8 @@ type WsEvent =
   // Notification Events
   | {
       type: 'notification_received';
+      user_id: string;
+      tenant_id: string | null;
       id: string;
       title: string;
       message: string;
@@ -43,19 +45,56 @@ type WsEvent =
     }
   | { type: 'notification_read'; id: string }
   | { type: 'notifications_cleared' }
-  | { type: 'unread_count_updated'; count: number };
+  | { type: 'unread_count_updated'; user_id: string; count: number }
+  | {
+      type: 'support_ticket_message_created';
+      user_id: string;
+      tenant_id: string | null;
+      ticket_id: string;
+      message_id: string;
+    };
 
 let ws: WebSocket | null = null;
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 10;
 const RECONNECT_DELAY = 3000; // 3 seconds
+const DEV = import.meta.env.DEV;
+
+function parseJwtSub(jwt: string): string | null {
+  // JWT: header.payload.signature (base64url)
+  const parts = jwt.split('.');
+  if (parts.length < 2) return null;
+  const payload = parts[1];
+  try {
+    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = b64.length % 4 ? '='.repeat(4 - (b64.length % 4)) : '';
+    const json = atob(b64 + pad);
+    const data = JSON.parse(json);
+    return typeof data?.sub === 'string' ? data.sub : null;
+  } catch {
+    return null;
+  }
+}
+
+function currentUserId(): string | null {
+  const u = get(user);
+  if (u?.id) return u.id;
+  const t = get(token);
+  if (!t) return null;
+  return parseJwtSub(t);
+}
 
 /**
  * Connect to WebSocket server
  */
 export function connectWebSocket() {
   if (!browser) return;
+
+  // Avoid creating duplicate connections (e.g. reactive auth changes, HMR, route changes).
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
 
   const currentToken = get(token);
   if (!currentToken) {
@@ -162,6 +201,18 @@ async function handleWsEvent(event: WsEvent) {
 
     // Notification Events
     case 'notification_received':
+      // Ignore broadcasts meant for other users (backend WS is fan-out).
+      {
+        const uid = currentUserId();
+        if (!uid) {
+          if (DEV) console.debug('[WS] notification_received ignored (no user id yet)', event);
+          return;
+        }
+        if (event.user_id !== uid) {
+          if (DEV) console.debug('[WS] notification_received ignored (other user)', { uid, event });
+          return;
+        }
+      }
       // @ts-ignore
       handleNotificationReceived({
         id: event.id,
@@ -171,8 +222,8 @@ async function handleWsEvent(event: WsEvent) {
         category: event.category,
         action_url: event.action_url,
         created_at: event.created_at,
-        user_id: '', // Not needed for display
-        tenant_id: null,
+        user_id: event.user_id,
+        tenant_id: event.tenant_id,
         is_read: false,
       });
       break;
@@ -186,7 +237,36 @@ async function handleWsEvent(event: WsEvent) {
       break;
 
     case 'unread_count_updated':
+      {
+        const uid = currentUserId();
+        if (!uid) {
+          if (DEV) console.debug('[WS] unread_count_updated ignored (no user id yet)', event);
+          return;
+        }
+        if (event.user_id !== uid) {
+          if (DEV) console.debug('[WS] unread_count_updated ignored (other user)', { uid, event });
+          return;
+        }
+      }
       handleUnreadCountUpdated(event.count);
+      break;
+
+    case 'support_ticket_message_created':
+      {
+        const uid = currentUserId();
+        if (!uid) return;
+        if (event.user_id !== uid) return;
+
+        try {
+          window.dispatchEvent(
+            new CustomEvent('support_ticket_message', {
+              detail: { ticket_id: event.ticket_id, message_id: event.message_id },
+            }),
+          );
+        } catch {
+          // ignore
+        }
+      }
       break;
 
     default:

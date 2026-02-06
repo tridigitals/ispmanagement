@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { fade, scale } from 'svelte/transition';
   import Icon from './Icon.svelte';
+  import PdfViewer from './PdfViewer.svelte';
+  import OfficeViewer from './OfficeViewer.svelte';
   import { downloadFile } from '$lib/utils/download';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
@@ -11,13 +13,20 @@
   let { index = $bindable(0), files = [], onclose } = $props();
 
   // API URL
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+  // When running in Tauri (IPC-first), we still serve file bytes via the local HTTP server.
+  // So we only use VITE_API_URL when remote mode is explicitly enabled.
+  const forceRemote = import.meta.env.VITE_USE_REMOTE_API === 'true';
+  const API_BASE = forceRemote
+    ? import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+    : 'http://localhost:3000/api';
 
   let currentFile = $derived(files[index]);
   let isImage = $derived(currentFile?.content_type.startsWith('image/'));
   let isVideo = $derived(currentFile?.content_type.startsWith('video/'));
   let isAudio = $derived(currentFile?.content_type.startsWith('audio/'));
-  let isPdf = $derived(currentFile?.content_type.includes('pdf'));
+  const ext = $derived((currentFile?.original_name || '').split('.').pop()?.toLowerCase() || '');
+
+  let isPdf = $derived(ext === 'pdf' || currentFile?.content_type.includes('pdf'));
   let isText = $derived(
     currentFile?.content_type.includes('text') ||
       currentFile?.content_type.includes('json') ||
@@ -25,6 +34,15 @@
       currentFile?.content_type.includes('javascript') ||
       currentFile?.content_type.includes('css') ||
       currentFile?.content_type.includes('html'),
+  );
+
+  let isOffice = $derived(
+    ['docx', 'xlsx', 'pptx'].includes(ext) ||
+      [
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      ].includes(currentFile?.content_type || ''),
   );
 
   // Use HTTP API endpoint for serving files
@@ -170,25 +188,14 @@
             <audio src={fileSrc} controls autoplay class="w-full mt-6"></audio>
           </div>
         {:else if isPdf}
-          <object
-            data={fileSrc}
-            type="application/pdf"
-            class="pdf-viewer"
-            title={$t('components.lightbox.pdf_preview') || 'PDF Preview'}
-          >
-            <div class="generic-file">
-              <p>
-                {$t('components.lightbox.pdf_unsupported') ||
-                  'Browser does not support PDF preview.'}
-              </p>
-              <button
-                class="btn-download"
-                onclick={() => downloadFile(downloadUrl, currentFile.original_name)}
-              >
-                {$t('components.lightbox.download_pdf') || 'Download PDF'}
-              </button>
-            </div>
-          </object>
+          <PdfViewer
+            src={fileSrc}
+            {downloadUrl}
+            filename={currentFile.original_name}
+            showToolbar={false}
+          />
+        {:else if isOffice}
+          <OfficeViewer file={currentFile} src={fileSrc} {downloadUrl} />
         {:else if isText}
           <div class="text-viewer">
             {#if loadingText}
@@ -348,13 +355,6 @@
     min-width: 300px;
     width: 100%;
     max-width: 500px;
-  }
-
-  .pdf-viewer {
-    width: 80vw;
-    height: 80vh;
-    border-radius: 8px;
-    background: white;
   }
 
   .text-viewer {

@@ -80,6 +80,12 @@
       desc: $t('profile.notifications.categories.system.desc') || 'Maintenance & announcements',
     },
     {
+      id: 'support',
+      icon: 'life-buoy',
+      label: $t('profile.notifications.categories.support.label') || 'Support Tickets',
+      desc: $t('profile.notifications.categories.support.desc') || 'New tickets & replies',
+    },
+    {
       id: 'team',
       icon: 'users',
       label: $t('profile.notifications.categories.team.label') || 'Team Activity',

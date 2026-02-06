@@ -904,6 +904,18 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
         ("backups", "download", "Download backups"),
         ("backups", "restore", "Restore backups"),
         ("backups", "delete", "Delete backups"),
+        // Support Tickets (tenant-scoped)
+        ("support", "create", "Create support tickets"),
+        ("support", "read", "Read own support tickets"),
+        ("support", "read_all", "Read all support tickets in tenant"),
+        ("support", "reply", "Reply to support tickets"),
+        (
+            "support",
+            "update",
+            "Update support tickets (status/priority)",
+        ),
+        ("support", "assign", "Assign support tickets"),
+        ("support", "internal", "Post internal support notes"),
     ];
 
     // Cleanup: Remove permissions with non-standard IDs (e.g. random UUIDs)
@@ -1008,6 +1020,13 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
         "backups:download",
         "backups:restore",
         "backups:delete",
+        "support:create",
+        "support:read",
+        "support:read_all",
+        "support:reply",
+        "support:update",
+        "support:assign",
+        "support:internal",
     ];
     for p in admin_perms {
         assign_perm(pool, "Admin", p).await?;
@@ -1019,6 +1038,9 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
         "team:read",
         "storage:read",
         "storage:upload",
+        "support:create",
+        "support:read",
+        "support:reply",
     ];
     for p in member_perms {
         assign_perm(pool, "Member", p).await?;

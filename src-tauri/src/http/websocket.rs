@@ -41,6 +41,8 @@ pub enum WsEvent {
     Ping,
     /// New notification received
     NotificationReceived {
+        user_id: String,
+        tenant_id: Option<String>,
         id: String,
         title: String,
         message: String,
@@ -54,7 +56,15 @@ pub enum WsEvent {
     /// All notifications marked as read
     NotificationsCleared,
     /// Unread count updated (optimization instead of sending full lists)
-    UnreadCountUpdated { count: i64 },
+    UnreadCountUpdated { user_id: String, count: i64 },
+
+    /// Support ticket message created (used to live-refresh ticket threads)
+    SupportTicketMessageCreated {
+        user_id: String,
+        tenant_id: Option<String>,
+        ticket_id: String,
+        message_id: String,
+    },
 }
 
 /// WebSocket connection manager

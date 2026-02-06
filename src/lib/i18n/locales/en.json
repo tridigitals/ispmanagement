@@ -100,7 +100,9 @@
     "copy_failed": "Copy failed",
     "delete": "Delete",
     "edit": "Edit",
+    "open": "Open",
     "download": "Download",
+    "load_more": "Load more",
     "next": "Next",
     "previous": "Previous",
     "retry": "Retry",
@@ -152,6 +154,7 @@
     "lightbox": {
       "pdf_preview": "PDF Preview",
       "pdf_unsupported": "Browser does not support PDF preview.",
+      "pdf_blank_warning": "Preview looks blank. Try download/open file.",
       "download_pdf": "Download PDF",
       "preview_unavailable": "Preview not available",
       "download_file": "Download File",
@@ -360,6 +363,7 @@
     "audit_logs": "Audit Logs",
     "backups": "Backups",
     "system": "System",
+    "support": "Support",
     "expand": "Expand sidebar",
     "collapse": "Collapse sidebar",
     "exit": "Exit",
@@ -404,7 +408,81 @@
       "plans": "Plans",
       "audit_logs": "Audit Logs",
       "system": "System",
+      "support": "Support",
       "default": "Workspace"
+    }
+  },
+  "support": {
+    "title": "Support Tickets",
+    "subtitle": "Get help from your team or platform admins.",
+    "search_placeholder": "Search tickets...",
+    "loading": "Loading tickets...",
+    "loading_detail": "Loading ticket...",
+    "actions": {
+      "new": "New Ticket",
+      "create": "Create",
+      "creating": "Creating...",
+      "send": "Send",
+      "sending": "Sending..."
+    },
+    "fields": {
+      "subject": "Subject",
+      "subject_placeholder": "e.g. Cannot login to my account",
+      "message": "Message",
+      "message_placeholder": "Describe your issue or request...",
+      "attachments": "Attachments",
+      "reply": "Reply",
+      "reply_placeholder": "Write your reply..."
+    },
+    "filters": {
+      "aria": "Filter tickets",
+      "all": "All",
+      "open": "Open",
+      "pending": "Pending",
+      "closed": "Closed"
+    },
+    "stats": {
+      "total": "Total"
+    },
+    "empty": {
+      "title": "No tickets yet",
+      "subtitle": "Create a ticket if you need help or have a request."
+    },
+    "toasts": {
+      "created": "Ticket created",
+      "create_failed": "Create failed: {message}",
+      "replied": "Reply sent",
+      "reply_failed": "Reply failed: {message}",
+      "ticket_closed": "Ticket is closed"
+    },
+    "status": {
+      "open": "Open",
+      "pending": "Pending",
+      "closed": "Closed"
+    },
+    "priorities": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "tags": {
+      "internal": "Internal"
+    },
+    "labels": {
+      "support": "Support",
+      "customer": "Customer",
+      "staff": "Staff"
+    },
+    "detail": {
+      "updated": "Updated",
+      "not_found": "Ticket not found",
+      "thread": "Conversation",
+      "messages": "messages",
+      "closed_notice": "This ticket is closed. You can’t reply."
+    },
+    "create": {
+      "title": "Create Ticket"
     }
   },
   "notifications_page": {
@@ -1388,6 +1466,10 @@
           "label": "System Updates",
           "desc": "Maintenance & announcements"
         },
+        "support": {
+          "label": "Support Tickets",
+          "desc": "New tickets & replies"
+        },
         "team": {
           "label": "Team Activity",
           "desc": "Member changes & invites"
@@ -1463,6 +1545,36 @@
       "errors": {
         "save_failed": "Failed to save role",
         "delete_failed": "Failed to delete role: "
+      }
+    },
+    "support": {
+      "title": "Support Tickets",
+      "subtitle": "Manage tenant support requests",
+      "search": "Search tickets...",
+      "empty": "No tickets",
+      "columns": {
+        "subject": "Subject",
+        "user": "User",
+        "status": "Status",
+        "priority": "Priority",
+        "updated": "Updated",
+        "messages": "Messages"
+      },
+      "panels": {
+        "manage": "Manage",
+        "reply": "Reply"
+      },
+      "fields": {
+        "status": "Status",
+        "priority": "Priority",
+        "assignee": "Assignee",
+        "internal": "Internal note"
+      },
+      "hints": {
+        "assign": "Assignee expects a team member user_id. Leave empty to keep unassigned."
+      },
+      "toasts": {
+        "updated": "Ticket updated"
       }
     },
     "overview": {

@@ -403,6 +403,13 @@ pub fn run() {
                                     save_backup_to_disk,
                                     restore_backup_from_file,
                                     restore_local_backup_command,
+                                    // Support tickets
+                                    list_support_tickets,
+                                    get_support_ticket_stats,
+                                    create_support_ticket,
+                                    get_support_ticket,
+                                    reply_support_ticket,
+                                    update_support_ticket,
                                 ])
                                 .run(tauri::generate_context!())
                                 .expect("error while running tauri application");

@@ -44,6 +44,7 @@
     if (actionUrl.startsWith(tenantPrefix + '/')) return actionUrl;
     if (
       actionUrl.startsWith('/admin') ||
+      actionUrl.startsWith('/support') ||
       actionUrl.startsWith('/dashboard') ||
       actionUrl.startsWith('/profile') ||
       actionUrl.startsWith('/notifications')

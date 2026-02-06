@@ -21,13 +21,24 @@
     effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
   );
 
-  let appMenu = $derived([
-    {
-      label: $t('sidebar.dashboard'),
-      icon: 'dashboard',
-      href: `${tenantPrefix}/dashboard`,
-    },
-  ]);
+  let appMenu = $derived.by(() => {
+    // Access $user to create dependency for permissions changes
+    const _ = $user?.permissions;
+    return [
+      {
+        label: $t('sidebar.dashboard'),
+        icon: 'dashboard',
+        href: `${tenantPrefix}/dashboard`,
+        show: true,
+      },
+      {
+        label: $t('sidebar.support') || 'Support',
+        icon: 'life-buoy',
+        href: `${tenantPrefix}/support`,
+        show: $can('read', 'support') || $can('create', 'support'),
+      },
+    ].filter((i) => i.show);
+  });
 
   let superAdminMenu = $derived([
     {
@@ -128,6 +139,12 @@
         icon: 'archive',
         href: `${tenantPrefix}/admin/backups`,
         show: $can('read', 'backups'),
+      },
+      {
+        label: $t('sidebar.support') || 'Support',
+        icon: 'life-buoy',
+        href: `${tenantPrefix}/admin/support`,
+        show: $can('read_all', 'support'),
       },
     ].filter((i) => i.show);
   });

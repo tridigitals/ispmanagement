@@ -23,6 +23,7 @@
       ['/superadmin/settings', $t('topbar.titles.settings') || 'Settings'],
       ['/superadmin/system', $t('topbar.titles.system') || 'System'],
       ['/superadmin', $t('topbar.titles.superadmin_dashboard') || 'Super Admin'],
+      ['/admin/support', $t('topbar.titles.support') || 'Support'],
       ['/admin/team', $t('topbar.titles.team') || 'Team'],
       ['/admin/roles', $t('topbar.titles.roles') || 'Roles'],
       ['/admin/settings', $t('topbar.titles.global_settings') || 'Settings'],
@@ -31,6 +32,7 @@
       ['/admin/invoices', $t('topbar.titles.invoices') || 'Invoices'],
       ['/admin', $t('topbar.titles.admin_overview') || 'Admin'],
       ['/profile', $t('topbar.titles.profile') || 'Profile'],
+      ['/support', $t('topbar.titles.support') || 'Support'],
       ['/dashboard', $t('topbar.titles.dashboard') || 'Dashboard'],
     ];
 

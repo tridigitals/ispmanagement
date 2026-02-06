@@ -252,13 +252,21 @@ impl SystemService {
         };
 
         let settings = SettingsSnapshot {
-            app_name: settings_service.get_value(None, "app_name").await.ok().flatten(),
+            app_name: settings_service
+                .get_value(None, "app_name")
+                .await
+                .ok()
+                .flatten(),
             app_public_url: settings_service
                 .get_value(None, "app_public_url")
                 .await
                 .ok()
                 .flatten(),
-            app_timezone: settings_service.get_value(None, "app_timezone").await.ok().flatten(),
+            app_timezone: settings_service
+                .get_value(None, "app_timezone")
+                .await
+                .ok()
+                .flatten(),
             base_currency_code: settings_service
                 .get_value(None, "base_currency_code")
                 .await

@@ -33,6 +33,7 @@ pub mod roles;
 pub mod settings;
 pub mod storage;
 pub mod superadmin;
+pub mod support;
 pub mod system;
 pub mod team;
 pub mod tenant;
@@ -300,7 +301,24 @@ pub async fn start_server(
         )
         .route("/api/superadmin/audit-logs", get(audit::list_audit_logs))
         .route("/api/superadmin/system", get(system::get_system_health))
-        .route("/api/superadmin/diagnostics", get(system::get_system_diagnostics))
+        .route(
+            "/api/superadmin/diagnostics",
+            get(system::get_system_diagnostics),
+        )
+        // Support Tickets (tenant scoped; authorization derives tenant from token)
+        .route(
+            "/api/support/tickets",
+            get(support::list_support_tickets).post(support::create_support_ticket),
+        )
+        .route("/api/support/tickets/stats", get(support::get_support_ticket_stats))
+        .route(
+            "/api/support/tickets/{id}",
+            get(support::get_support_ticket).put(support::update_support_ticket),
+        )
+        .route(
+            "/api/support/tickets/{id}/messages",
+            post(support::reply_support_ticket),
+        )
         // Plans Routes
         .nest("/api/plans", plans::plan_routes())
         // Payment Routes
