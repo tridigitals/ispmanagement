@@ -404,18 +404,25 @@ pub async fn send_test_email(
     token: String,
     to_email: String,
     auth_service: State<'_, AuthService>,
-    settings_service: State<'_, SettingsService>,
+    email_outbox_service: State<'_, crate::services::EmailOutboxService>,
 ) -> Result<String, String> {
     auth_service
         .check_admin(&token)
         .await
         .map_err(|e| e.to_string())?;
 
-    // Create email service with cloned settings service
-    let email_service = crate::services::EmailService::new((*settings_service).clone());
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
 
-    email_service
-        .send_test_email(&to_email)
+    email_outbox_service
+        .send_or_enqueue(
+            claims.tenant_id,
+            &to_email,
+            "Test Email - Configuration Verified",
+            "Hello!\n\nThis is a test email. Your email configuration is working correctly.\n\nBest regards,\nYour Application",
+        )
         .await
         .map_err(|e| e.to_string())?;
 

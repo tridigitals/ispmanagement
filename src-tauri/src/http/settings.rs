@@ -414,8 +414,16 @@ pub async fn send_test_email(
     let token = get_token(&headers)?;
     state.auth_service.check_admin(&token).await?;
 
-    let email_service = crate::services::EmailService::new((*state.settings_service).clone());
-    email_service.send_test_email(&payload.to_email).await?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    state
+        .notification_service
+        .force_send_email(
+            claims.tenant_id,
+            &payload.to_email,
+            "Test Email - Configuration Verified",
+            "Hello!\n\nThis is a test email. Your email configuration is working correctly.\n\nBest regards,\nYour Application",
+        )
+        .await?;
 
     Ok(Json(format!(
         "Test email sent successfully to {}",
