@@ -296,7 +296,7 @@
               bind:value={mode}
               options={modeOptions}
             />
-            <label class="label">
+            <label class="label span-2">
               {$t('announcements.fields.cover') || 'Cover image (optional)'}
               <input class="input" type="file" accept="image/*" onchange={onPickCover} />
               {#if coverPreviewUrl}
@@ -305,7 +305,7 @@
                 </div>
               {/if}
             </label>
-            <div class="row delivery">
+            <div class="row delivery span-2">
               <div class="delivery-item">
                 <div class="delivery-text">
                   <div class="delivery-title">
@@ -331,19 +331,21 @@
                 <Toggle bind:checked={deliverEmail} ariaLabel="Send email" />
               </div>
             </div>
-            <label class="label">
+            <label class="label span-2">
               {$t('announcements.fields.title') || 'Title'}
               <input class="input" bind:value={title} placeholder="e.g. Planned maintenance" />
             </label>
-            <RichTextEditor
-              label={$t('announcements.fields.body') || 'Body'}
-              bind:value={body}
-              placeholder={$t('announcements.placeholders.body') || 'Write something clear and short…'}
-              help={$t('announcements.hints.rich') ||
-                'Tip: Keep it concise. Links are allowed; images should be added as cover.'}
-              minHeight={190}
-            />
-            <div class="row">
+            <div class="span-2">
+              <RichTextEditor
+                label={$t('announcements.fields.body') || 'Body'}
+                bind:value={body}
+                placeholder={$t('announcements.placeholders.body') || 'Write something clear and short…'}
+                help={$t('announcements.hints.rich') ||
+                  'Tip: Keep it concise. Links are allowed; images should be added as cover.'}
+                minHeight={190}
+              />
+            </div>
+            <div class="row span-2">
               <DateTimeLocalInput
                 label={$t('announcements.fields.starts_at') || 'Starts at'}
                 bind:value={startsAt}
@@ -644,7 +646,12 @@
 
   .form {
     display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
+  }
+
+  .span-2 {
+    grid-column: 1 / -1;
   }
 
   .label {
@@ -714,6 +721,9 @@
   }
 
   @media (max-width: 520px) {
+    .form {
+      grid-template-columns: 1fr;
+    }
     .row {
       grid-template-columns: 1fr;
     }
