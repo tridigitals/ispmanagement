@@ -267,6 +267,63 @@ pub async fn list_active_announcements(
 }
 
 #[tauri::command]
+pub async fn list_recent_announcements(
+    token: String,
+    auth_service: State<'_, AuthService>,
+) -> Result<Vec<Announcement>, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let tenant_id = claims.tenant_id.clone();
+    let user_id = claims.sub.clone();
+
+    let is_admin = if let Some(tid) = tenant_id.as_deref() {
+        auth_service
+            .has_permission(&user_id, tid, "admin", "access")
+            .await
+            .unwrap_or(false)
+    } else {
+        false
+    } || claims.is_super_admin;
+
+    let now = Utc::now();
+
+    #[cfg(feature = "postgres")]
+    let rows: Vec<Announcement> = sqlx::query_as(
+        r#"
+        SELECT a.*
+        FROM announcements a
+        LEFT JOIN announcement_dismissals d
+          ON d.announcement_id = a.id AND d.user_id = $1
+        WHERE d.id IS NULL
+          AND ($2::text IS NULL OR a.tenant_id IS NULL OR a.tenant_id = $2)
+          AND a.deliver_in_app = true
+          AND a.starts_at <= $3
+          AND (
+            a.audience = 'all'
+            OR (a.audience = 'admins' AND $4 = true)
+          )
+        ORDER BY a.starts_at DESC
+        LIMIT 50
+    "#,
+    )
+    .bind(&user_id)
+    .bind(tenant_id.as_deref())
+    .bind(now)
+    .bind(is_admin)
+    .fetch_all(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    #[cfg(not(feature = "postgres"))]
+    let rows: Vec<Announcement> = Vec::new();
+
+    Ok(rows)
+}
+
+#[tauri::command]
 pub async fn get_announcement(
     token: String,
     id: String,

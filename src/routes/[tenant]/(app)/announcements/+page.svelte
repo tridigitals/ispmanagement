@@ -83,7 +83,7 @@
   async function load() {
     loading = true;
     try {
-      rows = await api.announcements.listActive();
+      rows = await api.announcements.listRecent();
     } catch (e: any) {
       toast.error(e?.message || e);
     } finally {

@@ -163,6 +163,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
 
       // Announcements
       list_active_announcements: { method: 'GET', path: '/announcements/active' },
+      list_recent_announcements: { method: 'GET', path: '/announcements/recent' },
       get_announcement: { method: 'GET', path: '/announcements/:id' },
       dismiss_announcement: { method: 'POST', path: '/announcements/:id/dismiss' },
       list_announcements_admin: { method: 'GET', path: '/announcements/admin' },
@@ -816,6 +817,7 @@ export const support = {
 
 export const announcements = {
   listActive: (): Promise<Announcement[]> => safeInvoke('list_active_announcements', { token: getTokenOrThrow() }),
+  listRecent: (): Promise<Announcement[]> => safeInvoke('list_recent_announcements', { token: getTokenOrThrow() }),
   get: (id: string): Promise<Announcement> => safeInvoke('get_announcement', { token: getTokenOrThrow(), id }),
   dismiss: (id: string): Promise<void> =>
     safeInvoke('dismiss_announcement', { token: getTokenOrThrow(), id }),

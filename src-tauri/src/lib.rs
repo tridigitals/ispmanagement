@@ -417,6 +417,7 @@ pub fn run() {
                                     update_support_ticket,
                                     // Announcements
                                     list_active_announcements,
+                                    list_recent_announcements,
                                     get_announcement,
                                     dismiss_announcement,
                                     list_announcements_admin,

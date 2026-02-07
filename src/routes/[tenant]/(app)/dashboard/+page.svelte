@@ -43,7 +43,7 @@
   async function loadDashboardAnnouncements() {
     annLoading = true;
     try {
-      const rows = await api.announcements.listActive();
+      const rows = await api.announcements.listRecent();
       annPosts = (rows || []).slice(0, 3);
     } catch (e) {
       // non-blocking
