@@ -532,6 +532,8 @@
       "deliver_in_app_desc": "Show to users in the app and send a notification.",
       "deliver_email": "Send email",
       "deliver_email_desc": "Send this announcement to all recipients via email (ignores preferences).",
+      "deliver_email_force": "Ignore email preferences",
+      "deliver_email_force_desc": "When disabled, only users who enabled email announcements will receive it.",
       "title": "Title",
       "body": "Body",
       "starts_at": "Starts at",

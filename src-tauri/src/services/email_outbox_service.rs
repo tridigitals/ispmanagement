@@ -19,6 +19,7 @@ struct EmailOutboxRow {
     pub to_email: String,
     pub subject: String,
     pub body: String,
+    pub body_html: Option<String>,
     pub max_attempts: i32,
 }
 
@@ -95,6 +96,7 @@ impl EmailOutboxService {
         to_email: String,
         subject: String,
         body: String,
+        body_html: Option<String>,
         max_attempts: Option<i32>,
         scheduled_at: Option<DateTime<Utc>>,
     ) -> AppResult<String> {
@@ -108,9 +110,9 @@ impl EmailOutboxService {
             sqlx::query(
                 r#"
                 INSERT INTO email_outbox
-                  (id, tenant_id, to_email, subject, body, status, attempts, max_attempts, scheduled_at, last_error, sent_at, created_at, updated_at)
+                  (id, tenant_id, to_email, subject, body, body_html, status, attempts, max_attempts, scheduled_at, last_error, sent_at, created_at, updated_at)
                 VALUES
-                  ($1,$2,$3,$4,$5,'queued',0,$6,$7,NULL,NULL,$8,$9)
+                  ($1,$2,$3,$4,$5,$6,'queued',0,$7,$8,NULL,NULL,$9,$10)
             "#,
             )
             .bind(&id)
@@ -118,6 +120,7 @@ impl EmailOutboxService {
             .bind(&to_email)
             .bind(&subject)
             .bind(&body)
+            .bind(body_html.as_deref())
             .bind(max_attempts)
             .bind(scheduled_at)
             .bind(now)
@@ -147,6 +150,7 @@ impl EmailOutboxService {
                     body.to_string(),
                     None,
                     None,
+                    None,
                 )
                 .await?;
             Ok(())
@@ -154,6 +158,47 @@ impl EmailOutboxService {
             self.email_service
                 .send_email_for_tenant(tenant_id.as_deref(), to, subject, body)
                 .await
+        }
+    }
+
+    /// Send email with optional HTML body using outbox when enabled.
+    pub async fn send_or_enqueue_with_html(
+        &self,
+        tenant_id: Option<String>,
+        to: &str,
+        subject: &str,
+        body_text: &str,
+        body_html: Option<String>,
+    ) -> AppResult<()> {
+        if self.enabled().await {
+            let _ = self
+                .enqueue(
+                    tenant_id,
+                    to.to_string(),
+                    subject.to_string(),
+                    body_text.to_string(),
+                    body_html,
+                    None,
+                    None,
+                )
+                .await?;
+            Ok(())
+        } else {
+            if let Some(html) = body_html.as_deref() {
+                self.email_service
+                    .send_email_with_html_for_tenant(
+                        tenant_id.as_deref(),
+                        to,
+                        subject,
+                        body_text,
+                        html,
+                    )
+                    .await
+            } else {
+                self.email_service
+                    .send_email_for_tenant(tenant_id.as_deref(), to, subject, body_text)
+                    .await
+            }
         }
     }
 
@@ -185,6 +230,42 @@ impl EmailOutboxService {
                 .await;
         }
 
+        Ok(())
+    }
+
+    /// Send email with optional HTML body to users (by user id). Uses outbox when enabled.
+    #[cfg(feature = "postgres")]
+    pub async fn send_or_enqueue_to_users_with_html(
+        &self,
+        tenant_id: Option<String>,
+        user_ids: &[String],
+        subject: &str,
+        body_text: &str,
+        body_html: Option<String>,
+    ) -> AppResult<()> {
+        if user_ids.is_empty() {
+            return Ok(());
+        }
+
+        let emails: Vec<String> = sqlx::query_scalar(
+            "SELECT email FROM users WHERE id = ANY($1) AND is_active = true",
+        )
+        .bind(user_ids)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        for email in emails {
+            let _ = self
+                .send_or_enqueue_with_html(
+                    tenant_id.clone(),
+                    &email,
+                    subject,
+                    body_text,
+                    body_html.clone(),
+                )
+                .await;
+        }
         Ok(())
     }
 
@@ -240,7 +321,7 @@ impl EmailOutboxService {
 
             let rows: Vec<EmailOutboxRow> = sqlx::query_as(
                 r#"
-                SELECT id::text, tenant_id::text as tenant_id, to_email, subject, body, max_attempts
+                SELECT id::text, tenant_id::text as tenant_id, to_email, subject, body, body_html, max_attempts
                 FROM email_outbox
                 WHERE status = 'queued'
                   AND scheduled_at <= $1
@@ -288,7 +369,13 @@ impl EmailOutboxService {
 
                 match self
                     .email_service
-                    .send_email_for_tenant(r.tenant_id.as_deref(), &r.to_email, &r.subject, &r.body)
+                    .send_email_with_optional_html_for_tenant(
+                        r.tenant_id.as_deref(),
+                        &r.to_email,
+                        &r.subject,
+                        &r.body,
+                        r.body_html.as_deref(),
+                    )
                     .await
                 {
                     Ok(_) => {

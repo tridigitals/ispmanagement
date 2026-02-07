@@ -8,6 +8,7 @@ use crate::services::SettingsService;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::transport::smtp::client::Tls;
 use lettre::transport::smtp::client::TlsParameters;
+use lettre::message::{header::ContentType, MultiPart, SinglePart};
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 use serde::Serialize;
 use tracing::info;
@@ -41,6 +42,8 @@ struct ResendRequest {
     to: Vec<String>,
     subject: String,
     text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    html: Option<String>,
 }
 
 /// Email request for SendGrid API
@@ -79,6 +82,8 @@ struct WebhookRequest {
     from_name: String,
     subject: String,
     body: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    body_html: Option<String>,
 }
 
 impl EmailService {
@@ -185,10 +190,70 @@ impl EmailService {
         info!("Sending email to {} via {}", to, config.provider);
 
         match config.provider.as_str() {
-            "resend" => self.send_via_resend(&config, to, subject, body).await,
+            "resend" => self.send_via_resend(&config, to, subject, body, None).await,
             "smtp" => self.send_via_smtp(&config, to, subject, body).await,
-            "sendgrid" => self.send_via_sendgrid(&config, to, subject, body).await,
-            "webhook" => self.send_via_webhook(&config, to, subject, body).await,
+            "sendgrid" => self.send_via_sendgrid(&config, to, subject, body, None).await,
+            "webhook" => self.send_via_webhook(&config, to, subject, body, None).await,
+            _ => Err(AppError::Validation(format!(
+                "Unknown email provider: {}",
+                config.provider
+            ))),
+        }
+    }
+
+    pub async fn send_email_with_optional_html_for_tenant(
+        &self,
+        tenant_id: Option<&str>,
+        to: &str,
+        subject: &str,
+        body_text: &str,
+        body_html: Option<&str>,
+    ) -> AppResult<()> {
+        if let Some(html) = body_html {
+            self.send_email_with_html_for_tenant(tenant_id, to, subject, body_text, html)
+                .await
+        } else {
+            self.send_email_for_tenant(tenant_id, to, subject, body_text).await
+        }
+    }
+
+    pub async fn send_email_with_html_for_tenant(
+        &self,
+        tenant_id: Option<&str>,
+        to: &str,
+        subject: &str,
+        body_text: &str,
+        body_html: &str,
+    ) -> AppResult<()> {
+        let config = self.get_config_for(tenant_id).await?;
+        info!("Sending email to {} via {}", to, config.provider);
+
+        match config.provider.as_str() {
+            "resend" => {
+                self.send_via_resend(&config, to, subject, body_text, Some(body_html.to_string()))
+                    .await
+            }
+            "smtp" => self.send_via_smtp_html(&config, to, subject, body_text, body_html).await,
+            "sendgrid" => {
+                self.send_via_sendgrid(
+                    &config,
+                    to,
+                    subject,
+                    body_text,
+                    Some(body_html.to_string()),
+                )
+                .await
+            }
+            "webhook" => {
+                self.send_via_webhook(
+                    &config,
+                    to,
+                    subject,
+                    body_text,
+                    Some(body_html.to_string()),
+                )
+                .await
+            }
             _ => Err(AppError::Validation(format!(
                 "Unknown email provider: {}",
                 config.provider
@@ -273,13 +338,59 @@ impl EmailService {
         Ok(())
     }
 
+    async fn send_via_smtp_html(
+        &self,
+        config: &EmailConfig,
+        to: &str,
+        subject: &str,
+        body_text: &str,
+        body_html: &str,
+    ) -> AppResult<()> {
+        let builder = Message::builder()
+            .from(
+                format!("{} <{}>", config.from_name, config.from_email)
+                    .parse()
+                    .map_err(|e| AppError::Validation(format!("Invalid from address: {}", e)))?,
+            )
+            .to(to
+                .parse()
+                .map_err(|e| AppError::Validation(format!("Invalid to address: {}", e)))?)
+            .subject(subject);
+
+        let multipart = MultiPart::alternative()
+            .singlepart(
+                SinglePart::builder()
+                    .header(ContentType::TEXT_PLAIN)
+                    .body(body_text.to_string()),
+            )
+            .singlepart(
+                SinglePart::builder()
+                    .header(ContentType::TEXT_HTML)
+                    .body(body_html.to_string()),
+            );
+
+        let email = builder
+            .multipart(multipart)
+            .map_err(|e| AppError::Internal(format!("Failed to build email: {}", e)))?;
+
+        let mailer = self.build_smtp_transport(config)?;
+        mailer
+            .send(email)
+            .await
+            .map_err(|e| AppError::Internal(format!("SMTP sending failed: {}", e)))?;
+
+        info!("Email sent via SMTP");
+        Ok(())
+    }
+
     /// Send via Resend API
     async fn send_via_resend(
         &self,
         config: &EmailConfig,
         to: &str,
         subject: &str,
-        body: &str,
+        body_text: &str,
+        body_html: Option<String>,
     ) -> AppResult<()> {
         if config.api_key.is_empty() {
             return Err(AppError::Validation(
@@ -292,7 +403,8 @@ impl EmailService {
             from: format!("{} <{}>", config.from_name, config.from_email),
             to: vec![to.to_string()],
             subject: subject.to_string(),
-            text: body.to_string(),
+            text: body_text.to_string(),
+            html: body_html,
         };
 
         let response = client
@@ -318,7 +430,8 @@ impl EmailService {
         config: &EmailConfig,
         to: &str,
         subject: &str,
-        body: &str,
+        body_text: &str,
+        body_html: Option<String>,
     ) -> AppResult<()> {
         if config.api_key.is_empty() {
             return Err(AppError::Validation(
@@ -327,6 +440,17 @@ impl EmailService {
         }
 
         let client = reqwest::Client::new();
+        let mut content = vec![SendGridContent {
+            content_type: "text/plain".to_string(),
+            value: body_text.to_string(),
+        }];
+        if let Some(html) = body_html {
+            content.push(SendGridContent {
+                content_type: "text/html".to_string(),
+                value: html,
+            });
+        }
+
         let request = SendGridRequest {
             personalizations: vec![SendGridPersonalization {
                 to: vec![SendGridEmail {
@@ -339,10 +463,7 @@ impl EmailService {
                 name: Some(config.from_name.clone()),
             },
             subject: subject.to_string(),
-            content: vec![SendGridContent {
-                content_type: "text/plain".to_string(),
-                value: body.to_string(),
-            }],
+            content,
         };
 
         let response = client
@@ -368,7 +489,8 @@ impl EmailService {
         config: &EmailConfig,
         to: &str,
         subject: &str,
-        body: &str,
+        body_text: &str,
+        body_html: Option<String>,
     ) -> AppResult<()> {
         if config.webhook_url.is_empty() {
             return Err(AppError::Validation(
@@ -382,7 +504,8 @@ impl EmailService {
             from_email: config.from_email.clone(),
             from_name: config.from_name.clone(),
             subject: subject.to_string(),
-            body: body.to_string(),
+            body: body_text.to_string(),
+            body_html,
         };
 
         let response = client

@@ -52,6 +52,20 @@ impl NotificationService {
             .await
     }
 
+    /// Force send/enqueue an email to a single address, optionally with HTML body.
+    pub async fn force_send_email_with_html(
+        &self,
+        tenant_id: Option<String>,
+        to: &str,
+        subject: &str,
+        body_text: &str,
+        body_html: Option<String>,
+    ) -> AppResult<()> {
+        self.email_outbox
+            .send_or_enqueue_with_html(tenant_id, to, subject, body_text, body_html)
+            .await
+    }
+
     /// Send an email to a set of users (by user_id), bypassing preferences.
     #[cfg(feature = "postgres")]
     pub async fn force_send_email_to_users(
@@ -63,6 +77,22 @@ impl NotificationService {
     ) -> AppResult<()> {
         self.email_outbox
             .send_or_enqueue_to_users(tenant_id, user_ids, subject, body)
+            .await
+    }
+
+    /// Send an email to a set of users (by user_id), optionally with HTML body.
+    /// Bypasses notification preferences (caller controls the recipient list).
+    #[cfg(feature = "postgres")]
+    pub async fn force_send_email_to_users_with_html(
+        &self,
+        tenant_id: Option<String>,
+        user_ids: &[String],
+        subject: &str,
+        body_text: &str,
+        body_html: Option<String>,
+    ) -> AppResult<()> {
+        self.email_outbox
+            .send_or_enqueue_to_users_with_html(tenant_id, user_ids, subject, body_text, body_html)
             .await
     }
 

@@ -95,6 +95,7 @@ async fn list_email_outbox(
               eo.to_email,
               eo.subject,
               eo.body,
+              eo.body_html,
               eo.status,
               eo.attempts,
               eo.max_attempts,

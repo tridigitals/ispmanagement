@@ -37,6 +37,7 @@
   let mode = $state<'post' | 'banner'>('post');
   let deliverInApp = $state(true);
   let deliverEmail = $state(false);
+  let deliverEmailForce = $state(true);
   let title = $state('');
   let body = $state('');
   let startsAt = $state<string>('');
@@ -188,6 +189,7 @@
         format: 'html',
         deliver_in_app: deliverInApp,
         deliver_email: deliverEmail,
+        deliver_email_force: deliverEmailForce,
         starts_at: toIsoOrNull(startsAt),
         ends_at: toIsoOrNull(endsAt),
       };
@@ -201,6 +203,7 @@
       mode = 'post';
       deliverInApp = true;
       deliverEmail = false;
+      deliverEmailForce = true;
       coverFile = null;
       coverPreviewUrl = '';
       await load(true);
@@ -330,6 +333,20 @@
                 </div>
                 <Toggle bind:checked={deliverEmail} ariaLabel="Send email" />
               </div>
+              {#if deliverEmail}
+                <div class="delivery-item">
+                  <div class="delivery-text">
+                    <div class="delivery-title">
+                      {$t('announcements.fields.deliver_email_force') || 'Ignore email preferences'}
+                    </div>
+                    <div class="delivery-sub">
+                      {$t('announcements.fields.deliver_email_force_desc') ||
+                        'When disabled, only users who enabled email announcements will receive it.'}
+                    </div>
+                  </div>
+                  <Toggle bind:checked={deliverEmailForce} ariaLabel="Ignore preferences" />
+                </div>
+              {/if}
             </div>
             <label class="label span-2">
               {$t('announcements.fields.title') || 'Title'}

@@ -10,6 +10,7 @@ pub mod rate_limiter;
 pub mod role_service;
 pub mod settings_service;
 pub mod team_service;
+pub mod unsubscribe_token;
 pub mod user_service;
 
 pub use auth_service::*;
@@ -37,4 +38,5 @@ pub use settings_service::SettingsService;
 pub use storage_service::StorageService;
 pub use system_service::SystemService;
 pub use team_service::TeamService;
+pub use unsubscribe_token::*;
 pub use user_service::UserService;

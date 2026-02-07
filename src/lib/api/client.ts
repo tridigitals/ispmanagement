@@ -496,6 +496,7 @@ export interface Announcement {
   format: 'plain' | 'markdown' | 'html';
   deliver_in_app: boolean;
   deliver_email: boolean;
+  deliver_email_force?: boolean;
   starts_at: string;
   ends_at: string | null;
   notified_at: string | null;
@@ -515,6 +516,7 @@ export interface CreateAnnouncementDto {
   format?: 'plain' | 'markdown' | 'html';
   deliver_in_app?: boolean;
   deliver_email?: boolean;
+  deliver_email_force?: boolean;
   starts_at?: string | null;
   ends_at?: string | null;
 }
@@ -529,6 +531,7 @@ export interface UpdateAnnouncementDto {
   format?: 'plain' | 'markdown' | 'html';
   deliver_in_app?: boolean;
   deliver_email?: boolean;
+  deliver_email_force?: boolean;
   starts_at?: string | null;
   ends_at?: string | null;
 }
@@ -1147,6 +1150,7 @@ export interface EmailOutboxItem {
   to_email: string;
   subject: string;
   body: string;
+  body_html: string | null;
   status: 'queued' | 'sending' | 'sent' | 'failed' | string;
   attempts: number;
   max_attempts: number;

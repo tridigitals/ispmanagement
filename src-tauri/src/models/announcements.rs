@@ -14,6 +14,7 @@ pub struct Announcement {
     pub format: String,         // plain|markdown
     pub deliver_in_app: bool,
     pub deliver_email: bool,
+    pub deliver_email_force: bool,
     pub starts_at: DateTime<Utc>,
     pub ends_at: Option<DateTime<Utc>>,
     pub notified_at: Option<DateTime<Utc>>,
@@ -34,6 +35,7 @@ pub struct CreateAnnouncementDto {
     pub format: Option<String>,   // plain|markdown
     pub deliver_in_app: Option<bool>,
     pub deliver_email: Option<bool>,
+    pub deliver_email_force: Option<bool>,
     pub starts_at: Option<DateTime<Utc>>,
     pub ends_at: Option<DateTime<Utc>>,
 }
@@ -49,6 +51,7 @@ pub struct UpdateAnnouncementDto {
     pub format: Option<String>,
     pub deliver_in_app: Option<bool>,
     pub deliver_email: Option<bool>,
+    pub deliver_email_force: Option<bool>,
     pub starts_at: Option<DateTime<Utc>>,
     pub ends_at: Option<DateTime<Utc>>,
 }

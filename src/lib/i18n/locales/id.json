@@ -532,6 +532,8 @@
       "deliver_in_app_desc": "Tampilkan di aplikasi dan kirim notifikasi.",
       "deliver_email": "Kirim email",
       "deliver_email_desc": "Kirim pengumuman ini ke semua penerima via email (abaikan preferensi).",
+      "deliver_email_force": "Abaikan preferensi email",
+      "deliver_email_force_desc": "Jika dimatikan, hanya user yang mengaktifkan email pengumuman yang akan menerima.",
       "title": "Judul",
       "body": "Isi",
       "starts_at": "Mulai",

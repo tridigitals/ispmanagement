@@ -1,5 +1,6 @@
 use super::AppState;
 use crate::models::{Announcement, CreateAnnouncementDto, PaginatedResponse, UpdateAnnouncementDto};
+use crate::services::encode_unsubscribe_token;
 use axum::{
     extract::{Path, Query, State},
     http::HeaderMap,
@@ -217,6 +218,7 @@ pub async fn get_one(
         format: "plain".into(),
         deliver_in_app: true,
         deliver_email: false,
+        deliver_email_force: true,
         starts_at: now,
         ends_at: None,
         notified_at: None,
@@ -691,47 +693,158 @@ async fn send_announcement_emails(
     let mut ids: Vec<String> = recipients.into_iter().collect();
     ids.sort();
 
-    let subject = format!("[Announcement] {}", announcement.title);
-
-    let mut body = String::new();
-    body.push_str(&announcement.title);
-    body.push_str("\n\n");
-    if announcement.format == "html" {
-        body.push_str(&strip_html_tags(&announcement.body));
-    } else {
-        body.push_str(&announcement.body);
-    }
-
-    if let Some(tid) = announcement.tenant_id.as_deref() {
-        let main_domain: Option<String> = sqlx::query_scalar(
-            "SELECT value FROM settings WHERE tenant_id IS NULL AND key = 'app_main_domain' LIMIT 1",
+    if !announcement.deliver_email_force && !ids.is_empty() {
+        let disabled: Vec<String> = sqlx::query_scalar(
+            r#"
+            SELECT user_id
+            FROM notification_preferences
+            WHERE user_id = ANY($1)
+              AND channel = 'email'
+              AND category = 'announcement'
+              AND enabled = false
+        "#,
         )
-        .fetch_optional(&state.auth_service.pool)
+        .bind(&ids)
+        .fetch_all(&state.auth_service.pool)
         .await
-        .unwrap_or(None);
-
-        let slug: Option<String> =
-            sqlx::query_scalar("SELECT slug FROM tenants WHERE id = $1 LIMIT 1")
-                .bind(tid)
-                .fetch_optional(&state.auth_service.pool)
-                .await
-                .unwrap_or(None);
-
-        if let (Some(domain), Some(slug)) = (main_domain, slug) {
-            body.push_str("\n\nOpen in app:\n");
-            body.push_str(&format!(
-                "https://{}/{}/announcements/{}",
-                domain, slug, announcement.id
-            ));
-            body.push('\n');
+        .unwrap_or_default();
+        if !disabled.is_empty() {
+            let disabled_set: std::collections::HashSet<String> = disabled.into_iter().collect();
+            ids.retain(|u| !disabled_set.contains(u));
         }
     }
 
-    // Force delivery regardless of notification preferences.
-    let _ = state
-        .notification_service
-        .force_send_email_to_users(announcement.tenant_id.clone(), &ids, &subject, &body)
-        .await;
+    if ids.is_empty() {
+        return Ok(());
+    }
+
+    let subject = format!("[Announcement] {}", announcement.title);
+
+    let main_domain: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM settings WHERE tenant_id IS NULL AND key = 'app_main_domain' LIMIT 1",
+    )
+    .fetch_optional(&state.auth_service.pool)
+    .await
+    .unwrap_or(None);
+
+    let slug: Option<String> = if let Some(tid) = announcement.tenant_id.as_deref() {
+        sqlx::query_scalar("SELECT slug FROM tenants WHERE id = $1 LIMIT 1")
+            .bind(tid)
+            .fetch_optional(&state.auth_service.pool)
+            .await
+            .unwrap_or(None)
+    } else {
+        None
+    };
+
+    let users: Vec<(String, String)> =
+        sqlx::query_as("SELECT id, email FROM users WHERE id = ANY($1) AND is_active = true")
+            .bind(&ids)
+            .fetch_all(&state.auth_service.pool)
+            .await
+            .unwrap_or_default();
+
+    for (user_id, email) in users {
+        let open_url = match (main_domain.as_deref(), slug.as_deref()) {
+            (Some(domain), Some(sl)) => {
+                Some(format!("https://{}/{}/announcements/{}", domain, sl, announcement.id))
+            }
+            (Some(domain), None) => Some(format!("https://{}/announcements/{}", domain, announcement.id)),
+            _ => None,
+        };
+
+        let unsub_url = if let Some(domain) = main_domain.as_deref() {
+            if let Ok(tok) = encode_unsubscribe_token(
+                &state.auth_service.pool,
+                &user_id,
+                announcement.tenant_id.clone(),
+                "announcement",
+                "email",
+                365,
+            )
+            .await
+            {
+                Some(format!("https://{}/api/public/unsubscribe/{}", domain, tok))
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        let plain_body = {
+            let mut b = String::new();
+            b.push_str(&announcement.title);
+            b.push_str("\n\n");
+            if announcement.format == "html" {
+                b.push_str(&strip_html_tags(&announcement.body));
+            } else {
+                b.push_str(&announcement.body);
+            }
+            if let Some(url) = open_url.as_deref() {
+                b.push_str("\n\nOpen in app:\n");
+                b.push_str(url);
+                b.push('\n');
+            }
+            if let Some(url) = unsub_url.as_deref() {
+                b.push_str("\n\nUnsubscribe:\n");
+                b.push_str(url);
+                b.push('\n');
+            }
+            b
+        };
+
+        let html_body = {
+            let content = if announcement.format == "html" {
+                announcement.body.clone()
+            } else {
+                let esc = announcement
+                    .body
+                    .replace('&', "&amp;")
+                    .replace('<', "&lt;")
+                    .replace('>', "&gt;");
+                format!("<pre style=\"white-space:pre-wrap\">{}</pre>", esc)
+            };
+
+            let open = open_url
+                .as_deref()
+                .map(|u| format!("<p><a href=\"{u}\">Open in app</a></p>"))
+                .unwrap_or_default();
+            let unsub = unsub_url
+                .as_deref()
+                .map(|u| format!("<p style=\"color:#6b7280;font-size:12px\">Unsubscribe: <a href=\"{u}\">{u}</a></p>"))
+                .unwrap_or_default();
+
+            format!(
+                r#"<!doctype html>
+<html>
+<body style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;line-height:1.5;color:#111827">
+  <div style="max-width:640px;margin:0 auto;padding:20px">
+    <div style="border:1px solid #e5e7eb;border-radius:14px;padding:18px">
+      <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#6b7280">Announcement</div>
+      <h1 style="margin:10px 0 0;font-size:20px">{}</h1>
+      <div style="margin-top:12px">{}</div>
+      {}
+    </div>
+    {}
+  </div>
+</body>
+</html>"#,
+                announcement.title, content, open, unsub
+            )
+        };
+
+        let _ = state
+            .notification_service
+            .force_send_email_with_html(
+                announcement.tenant_id.clone(),
+                &email,
+                &subject,
+                &plain_body,
+                Some(html_body),
+            )
+            .await;
+    }
 
     Ok(())
 }
@@ -790,15 +903,16 @@ pub async fn create_announcement(
     let format = norm_format(dto.format);
     let deliver_in_app = dto.deliver_in_app.unwrap_or(true);
     let deliver_email = dto.deliver_email.unwrap_or(false);
+    let deliver_email_force = dto.deliver_email_force.unwrap_or(true);
     let cover_file_id = dto.cover_file_id.clone();
 
     #[cfg(feature = "postgres")]
     let mut ann: Announcement = sqlx::query_as(
         r#"
         INSERT INTO announcements
-          (id, tenant_id, created_by, cover_file_id, title, body, severity, audience, mode, format, deliver_in_app, deliver_email, starts_at, ends_at, notified_at, created_at, updated_at)
+          (id, tenant_id, created_by, cover_file_id, title, body, severity, audience, mode, format, deliver_in_app, deliver_email, deliver_email_force, starts_at, ends_at, notified_at, created_at, updated_at)
         VALUES
-          ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NULL,$15,$16)
+          ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NULL,$16,$17)
         RETURNING *
     "#,
     )
@@ -814,6 +928,7 @@ pub async fn create_announcement(
     .bind(&format)
     .bind(deliver_in_app)
     .bind(deliver_email)
+    .bind(deliver_email_force)
     .bind(starts_at)
     .bind(ends_at)
     .bind(now)
@@ -835,6 +950,7 @@ pub async fn create_announcement(
         format,
         deliver_in_app,
         deliver_email,
+        deliver_email_force,
         starts_at,
         ends_at,
         notified_at: None,
@@ -921,6 +1037,7 @@ pub async fn update_announcement(
         format: "plain".into(),
         deliver_in_app: true,
         deliver_email: false,
+        deliver_email_force: true,
         starts_at: Utc::now(),
         ends_at: None,
         notified_at: None,
@@ -954,6 +1071,9 @@ pub async fn update_announcement(
     };
     let deliver_in_app = dto.deliver_in_app.unwrap_or(existing.deliver_in_app);
     let deliver_email = dto.deliver_email.unwrap_or(existing.deliver_email);
+    let deliver_email_force = dto
+        .deliver_email_force
+        .unwrap_or(existing.deliver_email_force);
     let starts_at = dto.starts_at.unwrap_or(existing.starts_at);
     let ends_at = dto.ends_at.or(existing.ends_at);
     if let Some(e) = ends_at {
@@ -977,10 +1097,11 @@ pub async fn update_announcement(
             format = $7,
             deliver_in_app = $8,
             deliver_email = $9,
-            starts_at = $10,
-            ends_at = $11,
-            updated_at = $12
-        WHERE id = $13
+            deliver_email_force = $10,
+            starts_at = $11,
+            ends_at = $12,
+            updated_at = $13
+        WHERE id = $14
         RETURNING *
     "#,
     )
@@ -993,6 +1114,7 @@ pub async fn update_announcement(
     .bind(format)
     .bind(deliver_in_app)
     .bind(deliver_email)
+    .bind(deliver_email_force)
     .bind(starts_at)
     .bind(ends_at)
     .bind(now)

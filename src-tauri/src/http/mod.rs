@@ -406,6 +406,7 @@ pub async fn start_server(
             "/api/public/domain/{domain}",
             get(public::get_tenant_by_domain),
         )
+        .route("/api/public/unsubscribe/{token}", get(public::unsubscribe))
         // Version Route
         .route("/api/version", get(get_app_version))
         .layer(DefaultBodyLimit::max(1024 * 1024 * 1024)) // 1GB Upload Limit

@@ -9,6 +9,7 @@ pub struct EmailOutboxItem {
     pub to_email: String,
     pub subject: String,
     pub body: String,
+    pub body_html: Option<String>,
     pub status: String, // queued | sending | sent | failed
     pub attempts: i32,
     pub max_attempts: i32,
@@ -28,4 +29,3 @@ pub struct EmailOutboxStats {
     pub sent: i64,
     pub failed: i64,
 }
-
