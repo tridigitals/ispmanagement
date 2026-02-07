@@ -68,12 +68,31 @@ async fn list_email_outbox(
 
         let mut qb_count: QueryBuilder<Postgres> =
             QueryBuilder::new("SELECT COUNT(*) FROM email_outbox eo WHERE 1=1");
-        let mut qb: QueryBuilder<Postgres> =
-            QueryBuilder::new("SELECT eo.* FROM email_outbox eo WHERE 1=1");
+        let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
+            r#"
+            SELECT
+              eo.id::text AS id,
+              eo.tenant_id::text AS tenant_id,
+              eo.to_email,
+              eo.subject,
+              eo.body,
+              eo.status,
+              eo.attempts,
+              eo.max_attempts,
+              eo.scheduled_at,
+              eo.last_error,
+              eo.sent_at,
+              eo.created_at,
+              eo.updated_at
+            FROM email_outbox eo
+            WHERE 1=1
+        "#,
+        );
 
-        qb_count.push(" AND eo.tenant_id = ");
+        // Cast to text to be compatible with legacy schemas that used UUID columns.
+        qb_count.push(" AND eo.tenant_id::text = ");
         qb_count.push_bind(&tenant_id);
-        qb.push(" AND eo.tenant_id = ");
+        qb.push(" AND eo.tenant_id::text = ");
         qb.push_bind(&tenant_id);
 
         if let Some(st) = status.as_deref() {
@@ -150,7 +169,7 @@ async fn get_email_outbox_stats(
     #[cfg(feature = "postgres")]
     {
         let rows: Vec<(String, i64)> = sqlx::query_as(
-            "SELECT status, COUNT(*)::bigint FROM email_outbox WHERE tenant_id = $1 GROUP BY status",
+            "SELECT status, COUNT(*)::bigint FROM email_outbox WHERE tenant_id::text = $1 GROUP BY status",
         )
         .bind(&tenant_id)
         .fetch_all(&state.auth_service.pool)
@@ -216,8 +235,8 @@ async fn retry_email_outbox(
                 last_error = NULL,
                 sent_at = NULL,
                 updated_at = $1
-            WHERE id = $2
-              AND tenant_id = $3
+            WHERE id::text = $2
+              AND tenant_id::text = $3
               AND status != 'sending'
         "#,
         )
@@ -254,7 +273,7 @@ async fn delete_email_outbox(
     #[cfg(feature = "postgres")]
     {
         let res = sqlx::query(
-            "DELETE FROM email_outbox WHERE id = $1 AND tenant_id = $2 AND status != 'sending'",
+            "DELETE FROM email_outbox WHERE id::text = $1 AND tenant_id::text = $2 AND status != 'sending'",
         )
         .bind(&id)
         .bind(&tenant_id)
@@ -269,4 +288,3 @@ async fn delete_email_outbox(
 
     Ok(Json(serde_json::json!({ "success": true })))
 }
-
