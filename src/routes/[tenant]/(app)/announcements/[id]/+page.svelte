@@ -169,13 +169,7 @@
           </div>
         </div>
 
-        <div class="card tip">
-          <div class="card-title">{$t('announcements.tip_title') || 'Tip'}</div>
-          <div class="tip-text">
-            {$t('announcements.hints.rich') ||
-              'Tip: Keep it concise. Links are allowed; images should be added as cover.'}
-          </div>
-        </div>
+        <!-- Tip card removed to keep detail page clean -->
       </aside>
     </div>
   {/if}
@@ -558,23 +552,7 @@
     color: rgba(239, 68, 68, 0.95);
   }
 
-  .tip {
-    background:
-      radial-gradient(900px 220px at 15% 0%, rgba(99, 102, 241, 0.14), transparent 60%),
-      rgba(255, 255, 255, 0.02);
-  }
-
-  :global([data-theme='light']) .tip {
-    background:
-      radial-gradient(900px 220px at 15% 0%, rgba(99, 102, 241, 0.1), transparent 60%),
-      rgba(0, 0, 0, 0.01);
-  }
-
-  .tip-text {
-    color: var(--text-secondary);
-    font-weight: 650;
-    line-height: 1.45;
-  }
+  /* Tip card removed */
 
   .body.mono {
     font-variant-ligatures: none;
