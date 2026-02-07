@@ -17,6 +17,7 @@
   let loading = $state(true);
   let saving = $state(false);
   let rows = $state<Announcement[]>([]);
+  let activeTab = $state<'create' | 'history'>('create');
 
   let scope = $state<'tenant' | 'global'>('tenant');
   let audience = $state<'all' | 'admins'>('all');
@@ -153,7 +154,7 @@
   }
 </script>
 
-<div class="page fade-in">
+<div class="page-container fade-in">
   <div class="head">
     <div>
       <div class="h1">{$t('announcements.title') || 'Announcements'}</div>
@@ -169,168 +170,195 @@
     </div>
   </div>
 
-  <div class="grid">
-    <div class="panel">
-      <div class="panel-title">{$t('announcements.create.title') || 'Create broadcast'}</div>
-      <div class="form">
-        {#if $isSuperAdmin}
-          <Select
-            label={$t('announcements.fields.scope') || 'Scope'}
-            bind:value={scope}
-            options={scopeOptions}
-          />
-        {/if}
-        <Select
-          label={$t('announcements.fields.audience') || 'Audience'}
-          bind:value={audience}
-          options={audienceOptions}
-        />
-        <Select
-          label={$t('announcements.fields.severity') || 'Severity'}
-          bind:value={severity}
-          options={severityOptions}
-        />
-        <Select
-          label={$t('announcements.fields.mode') || 'Mode'}
-          bind:value={mode}
-          options={modeOptions}
-        />
-        <label class="label">
-          {$t('announcements.fields.cover') || 'Cover image (optional)'}
-          <input class="input" type="file" accept="image/*" onchange={onPickCover} />
-          {#if coverPreviewUrl}
-            <div class="cover-preview">
-              <img src={coverPreviewUrl} alt="cover preview" />
-            </div>
-          {/if}
-        </label>
-        <div class="row delivery">
-          <div class="delivery-item">
-            <div class="delivery-text">
-              <div class="delivery-title">
-                {$t('announcements.fields.deliver_in_app') || 'Deliver in-app'}
-              </div>
-              <div class="delivery-sub">
-                {$t('announcements.fields.deliver_in_app_desc') ||
-                  'Show to users in the app and send a notification.'}
-              </div>
-            </div>
-            <Toggle bind:checked={deliverInApp} ariaLabel="Deliver in-app" />
-          </div>
-          <div class="delivery-item">
-            <div class="delivery-text">
-              <div class="delivery-title">
-                {$t('announcements.fields.deliver_email') || 'Send email'}
-              </div>
-              <div class="delivery-sub">
-                {$t('announcements.fields.deliver_email_desc') ||
-                  'Send this announcement to all recipients via email (ignores preferences).'} 
-              </div>
-            </div>
-            <Toggle bind:checked={deliverEmail} ariaLabel="Send email" />
-          </div>
-        </div>
-        <label class="label">
-          {$t('announcements.fields.title') || 'Title'}
-          <input class="input" bind:value={title} placeholder="e.g. Planned maintenance" />
-        </label>
-        <RichTextEditor
-          label={$t('announcements.fields.body') || 'Body'}
-          bind:value={body}
-          placeholder={$t('announcements.placeholders.body') || 'Write something clear and short…'}
-          help={$t('announcements.hints.rich') ||
-            'Tip: Keep it concise. Links are allowed; images should be added as cover.'}
-          minHeight={190}
-        />
-        <div class="row">
-          <label class="label">
-            {$t('announcements.fields.starts_at') || 'Starts at'}
-            <input class="input" type="datetime-local" bind:value={startsAt} />
-          </label>
-          <label class="label">
-            {$t('announcements.fields.ends_at') || 'Ends at'}
-            <input class="input" type="datetime-local" bind:value={endsAt} />
-          </label>
-        </div>
-      </div>
-      <div class="foot">
-        <button class="btn-primary" type="button" onclick={create} disabled={saving}>
-          <Icon name="megaphone" size={16} />
-          {saving ? $t('common.saving') || 'Saving...' : $t('announcements.actions.publish') || 'Publish'}
+  <div class="layout-grid">
+    <aside class="side card">
+      <nav>
+        <button
+          class="nav-item {activeTab === 'create' ? 'active' : ''}"
+          type="button"
+          onclick={() => (activeTab = 'create')}
+        >
+          <span class="icon"><Icon name="megaphone" size={18} /></span>
+          {$t('announcements.create.title') || 'Create broadcast'}
         </button>
-      </div>
-      <p class="hint">
-        {$t('announcements.hints.schedule') ||
-          'Leave dates empty to publish immediately. End date controls when the banner stops showing.'}
-      </p>
-    </div>
+        <button
+          class="nav-item {activeTab === 'history' ? 'active' : ''}"
+          type="button"
+          onclick={() => (activeTab = 'history')}
+        >
+          <span class="icon"><Icon name="list" size={18} /></span>
+          {$t('announcements.list.title') || 'History'}
+        </button>
+      </nav>
+    </aside>
 
-    <div class="panel">
-      <div class="panel-title">{$t('announcements.list.title') || 'History'}</div>
-
-      {#if loading}
-        <div class="loading">
-          <div class="spinner"></div>
-          <div>{$t('common.loading') || 'Loading...'}</div>
-        </div>
-      {:else if rows.length === 0}
-        <div class="empty">
-          <Icon name="info" size={18} />
-          <span>{$t('announcements.empty') || 'No announcements yet.'}</span>
+    <main class="content">
+      {#if activeTab === 'create'}
+        <div class="panel">
+          <div class="panel-title">{$t('announcements.create.title') || 'Create broadcast'}</div>
+          <div class="form">
+            {#if $isSuperAdmin}
+              <Select
+                label={$t('announcements.fields.scope') || 'Scope'}
+                bind:value={scope}
+                options={scopeOptions}
+              />
+            {/if}
+            <Select
+              label={$t('announcements.fields.audience') || 'Audience'}
+              bind:value={audience}
+              options={audienceOptions}
+            />
+            <Select
+              label={$t('announcements.fields.severity') || 'Severity'}
+              bind:value={severity}
+              options={severityOptions}
+            />
+            <Select
+              label={$t('announcements.fields.mode') || 'Mode'}
+              bind:value={mode}
+              options={modeOptions}
+            />
+            <label class="label">
+              {$t('announcements.fields.cover') || 'Cover image (optional)'}
+              <input class="input" type="file" accept="image/*" onchange={onPickCover} />
+              {#if coverPreviewUrl}
+                <div class="cover-preview">
+                  <img src={coverPreviewUrl} alt="cover preview" />
+                </div>
+              {/if}
+            </label>
+            <div class="row delivery">
+              <div class="delivery-item">
+                <div class="delivery-text">
+                  <div class="delivery-title">
+                    {$t('announcements.fields.deliver_in_app') || 'Deliver in-app'}
+                  </div>
+                  <div class="delivery-sub">
+                    {$t('announcements.fields.deliver_in_app_desc') ||
+                      'Show to users in the app and send a notification.'}
+                  </div>
+                </div>
+                <Toggle bind:checked={deliverInApp} ariaLabel="Deliver in-app" />
+              </div>
+              <div class="delivery-item">
+                <div class="delivery-text">
+                  <div class="delivery-title">
+                    {$t('announcements.fields.deliver_email') || 'Send email'}
+                  </div>
+                  <div class="delivery-sub">
+                    {$t('announcements.fields.deliver_email_desc') ||
+                      'Send this announcement to all recipients via email (ignores preferences).'}
+                  </div>
+                </div>
+                <Toggle bind:checked={deliverEmail} ariaLabel="Send email" />
+              </div>
+            </div>
+            <label class="label">
+              {$t('announcements.fields.title') || 'Title'}
+              <input class="input" bind:value={title} placeholder="e.g. Planned maintenance" />
+            </label>
+            <RichTextEditor
+              label={$t('announcements.fields.body') || 'Body'}
+              bind:value={body}
+              placeholder={$t('announcements.placeholders.body') || 'Write something clear and short…'}
+              help={$t('announcements.hints.rich') ||
+                'Tip: Keep it concise. Links are allowed; images should be added as cover.'}
+              minHeight={190}
+            />
+            <div class="row">
+              <label class="label">
+                {$t('announcements.fields.starts_at') || 'Starts at'}
+                <input class="input" type="datetime-local" bind:value={startsAt} />
+              </label>
+              <label class="label">
+                {$t('announcements.fields.ends_at') || 'Ends at'}
+                <input class="input" type="datetime-local" bind:value={endsAt} />
+              </label>
+            </div>
+          </div>
+          <div class="foot">
+            <button class="btn-primary" type="button" onclick={create} disabled={saving}>
+              <Icon name="megaphone" size={16} />
+              {saving
+                ? $t('common.saving') || 'Saving...'
+                : $t('announcements.actions.publish') || 'Publish'}
+            </button>
+          </div>
+          <p class="hint">
+            {$t('announcements.hints.schedule') ||
+              'Leave dates empty to publish immediately. End date controls when the banner stops showing.'}
+          </p>
         </div>
       {:else}
-        <div class="table">
-          {#each rows as a (a.id)}
-            <div class="item">
-              <div class="left">
-                <div class="badges">
-                  <span class="pill sev {a.severity}">{a.severity}</span>
-                  <span class="pill st {statusOf(a)}">{statusOf(a)}</span>
-                  {#if a.tenant_id === null}
-                    <span class="pill scope global">global</span>
-                  {/if}
-                  {#if a.audience === 'admins'}
-                    <span class="pill aud admins">admins</span>
-                  {/if}
-                </div>
-                <div class="ttl">{a.title}</div>
-                <div class="meta">
-                  <span>
-                    {formatDateTime(a.created_at, { timeZone: $appSettings.app_timezone })}
-                  </span>
-                  {#if a.starts_at}
-                    <span class="dot"></span>
-                    <span>
-                      {$t('announcements.fields.starts_at') || 'Starts'}:
-                      {formatDateTime(a.starts_at, { timeZone: $appSettings.app_timezone })}
-                    </span>
-                  {/if}
-                  {#if a.ends_at}
-                    <span class="dot"></span>
-                    <span>
-                      {$t('announcements.fields.ends_at') || 'Ends'}:
-                      {formatDateTime(a.ends_at, { timeZone: $appSettings.app_timezone })}
-                    </span>
-                  {/if}
-                </div>
-              </div>
+        <div class="panel">
+          <div class="panel-title">{$t('announcements.list.title') || 'History'}</div>
 
-              <div class="right">
-                <button class="btn danger" type="button" onclick={() => remove(a.id)}>
-                  <Icon name="trash-2" size={16} />
-                  {$t('common.delete') || 'Delete'}
-                </button>
-              </div>
+          {#if loading}
+            <div class="loading">
+              <div class="spinner"></div>
+              <div>{$t('common.loading') || 'Loading...'}</div>
             </div>
-          {/each}
+          {:else if rows.length === 0}
+            <div class="empty">
+              <Icon name="info" size={18} />
+              <span>{$t('announcements.empty') || 'No announcements yet.'}</span>
+            </div>
+          {:else}
+            <div class="table">
+              {#each rows as a (a.id)}
+                <div class="item">
+                  <div class="left">
+                    <div class="badges">
+                      <span class="pill sev {a.severity}">{a.severity}</span>
+                      <span class="pill st {statusOf(a)}">{statusOf(a)}</span>
+                      {#if a.tenant_id === null}
+                        <span class="pill scope global">global</span>
+                      {/if}
+                      {#if a.audience === 'admins'}
+                        <span class="pill aud admins">admins</span>
+                      {/if}
+                    </div>
+                    <div class="ttl">{a.title}</div>
+                    <div class="meta">
+                      <span>
+                        {formatDateTime(a.created_at, { timeZone: $appSettings.app_timezone })}
+                      </span>
+                      {#if a.starts_at}
+                        <span class="dot"></span>
+                        <span>
+                          {$t('announcements.fields.starts_at') || 'Starts'}:
+                          {formatDateTime(a.starts_at, { timeZone: $appSettings.app_timezone })}
+                        </span>
+                      {/if}
+                      {#if a.ends_at}
+                        <span class="dot"></span>
+                        <span>
+                          {$t('announcements.fields.ends_at') || 'Ends'}:
+                          {formatDateTime(a.ends_at, { timeZone: $appSettings.app_timezone })}
+                        </span>
+                      {/if}
+                    </div>
+                  </div>
+
+                  <div class="right">
+                    <button class="btn danger" type="button" onclick={() => remove(a.id)}>
+                      <Icon name="trash-2" size={16} />
+                      {$t('common.delete') || 'Delete'}
+                    </button>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
         </div>
       {/if}
-    </div>
+    </main>
   </div>
 </div>
 
 <style>
-  .page {
+  .page-container {
     padding: 1.5rem;
     max-width: 1200px;
     margin: 0 auto;
@@ -362,17 +390,86 @@
     gap: 0.6rem;
   }
 
-  .grid {
+  .layout-grid {
     display: grid;
-    grid-template-columns: minmax(340px, 420px) 1fr;
+    grid-template-columns: 260px 1fr;
     gap: 1rem;
     align-items: start;
   }
 
   @media (max-width: 980px) {
-    .grid {
+    .layout-grid {
       grid-template-columns: 1fr;
     }
+  }
+
+  .side {
+    padding: 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    background:
+      radial-gradient(900px 220px at 20% 0%, rgba(255, 255, 255, 0.05), transparent 55%),
+      var(--bg-surface);
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: 1rem;
+    height: fit-content;
+  }
+
+  @media (max-width: 980px) {
+    .side {
+      position: static;
+    }
+  }
+
+  .nav-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.8rem 0.85rem;
+    border-radius: 14px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-weight: 850;
+    text-align: left;
+  }
+
+  .nav-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-primary);
+  }
+
+  :global([data-theme='light']) .nav-item:hover {
+    background: rgba(0, 0, 0, 0.03);
+  }
+
+  .nav-item.active {
+    color: var(--text-primary);
+    border-color: rgba(99, 102, 241, 0.35);
+    background: rgba(99, 102, 241, 0.12);
+  }
+
+  .icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    display: grid;
+    place-items: center;
+    color: var(--text-primary);
+  }
+
+  :global([data-theme='light']) .icon {
+    border-color: rgba(0, 0, 0, 0.12);
+    background: rgba(0, 0, 0, 0.03);
+  }
+
+  .content {
+    min-width: 0;
   }
 
   .panel {
@@ -483,6 +580,26 @@
   .textarea {
     resize: vertical;
     min-height: 110px;
+  }
+
+  /* Fix native datetime picker icon visibility in dark mode */
+  .input[type='datetime-local'] {
+    color-scheme: dark;
+  }
+
+  :global([data-theme='light']) .input[type='datetime-local'] {
+    color-scheme: light;
+  }
+
+  .input[type='datetime-local']::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.75;
+    cursor: pointer;
+  }
+
+  :global([data-theme='light']) .input[type='datetime-local']::-webkit-calendar-picker-indicator {
+    filter: invert(0);
+    opacity: 0.7;
   }
 
   .input:focus,
