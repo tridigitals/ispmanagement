@@ -57,9 +57,25 @@ type WsEvent =
 let ws: WebSocket | null = null;
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 let reconnectAttempts = 0;
-const MAX_RECONNECT_ATTEMPTS = 10;
-const RECONNECT_DELAY = 3000; // 3 seconds
+const RECONNECT_BASE_DELAY = 1200; // ms
+const RECONNECT_MAX_DELAY = 30_000; // ms
 const DEV = import.meta.env.DEV;
+let manualClose = false;
+
+// Auto-connect in browser when token becomes available (prevents "must reload" issues).
+// Guarded with a global flag to avoid duplicate subscriptions across HMR.
+const g = globalThis as any;
+if (browser && !g.__ws_auto_init) {
+  g.__ws_auto_init = true;
+  token.subscribe((t) => {
+    if (t) connectWebSocket();
+    else disconnectWebSocket();
+  });
+  window.addEventListener('online', () => connectWebSocket());
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) connectWebSocket();
+  });
+}
 
 function parseJwtSub(jwt: string): string | null {
   // JWT: header.payload.signature (base64url)
@@ -98,6 +114,7 @@ export function connectWebSocket() {
 
   const currentToken = get(token);
   if (!currentToken) {
+    // Token might not be ready yet; auto-init subscriber will connect once available.
     return;
   }
 
@@ -124,6 +141,7 @@ export function connectWebSocket() {
   wsError.set(null);
 
   try {
+    manualClose = false;
     ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
@@ -150,14 +168,15 @@ export function connectWebSocket() {
       wsConnected.set(false);
       ws = null;
 
-      // Auto-reconnect if not intentionally closed
-      if (event.code !== 1000 && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      // Auto-reconnect unless explicitly closed by app.
+      if (!manualClose && event.code !== 1000) {
         scheduleReconnect();
       }
     };
   } catch (e) {
     console.error('[WS] Failed to create WebSocket:', e);
     wsError.set('Failed to connect to WebSocket');
+    scheduleReconnect();
   }
 }
 
@@ -284,7 +303,9 @@ function scheduleReconnect() {
   }
 
   reconnectAttempts++;
-  const delay = RECONNECT_DELAY * reconnectAttempts; // Exponential backoff
+  const exp = Math.min(10, reconnectAttempts);
+  const jitter = Math.floor(Math.random() * 600);
+  const delay = Math.min(RECONNECT_MAX_DELAY, RECONNECT_BASE_DELAY * 2 ** exp) + jitter;
 
   reconnectTimeout = setTimeout(() => {
     connectWebSocket();
@@ -301,6 +322,7 @@ export function disconnectWebSocket() {
   }
 
   if (ws) {
+    manualClose = true;
     ws.close(1000, 'User logout');
     ws = null;
   }

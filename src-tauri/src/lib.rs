@@ -16,7 +16,8 @@ use db::connection::{init_db, seed_defaults};
 use services::backup::BackupScheduler;
 use services::metrics_service::MetricsService;
 use services::{
-    AnnouncementScheduler, AuditService, AuthService, BackupService, EmailService, NotificationService, PaymentService,
+    AnnouncementScheduler, AuditService, AuthService, BackupService, EmailOutboxService, EmailService,
+    NotificationService, PaymentService,
     PlanService, RoleService, SettingsService, SystemService, TeamService, UserService,
 };
 use tauri::Manager;
@@ -203,7 +204,15 @@ pub fn run() {
                 // Create WebSocket hub for real-time sync (shared between HTTP and Tauri)
                 let ws_hub = std::sync::Arc::new(http::WsHub::new());
 
-                let notification_service = NotificationService::new(pool.clone(), ws_hub.clone(), email_service.clone());
+                let email_outbox_service =
+                    EmailOutboxService::new(pool.clone(), settings_service.clone(), email_service.clone());
+                email_outbox_service.start_sender().await;
+
+                let notification_service = NotificationService::new(
+                    pool.clone(),
+                    ws_hub.clone(),
+                    email_outbox_service.clone(),
+                );
                 let payment_service = PaymentService::new(pool.clone(), notification_service.clone());
 
                 // Start Announcement Scheduler (scheduled broadcasts -> notifications)
@@ -231,6 +240,7 @@ pub fn run() {
                 app_handle.manage(backup_service.clone());
                 app_handle.manage(payment_service.clone());
                 app_handle.manage(notification_service.clone());
+                app_handle.manage(email_outbox_service.clone());
                 app_handle.manage(ws_hub.clone());
                 app_handle.manage(metrics_service.clone());
                 info!("Services added to Tauri state.");

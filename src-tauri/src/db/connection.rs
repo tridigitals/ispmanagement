@@ -720,6 +720,10 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
         ("backup_tenant_schedule", "30 2 * * *", "Legacy tenant backup schedule in cron (min hour * * *) or HH:MM (app_timezone)"),
         ("backup_tenant_retention_days", "14", "Retention days for tenant backups"),
         ("backup_tenant_trigger", "false", "Manual trigger for tenant backups"),
+        // Email Outbox
+        ("email_outbox_enabled", "true", "Queue outgoing emails and retry failures"),
+        ("email_outbox_max_attempts", "5", "Max retry attempts for queued emails"),
+        ("email_outbox_base_delay_seconds", "30", "Base retry delay in seconds for queued emails (exponential backoff)"),
     ];
 
     for (key, value, description) in defaults {

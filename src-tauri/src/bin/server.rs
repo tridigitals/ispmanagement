@@ -4,7 +4,7 @@ use saas_tauri_lib::{
     services::backup::BackupScheduler,
     services::{
         metrics_service::MetricsService, AuditService, AuthService, BackupService, EmailService,
-        AnnouncementScheduler, NotificationService, PaymentService, PlanService, RoleService, SettingsService,
+        AnnouncementScheduler, EmailOutboxService, NotificationService, PaymentService, PlanService, RoleService, SettingsService,
         StorageService, SystemService, TeamService, UserService,
     },
 };
@@ -89,8 +89,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let storage_service = StorageService::new(pool.clone(), plan_service.clone(), storage_dir);
 
     let ws_hub = Arc::new(WsHub::new());
-    let notification_service =
-        NotificationService::new(pool.clone(), ws_hub.clone(), email_service.clone());
+    let email_outbox_service =
+        EmailOutboxService::new(pool.clone(), settings_service.clone(), email_service.clone());
+    email_outbox_service.start_sender().await;
+    let notification_service = NotificationService::new(
+        pool.clone(),
+        ws_hub.clone(),
+        email_outbox_service.clone(),
+    );
     let payment_service = PaymentService::new(pool.clone(), notification_service.clone());
     let backup_service = BackupService::new(pool.clone(), app_data_dir.clone());
 

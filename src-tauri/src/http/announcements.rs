@@ -861,6 +861,20 @@ pub async fn create_announcement(
         }
     }
 
+    // Audit (best-effort)
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            target_tenant_id.as_deref(),
+            "create",
+            "announcements",
+            Some(&ann.id),
+            Some(&format!("Created announcement: {}", ann.title)),
+            None,
+        )
+        .await;
+
     Ok(Json(ann))
 }
 
@@ -989,6 +1003,19 @@ pub async fn update_announcement(
     #[cfg(not(feature = "postgres"))]
     let ann: Announcement = existing;
 
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "update",
+            "announcements",
+            Some(&id),
+            Some("Updated announcement"),
+            None,
+        )
+        .await;
+
     Ok(Json(ann))
 }
 
@@ -1021,6 +1048,19 @@ pub async fn delete_announcement(
         .execute(&state.auth_service.pool)
         .await?;
     }
+
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "delete",
+            "announcements",
+            Some(&id),
+            Some("Deleted announcement"),
+            None,
+        )
+        .await;
 
     Ok(Json(serde_json::json!({ "ok": true })))
 }

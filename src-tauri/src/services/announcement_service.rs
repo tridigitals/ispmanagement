@@ -45,6 +45,19 @@ impl AnnouncementScheduler {
             loop {
                 interval.tick().await;
 
+                #[cfg(feature = "postgres")]
+                {
+                    // Prevent duplicate processing when running multiple instances.
+                    let locked: bool = sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
+                        .bind("announcement_scheduler")
+                        .fetch_one(&pool)
+                        .await
+                        .unwrap_or(false);
+                    if !locked {
+                        continue;
+                    }
+                }
+
                 if let Err(e) = Self::process_due(&pool, &notification_service).await {
                     if e.contains("relation \"announcements\" does not exist")
                         || e.contains("relation \"announcement_dismissals\" does not exist")
@@ -59,6 +72,14 @@ impl AnnouncementScheduler {
                     } else {
                         error!("Announcement scheduler failed: {}", e);
                     }
+                }
+
+                #[cfg(feature = "postgres")]
+                {
+                    let _ = sqlx::query_scalar::<_, bool>("SELECT pg_advisory_unlock(hashtext($1))")
+                        .bind("announcement_scheduler")
+                        .fetch_one(&pool)
+                        .await;
                 }
             }
         });

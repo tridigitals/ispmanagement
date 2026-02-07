@@ -1862,6 +1862,14 @@
       "email": {
         "provider_label": "Penyedia Pengiriman Email",
         "connection_details": "Detail Koneksi",
+        "queue": {
+          "title": "Antrian & Retry",
+          "desc": "Antrikan email keluar dan retry otomatis jika gagal sementara.",
+          "enabled": "Aktifkan Email Outbox",
+          "enabled_desc": "Disarankan untuk produksi agar email tidak hilang.",
+          "max_attempts": "Maks Percobaan",
+          "base_delay": "Delay Dasar (detik)"
+        },
         "placeholders": {
           "from_name": "contoh: Acme Support",
           "from_address": "noreply@domainmu.com",

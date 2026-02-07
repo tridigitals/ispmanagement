@@ -5,7 +5,7 @@ use crate::models::{
     CreatePushSubscriptionRequest, Notification, NotificationPreference, PaginatedResponse,
     PushSubscription, UpdatePreferenceRequest,
 };
-use crate::services::EmailService;
+use crate::services::EmailOutboxService;
 use axum::http::Uri;
 use chrono::Utc;
 use std::sync::Arc;
@@ -21,15 +21,19 @@ use web_push_native::{
 pub struct NotificationService {
     pool: DbPool,
     ws_hub: Arc<WsHub>,
-    email_service: EmailService,
+    email_outbox: EmailOutboxService,
 }
 
 impl NotificationService {
-    pub fn new(pool: DbPool, ws_hub: Arc<WsHub>, email_service: EmailService) -> Self {
+    pub fn new(
+        pool: DbPool,
+        ws_hub: Arc<WsHub>,
+        email_outbox: EmailOutboxService,
+    ) -> Self {
         Self {
             pool,
             ws_hub,
-            email_service,
+            email_outbox,
         }
     }
 
@@ -37,7 +41,9 @@ impl NotificationService {
     ///
     /// Used for "forced" deliveries such as admin-triggered broadcasts.
     pub async fn force_send_email(&self, to: &str, subject: &str, body: &str) -> AppResult<()> {
-        self.email_service.send_email(to, subject, body).await
+        self.email_outbox
+            .send_or_enqueue(None, to, subject, body)
+            .await
     }
 
     /// Send an email to a set of users (by user_id), bypassing preferences.
@@ -48,29 +54,9 @@ impl NotificationService {
         subject: &str,
         body: &str,
     ) -> AppResult<()> {
-        if user_ids.is_empty() {
-            return Ok(());
-        }
-
-        let emails: Vec<String> = sqlx::query_scalar(
-            "SELECT email FROM users WHERE id = ANY($1) AND is_active = true",
-        )
-        .bind(user_ids)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
-
-        let email_service = self.email_service.clone();
-        let subject = subject.to_string();
-        let body = body.to_string();
-
-        tokio::spawn(async move {
-            for email in emails {
-                let _ = email_service.send_email(&email, &subject, &body).await;
-            }
-        });
-
-        Ok(())
+        self.email_outbox
+            .send_or_enqueue_to_users(None, user_ids, subject, body)
+            .await
     }
 
     /// Create and send a notification
@@ -580,11 +566,8 @@ impl NotificationService {
                 };
                 let subject = format!("{}{}", prefix, notif.title);
 
-                let email_service = self.email_service.clone();
-                let message = notif.message.clone();
-                tokio::spawn(async move {
-                    let _ = email_service.send_email(&email, &subject, &message).await;
-                });
+                // Use outbox to ensure reliable delivery with retries.
+                let _ = self.email_outbox.send_or_enqueue(notif.tenant_id.clone(), &email, &subject, &notif.message).await;
             }
         }
 

@@ -1255,6 +1255,19 @@ impl BackupScheduler {
             loop {
                 interval.tick().await;
 
+                #[cfg(feature = "postgres")]
+                {
+                    // Prevent duplicate processing when running multiple instances.
+                    let locked: bool = sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
+                        .bind("backup_scheduler")
+                        .fetch_one(&pool)
+                        .await
+                        .unwrap_or(false);
+                    if !locked {
+                        continue;
+                    }
+                }
+
                 // 1. Check Global Schedule
                 if let Err(e) = Self::check_and_run_global(&pool, &service, &settings_service).await
                 {
@@ -1288,6 +1301,14 @@ impl BackupScheduler {
                     } else {
                         error!("Tenant backup schedule check failed: {}", e);
                     }
+                }
+
+                #[cfg(feature = "postgres")]
+                {
+                    let _ = sqlx::query_scalar::<_, bool>("SELECT pg_advisory_unlock(hashtext($1))")
+                        .bind("backup_scheduler")
+                        .fetch_one(&pool)
+                        .await;
                 }
             }
         });

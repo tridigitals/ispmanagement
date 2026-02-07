@@ -846,6 +846,67 @@
                   </div>
                 </div>
 
+                <div class="config-panel fade-in mt-6">
+                  <h3>
+                    {$t('admin.settings.email.queue.title') || 'Delivery Queue & Retry'}
+                  </h3>
+                  <p class="muted">
+                    {$t('admin.settings.email.queue.desc') ||
+                      'Queue outgoing emails and automatically retry transient failures.'}
+                  </p>
+                  <div class="config-grid">
+                    <div class="setting-item full-width">
+                      <div class="toggle-row">
+                        <div class="toggle-text">
+                          <div class="toggle-title">
+                            {$t('admin.settings.email.queue.enabled') || 'Enable Email Outbox'}
+                          </div>
+                          <div class="toggle-sub">
+                            {$t('admin.settings.email.queue.enabled_desc') ||
+                              'Recommended for production to prevent lost emails.'}
+                          </div>
+                        </div>
+                        <label class="toggle">
+                          <input
+                            type="checkbox"
+                            checked={localSettings['email_outbox_enabled'] === 'true'}
+                            onchange={(e) =>
+                              handleChange('email_outbox_enabled', e.currentTarget.checked)}
+                          />
+                          <span class="slider"></span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div class="setting-item">
+                      <label for="email-outbox-max">
+                        {$t('admin.settings.email.queue.max_attempts') || 'Max Attempts'}
+                      </label>
+                      <Input
+                        id="email-outbox-max"
+                        type="number"
+                        value={localSettings['email_outbox_max_attempts']}
+                        oninput={(e: any) => handleChange('email_outbox_max_attempts', e.target.value)}
+                        placeholder="5"
+                      />
+                    </div>
+
+                    <div class="setting-item">
+                      <label for="email-outbox-delay">
+                        {$t('admin.settings.email.queue.base_delay') || 'Base Delay (seconds)'}
+                      </label>
+                      <Input
+                        id="email-outbox-delay"
+                        type="number"
+                        value={localSettings['email_outbox_base_delay_seconds']}
+                        oninput={(e: any) =>
+                          handleChange('email_outbox_base_delay_seconds', e.target.value)}
+                        placeholder="30"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div class="test-email-card mt-6">
                   <div class="test-header">
                     <Icon name="send" size={18} />
@@ -1536,6 +1597,30 @@
     opacity: 0;
     width: 0;
     height: 0;
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .toggle-text {
+    min-width: 0;
+  }
+
+  .toggle-title {
+    font-weight: 800;
+    color: var(--text-primary);
+  }
+
+  .toggle-sub {
+    margin-top: 0.2rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.35;
+    font-weight: 600;
   }
 
   .slider {

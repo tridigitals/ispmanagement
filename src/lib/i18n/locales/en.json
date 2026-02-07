@@ -1819,6 +1819,14 @@
       "email": {
         "provider_label": "Email Delivery Provider",
         "connection_details": "Connection Details",
+        "queue": {
+          "title": "Delivery Queue & Retry",
+          "desc": "Queue outgoing emails and automatically retry transient failures.",
+          "enabled": "Enable Email Outbox",
+          "enabled_desc": "Recommended for production to prevent lost emails.",
+          "max_attempts": "Max Attempts",
+          "base_delay": "Base Delay (seconds)"
+        },
         "placeholders": {
           "from_name": "e.g. Acme Support",
           "from_address": "noreply@yourdomain.com",

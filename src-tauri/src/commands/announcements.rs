@@ -2,7 +2,7 @@
 
 use crate::http::{WsEvent, WsHub};
 use crate::models::{Announcement, CreateAnnouncementDto, PaginatedResponse, UpdateAnnouncementDto};
-use crate::services::{AuthService, NotificationService};
+use crate::services::{AuditService, AuthService, NotificationService};
 use chrono::Utc;
 use std::collections::HashSet;
 use tauri::State;
@@ -723,6 +723,7 @@ pub async fn create_announcement_admin(
     dto: CreateAnnouncementDto,
     auth_service: State<'_, AuthService>,
     notification_service: State<'_, NotificationService>,
+    audit_service: State<'_, AuditService>,
 ) -> Result<Announcement, String> {
     let claims = auth_service
         .validate_token(&token)
@@ -839,6 +840,18 @@ pub async fn create_announcement_admin(
         }
     }
 
+    audit_service
+        .log(
+            Some(&claims.sub),
+            target_tenant_id.as_deref(),
+            "create",
+            "announcements",
+            Some(&ann.id),
+            Some(&format!("Created announcement: {}", ann.title)),
+            None,
+        )
+        .await;
+
     Ok(ann)
 }
 
@@ -848,6 +861,7 @@ pub async fn update_announcement_admin(
     id: String,
     dto: UpdateAnnouncementDto,
     auth_service: State<'_, AuthService>,
+    audit_service: State<'_, AuditService>,
 ) -> Result<Announcement, String> {
     let claims = auth_service
         .validate_token(&token)
@@ -946,6 +960,18 @@ pub async fn update_announcement_admin(
     .await
     .map_err(|e| e.to_string())?;
 
+    audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "update",
+            "announcements",
+            Some(&id),
+            Some("Updated announcement"),
+            None,
+        )
+        .await;
+
     Ok(ann)
 }
 
@@ -954,6 +980,7 @@ pub async fn delete_announcement_admin(
     token: String,
     id: String,
     auth_service: State<'_, AuthService>,
+    audit_service: State<'_, AuditService>,
 ) -> Result<(), String> {
     let claims = auth_service
         .validate_token(&token)
@@ -982,6 +1009,18 @@ pub async fn delete_announcement_admin(
         .await
         .map_err(|e| e.to_string())?;
     }
+
+    audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "delete",
+            "announcements",
+            Some(&id),
+            Some("Deleted announcement"),
+            None,
+        )
+        .await;
 
     Ok(())
 }
