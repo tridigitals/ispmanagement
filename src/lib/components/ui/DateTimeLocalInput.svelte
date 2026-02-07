@@ -87,6 +87,16 @@
   /* Hide native indicator; we provide our own icon so it is always visible in dark/light. */
   .input::-webkit-calendar-picker-indicator {
     opacity: 0;
+    display: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .input::-webkit-inner-spin-button,
+  .input::-webkit-clear-button {
+    display: none;
+    -webkit-appearance: none;
+    appearance: none;
   }
 
   .icon-btn {
@@ -120,4 +130,3 @@
     cursor: not-allowed;
   }
 </style>
-
