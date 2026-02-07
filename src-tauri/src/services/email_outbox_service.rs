@@ -15,6 +15,7 @@ pub struct EmailOutboxService {
 #[derive(Debug, Clone, sqlx::FromRow)]
 struct EmailOutboxRow {
     pub id: String,
+    pub tenant_id: Option<String>,
     pub to_email: String,
     pub subject: String,
     pub body: String,
@@ -150,7 +151,9 @@ impl EmailOutboxService {
                 .await?;
             Ok(())
         } else {
-            self.email_service.send_email(to, subject, body).await
+            self.email_service
+                .send_email_for_tenant(tenant_id.as_deref(), to, subject, body)
+                .await
         }
     }
 
@@ -237,7 +240,7 @@ impl EmailOutboxService {
 
             let rows: Vec<EmailOutboxRow> = sqlx::query_as(
                 r#"
-                SELECT id::text, to_email, subject, body, max_attempts
+                SELECT id::text, tenant_id::text as tenant_id, to_email, subject, body, max_attempts
                 FROM email_outbox
                 WHERE status = 'queued'
                   AND scheduled_at <= $1
@@ -285,7 +288,7 @@ impl EmailOutboxService {
 
                 match self
                     .email_service
-                    .send_email(&r.to_email, &r.subject, &r.body)
+                    .send_email_for_tenant(r.tenant_id.as_deref(), &r.to_email, &r.subject, &r.body)
                     .await
                 {
                     Ok(_) => {

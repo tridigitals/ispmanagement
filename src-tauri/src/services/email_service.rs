@@ -86,79 +86,71 @@ impl EmailService {
         Self { settings_service }
     }
 
-    /// Get email configuration from settings
-    async fn get_config(&self) -> AppResult<EmailConfig> {
-        let provider = self
-            .settings_service
-            .get_value(None, "email_provider")
+    async fn get_value_fallback(&self, tenant_id: Option<&str>, key: &str) -> Option<String> {
+        if let Some(tid) = tenant_id {
+            if let Ok(v) = self
+                .settings_service
+                .get_value(Some(tid), key)
+                .await
+            {
+                if let Some(s) = v {
+                    if !s.trim().is_empty() {
+                        return Some(s);
+                    }
+                }
+            }
+        }
+
+        self.settings_service
+            .get_value(None, key)
             .await
             .ok()
             .flatten()
+    }
+
+    /// Get email configuration from settings
+    async fn get_config_for(&self, tenant_id: Option<&str>) -> AppResult<EmailConfig> {
+        let provider = self
+            .get_value_fallback(tenant_id, "email_provider")
+            .await
             .unwrap_or_else(|| "resend".to_string());
         let from_email = self
-            .settings_service
-            .get_value(None, "email_from_address")
+            .get_value_fallback(tenant_id, "email_from_address")
             .await
-            .ok()
-            .flatten()
             .unwrap_or_else(|| "noreply@example.com".to_string());
         let from_name = self
-            .settings_service
-            .get_value(None, "email_from_name")
+            .get_value_fallback(tenant_id, "email_from_name")
             .await
-            .ok()
-            .flatten()
             .unwrap_or_else(|| "System".to_string());
         let api_key = self
-            .settings_service
-            .get_value(None, "email_api_key")
+            .get_value_fallback(tenant_id, "email_api_key")
             .await
-            .ok()
-            .flatten()
             .unwrap_or_default();
         let webhook_url = self
-            .settings_service
-            .get_value(None, "email_webhook_url")
+            .get_value_fallback(tenant_id, "email_webhook_url")
             .await
-            .ok()
-            .flatten()
             .unwrap_or_default();
 
         // SMTP fields (stored for future use)
         let smtp_host = self
-            .settings_service
-            .get_value(None, "email_smtp_host")
+            .get_value_fallback(tenant_id, "email_smtp_host")
             .await
-            .ok()
-            .flatten()
             .unwrap_or_default();
         let smtp_port_str = self
-            .settings_service
-            .get_value(None, "email_smtp_port")
+            .get_value_fallback(tenant_id, "email_smtp_port")
             .await
-            .ok()
-            .flatten()
             .unwrap_or_else(|| "587".to_string());
         let smtp_username = self
-            .settings_service
-            .get_value(None, "email_smtp_username")
+            .get_value_fallback(tenant_id, "email_smtp_username")
             .await
-            .ok()
-            .flatten()
             .unwrap_or_default();
         let smtp_password = self
-            .settings_service
-            .get_value(None, "email_smtp_password")
+            .get_value_fallback(tenant_id, "email_smtp_password")
             .await
-            .ok()
-            .flatten()
             .unwrap_or_default();
         let smtp_encryption = self
-            .settings_service
-            .get_value(None, "email_smtp_encryption")
+            .get_value_fallback(tenant_id, "email_smtp_encryption")
             .await
-            .ok()
-            .flatten()
             .unwrap_or_else(|| "starttls".to_string());
 
         Ok(EmailConfig {
@@ -177,7 +169,18 @@ impl EmailService {
 
     /// Send email via configured provider
     pub async fn send_email(&self, to: &str, subject: &str, body: &str) -> AppResult<()> {
-        let config = self.get_config().await?;
+        self.send_email_for_tenant(None, to, subject, body).await
+    }
+
+    /// Send email using tenant-scoped settings (falls back to global settings).
+    pub async fn send_email_for_tenant(
+        &self,
+        tenant_id: Option<&str>,
+        to: &str,
+        subject: &str,
+        body: &str,
+    ) -> AppResult<()> {
+        let config = self.get_config_for(tenant_id).await?;
 
         info!("Sending email to {} via {}", to, config.provider);
 
