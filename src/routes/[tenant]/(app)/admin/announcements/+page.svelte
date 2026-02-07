@@ -10,6 +10,7 @@
   import Select from '$lib/components/ui/Select.svelte';
   import Toggle from '$lib/components/ui/Toggle.svelte';
   import RichTextEditor from '$lib/components/ui/RichTextEditor.svelte';
+  import DateTimeLocalInput from '$lib/components/ui/DateTimeLocalInput.svelte';
   import { formatDateTime } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
   import { stripHtmlToText } from '$lib/utils/sanitizeHtml';
@@ -267,14 +268,14 @@
               minHeight={190}
             />
             <div class="row">
-              <label class="label">
-                {$t('announcements.fields.starts_at') || 'Starts at'}
-                <input class="input" type="datetime-local" bind:value={startsAt} />
-              </label>
-              <label class="label">
-                {$t('announcements.fields.ends_at') || 'Ends at'}
-                <input class="input" type="datetime-local" bind:value={endsAt} />
-              </label>
+              <DateTimeLocalInput
+                label={$t('announcements.fields.starts_at') || 'Starts at'}
+                bind:value={startsAt}
+              />
+              <DateTimeLocalInput
+                label={$t('announcements.fields.ends_at') || 'Ends at'}
+                bind:value={endsAt}
+              />
             </div>
           </div>
           <div class="foot">
@@ -582,25 +583,7 @@
     min-height: 110px;
   }
 
-  /* Fix native datetime picker icon visibility in dark mode */
-  .input[type='datetime-local'] {
-    color-scheme: dark;
-  }
-
-  :global([data-theme='light']) .input[type='datetime-local'] {
-    color-scheme: light;
-  }
-
-  .input[type='datetime-local']::-webkit-calendar-picker-indicator {
-    filter: invert(1);
-    opacity: 0.75;
-    cursor: pointer;
-  }
-
-  :global([data-theme='light']) .input[type='datetime-local']::-webkit-calendar-picker-indicator {
-    filter: invert(0);
-    opacity: 0.7;
-  }
+  /* Note: native datetime picker icon is hidden/replaced via DateTimeLocalInput for consistency. */
 
   .input:focus,
   .textarea:focus {
