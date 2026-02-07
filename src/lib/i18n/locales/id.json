@@ -1721,6 +1721,11 @@
         "scheduled": "Jadwal",
         "updated": "Diperbarui"
       },
+      "scope": {
+        "tenant": "Tenant",
+        "global": "Global",
+        "all": "Semua"
+      },
       "status": {
         "queued": "Antri",
         "sending": "Mengirim",

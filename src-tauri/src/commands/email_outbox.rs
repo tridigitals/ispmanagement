@@ -8,6 +8,7 @@ use tauri::State;
 #[tauri::command]
 pub async fn list_email_outbox(
     token: String,
+    scope: Option<String>,
     page: Option<u32>,
     per_page: Option<u32>,
     status: Option<String>,
@@ -19,15 +20,24 @@ pub async fn list_email_outbox(
         .await
         .map_err(|e| e.to_string())?;
 
-    let tenant_id = claims
-        .tenant_id
-        .clone()
-        .ok_or_else(|| "Tenant context required".to_string())?;
+    let scope = scope.unwrap_or_else(|| "tenant".to_string());
+    if scope != "tenant" && !claims.is_super_admin {
+        return Err("Forbidden".to_string());
+    }
 
-    auth_service
-        .check_permission(&claims.sub, &tenant_id, "email_outbox", "read")
-        .await
-        .map_err(|e| e.to_string())?;
+    let tenant_id = claims.tenant_id.clone();
+    if scope == "tenant" && tenant_id.is_none() {
+        return Err("Tenant context required".to_string());
+    }
+
+    if let Some(tid) = tenant_id.as_deref() {
+        auth_service
+            .check_permission(&claims.sub, tid, "email_outbox", "read")
+            .await
+            .map_err(|e| e.to_string())?;
+    } else if !claims.is_super_admin {
+        return Err("Forbidden".to_string());
+    }
 
     #[cfg(feature = "postgres")]
     let (rows, total) = {
@@ -67,11 +77,22 @@ pub async fn list_email_outbox(
         "#,
         );
 
-        // Cast to text to be compatible with legacy schemas that used UUID columns.
-        qb_count.push(" AND eo.tenant_id::text = ");
-        qb_count.push_bind(&tenant_id);
-        qb.push(" AND eo.tenant_id::text = ");
-        qb.push_bind(&tenant_id);
+        match scope.as_str() {
+            "global" => {
+                qb_count.push(" AND eo.tenant_id IS NULL");
+                qb.push(" AND eo.tenant_id IS NULL");
+            }
+            "all" => {
+                // no tenant filter (super admin only)
+            }
+            _ => {
+                // tenant (default) - cast to text to be compatible with legacy schemas that used UUID columns.
+                qb_count.push(" AND eo.tenant_id::text = ");
+                qb_count.push_bind(tenant_id.as_deref().unwrap_or_default());
+                qb.push(" AND eo.tenant_id::text = ");
+                qb.push_bind(tenant_id.as_deref().unwrap_or_default());
+            }
+        }
 
         if let Some(st) = status.as_deref() {
             qb_count.push(" AND eo.status = ");
@@ -133,31 +154,60 @@ pub async fn list_email_outbox(
 #[tauri::command]
 pub async fn get_email_outbox_stats(
     token: String,
+    scope: Option<String>,
     auth_service: State<'_, AuthService>,
 ) -> Result<EmailOutboxStats, String> {
     let claims = auth_service
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
-    let tenant_id = claims
-        .tenant_id
-        .clone()
-        .ok_or_else(|| "Tenant context required".to_string())?;
 
-    auth_service
-        .check_permission(&claims.sub, &tenant_id, "email_outbox", "read")
-        .await
-        .map_err(|e| e.to_string())?;
+    let scope = scope.unwrap_or_else(|| "tenant".to_string());
+    if scope != "tenant" && !claims.is_super_admin {
+        return Err("Forbidden".to_string());
+    }
+
+    let tenant_id = claims.tenant_id.clone();
+    if scope == "tenant" && tenant_id.is_none() {
+        return Err("Tenant context required".to_string());
+    }
+
+    if let Some(tid) = tenant_id.as_deref() {
+        auth_service
+            .check_permission(&claims.sub, tid, "email_outbox", "read")
+            .await
+            .map_err(|e| e.to_string())?;
+    } else if !claims.is_super_admin {
+        return Err("Forbidden".to_string());
+    }
 
     #[cfg(feature = "postgres")]
     {
-        let rows: Vec<(String, i64)> = sqlx::query_as(
-            "SELECT status, COUNT(*)::bigint FROM email_outbox WHERE tenant_id::text = $1 GROUP BY status",
-        )
-        .bind(&tenant_id)
-        .fetch_all(&auth_service.pool)
-        .await
-        .map_err(|e| e.to_string())?;
+        let rows: Vec<(String, i64)> = match scope.as_str() {
+            "global" => {
+                sqlx::query_as(
+                    "SELECT status, COUNT(*)::bigint FROM email_outbox WHERE tenant_id IS NULL GROUP BY status",
+                )
+                .fetch_all(&auth_service.pool)
+                .await
+                .map_err(|e| e.to_string())?
+            }
+            "all" => {
+                sqlx::query_as("SELECT status, COUNT(*)::bigint FROM email_outbox GROUP BY status")
+                    .fetch_all(&auth_service.pool)
+                    .await
+                    .map_err(|e| e.to_string())?
+            }
+            _ => {
+                sqlx::query_as(
+                    "SELECT status, COUNT(*)::bigint FROM email_outbox WHERE tenant_id::text = $1 GROUP BY status",
+                )
+                .bind(tenant_id.as_deref().unwrap_or_default())
+                .fetch_all(&auth_service.pool)
+                .await
+                .map_err(|e| e.to_string())?
+            }
+        };
 
         let mut stats = EmailOutboxStats {
             all: 0,
@@ -201,39 +251,62 @@ pub async fn retry_email_outbox(
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
-    let tenant_id = claims
-        .tenant_id
-        .clone()
-        .ok_or_else(|| "Tenant context required".to_string())?;
 
-    auth_service
-        .check_permission(&claims.sub, &tenant_id, "email_outbox", "retry")
-        .await
-        .map_err(|e| e.to_string())?;
+    // Tenant admins can retry within their tenant; super admins can retry any row by id.
+    if let Some(tid) = claims.tenant_id.as_deref() {
+        auth_service
+            .check_permission(&claims.sub, tid, "email_outbox", "retry")
+            .await
+            .map_err(|e| e.to_string())?;
+    } else if !claims.is_super_admin {
+        return Err("Tenant context required".to_string());
+    }
 
     #[cfg(feature = "postgres")]
     {
         let now = Utc::now();
-        let res = sqlx::query(
-            r#"
-            UPDATE email_outbox
-            SET status = 'queued',
-                attempts = 0,
-                scheduled_at = $1,
-                last_error = NULL,
-                sent_at = NULL,
-                updated_at = $1
-            WHERE id::text = $2
-              AND tenant_id::text = $3
-              AND status != 'sending'
-        "#,
-        )
-        .bind(now)
-        .bind(&id)
-        .bind(&tenant_id)
-        .execute(&auth_service.pool)
-        .await
-        .map_err(|e| e.to_string())?;
+        let res = if claims.is_super_admin {
+            sqlx::query(
+                r#"
+                UPDATE email_outbox
+                SET status = 'queued',
+                    attempts = 0,
+                    scheduled_at = $1,
+                    last_error = NULL,
+                    sent_at = NULL,
+                    updated_at = $1
+                WHERE id::text = $2
+                  AND status != 'sending'
+            "#,
+            )
+            .bind(now)
+            .bind(&id)
+            .execute(&auth_service.pool)
+            .await
+            .map_err(|e| e.to_string())?
+        } else {
+            let tid = claims.tenant_id.clone().unwrap_or_default();
+            sqlx::query(
+                r#"
+                UPDATE email_outbox
+                SET status = 'queued',
+                    attempts = 0,
+                    scheduled_at = $1,
+                    last_error = NULL,
+                    sent_at = NULL,
+                    updated_at = $1
+                WHERE id::text = $2
+                  AND tenant_id::text = $3
+                  AND status != 'sending'
+            "#,
+            )
+            .bind(now)
+            .bind(&id)
+            .bind(&tid)
+            .execute(&auth_service.pool)
+            .await
+            .map_err(|e| e.to_string())?
+        };
 
         if res.rows_affected() == 0 {
             return Err("Not found (or currently sending)".to_string());
@@ -253,26 +326,35 @@ pub async fn delete_email_outbox(
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
-    let tenant_id = claims
-        .tenant_id
-        .clone()
-        .ok_or_else(|| "Tenant context required".to_string())?;
 
-    auth_service
-        .check_permission(&claims.sub, &tenant_id, "email_outbox", "delete")
-        .await
-        .map_err(|e| e.to_string())?;
+    if let Some(tid) = claims.tenant_id.as_deref() {
+        auth_service
+            .check_permission(&claims.sub, tid, "email_outbox", "delete")
+            .await
+            .map_err(|e| e.to_string())?;
+    } else if !claims.is_super_admin {
+        return Err("Tenant context required".to_string());
+    }
 
     #[cfg(feature = "postgres")]
     {
-        let res = sqlx::query(
-            "DELETE FROM email_outbox WHERE id::text = $1 AND tenant_id::text = $2 AND status != 'sending'",
-        )
-        .bind(&id)
-        .bind(&tenant_id)
-        .execute(&auth_service.pool)
-        .await
-        .map_err(|e| e.to_string())?;
+        let res = if claims.is_super_admin {
+            sqlx::query("DELETE FROM email_outbox WHERE id::text = $1 AND status != 'sending'")
+                .bind(&id)
+                .execute(&auth_service.pool)
+                .await
+                .map_err(|e| e.to_string())?
+        } else {
+            let tid = claims.tenant_id.clone().unwrap_or_default();
+            sqlx::query(
+                "DELETE FROM email_outbox WHERE id::text = $1 AND tenant_id::text = $2 AND status != 'sending'",
+            )
+            .bind(&id)
+            .bind(&tid)
+            .execute(&auth_service.pool)
+            .await
+            .map_err(|e| e.to_string())?
+        };
 
         if res.rows_affected() == 0 {
             return Err("Not found (or currently sending)".to_string());

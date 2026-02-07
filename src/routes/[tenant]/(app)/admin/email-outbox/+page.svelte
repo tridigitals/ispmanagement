@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { api } from '$lib/api/client';
   import type { EmailOutboxItem, EmailOutboxStats, PaginatedResponse } from '$lib/api/client';
-  import { can } from '$lib/stores/auth';
+  import { can, user } from '$lib/stores/auth';
   import { toast } from '$lib/stores/toast';
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
@@ -19,6 +19,7 @@
 
   let searchQuery = $state('');
   let statusFilter = $state<'all' | 'queued' | 'sending' | 'sent' | 'failed'>('all');
+  let scope = $state<'tenant' | 'global' | 'all'>('tenant');
 
   let total = $state(0);
   let pageNum = $state(1);
@@ -56,7 +57,7 @@
 
   async function refreshStats() {
     try {
-      stats = await api.emailOutbox.stats();
+      stats = await api.emailOutbox.stats(scope);
     } catch {
       // non-blocking
     }
@@ -71,6 +72,7 @@
     }
     try {
       const res: PaginatedResponse<EmailOutboxItem> = await api.emailOutbox.list({
+        scope,
         status: statusFilter === 'all' ? undefined : statusFilter,
         search: searchQuery.trim() || undefined,
         page: pageNum,
@@ -91,6 +93,7 @@
     try {
       pageNum += 1;
       const res: PaginatedResponse<EmailOutboxItem> = await api.emailOutbox.list({
+        scope,
         status: statusFilter === 'all' ? undefined : statusFilter,
         search: searchQuery.trim() || undefined,
         page: pageNum,
@@ -108,6 +111,13 @@
   function setStatusFilter(v: typeof statusFilter) {
     if (statusFilter === v) return;
     statusFilter = v;
+    void load(true);
+    void refreshStats();
+  }
+
+  function setScope(v: typeof scope) {
+    if (scope === v) return;
+    scope = v;
     void load(true);
     void refreshStats();
   }
@@ -207,6 +217,19 @@
   </div>
 
   <div class="filters">
+    {#if $user?.is_super_admin}
+      <div class="scope">
+        <button class:active={scope === 'tenant'} type="button" onclick={() => setScope('tenant')}>
+          {$t('admin.email_outbox.scope.tenant') || 'Tenant'}
+        </button>
+        <button class:active={scope === 'global'} type="button" onclick={() => setScope('global')}>
+          {$t('admin.email_outbox.scope.global') || 'Global'}
+        </button>
+        <button class:active={scope === 'all'} type="button" onclick={() => setScope('all')}>
+          {$t('admin.email_outbox.scope.all') || 'All'}
+        </button>
+      </div>
+    {/if}
     <div class="search">
       <Icon name="search" size={16} />
       <input
@@ -363,6 +386,33 @@
     justify-content: space-between;
     gap: 1rem;
     margin: 1rem 0;
+    flex-wrap: wrap;
+  }
+
+  .scope {
+    display: inline-flex;
+    gap: 0.35rem;
+    padding: 0.3rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .scope button {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    padding: 0.45rem 0.7rem;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 800;
+    font-size: 0.85rem;
+  }
+
+  .scope button.active {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.35);
+    color: var(--text-primary);
   }
 
   .search {

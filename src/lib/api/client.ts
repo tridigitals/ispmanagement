@@ -1328,6 +1328,7 @@ export const notifications = {
 
 export const emailOutbox = {
   list: (params?: {
+    scope?: 'tenant' | 'global' | 'all';
     page?: number;
     perPage?: number;
     status?: string;
@@ -1335,14 +1336,15 @@ export const emailOutbox = {
   }): Promise<PaginatedResponse<EmailOutboxItem>> =>
     safeInvoke('list_email_outbox', {
       token: getTokenOrThrow(),
+      scope: params?.scope,
       page: params?.page,
       per_page: params?.perPage,
       status: params?.status,
       search: params?.search,
     }),
 
-  stats: (): Promise<EmailOutboxStats> =>
-    safeInvoke('get_email_outbox_stats', { token: getTokenOrThrow() }),
+  stats: (scope?: 'tenant' | 'global' | 'all'): Promise<EmailOutboxStats> =>
+    safeInvoke('get_email_outbox_stats', { token: getTokenOrThrow(), scope }),
 
   retry: (id: string): Promise<void> =>
     safeInvoke('retry_email_outbox', { token: getTokenOrThrow(), id }),

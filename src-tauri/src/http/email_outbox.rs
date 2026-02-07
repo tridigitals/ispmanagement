@@ -12,10 +12,16 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct ListEmailOutboxQuery {
+    pub scope: Option<String>, // tenant | global | all (super admin)
     pub page: Option<u32>,
     pub per_page: Option<u32>,
     pub status: Option<String>,
     pub search: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct EmailOutboxStatsQuery {
+    pub scope: Option<String>, // tenant | global | all (super admin)
 }
 
 pub fn router() -> Router<AppState> {
@@ -43,12 +49,25 @@ async fn list_email_outbox(
 ) -> AppResult<Json<PaginatedResponse<EmailOutboxItem>>> {
     let token = bearer_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
-    let tenant_id = claims.tenant_id.clone().ok_or(AppError::Unauthorized)?;
 
-    state
-        .auth_service
-        .check_permission(&claims.sub, &tenant_id, "email_outbox", "read")
-        .await?;
+    let scope = query.scope.clone().unwrap_or_else(|| "tenant".to_string());
+    if scope != "tenant" && !claims.is_super_admin {
+        return Err(AppError::Forbidden("Forbidden".to_string()));
+    }
+
+    let tenant_id = claims.tenant_id.clone();
+    if scope == "tenant" && tenant_id.is_none() {
+        return Err(AppError::Unauthorized);
+    }
+
+    if let Some(tid) = tenant_id.as_deref() {
+        state
+            .auth_service
+            .check_permission(&claims.sub, tid, "email_outbox", "read")
+            .await?;
+    } else if !claims.is_super_admin {
+        return Err(AppError::Forbidden("Forbidden".to_string()));
+    }
 
     #[cfg(feature = "postgres")]
     let (rows, total) = {
@@ -89,11 +108,22 @@ async fn list_email_outbox(
         "#,
         );
 
-        // Cast to text to be compatible with legacy schemas that used UUID columns.
-        qb_count.push(" AND eo.tenant_id::text = ");
-        qb_count.push_bind(&tenant_id);
-        qb.push(" AND eo.tenant_id::text = ");
-        qb.push_bind(&tenant_id);
+        match scope.as_str() {
+            "global" => {
+                qb_count.push(" AND eo.tenant_id IS NULL");
+                qb.push(" AND eo.tenant_id IS NULL");
+            }
+            "all" => {
+                // no tenant filter
+            }
+            _ => {
+                // tenant (default) - cast to text to be compatible with legacy schemas that used UUID columns.
+                qb_count.push(" AND eo.tenant_id::text = ");
+                qb_count.push_bind(tenant_id.as_deref().unwrap_or_default());
+                qb.push(" AND eo.tenant_id::text = ");
+                qb.push_bind(tenant_id.as_deref().unwrap_or_default());
+            }
+        }
 
         if let Some(st) = status.as_deref() {
             qb_count.push(" AND eo.status = ");
@@ -156,25 +186,58 @@ async fn list_email_outbox(
 async fn get_email_outbox_stats(
     State(state): State<AppState>,
     headers: HeaderMap,
+    query: Query<EmailOutboxStatsQuery>,
 ) -> AppResult<Json<EmailOutboxStats>> {
     let token = bearer_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
-    let tenant_id = claims.tenant_id.clone().ok_or(AppError::Unauthorized)?;
 
-    state
-        .auth_service
-        .check_permission(&claims.sub, &tenant_id, "email_outbox", "read")
-        .await?;
+    // allow scope via query param: /stats?scope=global
+    let scope = query.scope.clone().unwrap_or_else(|| "tenant".to_string());
+    if scope != "tenant" && !claims.is_super_admin {
+        return Err(AppError::Forbidden("Forbidden".to_string()));
+    }
+
+    let tenant_id = claims.tenant_id.clone();
+    if scope == "tenant" && tenant_id.is_none() {
+        return Err(AppError::Unauthorized);
+    }
+
+    if let Some(tid) = tenant_id.as_deref() {
+        state
+            .auth_service
+            .check_permission(&claims.sub, tid, "email_outbox", "read")
+            .await?;
+    } else if !claims.is_super_admin {
+        return Err(AppError::Forbidden("Forbidden".to_string()));
+    }
 
     #[cfg(feature = "postgres")]
     {
-        let rows: Vec<(String, i64)> = sqlx::query_as(
-            "SELECT status, COUNT(*)::bigint FROM email_outbox WHERE tenant_id::text = $1 GROUP BY status",
-        )
-        .bind(&tenant_id)
-        .fetch_all(&state.auth_service.pool)
-        .await
-        .map_err(AppError::Database)?;
+        let rows: Vec<(String, i64)> = match scope.as_str() {
+            "global" => {
+                sqlx::query_as(
+                    "SELECT status, COUNT(*)::bigint FROM email_outbox WHERE tenant_id IS NULL GROUP BY status",
+                )
+                .fetch_all(&state.auth_service.pool)
+                .await
+                .map_err(AppError::Database)?
+            }
+            "all" => {
+                sqlx::query_as("SELECT status, COUNT(*)::bigint FROM email_outbox GROUP BY status")
+                    .fetch_all(&state.auth_service.pool)
+                    .await
+                    .map_err(AppError::Database)?
+            }
+            _ => {
+                sqlx::query_as(
+                    "SELECT status, COUNT(*)::bigint FROM email_outbox WHERE tenant_id::text = $1 GROUP BY status",
+                )
+                .bind(tenant_id.as_deref().unwrap_or_default())
+                .fetch_all(&state.auth_service.pool)
+                .await
+                .map_err(AppError::Database)?
+            }
+        };
 
         let mut stats = EmailOutboxStats {
             all: 0,
@@ -216,36 +279,61 @@ async fn retry_email_outbox(
 ) -> AppResult<Json<serde_json::Value>> {
     let token = bearer_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
-    let tenant_id = claims.tenant_id.clone().ok_or(AppError::Unauthorized)?;
 
-    state
-        .auth_service
-        .check_permission(&claims.sub, &tenant_id, "email_outbox", "retry")
-        .await?;
+    if let Some(tid) = claims.tenant_id.as_deref() {
+        state
+            .auth_service
+            .check_permission(&claims.sub, tid, "email_outbox", "retry")
+            .await?;
+    } else if !claims.is_super_admin {
+        return Err(AppError::Unauthorized);
+    }
 
     #[cfg(feature = "postgres")]
     {
         let now = Utc::now();
-        let res = sqlx::query(
-            r#"
-            UPDATE email_outbox
-            SET status = 'queued',
-                attempts = 0,
-                scheduled_at = $1,
-                last_error = NULL,
-                sent_at = NULL,
-                updated_at = $1
-            WHERE id::text = $2
-              AND tenant_id::text = $3
-              AND status != 'sending'
-        "#,
-        )
-        .bind(now)
-        .bind(&id)
-        .bind(&tenant_id)
-        .execute(&state.auth_service.pool)
-        .await
-        .map_err(AppError::Database)?;
+        let res = if claims.is_super_admin {
+            sqlx::query(
+                r#"
+                UPDATE email_outbox
+                SET status = 'queued',
+                    attempts = 0,
+                    scheduled_at = $1,
+                    last_error = NULL,
+                    sent_at = NULL,
+                    updated_at = $1
+                WHERE id::text = $2
+                  AND status != 'sending'
+            "#,
+            )
+            .bind(now)
+            .bind(&id)
+            .execute(&state.auth_service.pool)
+            .await
+            .map_err(AppError::Database)?
+        } else {
+            let tid = claims.tenant_id.clone().unwrap_or_default();
+            sqlx::query(
+                r#"
+                UPDATE email_outbox
+                SET status = 'queued',
+                    attempts = 0,
+                    scheduled_at = $1,
+                    last_error = NULL,
+                    sent_at = NULL,
+                    updated_at = $1
+                WHERE id::text = $2
+                  AND tenant_id::text = $3
+                  AND status != 'sending'
+            "#,
+            )
+            .bind(now)
+            .bind(&id)
+            .bind(&tid)
+            .execute(&state.auth_service.pool)
+            .await
+            .map_err(AppError::Database)?
+        };
 
         if res.rows_affected() == 0 {
             return Err(AppError::NotFound("Outbox item not found (or currently sending)".into()));
@@ -263,23 +351,35 @@ async fn delete_email_outbox(
 ) -> AppResult<Json<serde_json::Value>> {
     let token = bearer_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
-    let tenant_id = claims.tenant_id.clone().ok_or(AppError::Unauthorized)?;
 
-    state
-        .auth_service
-        .check_permission(&claims.sub, &tenant_id, "email_outbox", "delete")
-        .await?;
+    if let Some(tid) = claims.tenant_id.as_deref() {
+        state
+            .auth_service
+            .check_permission(&claims.sub, tid, "email_outbox", "delete")
+            .await?;
+    } else if !claims.is_super_admin {
+        return Err(AppError::Unauthorized);
+    }
 
     #[cfg(feature = "postgres")]
     {
-        let res = sqlx::query(
-            "DELETE FROM email_outbox WHERE id::text = $1 AND tenant_id::text = $2 AND status != 'sending'",
-        )
-        .bind(&id)
-        .bind(&tenant_id)
-        .execute(&state.auth_service.pool)
-        .await
-        .map_err(AppError::Database)?;
+        let res = if claims.is_super_admin {
+            sqlx::query("DELETE FROM email_outbox WHERE id::text = $1 AND status != 'sending'")
+                .bind(&id)
+                .execute(&state.auth_service.pool)
+                .await
+                .map_err(AppError::Database)?
+        } else {
+            let tid = claims.tenant_id.clone().unwrap_or_default();
+            sqlx::query(
+                "DELETE FROM email_outbox WHERE id::text = $1 AND tenant_id::text = $2 AND status != 'sending'",
+            )
+            .bind(&id)
+            .bind(&tid)
+            .execute(&state.auth_service.pool)
+            .await
+            .map_err(AppError::Database)?
+        };
 
         if res.rows_affected() == 0 {
             return Err(AppError::NotFound("Outbox item not found (or currently sending)".into()));
