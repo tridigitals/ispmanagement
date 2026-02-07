@@ -161,6 +161,12 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       unsubscribe_push: { method: 'POST', path: '/notifications/push/unsubscribe' },
       send_test_notification: { method: 'POST', path: '/notifications/test' },
 
+      // Email Outbox (Admin)
+      list_email_outbox: { method: 'GET', path: '/email-outbox' },
+      get_email_outbox_stats: { method: 'GET', path: '/email-outbox/stats' },
+      retry_email_outbox: { method: 'POST', path: '/email-outbox/:id/retry' },
+      delete_email_outbox: { method: 'DELETE', path: '/email-outbox/:id' },
+
       // Announcements
       list_active_announcements: { method: 'GET', path: '/announcements/active' },
       list_recent_announcements: { method: 'GET', path: '/announcements/recent' },
@@ -1131,6 +1137,30 @@ export interface NotificationPreference {
   updated_at: string;
 }
 
+export interface EmailOutboxItem {
+  id: string;
+  tenant_id: string | null;
+  to_email: string;
+  subject: string;
+  body: string;
+  status: 'queued' | 'sending' | 'sent' | 'failed' | string;
+  attempts: number;
+  max_attempts: number;
+  scheduled_at: string;
+  last_error: string | null;
+  sent_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmailOutboxStats {
+  all: number;
+  queued: number;
+  sending: number;
+  sent: number;
+  failed: number;
+}
+
 export interface Invoice {
   id: string;
   tenant_id?: string;
@@ -1296,6 +1326,31 @@ export const notifications = {
   sendTest: (): Promise<void> => safeInvoke('send_test', { token: getTokenOrThrow() }),
 };
 
+export const emailOutbox = {
+  list: (params?: {
+    page?: number;
+    perPage?: number;
+    status?: string;
+    search?: string;
+  }): Promise<PaginatedResponse<EmailOutboxItem>> =>
+    safeInvoke('list_email_outbox', {
+      token: getTokenOrThrow(),
+      page: params?.page,
+      per_page: params?.perPage,
+      status: params?.status,
+      search: params?.search,
+    }),
+
+  stats: (): Promise<EmailOutboxStats> =>
+    safeInvoke('get_email_outbox_stats', { token: getTokenOrThrow() }),
+
+  retry: (id: string): Promise<void> =>
+    safeInvoke('retry_email_outbox', { token: getTokenOrThrow(), id }),
+
+  delete: (id: string): Promise<void> =>
+    safeInvoke('delete_email_outbox', { token: getTokenOrThrow(), id }),
+};
+
 export const backup = {
   list: async (opts?: { scope?: 'all' | 'tenant' }): Promise<BackupRecord[]> => {
     // @ts-ignore
@@ -1451,6 +1506,7 @@ export const api = {
   payment,
   tenant,
   notifications,
+  emailOutbox,
   backup,
 };
 

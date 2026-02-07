@@ -411,6 +411,11 @@ pub fn run() {
                                     subscribe_push,
                                     unsubscribe_push,
                                     send_test,
+                                    // Email Outbox (Admin)
+                                    list_email_outbox,
+                                    get_email_outbox_stats,
+                                    retry_email_outbox,
+                                    delete_email_outbox,
                                     // Backup commands
                                     list_backups,
                                     create_backup,

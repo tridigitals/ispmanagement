@@ -373,6 +373,7 @@
     "close_menu": "Close menu",
     "super_admin": "Super Admin",
     "settings": "Settings",
+    "email_outbox": "Email Outbox",
     "user_view": "User View",
     "admin_panel": "Admin Panel",
     "profile": "Profile",
@@ -1663,6 +1664,33 @@
         "updated": "Ticket updated"
       }
     },
+    "email_outbox": {
+      "title": "Email Outbox",
+      "subtitle": "Monitor queued and failed emails, and retry delivery.",
+      "search": "Search by recipient or subject...",
+      "empty": "No outbox items",
+      "confirm_delete": "Delete this outbox item?",
+      "columns": {
+        "to": "To",
+        "subject": "Subject",
+        "status": "Status",
+        "attempts": "Attempts",
+        "scheduled": "Scheduled",
+        "updated": "Updated"
+      },
+      "status": {
+        "queued": "Queued",
+        "sending": "Sending",
+        "sent": "Sent",
+        "failed": "Failed"
+      },
+      "actions": {
+        "retry": "Retry"
+      },
+      "toasts": {
+        "requeued": "Requeued"
+      }
+    },
     "overview": {
       "loading": "Loading system data...",
       "stats": {
@@ -1825,7 +1853,8 @@
           "enabled": "Enable Email Outbox",
           "enabled_desc": "Recommended for production to prevent lost emails.",
           "max_attempts": "Max Attempts",
-          "base_delay": "Base Delay (seconds)"
+          "base_delay": "Base Delay (seconds)",
+          "view_outbox": "View Outbox"
         },
         "placeholders": {
           "from_name": "e.g. Acme Support",

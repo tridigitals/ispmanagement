@@ -905,6 +905,19 @@
                       />
                     </div>
                   </div>
+
+                  {#if $can('read', 'email_outbox')}
+                    <div class="queue-actions">
+                      <button
+                        class="btn btn-secondary"
+                        type="button"
+                        onclick={() => goto('../email-outbox')}
+                      >
+                        <Icon name="mail" size={16} />
+                        {$t('admin.settings.email.queue.view_outbox') || 'View Outbox'}
+                      </button>
+                    </div>
+                  {/if}
                 </div>
 
                 <div class="test-email-card mt-6">
@@ -2177,5 +2190,11 @@
     margin-bottom: 1rem;
     color: var(--text-secondary);
     border: 1px solid var(--glass-border);
+  }
+
+  .queue-actions {
+    margin-top: 0.9rem;
+    display: flex;
+    justify-content: flex-end;
   }
 </style>

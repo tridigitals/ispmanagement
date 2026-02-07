@@ -23,6 +23,7 @@ use std::path::PathBuf;
 pub mod audit;
 pub mod auth;
 pub mod backup;
+pub mod email_outbox;
 pub mod install;
 pub mod middleware;
 pub mod notifications;
@@ -326,6 +327,8 @@ pub async fn start_server(
         .nest("/api/payment", payment::router())
         // Notification Routes
         .nest("/api/notifications", notifications::router())
+        // Email Outbox (admin monitor)
+        .nest("/api/email-outbox", email_outbox::router())
         // Announcements (banner + admin broadcast)
         .nest("/api/announcements", announcements::router())
         // Settings Routes

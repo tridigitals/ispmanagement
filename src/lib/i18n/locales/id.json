@@ -373,6 +373,7 @@
     "close_menu": "Tutup menu",
     "super_admin": "Super Admin",
     "settings": "Pengaturan",
+    "email_outbox": "Email Outbox",
     "user_view": "Tampilan Pengguna",
     "admin_panel": "Panel Admin",
     "profile": "Profil",
@@ -1706,6 +1707,33 @@
         "updated": "Tiket diperbarui"
       }
     },
+    "email_outbox": {
+      "title": "Email Outbox",
+      "subtitle": "Pantau email yang antri/gagal, dan retry pengiriman.",
+      "search": "Cari berdasarkan penerima atau subjek...",
+      "empty": "Tidak ada data outbox",
+      "confirm_delete": "Hapus item outbox ini?",
+      "columns": {
+        "to": "Ke",
+        "subject": "Subjek",
+        "status": "Status",
+        "attempts": "Percobaan",
+        "scheduled": "Jadwal",
+        "updated": "Diperbarui"
+      },
+      "status": {
+        "queued": "Antri",
+        "sending": "Mengirim",
+        "sent": "Terkirim",
+        "failed": "Gagal"
+      },
+      "actions": {
+        "retry": "Retry"
+      },
+      "toasts": {
+        "requeued": "Dimasukkan ulang ke antrian"
+      }
+    },
     "overview": {
       "loading": "Memuat data sistem...",
       "stats": {
@@ -1868,7 +1896,8 @@
           "enabled": "Aktifkan Email Outbox",
           "enabled_desc": "Disarankan untuk produksi agar email tidak hilang.",
           "max_attempts": "Maks Percobaan",
-          "base_delay": "Delay Dasar (detik)"
+          "base_delay": "Delay Dasar (detik)",
+          "view_outbox": "Lihat Outbox"
         },
         "placeholders": {
           "from_name": "contoh: Acme Support",

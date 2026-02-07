@@ -59,6 +59,10 @@ impl RoleService {
             // Announcements
             ("announcements", "read", "Read announcements"),
             ("announcements", "manage", "Create/update announcements"),
+            // Email Outbox (tenant admin diagnostics)
+            ("email_outbox", "read", "View email outbox"),
+            ("email_outbox", "retry", "Retry outbox items"),
+            ("email_outbox", "delete", "Delete outbox items"),
         ]
     }
 
@@ -96,6 +100,9 @@ impl RoleService {
                     "support:internal",
                     "announcements:read",
                     "announcements:manage",
+                    "email_outbox:read",
+                    "email_outbox:retry",
+                    "email_outbox:delete",
                 ],
             ),
             (
@@ -125,6 +132,9 @@ impl RoleService {
                     "support:internal",
                     "announcements:read",
                     "announcements:manage",
+                    "email_outbox:read",
+                    "email_outbox:retry",
+                    "email_outbox:delete",
                 ],
             ),
             (

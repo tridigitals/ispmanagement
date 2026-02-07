@@ -12,8 +12,10 @@ pub mod announcements;
 pub mod tenant;
 pub mod trusted_device;
 pub mod user;
+pub mod email_outbox;
 
 pub use audit_log::*;
+pub use email_outbox::*;
 pub use file::*;
 pub use invoice::*;
 pub use notification::*;

@@ -135,6 +135,12 @@
         show: $can('read', 'settings'),
       },
       {
+        label: $t('sidebar.email_outbox') || 'Email Outbox',
+        icon: 'mail',
+        href: `${tenantPrefix}/admin/email-outbox`,
+        show: $can('read', 'email_outbox'),
+      },
+      {
         label: $t('sidebar.storage') || 'Storage',
         icon: 'folder',
         href: `${tenantPrefix}/admin/storage`,
