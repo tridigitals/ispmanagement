@@ -1735,11 +1735,36 @@
         "failed": "Gagal"
       },
       "actions": {
-        "retry": "Retry"
+        "retry": "Retry",
+        "view": "Lihat",
+        "select": "Pilih",
+        "select_visible": "Pilih yang terlihat",
+        "export_csv": "Ekspor CSV",
+        "retry_selected": "Coba lagi yang dipilih",
+        "delete_selected": "Hapus yang dipilih"
       },
       "toasts": {
-        "requeued": "Dimasukkan ulang ke antrian"
-      }
+        "requeued": "Dimasukkan ulang ke antrian",
+        "bulk_requeued": "Masuk antrian lagi",
+        "exported": "Berhasil diekspor"
+      },
+      "details": {
+        "title": "Detail email",
+        "to": "Ke",
+        "status": "Status",
+        "attempts": "Percobaan",
+        "scheduled": "Jadwal",
+        "sent": "Terkirim",
+        "subject": "Subjek",
+        "last_error": "Error terakhir",
+        "text": "Teks",
+        "html": "HTML",
+        "no_html": "Tidak ada HTML",
+        "view_source": "Lihat source",
+        "not_found": "Tidak ditemukan."
+      },
+      "selected": "Dipilih",
+      "confirm_bulk_delete": "Hapus item outbox yang dipilih?"
     },
     "overview": {
       "loading": "Memuat data sistem...",

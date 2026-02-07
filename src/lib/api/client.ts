@@ -164,9 +164,13 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
 
       // Email Outbox (Admin)
       list_email_outbox: { method: 'GET', path: '/email-outbox' },
+      get_email_outbox: { method: 'GET', path: '/email-outbox/:id' },
       get_email_outbox_stats: { method: 'GET', path: '/email-outbox/stats' },
       retry_email_outbox: { method: 'POST', path: '/email-outbox/:id/retry' },
       delete_email_outbox: { method: 'DELETE', path: '/email-outbox/:id' },
+      bulk_retry_email_outbox: { method: 'POST', path: '/email-outbox/bulk/retry' },
+      bulk_delete_email_outbox: { method: 'POST', path: '/email-outbox/bulk/delete' },
+      export_email_outbox_csv: { method: 'GET', path: '/email-outbox/export' },
 
       // Announcements
       list_active_announcements: { method: 'GET', path: '/announcements/active' },
@@ -905,7 +909,7 @@ export const settings = {
   sendTestEmail: (toEmail: string): Promise<string> =>
     safeInvoke('send_test_email', { token: getTokenOrThrow(), toEmail }),
 
-  testSmtpConnection: (): Promise<string> =>
+  testSmtpConnection: (): Promise<SmtpConnectionTestResult> =>
     safeInvoke('test_smtp_connection', { token: getTokenOrThrow() }),
 
   getAppVersion: async (): Promise<string> => {
@@ -1169,6 +1173,16 @@ export interface EmailOutboxStats {
   failed: number;
 }
 
+export interface SmtpConnectionTestResult {
+  ok: boolean;
+  provider: string;
+  host: string;
+  port: number;
+  encryption: string;
+  duration_ms: number;
+  message: string;
+}
+
 export interface Invoice {
   id: string;
   tenant_id?: string;
@@ -1351,6 +1365,9 @@ export const emailOutbox = {
       search: params?.search,
     }),
 
+  get: (id: string): Promise<EmailOutboxItem> =>
+    safeInvoke('get_email_outbox', { token: getTokenOrThrow(), id }),
+
   stats: (scope?: 'tenant' | 'global' | 'all'): Promise<EmailOutboxStats> =>
     safeInvoke('get_email_outbox_stats', { token: getTokenOrThrow(), scope }),
 
@@ -1359,6 +1376,26 @@ export const emailOutbox = {
 
   delete: (id: string): Promise<void> =>
     safeInvoke('delete_email_outbox', { token: getTokenOrThrow(), id }),
+
+  retryBulk: (ids: string[]): Promise<{ success: boolean; count: number }> =>
+    safeInvoke('bulk_retry_email_outbox', { token: getTokenOrThrow(), ids }),
+
+  deleteBulk: (ids: string[]): Promise<{ success: boolean; count: number }> =>
+    safeInvoke('bulk_delete_email_outbox', { token: getTokenOrThrow(), ids }),
+
+  exportCsv: (params?: {
+    scope?: 'tenant' | 'global' | 'all';
+    status?: string;
+    search?: string;
+    limit?: number;
+  }): Promise<{ csv: string }> =>
+    safeInvoke('export_email_outbox_csv', {
+      token: getTokenOrThrow(),
+      scope: params?.scope,
+      status: params?.status,
+      search: params?.search,
+      limit: params?.limit,
+    }),
 };
 
 export const backup = {

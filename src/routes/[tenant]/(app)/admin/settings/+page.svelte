@@ -480,7 +480,9 @@
     testingSmtp = true;
     try {
       const result = await api.settings.testSmtpConnection();
-      toast.success(result || ($t('admin.settings.email.smtp_test.ok') || 'SMTP connection verified'));
+      toast.success(
+        `${result.message} (${result.host}:${result.port}, ${result.encryption}, ${result.duration_ms}ms)`,
+      );
     } catch (error: any) {
       toast.error(
         error.message || ($t('admin.settings.email.smtp_test.failed') || 'SMTP test failed'),

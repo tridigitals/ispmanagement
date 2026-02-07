@@ -417,6 +417,10 @@ pub fn run() {
                                     get_email_outbox_stats,
                                     retry_email_outbox,
                                     delete_email_outbox,
+                                    get_email_outbox,
+                                    bulk_retry_email_outbox,
+                                    bulk_delete_email_outbox,
+                                    export_email_outbox_csv,
                                     // Backup commands
                                     list_backups,
                                     create_backup,

@@ -1692,11 +1692,36 @@
         "failed": "Failed"
       },
       "actions": {
-        "retry": "Retry"
+        "retry": "Retry",
+        "view": "View",
+        "select": "Select",
+        "select_visible": "Select visible",
+        "export_csv": "Export CSV",
+        "retry_selected": "Retry selected",
+        "delete_selected": "Delete selected"
       },
       "toasts": {
-        "requeued": "Requeued"
-      }
+        "requeued": "Requeued",
+        "bulk_requeued": "Requeued",
+        "exported": "Exported"
+      },
+      "details": {
+        "title": "Email details",
+        "to": "To",
+        "status": "Status",
+        "attempts": "Attempts",
+        "scheduled": "Scheduled",
+        "sent": "Sent",
+        "subject": "Subject",
+        "last_error": "Last error",
+        "text": "Text",
+        "html": "HTML",
+        "no_html": "No HTML body",
+        "view_source": "View source",
+        "not_found": "Not found."
+      },
+      "selected": "Selected",
+      "confirm_bulk_delete": "Delete selected outbox items?"
     },
     "overview": {
       "loading": "Loading system data...",

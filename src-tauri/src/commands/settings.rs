@@ -435,7 +435,7 @@ pub async fn test_smtp_connection(
     token: String,
     auth_service: State<'_, AuthService>,
     email_service: State<'_, crate::services::EmailService>,
-) -> Result<String, String> {
+) -> Result<crate::services::email_service::SmtpConnectionTestResult, String> {
     auth_service
         .check_admin(&token)
         .await
@@ -449,7 +449,5 @@ pub async fn test_smtp_connection(
     email_service
         .test_smtp_connection_for_tenant(claims.tenant_id.as_deref())
         .await
-        .map_err(|e| e.to_string())?;
-
-    Ok("SMTP connection verified".to_string())
+        .map_err(|e| e.to_string())
 }

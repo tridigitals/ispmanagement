@@ -11,7 +11,19 @@ use lettre::transport::smtp::client::TlsParameters;
 use lettre::message::{header::ContentType, MultiPart, SinglePart};
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 use serde::Serialize;
+use std::time::Instant;
 use tracing::info;
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SmtpConnectionTestResult {
+    pub ok: bool,
+    pub provider: String,
+    pub host: String,
+    pub port: u16,
+    pub encryption: String,
+    pub duration_ms: i64,
+    pub message: String,
+}
 
 /// Email service for sending emails
 #[derive(Clone)]
@@ -261,7 +273,10 @@ impl EmailService {
         }
     }
 
-    pub async fn test_smtp_connection_for_tenant(&self, tenant_id: Option<&str>) -> AppResult<()> {
+    pub async fn test_smtp_connection_for_tenant(
+        &self,
+        tenant_id: Option<&str>,
+    ) -> AppResult<SmtpConnectionTestResult> {
         let config = self.get_config_for(tenant_id).await?;
         if config.provider != "smtp" {
             return Err(AppError::Validation(
@@ -269,11 +284,22 @@ impl EmailService {
             ));
         }
         let mailer = self.build_smtp_transport(&config)?;
-        mailer
-            .test_connection()
-            .await
-            .map_err(|e| AppError::Internal(format!("SMTP connection test failed: {}", e)))?;
-        Ok(())
+        let start = Instant::now();
+        match mailer.test_connection().await {
+            Ok(true) | Ok(false) => Ok(SmtpConnectionTestResult {
+                ok: true,
+                provider: config.provider,
+                host: config.smtp_host,
+                port: config.smtp_port,
+                encryption: config.smtp_encryption,
+                duration_ms: start.elapsed().as_millis() as i64,
+                message: "SMTP connection verified".to_string(),
+            }),
+            Err(e) => Err(AppError::Internal(format!(
+                "SMTP connection test failed ({}:{} / {}): {}",
+                config.smtp_host, config.smtp_port, config.smtp_encryption, e
+            ))),
+        }
     }
 
     fn build_smtp_transport(

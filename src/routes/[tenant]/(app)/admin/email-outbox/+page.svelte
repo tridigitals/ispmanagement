@@ -7,6 +7,7 @@
   import { toast } from '$lib/stores/toast';
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import Modal from '$lib/components/ui/Modal.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import { formatDateTime } from '$lib/utils/date';
 
@@ -20,6 +21,12 @@
   let searchQuery = $state('');
   let statusFilter = $state<'all' | 'queued' | 'sending' | 'sent' | 'failed'>('all');
   let scope = $state<'tenant' | 'global' | 'all'>('tenant');
+  let selectedIds = $state<string[]>([]);
+
+  let detailOpen = $state(false);
+  let detailLoading = $state(false);
+  let detailItem = $state<EmailOutboxItem | null>(null);
+  let detailTab = $state<'text' | 'html'>('text');
 
   let total = $state(0);
   let pageNum = $state(1);
@@ -27,15 +34,17 @@
   let ready = $state(false);
 
   let hasMore = $derived(items.length < total);
+  let selectedCount = $derived(selectedIds.length);
 
   const columns = $derived.by(() => [
+    { key: 'sel', label: '', width: '46px' },
     { key: 'to', label: $t('admin.email_outbox.columns.to') || 'To' },
     { key: 'subject', label: $t('admin.email_outbox.columns.subject') || 'Subject' },
     { key: 'status', label: $t('admin.email_outbox.columns.status') || 'Status' },
     { key: 'attempts', label: $t('admin.email_outbox.columns.attempts') || 'Attempts' },
     { key: 'scheduled', label: $t('admin.email_outbox.columns.scheduled') || 'Scheduled' },
     { key: 'updated', label: $t('admin.email_outbox.columns.updated') || 'Updated' },
-    { key: 'actions', label: '', align: 'right' as const, width: '120px' },
+    { key: 'actions', label: '', align: 'right' as const, width: '156px' },
   ]);
 
   onMount(async () => {
@@ -69,6 +78,7 @@
       pageNum = 1;
       items = [];
       total = 0;
+      selectedIds = [];
     }
     try {
       const res: PaginatedResponse<EmailOutboxItem> = await api.emailOutbox.list({
@@ -84,6 +94,99 @@
       toast.error(e?.message || e);
     } finally {
       loading = false;
+    }
+  }
+
+  function isSelected(id: string) {
+    return selectedIds.includes(id);
+  }
+
+  function toggleSelected(id: string) {
+    if (isSelected(id)) {
+      selectedIds = selectedIds.filter((x) => x !== id);
+    } else {
+      selectedIds = [...selectedIds, id];
+    }
+  }
+
+  function clearSelection() {
+    selectedIds = [];
+  }
+
+  function selectVisible() {
+    const ids = items.map((i) => i.id);
+    selectedIds = Array.from(new Set([...selectedIds, ...ids]));
+  }
+
+  async function bulkRetrySelected() {
+    if (!selectedIds.length) return;
+    try {
+      const res = await api.emailOutbox.retryBulk(selectedIds);
+      toast.success(
+        ($t('admin.email_outbox.toasts.bulk_requeued') || 'Requeued') + ` (${res.count})`,
+      );
+      selectedIds = [];
+      await refreshStats();
+      await load(true);
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    }
+  }
+
+  async function bulkDeleteSelected() {
+    if (!selectedIds.length) return;
+    const ok = confirm(
+      ($t('admin.email_outbox.confirm_bulk_delete') || 'Delete selected outbox items?') +
+        ` (${selectedIds.length})`,
+    );
+    if (!ok) return;
+    try {
+      const res = await api.emailOutbox.deleteBulk(selectedIds);
+      toast.success(($t('common.deleted') || 'Deleted') + ` (${res.count})`);
+      selectedIds = [];
+      await refreshStats();
+      await load(true);
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    }
+  }
+
+  async function exportCsv() {
+    try {
+      const res = await api.emailOutbox.exportCsv({
+        scope,
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        search: searchQuery.trim() || undefined,
+      });
+      const csv = res?.csv || '';
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const stamp = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `email-outbox_${scope}_${stamp}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success($t('admin.email_outbox.toasts.exported') || 'Exported');
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    }
+  }
+
+  async function openDetails(id: string) {
+    detailOpen = true;
+    detailLoading = true;
+    detailItem = null;
+    detailTab = 'text';
+    try {
+      detailItem = await api.emailOutbox.get(id);
+    } catch (e: any) {
+      toast.error(e?.message || e);
+      detailOpen = false;
+    } finally {
+      detailLoading = false;
     }
   }
 
@@ -245,6 +348,52 @@
     </div>
   </div>
 
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <button class="btn btn-secondary" type="button" onclick={selectVisible}>
+        <Icon name="check" size={16} />
+        {$t('admin.email_outbox.actions.select_visible') || 'Select visible'}
+      </button>
+      <button class="btn btn-secondary" type="button" onclick={exportCsv}>
+        <Icon name="download" size={16} />
+        {$t('admin.email_outbox.actions.export_csv') || 'Export CSV'}
+      </button>
+    </div>
+
+    {#if selectedCount > 0}
+      <div class="bulkbar">
+        <div class="bulk-left">
+          <span class="pill tone-queued">
+            {$t('admin.email_outbox.selected') || 'Selected'}: {selectedCount}
+          </span>
+          <button class="text-btn" type="button" onclick={clearSelection}>
+            {$t('common.clear') || 'Clear'}
+          </button>
+        </div>
+        <div class="bulk-actions">
+          <button
+            class="btn btn-secondary"
+            type="button"
+            onclick={bulkRetrySelected}
+            disabled={!$can('retry', 'email_outbox')}
+          >
+            <Icon name="refresh-cw" size={16} />
+            {$t('admin.email_outbox.actions.retry_selected') || 'Retry selected'}
+          </button>
+          <button
+            class="btn btn-secondary danger-btn"
+            type="button"
+            onclick={bulkDeleteSelected}
+            disabled={!$can('delete', 'email_outbox')}
+          >
+            <Icon name="trash-2" size={16} />
+            {$t('admin.email_outbox.actions.delete_selected') || 'Delete selected'}
+          </button>
+        </div>
+      </div>
+    {/if}
+  </div>
+
   <Table
     {columns}
     data={items}
@@ -252,7 +401,16 @@
     emptyText={$t('admin.email_outbox.empty') || 'No outbox items'}
   >
     {#snippet cell({ item, key }: { item: EmailOutboxItem; key: string })}
-      {#if key === 'to'}
+      {#if key === 'sel'}
+        <div class="sel">
+          <input
+            type="checkbox"
+            checked={isSelected(item.id)}
+            onchange={() => toggleSelected(item.id)}
+            aria-label={$t('admin.email_outbox.actions.select') || 'Select'}
+          />
+        </div>
+      {:else if key === 'to'}
         <div class="cell-main">
           <div class="primary">{item.to_email}</div>
           <div class="muted small">{formatDateTime(item.created_at)}</div>
@@ -278,6 +436,13 @@
         {@const canRetry = item.status === 'failed' || item.status === 'queued'}
         {@const disabled = busyId === item.id || item.status === 'sending'}
         <div class="actions">
+          <button
+            class="icon-btn"
+            title={$t('admin.email_outbox.actions.view') || 'View'}
+            onclick={() => openDetails(item.id)}
+          >
+            <Icon name="eye" size={16} />
+          </button>
           <button
             class="icon-btn"
             title={$t('admin.email_outbox.actions.retry') || 'Retry'}
@@ -309,6 +474,102 @@
     </div>
   {/if}
 </div>
+
+<Modal
+  bind:show={detailOpen}
+  title={$t('admin.email_outbox.details.title') || 'Email details'}
+  width="920px"
+  onclose={() => {
+    detailItem = null;
+    detailLoading = false;
+  }}
+>
+  {#snippet children()}
+    {#if detailLoading}
+      <div class="detail-loading">
+        <div class="spinner"></div>
+        <div class="muted">{$t('common.loading') || 'Loading...'}</div>
+      </div>
+    {:else if detailItem}
+      <div class="detail">
+        <div class="meta">
+          <div class="kv">
+            <div class="k">{$t('admin.email_outbox.details.to') || 'To'}</div>
+            <div class="v mono">{detailItem.to_email}</div>
+          </div>
+          <div class="kv">
+            <div class="k">{$t('admin.email_outbox.details.status') || 'Status'}</div>
+            <div class="v">
+              <span class="pill {tone(detailItem.status)}"
+                >{(detailItem.status || 'queued').toUpperCase()}</span
+              >
+            </div>
+          </div>
+          <div class="kv">
+            <div class="k">{$t('admin.email_outbox.details.attempts') || 'Attempts'}</div>
+            <div class="v mono">{detailItem.attempts}/{detailItem.max_attempts}</div>
+          </div>
+          <div class="kv">
+            <div class="k">{$t('admin.email_outbox.details.scheduled') || 'Scheduled'}</div>
+            <div class="v">{formatDateTime(detailItem.scheduled_at)}</div>
+          </div>
+          <div class="kv">
+            <div class="k">{$t('admin.email_outbox.details.sent') || 'Sent'}</div>
+            <div class="v">{detailItem.sent_at ? formatDateTime(detailItem.sent_at) : '-'}</div>
+          </div>
+          <div class="kv full">
+            <div class="k">{$t('admin.email_outbox.details.subject') || 'Subject'}</div>
+            <div class="v">{detailItem.subject}</div>
+          </div>
+          {#if detailItem.last_error}
+            <div class="kv full">
+              <div class="k">{$t('admin.email_outbox.details.last_error') || 'Last error'}</div>
+              <div class="v mono err">{detailItem.last_error}</div>
+            </div>
+          {/if}
+        </div>
+
+        <div class="tabs">
+          <button
+            type="button"
+            class:active={detailTab === 'text'}
+            onclick={() => (detailTab = 'text')}
+          >
+            {$t('admin.email_outbox.details.text') || 'Text'}
+          </button>
+          <button
+            type="button"
+            class:active={detailTab === 'html'}
+            onclick={() => (detailTab = 'html')}
+            disabled={!detailItem.body_html}
+            title={!detailItem.body_html ? $t('admin.email_outbox.details.no_html') || 'No HTML' : ''}
+          >
+            {$t('admin.email_outbox.details.html') || 'HTML'}
+          </button>
+        </div>
+
+        {#if detailTab === 'html' && detailItem.body_html}
+          <div class="viewer">
+            <iframe
+              class="iframe"
+              sandbox=""
+              srcdoc={detailItem.body_html}
+              title="HTML preview"
+            ></iframe>
+          </div>
+          <details class="source">
+            <summary>{$t('admin.email_outbox.details.view_source') || 'View source'}</summary>
+            <pre class="mono pre">{detailItem.body_html}</pre>
+          </details>
+        {:else}
+          <pre class="mono pre">{detailItem.body}</pre>
+        {/if}
+      </div>
+    {:else}
+      <div class="muted">{$t('admin.email_outbox.details.not_found') || 'Not found.'}</div>
+    {/if}
+  {/snippet}
+</Modal>
 
 <style>
   .head {
@@ -387,6 +648,68 @@
     gap: 1rem;
     margin: 1rem 0;
     flex-wrap: wrap;
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin: 0.25rem 0 1rem;
+  }
+
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .bulkbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 14px;
+    flex-wrap: wrap;
+  }
+
+  .bulk-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .bulk-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .text-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.25rem 0.35rem;
+    font-weight: 800;
+  }
+
+  .text-btn:hover {
+    color: var(--text-primary);
+  }
+
+  .danger-btn {
+    border-color: rgba(255, 90, 90, 0.45) !important;
+    color: rgba(255, 180, 180, 0.95);
+  }
+
+  .danger-btn:hover:enabled {
+    border-color: rgba(255, 90, 90, 0.7) !important;
   }
 
   .scope {
@@ -505,6 +828,131 @@
     justify-content: flex-end;
   }
 
+  .sel {
+    display: flex;
+    justify-content: center;
+  }
+
+  .sel input {
+    width: 16px;
+    height: 16px;
+    accent-color: rgba(99, 102, 241, 0.95);
+  }
+
+  .detail-loading {
+    display: grid;
+    place-items: center;
+    gap: 0.75rem;
+    padding: 2rem 0;
+  }
+
+  .detail {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .meta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 14px;
+    padding: 0.9rem;
+  }
+
+  .kv {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .kv.full {
+    grid-column: 1 / -1;
+  }
+
+  .k {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    font-weight: 800;
+  }
+
+  .v {
+    color: var(--text-primary);
+    font-weight: 700;
+  }
+
+  .err {
+    color: rgba(255, 170, 170, 0.95);
+    white-space: pre-wrap;
+  }
+
+  .tabs {
+    display: inline-flex;
+    gap: 0.35rem;
+    padding: 0.3rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.03);
+    width: fit-content;
+  }
+
+  .tabs button {
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    padding: 0.45rem 0.7rem;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 800;
+    font-size: 0.85rem;
+  }
+
+  .tabs button.active {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.35);
+    color: var(--text-primary);
+  }
+
+  .tabs button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .pre {
+    border: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 14px;
+    padding: 0.9rem;
+    max-height: 54vh;
+    overflow: auto;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .viewer {
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  .iframe {
+    width: 100%;
+    height: min(56vh, 560px);
+    border: none;
+    background: white;
+  }
+
+  .source summary {
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-weight: 800;
+    margin-top: 0.5rem;
+  }
+
   .icon-btn {
     display: inline-flex;
     align-items: center;
@@ -545,6 +993,9 @@
     }
     .search {
       width: 100%;
+    }
+    .meta {
+      grid-template-columns: repeat(1, minmax(0, 1fr));
     }
   }
 </style>
