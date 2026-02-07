@@ -1911,9 +1911,17 @@
           "smtp_port": "587"
         },
         "test": {
+          "desc": "Kirim email tes atau verifikasi koneksi SMTP.",
           "recipient_placeholder": "Masukkan email penerima",
           "sending": "Mengirim...",
           "send": "Kirim Tes"
+        },
+        "smtp_test": {
+          "button": "Tes SMTP",
+          "testing": "Menguji...",
+          "ok": "Koneksi SMTP terverifikasi",
+          "failed": "Tes SMTP gagal",
+          "hint": "Cek koneksi dan autentikasi tanpa mengirim email."
         }
       },
       "payment": {

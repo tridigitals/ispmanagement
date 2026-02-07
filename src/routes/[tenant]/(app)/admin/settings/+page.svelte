@@ -426,6 +426,7 @@
   // Test Email State
   let testEmailAddress = $state('');
   let sendingTestEmail = $state(false);
+  let testingSmtp = $state(false);
 
   // Bank Account Management State
   let bankAccounts = $state<any[]>([]);
@@ -472,6 +473,20 @@
       toast.error(error.message || 'Failed to send test email');
     } finally {
       sendingTestEmail = false;
+    }
+  }
+
+  async function testSmtpConnection() {
+    testingSmtp = true;
+    try {
+      const result = await api.settings.testSmtpConnection();
+      toast.success(result || ($t('admin.settings.email.smtp_test.ok') || 'SMTP connection verified'));
+    } catch (error: any) {
+      toast.error(
+        error.message || ($t('admin.settings.email.smtp_test.failed') || 'SMTP test failed'),
+      );
+    } finally {
+      testingSmtp = false;
     }
   }
 
@@ -927,7 +942,10 @@
                       {$t('admin.settings.sections.test_configuration') || 'Test Configuration'}
                     </h4>
                   </div>
-                  <p>Send a test email to verify your settings are working correctly.</p>
+                  <p>
+                    {$t('admin.settings.email.test.desc') ||
+                      'Send a test email or verify SMTP connectivity.'}
+                  </p>
                   <div class="test-form">
                     <Input
                       type="email"
@@ -936,15 +954,30 @@
                       placeholder={$t('admin.settings.email.test.recipient_placeholder') ||
                         'Enter recipient email'}
                     />
-                    <button
-                      class="btn btn-secondary"
-                      onclick={sendTestEmail}
-                      disabled={sendingTestEmail || !testEmailAddress}
-                    >
-                      {sendingTestEmail
-                        ? $t('admin.settings.email.test.sending') || 'Sending...'
-                        : $t('admin.settings.email.test.send') || 'Send Test'}
-                    </button>
+                    <div class="test-actions">
+                      <button
+                        class="btn btn-secondary"
+                        onclick={sendTestEmail}
+                        disabled={sendingTestEmail || !testEmailAddress}
+                      >
+                        {sendingTestEmail
+                          ? $t('admin.settings.email.test.sending') || 'Sending...'
+                          : $t('admin.settings.email.test.send') || 'Send Test'}
+                      </button>
+
+                      <button
+                        class="btn btn-secondary"
+                        onclick={testSmtpConnection}
+                        disabled={testingSmtp}
+                        title={$t('admin.settings.email.smtp_test.hint') ||
+                          'Checks connectivity and auth without sending an email.'}
+                      >
+                        <Icon name="activity" size={16} />
+                        {testingSmtp
+                          ? $t('admin.settings.email.smtp_test.testing') || 'Testing...'
+                          : $t('admin.settings.email.smtp_test.button') || 'Test SMTP'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1860,6 +1893,12 @@
   .test-form :global(.input-wrapper) {
     flex: 1;
     min-width: 220px;
+  }
+  .test-actions {
+    display: inline-flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    align-items: center;
   }
 
   @media (max-width: 640px) {

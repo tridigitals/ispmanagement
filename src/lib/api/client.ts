@@ -97,6 +97,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       delete_setting: { method: 'DELETE', path: '/settings/:key' },
       upload_logo: { method: 'POST', path: '/settings/logo' },
       send_test_email: { method: 'POST', path: '/settings/test-email' },
+      test_smtp_connection: { method: 'POST', path: '/settings/test-smtp' },
       // Team
       list_team_members: { method: 'GET', path: '/team' },
       add_team_member: { method: 'POST', path: '/team' },
@@ -900,6 +901,9 @@ export const settings = {
 
   sendTestEmail: (toEmail: string): Promise<string> =>
     safeInvoke('send_test_email', { token: getTokenOrThrow(), toEmail }),
+
+  testSmtpConnection: (): Promise<string> =>
+    safeInvoke('test_smtp_connection', { token: getTokenOrThrow() }),
 
   getAppVersion: async (): Promise<string> => {
     const res = await safeInvoke('get_app_version');

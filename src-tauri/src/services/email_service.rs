@@ -196,33 +196,26 @@ impl EmailService {
         }
     }
 
-    /// Send via SMTP
-    async fn send_via_smtp(
+    pub async fn test_smtp_connection_for_tenant(&self, tenant_id: Option<&str>) -> AppResult<()> {
+        let config = self.get_config_for(tenant_id).await?;
+        if config.provider != "smtp" {
+            return Err(AppError::Validation(
+                "Email provider is not SMTP (set provider to smtp to test connection)".to_string(),
+            ));
+        }
+        let mailer = self.build_smtp_transport(&config)?;
+        mailer
+            .test_connection()
+            .await
+            .map_err(|e| AppError::Internal(format!("SMTP connection test failed: {}", e)))?;
+        Ok(())
+    }
+
+    fn build_smtp_transport(
         &self,
         config: &EmailConfig,
-        to: &str,
-        subject: &str,
-        body: &str,
-    ) -> AppResult<()> {
-        let email = Message::builder()
-            .from(
-                format!("{} <{}>", config.from_name, config.from_email)
-                    .parse()
-                    .map_err(|e| AppError::Validation(format!("Invalid from address: {}", e)))?,
-            )
-            .to(to
-                .parse()
-                .map_err(|e| AppError::Validation(format!("Invalid to address: {}", e)))?)
-            .subject(subject)
-            .body(body.to_string())
-            .map_err(|e| AppError::Internal(format!("Failed to build email: {}", e)))?;
-
+    ) -> AppResult<AsyncSmtpTransport<Tokio1Executor>> {
         let creds = Credentials::new(config.smtp_username.clone(), config.smtp_password.clone());
-
-        // Determine TLS security based on encryption setting
-        // "tls" -> Wrapper/StartTLS (Port 587 usually)
-        // "ssl" -> Implicit TLS (Port 465 usually)
-        // "none" -> No encryption
 
         let mailer_builder = AsyncSmtpTransport::<Tokio1Executor>::relay(&config.smtp_host)
             .map_err(|e| AppError::Validation(format!("Invalid SMTP host: {}", e)))?
@@ -244,6 +237,32 @@ impl EmailService {
                 .build(),
             _ => mailer_builder.tls(Tls::None).build(),
         };
+
+        Ok(mailer)
+    }
+
+    /// Send via SMTP
+    async fn send_via_smtp(
+        &self,
+        config: &EmailConfig,
+        to: &str,
+        subject: &str,
+        body: &str,
+    ) -> AppResult<()> {
+        let email = Message::builder()
+            .from(
+                format!("{} <{}>", config.from_name, config.from_email)
+                    .parse()
+                    .map_err(|e| AppError::Validation(format!("Invalid from address: {}", e)))?,
+            )
+            .to(to
+                .parse()
+                .map_err(|e| AppError::Validation(format!("Invalid to address: {}", e)))?)
+            .subject(subject)
+            .body(body.to_string())
+            .map_err(|e| AppError::Internal(format!("Failed to build email: {}", e)))?;
+
+        let mailer = self.build_smtp_transport(config)?;
 
         mailer
             .send(email)

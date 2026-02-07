@@ -428,3 +428,28 @@ pub async fn send_test_email(
 
     Ok(format!("Test email sent successfully to {}", to_email))
 }
+
+/// Test SMTP connection (does not send an email)
+#[tauri::command]
+pub async fn test_smtp_connection(
+    token: String,
+    auth_service: State<'_, AuthService>,
+    email_service: State<'_, crate::services::EmailService>,
+) -> Result<String, String> {
+    auth_service
+        .check_admin(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    email_service
+        .test_smtp_connection_for_tenant(claims.tenant_id.as_deref())
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok("SMTP connection verified".to_string())
+}

@@ -430,3 +430,19 @@ pub async fn send_test_email(
         payload.to_email
     )))
 }
+
+pub async fn test_smtp_connection(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<String>, crate::error::AppError> {
+    let token = get_token(&headers)?;
+    state.auth_service.check_admin(&token).await?;
+
+    let claims = state.auth_service.validate_token(&token).await?;
+    state
+        .email_service
+        .test_smtp_connection_for_tenant(claims.tenant_id.as_deref())
+        .await?;
+
+    Ok(Json("SMTP connection verified".to_string()))
+}

@@ -342,6 +342,7 @@ pub async fn start_server(
             get(settings::get_logo).post(settings::upload_logo),
         )
         .route("/api/settings/test-email", post(settings::send_test_email))
+        .route("/api/settings/test-smtp", post(settings::test_smtp_connection))
         .route(
             "/api/settings/{key}",
             get(settings::get_setting).delete(settings::delete_setting),

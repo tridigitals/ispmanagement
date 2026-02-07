@@ -1868,9 +1868,17 @@
           "smtp_port": "587"
         },
         "test": {
+          "desc": "Send a test email or verify SMTP connectivity.",
           "recipient_placeholder": "Enter recipient email",
           "sending": "Sending...",
           "send": "Send Test"
+        },
+        "smtp_test": {
+          "button": "Test SMTP",
+          "testing": "Testing...",
+          "ok": "SMTP connection verified",
+          "failed": "SMTP test failed",
+          "hint": "Checks connectivity and auth without sending an email."
         }
       },
       "payment": {

@@ -340,6 +340,7 @@ pub fn run() {
                         install_app,
                         // Email commands
                         send_test_email,
+                        test_smtp_connection,
                                     // Super Admin commands
                                     list_tenants,
                                     delete_tenant,
