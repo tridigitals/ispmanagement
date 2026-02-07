@@ -8,6 +8,8 @@
   import { getSlugFromDomain } from '$lib/utils/domain';
   import { formatDate, timeAgo } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
+  import { api, type Announcement } from '$lib/api/client';
+  import { stripHtmlToText } from '$lib/utils/sanitizeHtml';
   import {
     notifications,
     loading as notificationsLoading,
@@ -18,6 +20,7 @@
     // Auth handled by layout
     // Load a small slice of activity without blocking first paint.
     void loadNotifications(1);
+    void loadDashboardAnnouncements();
   });
 
   const greeting = () => {
@@ -33,6 +36,26 @@
   let tenantPrefix = $derived($user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : '');
 
   let recent = $derived($notifications.slice(0, 6));
+
+  let annLoading = $state(false);
+  let annPosts = $state<Announcement[]>([]);
+
+  async function loadDashboardAnnouncements() {
+    annLoading = true;
+    try {
+      const rows = await api.announcements.listActive();
+      annPosts = (rows || []).slice(0, 3);
+    } catch (e) {
+      // non-blocking
+      console.warn('Failed to load dashboard announcements:', e);
+    } finally {
+      annLoading = false;
+    }
+  }
+
+  function openAnnouncement(id: string) {
+    goto(`${tenantPrefix}/announcements/${id}`);
+  }
 
   function openNotification(n: any) {
     if (n?.action_url) goto(resolveActionUrl(n.action_url));
@@ -191,6 +214,53 @@
                         {n.message}
                       </div>
                     {/if}
+                  </div>
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+
+      <div class="section-header section-gap">
+        <h2>{$t('dashboard.announcements.title') || $t('announcements.title') || 'Announcements'}</h2>
+        <button class="text-btn" onclick={() => goto(`${tenantPrefix}/announcements`)}>
+          {$t('dashboard.announcements.view_all') || $t('dashboard.recent_activity.view_all') || 'View all'}
+        </button>
+      </div>
+
+      <div class="card ann-card">
+        {#if annLoading && annPosts.length === 0}
+          <div class="loading-state ann-state">
+            <div class="spinner"></div>
+            <p class="muted">{$t('common.loading') || 'Loading...'}</p>
+          </div>
+        {:else if annPosts.length === 0}
+          <div class="empty-state ann-state">
+            <div class="empty-icon-circle">
+              <Icon name="megaphone" size={32} />
+            </div>
+            <h3>{$t('dashboard.announcements.empty.title') || $t('announcements.empty_feed') || 'No announcements yet.'}</h3>
+            <p>{$t('dashboard.announcements.empty.description') || 'When the team publishes updates, they will show up here.'}</p>
+            <button class="btn btn-secondary mt-4" onclick={() => goto(`${tenantPrefix}/announcements`)}>
+              {$t('dashboard.announcements.empty.open') || 'Open announcements'}
+            </button>
+          </div>
+        {:else}
+          <ul class="ann-list">
+            {#each annPosts as a (a.id)}
+              <li class="ann-li">
+                <button class="ann-item" type="button" onclick={() => openAnnouncement(a.id)}>
+                  <div class="ann-dot {a.severity}"></div>
+                  <div class="ann-text">
+                    <div class="ann-row">
+                      <div class="ann-title">{a.title}</div>
+                      <div class="ann-time">{timeAgo(a.updated_at || a.created_at)}</div>
+                    </div>
+                    <div class="ann-body">{stripHtmlToText(a.body || '')}</div>
+                  </div>
+                  <div class="ann-go">
+                    <Icon name="arrow-right" size={16} />
                   </div>
                 </button>
               </li>
@@ -449,6 +519,137 @@
     border-radius: var(--radius-lg);
     min-height: 300px;
     overflow: hidden;
+  }
+
+  .section-gap {
+    margin-top: 1.25rem;
+  }
+
+  .ann-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .ann-state {
+    min-height: 220px;
+  }
+
+  .ann-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ann-li {
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .ann-li:last-child {
+    border-bottom: 0;
+  }
+
+  .ann-item {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.85rem;
+    align-items: start;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s;
+    color: inherit;
+  }
+
+  .ann-item:hover {
+    background: var(--bg-hover);
+  }
+
+  .ann-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    margin-top: 0.35rem;
+    background: rgba(148, 163, 184, 0.7);
+    box-shadow: 0 0 0 6px rgba(148, 163, 184, 0.1);
+  }
+
+  .ann-dot.info {
+    background: rgba(59, 130, 246, 0.95);
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.12);
+  }
+  .ann-dot.success {
+    background: rgba(34, 197, 94, 0.95);
+    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.12);
+  }
+  .ann-dot.warning {
+    background: rgba(245, 158, 11, 0.95);
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.12);
+  }
+  .ann-dot.error {
+    background: rgba(239, 68, 68, 0.95);
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.12);
+  }
+
+  .ann-text {
+    min-width: 0;
+  }
+
+  .ann-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .ann-title {
+    font-weight: 750;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ann-time {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+  }
+
+  .ann-body {
+    margin-top: 0.25rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .ann-go {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  :global([data-theme='light']) .ann-go {
+    border-color: rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, 0.03);
   }
 
   .empty-state {

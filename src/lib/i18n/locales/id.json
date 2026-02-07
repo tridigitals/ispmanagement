@@ -1484,6 +1484,15 @@
         "learn_more": "Pelajari Lebih Lanjut"
       }
     },
+    "announcements": {
+      "title": "Pengumuman",
+      "view_all": "Lihat Semua",
+      "empty": {
+        "title": "Belum ada pengumuman",
+        "description": "Saat tim mempublikasikan pembaruan, pengumuman akan muncul di sini.",
+        "open": "Buka pengumuman"
+      }
+    },
     "quick_actions": {
       "title": "Aksi Cepat",
       "update_profile": "Perbarui Profil",

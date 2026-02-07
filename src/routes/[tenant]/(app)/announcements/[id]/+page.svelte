@@ -182,6 +182,18 @@
 </div>
 
 <style>
+  .page-content {
+    padding: 1.5rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 640px) {
+    .page-content {
+      padding: 1rem;
+    }
+  }
+
   .topbar {
     display: flex;
     align-items: center;

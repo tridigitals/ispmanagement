@@ -1441,6 +1441,15 @@
         "learn_more": "Learn More"
       }
     },
+    "announcements": {
+      "title": "Announcements",
+      "view_all": "View All",
+      "empty": {
+        "title": "No announcements yet",
+        "description": "When the team publishes updates, they will show up here.",
+        "open": "Open announcements"
+      }
+    },
     "quick_actions": {
       "title": "Quick Actions",
       "update_profile": "Update Profile",
