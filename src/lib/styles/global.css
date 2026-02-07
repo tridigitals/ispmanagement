@@ -60,6 +60,9 @@
   --bp-md: 768px;
   --bp-lg: 900px;
   --bp-xl: 1024px;
+
+  /* Hint native controls (date/time pickers, form controls) to render in dark scheme by default. */
+  color-scheme: dark;
 }
 
 /* Light Mode */
@@ -77,6 +80,25 @@
 
   --border-color: #e4e4e7;
   --border-subtle: #f4f4f5;
+
+  /* Native controls should switch to light scheme in light theme. */
+  color-scheme: light;
+}
+
+/* Ensure date/time picker icons are visible in dark mode (WebView2/Chromium). */
+:root:not([data-theme='light']) input[type='date']::-webkit-calendar-picker-indicator,
+:root:not([data-theme='light']) input[type='time']::-webkit-calendar-picker-indicator,
+:root:not([data-theme='light']) input[type='datetime-local']::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.85;
+  cursor: pointer;
+}
+
+:root[data-theme='light'] input[type='date']::-webkit-calendar-picker-indicator,
+:root[data-theme='light'] input[type='time']::-webkit-calendar-picker-indicator,
+:root[data-theme='light'] input[type='datetime-local']::-webkit-calendar-picker-indicator {
+  filter: invert(0);
+  opacity: 0.75;
 }
 
 /* Reset & Base */
