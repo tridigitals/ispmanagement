@@ -56,11 +56,14 @@ type WsEvent =
 
 let ws: WebSocket | null = null;
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 let reconnectAttempts = 0;
 const RECONNECT_BASE_DELAY = 1200; // ms
 const RECONNECT_MAX_DELAY = 30_000; // ms
 const DEV = import.meta.env.DEV;
 let manualClose = false;
+let lastMessageAt = 0;
+const HEARTBEAT_INTERVAL_MS = 25_000;
 
 // Auto-connect in browser when token becomes available (prevents "must reload" issues).
 // Guarded with a global flag to avoid duplicate subscriptions across HMR.
@@ -148,10 +151,14 @@ export function connectWebSocket() {
       wsConnected.set(true);
       wsError.set(null);
       reconnectAttempts = 0;
+      lastMessageAt = Date.now();
+      startHeartbeat();
+      if (DEV) console.debug('[WS] connected', wsUrl);
     };
 
     ws.onmessage = (event) => {
       try {
+        lastMessageAt = Date.now();
         const data: WsEvent = JSON.parse(event.data);
         handleWsEvent(data);
       } catch (e) {
@@ -167,9 +174,12 @@ export function connectWebSocket() {
     ws.onclose = (event) => {
       wsConnected.set(false);
       ws = null;
+      stopHeartbeat();
 
       // Auto-reconnect unless explicitly closed by app.
-      if (!manualClose && event.code !== 1000) {
+      // Note: some servers close with 1000 on restarts; we still want to reconnect.
+      if (!manualClose) {
+        if (DEV) console.debug('[WS] closed', { code: event.code, reason: event.reason });
         scheduleReconnect();
       }
     };
@@ -177,6 +187,54 @@ export function connectWebSocket() {
     console.error('[WS] Failed to create WebSocket:', e);
     wsError.set('Failed to connect to WebSocket');
     scheduleReconnect();
+  }
+}
+
+function startHeartbeat() {
+  stopHeartbeat();
+
+  if (!browser) return;
+
+  heartbeatInterval = setInterval(() => {
+    const t = get(token);
+    if (!t) return;
+
+    // If WS is gone, keep trying in the background.
+    if (!ws || ws.readyState === WebSocket.CLOSED) {
+      connectWebSocket();
+      return;
+    }
+
+    if (ws.readyState !== WebSocket.OPEN) return;
+
+    // Send a lightweight keepalive message (text). Server may ignore it; still keeps the pipe warm.
+    try {
+      ws.send('ping');
+    } catch {
+      try {
+        ws.close();
+      } catch {
+        // ignore
+      }
+    }
+
+    // If connection gets "stuck" (rare in dev), force a reconnect.
+    const idleFor = Date.now() - (lastMessageAt || 0);
+    if (idleFor > HEARTBEAT_INTERVAL_MS * 6) {
+      if (DEV) console.debug('[WS] idle too long, reconnecting', { idleFor });
+      try {
+        ws.close();
+      } catch {
+        // ignore
+      }
+    }
+  }, HEARTBEAT_INTERVAL_MS);
+}
+
+function stopHeartbeat() {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
   }
 }
 
@@ -320,6 +378,8 @@ export function disconnectWebSocket() {
     clearTimeout(reconnectTimeout);
     reconnectTimeout = null;
   }
+
+  stopHeartbeat();
 
   if (ws) {
     manualClose = true;
