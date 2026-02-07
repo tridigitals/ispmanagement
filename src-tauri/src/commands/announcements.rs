@@ -204,7 +204,7 @@ async fn send_announcement_emails(
     }
 
     let _ = notification_service
-        .force_send_email_to_users(&ids, &subject, &body)
+        .force_send_email_to_users(announcement.tenant_id.clone(), &ids, &subject, &body)
         .await;
 }
 

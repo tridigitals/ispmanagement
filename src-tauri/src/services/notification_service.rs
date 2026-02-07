@@ -40,9 +40,15 @@ impl NotificationService {
     /// Send an email immediately, bypassing notification preferences.
     ///
     /// Used for "forced" deliveries such as admin-triggered broadcasts.
-    pub async fn force_send_email(&self, to: &str, subject: &str, body: &str) -> AppResult<()> {
+    pub async fn force_send_email(
+        &self,
+        tenant_id: Option<String>,
+        to: &str,
+        subject: &str,
+        body: &str,
+    ) -> AppResult<()> {
         self.email_outbox
-            .send_or_enqueue(None, to, subject, body)
+            .send_or_enqueue(tenant_id, to, subject, body)
             .await
     }
 
@@ -50,12 +56,13 @@ impl NotificationService {
     #[cfg(feature = "postgres")]
     pub async fn force_send_email_to_users(
         &self,
+        tenant_id: Option<String>,
         user_ids: &[String],
         subject: &str,
         body: &str,
     ) -> AppResult<()> {
         self.email_outbox
-            .send_or_enqueue_to_users(None, user_ids, subject, body)
+            .send_or_enqueue_to_users(tenant_id, user_ids, subject, body)
             .await
     }
 
