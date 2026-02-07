@@ -100,6 +100,7 @@
     "copy_failed": "Gagal menyalin",
     "delete": "Hapus",
     "edit": "Edit",
+    "details": "Detail",
     "open": "Buka",
     "download": "Unduh",
     "load_more": "Muat lagi",
@@ -127,6 +128,7 @@
     "save_changes": "Simpan Perubahan",
     "saving": "Menyimpan...",
     "loading": "Memuat...",
+    "updated": "Diperbarui",
     "empty": {
       "no_results": "Tidak ada hasil"
     },
@@ -490,6 +492,8 @@
     "title": "Pengumuman",
     "subtitle": "Kirim broadcast sebagai banner dan notifikasi.",
     "feed_subtitle": "Pembaruan produk, jadwal maintenance, dan info penting.",
+    "search_placeholder": "Cari pengumuman...",
+    "tip_title": "Tip",
     "banner_aria": "Pengumuman",
     "more": "+{count} lainnya",
     "not_found": "Pengumuman tidak ditemukan.",

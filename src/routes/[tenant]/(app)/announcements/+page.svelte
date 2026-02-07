@@ -122,7 +122,7 @@
             class="search-input"
             value={q}
             oninput={(e) => (q = (e.currentTarget as HTMLInputElement).value)}
-            placeholder={$t('notifications_page.search_placeholder') || 'Search...'}
+            placeholder={$t('announcements.search_placeholder') || $t('notifications_page.search_placeholder') || 'Search...'}
           />
         </div>
         <button class="btn" type="button" onclick={load} title={$t('common.refresh') || 'Refresh'}>
@@ -185,7 +185,7 @@
   {:else if filtered.length === 0}
     <div class="empty">
       <Icon name="search" size={18} />
-      <span>{$t('common.no_results') || 'No results.'}</span>
+      <span>{$t('common.empty.no_results') || 'No results.'}</span>
     </div>
   {:else}
     <div class="summary">
@@ -194,7 +194,8 @@
         <span class="txt">{$t('announcements.list.title') || 'Posts'}</span>
       </div>
       <div class="hint">
-        {$t('common.updated') || 'Updated'}: {formatDateTime(new Date().toISOString(), { timeZone: $appSettings.app_timezone })}
+        {$t('common.updated') || 'Updated'}:
+        {formatDateTime(new Date().toISOString(), { timeZone: $appSettings.app_timezone })}
       </div>
     </div>
 

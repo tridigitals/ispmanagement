@@ -160,7 +160,7 @@
             <span class="v">
               {ann.ends_at
                 ? formatDateTime(ann.ends_at, { timeZone: $appSettings.app_timezone })
-                : ($t('common.never') || 'Never')}
+                : ($t('common.na') || '—')}
             </span>
           </div>
           <div class="row">
@@ -170,7 +170,7 @@
         </div>
 
         <div class="card tip">
-          <div class="card-title">{$t('common.tip') || 'Tip'}</div>
+          <div class="card-title">{$t('announcements.tip_title') || 'Tip'}</div>
           <div class="tip-text">
             {$t('announcements.hints.rich') ||
               'Tip: Keep it concise. Links are allowed; images should be added as cover.'}

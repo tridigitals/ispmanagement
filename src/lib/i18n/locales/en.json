@@ -100,6 +100,7 @@
     "copy_failed": "Copy failed",
     "delete": "Delete",
     "edit": "Edit",
+    "details": "Details",
     "open": "Open",
     "download": "Download",
     "load_more": "Load more",
@@ -127,6 +128,7 @@
     "save_changes": "Save Changes",
     "saving": "Saving...",
     "loading": "Loading...",
+    "updated": "Updated",
     "empty": {
       "no_results": "No results"
     },
@@ -490,6 +492,8 @@
     "title": "Announcements",
     "subtitle": "Broadcast messages to users as banners and notifications.",
     "feed_subtitle": "Product updates, maintenance windows, and important notices.",
+    "search_placeholder": "Search announcements...",
+    "tip_title": "Tip",
     "banner_aria": "Announcements",
     "more": "+{count} more",
     "not_found": "Announcement not found.",
