@@ -8,7 +8,7 @@
   import { getSlugFromDomain } from '$lib/utils/domain';
   import { formatDate, timeAgo } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
-  import { api, type Announcement } from '$lib/api/client';
+  import { api, type Announcement, type PaginatedResponse } from '$lib/api/client';
   import { stripHtmlToText } from '$lib/utils/sanitizeHtml';
   import {
     notifications,
@@ -43,8 +43,11 @@
   async function loadDashboardAnnouncements() {
     annLoading = true;
     try {
-      const rows = await api.announcements.listRecent();
-      annPosts = (rows || []).slice(0, 3);
+      const res: PaginatedResponse<Announcement> = await api.announcements.listRecent({
+        page: 1,
+        per_page: 3,
+      });
+      annPosts = (res.data || []).slice(0, 3);
     } catch (e) {
       // non-blocking
       console.warn('Failed to load dashboard announcements:', e);

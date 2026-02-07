@@ -516,11 +516,16 @@
       "warning": "Peringatan",
       "error": "Error"
     },
+    "status": {
+      "scheduled": "Terjadwal",
+      "expired": "Berakhir"
+    },
     "fields": {
       "scope": "Cakupan",
       "audience": "Target",
       "severity": "Tipe",
       "mode": "Mode",
+      "status": "Status",
       "cover": "Gambar cover (opsional)",
       "deliver_in_app": "Kirim di aplikasi",
       "deliver_in_app_desc": "Tampilkan di aplikasi dan kirim notifikasi.",

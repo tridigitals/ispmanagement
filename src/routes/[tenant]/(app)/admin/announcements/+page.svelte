@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { api, type Announcement, type CreateAnnouncementDto } from '$lib/api/client';
+  import { api, type Announcement, type CreateAnnouncementDto, type PaginatedResponse } from '$lib/api/client';
   import { can, isSuperAdmin } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import { toast } from '$lib/stores/toast';
@@ -18,6 +18,17 @@
   let loading = $state(true);
   let saving = $state(false);
   let rows = $state<Announcement[]>([]);
+  let total = $state(0);
+  let pageNum = $state(1);
+  const perPage = 20;
+  let loadingMore = $state(false);
+
+  let searchQuery = $state('');
+  let statusFilter = $state<'all' | 'active' | 'scheduled' | 'expired'>('all');
+  let severityFilter = $state<'all' | 'info' | 'success' | 'warning' | 'error'>('all');
+  let modeFilter = $state<'all' | 'post' | 'banner'>('all');
+
+  let hasMore = $derived(rows.length < total);
   let activeTab = $state<'create' | 'history'>('create');
 
   let scope = $state<'tenant' | 'global'>('tenant');
@@ -52,22 +63,87 @@
     { label: get(t)('announcements.modes.banner') || 'Banner', value: 'banner' },
   ];
 
+  const statusFilterOptions = [
+    { label: get(t)('common.all') || 'All', value: 'all' },
+    { label: get(t)('common.active') || 'Active', value: 'active' },
+    { label: get(t)('announcements.status.scheduled') || 'Scheduled', value: 'scheduled' },
+    { label: get(t)('announcements.status.expired') || 'Expired', value: 'expired' },
+  ];
+
+  const severityFilterOptions = [
+    { label: get(t)('common.all') || 'All', value: 'all' },
+    ...severityOptions,
+  ];
+
+  const modeFilterOptions = [
+    { label: get(t)('common.all') || 'All', value: 'all' },
+    ...modeOptions,
+  ];
+
   onMount(async () => {
     if (!$can('manage', 'announcements')) {
       goto('/unauthorized');
       return;
     }
-    await load();
+    await load(true);
   });
 
-  async function load() {
+  async function load(reset: boolean) {
     loading = true;
+    if (reset) {
+      pageNum = 1;
+      rows = [];
+      total = 0;
+    }
     try {
-      rows = await api.announcements.listAdmin($isSuperAdmin ? 'all' : 'tenant');
+      const res: PaginatedResponse<Announcement> = await api.announcements.listAdmin({
+        scope: $isSuperAdmin ? 'all' : 'tenant',
+        page: pageNum,
+        per_page: perPage,
+        search: searchQuery.trim() || undefined,
+        severity: severityFilter === 'all' ? undefined : severityFilter,
+        mode: modeFilter === 'all' ? undefined : modeFilter,
+        status: statusFilter === 'all' ? undefined : statusFilter,
+      });
+      total = res.total || 0;
+      rows = reset ? res.data : [...rows, ...res.data];
     } catch (e: any) {
       toast.error(e?.message || e);
     } finally {
       loading = false;
+    }
+  }
+
+  $effect(() => {
+    if (activeTab !== 'history') return;
+    const q = searchQuery;
+    const s = statusFilter;
+    const sev = severityFilter;
+    const m = modeFilter;
+    const timer = setTimeout(() => void load(true), 250);
+    return () => clearTimeout(timer);
+  });
+
+  async function loadMore() {
+    if (loadingMore || loading || !hasMore) return;
+    loadingMore = true;
+    try {
+      pageNum += 1;
+      const res: PaginatedResponse<Announcement> = await api.announcements.listAdmin({
+        scope: $isSuperAdmin ? 'all' : 'tenant',
+        page: pageNum,
+        per_page: perPage,
+        search: searchQuery.trim() || undefined,
+        severity: severityFilter === 'all' ? undefined : severityFilter,
+        mode: modeFilter === 'all' ? undefined : modeFilter,
+        status: statusFilter === 'all' ? undefined : statusFilter,
+      });
+      total = res.total || total;
+      rows = [...rows, ...res.data];
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    } finally {
+      loadingMore = false;
     }
   }
 
@@ -127,7 +203,7 @@
       deliverEmail = false;
       coverFile = null;
       coverPreviewUrl = '';
-      await load();
+      await load(true);
     } catch (e: any) {
       toast.error(e?.message || e);
     } finally {
@@ -148,7 +224,7 @@
     try {
       await api.announcements.deleteAdmin(id);
       toast.success(get(t)('announcements.toasts.deleted') || 'Deleted');
-      await load();
+      await load(true);
     } catch (e: any) {
       toast.error(e?.message || e);
     }
@@ -164,7 +240,7 @@
       </div>
     </div>
     <div class="actions">
-      <button class="btn" type="button" onclick={load} title={$t('common.refresh') || 'Refresh'}>
+      <button class="btn" type="button" onclick={() => load(true)} title={$t('common.refresh') || 'Refresh'}>
         <Icon name="refresh-cw" size={16} />
         {$t('common.refresh') || 'Refresh'}
       </button>
@@ -294,8 +370,24 @@
       {:else}
         <div class="panel">
           <div class="panel-title">{$t('announcements.list.title') || 'History'}</div>
+          <div class="history-controls">
+            <div class="search">
+              <Icon name="search" size={16} />
+              <input
+                class="search-input"
+                value={searchQuery}
+                oninput={(e) => (searchQuery = (e.currentTarget as HTMLInputElement).value)}
+                placeholder={$t('announcements.search_placeholder') || 'Search announcements...'}
+              />
+            </div>
+            <div class="filters">
+              <Select label={$t('announcements.fields.status') || 'Status'} options={statusFilterOptions} bind:value={statusFilter} />
+              <Select label={$t('announcements.fields.severity') || 'Severity'} options={severityFilterOptions} bind:value={severityFilter} />
+              <Select label={$t('announcements.fields.mode') || 'Mode'} options={modeFilterOptions} bind:value={modeFilter} />
+            </div>
+          </div>
 
-          {#if loading}
+          {#if loading && rows.length === 0}
             <div class="loading">
               <div class="spinner"></div>
               <div>{$t('common.loading') || 'Loading...'}</div>
@@ -351,6 +443,17 @@
                 </div>
               {/each}
             </div>
+
+            {#if hasMore}
+              <div class="more-row">
+                <button class="btn" type="button" onclick={loadMore} disabled={loadingMore}>
+                  <Icon name="chevron-down" size={16} />
+                  {loadingMore
+                    ? $t('common.loading') || 'Loading...'
+                    : $t('common.load_more') || 'Load more'}
+                </button>
+              </div>
+            {/if}
           {/if}
         </div>
       {/if}
@@ -488,6 +591,55 @@
   .panel-title {
     font-weight: 950;
     color: var(--text-primary);
+  }
+
+  .history-controls {
+    display: grid;
+    gap: 0.75rem;
+    padding-top: 0.25rem;
+  }
+
+  .search {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
+    padding: 0.55rem 0.7rem;
+    border-radius: 14px;
+    color: var(--text-secondary);
+  }
+
+  :global([data-theme='light']) .search {
+    background: rgba(0, 0, 0, 0.01);
+  }
+
+  .search-input {
+    width: 100%;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-weight: 650;
+    min-width: 0;
+  }
+
+  .filters {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .more-row {
+    display: flex;
+    justify-content: center;
+    padding-top: 0.75rem;
+  }
+
+  @media (max-width: 900px) {
+    .filters {
+      grid-template-columns: 1fr;
+    }
   }
 
   .form {

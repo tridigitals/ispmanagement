@@ -1,7 +1,7 @@
 //! Announcements / Broadcasts (tenant + global)
 
 use crate::http::{WsEvent, WsHub};
-use crate::models::{Announcement, CreateAnnouncementDto, UpdateAnnouncementDto};
+use crate::models::{Announcement, CreateAnnouncementDto, PaginatedResponse, UpdateAnnouncementDto};
 use crate::services::{AuthService, NotificationService};
 use chrono::Utc;
 use std::collections::HashSet;
@@ -269,8 +269,13 @@ pub async fn list_active_announcements(
 #[tauri::command]
 pub async fn list_recent_announcements(
     token: String,
+    page: Option<u32>,
+    per_page: Option<u32>,
+    search: Option<String>,
+    severity: Option<String>,
+    mode: Option<String>,
     auth_service: State<'_, AuthService>,
-) -> Result<Vec<Announcement>, String> {
+) -> Result<PaginatedResponse<Announcement>, String> {
     let claims = auth_service
         .validate_token(&token)
         .await
@@ -291,36 +296,124 @@ pub async fn list_recent_announcements(
     let now = Utc::now();
 
     #[cfg(feature = "postgres")]
-    let rows: Vec<Announcement> = sqlx::query_as(
-        r#"
-        SELECT a.*
-        FROM announcements a
-        LEFT JOIN announcement_dismissals d
-          ON d.announcement_id = a.id AND d.user_id = $1
-        WHERE d.id IS NULL
-          AND ($2::text IS NULL OR a.tenant_id IS NULL OR a.tenant_id = $2)
-          AND a.deliver_in_app = true
-          AND a.starts_at <= $3
-          AND (
-            a.audience = 'all'
-            OR (a.audience = 'admins' AND $4 = true)
-          )
-        ORDER BY a.starts_at DESC
-        LIMIT 50
-    "#,
-    )
-    .bind(&user_id)
-    .bind(tenant_id.as_deref())
-    .bind(now)
-    .bind(is_admin)
-    .fetch_all(&auth_service.pool)
-    .await
-    .map_err(|e| e.to_string())?;
+    let (rows, total) = {
+        use sqlx::Postgres;
+        use sqlx::QueryBuilder;
+
+        let page = page.unwrap_or(1).max(1);
+        let per_page = per_page.unwrap_or(20).clamp(1, 100);
+        let offset: i64 = ((page - 1) * per_page) as i64;
+
+        let search = search.as_ref().map(|s| s.trim()).filter(|s| !s.is_empty());
+        let severity = severity
+            .as_ref()
+            .map(|s| s.trim().to_lowercase())
+            .filter(|s| !s.is_empty() && s != "all");
+        let mode = mode
+            .as_ref()
+            .map(|s| s.trim().to_lowercase())
+            .filter(|s| !s.is_empty() && s != "all");
+
+        let mut qb_count: QueryBuilder<Postgres> = QueryBuilder::new(
+            "SELECT COUNT(*) FROM announcements a \
+             LEFT JOIN announcement_dismissals d ON d.announcement_id = a.id AND d.user_id = ",
+        );
+        qb_count.push_bind(&user_id);
+        qb_count.push(" WHERE d.id IS NULL");
+
+        let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
+            "SELECT a.* FROM announcements a \
+             LEFT JOIN announcement_dismissals d ON d.announcement_id = a.id AND d.user_id = ",
+        );
+        qb.push_bind(&user_id);
+        qb.push(" WHERE d.id IS NULL");
+
+        if let Some(tid) = tenant_id.as_deref() {
+            qb_count.push(" AND (a.tenant_id IS NULL OR a.tenant_id = ");
+            qb_count.push_bind(tid);
+            qb_count.push(")");
+
+            qb.push(" AND (a.tenant_id IS NULL OR a.tenant_id = ");
+            qb.push_bind(tid);
+            qb.push(")");
+        } else {
+            qb_count.push(" AND a.tenant_id IS NULL");
+            qb.push(" AND a.tenant_id IS NULL");
+        }
+
+        qb_count.push(" AND a.deliver_in_app = true AND a.starts_at <= ");
+        qb_count.push_bind(now);
+        qb_count.push(" AND (a.audience = 'all' OR (a.audience = 'admins' AND ");
+        qb_count.push_bind(is_admin);
+        qb_count.push(" = true))");
+
+        qb.push(" AND a.deliver_in_app = true AND a.starts_at <= ");
+        qb.push_bind(now);
+        qb.push(" AND (a.audience = 'all' OR (a.audience = 'admins' AND ");
+        qb.push_bind(is_admin);
+        qb.push(" = true))");
+
+        if let Some(sev) = severity.as_deref() {
+            qb_count.push(" AND a.severity = ");
+            qb_count.push_bind(sev);
+            qb.push(" AND a.severity = ");
+            qb.push_bind(sev);
+        }
+
+        if let Some(m) = mode.as_deref() {
+            qb_count.push(" AND a.mode = ");
+            qb_count.push_bind(m);
+            qb.push(" AND a.mode = ");
+            qb.push_bind(m);
+        }
+
+        if let Some(q) = search {
+            let like = format!("%{}%", q);
+            qb_count.push(" AND (a.title ILIKE ");
+            qb_count.push_bind(like.clone());
+            qb_count.push(" OR a.body ILIKE ");
+            qb_count.push_bind(like.clone());
+            qb_count.push(")");
+
+            qb.push(" AND (a.title ILIKE ");
+            qb.push_bind(like.clone());
+            qb.push(" OR a.body ILIKE ");
+            qb.push_bind(like);
+            qb.push(")");
+        }
+
+        let total: i64 = qb_count
+            .build_query_scalar()
+            .fetch_one(&auth_service.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        qb.push(" ORDER BY a.starts_at DESC");
+        qb.push(" LIMIT ");
+        qb.push_bind(per_page as i64);
+        qb.push(" OFFSET ");
+        qb.push_bind(offset);
+
+        let rows: Vec<Announcement> = qb
+            .build_query_as()
+            .fetch_all(&auth_service.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+        (rows, total)
+    };
 
     #[cfg(not(feature = "postgres"))]
-    let rows: Vec<Announcement> = Vec::new();
+    let (rows, total): (Vec<Announcement>, i64) = (Vec::new(), 0);
 
-    Ok(rows)
+    let page = page.unwrap_or(1).max(1);
+    let per_page = per_page.unwrap_or(20).clamp(1, 100);
+
+    Ok(PaginatedResponse {
+        data: rows,
+        total,
+        page,
+        per_page,
+    })
 }
 
 #[tauri::command]
@@ -460,8 +553,14 @@ pub async fn dismiss_announcement(
 pub async fn list_announcements_admin(
     token: String,
     scope: Option<String>,
+    page: Option<u32>,
+    per_page: Option<u32>,
+    search: Option<String>,
+    severity: Option<String>,
+    mode: Option<String>,
+    status: Option<String>,
     auth_service: State<'_, AuthService>,
-) -> Result<Vec<Announcement>, String> {
+) -> Result<PaginatedResponse<Announcement>, String> {
     let claims = auth_service
         .validate_token(&token)
         .await
@@ -478,34 +577,144 @@ pub async fn list_announcements_admin(
         .map_err(|e| e.to_string())?;
 
     let scope = scope.unwrap_or_else(|| "tenant".to_string());
+    let now = Utc::now();
 
     #[cfg(feature = "postgres")]
-    let rows: Vec<Announcement> = match scope.as_str() {
-        "global" if claims.is_super_admin => sqlx::query_as(
-            "SELECT * FROM announcements WHERE tenant_id IS NULL ORDER BY created_at DESC LIMIT 200",
-        )
-        .fetch_all(&auth_service.pool)
-        .await
-        .map_err(|e| e.to_string())?,
-        "all" if claims.is_super_admin => sqlx::query_as(
-            "SELECT * FROM announcements ORDER BY created_at DESC LIMIT 200",
-        )
-        .fetch_all(&auth_service.pool)
-        .await
-        .map_err(|e| e.to_string())?,
-        _ => sqlx::query_as(
-            "SELECT * FROM announcements WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 200",
-        )
-        .bind(&tenant_id)
-        .fetch_all(&auth_service.pool)
-        .await
-        .map_err(|e| e.to_string())?,
+    let (rows, total) = {
+        use sqlx::Postgres;
+        use sqlx::QueryBuilder;
+
+        let page = page.unwrap_or(1).max(1);
+        let per_page = per_page.unwrap_or(20).clamp(1, 100);
+        let offset: i64 = ((page - 1) * per_page) as i64;
+
+        let search = search.as_ref().map(|s| s.trim()).filter(|s| !s.is_empty());
+        let severity = severity
+            .as_ref()
+            .map(|s| s.trim().to_lowercase())
+            .filter(|s| !s.is_empty() && s != "all");
+        let mode = mode
+            .as_ref()
+            .map(|s| s.trim().to_lowercase())
+            .filter(|s| !s.is_empty() && s != "all");
+        let status = status
+            .as_ref()
+            .map(|s| s.trim().to_lowercase())
+            .filter(|s| !s.is_empty() && s != "all");
+
+        let mut qb_count: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT COUNT(*) FROM announcements a WHERE 1=1");
+        let mut qb: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT a.* FROM announcements a WHERE 1=1");
+
+        match scope.as_str() {
+            "global" if claims.is_super_admin => {
+                qb_count.push(" AND a.tenant_id IS NULL");
+                qb.push(" AND a.tenant_id IS NULL");
+            }
+            "all" if claims.is_super_admin => {
+                // no tenant filter
+            }
+            _ => {
+                qb_count.push(" AND a.tenant_id = ");
+                qb_count.push_bind(&tenant_id);
+                qb.push(" AND a.tenant_id = ");
+                qb.push_bind(&tenant_id);
+            }
+        }
+
+        if let Some(sev) = severity.as_deref() {
+            qb_count.push(" AND a.severity = ");
+            qb_count.push_bind(sev);
+            qb.push(" AND a.severity = ");
+            qb.push_bind(sev);
+        }
+
+        if let Some(m) = mode.as_deref() {
+            qb_count.push(" AND a.mode = ");
+            qb_count.push_bind(m);
+            qb.push(" AND a.mode = ");
+            qb.push_bind(m);
+        }
+
+        if let Some(st) = status.as_deref() {
+            match st {
+                "scheduled" => {
+                    qb_count.push(" AND a.starts_at > ");
+                    qb_count.push_bind(now);
+                    qb.push(" AND a.starts_at > ");
+                    qb.push_bind(now);
+                }
+                "expired" => {
+                    qb_count.push(" AND a.ends_at IS NOT NULL AND a.ends_at <= ");
+                    qb_count.push_bind(now);
+                    qb.push(" AND a.ends_at IS NOT NULL AND a.ends_at <= ");
+                    qb.push_bind(now);
+                }
+                "active" => {
+                    qb_count.push(" AND a.starts_at <= ");
+                    qb_count.push_bind(now);
+                    qb_count.push(" AND (a.ends_at IS NULL OR a.ends_at > ");
+                    qb_count.push_bind(now);
+                    qb_count.push(")");
+
+                    qb.push(" AND a.starts_at <= ");
+                    qb.push_bind(now);
+                    qb.push(" AND (a.ends_at IS NULL OR a.ends_at > ");
+                    qb.push_bind(now);
+                    qb.push(")");
+                }
+                _ => {}
+            }
+        }
+
+        if let Some(q) = search {
+            let like = format!("%{}%", q);
+            qb_count.push(" AND (a.title ILIKE ");
+            qb_count.push_bind(like.clone());
+            qb_count.push(" OR a.body ILIKE ");
+            qb_count.push_bind(like.clone());
+            qb_count.push(")");
+
+            qb.push(" AND (a.title ILIKE ");
+            qb.push_bind(like.clone());
+            qb.push(" OR a.body ILIKE ");
+            qb.push_bind(like);
+            qb.push(")");
+        }
+
+        let total: i64 = qb_count
+            .build_query_scalar()
+            .fetch_one(&auth_service.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        qb.push(" ORDER BY a.created_at DESC");
+        qb.push(" LIMIT ");
+        qb.push_bind(per_page as i64);
+        qb.push(" OFFSET ");
+        qb.push_bind(offset);
+
+        let rows: Vec<Announcement> = qb
+            .build_query_as()
+            .fetch_all(&auth_service.pool)
+            .await
+            .map_err(|e| e.to_string())?;
+        (rows, total)
     };
 
     #[cfg(not(feature = "postgres"))]
-    let rows: Vec<Announcement> = Vec::new();
+    let (rows, total): (Vec<Announcement>, i64) = (Vec::new(), 0);
 
-    Ok(rows)
+    let page = page.unwrap_or(1).max(1);
+    let per_page = per_page.unwrap_or(20).clamp(1, 100);
+
+    Ok(PaginatedResponse {
+        data: rows,
+        total,
+        page,
+        per_page,
+    })
 }
 
 #[tauri::command]

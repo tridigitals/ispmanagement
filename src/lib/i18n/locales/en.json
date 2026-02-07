@@ -516,11 +516,16 @@
       "warning": "Warning",
       "error": "Error"
     },
+    "status": {
+      "scheduled": "Scheduled",
+      "expired": "Expired"
+    },
     "fields": {
       "scope": "Scope",
       "audience": "Audience",
       "severity": "Severity",
       "mode": "Mode",
+      "status": "Status",
       "cover": "Cover image (optional)",
       "deliver_in_app": "Deliver in-app",
       "deliver_in_app_desc": "Show to users in the app and send a notification.",

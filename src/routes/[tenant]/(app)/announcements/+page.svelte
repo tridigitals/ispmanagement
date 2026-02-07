@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { api, type Announcement } from '$lib/api/client';
+  import { api, type Announcement, type PaginatedResponse } from '$lib/api/client';
   import { t } from 'svelte-i18n';
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
@@ -16,25 +16,17 @@
     : 'http://localhost:3000/api';
 
   let rows = $state<Announcement[]>([]);
+  let total = $state(0);
+  let pageNum = $state(1);
+  const perPage = 20;
+
   let loading = $state(true);
+  let loadingMore = $state(false);
   let q = $state('');
   let sev = $state<'all' | 'info' | 'success' | 'warning' | 'error'>('all');
   let mode = $state<'all' | 'post' | 'banner'>('all');
 
-  let filtered = $derived.by(() => {
-    const query = q.trim().toLowerCase();
-    let r = rows;
-    if (sev !== 'all') r = r.filter((a) => a.severity === sev);
-    if (mode !== 'all') r = r.filter((a) => (a.mode || 'post') === mode);
-    if (query) {
-      r = r.filter((a) => {
-        const title = String(a.title || '').toLowerCase();
-        const body = stripHtmlToText(a.body || '').toLowerCase();
-        return title.includes(query) || body.includes(query);
-      });
-    }
-    return r;
-  });
+  let hasMore = $derived(rows.length < total);
 
   function snippet(body: string) {
     const s = stripHtmlToText(body || '');
@@ -80,10 +72,23 @@
     goto(`${base}/${id}`);
   }
 
-  async function load() {
+  async function load(reset: boolean) {
     loading = true;
+    if (reset) {
+      pageNum = 1;
+      rows = [];
+      total = 0;
+    }
     try {
-      rows = await api.announcements.listRecent();
+      const res: PaginatedResponse<Announcement> = await api.announcements.listRecent({
+        page: pageNum,
+        per_page: perPage,
+        search: q.trim() || undefined,
+        severity: sev === 'all' ? undefined : sev,
+        mode: mode === 'all' ? undefined : mode,
+      });
+      total = res.total || 0;
+      rows = reset ? res.data : [...rows, ...res.data];
     } catch (e: any) {
       toast.error(e?.message || e);
     } finally {
@@ -92,11 +97,40 @@
   }
 
   onMount(() => {
-    void load();
-    const onChange = () => void load();
+    void load(true);
+    const onChange = () => void load(true);
     window.addEventListener('announcements_changed', onChange);
     return () => window.removeEventListener('announcements_changed', onChange);
   });
+
+  $effect(() => {
+    const query = q;
+    const s = sev;
+    const m = mode;
+    const timer = setTimeout(() => void load(true), 250);
+    return () => clearTimeout(timer);
+  });
+
+  async function loadMore() {
+    if (loadingMore || loading || !hasMore) return;
+    loadingMore = true;
+    try {
+      pageNum += 1;
+      const res: PaginatedResponse<Announcement> = await api.announcements.listRecent({
+        page: pageNum,
+        per_page: perPage,
+        search: q.trim() || undefined,
+        severity: sev === 'all' ? undefined : sev,
+        mode: mode === 'all' ? undefined : mode,
+      });
+      total = res.total || total;
+      rows = [...rows, ...res.data];
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    } finally {
+      loadingMore = false;
+    }
+  }
 </script>
 
 <div class="page-content fade-in">
@@ -125,7 +159,7 @@
             placeholder={$t('announcements.search_placeholder') || $t('notifications_page.search_placeholder') || 'Search...'}
           />
         </div>
-        <button class="btn" type="button" onclick={load} title={$t('common.refresh') || 'Refresh'}>
+        <button class="btn" type="button" onclick={() => load(true)} title={$t('common.refresh') || 'Refresh'}>
           <Icon name="refresh-cw" size={16} />
           {$t('common.refresh') || 'Refresh'}
         </button>
@@ -172,7 +206,7 @@
     </div>
   </div>
 
-  {#if loading}
+  {#if loading && rows.length === 0}
     <div class="loading">
       <div class="spinner"></div>
       <div>{$t('common.loading') || 'Loading...'}</div>
@@ -182,15 +216,10 @@
       <Icon name="info" size={18} />
       <span>{$t('announcements.empty_feed') || 'No announcements yet.'}</span>
     </div>
-  {:else if filtered.length === 0}
-    <div class="empty">
-      <Icon name="search" size={18} />
-      <span>{$t('common.empty.no_results') || 'No results.'}</span>
-    </div>
   {:else}
     <div class="summary">
       <div class="count">
-        <span class="num">{filtered.length}</span>
+        <span class="num">{rows.length}</span>
         <span class="txt">{$t('announcements.list.title') || 'Posts'}</span>
       </div>
       <div class="hint">
@@ -200,7 +229,7 @@
     </div>
 
     <div class="feed">
-      {#each filtered as a, i (a.id)}
+      {#each rows as a, i (a.id)}
         <button class="post {a.severity}" type="button" onclick={() => openDetail(a.id)} style={`--d:${i * 55}ms`}>
           {#if a.cover_file_id}
             <div class="cover">
@@ -242,6 +271,15 @@
         </button>
       {/each}
     </div>
+
+    {#if hasMore}
+      <div class="load-more">
+        <button class="btn" type="button" onclick={loadMore} disabled={loadingMore}>
+          <Icon name="chevron-down" size={16} />
+          {loadingMore ? $t('common.loading') || 'Loading...' : $t('common.load_more') || 'Load more'}
+        </button>
+      </div>
+    {/if}
   {/if}
 </div>
 
@@ -661,6 +699,12 @@
     display: flex;
     align-items: center;
     gap: 0.65rem;
+  }
+
+  .load-more {
+    display: flex;
+    justify-content: center;
+    margin-top: 1rem;
   }
 
   @keyframes rise {
