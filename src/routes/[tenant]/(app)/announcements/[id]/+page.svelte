@@ -42,6 +42,19 @@
     }
   }
 
+  function sevLabel(sev: string) {
+    switch (sev) {
+      case 'success':
+        return $t('announcements.severity.success') || 'Success';
+      case 'warning':
+        return $t('announcements.severity.warning') || 'Warning';
+      case 'error':
+        return $t('announcements.severity.error') || 'Error';
+      default:
+        return $t('announcements.severity.info') || 'Info';
+    }
+  }
+
   function goBack() {
     goto(`${tenantPrefix}/announcements`);
   }
@@ -64,11 +77,16 @@
 </script>
 
 <div class="page-content fade-in">
-  <div class="head">
+  <div class="topbar">
     <button class="btn" type="button" onclick={goBack}>
       <Icon name="arrow-left" size={16} />
       {$t('common.back') || 'Back'}
     </button>
+    <div class="crumb">
+      <span class="muted">{$t('announcements.title') || 'Announcements'}</span>
+      <span class="sep"></span>
+      <span class="muted">{ann?.title || ''}</span>
+    </div>
   </div>
 
   {#if loading}
@@ -82,52 +100,224 @@
       <span>{$t('announcements.not_found') || 'Announcement not found.'}</span>
     </div>
   {:else}
-    <article class="post {ann.severity}">
-      {#if ann.cover_file_id}
-        <div class="cover">
+    <section class="hero {ann.severity}">
+      <div class="hero-bg">
+        {#if ann.cover_file_id}
           <img
+            class="hero-img"
             src={`${API_BASE}/storage/files/${ann.cover_file_id}/content`}
             alt=""
             loading="lazy"
           />
-        </div>
-      {/if}
-      <header class="top">
+        {/if}
+        <div class="hero-shade"></div>
+      </div>
+      <div class="hero-inner">
         <div class="meta">
           <span class="pill {ann.severity}">
             <Icon name={iconForSeverity(ann.severity)} size={14} />
-            <span class="sev">{ann.severity}</span>
+            <span class="sev">{sevLabel(ann.severity)}</span>
           </span>
           <span class="dot"></span>
           <span class="time">
             {formatDateTime(ann.starts_at, { timeZone: $appSettings.app_timezone })}
           </span>
-          {#if ann.ends_at}
+          {#if ann.mode === 'banner'}
             <span class="dot"></span>
-            <span class="time">
-              {$t('announcements.ends') || 'Ends'}:
-              {formatDateTime(ann.ends_at, { timeZone: $appSettings.app_timezone })}
-            </span>
+            <span class="mode">{$t('announcements.modes.banner') || 'Banner'}</span>
           {/if}
         </div>
-
         <h1 class="title">{ann.title}</h1>
-      </header>
+        <div class="subtitle">
+          {$t('announcements.feed_subtitle') ||
+            'Product updates, maintenance windows, and important notices.'}
+        </div>
+      </div>
+    </section>
 
-      {#if ann.format === 'html'}
-        <div class="body prose">
-          {@html sanitizeHtml(ann.body)}
+    <div class="grid">
+      <article class="post">
+        {#if ann.format === 'html'}
+          <div class="body prose">
+            {@html sanitizeHtml(ann.body)}
+          </div>
+        {:else}
+          <div class="body" class:mono={ann.format === 'plain'}>
+            {ann.body}
+          </div>
+        {/if}
+      </article>
+
+      <aside class="rail">
+        <div class="card">
+          <div class="card-title">{$t('common.details') || 'Details'}</div>
+          <div class="row">
+            <span class="k">{$t('announcements.fields.starts_at') || 'Starts at'}</span>
+            <span class="v">{formatDateTime(ann.starts_at, { timeZone: $appSettings.app_timezone })}</span>
+          </div>
+          <div class="row">
+            <span class="k">{$t('announcements.fields.ends_at') || 'Ends at'}</span>
+            <span class="v">
+              {ann.ends_at
+                ? formatDateTime(ann.ends_at, { timeZone: $appSettings.app_timezone })
+                : ($t('common.never') || 'Never')}
+            </span>
+          </div>
+          <div class="row">
+            <span class="k">{$t('announcements.fields.severity') || 'Severity'}</span>
+            <span class="v sev {ann.severity}">{sevLabel(ann.severity)}</span>
+          </div>
         </div>
-      {:else}
-        <div class="body" class:mono={ann.format === 'plain'}>
-          {ann.body}
+
+        <div class="card tip">
+          <div class="card-title">{$t('common.tip') || 'Tip'}</div>
+          <div class="tip-text">
+            {$t('announcements.hints.rich') ||
+              'Tip: Keep it concise. Links are allowed; images should be added as cover.'}
+          </div>
         </div>
-      {/if}
-    </article>
+      </aside>
+    </div>
   {/if}
 </div>
 
 <style>
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.9rem;
+  }
+
+  .crumb {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--text-secondary);
+    font-weight: 700;
+    max-width: 55ch;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .muted {
+    opacity: 0.9;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .crumb .sep {
+    width: 4px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.22);
+    flex: none;
+  }
+
+  :global([data-theme='light']) .crumb .sep {
+    background: rgba(0, 0, 0, 0.18);
+  }
+
+  .hero {
+    position: relative;
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 1rem;
+    min-height: 220px;
+  }
+
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(1100px 260px at 12% 0%, rgba(99, 102, 241, 0.24), transparent 60%),
+      radial-gradient(1100px 260px at 90% 60%, rgba(16, 185, 129, 0.12), transparent 60%),
+      rgba(0, 0, 0, 0.25);
+  }
+
+  :global([data-theme='light']) .hero-bg {
+    background:
+      radial-gradient(1100px 260px at 12% 0%, rgba(99, 102, 241, 0.14), transparent 60%),
+      radial-gradient(1100px 260px at 90% 60%, rgba(16, 185, 129, 0.08), transparent 60%),
+      rgba(0, 0, 0, 0.02);
+  }
+
+  .hero-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(1.05) contrast(1.02);
+  }
+
+  .hero-shade {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.7)),
+      radial-gradient(900px 240px at 20% 0%, rgba(99, 102, 241, 0.22), transparent 60%);
+  }
+
+  :global([data-theme='light']) .hero-shade {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.0), rgba(0, 0, 0, 0.25)),
+      radial-gradient(900px 240px at 20% 0%, rgba(99, 102, 241, 0.14), transparent 60%);
+  }
+
+  .hero-inner {
+    position: relative;
+    padding: 1.15rem 1.2rem 1.25rem;
+    color: var(--text-primary);
+  }
+
+  .hero .meta {
+    color: rgba(255, 255, 255, 0.82);
+  }
+
+  :global([data-theme='light']) .hero .meta {
+    color: rgba(0, 0, 0, 0.68);
+  }
+
+  .hero .pill {
+    background: rgba(0, 0, 0, 0.22);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  :global([data-theme='light']) .hero .pill {
+    background: rgba(255, 255, 255, 0.65);
+    border-color: rgba(0, 0, 0, 0.12);
+  }
+
+  .subtitle {
+    margin-top: 0.55rem;
+    color: rgba(255, 255, 255, 0.82);
+    font-weight: 700;
+    max-width: 70ch;
+  }
+
+  :global([data-theme='light']) .subtitle {
+    color: rgba(0, 0, 0, 0.68);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 1rem;
+    align-items: start;
+  }
+
+  @media (max-width: 980px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
   .post {
     border: 1px solid var(--border-color);
     border-radius: 20px;
@@ -137,25 +327,6 @@
       rgba(255, 255, 255, 0.02);
     box-shadow: var(--shadow-md);
     overflow: hidden;
-  }
-
-  .cover {
-    margin: -1.25rem -1.25rem 1rem;
-    height: 220px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(0, 0, 0, 0.2);
-  }
-
-  :global([data-theme='light']) .cover {
-    border-bottom-color: rgba(0, 0, 0, 0.06);
-    background: rgba(0, 0, 0, 0.04);
-  }
-
-  .cover img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
   }
 
   :global([data-theme='light']) .post {
@@ -294,6 +465,103 @@
     font-weight: 800;
     text-decoration: underline;
     text-underline-offset: 3px;
+  }
+
+  .rail {
+    position: sticky;
+    top: 1rem;
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  @media (max-width: 980px) {
+    .rail {
+      position: static;
+    }
+  }
+
+  .card {
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.02);
+    box-shadow: var(--shadow-sm);
+    padding: 0.95rem 1rem;
+  }
+
+  :global([data-theme='light']) .card {
+    background: rgba(0, 0, 0, 0.01);
+  }
+
+  .card-title {
+    font-weight: 950;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+  }
+
+  .row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.8rem;
+    padding: 0.45rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  :global([data-theme='light']) .row {
+    border-top-color: rgba(0, 0, 0, 0.06);
+  }
+
+  .row:first-of-type {
+    border-top: none;
+    padding-top: 0;
+  }
+
+  .k {
+    color: var(--text-secondary);
+    font-weight: 750;
+    font-size: 0.88rem;
+  }
+
+  .v {
+    color: var(--text-primary);
+    font-weight: 850;
+    text-align: right;
+    font-size: 0.9rem;
+  }
+
+  .v.sev {
+    text-transform: capitalize;
+  }
+
+  .v.sev.info {
+    color: rgba(59, 130, 246, 0.95);
+  }
+  .v.sev.success {
+    color: rgba(34, 197, 94, 0.95);
+  }
+  .v.sev.warning {
+    color: rgba(245, 158, 11, 0.95);
+  }
+  .v.sev.error {
+    color: rgba(239, 68, 68, 0.95);
+  }
+
+  .tip {
+    background:
+      radial-gradient(900px 220px at 15% 0%, rgba(99, 102, 241, 0.14), transparent 60%),
+      rgba(255, 255, 255, 0.02);
+  }
+
+  :global([data-theme='light']) .tip {
+    background:
+      radial-gradient(900px 220px at 15% 0%, rgba(99, 102, 241, 0.1), transparent 60%),
+      rgba(0, 0, 0, 0.01);
+  }
+
+  .tip-text {
+    color: var(--text-secondary);
+    font-weight: 650;
+    line-height: 1.45;
   }
 
   .body.mono {
