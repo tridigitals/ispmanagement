@@ -16,9 +16,9 @@ use db::connection::{init_db, seed_defaults};
 use services::backup::BackupScheduler;
 use services::metrics_service::MetricsService;
 use services::{
-    AnnouncementScheduler, AuditService, AuthService, BackupService, EmailOutboxService, EmailService,
-    NotificationService, PaymentService,
-    PlanService, RoleService, SettingsService, SystemService, TeamService, UserService,
+    AnnouncementScheduler, AuditService, AuthService, BackupService, EmailOutboxService,
+    EmailService, NotificationService, PaymentService, PlanService, RoleService, SettingsService,
+    SystemService, TeamService, UserService,
 };
 use tauri::Manager;
 use tracing::info;

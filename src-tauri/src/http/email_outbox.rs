@@ -99,7 +99,11 @@ async fn list_email_outbox(
             .as_ref()
             .map(|s| s.trim().to_lowercase())
             .filter(|s| !s.is_empty() && s != "all");
-        let search = query.search.as_ref().map(|s| s.trim()).filter(|s| !s.is_empty());
+        let search = query
+            .search
+            .as_ref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty());
 
         let mut qb_count: QueryBuilder<Postgres> =
             QueryBuilder::new("SELECT COUNT(*) FROM email_outbox eo WHERE 1=1");
@@ -419,7 +423,11 @@ async fn export_email_outbox_csv(
             .as_ref()
             .map(|s| s.trim().to_lowercase())
             .filter(|s| !s.is_empty() && s != "all");
-        let search = query.search.as_ref().map(|s| s.trim()).filter(|s| !s.is_empty());
+        let search = query
+            .search
+            .as_ref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty());
 
         let mut qb: QueryBuilder<Postgres> = QueryBuilder::new(
             r#"
@@ -570,7 +578,9 @@ async fn retry_email_outbox(
         };
 
         if res.rows_affected() == 0 {
-            return Err(AppError::NotFound("Outbox item not found (or currently sending)".into()));
+            return Err(AppError::NotFound(
+                "Outbox item not found (or currently sending)".into(),
+            ));
         }
     }
 
@@ -701,7 +711,9 @@ async fn delete_email_outbox(
         };
 
         if res.rows_affected() == 0 {
-            return Err(AppError::NotFound("Outbox item not found (or currently sending)".into()));
+            return Err(AppError::NotFound(
+                "Outbox item not found (or currently sending)".into(),
+            ));
         }
     }
 

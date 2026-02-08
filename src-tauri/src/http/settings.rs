@@ -434,7 +434,8 @@ pub async fn send_test_email(
 pub async fn test_smtp_connection(
     State(state): State<AppState>,
     headers: HeaderMap,
-) -> Result<Json<crate::services::email_service::SmtpConnectionTestResult>, crate::error::AppError> {
+) -> Result<Json<crate::services::email_service::SmtpConnectionTestResult>, crate::error::AppError>
+{
     let token = get_token(&headers)?;
     state.auth_service.check_admin(&token).await?;
 

@@ -24,7 +24,11 @@ struct EmailOutboxRow {
 }
 
 impl EmailOutboxService {
-    pub fn new(pool: DbPool, settings_service: SettingsService, email_service: EmailService) -> Self {
+    pub fn new(
+        pool: DbPool,
+        settings_service: SettingsService,
+        email_service: EmailService,
+    ) -> Self {
         Self {
             pool,
             settings_service,
@@ -67,10 +71,11 @@ impl EmailOutboxService {
     #[cfg(feature = "postgres")]
     async fn try_advisory_lock(&self, key: &str) -> bool {
         // Hash a string to a stable i64 lock id. This prevents collisions in typical setups.
-        let locked: Result<bool, _> = sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
-            .bind(key)
-            .fetch_one(&self.pool)
-            .await;
+        let locked: Result<bool, _> =
+            sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
+                .bind(key)
+                .fetch_one(&self.pool)
+                .await;
         locked.unwrap_or(false)
     }
 
@@ -103,7 +108,9 @@ impl EmailOutboxService {
     ) -> AppResult<String> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        let max_attempts = max_attempts.unwrap_or(self.max_attempts_default().await).clamp(1, 25);
+        let max_attempts = max_attempts
+            .unwrap_or(self.max_attempts_default().await)
+            .clamp(1, 25);
         let scheduled_at = scheduled_at.unwrap_or(now);
 
         #[cfg(feature = "postgres")]
@@ -208,13 +215,12 @@ impl EmailOutboxService {
             return Ok(());
         }
 
-        let emails: Vec<String> = sqlx::query_scalar(
-            "SELECT email FROM users WHERE id = ANY($1) AND is_active = true",
-        )
-        .bind(user_ids)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
+        let emails: Vec<String> =
+            sqlx::query_scalar("SELECT email FROM users WHERE id = ANY($1) AND is_active = true")
+                .bind(user_ids)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
 
         for email in emails {
             // Keep it simple: enqueue each recipient separately.
@@ -240,13 +246,12 @@ impl EmailOutboxService {
             return Ok(());
         }
 
-        let emails: Vec<String> = sqlx::query_scalar(
-            "SELECT email FROM users WHERE id = ANY($1) AND is_active = true",
-        )
-        .bind(user_ids)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
+        let emails: Vec<String> =
+            sqlx::query_scalar("SELECT email FROM users WHERE id = ANY($1) AND is_active = true")
+                .bind(user_ids)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
 
         for email in emails {
             let _ = self
@@ -348,17 +353,19 @@ impl EmailOutboxService {
 
             for r in rows {
                 // Re-read attempts/max_attempts best-effort
-                let attempts: i32 = sqlx::query_scalar("SELECT attempts FROM email_outbox WHERE id = $1")
-                    .bind(&r.id)
-                    .fetch_one(&self.pool)
-                    .await
-                    .unwrap_or(1);
+                let attempts: i32 =
+                    sqlx::query_scalar("SELECT attempts FROM email_outbox WHERE id = $1")
+                        .bind(&r.id)
+                        .fetch_one(&self.pool)
+                        .await
+                        .unwrap_or(1);
 
-                let max_attempts: i32 = sqlx::query_scalar("SELECT max_attempts FROM email_outbox WHERE id = $1")
-                    .bind(&r.id)
-                    .fetch_one(&self.pool)
-                    .await
-                    .unwrap_or(r.max_attempts);
+                let max_attempts: i32 =
+                    sqlx::query_scalar("SELECT max_attempts FROM email_outbox WHERE id = $1")
+                        .bind(&r.id)
+                        .fetch_one(&self.pool)
+                        .await
+                        .unwrap_or(r.max_attempts);
 
                 match self
                     .email_service
@@ -383,8 +390,9 @@ impl EmailOutboxService {
                     Err(e) => {
                         let err_msg = format!("{}", e);
                         let is_final = attempts >= max_attempts;
-                        let next_delay = (base_delay * (2_i64.saturating_pow((attempts - 1).max(0) as u32)))
-                            .min(60 * 60);
+                        let next_delay = (base_delay
+                            * (2_i64.saturating_pow((attempts - 1).max(0) as u32)))
+                        .min(60 * 60);
                         let next_at = now + chrono::Duration::seconds(next_delay);
 
                         if is_final {

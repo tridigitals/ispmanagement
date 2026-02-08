@@ -5,10 +5,10 @@
 
 use crate::error::{AppError, AppResult};
 use crate::services::SettingsService;
+use lettre::message::{header::ContentType, MultiPart, SinglePart};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::transport::smtp::client::Tls;
 use lettre::transport::smtp::client::TlsParameters;
-use lettre::message::{header::ContentType, MultiPart, SinglePart};
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 use serde::Serialize;
 use std::time::Instant;
@@ -198,8 +198,14 @@ impl EmailService {
         match config.provider.as_str() {
             "resend" => self.send_via_resend(&config, to, subject, body, None).await,
             "smtp" => self.send_via_smtp(&config, to, subject, body).await,
-            "sendgrid" => self.send_via_sendgrid(&config, to, subject, body, None).await,
-            "webhook" => self.send_via_webhook(&config, to, subject, body, None).await,
+            "sendgrid" => {
+                self.send_via_sendgrid(&config, to, subject, body, None)
+                    .await
+            }
+            "webhook" => {
+                self.send_via_webhook(&config, to, subject, body, None)
+                    .await
+            }
             _ => Err(AppError::Validation(format!(
                 "Unknown email provider: {}",
                 config.provider
@@ -219,7 +225,8 @@ impl EmailService {
             self.send_email_with_html_for_tenant(tenant_id, to, subject, body_text, html)
                 .await
         } else {
-            self.send_email_for_tenant(tenant_id, to, subject, body_text).await
+            self.send_email_for_tenant(tenant_id, to, subject, body_text)
+                .await
         }
     }
 
@@ -239,26 +246,17 @@ impl EmailService {
                 self.send_via_resend(&config, to, subject, body_text, Some(body_html.to_string()))
                     .await
             }
-            "smtp" => self.send_via_smtp_html(&config, to, subject, body_text, body_html).await,
+            "smtp" => {
+                self.send_via_smtp_html(&config, to, subject, body_text, body_html)
+                    .await
+            }
             "sendgrid" => {
-                self.send_via_sendgrid(
-                    &config,
-                    to,
-                    subject,
-                    body_text,
-                    Some(body_html.to_string()),
-                )
-                .await
+                self.send_via_sendgrid(&config, to, subject, body_text, Some(body_html.to_string()))
+                    .await
             }
             "webhook" => {
-                self.send_via_webhook(
-                    &config,
-                    to,
-                    subject,
-                    body_text,
-                    Some(body_html.to_string()),
-                )
-                .await
+                self.send_via_webhook(&config, to, subject, body_text, Some(body_html.to_string()))
+                    .await
             }
             _ => Err(AppError::Validation(format!(
                 "Unknown email provider: {}",

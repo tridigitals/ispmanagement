@@ -1,6 +1,8 @@
 //! Models module
 
+pub mod announcements;
 pub mod audit_log;
+pub mod email_outbox;
 pub mod file;
 pub mod invoice;
 pub mod notification;
@@ -8,12 +10,11 @@ pub mod plan;
 pub mod role;
 pub mod settings;
 pub mod support;
-pub mod announcements;
 pub mod tenant;
 pub mod trusted_device;
 pub mod user;
-pub mod email_outbox;
 
+pub use announcements::*;
 pub use audit_log::*;
 pub use email_outbox::*;
 pub use file::*;
@@ -23,7 +24,6 @@ pub use plan::*;
 pub use role::*;
 pub use settings::*;
 pub use support::*;
-pub use announcements::*;
 pub use tenant::*;
 pub use trusted_device::*;
 pub use user::*;

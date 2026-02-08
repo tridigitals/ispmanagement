@@ -1,8 +1,8 @@
 use crate::db::DbPool;
 use crate::models::Announcement;
+use crate::services::encode_unsubscribe_token;
 use crate::services::AuditService;
 use crate::services::NotificationService;
-use crate::services::encode_unsubscribe_token;
 use chrono::Utc;
 use std::collections::HashSet;
 use tracing::{error, info, warn};
@@ -51,7 +51,11 @@ pub struct AnnouncementScheduler {
 }
 
 impl AnnouncementScheduler {
-    pub fn new(pool: DbPool, notification_service: NotificationService, audit_service: AuditService) -> Self {
+    pub fn new(
+        pool: DbPool,
+        notification_service: NotificationService,
+        audit_service: AuditService,
+    ) -> Self {
         Self {
             pool,
             notification_service,
@@ -75,17 +79,20 @@ impl AnnouncementScheduler {
                 #[cfg(feature = "postgres")]
                 {
                     // Prevent duplicate processing when running multiple instances.
-                    let locked: bool = sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
-                        .bind("announcement_scheduler")
-                        .fetch_one(&pool)
-                        .await
-                        .unwrap_or(false);
+                    let locked: bool =
+                        sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
+                            .bind("announcement_scheduler")
+                            .fetch_one(&pool)
+                            .await
+                            .unwrap_or(false);
                     if !locked {
                         continue;
                     }
                 }
 
-                if let Err(e) = Self::process_due(&pool, &notification_service, &audit_service).await {
+                if let Err(e) =
+                    Self::process_due(&pool, &notification_service, &audit_service).await
+                {
                     if e.contains("relation \"announcements\" does not exist")
                         || e.contains("relation \"announcement_dismissals\" does not exist")
                         || e.contains("relation \"users\" does not exist")
@@ -103,10 +110,11 @@ impl AnnouncementScheduler {
 
                 #[cfg(feature = "postgres")]
                 {
-                    let _ = sqlx::query_scalar::<_, bool>("SELECT pg_advisory_unlock(hashtext($1))")
-                        .bind("announcement_scheduler")
-                        .fetch_one(&pool)
-                        .await;
+                    let _ =
+                        sqlx::query_scalar::<_, bool>("SELECT pg_advisory_unlock(hashtext($1))")
+                            .bind("announcement_scheduler")
+                            .fetch_one(&pool)
+                            .await;
                 }
             }
         });
@@ -219,15 +227,20 @@ impl AnnouncementScheduler {
 
         if let Some(tid) = announcement.tenant_id.as_deref() {
             if announcement.audience == "admins" {
-                recipients.extend(Self::tenant_admin_user_ids(pool, tid).await.unwrap_or_default());
+                recipients.extend(
+                    Self::tenant_admin_user_ids(pool, tid)
+                        .await
+                        .unwrap_or_default(),
+                );
             } else {
                 recipients.extend(Self::tenant_user_ids(pool, tid).await.unwrap_or_default());
             }
         } else {
-            let ids: Vec<String> = sqlx::query_scalar("SELECT id FROM users WHERE is_active = true")
-                .fetch_all(pool)
-                .await
-                .unwrap_or_default();
+            let ids: Vec<String> =
+                sqlx::query_scalar("SELECT id FROM users WHERE is_active = true")
+                    .fetch_all(pool)
+                    .await
+                    .unwrap_or_default();
             recipients.extend(ids);
         }
 
@@ -292,7 +305,10 @@ impl AnnouncementScheduler {
                     "https://{}/{}/announcements/{}",
                     domain, sl, announcement.id
                 )),
-                (Some(domain), None) => Some(format!("https://{}/announcements/{}", domain, announcement.id)),
+                (Some(domain), None) => Some(format!(
+                    "https://{}/announcements/{}",
+                    domain, announcement.id
+                )),
                 _ => None,
             };
 

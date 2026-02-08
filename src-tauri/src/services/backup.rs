@@ -42,6 +42,41 @@ impl BackupService {
         self.get_backup_root_dir().join("tenants").join(tenant_id)
     }
 
+    fn is_sensitive_setting_key(key: &str) -> bool {
+        // Tenant backups should not contain credentials or API secrets.
+        // Keep this narrow and explicit to avoid surprising data loss.
+        let k = key.trim();
+        if k.starts_with("email_") {
+            return true;
+        }
+        if k.starts_with("payment_") {
+            return true;
+        }
+        matches!(
+            k,
+            "storage_s3_access_key" | "storage_s3_secret_key" | "jwt_secret"
+        )
+    }
+
+    fn redact_settings_rows(
+        mut rows: Vec<serde_json::Map<String, serde_json::Value>>,
+    ) -> Vec<serde_json::Map<String, serde_json::Value>> {
+        for row in &mut rows {
+            let key = row.get("key").and_then(|v| v.as_str()).unwrap_or("");
+            if !Self::is_sensitive_setting_key(key) {
+                continue;
+            }
+
+            // Keep row but clear values. This prevents secrets from being exfiltrated via backups.
+            // After restore, admins must reconfigure these settings.
+            row.insert(
+                "value".to_string(),
+                serde_json::Value::String(String::new()),
+            );
+        }
+        rows
+    }
+
     /// List all backups
     pub async fn list_backups(&self) -> AppResult<Vec<BackupRecord>> {
         let backup_root = self.get_backup_root_dir();
@@ -152,6 +187,7 @@ impl BackupService {
         let zip_filename = format!("global_backup_{}.zip", timestamp);
         let zip_path = backup_dir.join(&zip_filename);
 
+        // Global backups should include all core tables. If you add new tables, add them here.
         let tables = vec![
             "permissions",
             "plans",
@@ -173,6 +209,15 @@ impl BackupService {
             "notification_preferences",
             "push_subscriptions",
             "audit_logs",
+            // Support
+            "support_tickets",
+            "support_ticket_messages",
+            "support_ticket_attachments",
+            // Announcements
+            "announcements",
+            "announcement_dismissals",
+            // Email outbox
+            "email_outbox",
         ];
 
         let mut data_map: std::collections::HashMap<String, serde_json::Value> =
@@ -264,6 +309,9 @@ impl BackupService {
         // Tenant restore never restores `tenants`, and exporting it can fail if the DB contains
         // invalid UTF-8 sequences in tenant metadata columns.
 
+        // Tenant backup = tenant-owned data only (no global platform secrets).
+        // This is intentionally not a full DB backup and is not meant to migrate global users.
+        //
         // 2) Tenant-scoped tables (restore-safe)
         let settings_rows = self
             .fetch_rows(
@@ -273,6 +321,7 @@ impl BackupService {
             )
             .await
             .map_err(|e| AppError::Internal(format!("Failed to export settings: {}", e)))?;
+        let settings_rows = Self::redact_settings_rows(settings_rows);
         data_map.insert(
             "settings.json".to_string(),
             serde_json::to_value(&settings_rows).unwrap(),
@@ -291,19 +340,6 @@ impl BackupService {
         data_map.insert(
             "file_records.json".to_string(),
             serde_json::to_value(&file_rows).unwrap(),
-        );
-
-        let audit_rows = self
-            .fetch_rows(
-                "SELECT * FROM audit_logs WHERE tenant_id = ?",
-                "SELECT * FROM audit_logs WHERE tenant_id::text = $1",
-                vec![tenant_id.to_string()],
-            )
-            .await
-            .map_err(|e| AppError::Internal(format!("Failed to export audit_logs: {}", e)))?;
-        data_map.insert(
-            "audit_logs.json".to_string(),
-            serde_json::to_value(&audit_rows).unwrap(),
         );
 
         let role_rows = self
@@ -346,6 +382,82 @@ impl BackupService {
         );
 
         // tenant_subscriptions is billing/plan data (superadmin scope) — do not export in tenant backups.
+
+        // Announcements (tenant-scoped only) + dismissals (join by tenant announcements)
+        let ann_rows = self
+            .fetch_rows(
+                "SELECT * FROM announcements WHERE tenant_id = ?",
+                "SELECT * FROM announcements WHERE tenant_id::text = $1",
+                vec![tenant_id.to_string()],
+            )
+            .await
+            .map_err(|e| AppError::Internal(format!("Failed to export announcements: {}", e)))?;
+        data_map.insert(
+            "announcements.json".to_string(),
+            serde_json::to_value(&ann_rows).unwrap(),
+        );
+
+        let ann_dismiss_rows = self
+            .fetch_rows(
+                "SELECT ad.* FROM announcement_dismissals ad WHERE ad.announcement_id IN (SELECT a.id FROM announcements a WHERE a.tenant_id = ?)",
+                "SELECT ad.* FROM announcement_dismissals ad WHERE ad.announcement_id IN (SELECT a.id FROM announcements a WHERE a.tenant_id::text = $1)",
+                vec![tenant_id.to_string()],
+            )
+            .await
+            .map_err(|e| {
+                AppError::Internal(format!(
+                    "Failed to export announcement_dismissals: {}",
+                    e
+                ))
+            })?;
+        data_map.insert(
+            "announcement_dismissals.json".to_string(),
+            serde_json::to_value(&ann_dismiss_rows).unwrap(),
+        );
+
+        // Support tickets + messages + attachments (join by tenant tickets)
+        let ticket_rows = self
+            .fetch_rows(
+                "SELECT * FROM support_tickets WHERE tenant_id = ?",
+                "SELECT * FROM support_tickets WHERE tenant_id::text = $1",
+                vec![tenant_id.to_string()],
+            )
+            .await
+            .map_err(|e| AppError::Internal(format!("Failed to export support_tickets: {}", e)))?;
+        data_map.insert(
+            "support_tickets.json".to_string(),
+            serde_json::to_value(&ticket_rows).unwrap(),
+        );
+
+        let msg_rows = self
+            .fetch_rows(
+                "SELECT m.* FROM support_ticket_messages m WHERE m.ticket_id IN (SELECT t.id FROM support_tickets t WHERE t.tenant_id = ?)",
+                "SELECT m.* FROM support_ticket_messages m WHERE m.ticket_id IN (SELECT t.id FROM support_tickets t WHERE t.tenant_id::text = $1)",
+                vec![tenant_id.to_string()],
+            )
+            .await
+            .map_err(|e| {
+                AppError::Internal(format!("Failed to export support_ticket_messages: {}", e))
+            })?;
+        data_map.insert(
+            "support_ticket_messages.json".to_string(),
+            serde_json::to_value(&msg_rows).unwrap(),
+        );
+
+        let att_rows = self
+            .fetch_rows(
+                "SELECT a.* FROM support_ticket_attachments a WHERE a.message_id IN (SELECT m.id FROM support_ticket_messages m JOIN support_tickets t ON t.id = m.ticket_id WHERE t.tenant_id = ?)",
+                "SELECT a.* FROM support_ticket_attachments a WHERE a.message_id IN (SELECT m.id FROM support_ticket_messages m JOIN support_tickets t ON t.id = m.ticket_id WHERE t.tenant_id::text = $1)",
+                vec![tenant_id.to_string()],
+            )
+            .await
+            .map_err(|e| {
+                AppError::Internal(format!("Failed to export support_ticket_attachments: {}", e))
+            })?;
+        data_map.insert(
+            "support_ticket_attachments.json".to_string(),
+            serde_json::to_value(&att_rows).unwrap(),
+        );
 
         // notification_preferences is user-scoped (no tenant_id); filter by tenant members
         let notif_prefs_rows = self
@@ -460,7 +572,9 @@ impl BackupService {
                     // Fallback to string representation for most things
                     let val_str: Option<String> = row.try_get(name).ok();
                     if let Some(s) = val_str {
-                        map.insert(name.to_string(), serde_json::Value::String(s));
+                        // Avoid restore errors caused by embedded NUL bytes in text.
+                        let cleaned = s.replace('\u{0000}', "");
+                        map.insert(name.to_string(), serde_json::Value::String(cleaned));
                         continue;
                     }
 
@@ -677,6 +791,15 @@ impl BackupService {
             "trusted_devices",
             "notification_preferences",
             "push_subscriptions",
+            // Announcements
+            "announcements",
+            "announcement_dismissals",
+            // Support
+            "support_tickets",
+            "support_ticket_messages",
+            "support_ticket_attachments",
+            // Outbox (global/admin tools)
+            "email_outbox",
             "audit_logs",
         ];
 
@@ -693,6 +816,7 @@ impl BackupService {
                 "tenant_subscriptions",
                 "invoices",
                 "trusted_devices",
+                "email_outbox",
             ]
             .into_iter()
             .collect()
@@ -748,6 +872,60 @@ impl BackupService {
             std::collections::HashSet::new()
         };
 
+        // Tenant restore requires the referenced users to exist (tenant_members.user_id is NOT NULL + FK).
+        // We intentionally do not include global users in tenant backups for safety.
+        if let Some(tid) = target_tenant_id {
+            if !allowed_user_ids.is_empty() {
+                #[cfg(feature = "postgres")]
+                {
+                    let ids: Vec<String> = allowed_user_ids.iter().cloned().collect();
+                    let existing: Vec<String> =
+                        sqlx::query_scalar("SELECT id FROM users WHERE id = ANY($1)")
+                            .bind(&ids)
+                            .fetch_all(&self.pool)
+                            .await
+                            .unwrap_or_default();
+                    let existing: std::collections::HashSet<String> =
+                        existing.into_iter().collect();
+                    let missing: Vec<String> = allowed_user_ids
+                        .iter()
+                        .filter(|id| !existing.contains(*id))
+                        .take(10)
+                        .cloned()
+                        .collect();
+                    if !missing.is_empty() {
+                        return Err(AppError::Validation(format!(
+                            "Tenant restore blocked: {} user(s) referenced by tenant_members are missing in this database (example: {}). Create/import users first, then restore again.",
+                            allowed_user_ids.len().saturating_sub(existing.len()),
+                            missing.join(", ")
+                        )));
+                    }
+                }
+
+                #[cfg(feature = "sqlite")]
+                {
+                    // SQLite mode: best-effort check
+                    for uid in allowed_user_ids.iter().take(50) {
+                        let exists: Option<String> =
+                            sqlx::query_scalar("SELECT id FROM users WHERE id = ?")
+                                .bind(uid)
+                                .fetch_optional(&self.pool)
+                                .await
+                                .unwrap_or(None);
+                        if exists.is_none() {
+                            return Err(AppError::Validation(format!(
+                                "Tenant restore blocked: user {} referenced by tenant_members is missing in this database. Create/import users first, then restore again.",
+                                uid
+                            )));
+                        }
+                    }
+                }
+            }
+
+            // Ensure tenant_id enforcement is always applied consistently later.
+            let _ = tid;
+        }
+
         // 3. Start database operations
         let mut tx = self
             .pool
@@ -800,12 +978,19 @@ impl BackupService {
                         "roles",
                         "tenant_members",
                         "notifications",
+                        "announcements",
+                        "support_tickets",
                     ];
 
                     let tenant_tables_without_tenant_id = ["role_permissions"];
 
                     let tenant_tables_user_scoped =
                         ["notification_preferences", "push_subscriptions"];
+                    let tenant_tables_join_scoped = [
+                        "announcement_dismissals",
+                        "support_ticket_messages",
+                        "support_ticket_attachments",
+                    ];
 
                     if tenant_tables_with_tenant_id.contains(&table_name) {
                         #[cfg(feature = "postgres")]
@@ -834,6 +1019,37 @@ impl BackupService {
                             table_name
                         );
                         sqlx::query(&del_query).bind(tid).execute(&mut *tx).await?;
+                    } else if tenant_tables_join_scoped.contains(&table_name) {
+                        // Tables without tenant_id, but scoped through a tenant-owned parent.
+                        #[cfg(feature = "postgres")]
+                        let del_query = match table_name {
+                            "announcement_dismissals" => {
+                                "DELETE FROM announcement_dismissals WHERE announcement_id IN (SELECT id FROM announcements WHERE tenant_id::text = $1)"
+                            }
+                            "support_ticket_messages" => {
+                                "DELETE FROM support_ticket_messages WHERE ticket_id IN (SELECT id FROM support_tickets WHERE tenant_id::text = $1)"
+                            }
+                            "support_ticket_attachments" => {
+                                "DELETE FROM support_ticket_attachments WHERE message_id IN (SELECT m.id FROM support_ticket_messages m JOIN support_tickets t ON t.id = m.ticket_id WHERE t.tenant_id::text = $1)"
+                            }
+                            _ => "",
+                        };
+                        #[cfg(feature = "sqlite")]
+                        let del_query = match table_name {
+                            "announcement_dismissals" => {
+                                "DELETE FROM announcement_dismissals WHERE announcement_id IN (SELECT id FROM announcements WHERE tenant_id = ?)"
+                            }
+                            "support_ticket_messages" => {
+                                "DELETE FROM support_ticket_messages WHERE ticket_id IN (SELECT id FROM support_tickets WHERE tenant_id = ?)"
+                            }
+                            "support_ticket_attachments" => {
+                                "DELETE FROM support_ticket_attachments WHERE message_id IN (SELECT m.id FROM support_ticket_messages m JOIN support_tickets t ON t.id = m.ticket_id WHERE t.tenant_id = ?)"
+                            }
+                            _ => "",
+                        };
+                        if !del_query.is_empty() {
+                            sqlx::query(del_query).bind(tid).execute(&mut *tx).await?;
+                        }
                     } else {
                         continue;
                     }
@@ -880,6 +1096,23 @@ impl BackupService {
                             let user_id = row.get("user_id").and_then(|v| v.as_str()).unwrap_or("");
                             if user_id.is_empty() || !allowed_user_ids.contains(user_id) {
                                 continue;
+                            }
+                        }
+
+                        // Support ticket FK hygiene:
+                        // Tenant backups don't include global users. If a ticket/message references a user
+                        // outside this tenant restore scope, null it out so inserts don't fail.
+                        if table_name == "support_tickets" {
+                            for col in ["created_by", "assigned_to"] {
+                                let uid = row.get(col).and_then(|v| v.as_str()).unwrap_or("");
+                                if !uid.is_empty() && !allowed_user_ids.contains(uid) {
+                                    row.insert(col.to_string(), serde_json::Value::Null);
+                                }
+                            }
+                        } else if table_name == "support_ticket_messages" {
+                            let uid = row.get("author_id").and_then(|v| v.as_str()).unwrap_or("");
+                            if !uid.is_empty() && !allowed_user_ids.contains(uid) {
+                                row.insert("author_id".to_string(), serde_json::Value::Null);
                             }
                         }
                     }
@@ -1258,11 +1491,12 @@ impl BackupScheduler {
                 #[cfg(feature = "postgres")]
                 {
                     // Prevent duplicate processing when running multiple instances.
-                    let locked: bool = sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
-                        .bind("backup_scheduler")
-                        .fetch_one(&pool)
-                        .await
-                        .unwrap_or(false);
+                    let locked: bool =
+                        sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
+                            .bind("backup_scheduler")
+                            .fetch_one(&pool)
+                            .await
+                            .unwrap_or(false);
                     if !locked {
                         continue;
                     }
@@ -1305,10 +1539,11 @@ impl BackupScheduler {
 
                 #[cfg(feature = "postgres")]
                 {
-                    let _ = sqlx::query_scalar::<_, bool>("SELECT pg_advisory_unlock(hashtext($1))")
-                        .bind("backup_scheduler")
-                        .fetch_one(&pool)
-                        .await;
+                    let _ =
+                        sqlx::query_scalar::<_, bool>("SELECT pg_advisory_unlock(hashtext($1))")
+                            .bind("backup_scheduler")
+                            .fetch_one(&pool)
+                            .await;
                 }
             }
         });

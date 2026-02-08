@@ -1,7 +1,9 @@
 //! Announcements / Broadcasts (tenant + global)
 
 use crate::http::{WsEvent, WsHub};
-use crate::models::{Announcement, CreateAnnouncementDto, PaginatedResponse, UpdateAnnouncementDto};
+use crate::models::{
+    Announcement, CreateAnnouncementDto, PaginatedResponse, UpdateAnnouncementDto,
+};
 use crate::services::{encode_unsubscribe_token, AuditService, AuthService, NotificationService};
 use chrono::Utc;
 use std::collections::HashSet;
@@ -128,11 +130,11 @@ async fn tenant_admin_user_ids(
           AND rp.permission_id = ANY($2)
     "#,
     )
-        .bind(tenant_id)
-        .bind(["admin:access", "admin:*", "*"])
-        .fetch_all(pool)
-        .await
-    }
+    .bind(tenant_id)
+    .bind(["admin:access", "admin:*", "*"])
+    .fetch_all(pool)
+    .await
+}
 
 #[cfg(feature = "postgres")]
 async fn tenant_user_ids(
@@ -165,10 +167,11 @@ async fn send_announcement_notifications(
                 recipients.extend(tenant_user_ids(pool, tid).await.unwrap_or_default());
             }
         } else {
-            let ids: Vec<String> = sqlx::query_scalar("SELECT id FROM users WHERE is_active = true")
-                .fetch_all(pool)
-                .await
-                .unwrap_or_default();
+            let ids: Vec<String> =
+                sqlx::query_scalar("SELECT id FROM users WHERE is_active = true")
+                    .fetch_all(pool)
+                    .await
+                    .unwrap_or_default();
             recipients.extend(ids);
         }
     }
@@ -283,10 +286,14 @@ async fn send_announcement_emails(
 
     for (user_id, email) in users {
         let open_url = match (main_domain.as_deref(), slug.as_deref()) {
-            (Some(domain), Some(sl)) => {
-                Some(format!("https://{}/{}/announcements/{}", domain, sl, announcement.id))
-            }
-            (Some(domain), None) => Some(format!("https://{}/announcements/{}", domain, announcement.id)),
+            (Some(domain), Some(sl)) => Some(format!(
+                "https://{}/{}/announcements/{}",
+                domain, sl, announcement.id
+            )),
+            (Some(domain), None) => Some(format!(
+                "https://{}/announcements/{}",
+                domain, announcement.id
+            )),
             _ => None,
         };
 
@@ -1011,12 +1018,14 @@ pub async fn create_announcement_admin(
         #[cfg(feature = "postgres")]
         {
             send_announcement_emails(&auth_service.pool, &notification_service, &ann).await;
-            ann = sqlx::query_as("UPDATE announcements SET notified_at = $1 WHERE id = $2 RETURNING *")
-                .bind(now)
-                .bind(&ann.id)
-                .fetch_one(&auth_service.pool)
-                .await
-                .map_err(|e| e.to_string())?;
+            ann = sqlx::query_as(
+                "UPDATE announcements SET notified_at = $1 WHERE id = $2 RETURNING *",
+            )
+            .bind(now)
+            .bind(&ann.id)
+            .fetch_one(&auth_service.pool)
+            .await
+            .map_err(|e| e.to_string())?;
         }
     }
 

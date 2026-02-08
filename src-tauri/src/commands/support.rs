@@ -42,7 +42,9 @@ async fn notify_support_admins_new_ticket(
     created_by: &str,
     subject: &str,
 ) {
-    let admins = support_admin_user_ids(pool, tenant_id).await.unwrap_or_default();
+    let admins = support_admin_user_ids(pool, tenant_id)
+        .await
+        .unwrap_or_default();
     let creator_name: Option<String> = sqlx::query_scalar("SELECT name FROM users WHERE id = $1")
         .bind(created_by)
         .fetch_optional(pool)
@@ -116,7 +118,9 @@ async fn notify_support_ticket_reply(
         }
     }
 
-    let admins = support_admin_user_ids(pool, tenant_id).await.unwrap_or_default();
+    let admins = support_admin_user_ids(pool, tenant_id)
+        .await
+        .unwrap_or_default();
     for uid in admins {
         if uid == author_id {
             continue;
@@ -165,7 +169,9 @@ async fn broadcast_support_ticket_message_created(
         }
     }
 
-    let admins = support_admin_user_ids(pool, tenant_id).await.unwrap_or_default();
+    let admins = support_admin_user_ids(pool, tenant_id)
+        .await
+        .unwrap_or_default();
     for uid in admins {
         if uid == author_id {
             continue;
@@ -872,8 +878,8 @@ pub async fn reply_support_ticket(
                 &id,
                 std::slice::from_ref(&msg.id),
             )
-                .await
-                .unwrap_or_default()
+            .await
+            .unwrap_or_default()
         }
         #[cfg(not(feature = "postgres"))]
         {

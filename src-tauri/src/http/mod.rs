@@ -22,6 +22,7 @@ use tracing::info;
 use std::path::PathBuf;
 use std::{collections::HashMap, time::Instant};
 
+pub mod announcements;
 pub mod audit;
 pub mod auth;
 pub mod backup;
@@ -37,7 +38,6 @@ pub mod settings;
 pub mod storage;
 pub mod superadmin;
 pub mod support;
-pub mod announcements;
 pub mod system;
 pub mod team;
 pub mod tenant;
@@ -410,7 +410,10 @@ pub async fn start_server(
             "/api/support/tickets",
             get(support::list_support_tickets).post(support::create_support_ticket),
         )
-        .route("/api/support/tickets/stats", get(support::get_support_ticket_stats))
+        .route(
+            "/api/support/tickets/stats",
+            get(support::get_support_ticket_stats),
+        )
         .route(
             "/api/support/tickets/{id}",
             get(support::get_support_ticket).put(support::update_support_ticket),
@@ -440,7 +443,10 @@ pub async fn start_server(
             get(settings::get_logo).post(settings::upload_logo),
         )
         .route("/api/settings/test-email", post(settings::send_test_email))
-        .route("/api/settings/test-smtp", post(settings::test_smtp_connection))
+        .route(
+            "/api/settings/test-smtp",
+            post(settings::test_smtp_connection),
+        )
         .route(
             "/api/settings/{key}",
             get(settings::get_setting).delete(settings::delete_setting),

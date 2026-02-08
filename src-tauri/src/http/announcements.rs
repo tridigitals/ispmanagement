@@ -1,5 +1,7 @@
 use super::AppState;
-use crate::models::{Announcement, CreateAnnouncementDto, PaginatedResponse, UpdateAnnouncementDto};
+use crate::models::{
+    Announcement, CreateAnnouncementDto, PaginatedResponse, UpdateAnnouncementDto,
+};
 use crate::services::encode_unsubscribe_token;
 use axum::{
     extract::{Path, Query, State},
@@ -188,10 +190,7 @@ pub fn router() -> Router<AppState> {
         .route("/recent", get(list_recent))
         .route("/{id}", get(get_one))
         .route("/{id}/dismiss", post(dismiss))
-        .route(
-            "/admin",
-            get(list_admin).post(create_announcement),
-        )
+        .route("/admin", get(list_admin).post(create_announcement))
         .route(
             "/admin/{id}",
             put(update_announcement).delete(delete_announcement),
@@ -375,7 +374,11 @@ pub async fn list_recent(
         let per_page = params.per_page.unwrap_or(20).clamp(1, 100);
         let offset: i64 = ((page - 1) * per_page) as i64;
 
-        let search = params.search.as_ref().map(|s| s.trim()).filter(|s| !s.is_empty());
+        let search = params
+            .search
+            .as_ref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty());
         let severity = params
             .severity
             .as_ref()
@@ -467,7 +470,10 @@ pub async fn list_recent(
         qb.push(" OFFSET ");
         qb.push_bind(offset);
 
-        let rows: Vec<Announcement> = qb.build_query_as().fetch_all(&state.auth_service.pool).await?;
+        let rows: Vec<Announcement> = qb
+            .build_query_as()
+            .fetch_all(&state.auth_service.pool)
+            .await?;
         (rows, total)
     };
 
@@ -544,7 +550,11 @@ pub async fn list_admin(
         let per_page = params.per_page.unwrap_or(20).clamp(1, 100);
         let offset: i64 = ((page - 1) * per_page) as i64;
 
-        let search = params.search.as_ref().map(|s| s.trim()).filter(|s| !s.is_empty());
+        let search = params
+            .search
+            .as_ref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty());
         let severity = params
             .severity
             .as_ref()
@@ -561,8 +571,10 @@ pub async fn list_admin(
             .map(|s| s.trim().to_lowercase())
             .filter(|s| !s.is_empty() && s != "all");
 
-        let mut qb_count: QueryBuilder<Postgres> = QueryBuilder::new("SELECT COUNT(*) FROM announcements a WHERE 1=1");
-        let mut qb: QueryBuilder<Postgres> = QueryBuilder::new("SELECT a.* FROM announcements a WHERE 1=1");
+        let mut qb_count: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT COUNT(*) FROM announcements a WHERE 1=1");
+        let mut qb: QueryBuilder<Postgres> =
+            QueryBuilder::new("SELECT a.* FROM announcements a WHERE 1=1");
 
         match scope.as_str() {
             "global" if claims.is_super_admin => {
@@ -651,7 +663,10 @@ pub async fn list_admin(
         qb.push(" OFFSET ");
         qb.push_bind(offset);
 
-        let rows: Vec<Announcement> = qb.build_query_as().fetch_all(&state.auth_service.pool).await?;
+        let rows: Vec<Announcement> = qb
+            .build_query_as()
+            .fetch_all(&state.auth_service.pool)
+            .await?;
         (rows, total)
     };
 
@@ -689,10 +704,11 @@ async fn send_announcement_notifications(
             }
         } else {
             // Global: notify all users (simple baseline)
-            let ids: Vec<String> = sqlx::query_scalar("SELECT id FROM users WHERE is_active = true")
-                .fetch_all(&state.auth_service.pool)
-                .await
-                .unwrap_or_default();
+            let ids: Vec<String> =
+                sqlx::query_scalar("SELECT id FROM users WHERE is_active = true")
+                    .fetch_all(&state.auth_service.pool)
+                    .await
+                    .unwrap_or_default();
             recipients.extend(ids);
         }
     }
@@ -809,10 +825,14 @@ async fn send_announcement_emails(
 
     for (user_id, email) in users {
         let open_url = match (main_domain.as_deref(), slug.as_deref()) {
-            (Some(domain), Some(sl)) => {
-                Some(format!("https://{}/{}/announcements/{}", domain, sl, announcement.id))
-            }
-            (Some(domain), None) => Some(format!("https://{}/announcements/{}", domain, announcement.id)),
+            (Some(domain), Some(sl)) => Some(format!(
+                "https://{}/{}/announcements/{}",
+                domain, sl, announcement.id
+            )),
+            (Some(domain), None) => Some(format!(
+                "https://{}/announcements/{}",
+                domain, announcement.id
+            )),
             _ => None,
         };
 
@@ -923,9 +943,7 @@ pub async fn create_announcement(
     let scope = dto.scope.clone().unwrap_or_else(|| "tenant".to_string());
     let target_tenant_id = if scope == "global" {
         if !claims.is_super_admin {
-            return Err(crate::error::AppError::Forbidden(
-                "Forbidden".to_string(),
-            ));
+            return Err(crate::error::AppError::Forbidden("Forbidden".to_string()));
         }
         None
     } else {
@@ -1022,7 +1040,10 @@ pub async fn create_announcement(
     };
 
     // If active immediately, deliver now and set notified_at.
-    if starts_at <= now && ends_at.map(|e| e > now).unwrap_or(true) && (deliver_in_app || deliver_email) {
+    if starts_at <= now
+        && ends_at.map(|e| e > now).unwrap_or(true)
+        && (deliver_in_app || deliver_email)
+    {
         let _ = send_announcement_notifications(&state, &ann).await;
 
         #[cfg(feature = "postgres")]
@@ -1032,11 +1053,13 @@ pub async fn create_announcement(
 
         #[cfg(feature = "postgres")]
         {
-            ann = sqlx::query_as("UPDATE announcements SET notified_at = $1 WHERE id = $2 RETURNING *")
-                .bind(now)
-                .bind(&ann.id)
-                .fetch_one(&state.auth_service.pool)
-                .await?;
+            ann = sqlx::query_as(
+                "UPDATE announcements SET notified_at = $1 WHERE id = $2 RETURNING *",
+            )
+            .bind(now)
+            .bind(&ann.id)
+            .fetch_one(&state.auth_service.pool)
+            .await?;
         }
     }
 
@@ -1295,7 +1318,6 @@ pub async fn delete_announcement(
                 None,
             )
             .await;
-
     }
 
     Ok(Json(serde_json::json!({ "ok": true })))
@@ -1326,11 +1348,13 @@ pub async fn process_due_announcements(state: &AppState) -> Result<(), String> {
     for ann in due {
         let _ = send_announcement_notifications(state, &ann).await;
         let _ = send_announcement_emails(state, &ann).await;
-        let _ = sqlx::query("UPDATE announcements SET notified_at = $1 WHERE id = $2 AND notified_at IS NULL")
-            .bind(now)
-            .bind(&ann.id)
-            .execute(&state.auth_service.pool)
-            .await;
+        let _ = sqlx::query(
+            "UPDATE announcements SET notified_at = $1 WHERE id = $2 AND notified_at IS NULL",
+        )
+        .bind(now)
+        .bind(&ann.id)
+        .execute(&state.auth_service.pool)
+        .await;
     }
 
     Ok(())

@@ -3,8 +3,8 @@
 pub mod alert_service;
 pub mod auth_service;
 pub mod cache;
-pub mod email_service;
 pub mod email_outbox_service;
+pub mod email_service;
 pub mod metrics_service;
 pub mod rate_limiter;
 pub mod role_service;
@@ -14,9 +14,9 @@ pub mod unsubscribe_token;
 pub mod user_service;
 
 pub use auth_service::*;
+pub mod announcement_service;
 pub mod audit_service;
 pub mod backup;
-pub mod announcement_service;
 pub mod notification_service;
 pub mod payment_service;
 pub mod plan_service;
@@ -24,12 +24,12 @@ pub mod storage_service;
 pub mod system_service;
 
 pub use alert_service::AlertService;
+pub use announcement_service::AnnouncementScheduler;
 pub use audit_service::AuditService;
 pub use auth_service::AuthService;
 pub use backup::BackupService;
-pub use announcement_service::AnnouncementScheduler;
-pub use email_service::EmailService;
 pub use email_outbox_service::EmailOutboxService;
+pub use email_service::EmailService;
 pub use notification_service::NotificationService;
 pub use payment_service::PaymentService;
 pub use plan_service::PlanService;

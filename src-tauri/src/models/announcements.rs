@@ -10,8 +10,8 @@ pub struct Announcement {
     pub body: String,
     pub severity: String,
     pub audience: String,
-    pub mode: String,           // post|banner
-    pub format: String,         // plain|markdown
+    pub mode: String,   // post|banner
+    pub format: String, // plain|markdown
     pub deliver_in_app: bool,
     pub deliver_email: bool,
     pub deliver_email_force: bool,

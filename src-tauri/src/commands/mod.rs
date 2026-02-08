@@ -1,9 +1,9 @@
 //! Commands module
 
+pub mod announcements;
 pub mod audit;
 pub mod auth;
 pub mod backup;
-pub mod announcements;
 pub mod email_outbox;
 pub mod install;
 pub mod notifications;
@@ -24,9 +24,9 @@ pub fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
+pub use announcements::*;
 pub use auth::*;
 pub use backup::*;
-pub use announcements::*;
 pub use email_outbox::*;
 pub use install::*;
 pub use notifications::*;

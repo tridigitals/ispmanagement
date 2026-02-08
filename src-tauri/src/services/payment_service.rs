@@ -698,8 +698,8 @@ impl PaymentService {
                         Some(invoice.tenant_id.clone()),
                         title.clone(),
                         message.clone(),
-                        "info".to_string(),                   // type
-                        "billing".to_string(),                // category
+                        "info".to_string(),                      // type
+                        "billing".to_string(),                   // category
                         Some("/admin/subscription".to_string()), // action_url
                     )
                     .await;

@@ -25,11 +25,7 @@ pub struct NotificationService {
 }
 
 impl NotificationService {
-    pub fn new(
-        pool: DbPool,
-        ws_hub: Arc<WsHub>,
-        email_outbox: EmailOutboxService,
-    ) -> Self {
+    pub fn new(pool: DbPool, ws_hub: Arc<WsHub>, email_outbox: EmailOutboxService) -> Self {
         Self {
             pool,
             ws_hub,
@@ -605,7 +601,10 @@ impl NotificationService {
                 let subject = format!("{}{}", prefix, notif.title);
 
                 // Use outbox to ensure reliable delivery with retries.
-                let _ = self.email_outbox.send_or_enqueue(notif.tenant_id.clone(), &email, &subject, &notif.message).await;
+                let _ = self
+                    .email_outbox
+                    .send_or_enqueue(notif.tenant_id.clone(), &email, &subject, &notif.message)
+                    .await;
             }
         }
 

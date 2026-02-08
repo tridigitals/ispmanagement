@@ -1,5 +1,5 @@
-use crate::error::{AppError, AppResult};
 use crate::db::DbPool;
+use crate::error::{AppError, AppResult};
 use chrono::Utc;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
@@ -68,4 +68,3 @@ pub async fn decode_unsubscribe_token(pool: &DbPool, token: &str) -> AppResult<U
 
     Ok(data.claims)
 }
-

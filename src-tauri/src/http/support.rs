@@ -1,9 +1,8 @@
 use super::AppState;
 use crate::models::{
-    CreateSupportTicketDto, FileRecord, ReplySupportTicketDto, SupportTicket, SupportTicketDetail,
-    PaginatedResponse, SupportTicketListItem, SupportTicketMessage,
-    SupportTicketMessageWithAttachments,
-    UpdateSupportTicketDto,
+    CreateSupportTicketDto, FileRecord, PaginatedResponse, ReplySupportTicketDto, SupportTicket,
+    SupportTicketDetail, SupportTicketListItem, SupportTicketMessage,
+    SupportTicketMessageWithAttachments, UpdateSupportTicketDto,
 };
 use axum::{
     extract::{Path, Query, State},
@@ -197,12 +196,14 @@ async fn broadcast_support_ticket_message_created(
     }
 
     for uid in recipients {
-        state.ws_hub.broadcast(crate::http::WsEvent::SupportTicketMessageCreated {
-            user_id: uid,
-            tenant_id: Some(tenant_id.to_string()),
-            ticket_id: ticket.id.clone(),
-            message_id: message_id.to_string(),
-        });
+        state
+            .ws_hub
+            .broadcast(crate::http::WsEvent::SupportTicketMessageCreated {
+                user_id: uid,
+                tenant_id: Some(tenant_id.to_string()),
+                ticket_id: ticket.id.clone(),
+                message_id: message_id.to_string(),
+            });
     }
 }
 
@@ -593,9 +594,14 @@ pub async fn create_support_ticket(
     let att_map: HashMap<String, Vec<FileRecord>> = {
         #[cfg(feature = "postgres")]
         {
-            fetch_attachments_map_pg(&state.auth_service.pool, &tenant_id, &ticket_id, &message_ids)
-                .await
-                .unwrap_or_default()
+            fetch_attachments_map_pg(
+                &state.auth_service.pool,
+                &tenant_id,
+                &ticket_id,
+                &message_ids,
+            )
+            .await
+            .unwrap_or_default()
         }
         #[cfg(not(feature = "postgres"))]
         {
@@ -846,8 +852,8 @@ pub async fn reply_support_ticket(
                 &id,
                 std::slice::from_ref(&msg.id),
             )
-                .await
-                .unwrap_or_default()
+            .await
+            .unwrap_or_default()
         }
         #[cfg(not(feature = "postgres"))]
         {
@@ -989,7 +995,7 @@ pub async fn update_support_ticket(
             Some(audit_details.as_str()),
             None,
         )
-    .await;
+        .await;
 
     // Notifications (best-effort)
     // 1) Status changes -> notify ticket owner (and assignee if present)

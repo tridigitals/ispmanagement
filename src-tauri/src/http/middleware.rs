@@ -195,7 +195,11 @@ pub async fn security_enforcer_middleware(
                 entry.0 = entry.0.saturating_add(1);
                 if entry.0 >= cfg.ip_block_threshold {
                     let until = now + chrono::Duration::minutes(cfg.ip_block_duration_minutes);
-                    state.ip_blocklist.write().await.insert(client_ip.clone(), until);
+                    state
+                        .ip_blocklist
+                        .write()
+                        .await
+                        .insert(client_ip.clone(), until);
                 }
             }
 
