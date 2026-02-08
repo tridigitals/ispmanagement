@@ -26,6 +26,69 @@ fn strip_html_tags(input: &str) -> String {
     out.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+fn ann_snapshot_json(ann: &Announcement) -> serde_json::Value {
+    serde_json::json!({
+        "id": ann.id,
+        "tenant_id": ann.tenant_id,
+        "created_by": ann.created_by,
+        "cover_file_id": ann.cover_file_id,
+        "title": ann.title,
+        "severity": ann.severity,
+        "audience": ann.audience,
+        "mode": ann.mode,
+        "format": ann.format,
+        "deliver_in_app": ann.deliver_in_app,
+        "deliver_email": ann.deliver_email,
+        "deliver_email_force": ann.deliver_email_force,
+        "starts_at": ann.starts_at.to_rfc3339(),
+        "ends_at": ann.ends_at.map(|d| d.to_rfc3339()),
+        "notified_at": ann.notified_at.map(|d| d.to_rfc3339()),
+        "created_at": ann.created_at.to_rfc3339(),
+        "updated_at": ann.updated_at.to_rfc3339(),
+    })
+}
+
+fn ann_changed_fields(before: &Announcement, after: &Announcement) -> Vec<&'static str> {
+    let mut out = Vec::new();
+    if before.cover_file_id != after.cover_file_id {
+        out.push("cover_file_id");
+    }
+    if before.title != after.title {
+        out.push("title");
+    }
+    if before.body != after.body {
+        out.push("body");
+    }
+    if before.severity != after.severity {
+        out.push("severity");
+    }
+    if before.audience != after.audience {
+        out.push("audience");
+    }
+    if before.mode != after.mode {
+        out.push("mode");
+    }
+    if before.format != after.format {
+        out.push("format");
+    }
+    if before.deliver_in_app != after.deliver_in_app {
+        out.push("deliver_in_app");
+    }
+    if before.deliver_email != after.deliver_email {
+        out.push("deliver_email");
+    }
+    if before.deliver_email_force != after.deliver_email_force {
+        out.push("deliver_email_force");
+    }
+    if before.starts_at != after.starts_at {
+        out.push("starts_at");
+    }
+    if before.ends_at != after.ends_at {
+        out.push("ends_at");
+    }
+    out
+}
+
 fn norm_severity(s: Option<String>) -> String {
     match s.as_deref() {
         Some("info") | Some("success") | Some("warning") | Some("error") => s.unwrap(),
@@ -978,15 +1041,21 @@ pub async fn create_announcement(
     }
 
     // Audit (best-effort)
+    let create_details = serde_json::json!({
+        "scope": scope,
+        "delivered_immediately": ann.notified_at.is_some(),
+        "announcement": ann_snapshot_json(&ann),
+    })
+    .to_string();
     state
         .audit_service
         .log(
             Some(&claims.sub),
-            target_tenant_id.as_deref(),
+            ann.tenant_id.as_deref(),
             "create",
             "announcements",
             Some(&ann.id),
-            Some(&format!("Created announcement: {}", ann.title)),
+            Some(create_details.as_str()),
             None,
         )
         .await;
@@ -1045,6 +1114,7 @@ pub async fn update_announcement(
         updated_at: Utc::now(),
     };
 
+    let before = existing.clone();
     let now = Utc::now();
     let cover_file_id = dto.cover_file_id.unwrap_or(existing.cover_file_id);
     let title = dto.title.unwrap_or(existing.title);
@@ -1125,15 +1195,23 @@ pub async fn update_announcement(
     #[cfg(not(feature = "postgres"))]
     let ann: Announcement = existing;
 
+    // Audit (best-effort)
+    let changed = ann_changed_fields(&before, &ann);
+    let update_details = serde_json::json!({
+        "changed": changed,
+        "from": ann_snapshot_json(&before),
+        "to": ann_snapshot_json(&ann),
+    })
+    .to_string();
     state
         .audit_service
         .log(
             Some(&claims.sub),
-            Some(&tenant_id),
+            ann.tenant_id.as_deref(),
             "update",
             "announcements",
             Some(&id),
-            Some("Updated announcement"),
+            Some(update_details.as_str()),
             None,
         )
         .await;
@@ -1161,6 +1239,15 @@ pub async fn delete_announcement(
 
     #[cfg(feature = "postgres")]
     {
+        let existing: Announcement = sqlx::query_as(
+            "SELECT * FROM announcements WHERE id = $1 AND (tenant_id = $2 OR ($3 = true AND tenant_id IS NULL))",
+        )
+        .bind(&id)
+        .bind(&tenant_id)
+        .bind(claims.is_super_admin)
+        .fetch_one(&state.auth_service.pool)
+        .await?;
+
         let _ = sqlx::query(
             "DELETE FROM announcements WHERE id = $1 AND (tenant_id = $2 OR ($3 = true AND tenant_id IS NULL))",
         )
@@ -1169,20 +1256,25 @@ pub async fn delete_announcement(
         .bind(claims.is_super_admin)
         .execute(&state.auth_service.pool)
         .await?;
-    }
 
-    state
-        .audit_service
-        .log(
-            Some(&claims.sub),
-            Some(&tenant_id),
-            "delete",
-            "announcements",
-            Some(&id),
-            Some("Deleted announcement"),
-            None,
-        )
-        .await;
+        let delete_details = serde_json::json!({
+            "announcement": ann_snapshot_json(&existing),
+        })
+        .to_string();
+        state
+            .audit_service
+            .log(
+                Some(&claims.sub),
+                existing.tenant_id.as_deref(),
+                "delete",
+                "announcements",
+                Some(&id),
+                Some(delete_details.as_str()),
+                None,
+            )
+            .await;
+
+    }
 
     Ok(Json(serde_json::json!({ "ok": true })))
 }
