@@ -1038,6 +1038,27 @@ pub async fn create_announcement_admin(
         )
         .await;
 
+    // If we delivered right away, log an explicit "publish" action as well (useful for filtering).
+    if ann.notified_at.is_some() {
+        let publish_details = serde_json::json!({
+            "cause": "immediate",
+            "scope": scope,
+            "announcement": ann_snapshot_json(&ann),
+        })
+        .to_string();
+        audit_service
+            .log(
+                Some(&claims.sub),
+                ann.tenant_id.as_deref(),
+                "publish",
+                "announcements",
+                Some(&ann.id),
+                Some(publish_details.as_str()),
+                None,
+            )
+            .await;
+    }
+
     Ok(ann)
 }
 

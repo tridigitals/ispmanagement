@@ -27,6 +27,51 @@
     expandedLogId = expandedLogId === id ? null : id;
   }
 
+  function safeParseJson(input: string | null) {
+    if (!input) return null;
+    try {
+      return JSON.parse(input);
+    } catch {
+      return null;
+    }
+  }
+
+  function summarizeDetails(l: AuditLog) {
+    const parsed = safeParseJson(l.details);
+    if (!parsed || typeof parsed !== 'object') return l.details || $t('common.na') || '—';
+
+    if (l.resource === 'announcements') {
+      const title = (parsed as any)?.announcement?.title || (parsed as any)?.title;
+      const sev = (parsed as any)?.announcement?.severity;
+      const cause = (parsed as any)?.cause;
+      const deliveredNow = (parsed as any)?.delivered_immediately;
+
+      const parts: string[] = [];
+      if (title) parts.push(String(title));
+      if (sev) parts.push(String(sev));
+      if (cause) parts.push(`cause:${cause}`);
+      if (typeof deliveredNow === 'boolean') parts.push(deliveredNow ? 'delivered' : 'scheduled');
+      return parts.join(' · ') || l.details || $t('common.na') || '—';
+    }
+
+    if (l.resource === 'support_ticket') {
+      const subj = (parsed as any)?.subject;
+      const pri = (parsed as any)?.priority;
+      const internal = (parsed as any)?.is_internal;
+      const parts: string[] = [];
+      if (subj) parts.push(String(subj));
+      if (pri) parts.push(String(pri));
+      if (typeof internal === 'boolean') parts.push(internal ? 'internal' : 'public');
+      return parts.join(' · ') || l.details || $t('common.na') || '—';
+    }
+
+    try {
+      return JSON.stringify(parsed);
+    } catch {
+      return l.details || $t('common.na') || '—';
+    }
+  }
+
   function getActionCategory(action: string) {
     const head = String(action || '')
       .split('_')[0]
@@ -155,7 +200,7 @@
             </div>
 
             {#if expandedLogId === l.id}
-              <AuditLogDetails details={l.details} />
+              <AuditLogDetails log={l} />
             {/if}
           </div>
         {/each}
@@ -221,8 +266,8 @@
             </div>
           </div>
         {:else if key === 'details'}
-          <div class="details-cell" title={item.details}>
-            {item.details || $t('common.na') || '—'}
+          <div class="details-cell" title={item.details || ''}>
+            {summarizeDetails(item)}
           </div>
         {/if}
       {/snippet}

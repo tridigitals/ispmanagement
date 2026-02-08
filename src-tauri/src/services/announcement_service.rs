@@ -1,5 +1,6 @@
 use crate::db::DbPool;
 use crate::models::Announcement;
+use crate::services::AuditService;
 use crate::services::NotificationService;
 use crate::services::encode_unsubscribe_token;
 use chrono::Utc;
@@ -20,23 +21,48 @@ fn strip_html_tags(input: &str) -> String {
     out.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+fn ann_snapshot_json(ann: &Announcement) -> serde_json::Value {
+    serde_json::json!({
+        "id": ann.id,
+        "tenant_id": ann.tenant_id,
+        "created_by": ann.created_by,
+        "cover_file_id": ann.cover_file_id,
+        "title": ann.title,
+        "severity": ann.severity,
+        "audience": ann.audience,
+        "mode": ann.mode,
+        "format": ann.format,
+        "deliver_in_app": ann.deliver_in_app,
+        "deliver_email": ann.deliver_email,
+        "deliver_email_force": ann.deliver_email_force,
+        "starts_at": ann.starts_at.to_rfc3339(),
+        "ends_at": ann.ends_at.map(|d| d.to_rfc3339()),
+        "notified_at": ann.notified_at.map(|d| d.to_rfc3339()),
+        "created_at": ann.created_at.to_rfc3339(),
+        "updated_at": ann.updated_at.to_rfc3339(),
+    })
+}
+
 #[derive(Clone)]
 pub struct AnnouncementScheduler {
     pool: DbPool,
     notification_service: NotificationService,
+    audit_service: AuditService,
 }
 
 impl AnnouncementScheduler {
-    pub fn new(pool: DbPool, notification_service: NotificationService) -> Self {
+    pub fn new(pool: DbPool, notification_service: NotificationService, audit_service: AuditService) -> Self {
         Self {
             pool,
             notification_service,
+            audit_service,
         }
     }
 
     pub async fn start(&self) {
         let pool = self.pool.clone();
         let notification_service = self.notification_service.clone();
+        let audit_service = self.audit_service.clone();
 
         tokio::spawn(async move {
             info!("Announcement Scheduler started.");
@@ -59,7 +85,7 @@ impl AnnouncementScheduler {
                     }
                 }
 
-                if let Err(e) = Self::process_due(&pool, &notification_service).await {
+                if let Err(e) = Self::process_due(&pool, &notification_service, &audit_service).await {
                     if e.contains("relation \"announcements\" does not exist")
                         || e.contains("relation \"announcement_dismissals\" does not exist")
                         || e.contains("relation \"users\" does not exist")
@@ -367,6 +393,7 @@ impl AnnouncementScheduler {
     pub async fn process_due(
         pool: &DbPool,
         notification_service: &NotificationService,
+        audit_service: &AuditService,
     ) -> Result<(), String> {
         let now = Utc::now();
 
@@ -409,6 +436,25 @@ impl AnnouncementScheduler {
                 .execute(pool)
                 .await;
             }
+
+            // Audit best-effort: scheduler-driven publish (no user context).
+            let publish_details = serde_json::json!({
+                "cause": "scheduler",
+                "scope": if ann.tenant_id.is_some() { "tenant" } else { "global" },
+                "announcement": ann_snapshot_json(&ann),
+            })
+            .to_string();
+            audit_service
+                .log(
+                    None,
+                    ann.tenant_id.as_deref(),
+                    "publish",
+                    "announcements",
+                    Some(&ann.id),
+                    Some(publish_details.as_str()),
+                    None,
+                )
+                .await;
         }
 
         Ok(())

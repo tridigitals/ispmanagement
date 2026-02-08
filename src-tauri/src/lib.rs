@@ -217,7 +217,7 @@ pub fn run() {
 
                 // Start Announcement Scheduler (scheduled broadcasts -> notifications)
                 let announcement_scheduler =
-                    AnnouncementScheduler::new(pool.clone(), notification_service.clone());
+                    AnnouncementScheduler::new(pool.clone(), notification_service.clone(), audit_service.clone());
                 announcement_scheduler.start().await;
 
                 // Seed default features

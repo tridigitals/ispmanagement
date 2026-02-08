@@ -102,7 +102,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Scheduled broadcasts -> notifications
     let announcement_scheduler =
-        AnnouncementScheduler::new(pool.clone(), notification_service.clone());
+        AnnouncementScheduler::new(pool.clone(), notification_service.clone(), audit_service.clone());
     announcement_scheduler.start().await;
 
     let scheduler = BackupScheduler::new(
