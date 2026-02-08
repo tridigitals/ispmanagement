@@ -153,14 +153,16 @@
           <div class="card-title">{$t('common.details') || 'Details'}</div>
           <div class="row">
             <span class="k">{$t('announcements.fields.starts_at') || 'Starts at'}</span>
-            <span class="v">{formatDateTime(ann.starts_at, { timeZone: $appSettings.app_timezone })}</span>
+            <span class="v"
+              >{formatDateTime(ann.starts_at, { timeZone: $appSettings.app_timezone })}</span
+            >
           </div>
           <div class="row">
             <span class="k">{$t('announcements.fields.ends_at') || 'Ends at'}</span>
             <span class="v">
               {ann.ends_at
                 ? formatDateTime(ann.ends_at, { timeZone: $appSettings.app_timezone })
-                : ($t('common.na') || '—')}
+                : $t('common.na') || '—'}
             </span>
           </div>
           <div class="row">
@@ -272,7 +274,7 @@
 
   :global([data-theme='light']) .hero-shade {
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.0), rgba(0, 0, 0, 0.25)),
+      linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(0, 0, 0, 0.25)),
       radial-gradient(900px 240px at 20% 0%, rgba(99, 102, 241, 0.14), transparent 60%);
   }
 
@@ -457,8 +459,9 @@
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(0, 0, 0, 0.35);
     overflow: auto;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-      'Courier New', monospace;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+      monospace;
   }
 
   :global([data-theme='light']) .prose :global(pre) {

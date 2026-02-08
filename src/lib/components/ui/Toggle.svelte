@@ -75,4 +75,3 @@
     pointer-events: none;
   }
 </style>
-

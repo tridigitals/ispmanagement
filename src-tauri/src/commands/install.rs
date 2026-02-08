@@ -32,6 +32,7 @@ fn slugify(input: &str) -> String {
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn install_app(
     admin_name: String,
     admin_email: String,

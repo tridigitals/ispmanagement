@@ -2,7 +2,11 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { api } from '$lib/api/client';
-  import type { PaginatedResponse, SupportTicketListItem, SupportTicketStats } from '$lib/api/client';
+  import type {
+    PaginatedResponse,
+    SupportTicketListItem,
+    SupportTicketStats,
+  } from '$lib/api/client';
   import { can } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import { t } from 'svelte-i18n';
@@ -195,10 +199,16 @@
           <button class:active={statusFilter === 'open'} onclick={() => setStatusFilter('open')}>
             {$t('support.filters.open') || 'Open'}
           </button>
-          <button class:active={statusFilter === 'pending'} onclick={() => setStatusFilter('pending')}>
+          <button
+            class:active={statusFilter === 'pending'}
+            onclick={() => setStatusFilter('pending')}
+          >
             {$t('support.filters.pending') || 'Pending'}
           </button>
-          <button class:active={statusFilter === 'closed'} onclick={() => setStatusFilter('closed')}>
+          <button
+            class:active={statusFilter === 'closed'}
+            onclick={() => setStatusFilter('closed')}
+          >
             {$t('support.filters.closed') || 'Closed'}
           </button>
         </div>

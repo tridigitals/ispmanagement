@@ -271,46 +271,77 @@
     <div>
       <h1 class="title">{$t('admin.email_outbox.title') || 'Email Outbox'}</h1>
       <p class="sub">
-        {$t('admin.email_outbox.subtitle') || 'Monitor queued and failed emails, and retry delivery.'}
+        {$t('admin.email_outbox.subtitle') ||
+          'Monitor queued and failed emails, and retry delivery.'}
       </p>
     </div>
 
-    <button class="btn" type="button" onclick={() => (refreshStats(), load(true))} title={$t('common.refresh') || 'Refresh'}>
+    <button
+      class="btn"
+      type="button"
+      onclick={() => (refreshStats(), load(true))}
+      title={$t('common.refresh') || 'Refresh'}
+    >
       <Icon name="refresh-cw" size={16} />
       {$t('common.refresh') || 'Refresh'}
     </button>
   </div>
 
   <div class="stats">
-    <button class="stat-card" class:active={statusFilter === 'all'} type="button" onclick={() => setStatusFilter('all')}>
+    <button
+      class="stat-card"
+      class:active={statusFilter === 'all'}
+      type="button"
+      onclick={() => setStatusFilter('all')}
+    >
       <div class="stat-top">
         <span class="stat-label">{$t('common.all') || 'All'}</span>
         <Icon name="list" size={14} />
       </div>
       <div class="stat-value">{stats.all}</div>
     </button>
-    <button class="stat-card tone-queued" class:active={statusFilter === 'queued'} type="button" onclick={() => setStatusFilter('queued')}>
+    <button
+      class="stat-card tone-queued"
+      class:active={statusFilter === 'queued'}
+      type="button"
+      onclick={() => setStatusFilter('queued')}
+    >
       <div class="stat-top">
         <span class="stat-label">{$t('admin.email_outbox.status.queued') || 'Queued'}</span>
         <Icon name="calendar" size={14} />
       </div>
       <div class="stat-value">{stats.queued}</div>
     </button>
-    <button class="stat-card tone-sending" class:active={statusFilter === 'sending'} type="button" onclick={() => setStatusFilter('sending')}>
+    <button
+      class="stat-card tone-sending"
+      class:active={statusFilter === 'sending'}
+      type="button"
+      onclick={() => setStatusFilter('sending')}
+    >
       <div class="stat-top">
         <span class="stat-label">{$t('admin.email_outbox.status.sending') || 'Sending'}</span>
         <Icon name="send" size={14} />
       </div>
       <div class="stat-value">{stats.sending}</div>
     </button>
-    <button class="stat-card tone-sent" class:active={statusFilter === 'sent'} type="button" onclick={() => setStatusFilter('sent')}>
+    <button
+      class="stat-card tone-sent"
+      class:active={statusFilter === 'sent'}
+      type="button"
+      onclick={() => setStatusFilter('sent')}
+    >
       <div class="stat-top">
         <span class="stat-label">{$t('admin.email_outbox.status.sent') || 'Sent'}</span>
         <Icon name="check-circle" size={14} />
       </div>
       <div class="stat-value">{stats.sent}</div>
     </button>
-    <button class="stat-card tone-failed" class:active={statusFilter === 'failed'} type="button" onclick={() => setStatusFilter('failed')}>
+    <button
+      class="stat-card tone-failed"
+      class:active={statusFilter === 'failed'}
+      type="button"
+      onclick={() => setStatusFilter('failed')}
+    >
       <div class="stat-top">
         <span class="stat-label">{$t('admin.email_outbox.status.failed') || 'Failed'}</span>
         <Icon name="alert-triangle" size={14} />
@@ -454,7 +485,7 @@
           <button
             class="icon-btn danger"
             title={$t('common.delete') || 'Delete'}
-            disabled={disabled}
+            {disabled}
             onclick={() => remove(item.id)}
           >
             <Icon name="trash-2" size={16} />
@@ -542,7 +573,9 @@
             class:active={detailTab === 'html'}
             onclick={() => (detailTab = 'html')}
             disabled={!detailItem.body_html}
-            title={!detailItem.body_html ? $t('admin.email_outbox.details.no_html') || 'No HTML' : ''}
+            title={!detailItem.body_html
+              ? $t('admin.email_outbox.details.no_html') || 'No HTML'
+              : ''}
           >
             {$t('admin.email_outbox.details.html') || 'HTML'}
           </button>
@@ -550,11 +583,7 @@
 
         {#if detailTab === 'html' && detailItem.body_html}
           <div class="viewer">
-            <iframe
-              class="iframe"
-              sandbox=""
-              srcdoc={detailItem.body_html}
-              title="HTML preview"
+            <iframe class="iframe" sandbox="" srcdoc={detailItem.body_html} title="HTML preview"
             ></iframe>
           </div>
           <details class="source">
@@ -608,7 +637,9 @@
     padding: 0.9rem 1rem;
     text-align: left;
     cursor: pointer;
-    transition: transform 0.12s ease, border-color 0.12s ease;
+    transition:
+      transform 0.12s ease,
+      border-color 0.12s ease;
     color: var(--text-primary);
   }
 
@@ -810,8 +841,9 @@
   }
 
   .mono {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-      'Courier New', monospace;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+      monospace;
   }
 
   .clamp-1 {
@@ -964,7 +996,9 @@
     background: rgba(255, 255, 255, 0.03);
     color: var(--text-primary);
     cursor: pointer;
-    transition: transform 0.12s ease, border-color 0.12s ease;
+    transition:
+      transform 0.12s ease,
+      border-color 0.12s ease;
   }
 
   .icon-btn:hover:enabled {

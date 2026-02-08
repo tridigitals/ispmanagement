@@ -830,7 +830,8 @@ export const support = {
 };
 
 export const announcements = {
-  listActive: (): Promise<Announcement[]> => safeInvoke('list_active_announcements', { token: getTokenOrThrow() }),
+  listActive: (): Promise<Announcement[]> =>
+    safeInvoke('list_active_announcements', { token: getTokenOrThrow() }),
   listRecent: (params?: {
     page?: number;
     per_page?: number;
@@ -839,7 +840,8 @@ export const announcements = {
     mode?: string;
   }): Promise<PaginatedResponse<Announcement>> =>
     safeInvoke('list_recent_announcements', { token: getTokenOrThrow(), ...(params || {}) }),
-  get: (id: string): Promise<Announcement> => safeInvoke('get_announcement', { token: getTokenOrThrow(), id }),
+  get: (id: string): Promise<Announcement> =>
+    safeInvoke('get_announcement', { token: getTokenOrThrow(), id }),
   dismiss: (id: string): Promise<void> =>
     safeInvoke('dismiss_announcement', { token: getTokenOrThrow(), id }),
 

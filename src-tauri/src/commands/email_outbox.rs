@@ -229,7 +229,7 @@ pub async fn get_email_outbox_stats(
             }
         }
 
-        return Ok(stats);
+        Ok(stats)
     }
 
     #[cfg(not(feature = "postgres"))]
@@ -426,7 +426,7 @@ pub async fn get_email_outbox(
             }
         }
 
-        return Ok(item);
+        Ok(item)
     }
 
     #[cfg(not(feature = "postgres"))]
@@ -509,10 +509,10 @@ pub async fn bulk_retry_email_outbox(
             .map_err(|e| e.to_string())?
         };
 
-        return Ok(serde_json::json!({
+        Ok(serde_json::json!({
             "success": true,
             "count": res.rows_affected()
-        }));
+        }))
     }
 
     #[cfg(not(feature = "postgres"))]
@@ -568,10 +568,10 @@ pub async fn bulk_delete_email_outbox(
             .map_err(|e| e.to_string())?
         };
 
-        return Ok(serde_json::json!({
+        Ok(serde_json::json!({
             "success": true,
             "count": res.rows_affected()
-        }));
+        }))
     }
 
     #[cfg(not(feature = "postgres"))]
@@ -633,7 +633,7 @@ pub async fn export_email_outbox_csv(
         }
 
         fn csv_escape(s: &str) -> String {
-            let s = s.replace('\r', " ").replace('\n', " ");
+            let s = s.replace(['\r', '\n'], " ");
             if s.contains(',') || s.contains('"') {
                 format!("\"{}\"", s.replace('"', "\"\""))
             } else {
@@ -725,7 +725,7 @@ pub async fn export_email_outbox_csv(
             ));
         }
 
-        return Ok(serde_json::json!({ "csv": out }));
+        Ok(serde_json::json!({ "csv": out }))
     }
 
     #[cfg(not(feature = "postgres"))]

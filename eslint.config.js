@@ -45,5 +45,17 @@ export default [
       'no-useless-escape': 'off',
     },
   },
+  {
+    files: ['**/*.mjs', '**/*.cjs'],
+    languageOptions: {
+      parserOptions: {
+        sourceType: 'module',
+        ecmaVersion: 'latest',
+      },
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
   prettierConfig,
 ];

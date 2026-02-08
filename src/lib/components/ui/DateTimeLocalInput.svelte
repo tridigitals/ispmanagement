@@ -44,7 +44,7 @@
       class="icon-btn"
       type="button"
       onclick={openPicker}
-      disabled={disabled}
+      {disabled}
       aria-label="Open date time picker"
       title="Open date time picker"
     >

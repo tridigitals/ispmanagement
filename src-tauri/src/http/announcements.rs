@@ -146,7 +146,7 @@ async fn tenant_admin_user_ids(
     "#,
     )
     .bind(tenant_id)
-    .bind(&["admin:access", "admin:*", "*"])
+    .bind(["admin:access", "admin:*", "*"])
     .fetch_all(pool)
     .await
 }

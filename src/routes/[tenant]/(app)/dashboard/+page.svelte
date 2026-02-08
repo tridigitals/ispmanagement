@@ -226,9 +226,13 @@
       </div>
 
       <div class="section-header section-gap">
-        <h2>{$t('dashboard.announcements.title') || $t('announcements.title') || 'Announcements'}</h2>
+        <h2>
+          {$t('dashboard.announcements.title') || $t('announcements.title') || 'Announcements'}
+        </h2>
         <button class="text-btn" onclick={() => goto(`${tenantPrefix}/announcements`)}>
-          {$t('dashboard.announcements.view_all') || $t('dashboard.recent_activity.view_all') || 'View all'}
+          {$t('dashboard.announcements.view_all') ||
+            $t('dashboard.recent_activity.view_all') ||
+            'View all'}
         </button>
       </div>
 
@@ -243,9 +247,19 @@
             <div class="empty-icon-circle">
               <Icon name="megaphone" size={32} />
             </div>
-            <h3>{$t('dashboard.announcements.empty.title') || $t('announcements.empty_feed') || 'No announcements yet.'}</h3>
-            <p>{$t('dashboard.announcements.empty.description') || 'When the team publishes updates, they will show up here.'}</p>
-            <button class="btn btn-secondary mt-4" onclick={() => goto(`${tenantPrefix}/announcements`)}>
+            <h3>
+              {$t('dashboard.announcements.empty.title') ||
+                $t('announcements.empty_feed') ||
+                'No announcements yet.'}
+            </h3>
+            <p>
+              {$t('dashboard.announcements.empty.description') ||
+                'When the team publishes updates, they will show up here.'}
+            </p>
+            <button
+              class="btn btn-secondary mt-4"
+              onclick={() => goto(`${tenantPrefix}/announcements`)}
+            >
               {$t('dashboard.announcements.empty.open') || 'Open announcements'}
             </button>
           </div>

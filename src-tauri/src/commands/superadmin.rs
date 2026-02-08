@@ -74,6 +74,7 @@ pub async fn delete_tenant(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn create_tenant(
     token: String,
     name: String,
@@ -270,6 +271,7 @@ pub async fn create_tenant(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn update_tenant(
     token: String,
     id: String,

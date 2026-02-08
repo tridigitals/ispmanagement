@@ -64,6 +64,7 @@ pub async fn get_role(
 
 /// Create a new role
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn create_new_role(
     token: String,
     name: String,
@@ -112,6 +113,7 @@ pub async fn create_new_role(
 
 /// Update an existing role
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn update_existing_role(
     token: String,
     role_id: String,

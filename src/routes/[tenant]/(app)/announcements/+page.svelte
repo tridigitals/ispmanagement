@@ -156,10 +156,17 @@
             class="search-input"
             value={q}
             oninput={(e) => (q = (e.currentTarget as HTMLInputElement).value)}
-            placeholder={$t('announcements.search_placeholder') || $t('notifications_page.search_placeholder') || 'Search...'}
+            placeholder={$t('announcements.search_placeholder') ||
+              $t('notifications_page.search_placeholder') ||
+              'Search...'}
           />
         </div>
-        <button class="btn" type="button" onclick={() => load(true)} title={$t('common.refresh') || 'Refresh'}>
+        <button
+          class="btn"
+          type="button"
+          onclick={() => load(true)}
+          title={$t('common.refresh') || 'Refresh'}
+        >
           <Icon name="refresh-cw" size={16} />
           {$t('common.refresh') || 'Refresh'}
         </button>
@@ -169,31 +176,63 @@
 
   <div class="filters">
     <div class="chips">
-      <button class="chip {sev === 'all' ? 'active' : ''}" type="button" onclick={() => (sev = 'all')}>
+      <button
+        class="chip {sev === 'all' ? 'active' : ''}"
+        type="button"
+        onclick={() => (sev = 'all')}
+      >
         {$t('common.all') || 'All'}
       </button>
-      <button class="chip {sev === 'info' ? 'active' : ''}" type="button" onclick={() => (sev = 'info')}>
+      <button
+        class="chip {sev === 'info' ? 'active' : ''}"
+        type="button"
+        onclick={() => (sev = 'info')}
+      >
         {badgeLabel('info')}
       </button>
-      <button class="chip {sev === 'success' ? 'active' : ''}" type="button" onclick={() => (sev = 'success')}>
+      <button
+        class="chip {sev === 'success' ? 'active' : ''}"
+        type="button"
+        onclick={() => (sev = 'success')}
+      >
         {badgeLabel('success')}
       </button>
-      <button class="chip {sev === 'warning' ? 'active' : ''}" type="button" onclick={() => (sev = 'warning')}>
+      <button
+        class="chip {sev === 'warning' ? 'active' : ''}"
+        type="button"
+        onclick={() => (sev = 'warning')}
+      >
         {badgeLabel('warning')}
       </button>
-      <button class="chip {sev === 'error' ? 'active' : ''}" type="button" onclick={() => (sev = 'error')}>
+      <button
+        class="chip {sev === 'error' ? 'active' : ''}"
+        type="button"
+        onclick={() => (sev = 'error')}
+      >
         {badgeLabel('error')}
       </button>
     </div>
 
     <div class="chips right">
-      <button class="chip {mode === 'all' ? 'active' : ''}" type="button" onclick={() => (mode = 'all')}>
+      <button
+        class="chip {mode === 'all' ? 'active' : ''}"
+        type="button"
+        onclick={() => (mode = 'all')}
+      >
         {$t('common.all') || 'All'}
       </button>
-      <button class="chip {mode === 'post' ? 'active' : ''}" type="button" onclick={() => (mode = 'post')}>
+      <button
+        class="chip {mode === 'post' ? 'active' : ''}"
+        type="button"
+        onclick={() => (mode = 'post')}
+      >
         {$t('announcements.modes.post') || 'Post'}
       </button>
-      <button class="chip {mode === 'banner' ? 'active' : ''}" type="button" onclick={() => (mode = 'banner')}>
+      <button
+        class="chip {mode === 'banner' ? 'active' : ''}"
+        type="button"
+        onclick={() => (mode = 'banner')}
+      >
         {$t('announcements.modes.banner') || 'Banner'}
       </button>
 
@@ -230,7 +269,12 @@
 
     <div class="feed">
       {#each rows as a, i (a.id)}
-        <button class="post {a.severity}" type="button" onclick={() => openDetail(a.id)} style={`--d:${i * 55}ms`}>
+        <button
+          class="post {a.severity}"
+          type="button"
+          onclick={() => openDetail(a.id)}
+          style={`--d:${i * 55}ms`}
+        >
           {#if a.cover_file_id}
             <div class="cover">
               <img
@@ -276,7 +320,9 @@
       <div class="load-more">
         <button class="btn" type="button" onclick={loadMore} disabled={loadingMore}>
           <Icon name="chevron-down" size={16} />
-          {loadingMore ? $t('common.loading') || 'Loading...' : $t('common.load_more') || 'Load more'}
+          {loadingMore
+            ? $t('common.loading') || 'Loading...'
+            : $t('common.load_more') || 'Load more'}
         </button>
       </div>
     {/if}
@@ -502,7 +548,10 @@
     box-shadow: var(--shadow-sm);
     cursor: pointer;
     overflow: hidden;
-    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+    transition:
+      transform 180ms ease,
+      box-shadow 180ms ease,
+      border-color 180ms ease;
     animation: rise 420ms ease both;
     animation-delay: var(--d, 0ms);
   }
@@ -532,7 +581,7 @@
 
   :global([data-theme='light']) .cover-shade {
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.0), rgba(0, 0, 0, 0.22)),
+      linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(0, 0, 0, 0.22)),
       radial-gradient(900px 160px at 25% 0%, rgba(99, 102, 241, 0.14), transparent 60%);
     opacity: 0.55;
   }

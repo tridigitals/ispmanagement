@@ -259,7 +259,7 @@ async fn get_email_outbox(
             }
         }
 
-        return Ok(Json(item));
+        Ok(Json(item))
     }
 
     #[cfg(not(feature = "postgres"))]
@@ -342,7 +342,7 @@ async fn get_email_outbox_stats(
             }
         }
 
-        return Ok(Json(stats));
+        Ok(Json(stats))
     }
 
     #[cfg(not(feature = "postgres"))]
@@ -405,7 +405,7 @@ async fn export_email_outbox_csv(
         }
 
         fn csv_escape(s: &str) -> String {
-            let s = s.replace('\r', " ").replace('\n', " ");
+            let s = s.replace(['\r', '\n'], " ");
             if s.contains(',') || s.contains('"') {
                 format!("\"{}\"", s.replace('"', "\"\""))
             } else {
@@ -498,7 +498,7 @@ async fn export_email_outbox_csv(
             ));
         }
 
-        return Ok(Json(serde_json::json!({ "csv": out })));
+        Ok(Json(serde_json::json!({ "csv": out })))
     }
 
     #[cfg(not(feature = "postgres"))]
@@ -652,10 +652,10 @@ async fn bulk_retry_email_outbox(
             .map_err(AppError::Database)?
         };
 
-        return Ok(Json(serde_json::json!({
+        Ok(Json(serde_json::json!({
             "success": true,
             "count": res.rows_affected()
-        })));
+        })))
     }
 
     #[cfg(not(feature = "postgres"))]
@@ -756,10 +756,10 @@ async fn bulk_delete_email_outbox(
             .map_err(AppError::Database)?
         };
 
-        return Ok(Json(serde_json::json!({
+        Ok(Json(serde_json::json!({
             "success": true,
             "count": res.rows_affected()
-        })));
+        })))
     }
 
     #[cfg(not(feature = "postgres"))]

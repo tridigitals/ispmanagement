@@ -3,7 +3,11 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { api } from '$lib/api/client';
-  import type { PaginatedResponse, SupportTicketListItem, SupportTicketStats } from '$lib/api/client';
+  import type {
+    PaginatedResponse,
+    SupportTicketListItem,
+    SupportTicketStats,
+  } from '$lib/api/client';
   import { can } from '$lib/stores/auth';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
@@ -125,7 +129,12 @@
       <p class="sub">{$t('admin.support.subtitle') || 'Manage tenant support requests'}</p>
     </div>
 
-    <button class="btn" type="button" onclick={() => load(true)} title={$t('common.refresh') || 'Refresh'}>
+    <button
+      class="btn"
+      type="button"
+      onclick={() => load(true)}
+      title={$t('common.refresh') || 'Refresh'}
+    >
       <Icon name="refresh-cw" size={16} />
       {$t('common.refresh') || 'Refresh'}
     </button>

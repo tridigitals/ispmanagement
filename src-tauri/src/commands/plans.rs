@@ -84,6 +84,7 @@ pub async fn get_plan(
 
 /// Create a new plan
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn create_plan(
     token: String,
     name: String,
@@ -125,6 +126,7 @@ pub async fn create_plan(
 
 /// Update a plan
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn update_plan(
     token: String,
     plan_id: String,

@@ -123,14 +123,13 @@ impl StorageService {
         .await
         .unwrap_or(None);
 
-        let use_tenant_config = match tenant_driver.as_deref() {
-            Some("s3") | Some("r2") => true,
-            _ => false,
-        };
+        let use_tenant_config = matches!(tenant_driver.as_deref(), Some("s3") | Some("r2"));
 
         #[cfg(feature = "postgres")]
         let rows: Vec<(String, String)> = if use_tenant_config {
-            config.driver = tenant_driver.unwrap();
+            if let Some(td) = tenant_driver {
+                config.driver = td;
+            }
             sqlx::query_as("SELECT key, value FROM settings WHERE tenant_id = $1 AND key = ANY($2)")
                 .bind(tenant_id)
                 .bind(&keys)
@@ -618,17 +617,28 @@ impl StorageService {
 
         #[cfg(feature = "postgres")]
         {
-            // Debug: Test raw query to see if data exists
-            let raw_count: i64 =
+            let total_count: i64 = if let Some(s) = search.as_ref() {
+                let pattern = format!("%{}%", s);
+                sqlx::query_scalar(
+                    "SELECT COUNT(*) FROM file_records WHERE tenant_id = $1 AND (name ILIKE $2 OR original_name ILIKE $3)",
+                )
+                .bind(tenant_id)
+                .bind(&pattern)
+                .bind(&pattern)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(format!("Count query failed: {}", e)))?
+            } else {
                 sqlx::query_scalar("SELECT COUNT(*) FROM file_records WHERE tenant_id = $1")
                     .bind(tenant_id)
                     .fetch_one(&self.pool)
                     .await
-                    .map_err(|e| AppError::Internal(format!("Count query failed: {}", e)))?;
+                    .map_err(|e| AppError::Internal(format!("Count query failed: {}", e)))?
+            };
 
             // Data query - Use raw query and manual mapping to avoid query_as issue
-            let data_rows: Vec<sqlx::postgres::PgRow> = if search.is_some() {
-                let pattern = format!("%{}%", search.as_ref().unwrap());
+            let data_rows: Vec<sqlx::postgres::PgRow> = if let Some(s) = search.as_ref() {
+                let pattern = format!("%{}%", s);
                 sqlx::query(
                     "SELECT * FROM file_records WHERE tenant_id = $1 AND (name ILIKE $2 OR original_name ILIKE $3) ORDER BY created_at DESC LIMIT $4 OFFSET $5"
                 )
@@ -689,7 +699,7 @@ impl StorageService {
                 })
                 .collect();
 
-            Ok((files, raw_count))
+            Ok((files, total_count))
         }
 
         #[cfg(feature = "sqlite")]
@@ -928,9 +938,10 @@ impl StorageService {
         Ok(())
     }
 
-    /// --- Chunked Upload Methods ---
-
-    /// 1. Initialize a chunked upload session
+    /// Chunked upload methods.
+    ///
+    /// Initialize a chunked upload session.
+    ///
     /// Returns: upload_id
     pub async fn init_chunk_session(&self) -> AppResult<String> {
         let upload_id = Uuid::new_v4().to_string();

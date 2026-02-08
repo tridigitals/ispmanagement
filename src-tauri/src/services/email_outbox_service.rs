@@ -90,6 +90,7 @@ impl EmailOutboxService {
     #[cfg(not(feature = "postgres"))]
     async fn advisory_unlock(&self, _key: &str) {}
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn enqueue(
         &self,
         tenant_id: Option<String>,
@@ -183,22 +184,14 @@ impl EmailOutboxService {
                 )
                 .await?;
             Ok(())
+        } else if let Some(html) = body_html.as_deref() {
+            self.email_service
+                .send_email_with_html_for_tenant(tenant_id.as_deref(), to, subject, body_text, html)
+                .await
         } else {
-            if let Some(html) = body_html.as_deref() {
-                self.email_service
-                    .send_email_with_html_for_tenant(
-                        tenant_id.as_deref(),
-                        to,
-                        subject,
-                        body_text,
-                        html,
-                    )
-                    .await
-            } else {
-                self.email_service
-                    .send_email_for_tenant(tenant_id.as_deref(), to, subject, body_text)
-                    .await
-            }
+            self.email_service
+                .send_email_for_tenant(tenant_id.as_deref(), to, subject, body_text)
+                .await
         }
     }
 

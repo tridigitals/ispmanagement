@@ -67,6 +67,7 @@ pub struct AppState {
     pub metrics_service: Arc<crate::services::metrics_service::MetricsService>,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn start_server(
     auth_service: AuthService,
     user_service: UserService,

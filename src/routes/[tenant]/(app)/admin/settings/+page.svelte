@@ -485,7 +485,7 @@
       );
     } catch (error: any) {
       toast.error(
-        error.message || ($t('admin.settings.email.smtp_test.failed') || 'SMTP test failed'),
+        error.message || $t('admin.settings.email.smtp_test.failed') || 'SMTP test failed',
       );
     } finally {
       testingSmtp = false;
@@ -903,7 +903,8 @@
                         id="email-outbox-max"
                         type="number"
                         value={localSettings['email_outbox_max_attempts']}
-                        oninput={(e: any) => handleChange('email_outbox_max_attempts', e.target.value)}
+                        oninput={(e: any) =>
+                          handleChange('email_outbox_max_attempts', e.target.value)}
                         placeholder="5"
                       />
                     </div>

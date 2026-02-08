@@ -17,7 +17,12 @@
     if (DEV) console.debug('[PdfViewer]', ...args);
   }
 
-  let { src, downloadUrl, filename, showToolbar = true } = $props<{
+  let {
+    src,
+    downloadUrl,
+    filename,
+    showToolbar = true,
+  } = $props<{
     src: string;
     downloadUrl: string;
     filename: string;
@@ -318,12 +323,7 @@
         <button class="btn" type="button" onclick={zoomIn} title={$t('common.next') || 'Zoom in'}>
           <Icon name="plus" size={16} />
         </button>
-        <button
-          class="btn"
-          type="button"
-          onclick={resetZoom}
-          title={$t('common.reset') || 'Reset'}
-        >
+        <button class="btn" type="button" onclick={resetZoom} title={$t('common.reset') || 'Reset'}>
           <Icon name="refresh-cw" size={16} />
         </button>
         <button

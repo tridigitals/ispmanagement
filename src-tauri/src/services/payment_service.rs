@@ -700,7 +700,7 @@ impl PaymentService {
                         message.clone(),
                         "info".to_string(),                   // type
                         "billing".to_string(),                // category
-                        Some(format!("/admin/subscription")), // action_url
+                        Some("/admin/subscription".to_string()), // action_url
                     )
                     .await;
             }
@@ -735,7 +735,7 @@ impl PaymentService {
                         ),
                         "success".to_string(),
                         "billing".to_string(),
-                        Some(format!("/superadmin/invoices")),
+                        Some("/superadmin/invoices".to_string()),
                     )
                     .await;
             }
@@ -888,7 +888,7 @@ impl PaymentService {
                     ),
                     "info".to_string(),
                     "billing".to_string(),
-                    Some(format!("/superadmin/invoices")),
+                    Some("/superadmin/invoices".to_string()),
                 )
                 .await;
         }
@@ -922,20 +922,20 @@ impl PaymentService {
 
     async fn get_setting_value(&self, tenant_id: Option<&str>, key: &str) -> Option<String> {
         #[cfg(feature = "postgres")]
-        let q = if tenant_id.is_some() {
+        let q = if let Some(tid) = tenant_id {
             sqlx::query_scalar("SELECT value FROM settings WHERE key = $1 AND tenant_id = $2")
                 .bind(key)
-                .bind(tenant_id.unwrap())
+                .bind(tid)
         } else {
             sqlx::query_scalar("SELECT value FROM settings WHERE key = $1 AND tenant_id IS NULL")
                 .bind(key)
         };
 
         #[cfg(feature = "sqlite")]
-        let q = if tenant_id.is_some() {
+        let q = if let Some(tid) = tenant_id {
             sqlx::query_scalar("SELECT value FROM settings WHERE key = ? AND tenant_id = ?")
                 .bind(key)
-                .bind(tenant_id.unwrap())
+                .bind(tid)
         } else {
             sqlx::query_scalar("SELECT value FROM settings WHERE key = ? AND tenant_id IS NULL")
                 .bind(key)

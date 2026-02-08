@@ -70,12 +70,12 @@ pub async fn add_team_member(
         .team_service
         .get_user_role_level(&claims.sub, &tenant_id)
         .await
-        .map_err(|e| crate::error::AppError::Internal(e))?;
+        .map_err(crate::error::AppError::Internal)?;
     let new_role_level = state
         .team_service
         .get_role_level_by_id(&payload.role_id)
         .await
-        .map_err(|e| crate::error::AppError::Internal(e))?;
+        .map_err(crate::error::AppError::Internal)?;
 
     if requester_level < new_role_level {
         return Err(crate::error::AppError::Forbidden(
@@ -95,7 +95,7 @@ pub async fn add_team_member(
             Some(&ip),
         )
         .await
-        .map_err(|e| crate::error::AppError::Internal(e))?;
+        .map_err(crate::error::AppError::Internal)?;
 
     // Broadcast member added event
     state.ws_hub.broadcast(WsEvent::MemberUpdated {
@@ -141,7 +141,7 @@ pub async fn update_team_member(
             Some(&ip),
         )
         .await
-        .map_err(|e| crate::error::AppError::Internal(e))?;
+        .map_err(crate::error::AppError::Internal)?;
 
     // Broadcast member updated event - permissions may have changed
     state.ws_hub.broadcast(WsEvent::PermissionsChanged);
@@ -173,7 +173,7 @@ pub async fn remove_team_member(
         .team_service
         .remove_member(&tenant_id, &id, Some(&claims.sub), Some(&ip))
         .await
-        .map_err(|e| crate::error::AppError::Internal(e))?;
+        .map_err(crate::error::AppError::Internal)?;
 
     // Broadcast member removed event
     state.ws_hub.broadcast(WsEvent::PermissionsChanged);

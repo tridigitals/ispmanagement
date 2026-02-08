@@ -159,7 +159,7 @@ pub async fn serve_file(
                         Err(_) => return StatusCode::NOT_FOUND.into_response(),
                     };
 
-                    if let Err(_) = file.seek(std::io::SeekFrom::Start(start)).await {
+                    if (file.seek(std::io::SeekFrom::Start(start)).await).is_err() {
                         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
                     }
 

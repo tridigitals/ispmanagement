@@ -76,7 +76,7 @@ impl BackupService {
                     size: metadata.len(),
                     created_at: metadata
                         .created()
-                        .map(|t| chrono::DateTime::from(t))
+                        .map(chrono::DateTime::from)
                         .unwrap_or(Utc::now()),
                     backup_type: "global".to_string(),
                     tenant_id: None,
@@ -124,7 +124,7 @@ impl BackupService {
                         size: metadata.len(),
                         created_at: metadata
                             .created()
-                            .map(|t| chrono::DateTime::from(t))
+                            .map(chrono::DateTime::from)
                             .unwrap_or(Utc::now()),
                         backup_type: "tenant".to_string(),
                         tenant_id: Some(tenant_id.clone()),
@@ -782,7 +782,7 @@ impl BackupService {
                 info!("Restoring table: {}", table_name);
 
                 let rows: Vec<serde_json::Map<String, serde_json::Value>> =
-                    serde_json::from_str(&contents).map_err(|e| {
+                    serde_json::from_str(contents).map_err(|e| {
                         AppError::Internal(format!("Invalid JSON in {}: {}", table_name, e))
                     })?;
 
@@ -792,7 +792,7 @@ impl BackupService {
 
                 if let Some(tid) = target_tenant_id {
                     // Tenant-specific cleanup for this table
-                    let tenant_tables_with_tenant_id = vec![
+                    let tenant_tables_with_tenant_id = [
                         "settings",
                         "invoices",
                         "file_records",
@@ -802,10 +802,10 @@ impl BackupService {
                         "notifications",
                     ];
 
-                    let tenant_tables_without_tenant_id = vec!["role_permissions"];
+                    let tenant_tables_without_tenant_id = ["role_permissions"];
 
                     let tenant_tables_user_scoped =
-                        vec!["notification_preferences", "push_subscriptions"];
+                        ["notification_preferences", "push_subscriptions"];
 
                     if tenant_tables_with_tenant_id.contains(&table_name) {
                         #[cfg(feature = "postgres")]

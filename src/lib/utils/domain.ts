@@ -8,6 +8,11 @@
 // We might need to rely on a global config object injected at build time or assume a convention.
 
 export function getSlugFromDomain(hostname: string): string | null {
+  // Avoid touching Web APIs during SSR/prerender/build-time.
+  if (typeof window === 'undefined') {
+    return domainMapFromFallback(hostname);
+  }
+
   // Development overrides
   if (
     hostname.includes('localhost') ||
@@ -31,7 +36,7 @@ export function getSlugFromDomain(hostname: string): string | null {
   }
 
   // Check LocalStorage cache (Dynamic mappings from first-visit check)
-  if (typeof localStorage !== 'undefined') {
+  if (typeof localStorage !== 'undefined' && typeof localStorage.getItem === 'function') {
     try {
       const cache = JSON.parse(localStorage.getItem('tenant_domain_map') || '{}');
       if (cache[hostname]) {
@@ -42,6 +47,10 @@ export function getSlugFromDomain(hostname: string): string | null {
     }
   }
 
+  return domainMapFromFallback(hostname);
+}
+
+function domainMapFromFallback(hostname: string): string | null {
   // Example Hardcoded Mapping (Keep as fallback or remove if desired)
   const domainMap: Record<string, string> = {
     'dashboard.tridigitals.com': 'tridigitals',
@@ -56,7 +65,7 @@ export function getSlugFromDomain(hostname: string): string | null {
  * Helper to cache a new domain mapping
  */
 export function cacheDomainMapping(domain: string, slug: string) {
-  if (typeof localStorage === 'undefined') return;
+  if (typeof localStorage === 'undefined' || typeof localStorage.setItem !== 'function') return;
 
   try {
     const cache = JSON.parse(localStorage.getItem('tenant_domain_map') || '{}');

@@ -1,6 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { api, type Announcement, type CreateAnnouncementDto, type PaginatedResponse } from '$lib/api/client';
+  import {
+    api,
+    type Announcement,
+    type CreateAnnouncementDto,
+    type PaginatedResponse,
+  } from '$lib/api/client';
   import { can, isSuperAdmin } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import { toast } from '$lib/stores/toast';
@@ -167,7 +172,9 @@
   async function create() {
     if (!title.trim() || stripHtmlToText(body).length === 0) return;
     if (!deliverInApp && !deliverEmail) {
-      toast.error(get(t)('announcements.toasts.delivery_required') || 'Choose at least one delivery channel.');
+      toast.error(
+        get(t)('announcements.toasts.delivery_required') || 'Choose at least one delivery channel.',
+      );
       return;
     }
     saving = true;
@@ -239,11 +246,17 @@
     <div>
       <div class="h1">{$t('announcements.title') || 'Announcements'}</div>
       <div class="sub">
-        {$t('announcements.subtitle') || 'Broadcast messages to users as banners and notifications.'}
+        {$t('announcements.subtitle') ||
+          'Broadcast messages to users as banners and notifications.'}
       </div>
     </div>
     <div class="actions">
-      <button class="btn" type="button" onclick={() => load(true)} title={$t('common.refresh') || 'Refresh'}>
+      <button
+        class="btn"
+        type="button"
+        onclick={() => load(true)}
+        title={$t('common.refresh') || 'Refresh'}
+      >
         <Icon name="refresh-cw" size={16} />
         {$t('common.refresh') || 'Refresh'}
       </button>
@@ -356,7 +369,8 @@
               <RichTextEditor
                 label={$t('announcements.fields.body') || 'Body'}
                 bind:value={body}
-                placeholder={$t('announcements.placeholders.body') || 'Write something clear and short…'}
+                placeholder={$t('announcements.placeholders.body') ||
+                  'Write something clear and short…'}
                 help={$t('announcements.hints.rich') ||
                   'Tip: Keep it concise. Links are allowed; images should be added as cover.'}
                 minHeight={190}
@@ -400,9 +414,21 @@
               />
             </div>
             <div class="filters">
-              <Select label={$t('announcements.fields.status') || 'Status'} options={statusFilterOptions} bind:value={statusFilter} />
-              <Select label={$t('announcements.fields.severity') || 'Severity'} options={severityFilterOptions} bind:value={severityFilter} />
-              <Select label={$t('announcements.fields.mode') || 'Mode'} options={modeFilterOptions} bind:value={modeFilter} />
+              <Select
+                label={$t('announcements.fields.status') || 'Status'}
+                options={statusFilterOptions}
+                bind:value={statusFilter}
+              />
+              <Select
+                label={$t('announcements.fields.severity') || 'Severity'}
+                options={severityFilterOptions}
+                bind:value={severityFilter}
+              />
+              <Select
+                label={$t('announcements.fields.mode') || 'Mode'}
+                options={modeFilterOptions}
+                bind:value={modeFilter}
+              />
             </div>
           </div>
 

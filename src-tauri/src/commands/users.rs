@@ -6,8 +6,6 @@ use crate::services::{AuthService, UserService};
 use tauri::State;
 use validator::Validate;
 
-/// Paginated response wrapper
-
 /// List users with pagination (Super Admin Only)
 #[tauri::command]
 pub async fn list_users(
@@ -65,7 +63,6 @@ pub async fn get_user(
 }
 
 /// Create new user (Super Admin Only)
-/// Create new user (Super Admin Only)
 #[tauri::command]
 pub async fn create_user(
     token: String,
@@ -103,6 +100,7 @@ pub async fn create_user(
 
 /// Update user (Super Admin OR Self)
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn update_user(
     token: String,
     id: String,

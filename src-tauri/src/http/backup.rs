@@ -80,7 +80,7 @@ async fn list_backups(
         .filter(|b| b.backup_type == "tenant" && b.tenant_id.as_deref() == Some(tenant_id))
         .collect();
 
-    return Ok(Json(filtered));
+    Ok(Json(filtered))
 }
 
 #[derive(Deserialize)]

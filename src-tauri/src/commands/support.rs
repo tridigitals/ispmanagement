@@ -28,7 +28,7 @@ async fn support_admin_user_ids(
     "#,
     )
     .bind(tenant_id)
-    .bind(&["support:read_all", "support:reply"])
+    .bind(["support:read_all", "support:reply"])
     .fetch_all(pool)
     .await
 }
@@ -452,6 +452,7 @@ pub async fn get_support_ticket_stats(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn create_support_ticket(
     token: String,
     subject: String,
@@ -715,6 +716,7 @@ pub async fn get_support_ticket(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn reply_support_ticket(
     token: String,
     id: String,
@@ -864,7 +866,12 @@ pub async fn reply_support_ticket(
     let att_map: HashMap<String, Vec<FileRecord>> = {
         #[cfg(feature = "postgres")]
         {
-            fetch_attachments_map_pg(&auth_service.pool, &tenant_id, &id, &[msg.id.clone()])
+            fetch_attachments_map_pg(
+                &auth_service.pool,
+                &tenant_id,
+                &id,
+                std::slice::from_ref(&msg.id),
+            )
                 .await
                 .unwrap_or_default()
         }
@@ -886,6 +893,7 @@ pub async fn reply_support_ticket(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn update_support_ticket(
     token: String,
     id: String,

@@ -315,20 +315,22 @@
           <div class="thread-head">
             <div class="thread-title">{$t('support.detail.thread') || 'Conversation'}</div>
             <div class="thread-sub">
-              {detail.messages.length} {$t('support.detail.messages') || 'messages'}
+              {detail.messages.length}
+              {$t('support.detail.messages') || 'messages'}
             </div>
           </div>
 
           <div class="chat">
             {#each detail.messages as m (m.id)}
-              {@const isCustomer = !!detail.ticket.created_by && m.author_id === detail.ticket.created_by}
+              {@const isCustomer =
+                !!detail.ticket.created_by && m.author_id === detail.ticket.created_by}
               {@const mine = !isCustomer}
               {@const who = isCustomer
                 ? $t('support.labels.customer') || 'Customer'
                 : $t('support.labels.staff') || 'Staff'}
-              <div class="msg" class:mine={mine} class:internal={m.is_internal}>
-                <div class="msg-top" class:mine={mine}>
-                  <div class="avatar" class:mine={mine} class:internal={m.is_internal}>
+              <div class="msg" class:mine class:internal={m.is_internal}>
+                <div class="msg-top" class:mine>
+                  <div class="avatar" class:mine class:internal={m.is_internal}>
                     <Icon
                       name={m.is_internal ? 'eye-off' : isCustomer ? 'user' : 'headphones'}
                       size={14}
@@ -344,7 +346,7 @@
                   </span>
                 </div>
 
-                <div class="bubble" class:mine={mine} class:internal={m.is_internal}>
+                <div class="bubble" class:mine class:internal={m.is_internal}>
                   <div class="msg-body">{m.body}</div>
                   {#if (m.attachments || []).length}
                     <div class="attachments">

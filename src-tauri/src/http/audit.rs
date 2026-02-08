@@ -25,28 +25,28 @@ pub struct AuditLogQuery {
 }
 
 // Map Query to Filter
-impl Into<crate::models::AuditLogFilter> for AuditLogQuery {
-    fn into(self) -> crate::models::AuditLogFilter {
-        let date_from = self.date_from.and_then(|d| {
+impl From<AuditLogQuery> for crate::models::AuditLogFilter {
+    fn from(val: AuditLogQuery) -> Self {
+        let date_from = val.date_from.and_then(|d| {
             chrono::DateTime::parse_from_rfc3339(&d)
                 .ok()
                 .map(|dt| dt.with_timezone(&chrono::Utc))
         });
-        let date_to = self.date_to.and_then(|d| {
+        let date_to = val.date_to.and_then(|d| {
             chrono::DateTime::parse_from_rfc3339(&d)
                 .ok()
                 .map(|dt| dt.with_timezone(&chrono::Utc))
         });
 
         crate::models::AuditLogFilter {
-            page: self.page,
-            per_page: self.per_page,
-            user_id: self.user_id,
-            tenant_id: self.tenant_id,
-            action: self.action,
+            page: val.page,
+            per_page: val.per_page,
+            user_id: val.user_id,
+            tenant_id: val.tenant_id,
+            action: val.action,
             date_from,
             date_to,
-            search: self.search,
+            search: val.search,
         }
     }
 }

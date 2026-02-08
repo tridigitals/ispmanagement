@@ -58,7 +58,7 @@ impl RateLimiter {
         let mut requests = self.requests.write().unwrap();
 
         // Get or create entry for this key
-        let timestamps = requests.entry(key.to_string()).or_insert_with(Vec::new);
+        let timestamps = requests.entry(key.to_string()).or_default();
 
         // Remove expired timestamps (sliding window)
         timestamps.retain(|&ts| ts > cutoff);

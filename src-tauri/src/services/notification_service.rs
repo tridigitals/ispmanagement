@@ -97,6 +97,7 @@ impl NotificationService {
     }
 
     /// Create and send a notification
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_notification(
         &self,
         user_id: String,

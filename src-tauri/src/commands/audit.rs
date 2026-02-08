@@ -5,6 +5,7 @@ use crate::services::{AuditService, AuthService};
 use tauri::State;
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn list_audit_logs(
     token: String,
     page: Option<u32>,

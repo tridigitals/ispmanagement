@@ -330,8 +330,9 @@
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(0, 0, 0, 0.35);
     overflow: auto;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-      'Courier New', monospace;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+      monospace;
   }
 
   :global([data-theme='light']) .editor :global(.ProseMirror pre) {
@@ -363,4 +364,3 @@
     pointer-events: none;
   }
 </style>
-

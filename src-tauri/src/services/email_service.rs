@@ -105,15 +105,9 @@ impl EmailService {
 
     async fn get_value_fallback(&self, tenant_id: Option<&str>, key: &str) -> Option<String> {
         if let Some(tid) = tenant_id {
-            if let Ok(v) = self
-                .settings_service
-                .get_value(Some(tid), key)
-                .await
-            {
-                if let Some(s) = v {
-                    if !s.trim().is_empty() {
-                        return Some(s);
-                    }
+            if let Ok(Some(s)) = self.settings_service.get_value(Some(tid), key).await {
+                if !s.trim().is_empty() {
+                    return Some(s);
                 }
             }
         }

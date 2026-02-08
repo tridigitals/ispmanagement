@@ -224,7 +224,8 @@
               {$t('support.detail.thread') || 'Conversation'}
             </div>
             <div class="thread-sub">
-              {detail.messages.length} {$t('support.detail.messages') || 'messages'}
+              {detail.messages.length}
+              {$t('support.detail.messages') || 'messages'}
             </div>
           </div>
 
@@ -234,9 +235,9 @@
               {@const label = mine
                 ? $t('common.you') || 'You'
                 : $t('support.labels.support') || 'Support'}
-              <div class="msg" class:mine={mine}>
+              <div class="msg" class:mine>
                 <div class="msg-top">
-                  <div class="avatar" class:mine={mine}>
+                  <div class="avatar" class:mine>
                     <Icon name={mine ? 'user' : 'headphones'} size={14} />
                   </div>
                   <span class="who">{label}</span>
@@ -245,7 +246,7 @@
                     {formatDateTime(m.created_at, { timeZone: $appSettings.app_timezone })}
                   </span>
                 </div>
-                <div class="bubble" class:mine={mine}>
+                <div class="bubble" class:mine>
                   <div class="msg-body">{m.body}</div>
                   {#if (m.attachments || []).length}
                     <div class="attachments">

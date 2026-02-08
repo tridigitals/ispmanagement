@@ -42,7 +42,9 @@ function isSafeHref(href: string) {
 export function stripHtmlToText(input: string) {
   if (typeof document === 'undefined') {
     // Server-side / non-DOM fallback (best effort).
-    return String(input || '').replace(/<[^>]*>/g, '').trim();
+    return String(input || '')
+      .replace(/<[^>]*>/g, '')
+      .trim();
   }
   const div = document.createElement('div');
   div.innerHTML = String(input || '');

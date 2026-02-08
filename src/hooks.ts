@@ -1,6 +1,10 @@
 import type { Reroute } from '@sveltejs/kit';
 import { getSlugFromDomain } from '$lib/utils/domain';
 
+// SvelteKit may import this optional export in some builds.
+// Keeping it defined avoids Rollup "missing export" warnings.
+export const transport = undefined;
+
 // Paths that should NOT be rerouted to tenant prefix
 const PUBLIC_PATHS = [
   '/maintenance',

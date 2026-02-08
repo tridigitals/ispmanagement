@@ -34,6 +34,7 @@ impl AuditService {
     }
 
     /// Log an action to the audit_logs table
+    #[allow(clippy::too_many_arguments)]
     pub async fn log(
         &self,
         user_id: Option<&str>,
@@ -229,7 +230,7 @@ impl AuditService {
                     crate::error::AppError::Internal(e.to_string())
                 })?;
 
-            return Ok((logs, count));
+            Ok((logs, count))
         }
 
         // --- SQLite Implementation ---

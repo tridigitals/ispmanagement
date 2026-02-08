@@ -34,7 +34,7 @@ async fn support_admin_user_ids(
     "#,
     )
     .bind(tenant_id)
-    .bind(&["support:read_all", "support:reply"])
+    .bind(["support:read_all", "support:reply"])
     .fetch_all(pool)
     .await
 }
@@ -840,7 +840,12 @@ pub async fn reply_support_ticket(
     let att_map: HashMap<String, Vec<FileRecord>> = {
         #[cfg(feature = "postgres")]
         {
-            fetch_attachments_map_pg(&state.auth_service.pool, &tenant_id, &id, &[msg.id.clone()])
+            fetch_attachments_map_pg(
+                &state.auth_service.pool,
+                &tenant_id,
+                &id,
+                std::slice::from_ref(&msg.id),
+            )
                 .await
                 .unwrap_or_default()
         }

@@ -139,6 +139,7 @@ impl TeamService {
     }
 
     /// Add a new member (create user if needed, or link existing)
+    #[allow(clippy::too_many_arguments)]
     pub async fn add_member(
         &self,
         tenant_id: &str,

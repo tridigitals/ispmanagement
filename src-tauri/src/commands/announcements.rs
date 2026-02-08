@@ -128,11 +128,11 @@ async fn tenant_admin_user_ids(
           AND rp.permission_id = ANY($2)
     "#,
     )
-    .bind(tenant_id)
-    .bind(&["admin:access", "admin:*", "*"])
-    .fetch_all(pool)
-    .await
-}
+        .bind(tenant_id)
+        .bind(["admin:access", "admin:*", "*"])
+        .fetch_all(pool)
+        .await
+    }
 
 #[cfg(feature = "postgres")]
 async fn tenant_user_ids(
@@ -726,6 +726,7 @@ pub async fn dismiss_announcement(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn list_announcements_admin(
     token: String,
     scope: Option<String>,

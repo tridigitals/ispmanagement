@@ -41,7 +41,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  // eslint-disable-next-line no-console
   console.error('[copy-pdfjs-assets] failed:', e);
   process.exitCode = 1;
 });

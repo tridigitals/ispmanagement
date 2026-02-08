@@ -11,7 +11,7 @@ fn parse_args() -> SeedOptions {
     //   seed [dev|prod] [--email x] [--password y] [--name z] [--tenant-name n] [--tenant-slug s] [--tz Asia/Jakarta]
     let argv: Vec<String> = env::args().skip(1).collect();
     let mut i = 0usize;
-    if let Some(first) = argv.get(0) {
+    if let Some(first) = argv.first() {
         if first == "dev" {
             opts.mode = SeedMode::Dev;
             i = 1;
