@@ -57,6 +57,7 @@ type WsEvent =
 let ws: WebSocket | null = null;
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+let watchdogInterval: ReturnType<typeof setInterval> | null = null;
 let reconnectAttempts = 0;
 const RECONNECT_BASE_DELAY = 1200; // ms
 const RECONNECT_MAX_DELAY = 30_000; // ms
@@ -64,6 +65,8 @@ const DEV = import.meta.env.DEV;
 let manualClose = false;
 let lastMessageAt = 0;
 const HEARTBEAT_INTERVAL_MS = 25_000;
+const CONNECT_TIMEOUT_MS = 10_000;
+let connectStartedAt = 0;
 
 // Auto-connect in browser when token becomes available (prevents "must reload" issues).
 // Guarded with a global flag to avoid duplicate subscriptions across HMR.
@@ -71,8 +74,12 @@ const g = globalThis as any;
 if (browser && !g.__ws_auto_init) {
   g.__ws_auto_init = true;
   token.subscribe((t) => {
-    if (t) connectWebSocket();
-    else disconnectWebSocket();
+    if (t) {
+      connectWebSocket();
+      startWatchdog();
+    } else {
+      disconnectWebSocket();
+    }
   });
   window.addEventListener('online', () => connectWebSocket());
   document.addEventListener('visibilitychange', () => {
@@ -145,6 +152,7 @@ export function connectWebSocket() {
 
   try {
     manualClose = false;
+    connectStartedAt = Date.now();
     ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
@@ -169,6 +177,9 @@ export function connectWebSocket() {
     ws.onerror = (error) => {
       console.error('[WS] Error:', error);
       wsError.set('WebSocket connection error');
+      // Some environments can get "stuck" in CONNECTING without reliably firing onclose.
+      // Watchdog will handle it, but scheduling here makes reconnect more aggressive.
+      scheduleReconnect();
     };
 
     ws.onclose = (event) => {
@@ -188,6 +199,41 @@ export function connectWebSocket() {
     wsError.set('Failed to connect to WebSocket');
     scheduleReconnect();
   }
+}
+
+function startWatchdog() {
+  if (!browser) return;
+  if (watchdogInterval) return;
+
+  // Keep trying to connect even if initial connect never opens (common in browser when backend
+  // starts late or the network is flaky). This prevents "must reload" cases.
+  watchdogInterval = setInterval(() => {
+    const t = get(token);
+    if (!t) return;
+
+    if (!ws) {
+      connectWebSocket();
+      return;
+    }
+
+    if (ws.readyState === WebSocket.CONNECTING) {
+      const age = Date.now() - (connectStartedAt || 0);
+      if (age > CONNECT_TIMEOUT_MS) {
+        if (DEV) console.debug('[WS] connect timeout, forcing reconnect', { age });
+        try {
+          ws.close();
+        } catch {
+          // ignore
+        }
+      }
+      return;
+    }
+
+    if (ws.readyState === WebSocket.CLOSED) {
+      connectWebSocket();
+      return;
+    }
+  }, 2500);
 }
 
 function startHeartbeat() {
@@ -235,6 +281,13 @@ function stopHeartbeat() {
   if (heartbeatInterval) {
     clearInterval(heartbeatInterval);
     heartbeatInterval = null;
+  }
+}
+
+function stopWatchdog() {
+  if (watchdogInterval) {
+    clearInterval(watchdogInterval);
+    watchdogInterval = null;
   }
 }
 
@@ -380,6 +433,7 @@ export function disconnectWebSocket() {
   }
 
   stopHeartbeat();
+  stopWatchdog();
 
   if (ws) {
     manualClose = true;
