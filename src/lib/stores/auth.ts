@@ -7,6 +7,9 @@ import { api, auth, type User, type Tenant, type AuthResponse } from '$lib/api/c
 import { appSettings } from './settings';
 import { appLogo } from './logo';
 
+// Tracks whether backend/API is reachable. We keep sessions during transient outages.
+export const backendAvailable = writable(true);
+
 // Token storage key
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';
@@ -198,15 +201,52 @@ export async function checkAuth(): Promise<boolean> {
   if (!currentToken) return false;
 
   try {
-    const isValid = await auth.validateToken(currentToken);
+    backendAvailable.set(true);
+
+    const isUnauthorizedError = (e: unknown) => {
+      const msg = String((e as any)?.message || e || '');
+      return (
+        msg.includes('HTTP Error 401') ||
+        msg.includes('HTTP Error 403') ||
+        msg.toLowerCase().includes('unauthorized') ||
+        msg.toLowerCase().includes('invalid token')
+      );
+    };
+
+    // Validate token: on network/server errors we keep the local session and retry later.
+    // Only force logout if backend explicitly rejects the token.
+    let isValid = true;
+    try {
+      const res: any = await auth.validateToken(currentToken);
+      isValid = typeof res === 'boolean' ? res : res?.valid === true;
+    } catch (e) {
+      if (isUnauthorizedError(e)) {
+        logout();
+        return false;
+      }
+      backendAvailable.set(false);
+      // Keep existing auth state during outage.
+      return !!getStoredUser();
+    }
+
     if (!isValid) {
       logout();
       return false;
     }
 
     // Refresh user data from backend
-    const currentUser = await auth.getCurrentUser(currentToken);
-    user.set(currentUser);
+    try {
+      const currentUser = await auth.getCurrentUser(currentToken);
+      user.set(currentUser);
+    } catch (e) {
+      if (isUnauthorizedError(e)) {
+        logout();
+        return false;
+      }
+      backendAvailable.set(false);
+      // Keep existing user/tenant data; we'll refresh when backend is back.
+      return !!getStoredUser();
+    }
 
     // Fetch current tenant info if logged in
     try {
@@ -221,9 +261,8 @@ export async function checkAuth(): Promise<boolean> {
 
     // Also update storage so components get fresh data
     const storage = localStorage.getItem(TOKEN_KEY) ? localStorage : sessionStorage;
-    if (currentUser) {
-      storage.setItem(USER_KEY, JSON.stringify(currentUser));
-    }
+    const refreshedUser = get(user);
+    if (refreshedUser) storage.setItem(USER_KEY, JSON.stringify(refreshedUser));
     const $tenant = get(tenant);
     if ($tenant) {
       storage.setItem(TENANT_KEY, JSON.stringify($tenant));
@@ -231,8 +270,21 @@ export async function checkAuth(): Promise<boolean> {
 
     return true;
   } catch (e) {
-    logout();
-    return false;
+    // Final safety net: only logout on explicit auth failures.
+    const msg = String((e as any)?.message || e || '');
+    const isAuthError =
+      msg.includes('HTTP Error 401') ||
+      msg.includes('HTTP Error 403') ||
+      msg.toLowerCase().includes('unauthorized') ||
+      msg.toLowerCase().includes('invalid token');
+
+    if (isAuthError) {
+      logout();
+      return false;
+    }
+
+    backendAvailable.set(false);
+    return !!getStoredUser();
   }
 }
 
