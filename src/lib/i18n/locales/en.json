@@ -1723,6 +1723,11 @@
       "selected": "Selected",
       "confirm_bulk_delete": "Delete selected outbox items?"
     },
+    "backups": {
+      "disabled_title": "Disabled for Tenants",
+      "disabled_desc": "Backups are managed by Super Admin. Contact support if you need a restore.",
+      "disabled_body": "Tenant backup/restore is disabled to reduce security risk. Your data is covered by global backups."
+    },
     "overview": {
       "loading": "Loading system data...",
       "stats": {

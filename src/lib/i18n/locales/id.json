@@ -1723,6 +1723,11 @@
       "selected": "Dipilih",
       "confirm_bulk_delete": "Hapus item outbox yang dipilih?"
     },
+    "backups": {
+      "disabled_title": "Dinonaktifkan untuk Tenant",
+      "disabled_desc": "Backup dikelola oleh Super Admin. Hubungi support jika perlu restore.",
+      "disabled_body": "Backup/restore tenant dinonaktifkan untuk mengurangi risiko keamanan. Data Anda tetap tercakup oleh backup global."
+    },
     "overview": {
       "loading": "Memuat data sistem...",
       "stats": {

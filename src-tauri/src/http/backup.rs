@@ -30,14 +30,6 @@ fn extract_token(headers: &HeaderMap) -> Result<String, crate::error::AppError> 
         .ok_or(crate::error::AppError::Unauthorized)
 }
 
-fn has_permission(perms: &[String], resource: &str, action: &str) -> bool {
-    let perm = format!("{}:{}", resource, action);
-    let wildcard = format!("{}:*", resource);
-    perms
-        .iter()
-        .any(|p| p == "*" || p == &perm || p == &wildcard)
-}
-
 #[derive(Deserialize)]
 #[serde(rename_all = "snake_case")]
 struct ListBackupsQuery {
@@ -54,30 +46,21 @@ async fn list_backups(
     // Check permission
     let claims = state.auth_service.validate_token(&token).await?;
 
+    // Tenant backup/restore is intentionally disabled. Backups are managed by Super Admin only.
+    if !claims.is_super_admin {
+        return Err(crate::error::AppError::Forbidden(
+            "Backups are managed by Super Admin".to_string(),
+        ));
+    }
+
     let backups = state.backup_service.list_backups().await?;
     if claims.is_super_admin && query.tenant_only != Some(true) {
         return Ok(Json(backups));
     }
 
-    let tenant_id = claims
-        .tenant_id
-        .as_ref()
-        .ok_or(crate::error::AppError::Forbidden(
-            "Tenant context missing".to_string(),
-        ))?;
-    let perms = state
-        .auth_service
-        .get_user_permissions(&claims.sub, tenant_id)
-        .await?;
-    if !has_permission(&perms, "backups", "read") {
-        return Err(crate::error::AppError::Forbidden(
-            "Missing permission backups:read".to_string(),
-        ));
-    }
-
     let filtered: Vec<BackupRecord> = backups
         .into_iter()
-        .filter(|b| b.backup_type == "tenant" && b.tenant_id.as_deref() == Some(tenant_id))
+        .filter(|b| b.backup_type == "tenant")
         .collect();
 
     Ok(Json(filtered))
@@ -109,56 +92,14 @@ async fn create_backup(
             Ok(Json(path))
         }
         "tenant" => {
-            let target_id = match payload.target_id {
-                Some(tid) => tid,
-                None => {
-                    if claims.is_super_admin {
-                        return Err(crate::error::AppError::Validation(
-                            "Target ID required".to_string(),
-                        ));
-                    }
-                    claims
-                        .tenant_id
-                        .clone()
-                        .ok_or(crate::error::AppError::Forbidden(
-                            "No tenant context found".to_string(),
-                        ))?
-                }
-            };
-
-            // Permission Check: Super Admin OR (Tenant Admin AND target_id == tenant_id)
             if !claims.is_super_admin {
-                // RBAC check (tenant)
-                let tenant_id =
-                    claims
-                        .tenant_id
-                        .as_ref()
-                        .ok_or(crate::error::AppError::Forbidden(
-                            "No tenant context found".to_string(),
-                        ))?;
-                let perms = state
-                    .auth_service
-                    .get_user_permissions(&claims.sub, tenant_id)
-                    .await?;
-                if !has_permission(&perms, "backups", "create") {
-                    return Err(crate::error::AppError::Forbidden(
-                        "Missing permission backups:create".to_string(),
-                    ));
-                }
-
-                // Check if claims.tenant_id matches target_id
-                if let Some(tid) = &claims.tenant_id {
-                    if tid != &target_id {
-                        return Err(crate::error::AppError::Forbidden(
-                            "Cannot backup other tenants".to_string(),
-                        ));
-                    }
-                } else {
-                    return Err(crate::error::AppError::Forbidden(
-                        "No tenant context found".to_string(),
-                    ));
-                }
+                return Err(crate::error::AppError::Forbidden(
+                    "Backups are managed by Super Admin".to_string(),
+                ));
             }
+            let target_id = payload.target_id.ok_or(crate::error::AppError::Validation(
+                "Target ID required".to_string(),
+            ))?;
 
             let path = state
                 .backup_service
@@ -181,27 +122,9 @@ async fn delete_backup(
 
     let claims = state.auth_service.validate_token(&token).await?;
     if !claims.is_super_admin {
-        let tenant_id = claims
-            .tenant_id
-            .as_ref()
-            .ok_or(crate::error::AppError::Forbidden(
-                "Tenant context missing".to_string(),
-            ))?;
-        let perms = state
-            .auth_service
-            .get_user_permissions(&claims.sub, tenant_id)
-            .await?;
-        if !has_permission(&perms, "backups", "delete") {
-            return Err(crate::error::AppError::Forbidden(
-                "Missing permission backups:delete".to_string(),
-            ));
-        }
-        let expected_prefix = format!("tenant_{}_", tenant_id);
-        if !filename.starts_with(&expected_prefix) {
-            return Err(crate::error::AppError::Forbidden(
-                "Cannot delete other tenant's backups".to_string(),
-            ));
-        }
+        return Err(crate::error::AppError::Forbidden(
+            "Backups are managed by Super Admin".to_string(),
+        ));
     }
 
     state.backup_service.delete_backup(filename).await?;
@@ -222,36 +145,9 @@ async fn download_backup(
     // Super Admin can download anything
     // Tenant Admin can only download their own tenant ZIP
     if !claims.is_super_admin {
-        // RBAC check (tenant)
-        let tenant_id = claims
-            .tenant_id
-            .as_ref()
-            .ok_or(crate::error::AppError::Forbidden(
-                "Tenant context missing".to_string(),
-            ))?;
-        let perms = state
-            .auth_service
-            .get_user_permissions(&claims.sub, tenant_id)
-            .await?;
-        if !has_permission(&perms, "backups", "download") {
-            return Err(crate::error::AppError::Forbidden(
-                "Missing permission backups:download".to_string(),
-            ));
-        }
-
-        if !filename.starts_with("tenant_") {
-            return Err(crate::error::AppError::Forbidden(
-                "Cannot access global backups".to_string(),
-            ));
-        }
-
-        let expected_prefix = format!("tenant_{}_", tenant_id);
-
-        if !filename.starts_with(&expected_prefix) {
-            return Err(crate::error::AppError::Forbidden(
-                "Cannot download other tenant's backups".to_string(),
-            ));
-        }
+        return Err(crate::error::AppError::Forbidden(
+            "Backups are managed by Super Admin".to_string(),
+        ));
     }
 
     // Read file and stream
@@ -297,6 +193,12 @@ async fn restore_backup(
     let token = extract_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
 
+    if !claims.is_super_admin {
+        return Err(crate::error::AppError::Forbidden(
+            "Backups are managed by Super Admin".to_string(),
+        ));
+    }
+
     // Use a local scope to ensure multipart is processed
     let mut multipart = multipart;
 
@@ -331,33 +233,10 @@ async fn restore_backup(
         ));
     }
 
-    // Determine if global or tenant based on claims
-    let res = if claims.is_super_admin {
-        state
-            .backup_service
-            .restore_from_zip(temp_path.clone(), None)
-            .await
-    } else {
-        let tenant_id = claims
-            .tenant_id
-            .as_ref()
-            .ok_or(crate::error::AppError::Forbidden(
-                "Tenant context missing".to_string(),
-            ))?;
-        let perms = state
-            .auth_service
-            .get_user_permissions(&claims.sub, tenant_id)
-            .await?;
-        if !has_permission(&perms, "backups", "restore") {
-            return Err(crate::error::AppError::Forbidden(
-                "Missing permission backups:restore".to_string(),
-            ));
-        }
-        state
-            .backup_service
-            .restore_from_zip(temp_path.clone(), Some(tenant_id))
-            .await
-    };
+    let res = state
+        .backup_service
+        .restore_from_zip(temp_path.clone(), None)
+        .await;
 
     // Cleanup
     let _ = tokio::fs::remove_file(temp_path).await;
@@ -373,56 +252,28 @@ async fn restore_local_backup(
     let token = extract_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
 
-    let res = if claims.is_super_admin {
-        // If a superadmin restores a tenant backup, scope it to that tenant
-        let tenant_id = if filename.starts_with("tenant_") {
-            let parts: Vec<&str> = filename.split('_').collect();
-            if parts.len() >= 3 {
-                Some(parts[1])
-            } else {
-                None
-            }
+    if !claims.is_super_admin {
+        return Err(crate::error::AppError::Forbidden(
+            "Backups are managed by Super Admin".to_string(),
+        ));
+    }
+
+    // If a superadmin restores a tenant backup, scope it to that tenant
+    let tenant_id = if filename.starts_with("tenant_") {
+        let parts: Vec<&str> = filename.split('_').collect();
+        if parts.len() >= 3 {
+            Some(parts[1])
         } else {
             None
-        };
-
-        state
-            .backup_service
-            .restore_local_backup(filename.clone(), tenant_id)
-            .await
+        }
     } else {
-        // Tenant admin check
-        if !filename.starts_with("tenant_") {
-            return Err(crate::error::AppError::Forbidden(
-                "Unauthorized backup access".to_string(),
-            ));
-        }
-        let tenant_id = claims
-            .tenant_id
-            .as_ref()
-            .ok_or(crate::error::AppError::Forbidden(
-                "Tenant context missing".to_string(),
-            ))?;
-        let perms = state
-            .auth_service
-            .get_user_permissions(&claims.sub, tenant_id)
-            .await?;
-        if !has_permission(&perms, "backups", "restore") {
-            return Err(crate::error::AppError::Forbidden(
-                "Missing permission backups:restore".to_string(),
-            ));
-        }
-        let expected_prefix = format!("tenant_{}_", tenant_id);
-        if !filename.starts_with(&expected_prefix) {
-            return Err(crate::error::AppError::Forbidden(
-                "Cannot restore other tenant's backups".to_string(),
-            ));
-        }
-        state
-            .backup_service
-            .restore_local_backup(filename, Some(tenant_id))
-            .await
+        None
     };
+
+    let res = state
+        .backup_service
+        .restore_local_backup(filename.clone(), tenant_id)
+        .await;
 
     res.map(|_| Json(()))
 }

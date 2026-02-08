@@ -156,7 +156,8 @@
         label: $t('sidebar.backups') || 'Backups',
         icon: 'archive',
         href: `${tenantPrefix}/admin/backups`,
-        show: $can('read', 'backups'),
+        // Tenant backups are intentionally disabled (managed by Super Admin only).
+        show: false,
       },
       {
         label: $t('sidebar.support') || 'Support',
