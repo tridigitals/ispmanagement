@@ -674,6 +674,11 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
         ("auth_lockout_duration_minutes", "15", "Account lockout duration in minutes"),
         ("auth_allow_registration", "true", "Allow public user registration"),
         ("auth_require_email_verification", "false", "Require email verification after registration"),
+        // API Security
+        ("api_rate_limit_per_minute", "100", "API rate limit per minute (per user/IP)"),
+        ("enable_ip_blocking", "false", "Enable automatic IP blocking on suspicious activity"),
+        ("ip_block_threshold", "5", "How many rate-limit hits within a window will trigger blocking"),
+        ("ip_block_duration_minutes", "15", "How long an IP stays blocked after triggering"),
         ("maintenance_mode", "false", "System maintenance mode"),
         ("maintenance_message", "The system is currently under maintenance. Please try again later.", "Maintenance message displayed to users"),
         ("storage_max_file_size_mb", "500", "Maximum file upload size in Megabytes"),

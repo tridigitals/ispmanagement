@@ -12,6 +12,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
+use tokio::sync::RwLock as TokioRwLock;
 use tower_http::{
     cors::{AllowOrigin, Any, CorsLayer},
     timeout::TimeoutLayer,
@@ -19,6 +20,7 @@ use tower_http::{
 use tracing::info;
 
 use std::path::PathBuf;
+use std::{collections::HashMap, time::Instant};
 
 pub mod audit;
 pub mod auth;
@@ -44,6 +46,18 @@ pub mod websocket;
 
 pub use websocket::{WsEvent, WsHub};
 
+type IpBlockMap = HashMap<String, chrono::DateTime<chrono::Utc>>;
+type IpAbuseMap = HashMap<String, (u32, chrono::DateTime<chrono::Utc>)>;
+
+#[derive(Clone, Debug)]
+pub struct SecurityRuntimeConfig {
+    pub api_rate_limit_per_minute: u32,
+    pub enable_ip_blocking: bool,
+    pub ip_block_threshold: u32,
+    pub ip_block_duration_minutes: i64,
+    pub refreshed_at: Instant,
+}
+
 // App State to share services with Axum handlers
 #[derive(Clone)]
 #[allow(dead_code)]
@@ -65,6 +79,9 @@ pub struct AppState {
     pub app_data_dir: PathBuf,
     pub rate_limiter: Arc<crate::services::rate_limiter::RateLimiter>,
     pub metrics_service: Arc<crate::services::metrics_service::MetricsService>,
+    pub security_config: Arc<TokioRwLock<SecurityRuntimeConfig>>,
+    pub ip_blocklist: Arc<TokioRwLock<IpBlockMap>>,
+    pub ip_abuse: Arc<TokioRwLock<IpAbuseMap>>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -101,6 +118,83 @@ pub async fn start_server(
         }
     });
 
+    let security_config = Arc::new(TokioRwLock::new(SecurityRuntimeConfig {
+        api_rate_limit_per_minute: 100,
+        enable_ip_blocking: false,
+        ip_block_threshold: 5,
+        ip_block_duration_minutes: 15,
+        refreshed_at: Instant::now(),
+    }));
+    let ip_blocklist: Arc<TokioRwLock<IpBlockMap>> = Arc::new(TokioRwLock::new(HashMap::new()));
+    let ip_abuse: Arc<TokioRwLock<IpAbuseMap>> = Arc::new(TokioRwLock::new(HashMap::new()));
+
+    // Refresh security config from DB every 30 seconds (best-effort, cached).
+    {
+        let cfg = security_config.clone();
+        let settings = settings_service.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(30));
+            loop {
+                interval.tick().await;
+
+                let api_rate = settings
+                    .get_value(None, "api_rate_limit_per_minute")
+                    .await
+                    .ok()
+                    .flatten()
+                    .and_then(|s| s.parse::<u32>().ok())
+                    .filter(|v| *v >= 10 && *v <= 10_000)
+                    .unwrap_or(100);
+
+                let enable_ip_blocking = settings
+                    .get_value(None, "enable_ip_blocking")
+                    .await
+                    .ok()
+                    .flatten()
+                    .map(|s| s == "true")
+                    .unwrap_or(false);
+
+                let ip_block_threshold = settings
+                    .get_value(None, "ip_block_threshold")
+                    .await
+                    .ok()
+                    .flatten()
+                    .and_then(|s| s.parse::<u32>().ok())
+                    .filter(|v| *v >= 2 && *v <= 100)
+                    .unwrap_or(5);
+
+                let ip_block_duration_minutes = settings
+                    .get_value(None, "ip_block_duration_minutes")
+                    .await
+                    .ok()
+                    .flatten()
+                    .and_then(|s| s.parse::<i64>().ok())
+                    .filter(|v| *v >= 1 && *v <= 24 * 60)
+                    .unwrap_or(15);
+
+                let mut lock = cfg.write().await;
+                lock.api_rate_limit_per_minute = api_rate;
+                lock.enable_ip_blocking = enable_ip_blocking;
+                lock.ip_block_threshold = ip_block_threshold;
+                lock.ip_block_duration_minutes = ip_block_duration_minutes;
+                lock.refreshed_at = Instant::now();
+            }
+        });
+    }
+
+    // Cleanup IP blocklist periodically
+    {
+        let bl = ip_blocklist.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(60));
+            loop {
+                interval.tick().await;
+                let now = chrono::Utc::now();
+                bl.write().await.retain(|_, until| *until > now);
+            }
+        });
+    }
+
     // Initialize and spawn AlertService for error alerting via email
     let alert_service =
         crate::services::AlertService::new(email_service.clone(), settings_service.clone());
@@ -132,6 +226,9 @@ pub async fn start_server(
         app_data_dir,
         rate_limiter,
         metrics_service,
+        security_config,
+        ip_blocklist,
+        ip_abuse,
     };
 
     // --- Dynamic CORS Implementation ---
@@ -417,6 +514,10 @@ pub async fn start_server(
         }) // 1 Hour Timeout for large uploads
         .layer(axum::middleware::from_fn(middleware::metrics_middleware))
         .layer(axum::Extension(state.metrics_service.clone()))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            middleware::security_enforcer_middleware,
+        ))
         .layer(axum::middleware::from_fn(
             middleware::security_headers_middleware,
         ))
