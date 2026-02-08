@@ -123,6 +123,12 @@
         show: $can('read', 'roles'),
       },
       {
+        label: $t('sidebar.audit_logs') || 'Audit Logs',
+        icon: 'activity',
+        href: `${tenantPrefix}/admin/audit-logs`,
+        show: $can('read', 'audit_logs'),
+      },
+      {
         label: $t('sidebar.subscription') || 'Subscription',
         icon: 'credit-card',
         href: `${tenantPrefix}/admin/subscription`,

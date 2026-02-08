@@ -24,6 +24,7 @@
       ['/superadmin/system', $t('topbar.titles.system') || 'System'],
       ['/superadmin', $t('topbar.titles.superadmin_dashboard') || 'Super Admin'],
       ['/admin/support', $t('topbar.titles.support') || 'Support'],
+      ['/admin/audit-logs', $t('topbar.titles.audit_logs') || 'Audit Logs'],
       ['/admin/team', $t('topbar.titles.team') || 'Team'],
       ['/admin/roles', $t('topbar.titles.roles') || 'Roles'],
       ['/admin/settings', $t('topbar.titles.global_settings') || 'Settings'],

@@ -185,6 +185,8 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       // Tenant
       get_current_tenant: { method: 'GET', path: '/tenant/me' },
       update_current_tenant: { method: 'PUT', path: '/tenant/me' },
+      // Audit Logs (Admin / Tenant scoped)
+      list_tenant_audit_logs: { method: 'GET', path: '/admin/audit-logs' },
       // Backup
       list_backups: { method: 'GET', path: '/backups' },
       create_backup: { method: 'POST', path: '/backups' },
@@ -761,6 +763,21 @@ export const superadmin = {
 
   getSystemDiagnostics: (): Promise<any> =>
     safeInvoke('get_system_diagnostics', { token: getTokenOrThrow() }),
+};
+
+export const audit = {
+  listTenant: (
+    page?: number,
+    perPage?: number,
+    filters?: {
+      user_id?: string;
+      action?: string;
+      date_from?: string;
+      date_to?: string;
+      search?: string;
+    },
+  ): Promise<PaginatedResponse<AuditLog>> =>
+    safeInvoke('list_tenant_audit_logs', { token: getTokenOrThrow(), page, perPage, ...filters }),
 };
 
 export const support = {
@@ -1546,6 +1563,7 @@ export const api = {
   roles,
   team,
   superadmin,
+  audit,
   support,
   announcements,
   settings,

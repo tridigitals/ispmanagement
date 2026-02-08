@@ -10,7 +10,7 @@ pub mod http;
 pub mod models;
 pub mod services;
 
-use commands::audit::list_audit_logs;
+use commands::audit::{list_audit_logs, list_tenant_audit_logs};
 use commands::*;
 use db::connection::{init_db, seed_defaults};
 use services::backup::BackupScheduler;
@@ -360,6 +360,7 @@ pub fn run() {
                                     remove_team_member,
                                     // Audit commands
                                     list_audit_logs,
+                                    list_tenant_audit_logs,
                                     // System Health commands
                                     get_system_health,
                                     get_system_diagnostics,

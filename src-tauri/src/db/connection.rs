@@ -925,6 +925,8 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
         ),
         ("support", "assign", "Assign support tickets"),
         ("support", "internal", "Post internal support notes"),
+        // Audit Logs (tenant-scoped; subject to plan feature access)
+        ("audit_logs", "read", "View audit logs"),
     ];
 
     // Cleanup: Remove permissions with non-standard IDs (e.g. random UUIDs)
@@ -1019,6 +1021,7 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
         "roles:create",
         "roles:update",
         "roles:delete",
+        "audit_logs:read",
         "settings:read",
         "settings:update",
         "storage:read",

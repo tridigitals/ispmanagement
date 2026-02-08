@@ -63,6 +63,14 @@ fn extract_token(headers: &HeaderMap) -> Result<String, (axum::http::StatusCode,
         ))
 }
 
+fn has_permission(perms: &[String], resource: &str, action: &str) -> bool {
+    let perm = format!("{}:{}", resource, action);
+    let wildcard = format!("{}:*", resource);
+    perms
+        .iter()
+        .any(|p| p == "*" || p == &perm || p == &wildcard)
+}
+
 pub async fn list_audit_logs(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -94,6 +102,62 @@ pub async fn list_audit_logs(
     let (logs, total) = audit_service.list(filter).await.map_err(|e| {
         tracing::error!("Failed to list audit logs: {}", e);
         (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    })?;
+
+    Ok(Json(PaginatedResponse {
+        data: logs,
+        total,
+        page,
+        per_page,
+    }))
+}
+
+pub async fn list_tenant_audit_logs(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<AuditLogQuery>,
+) -> Result<
+    Json<PaginatedResponse<crate::models::AuditLogResponse>>,
+    (axum::http::StatusCode, String),
+> {
+    let auth_service = &state.auth_service;
+    let audit_service = &state.audit_service;
+
+    let token = extract_token(&headers)?;
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| (axum::http::StatusCode::UNAUTHORIZED, e.to_string()))?;
+
+    let tenant_id = claims.tenant_id.ok_or((
+        axum::http::StatusCode::FORBIDDEN,
+        "Tenant context missing".to_string(),
+    ))?;
+
+    let perms = auth_service
+        .get_user_permissions(&claims.sub, &tenant_id)
+        .await
+        .map_err(|e| (axum::http::StatusCode::FORBIDDEN, e.to_string()))?;
+    if !has_permission(&perms, "audit_logs", "read") {
+        return Err((
+            axum::http::StatusCode::FORBIDDEN,
+            "Missing permission audit_logs:read".to_string(),
+        ));
+    }
+
+    // Force tenant scoping regardless of client-provided tenant_id.
+    let mut filter: crate::models::AuditLogFilter = query.into();
+    filter.tenant_id = Some(tenant_id);
+
+    let page = filter.page.unwrap_or(1);
+    let per_page = filter.per_page.unwrap_or(20);
+
+    let (logs, total) = audit_service.list(filter).await.map_err(|e| {
+        tracing::error!("Failed to list tenant audit logs: {}", e);
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
     })?;
 
     Ok(Json(PaginatedResponse {

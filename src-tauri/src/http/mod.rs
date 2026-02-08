@@ -400,6 +400,7 @@ pub async fn start_server(
             delete(superadmin::delete_tenant).put(superadmin::update_tenant),
         )
         .route("/api/superadmin/audit-logs", get(audit::list_audit_logs))
+        .route("/api/admin/audit-logs", get(audit::list_tenant_audit_logs))
         .route("/api/superadmin/system", get(system::get_system_health))
         .route(
             "/api/superadmin/diagnostics",
