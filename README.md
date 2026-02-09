@@ -133,7 +133,7 @@ The app will open automatically. First run will show the **Installation Wizard**
 
 | Variable               | Description                            | Example                                  |
 | ---------------------- | -------------------------------------- | ---------------------------------------- |
-| `DATABASE_URL`         | Database connection string             | `postgres://user:pass@localhost:5433/db` |
+| `DATABASE_URL`         | Database connection string             | `postgres://user:pass@localhost:5439/db` |
 | `PORT`                 | HTTP server port                       | `3000`                                   |
 | `CORS_ALLOWED_ORIGINS` | Allowed CORS origins (comma-separated) | `http://localhost:5173`                  |
 
@@ -141,10 +141,10 @@ The app will open automatically. First run will show the **Installation Wizard**
 
 | Variable            | Description       | Default         |
 | ------------------- | ----------------- | --------------- |
-| `POSTGRES_USER`     | Database user     | `saas_user`     |
-| `POSTGRES_PASSWORD` | Database password | `saas_password` |
-| `POSTGRES_DB`       | Database name     | `saas_db`       |
-| `POSTGRES_PORT`     | Exposed port      | `5433`          |
+| `POSTGRES_USER`     | Database user     | `isp_user`     |
+| `POSTGRES_PASSWORD` | Database password | `isp_password` |
+| `POSTGRES_DB`       | Database name     | `isp_db`       |
+| `POSTGRES_PORT`     | Exposed port      | `5439`          |
 
 ### For SQLite Mode
 
@@ -221,7 +221,7 @@ npm run tauri dev -- -- --features sqlite --no-default-features
 | ---------- | --------- | ----------------------- |
 | Tauri Dev  | `1420`    | SvelteKit dev server    |
 | HTTP API   | `3000`    | Axum HTTP server        |
-| PostgreSQL | `5433`    | Database                |
+| PostgreSQL | `5439`    | Database                |
 | WebSocket  | `3000/ws` | Real-time notifications |
 
 ---
