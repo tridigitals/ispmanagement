@@ -146,10 +146,6 @@
     </div>
 
     <div class="header-actions">
-      <button class="btn btn-secondary" type="button" onclick={load} disabled={isLoading || loading}>
-        <Icon name="refresh" size={18} />
-        {$t('common.refresh') || 'Refresh'}
-      </button>
       <button class="btn btn-primary" type="button" onclick={openCreate} disabled={isLoading || loading}>
         <Icon name="plus" size={18} />
         {$t('profile.addresses.add') || 'Add Address'}
