@@ -32,7 +32,8 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             msg.includes('not implemented') ||
             msg.includes('undefined') ||
             msg.includes('not allowed') ||
-            msg.includes('not available');
+            msg.includes('not available') ||
+            msg.includes('state not managed');
           if (!canFallback) throw e;
         }
       }

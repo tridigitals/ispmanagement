@@ -39,6 +39,10 @@ fn init_logging() {
 #[allow(unknown_lints)]
 #[allow(clippy::all)]
 pub fn run() {
+    // Load `.env` for local development (desktop Tauri).
+    // In production, prefer real environment variables.
+    dotenvy::dotenv().ok();
+
     init_logging();
     info!("Starting Application");
 
