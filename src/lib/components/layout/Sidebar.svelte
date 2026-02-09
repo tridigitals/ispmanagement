@@ -267,7 +267,9 @@
     // This runs on navigation and doesn't interfere with manual toggles (no nav).
     const _path = $page.url.pathname;
     const activeSection = currentMenuSections.find((s) => s.items.some((it) => isActive(it)))?.id;
-    if (activeSection && openSectionId !== activeSection) openSectionId = activeSection;
+    // Important: don't depend on `openSectionId` here, otherwise clicking a section header would
+    // immediately be overridden back to the active section.
+    if (activeSection) openSectionId = activeSection;
   });
 
   $effect(() => {
