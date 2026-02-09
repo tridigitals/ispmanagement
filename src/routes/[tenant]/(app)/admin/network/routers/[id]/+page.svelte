@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { t } from 'svelte-i18n';
@@ -46,12 +46,23 @@
     return pts.filter((v) => v != null) as number[];
   });
 
-  onMount(async () => {
+  let refreshHandle: any = null;
+
+  onMount(() => {
     if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
       goto('/unauthorized');
       return;
     }
-    await refresh();
+    void refresh();
+
+    // Re-check status/metrics periodically.
+    refreshHandle = setInterval(() => {
+      void refresh();
+    }, 5000);
+  });
+
+  onDestroy(() => {
+    if (refreshHandle) clearInterval(refreshHandle);
   });
 
   async function refresh() {

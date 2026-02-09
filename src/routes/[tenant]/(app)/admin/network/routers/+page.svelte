@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { t } from 'svelte-i18n';
@@ -29,6 +29,8 @@
   let loading = $state(true);
   let routers = $state<RouterRow[]>([]);
   let search = $state('');
+  let refreshing = $state(false);
+  let lastRefreshAt = $state<number | null>(null);
 
   let showModal = $state(false);
   let editing: RouterRow | null = $state(null);
@@ -65,22 +67,49 @@
     { key: 'actions', label: '', align: 'right' as const, width: '220px' },
   ]);
 
-  onMount(async () => {
+  let refreshHandle: any = null;
+
+  onMount(() => {
     if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
       goto('/unauthorized');
       return;
     }
-    await load();
+    void load();
+
+    // Keep status reasonably fresh without requiring manual refresh.
+    // Note: server also runs a background poller; this is just UI sync.
+    const intervalMs = 5000;
+    refreshHandle = setInterval(() => {
+      void refreshSilent();
+    }, intervalMs);
+  });
+
+  onDestroy(() => {
+    if (refreshHandle) clearInterval(refreshHandle);
   });
 
   async function load() {
     loading = true;
     try {
       routers = (await api.mikrotik.routers.list()) as any;
+      lastRefreshAt = Date.now();
     } catch (e: any) {
       toast.error(e?.message || e);
     } finally {
       loading = false;
+    }
+  }
+
+  async function refreshSilent() {
+    if (refreshing || showModal) return;
+    refreshing = true;
+    try {
+      routers = (await api.mikrotik.routers.list()) as any;
+      lastRefreshAt = Date.now();
+    } catch {
+      // ignore (avoid noisy toasts for background refresh)
+    } finally {
+      refreshing = false;
     }
   }
 
@@ -157,7 +186,7 @@
       } else {
         toast.error(res?.error || 'Failed to connect');
       }
-      await load();
+      await refreshSilent();
     } catch (e: any) {
       toast.error(e?.message || e);
     }

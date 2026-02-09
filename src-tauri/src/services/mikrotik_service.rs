@@ -231,21 +231,73 @@ impl MikrotikService {
             .ok_or_else(|| AppError::NotFound("Router not found".to_string()))?;
 
         let started = Instant::now();
+        let latency_ms = Some(started.elapsed().as_millis().min(i32::MAX as u128) as i32);
+
         match self.connect_and_probe(&router).await {
-            Ok((identity, version)) => Ok(MikrotikTestResult {
-                ok: true,
-                identity,
-                ros_version: version,
-                latency_ms: Some(started.elapsed().as_millis().min(i32::MAX as u128) as i32),
-                error: None,
-            }),
-            Err(e) => Ok(MikrotikTestResult {
-                ok: false,
-                identity: None,
-                ros_version: None,
-                latency_ms: Some(started.elapsed().as_millis().min(i32::MAX as u128) as i32),
-                error: Some(e.to_string()),
-            }),
+            Ok((identity, version)) => {
+                // Treat a successful test as an explicit "online" signal.
+                let now = Utc::now();
+                let _ = sqlx::query(
+                    r#"
+                    UPDATE mikrotik_routers SET
+                      is_online = true,
+                      last_seen_at = $1,
+                      latency_ms = $2,
+                      last_error = NULL,
+                      identity = $3,
+                      ros_version = $4,
+                      updated_at = $5
+                    WHERE id = $6 AND tenant_id = $7
+                    "#,
+                )
+                .bind(now)
+                .bind(latency_ms)
+                .bind(identity.clone())
+                .bind(version.clone())
+                .bind(now)
+                .bind(&router.id)
+                .bind(&router.tenant_id)
+                .execute(&self.pool)
+                .await;
+
+                Ok(MikrotikTestResult {
+                    ok: true,
+                    identity,
+                    ros_version: version,
+                    latency_ms,
+                    error: None,
+                })
+            }
+            Err(e) => {
+                // Store last error so UI can surface it.
+                let now = Utc::now();
+                let msg = e.to_string();
+                let _ = sqlx::query(
+                    r#"
+                    UPDATE mikrotik_routers SET
+                      is_online = false,
+                      latency_ms = $1,
+                      last_error = $2,
+                      updated_at = $3
+                    WHERE id = $4 AND tenant_id = $5
+                    "#,
+                )
+                .bind(latency_ms)
+                .bind(&msg)
+                .bind(now)
+                .bind(&router.id)
+                .bind(&router.tenant_id)
+                .execute(&self.pool)
+                .await;
+
+                Ok(MikrotikTestResult {
+                    ok: false,
+                    identity: None,
+                    ros_version: None,
+                    latency_ms,
+                    error: Some(msg),
+                })
+            }
         }
     }
 
