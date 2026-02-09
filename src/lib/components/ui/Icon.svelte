@@ -83,6 +83,7 @@
     Underline,
     Quote,
     Eraser,
+    MapPin,
   } from 'lucide-svelte';
 
   let {
@@ -185,6 +186,7 @@
     monitor: Monitor,
     'message-circle': MessageCircle,
     megaphone: Megaphone,
+    'map-pin': MapPin,
   };
 
   let IconComponent = $derived(icons[name] || HelpCircle);
