@@ -198,6 +198,38 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
+    // Create user_addresses table (multi address support)
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS user_addresses (
+            id TEXT PRIMARY KEY NOT NULL,
+            user_id TEXT NOT NULL,
+            label TEXT,
+            recipient_name TEXT,
+            phone TEXT,
+            line1 TEXT NOT NULL,
+            line2 TEXT,
+            city TEXT,
+            state TEXT,
+            postal_code TEXT,
+            country_code TEXT NOT NULL DEFAULT 'ID',
+            is_default_shipping INTEGER NOT NULL DEFAULT 0,
+            is_default_billing INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS user_addresses_user_id_idx ON user_addresses(user_id)",
+    )
+    .execute(pool)
+    .await;
+
     // Create tenant_members table
     sqlx::query(
         r#"

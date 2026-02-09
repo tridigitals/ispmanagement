@@ -13,6 +13,7 @@ pub mod support;
 pub mod tenant;
 pub mod trusted_device;
 pub mod user;
+pub mod user_address;
 
 pub use announcements::*;
 pub use audit_log::*;
@@ -27,6 +28,7 @@ pub use support::*;
 pub use tenant::*;
 pub use trusted_device::*;
 pub use user::*;
+pub use user_address::*;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct PaginatedResponse<T> {

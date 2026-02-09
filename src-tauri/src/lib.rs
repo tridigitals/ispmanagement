@@ -325,6 +325,10 @@ pub fn run() {
             create_user,
             update_user,
             delete_user,
+            list_my_addresses,
+            create_my_address,
+            update_my_address,
+            delete_my_address,
                         // Settings commands
                         get_all_settings,
                         get_auth_settings,

@@ -1,6 +1,9 @@
 use super::AppState;
 use crate::http::auth::extract_ip;
-use crate::models::{CreateUserDto, PaginatedResponse, UpdateUserDto, UserResponse};
+use crate::models::{
+    CreateUserAddressDto, CreateUserDto, PaginatedResponse, UpdateUserAddressDto, UpdateUserDto,
+    UserAddress, UserResponse,
+};
 use axum::{
     extract::{ConnectInfo, Path, Query, State},
     http::HeaderMap,
@@ -165,4 +168,92 @@ pub async fn delete_user(
         .delete(&id, Some(&claims.sub), Some(&ip))
         .await?;
     Ok(Json(json!({"message": "User deleted"})))
+}
+
+// --- User Addresses (Self) ---
+
+pub async fn list_my_addresses(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<UserAddress>>, crate::error::AppError> {
+    let token = extract_token(&headers)?;
+    let claims = state.auth_service.validate_token(&token).await?;
+
+    let addresses = state.user_service.list_addresses(&claims.sub).await?;
+    Ok(Json(addresses))
+}
+
+pub async fn create_my_address(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Json(payload): Json<CreateUserAddressDto>,
+) -> Result<Json<UserAddress>, crate::error::AppError> {
+    let token = extract_token(&headers)?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    let ip = extract_ip(&headers, addr);
+
+    let address = state
+        .user_service
+        .create_address(&claims.sub, payload, Some(&claims.sub), Some(&ip))
+        .await?;
+    Ok(Json(address))
+}
+
+pub async fn update_my_address(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(address_id): Path<String>,
+    Json(payload): Json<UpdateUserAddressDto>,
+) -> Result<Json<UserAddress>, crate::error::AppError> {
+    let token = extract_token(&headers)?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    let ip = extract_ip(&headers, addr);
+
+    let address = state
+        .user_service
+        .update_address(
+            &claims.sub,
+            &address_id,
+            payload,
+            Some(&claims.sub),
+            Some(&ip),
+        )
+        .await?;
+    Ok(Json(address))
+}
+
+pub async fn delete_my_address(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(address_id): Path<String>,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let token = extract_token(&headers)?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    let ip = extract_ip(&headers, addr);
+
+    state
+        .user_service
+        .delete_address(&claims.sub, &address_id, Some(&claims.sub), Some(&ip))
+        .await?;
+    Ok(Json(json!({ "message": "Address deleted" })))
+}
+
+// --- User Addresses (Admin) ---
+
+pub async fn list_user_addresses_admin(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(user_id): Path<String>,
+) -> Result<Json<Vec<UserAddress>>, crate::error::AppError> {
+    let token = extract_token(&headers)?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    if !claims.is_super_admin {
+        return Err(crate::error::AppError::Unauthorized);
+    }
+
+    let addresses = state.user_service.list_addresses(&user_id).await?;
+    Ok(Json(addresses))
 }

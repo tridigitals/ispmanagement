@@ -72,6 +72,10 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       create_user: { method: 'POST', path: '/users' },
       update_user: { method: 'PUT', path: '/users/:id' },
       delete_user: { method: 'DELETE', path: '/users/:id' },
+      list_my_addresses: { method: 'GET', path: '/users/me/addresses' },
+      create_my_address: { method: 'POST', path: '/users/me/addresses' },
+      update_my_address: { method: 'PUT', path: '/users/me/addresses/:addressId' },
+      delete_my_address: { method: 'DELETE', path: '/users/me/addresses/:addressId' },
       // Super Admin
       list_tenants: { method: 'GET', path: '/superadmin/tenants' },
       create_tenant: { method: 'POST', path: '/superadmin/tenants' },
@@ -330,6 +334,24 @@ export interface User {
   tenant_role?: string;
   tenant_custom_domain?: string;
   preferred_2fa_method?: string;
+}
+
+export interface UserAddress {
+  id: string;
+  user_id: string;
+  label?: string | null;
+  recipient_name?: string | null;
+  phone?: string | null;
+  line1: string;
+  line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country_code: string;
+  is_default_shipping: boolean;
+  is_default_billing: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface TrustedDevice {
@@ -641,6 +663,116 @@ export const users = {
 
   delete: (id: string): Promise<void> =>
     safeInvoke('delete_user', { token: getTokenOrThrow(), id }),
+
+  // --- Addresses (Self) ---
+  listMyAddresses: (): Promise<UserAddress[]> =>
+    safeInvoke('list_my_addresses', { token: getTokenOrThrow() }),
+
+  createMyAddress: (data: {
+    label?: string;
+    recipientName?: string;
+    phone?: string;
+    line1: string;
+    line2?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    countryCode?: string;
+    isDefaultShipping?: boolean;
+    isDefaultBilling?: boolean;
+  }): Promise<UserAddress> =>
+    safeInvoke('create_my_address', {
+      token: getTokenOrThrow(),
+      // send both camelCase and snake_case to work in HTTP + Tauri
+      label: data.label,
+      recipientName: data.recipientName,
+      recipient_name: data.recipientName,
+      phone: data.phone,
+      line1: data.line1,
+      line2: data.line2,
+      city: data.city,
+      state: data.state,
+      postalCode: data.postalCode,
+      postal_code: data.postalCode,
+      countryCode: data.countryCode,
+      country_code: data.countryCode,
+      isDefaultShipping: data.isDefaultShipping,
+      is_default_shipping: data.isDefaultShipping,
+      isDefaultBilling: data.isDefaultBilling,
+      is_default_billing: data.isDefaultBilling,
+      dto: {
+        // Tauri command signature uses `dto`
+        label: data.label,
+        recipientName: data.recipientName,
+        phone: data.phone,
+        line1: data.line1,
+        line2: data.line2,
+        city: data.city,
+        state: data.state,
+        postalCode: data.postalCode,
+        countryCode: data.countryCode,
+        isDefaultShipping: data.isDefaultShipping,
+        isDefaultBilling: data.isDefaultBilling,
+      },
+    }),
+
+  updateMyAddress: (
+    addressId: string,
+    data: {
+      label?: string;
+      recipientName?: string;
+      phone?: string;
+      line1?: string;
+      line2?: string;
+      city?: string;
+      state?: string;
+      postalCode?: string;
+      countryCode?: string;
+      isDefaultShipping?: boolean;
+      isDefaultBilling?: boolean;
+    },
+  ): Promise<UserAddress> =>
+    safeInvoke('update_my_address', {
+      token: getTokenOrThrow(),
+      addressId,
+      address_id: addressId,
+      label: data.label,
+      recipientName: data.recipientName,
+      recipient_name: data.recipientName,
+      phone: data.phone,
+      line1: data.line1,
+      line2: data.line2,
+      city: data.city,
+      state: data.state,
+      postalCode: data.postalCode,
+      postal_code: data.postalCode,
+      countryCode: data.countryCode,
+      country_code: data.countryCode,
+      isDefaultShipping: data.isDefaultShipping,
+      is_default_shipping: data.isDefaultShipping,
+      isDefaultBilling: data.isDefaultBilling,
+      is_default_billing: data.isDefaultBilling,
+      dto: {
+        label: data.label,
+        recipientName: data.recipientName,
+        phone: data.phone,
+        line1: data.line1,
+        line2: data.line2,
+        city: data.city,
+        state: data.state,
+        postalCode: data.postalCode,
+        countryCode: data.countryCode,
+        isDefaultShipping: data.isDefaultShipping,
+        isDefaultBilling: data.isDefaultBilling,
+      },
+    }),
+
+  deleteMyAddress: (addressId: string): Promise<void> =>
+    safeInvoke('delete_my_address', {
+      token: getTokenOrThrow(),
+      addressId,
+      address_id: addressId,
+    }),
 };
 
 // Roles API

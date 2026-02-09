@@ -26,6 +26,7 @@
   import ProfileSecurityTab from '$lib/components/profile/ProfileSecurityTab.svelte';
   import ProfilePreferencesTab from '$lib/components/profile/ProfilePreferencesTab.svelte';
   import ProfileNotificationsTab from '$lib/components/profile/ProfileNotificationsTab.svelte';
+  import ProfileAddressesTab from '$lib/components/profile/ProfileAddressesTab.svelte';
 
   let activeTab = $state('general');
   let loading = $state(false);
@@ -146,11 +147,11 @@
       );
     } else {
       const tab = urlParams.get('tab');
-      if (tab && ['general', 'security', 'preferences', 'notifications'].includes(tab)) {
+      if (tab && ['general', 'security', 'preferences', 'notifications', 'addresses'].includes(tab)) {
         activeTab = tab;
       } else {
         const saved = localStorage.getItem('profile.activeTab');
-        if (saved && ['general', 'security', 'preferences', 'notifications'].includes(saved)) {
+        if (saved && ['general', 'security', 'preferences', 'notifications', 'addresses'].includes(saved)) {
           activeTab = saved;
         }
       }
@@ -366,6 +367,7 @@
   let tabs = $derived([
     { id: 'general', label: $t('profile.tabs.general'), icon: 'profile' },
     { id: 'security', label: $t('profile.tabs.security'), icon: 'lock' },
+    { id: 'addresses', label: $t('profile.tabs.addresses') || 'Addresses', icon: 'map-pin' },
     {
       id: 'preferences',
       label: $t('profile.tabs.preferences'),
@@ -445,6 +447,10 @@
           {disableOtpSending}
           {disableOtpSent}
         />
+      {/if}
+
+      {#if activeTab === 'addresses'}
+        <ProfileAddressesTab {loading} />
       {/if}
 
       {#if activeTab === 'preferences'}

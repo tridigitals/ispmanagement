@@ -1476,8 +1476,40 @@
     "tabs": {
       "general": "General",
       "security": "Security",
+      "addresses": "Addresses",
       "preferences": "Preferences",
       "notifications": "Notifications"
+    },
+    "addresses": {
+      "title": "Addresses",
+      "subtitle": "Manage multiple addresses for future billing and shipping.",
+      "add": "Add Address",
+      "add_title": "Add Address",
+      "edit_title": "Edit Address",
+      "untitled": "Untitled",
+      "default_shipping": "Default Shipping",
+      "default_billing": "Default Billing",
+      "recipient": "Recipient",
+      "empty_title": "No addresses yet",
+      "empty_subtitle": "Add one so you can reuse it for shipping and billing.",
+      "delete_title": "Delete address?",
+      "delete_message": "This address will be removed permanently.",
+      "fields": {
+        "label": "Label",
+        "recipient_name": "Recipient name",
+        "phone": "Phone",
+        "line1": "Address line 1",
+        "line2": "Address line 2",
+        "city": "City",
+        "state": "State/Province",
+        "postal_code": "Postal code",
+        "country_code": "Country code",
+        "default_shipping": "Default shipping",
+        "default_billing": "Default billing"
+      },
+      "validation": {
+        "line1_required": "Address line is required."
+      }
     },
     "general": {
       "title": "Profile Information",

@@ -2,7 +2,10 @@
 
 use crate::db::connection::DbPool;
 use crate::error::{AppError, AppResult};
-use crate::models::{CreateUserDto, UpdateUserDto, User, UserResponse};
+use crate::models::{
+    CreateUserAddressDto, CreateUserDto, UpdateUserAddressDto, UpdateUserDto, User, UserAddress,
+    UserResponse,
+};
 use crate::services::audit_service::AuditService;
 use crate::services::auth_service::AuthService;
 use chrono::Utc;
@@ -301,5 +304,418 @@ impl UserService {
             .fetch_one(&self.pool)
             .await?;
         Ok(count.0)
+    }
+
+    // --- User Addresses (Multi Address Support) ---
+
+    pub async fn list_addresses(&self, user_id: &str) -> AppResult<Vec<UserAddress>> {
+        #[cfg(feature = "postgres")]
+        let query = "SELECT * FROM user_addresses WHERE user_id = $1 ORDER BY created_at DESC";
+        #[cfg(feature = "sqlite")]
+        let query = "SELECT * FROM user_addresses WHERE user_id = ? ORDER BY created_at DESC";
+
+        let rows = sqlx::query_as::<_, UserAddress>(query)
+            .bind(user_id)
+            .fetch_all(&self.pool)
+            .await?;
+        Ok(rows)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn create_address(
+        &self,
+        user_id: &str,
+        dto: CreateUserAddressDto,
+        actor_id: Option<&str>,
+        ip_address: Option<&str>,
+    ) -> AppResult<UserAddress> {
+        let line1 = dto.line1.trim().to_string();
+        if line1.is_empty() {
+            return Err(AppError::Validation(
+                "Address line1 is required".to_string(),
+            ));
+        }
+
+        let addr = UserAddress::new(
+            user_id.to_string(),
+            dto.label,
+            dto.recipient_name,
+            dto.phone,
+            line1,
+            dto.line2,
+            dto.city,
+            dto.state,
+            dto.postal_code,
+            dto.country_code.unwrap_or_else(|| "ID".to_string()),
+            dto.is_default_shipping.unwrap_or(false),
+            dto.is_default_billing.unwrap_or(false),
+        );
+
+        let mut tx = self.pool.begin().await?;
+
+        if addr.is_default_shipping {
+            #[cfg(feature = "postgres")]
+            sqlx::query("UPDATE user_addresses SET is_default_shipping = false WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&mut *tx)
+                .await?;
+            #[cfg(feature = "sqlite")]
+            sqlx::query("UPDATE user_addresses SET is_default_shipping = 0 WHERE user_id = ?")
+                .bind(user_id)
+                .execute(&mut *tx)
+                .await?;
+        }
+
+        if addr.is_default_billing {
+            #[cfg(feature = "postgres")]
+            sqlx::query("UPDATE user_addresses SET is_default_billing = false WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&mut *tx)
+                .await?;
+            #[cfg(feature = "sqlite")]
+            sqlx::query("UPDATE user_addresses SET is_default_billing = 0 WHERE user_id = ?")
+                .bind(user_id)
+                .execute(&mut *tx)
+                .await?;
+        }
+
+        #[cfg(feature = "postgres")]
+        {
+            sqlx::query(
+                r#"
+                INSERT INTO user_addresses (
+                    id, user_id, label, recipient_name, phone,
+                    line1, line2, city, state, postal_code, country_code,
+                    is_default_shipping, is_default_billing,
+                    created_at, updated_at
+                )
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+                "#,
+            )
+            .bind(&addr.id)
+            .bind(&addr.user_id)
+            .bind(&addr.label)
+            .bind(&addr.recipient_name)
+            .bind(&addr.phone)
+            .bind(&addr.line1)
+            .bind(&addr.line2)
+            .bind(&addr.city)
+            .bind(&addr.state)
+            .bind(&addr.postal_code)
+            .bind(&addr.country_code)
+            .bind(addr.is_default_shipping)
+            .bind(addr.is_default_billing)
+            .bind(addr.created_at)
+            .bind(addr.updated_at)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        #[cfg(feature = "sqlite")]
+        {
+            sqlx::query(
+                r#"
+                INSERT INTO user_addresses (
+                    id, user_id, label, recipient_name, phone,
+                    line1, line2, city, state, postal_code, country_code,
+                    is_default_shipping, is_default_billing,
+                    created_at, updated_at
+                )
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                "#,
+            )
+            .bind(&addr.id)
+            .bind(&addr.user_id)
+            .bind(&addr.label)
+            .bind(&addr.recipient_name)
+            .bind(&addr.phone)
+            .bind(&addr.line1)
+            .bind(&addr.line2)
+            .bind(&addr.city)
+            .bind(&addr.state)
+            .bind(&addr.postal_code)
+            .bind(&addr.country_code)
+            .bind(if addr.is_default_shipping { 1 } else { 0 })
+            .bind(if addr.is_default_billing { 1 } else { 0 })
+            .bind(addr.created_at.to_rfc3339())
+            .bind(addr.updated_at.to_rfc3339())
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        tx.commit().await?;
+
+        let details = serde_json::json!({
+            "message": "Created user address",
+            "user_id": user_id,
+            "address_id": addr.id,
+            "label": addr.label,
+            "country_code": addr.country_code,
+            "is_default_shipping": addr.is_default_shipping,
+            "is_default_billing": addr.is_default_billing
+        })
+        .to_string();
+        self.audit_service
+            .log(
+                actor_id.or(Some(user_id)),
+                None,
+                "USER_ADDRESS_CREATE",
+                "user_address",
+                Some(&addr.id),
+                Some(details.as_str()),
+                ip_address,
+            )
+            .await;
+
+        Ok(addr)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn update_address(
+        &self,
+        user_id: &str,
+        address_id: &str,
+        dto: UpdateUserAddressDto,
+        actor_id: Option<&str>,
+        ip_address: Option<&str>,
+    ) -> AppResult<UserAddress> {
+        #[cfg(feature = "postgres")]
+        let select_q = "SELECT * FROM user_addresses WHERE id = $1 AND user_id = $2";
+        #[cfg(feature = "sqlite")]
+        let select_q = "SELECT * FROM user_addresses WHERE id = ? AND user_id = ?";
+
+        let mut addr: UserAddress = sqlx::query_as(select_q)
+            .bind(address_id)
+            .bind(user_id)
+            .fetch_optional(&self.pool)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Address not found".to_string()))?;
+
+        let before = addr.clone();
+
+        if let Some(v) = dto.label {
+            addr.label = Some(v);
+        }
+        if let Some(v) = dto.recipient_name {
+            addr.recipient_name = Some(v);
+        }
+        if let Some(v) = dto.phone {
+            addr.phone = Some(v);
+        }
+        if let Some(v) = dto.line1 {
+            let v = v.trim().to_string();
+            if v.is_empty() {
+                return Err(AppError::Validation(
+                    "Address line1 cannot be empty".to_string(),
+                ));
+            }
+            addr.line1 = v;
+        }
+        if let Some(v) = dto.line2 {
+            addr.line2 = Some(v);
+        }
+        if let Some(v) = dto.city {
+            addr.city = Some(v);
+        }
+        if let Some(v) = dto.state {
+            addr.state = Some(v);
+        }
+        if let Some(v) = dto.postal_code {
+            addr.postal_code = Some(v);
+        }
+        if let Some(v) = dto.country_code {
+            addr.country_code = v;
+        }
+        if let Some(v) = dto.is_default_shipping {
+            addr.is_default_shipping = v;
+        }
+        if let Some(v) = dto.is_default_billing {
+            addr.is_default_billing = v;
+        }
+
+        addr.updated_at = Utc::now();
+
+        let mut tx = self.pool.begin().await?;
+
+        if addr.is_default_shipping {
+            #[cfg(feature = "postgres")]
+            sqlx::query("UPDATE user_addresses SET is_default_shipping = false WHERE user_id = $1 AND id != $2")
+                .bind(user_id)
+                .bind(address_id)
+                .execute(&mut *tx)
+                .await?;
+            #[cfg(feature = "sqlite")]
+            sqlx::query(
+                "UPDATE user_addresses SET is_default_shipping = 0 WHERE user_id = ? AND id != ?",
+            )
+            .bind(user_id)
+            .bind(address_id)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        if addr.is_default_billing {
+            #[cfg(feature = "postgres")]
+            sqlx::query("UPDATE user_addresses SET is_default_billing = false WHERE user_id = $1 AND id != $2")
+                .bind(user_id)
+                .bind(address_id)
+                .execute(&mut *tx)
+                .await?;
+            #[cfg(feature = "sqlite")]
+            sqlx::query(
+                "UPDATE user_addresses SET is_default_billing = 0 WHERE user_id = ? AND id != ?",
+            )
+            .bind(user_id)
+            .bind(address_id)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        #[cfg(feature = "postgres")]
+        {
+            sqlx::query(
+                r#"
+                UPDATE user_addresses
+                SET label = $1,
+                    recipient_name = $2,
+                    phone = $3,
+                    line1 = $4,
+                    line2 = $5,
+                    city = $6,
+                    state = $7,
+                    postal_code = $8,
+                    country_code = $9,
+                    is_default_shipping = $10,
+                    is_default_billing = $11,
+                    updated_at = $12
+                WHERE id = $13 AND user_id = $14
+                "#,
+            )
+            .bind(&addr.label)
+            .bind(&addr.recipient_name)
+            .bind(&addr.phone)
+            .bind(&addr.line1)
+            .bind(&addr.line2)
+            .bind(&addr.city)
+            .bind(&addr.state)
+            .bind(&addr.postal_code)
+            .bind(&addr.country_code)
+            .bind(addr.is_default_shipping)
+            .bind(addr.is_default_billing)
+            .bind(addr.updated_at)
+            .bind(&addr.id)
+            .bind(&addr.user_id)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        #[cfg(feature = "sqlite")]
+        {
+            sqlx::query(
+                r#"
+                UPDATE user_addresses
+                SET label = ?,
+                    recipient_name = ?,
+                    phone = ?,
+                    line1 = ?,
+                    line2 = ?,
+                    city = ?,
+                    state = ?,
+                    postal_code = ?,
+                    country_code = ?,
+                    is_default_shipping = ?,
+                    is_default_billing = ?,
+                    updated_at = ?
+                WHERE id = ? AND user_id = ?
+                "#,
+            )
+            .bind(&addr.label)
+            .bind(&addr.recipient_name)
+            .bind(&addr.phone)
+            .bind(&addr.line1)
+            .bind(&addr.line2)
+            .bind(&addr.city)
+            .bind(&addr.state)
+            .bind(&addr.postal_code)
+            .bind(&addr.country_code)
+            .bind(if addr.is_default_shipping { 1 } else { 0 })
+            .bind(if addr.is_default_billing { 1 } else { 0 })
+            .bind(addr.updated_at.to_rfc3339())
+            .bind(&addr.id)
+            .bind(&addr.user_id)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        tx.commit().await?;
+
+        let details = serde_json::json!({
+            "message": "Updated user address",
+            "user_id": user_id,
+            "address_id": addr.id,
+            "is_default_shipping_before": before.is_default_shipping,
+            "is_default_shipping_after": addr.is_default_shipping,
+            "is_default_billing_before": before.is_default_billing,
+            "is_default_billing_after": addr.is_default_billing,
+            "country_code_before": before.country_code,
+            "country_code_after": addr.country_code,
+        })
+        .to_string();
+        self.audit_service
+            .log(
+                actor_id.or(Some(user_id)),
+                None,
+                "USER_ADDRESS_UPDATE",
+                "user_address",
+                Some(&addr.id),
+                Some(details.as_str()),
+                ip_address,
+            )
+            .await;
+
+        Ok(addr)
+    }
+
+    pub async fn delete_address(
+        &self,
+        user_id: &str,
+        address_id: &str,
+        actor_id: Option<&str>,
+        ip_address: Option<&str>,
+    ) -> AppResult<()> {
+        #[cfg(feature = "postgres")]
+        let query = "DELETE FROM user_addresses WHERE id = $1 AND user_id = $2";
+        #[cfg(feature = "sqlite")]
+        let query = "DELETE FROM user_addresses WHERE id = ? AND user_id = ?";
+
+        let res = sqlx::query(query)
+            .bind(address_id)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
+
+        if res.rows_affected() == 0 {
+            return Err(AppError::NotFound("Address not found".to_string()));
+        }
+
+        let details = serde_json::json!({
+            "message": "Deleted user address",
+            "user_id": user_id,
+            "address_id": address_id,
+        })
+        .to_string();
+        self.audit_service
+            .log(
+                actor_id.or(Some(user_id)),
+                None,
+                "USER_ADDRESS_DELETE",
+                "user_address",
+                Some(address_id),
+                Some(details.as_str()),
+                ip_address,
+            )
+            .await;
+
+        Ok(())
     }
 }

@@ -1476,8 +1476,40 @@
     "tabs": {
       "general": "Umum",
       "security": "Keamanan",
+      "addresses": "Alamat",
       "preferences": "Preferensi",
       "notifications": "Notifikasi"
+    },
+    "addresses": {
+      "title": "Alamat",
+      "subtitle": "Kelola beberapa alamat untuk kebutuhan billing dan pengiriman ke depannya.",
+      "add": "Tambah Alamat",
+      "add_title": "Tambah Alamat",
+      "edit_title": "Edit Alamat",
+      "untitled": "Tanpa Judul",
+      "default_shipping": "Default Pengiriman",
+      "default_billing": "Default Billing",
+      "recipient": "Penerima",
+      "empty_title": "Belum ada alamat",
+      "empty_subtitle": "Tambahkan alamat agar bisa dipakai ulang untuk pengiriman dan billing.",
+      "delete_title": "Hapus alamat?",
+      "delete_message": "Alamat ini akan dihapus permanen.",
+      "fields": {
+        "label": "Label",
+        "recipient_name": "Nama penerima",
+        "phone": "No. HP",
+        "line1": "Alamat baris 1",
+        "line2": "Alamat baris 2",
+        "city": "Kota",
+        "state": "Provinsi",
+        "postal_code": "Kode pos",
+        "country_code": "Kode negara",
+        "default_shipping": "Default pengiriman",
+        "default_billing": "Default billing"
+      },
+      "validation": {
+        "line1_required": "Alamat baris 1 wajib diisi."
+      }
     },
     "general": {
       "title": "Informasi Profil",

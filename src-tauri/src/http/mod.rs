@@ -385,6 +385,18 @@ pub async fn start_server(
             get(users::list_users).post(users::create_user),
         )
         .route(
+            "/api/users/me/addresses",
+            get(users::list_my_addresses).post(users::create_my_address),
+        )
+        .route(
+            "/api/users/me/addresses/{address_id}",
+            put(users::update_my_address).delete(users::delete_my_address),
+        )
+        .route(
+            "/api/users/{id}/addresses",
+            get(users::list_user_addresses_admin),
+        )
+        .route(
             "/api/users/{id}",
             get(users::get_user)
                 .put(users::update_user)
