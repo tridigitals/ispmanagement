@@ -226,6 +226,12 @@
     if (isDropdownOpen) isDropdownOpen = false;
   }
 
+  function handleEscape(e: KeyboardEvent) {
+    if (e.key === 'Escape' && isDropdownOpen) {
+      isDropdownOpen = false;
+    }
+  }
+
   function isActive(item: { href: string }) {
     const path = $page.url.pathname;
 
@@ -241,7 +247,7 @@
   }
 </script>
 
-<svelte:window onclick={handleWindowClick} />
+<svelte:window onclick={handleWindowClick} onkeydown={handleEscape} />
 
 <!-- Mobile Overlay Backdrop -->
 {#if isMobileOpen}
@@ -361,19 +367,54 @@
           role="menu"
           tabindex="-1"
         >
-          <button class="menu-item" onclick={() => navigate(`${tenantPrefix}/profile`)}>
+          <div class="dropdown-header" aria-hidden="true">
+            <div class="dropdown-avatar">
+              {$user?.name?.charAt(0).toUpperCase() || '?'}
+            </div>
+            <div class="dropdown-meta">
+              <div class="dropdown-name">{$user?.name || $t('profile.fallback.user') || 'User'}</div>
+              <div class="dropdown-sub">
+                {$user?.email || ''}
+                {#if $user?.email && $user?.role}
+                  <span class="dot">·</span>
+                {/if}
+                {$user?.role || ''}
+              </div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <button
+            class="menu-item"
+            role="menuitem"
+            onclick={() => navigate(`${tenantPrefix}/profile`)}
+          >
             <Icon name="profile" size={16} />
             {$t('sidebar.profile')}
           </button>
-          <div class="divider"></div>
-          <button class="menu-item danger" onclick={handleLogout}>
+
+          <button class="menu-item danger" role="menuitem" onclick={handleLogout}>
             <Icon name="logout" size={16} />
             {$t('sidebar.logout')}
           </button>
         </div>
       {/if}
 
-      <button class="profile-btn" onclick={toggleDropdown}>
+      <button
+        class="profile-btn"
+        onclick={toggleDropdown}
+        aria-haspopup="menu"
+        aria-expanded={isDropdownOpen}
+        onkeydown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleDropdown(e as any);
+          } else if (e.key === 'Escape') {
+            isDropdownOpen = false;
+          }
+        }}
+      >
         <div class="avatar">
           {$user?.name?.charAt(0).toUpperCase() || '?'}
         </div>
@@ -632,6 +673,11 @@
     background: var(--bg-hover);
   }
 
+  .profile-btn:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--color-primary), white 10%);
+    outline-offset: 2px;
+  }
+
   .avatar {
     width: 28px;
     height: 28px;
@@ -672,17 +718,33 @@
     left: 0;
     right: 0;
     margin-bottom: 8px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-surface), transparent 6%);
+    border: 1px solid color-mix(in srgb, var(--border-color), white 8%);
     border-radius: var(--radius-md);
-    padding: 4px;
-    box-shadow: var(--shadow-md);
+    padding: 6px;
+    box-shadow:
+      0 18px 40px rgba(0, 0, 0, 0.35),
+      0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+    backdrop-filter: blur(10px);
     display: flex;
     flex-direction: column;
     z-index: 100;
-    animation: slideUp 0.2s ease-out;
+    animation: dropdownPop 0.14s ease-out;
     width: max-content;
     min-width: 100%;
+  }
+
+  .dropdown-menu::after {
+    content: '';
+    position: absolute;
+    left: 18px;
+    bottom: -6px;
+    width: 12px;
+    height: 12px;
+    background: color-mix(in srgb, var(--bg-surface), transparent 6%);
+    border-right: 1px solid color-mix(in srgb, var(--border-color), white 8%);
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color), white 8%);
+    transform: rotate(45deg);
   }
 
   .sidebar.collapsed .dropdown-menu {
@@ -690,6 +752,66 @@
     bottom: 0;
     margin-left: 8px;
     margin-bottom: 0;
+  }
+
+  .sidebar.collapsed .dropdown-menu::after {
+    left: -6px;
+    bottom: 16px;
+    transform: rotate(135deg);
+  }
+
+  .dropdown-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 10px 8px;
+  }
+
+  .dropdown-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.9rem;
+    flex: 0 0 auto;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  }
+
+  .dropdown-meta {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .dropdown-name {
+    color: var(--text-primary);
+    font-weight: 800;
+    font-size: 0.9rem;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 240px;
+  }
+
+  .dropdown-sub {
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 240px;
+  }
+
+  .dot {
+    margin: 0 6px;
+    opacity: 0.7;
   }
 
   /* Tooltips shown only when sidebar is collapsed (desktop) */
@@ -730,6 +852,11 @@
     text-align: left;
   }
 
+  .menu-item:focus-visible {
+    outline: 2px solid rgba(99, 102, 241, 0.55);
+    outline-offset: 2px;
+  }
+
   .menu-item:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
@@ -740,18 +867,18 @@
   }
   .divider {
     height: 1px;
-    background: var(--border-color);
-    margin: 4px 0;
+    background: color-mix(in srgb, var(--border-color), transparent 35%);
+    margin: 6px 6px;
   }
 
-  @keyframes slideUp {
+  @keyframes dropdownPop {
     from {
       opacity: 0;
-      transform: translateY(5px);
+      transform: translateY(6px) scale(0.98);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: translateY(0) scale(1);
     }
   }
 </style>
