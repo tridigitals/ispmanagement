@@ -77,16 +77,48 @@ impl SettingsService {
 
         fn is_sensitive_setting_key(key: &str) -> bool {
             let k = key.trim();
-            if k.starts_with("email_") {
+
+            // Email: only secrets should be fully redacted.
+            if matches!(k, "email_smtp_password") {
                 return true;
             }
+
+            // Payments: redact server/secret keys, but allow auditing non-secret toggles.
             if k.starts_with("payment_") {
-                return true;
+                return matches!(
+                    k,
+                    "payment_midtrans_server_key"
+                        | "payment_xendit_secret_key"
+                        | "payment_stripe_secret_key"
+                        | "payment_paypal_client_secret"
+                ) || k.contains("secret")
+                    || k.contains("server_key")
+                    || k.contains("private_key")
+                    || k.contains("client_secret");
             }
+
+            // Storage / auth secrets.
             matches!(
                 k,
                 "storage_s3_access_key" | "storage_s3_secret_key" | "jwt_secret"
-            )
+            ) || k.contains("secret")
+                || k.contains("password")
+                || k.ends_with("_token")
+        }
+
+        fn summarize_value(key: &str, value: &str) -> serde_json::Value {
+            const MAX: usize = 256;
+            let v = value.trim();
+            if v.len() <= MAX {
+                serde_json::Value::String(v.to_string())
+            } else {
+                serde_json::json!({
+                    "key": key,
+                    "truncated": true,
+                    "len": v.len(),
+                    "preview": format!("{}…", &v[..MAX])
+                })
+            }
         }
 
         // Check if verify setting exists
@@ -138,16 +170,18 @@ impl SettingsService {
             let sensitive = is_sensitive_setting_key(&setting.key);
             let details = if sensitive {
                 serde_json::json!({
+                    "message": "Updated setting",
                     "key": setting.key,
                     "sensitive": true,
-                    "changed": true
+                    "changed": prev_value != setting.value
                 })
             } else {
                 serde_json::json!({
+                    "message": "Updated setting",
                     "key": setting.key,
                     "sensitive": false,
-                    "from": prev_value,
-                    "to": setting.value
+                    "from": summarize_value(&setting.key, &prev_value),
+                    "to": summarize_value(&setting.key, &setting.value),
                 })
             };
             self.audit_service
@@ -198,14 +232,16 @@ impl SettingsService {
             let sensitive = is_sensitive_setting_key(&setting.key);
             let details = if sensitive {
                 serde_json::json!({
+                    "message": "Created setting",
                     "key": setting.key,
                     "sensitive": true
                 })
             } else {
                 serde_json::json!({
+                    "message": "Created setting",
                     "key": setting.key,
                     "sensitive": false,
-                    "value": setting.value
+                    "value": summarize_value(&setting.key, &setting.value)
                 })
             };
             self.audit_service

@@ -1,12 +1,15 @@
 use super::AppState;
+use crate::http::auth::extract_ip;
 use crate::models::Tenant;
 use axum::{
+    extract::ConnectInfo,
     extract::{Path, State},
     http::HeaderMap,
     Json,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::net::SocketAddr;
 
 #[derive(Serialize)]
 pub struct TenantListResponse {
@@ -182,22 +185,34 @@ pub struct UpdateTenantRequest {
 pub async fn update_tenant(
     State(state): State<AppState>,
     headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(id): Path<String>,
     Json(payload): Json<UpdateTenantRequest>,
 ) -> Result<Json<Tenant>, crate::error::AppError> {
     check_super_admin(&state, &headers).await?;
 
+    let token = headers
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+        .ok_or(crate::error::AppError::Unauthorized)?;
+    let claims = state.auth_service.validate_token(token).await?;
+    let ip = extract_ip(&headers, addr);
+
     // Check if tenant exists
-    let existing: bool = sqlx::query_scalar("SELECT count(*) > 0 FROM tenants WHERE id = $1")
+    let before: Option<Tenant> = sqlx::query_as("SELECT * FROM tenants WHERE id = $1")
         .bind(&id)
-        .fetch_one(&state.auth_service.pool)
+        .fetch_optional(&state.auth_service.pool)
         .await?;
 
-    if !existing {
-        return Err(crate::error::AppError::NotFound(
-            "Tenant not found".to_string(),
-        ));
-    }
+    let before = match before {
+        Some(t) => t,
+        None => {
+            return Err(crate::error::AppError::NotFound(
+                "Tenant not found".to_string(),
+            ));
+        }
+    };
 
     // Check if slug exists (if changed)
     let slug_owner: Option<String> = sqlx::query_scalar("SELECT id FROM tenants WHERE slug = $1")
@@ -229,6 +244,33 @@ pub async fn update_tenant(
     .await?;
 
     tx.commit().await?;
+
+    // Audit
+    let details = serde_json::json!({
+        "message": "Updated tenant",
+        "tenant_id": id,
+        "name_before": before.name,
+        "name_after": tenant.name,
+        "slug_before": before.slug,
+        "slug_after": tenant.slug,
+        "custom_domain_before": before.custom_domain,
+        "custom_domain_after": tenant.custom_domain,
+        "is_active_before": before.is_active,
+        "is_active_after": tenant.is_active,
+    })
+    .to_string();
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&id),
+            "update",
+            "tenant",
+            Some(&id),
+            Some(details.as_str()),
+            Some(&ip),
+        )
+        .await;
 
     Ok(Json(tenant))
 }

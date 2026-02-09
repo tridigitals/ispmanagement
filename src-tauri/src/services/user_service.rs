@@ -174,6 +174,12 @@ impl UserService {
             .await?
             .ok_or(AppError::UserNotFound)?;
 
+        let before_email = user.email.clone();
+        let before_name = user.name.clone();
+        let before_role = user.role.clone();
+        let before_is_super_admin = user.is_super_admin;
+        let before_is_active = user.is_active;
+
         // Update fields if provided
         if let Some(email) = dto.email {
             // Check if email is taken by another user
@@ -227,6 +233,21 @@ impl UserService {
         user.updated_at = updated_at;
 
         // Audit Log
+        let details = serde_json::json!({
+            "message": "Updated user",
+            "user_id": id,
+            "email_before": before_email,
+            "email_after": user.email,
+            "name_before": before_name,
+            "name_after": user.name,
+            "role_before": before_role,
+            "role_after": user.role,
+            "is_super_admin_before": before_is_super_admin,
+            "is_super_admin_after": user.is_super_admin,
+            "is_active_before": before_is_active,
+            "is_active_after": user.is_active,
+        })
+        .to_string();
         self.audit_service
             .log(
                 actor_id,
@@ -234,7 +255,7 @@ impl UserService {
                 "USER_UPDATE",
                 "user",
                 Some(id),
-                Some("Updated user details"),
+                Some(details.as_str()),
                 ip_address,
             )
             .await;

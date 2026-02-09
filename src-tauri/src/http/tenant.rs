@@ -1,9 +1,11 @@
 use super::AppState;
 use crate::error::AppError;
+use crate::http::auth::extract_ip;
 use crate::models::Tenant;
-use axum::{extract::State, http::HeaderMap, Json};
+use axum::{extract::ConnectInfo, extract::State, http::HeaderMap, Json};
 use chrono::Utc;
 use serde::Deserialize;
+use std::net::SocketAddr;
 
 pub async fn get_current_tenant(
     State(state): State<AppState>,
@@ -39,6 +41,7 @@ pub struct UpdateTenantSelfRequest {
 pub async fn update_current_tenant(
     State(state): State<AppState>,
     headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(payload): Json<UpdateTenantSelfRequest>,
 ) -> Result<Json<Tenant>, AppError> {
     let auth_header = headers
@@ -51,12 +54,17 @@ pub async fn update_current_tenant(
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| AppError::Validation("Not a tenant user".to_string()))?;
+    let ip = extract_ip(&headers, addr);
 
     // 1. Get Current Tenant
     let current: Tenant = sqlx::query_as("SELECT * FROM tenants WHERE id = $1")
         .bind(&tenant_id)
         .fetch_one(&state.auth_service.pool)
         .await?;
+
+    let before_name = current.name.clone();
+    let before_domain = current.custom_domain.clone();
+    let before_enforce = current.enforce_2fa;
 
     // 2. Check Feature Access for Custom Domain
     if let Some(ref domain) = payload.custom_domain {
@@ -75,8 +83,10 @@ pub async fn update_current_tenant(
     }
 
     // 3. Update
-    let new_name = payload.name.unwrap_or(current.name);
-    let new_domain = payload.custom_domain.or(current.custom_domain);
+    let new_name = payload.name.unwrap_or_else(|| current.name.clone());
+    let new_domain = payload
+        .custom_domain
+        .or_else(|| current.custom_domain.clone());
     let new_enforce = payload.enforce_2fa.unwrap_or(current.enforce_2fa);
     let now = Utc::now();
 
@@ -99,6 +109,31 @@ pub async fn update_current_tenant(
         .bind(&tenant_id)
         .fetch_one(&state.auth_service.pool)
         .await?;
+
+    // Audit
+    let details = serde_json::json!({
+        "message": "Updated tenant settings",
+        "tenant_id": tenant_id,
+        "name_before": before_name,
+        "name_after": tenant.name,
+        "custom_domain_before": before_domain,
+        "custom_domain_after": tenant.custom_domain,
+        "enforce_2fa_before": before_enforce,
+        "enforce_2fa_after": tenant.enforce_2fa,
+    })
+    .to_string();
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "update",
+            "tenant",
+            Some(&tenant_id),
+            Some(details.as_str()),
+            Some(&ip),
+        )
+        .await;
 
     Ok(Json(tenant))
 }
