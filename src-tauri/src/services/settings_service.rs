@@ -75,6 +75,17 @@ impl SettingsService {
     ) -> AppResult<Setting> {
         let now = Utc::now();
 
+        fn is_sensitive_setting_key(key: &str) -> bool {
+            let k = key.trim();
+            if k.starts_with("email_") {
+                return true;
+            }
+            if k.starts_with("payment_") {
+                return true;
+            }
+            matches!(k, "storage_s3_access_key" | "storage_s3_secret_key" | "jwt_secret")
+        }
+
         // Check if verify setting exists
         // (logic omitted for brevity but conceptually similar)
 
@@ -83,6 +94,7 @@ impl SettingsService {
 
         if let Some(mut setting) = existing {
             // Update existing
+            let prev_value = setting.value.clone();
             setting.value = dto.value.clone();
             setting.description = dto.description.clone();
             setting.updated_at = now;
@@ -120,17 +132,29 @@ impl SettingsService {
             }
 
             // Audit
+            let sensitive = is_sensitive_setting_key(&setting.key);
+            let details = if sensitive {
+                serde_json::json!({
+                    "key": setting.key,
+                    "sensitive": true,
+                    "changed": true
+                })
+            } else {
+                serde_json::json!({
+                    "key": setting.key,
+                    "sensitive": false,
+                    "from": prev_value,
+                    "to": setting.value
+                })
+            };
             self.audit_service
                 .log(
                     actor_id,
                     tenant_id.as_deref(),
-                    "SETTING_UPDATE",
+                    "update",
                     "settings",
                     Some(&setting.key),
-                    Some(&format!(
-                        "Updated setting {} = {}",
-                        setting.key, setting.value
-                    )),
+                    Some(&details.to_string()),
                     ip_address,
                 )
                 .await;
@@ -168,17 +192,27 @@ impl SettingsService {
             query.execute(&self.pool).await?;
 
             // Audit
+            let sensitive = is_sensitive_setting_key(&setting.key);
+            let details = if sensitive {
+                serde_json::json!({
+                    "key": setting.key,
+                    "sensitive": true
+                })
+            } else {
+                serde_json::json!({
+                    "key": setting.key,
+                    "sensitive": false,
+                    "value": setting.value
+                })
+            };
             self.audit_service
                 .log(
                     actor_id,
                     tenant_id.as_deref(),
-                    "SETTING_CREATE",
+                    "create",
                     "settings",
                     Some(&setting.key),
-                    Some(&format!(
-                        "Created setting {} = {}",
-                        setting.key, setting.value
-                    )),
+                    Some(&details.to_string()),
                     ip_address,
                 )
                 .await;
@@ -213,14 +247,15 @@ impl SettingsService {
         }
 
         // Audit
+        let details = serde_json::json!({ "key": key });
         self.audit_service
             .log(
                 actor_id,
                 tenant_id,
-                "SETTING_DELETE",
+                "delete",
                 "settings",
                 Some(key),
-                Some(&format!("Deleted setting {}", key)),
+                Some(&details.to_string()),
                 ip_address,
             )
             .await;

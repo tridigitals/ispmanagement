@@ -584,6 +584,26 @@ async fn retry_email_outbox(
         }
     }
 
+    // Audit (best-effort)
+    let id_for_log = id.clone();
+    let details = serde_json::json!({
+        "id": id_for_log,
+        "scope": if claims.is_super_admin { "all/global" } else { "tenant" }
+    })
+    .to_string();
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            claims.tenant_id.as_deref(),
+            "retry",
+            "email_outbox",
+            Some(&id),
+            Some(details.as_str()),
+            None,
+        )
+        .await;
+
     Ok(Json(serde_json::json!({ "success": true })))
 }
 
@@ -662,9 +682,31 @@ async fn bulk_retry_email_outbox(
             .map_err(AppError::Database)?
         };
 
+        let count = res.rows_affected();
+
+        // Audit (best-effort)
+        let details = serde_json::json!({
+            "count": count,
+            "ids_sample": ids.iter().take(10).collect::<Vec<_>>(),
+            "scope": if claims.is_super_admin { "all/global" } else { "tenant" }
+        })
+        .to_string();
+        state
+            .audit_service
+            .log(
+                Some(&claims.sub),
+                claims.tenant_id.as_deref(),
+                "bulk_retry",
+                "email_outbox",
+                None,
+                Some(details.as_str()),
+                None,
+            )
+            .await;
+
         Ok(Json(serde_json::json!({
             "success": true,
-            "count": res.rows_affected()
+            "count": count
         })))
     }
 
@@ -717,6 +759,22 @@ async fn delete_email_outbox(
         }
     }
 
+    // Audit (best-effort)
+    let id_for_log = id.clone();
+    let details = serde_json::json!({ "id": id_for_log.clone() }).to_string();
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            claims.tenant_id.as_deref(),
+            "delete",
+            "email_outbox",
+            Some(&id_for_log),
+            Some(details.as_str()),
+            None,
+        )
+        .await;
+
     Ok(Json(serde_json::json!({ "success": true })))
 }
 
@@ -768,9 +826,31 @@ async fn bulk_delete_email_outbox(
             .map_err(AppError::Database)?
         };
 
+        let count = res.rows_affected();
+
+        // Audit (best-effort)
+        let details = serde_json::json!({
+            "count": count,
+            "ids_sample": ids.iter().take(10).collect::<Vec<_>>(),
+            "scope": if claims.is_super_admin { "all/global" } else { "tenant" }
+        })
+        .to_string();
+        state
+            .audit_service
+            .log(
+                Some(&claims.sub),
+                claims.tenant_id.as_deref(),
+                "bulk_delete",
+                "email_outbox",
+                None,
+                Some(details.as_str()),
+                None,
+            )
+            .await;
+
         Ok(Json(serde_json::json!({
             "success": true,
-            "count": res.rows_affected()
+            "count": count
         })))
     }
 

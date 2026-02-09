@@ -1,8 +1,9 @@
 use crate::http::AppState;
+use crate::http::auth::extract_ip;
 use crate::services::storage_service::StorageContent;
 use axum::{
     body::Body,
-    extract::{Multipart, Path, Query, State},
+    extract::{ConnectInfo, Multipart, Path, Query, State},
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     Json,
@@ -12,6 +13,7 @@ use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 use tokio_util::io::ReaderStream;
 use tracing::{error, info, warn};
+use std::net::SocketAddr;
 
 #[derive(serde::Deserialize)]
 pub struct ListFileParams {
@@ -96,6 +98,7 @@ pub async fn list_files(
 pub async fn delete_file(
     State(state): State<AppState>,
     headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(id): Path<String>,
 ) -> Response {
     let auth_header = headers
@@ -113,15 +116,67 @@ pub async fn delete_file(
         Ok(c) => c,
         Err(_) => return (StatusCode::UNAUTHORIZED, "Invalid Token").into_response(),
     };
+    let ip = extract_ip(&headers, addr);
+
+    // Best-effort: fetch record for audit details
+    let record = state.storage_service.get_file(&id).await.ok();
 
     if let Some(tid) = claims.tenant_id {
         match state.storage_service.delete_tenant_file(&id, &tid).await {
-            Ok(_) => StatusCode::OK.into_response(),
+            Ok(_) => {
+                if let Some(r) = record.as_ref().filter(|r| r.tenant_id == tid) {
+                    let details = serde_json::json!({
+                        "file_id": r.id,
+                        "tenant_id": r.tenant_id,
+                        "original_name": r.original_name,
+                        "size": r.size,
+                        "storage_provider": r.storage_provider
+                    })
+                    .to_string();
+                    state
+                        .audit_service
+                        .log(
+                            Some(&claims.sub),
+                            Some(&tid),
+                            "delete",
+                            "file_records",
+                            Some(&id),
+                            Some(details.as_str()),
+                            Some(&ip),
+                        )
+                        .await;
+                }
+                StatusCode::OK.into_response()
+            }
             Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
         }
     } else if claims.is_super_admin {
         match state.storage_service.delete_file(&id).await {
-            Ok(_) => StatusCode::OK.into_response(),
+            Ok(_) => {
+                if let Some(r) = record.as_ref() {
+                    let details = serde_json::json!({
+                        "file_id": r.id,
+                        "tenant_id": r.tenant_id,
+                        "original_name": r.original_name,
+                        "size": r.size,
+                        "storage_provider": r.storage_provider
+                    })
+                    .to_string();
+                    state
+                        .audit_service
+                        .log(
+                            Some(&claims.sub),
+                            None,
+                            "delete",
+                            "file_records",
+                            Some(&id),
+                            Some(details.as_str()),
+                            Some(&ip),
+                        )
+                        .await;
+                }
+                StatusCode::OK.into_response()
+            }
             Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
         }
     } else {
@@ -275,6 +330,7 @@ fn parse_range(range_str: &str, file_size: u64) -> Option<(u64, u64)> {
 pub async fn upload_file_http(
     State(state): State<AppState>,
     headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     mut multipart: Multipart,
 ) -> Response {
     info!("[Upload] 📥 New upload request received");
@@ -300,6 +356,7 @@ pub async fn upload_file_http(
             return (StatusCode::UNAUTHORIZED, "Invalid Token").into_response();
         }
     };
+    let ip = extract_ip(&headers, addr);
 
     let tenant_id = match claims.tenant_id {
         Some(tid) => tid,
@@ -449,6 +506,28 @@ pub async fn upload_file_http(
             return match result {
                 Ok(record) => {
                     info!("[Upload] ✨ Success! ID: {}", record.id);
+
+                    let details = serde_json::json!({
+                        "file_id": record.id,
+                        "tenant_id": record.tenant_id,
+                        "original_name": record.original_name,
+                        "size": record.size,
+                        "storage_provider": record.storage_provider,
+                    })
+                    .to_string();
+                    state
+                        .audit_service
+                        .log(
+                            Some(&claims.sub),
+                            Some(&tenant_id),
+                            "create",
+                            "file_records",
+                            Some(&record.id),
+                            Some(details.as_str()),
+                            Some(&ip),
+                        )
+                        .await;
+
                     Json(record).into_response()
                 }
                 Err(e) => {
@@ -551,6 +630,7 @@ pub async fn upload_chunk(
 pub async fn complete_upload(
     State(state): State<AppState>,
     headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(payload): Json<CompleteRequest>,
 ) -> Response {
     let auth_header = headers
@@ -568,6 +648,7 @@ pub async fn complete_upload(
         Ok(c) => c,
         Err(_) => return (StatusCode::UNAUTHORIZED, "Invalid Token").into_response(),
     };
+    let ip = extract_ip(&headers, addr);
 
     let tenant_id = match claims.tenant_id {
         Some(tid) => tid,
@@ -591,7 +672,31 @@ pub async fn complete_upload(
         )
         .await
     {
-        Ok(record) => Json(record).into_response(),
+        Ok(record) => {
+            let details = serde_json::json!({
+                "file_id": record.id,
+                "tenant_id": record.tenant_id,
+                "original_name": record.original_name,
+                "size": record.size,
+                "storage_provider": record.storage_provider,
+                "upload_id": payload.upload_id,
+            })
+            .to_string();
+            state
+                .audit_service
+                .log(
+                    Some(&claims.sub),
+                    Some(&tenant_id),
+                    "create",
+                    "file_records",
+                    Some(&record.id),
+                    Some(details.as_str()),
+                    Some(&ip),
+                )
+                .await;
+
+            Json(record).into_response()
+        }
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
     }
 }

@@ -89,6 +89,21 @@ async fn create_backup(
                 ));
             }
             let path = state.backup_service.create_global_backup().await?;
+            // Audit (best-effort)
+            let path_for_log = path.clone();
+            let details = serde_json::json!({ "type": "global", "path": path_for_log }).to_string();
+            state
+                .audit_service
+                .log(
+                    Some(&claims.sub),
+                    None,
+                    "create",
+                    "backups",
+                    None,
+                    Some(details.as_str()),
+                    None,
+                )
+                .await;
             Ok(Json(path))
         }
         "tenant" => {
@@ -105,6 +120,23 @@ async fn create_backup(
                 .backup_service
                 .create_tenant_backup(&target_id)
                 .await?;
+            // Audit (best-effort)
+            let path_for_log = path.clone();
+            let details =
+                serde_json::json!({ "type": "tenant", "tenant_id": target_id, "path": path_for_log })
+                    .to_string();
+            state
+                .audit_service
+                .log(
+                    Some(&claims.sub),
+                    None,
+                    "create",
+                    "backups",
+                    None,
+                    Some(details.as_str()),
+                    None,
+                )
+                .await;
             Ok(Json(path))
         }
         _ => Err(crate::error::AppError::Validation(
@@ -127,7 +159,22 @@ async fn delete_backup(
         ));
     }
 
+    let filename_for_log = filename.clone();
     state.backup_service.delete_backup(filename).await?;
+    // Audit (best-effort)
+    let details = serde_json::json!({ "filename": filename_for_log }).to_string();
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            None,
+            "delete",
+            "backups",
+            None,
+            Some(details.as_str()),
+            None,
+        )
+        .await;
     Ok(Json(()))
 }
 
@@ -241,6 +288,23 @@ async fn restore_backup(
     // Cleanup
     let _ = tokio::fs::remove_file(temp_path).await;
 
+    if res.is_ok() {
+        // Audit (best-effort)
+        let details = serde_json::json!({ "source": "upload" }).to_string();
+        state
+            .audit_service
+            .log(
+                Some(&claims.sub),
+                None,
+                "restore",
+                "backups",
+                None,
+                Some(details.as_str()),
+                None,
+            )
+            .await;
+    }
+
     res.map(|_| Json(()))
 }
 
@@ -274,6 +338,23 @@ async fn restore_local_backup(
         .backup_service
         .restore_local_backup(filename.clone(), tenant_id)
         .await;
+
+    if res.is_ok() {
+        // Audit (best-effort)
+        let details = serde_json::json!({ "source": "local", "filename": filename }).to_string();
+        state
+            .audit_service
+            .log(
+                Some(&claims.sub),
+                None,
+                "restore",
+                "backups",
+                None,
+                Some(details.as_str()),
+                None,
+            )
+            .await;
+    }
 
     res.map(|_| Json(()))
 }
