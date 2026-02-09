@@ -83,7 +83,10 @@ impl SettingsService {
             if k.starts_with("payment_") {
                 return true;
             }
-            matches!(k, "storage_s3_access_key" | "storage_s3_secret_key" | "jwt_secret")
+            matches!(
+                k,
+                "storage_s3_access_key" | "storage_s3_secret_key" | "jwt_secret"
+            )
         }
 
         // Check if verify setting exists

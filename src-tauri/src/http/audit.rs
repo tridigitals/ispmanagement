@@ -154,10 +154,7 @@ pub async fn list_tenant_audit_logs(
 
     let (logs, total) = audit_service.list(filter).await.map_err(|e| {
         tracing::error!("Failed to list tenant audit logs: {}", e);
-        (
-            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            e.to_string(),
-        )
+        (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })?;
 
     Ok(Json(PaginatedResponse {

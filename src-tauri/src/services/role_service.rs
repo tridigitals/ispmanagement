@@ -4,6 +4,7 @@ use crate::db::DbPool;
 use crate::models::{CreateRoleDto, Permission, Role, RoleWithPermissions, UpdateRoleDto};
 use crate::services::audit_service::AuditService;
 use chrono::Utc;
+use std::collections::HashSet;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -555,6 +556,16 @@ impl RoleService {
             .await?;
 
         let role = role.ok_or_else(|| sqlx::Error::RowNotFound)?;
+        let role_name_before = role.name.clone();
+        let role_description_before = role.description.clone();
+        let role_level_before = role.level;
+
+        // Capture existing permissions for diffing (only if caller is changing permissions).
+        let existing_permissions: Vec<String> = if dto.permissions.is_some() {
+            self.get_role_permissions(role_id).await?
+        } else {
+            vec![]
+        };
 
         // Only Superadmins can modify system roles
         if role.is_system && !is_super_admin {
@@ -622,7 +633,36 @@ impl RoleService {
         }
 
         // Update permissions if provided
+        let mut perms_added: Vec<String> = vec![];
+        let mut perms_removed: Vec<String> = vec![];
         if let Some(permissions) = &dto.permissions {
+            let existing_set: HashSet<String> = existing_permissions
+                .into_iter()
+                .collect::<HashSet<String>>();
+            let requested_set: HashSet<String> = permissions
+                .iter()
+                .filter_map(|key| {
+                    let mut iter = key.split(':');
+                    let r = iter.next()?;
+                    let a = iter.next()?;
+                    if iter.next().is_some() {
+                        return None;
+                    }
+                    Some(format!("{}:{}", r, a))
+                })
+                .collect();
+
+            perms_added = requested_set
+                .difference(&existing_set)
+                .cloned()
+                .collect::<Vec<_>>();
+            perms_removed = existing_set
+                .difference(&requested_set)
+                .cloned()
+                .collect::<Vec<_>>();
+            perms_added.sort();
+            perms_removed.sort();
+
             // Clear existing permissions
             #[cfg(feature = "postgres")]
             sqlx::query("DELETE FROM role_permissions WHERE role_id = $1")
@@ -676,6 +716,26 @@ impl RoleService {
             }
         }
 
+        let role_name_after = dto.name.clone().unwrap_or(role_name_before.clone());
+        let role_description_after = dto
+            .description
+            .clone()
+            .or_else(|| role_description_before.clone());
+        let role_level_after = dto.level.unwrap_or(role_level_before);
+
+        let details = serde_json::json!({
+            "message": "Updated role",
+            "name_before": role_name_before,
+            "name_after": role_name_after,
+            "description_before": role_description_before,
+            "description_after": role_description_after,
+            "level_before": role_level_before,
+            "level_after": role_level_after,
+            "perms_added": perms_added,
+            "perms_removed": perms_removed
+        })
+        .to_string();
+
         // Audit
         self.audit_service
             .log(
@@ -684,7 +744,7 @@ impl RoleService {
                 "ROLE_UPDATE",
                 "roles",
                 Some(role_id),
-                Some("Updated role"),
+                Some(details.as_str()),
                 ip_address,
             )
             .await;

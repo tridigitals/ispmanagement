@@ -842,15 +842,20 @@ impl AuthService {
         let user = match user {
             Some(u) => u,
             None => {
-                // Log failed (user not found - privacy concern? generic message)
+                // Audit (best-effort). Avoid leaking sensitive info.
+                let details = serde_json::json!({
+                    "email": dto.email,
+                    "reason": "user_not_found"
+                })
+                .to_string();
                 self.audit_service
                     .log(
                         None,
                         None,
-                        "USER_LOGIN_FAILED",
+                        "login_failed",
                         "auth",
                         None,
-                        Some(&format!("Failed login for {}: User not found", dto.email)),
+                        Some(details.as_str()),
                         ip_address.as_deref(),
                     )
                     .await;
@@ -860,14 +865,19 @@ impl AuthService {
 
         // Check if account is locked
         if user.is_locked() {
+            let details = serde_json::json!({
+                "email": user.email,
+                "reason": "account_locked"
+            })
+            .to_string();
             self.audit_service
                 .log(
                     Some(&user.id),
                     None,
-                    "USER_LOGIN_LOCKED",
+                    "login_locked",
                     "auth",
                     None,
-                    Some("Attempted login on locked account"),
+                    Some(details.as_str()),
                     ip_address.as_deref(),
                 )
                 .await;
@@ -884,11 +894,43 @@ impl AuthService {
 
         // Check if account is active
         if !user.is_active {
+            let details = serde_json::json!({
+                "email": user.email,
+                "reason": "account_deactivated"
+            })
+            .to_string();
+            self.audit_service
+                .log(
+                    Some(&user.id),
+                    None,
+                    "login_failed",
+                    "auth",
+                    None,
+                    Some(details.as_str()),
+                    ip_address.as_deref(),
+                )
+                .await;
             return Err(AppError::Validation("Account is deactivated".to_string()));
         }
 
         // Check email verification
         if settings.require_email_verification && user.email_verified_at.is_none() {
+            let details = serde_json::json!({
+                "email": user.email,
+                "reason": "email_unverified"
+            })
+            .to_string();
+            self.audit_service
+                .log(
+                    Some(&user.id),
+                    None,
+                    "login_failed",
+                    "auth",
+                    None,
+                    Some(details.as_str()),
+                    ip_address.as_deref(),
+                )
+                .await;
             return Err(AppError::Validation(
                 "Please verify your email address before logging in.".to_string(),
             ));
@@ -899,14 +941,19 @@ impl AuthService {
             // Increment failed attempts
             self.increment_failed_attempts(&user.id, &settings).await?;
 
+            let details = serde_json::json!({
+                "email": user.email,
+                "reason": "invalid_password"
+            })
+            .to_string();
             self.audit_service
                 .log(
                     Some(&user.id),
                     None,
-                    "USER_LOGIN_FAILED",
+                    "login_failed",
                     "auth",
                     None,
-                    Some("Invalid password"),
+                    Some(details.as_str()),
                     ip_address.as_deref(),
                 )
                 .await;
@@ -928,19 +975,6 @@ impl AuthService {
         // Reset failed attempts on successful login
         self.reset_failed_attempts(&user.id).await?;
 
-        // Log Success
-        self.audit_service
-            .log(
-                Some(&user.id),
-                None,
-                "USER_LOGIN",
-                "auth",
-                None,
-                Some("Login successful"),
-                ip_address.as_deref(),
-            )
-            .await;
-
         info!("User logged in: {}", user.email);
 
         // Check 2FA
@@ -956,6 +990,24 @@ impl AuthService {
                     return self.complete_login(user).await;
                 }
             }
+
+            // Audit: password ok but 2FA is required (no session yet)
+            let details = serde_json::json!({
+                "email": user.email,
+                "reason": "2fa_required"
+            })
+            .to_string();
+            self.audit_service
+                .log(
+                    Some(&user.id),
+                    None,
+                    "login_2fa_required",
+                    "auth",
+                    None,
+                    Some(details.as_str()),
+                    ip_address.as_deref(),
+                )
+                .await;
 
             let (token, expires_at) = self.generate_2fa_token(&user).await?;
 
@@ -1300,6 +1352,22 @@ impl AuthService {
             .unwrap_or(false);
 
             if has_any_membership {
+                let details = serde_json::json!({
+                    "email": user.email,
+                    "reason": "tenant_suspended"
+                })
+                .to_string();
+                self.audit_service
+                    .log(
+                        Some(&user.id),
+                        None,
+                        "login_failed",
+                        "auth",
+                        None,
+                        Some(details.as_str()),
+                        None,
+                    )
+                    .await;
                 return Err(AppError::Validation(
                     "Tenant is suspended. Please contact support.".to_string(),
                 ));
@@ -1308,6 +1376,7 @@ impl AuthService {
 
         // Self-healing: Create default tenant if none exists
         let mut tenant = tenant;
+        let mut created_tenant = false;
         if tenant.is_none() {
             // Superadmins can login without an active tenant.
             if user.is_super_admin {
@@ -1319,6 +1388,24 @@ impl AuthService {
                 user_response.permissions = permissions;
                 user_response.tenant_slug = None;
                 user_response.tenant_custom_domain = None;
+
+                let details = serde_json::json!({
+                    "email": user_response.email,
+                    "tenant_id": null,
+                    "is_super_admin": true
+                })
+                .to_string();
+                self.audit_service
+                    .log(
+                        Some(&user_response.id),
+                        None,
+                        "login",
+                        "auth",
+                        None,
+                        Some(details.as_str()),
+                        None,
+                    )
+                    .await;
 
                 return Ok(AuthResponse {
                     user: user_response,
@@ -1334,6 +1421,7 @@ impl AuthService {
             }
 
             info!("User {} has no tenant. Creating default tenant.", user.id);
+            created_tenant = true;
             let tenant_name = format!("{}'s Team", user.name);
             let slug = uuid::Uuid::new_v4().to_string(); // Simple slug
             let new_tenant = crate::models::tenant::Tenant::new(tenant_name, slug);
@@ -1421,6 +1509,24 @@ impl AuthService {
                 // Get minimal user info
                 let user_response: crate::models::user::UserResponse = user.into();
 
+                let details = serde_json::json!({
+                    "email": user_response.email,
+                    "tenant_id": t.id,
+                    "reason": "2fa_setup_required"
+                })
+                .to_string();
+                self.audit_service
+                    .log(
+                        Some(&user_response.id),
+                        Some(&t.id),
+                        "login_2fa_setup_required",
+                        "auth",
+                        None,
+                        Some(details.as_str()),
+                        None,
+                    )
+                    .await;
+
                 return Ok(AuthResponse {
                     user: user_response,
                     tenant: None,
@@ -1456,6 +1562,25 @@ impl AuthService {
                 user_response.role = tenant_role;
             }
         }
+
+        let details = serde_json::json!({
+            "email": user_response.email,
+            "tenant_id": tenant_id,
+            "tenant_created": created_tenant,
+            "is_super_admin": user_response.is_super_admin
+        })
+        .to_string();
+        self.audit_service
+            .log(
+                Some(&user_response.id),
+                tenant_id.as_deref(),
+                "login",
+                "auth",
+                None,
+                Some(details.as_str()),
+                None,
+            )
+            .await;
 
         Ok(AuthResponse {
             user: user_response,
