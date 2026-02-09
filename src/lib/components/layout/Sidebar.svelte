@@ -21,164 +21,186 @@
     effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
   );
 
-  let appMenu = $derived.by(() => {
+  type NavItem = {
+    label: string;
+    icon: string;
+    href: string;
+    show?: boolean;
+  };
+
+  type NavSection = {
+    title?: string;
+    items: NavItem[];
+  };
+
+  function visibleItems(items: NavItem[]) {
+    return items.filter((i) => i.show !== false);
+  }
+
+  let appMenuSections = $derived.by(() => {
     // Access $user to create dependency for permissions changes
     const _ = $user?.permissions;
-    return [
+
+    const sections: NavSection[] = [
       {
-        label: $t('sidebar.dashboard'),
-        icon: 'dashboard',
-        href: `${tenantPrefix}/dashboard`,
-        show: true,
+        title: $t('sidebar.sections.workspace') || 'Workspace',
+        items: visibleItems([
+          {
+            label: $t('sidebar.dashboard'),
+            icon: 'dashboard',
+            href: `${tenantPrefix}/dashboard`,
+            show: true,
+          },
+          {
+            label: $t('sidebar.announcements') || 'Announcements',
+            icon: 'megaphone',
+            href: `${tenantPrefix}/announcements`,
+            show: true,
+          },
+        ]),
       },
       {
-        label: $t('sidebar.announcements') || 'Announcements',
-        icon: 'megaphone',
-        href: `${tenantPrefix}/announcements`,
-        show: true,
+        title: $t('sidebar.sections.help') || 'Help',
+        items: visibleItems([
+          {
+            label: $t('sidebar.support') || 'Support',
+            icon: 'life-buoy',
+            href: `${tenantPrefix}/support`,
+            show: $can('read', 'support') || $can('create', 'support'),
+          },
+        ]),
       },
-      {
-        label: $t('sidebar.support') || 'Support',
-        icon: 'life-buoy',
-        href: `${tenantPrefix}/support`,
-        show: $can('read', 'support') || $can('create', 'support'),
-      },
-    ].filter((i) => i.show);
+    ];
+
+    return sections.filter((s) => s.items.length > 0);
   });
 
-  let superAdminMenu = $derived([
+  let superAdminMenuSections = $derived([
     {
-      label: $t('sidebar.dashboard') || 'Dashboard',
-      icon: 'grid',
-      href: '/superadmin',
+      title: $t('sidebar.sections.platform') || 'Platform',
+      items: [
+        { label: $t('sidebar.dashboard') || 'Dashboard', icon: 'grid', href: '/superadmin' },
+        { label: $t('sidebar.tenants') || 'Tenants', icon: 'database', href: '/superadmin/tenants' },
+        { label: $t('sidebar.users') || 'Users', icon: 'users', href: '/superadmin/users' },
+      ],
     },
     {
-      label: $t('sidebar.tenants') || 'Tenants',
-      icon: 'database',
-      href: '/superadmin/tenants',
+      title: $t('sidebar.sections.billing') || 'Billing',
+      items: [
+        { label: $t('sidebar.plans') || 'Plans', icon: 'credit-card', href: '/superadmin/plans' },
+        { label: $t('sidebar.invoices') || 'Invoices', icon: 'file-text', href: '/superadmin/invoices' },
+      ],
     },
     {
-      label: $t('sidebar.users') || 'Users',
-      icon: 'users',
-      href: '/superadmin/users',
+      title: $t('sidebar.sections.operations') || 'Operations',
+      items: [
+        { label: $t('sidebar.storage') || 'Storage', icon: 'folder', href: '/superadmin/storage' },
+        { label: $t('sidebar.backups') || 'Backups', icon: 'archive', href: '/superadmin/backups' },
+        { label: $t('sidebar.system') || 'System', icon: 'server', href: '/superadmin/system' },
+      ],
     },
     {
-      label: $t('sidebar.plans') || 'Plans',
-      icon: 'credit-card',
-      href: '/superadmin/plans',
+      title: $t('sidebar.sections.security') || 'Security',
+      items: [
+        { label: $t('sidebar.audit_logs') || 'Audit Logs', icon: 'activity', href: '/superadmin/audit-logs' },
+        { label: $t('sidebar.settings') || 'Settings', icon: 'settings', href: '/superadmin/settings' },
+      ],
     },
-    {
-      label: $t('sidebar.invoices') || 'Invoices',
-      icon: 'credit-card',
-      href: '/superadmin/invoices',
-    },
-    {
-      label: $t('sidebar.storage') || 'Storage',
-      icon: 'folder',
-      href: '/superadmin/storage',
-    },
-    {
-      label: $t('sidebar.audit_logs') || 'Audit Logs',
-      icon: 'activity',
-      href: '/superadmin/audit-logs',
-    },
-    {
-      label: $t('sidebar.settings') || 'Settings',
-      icon: 'settings',
-      href: '/superadmin/settings',
-    },
-    {
-      label: $t('sidebar.system') || 'System',
-      icon: 'server',
-      href: '/superadmin/system',
-    },
-    {
-      label: $t('sidebar.backups') || 'Backups',
-      icon: 'archive',
-      href: '/superadmin/backups',
-    },
-  ]);
+  ] satisfies NavSection[]);
 
   // Add $user as explicit dependency to force reactivity when user permissions change
-  let adminMenu = $derived.by(() => {
+  let adminMenuSections = $derived.by(() => {
     // Access $user to create dependency
     const _ = $user?.permissions;
-    return [
+
+    const sections: NavSection[] = [
       {
-        label: $t('sidebar.overview'),
-        icon: 'shield',
-        href: `${tenantPrefix}/admin`,
-        show: true,
+        title: $t('sidebar.sections.workspace') || 'Workspace',
+        items: visibleItems([
+          { label: $t('sidebar.overview'), icon: 'shield', href: `${tenantPrefix}/admin`, show: true },
+        ]),
       },
       {
-        label: $t('sidebar.team'),
-        icon: 'users',
-        href: `${tenantPrefix}/admin/team`,
-        show: $can('read', 'team'),
+        title: $t('sidebar.sections.access') || 'Access',
+        items: visibleItems([
+          { label: $t('sidebar.team'), icon: 'users', href: `${tenantPrefix}/admin/team`, show: $can('read', 'team') },
+          { label: $t('sidebar.roles'), icon: 'lock', href: `${tenantPrefix}/admin/roles`, show: $can('read', 'roles') },
+        ]),
       },
       {
-        label: $t('sidebar.roles'),
-        icon: 'lock',
-        href: `${tenantPrefix}/admin/roles`,
-        show: $can('read', 'roles'),
+        title: $t('sidebar.sections.compliance') || 'Compliance',
+        items: visibleItems([
+          {
+            label: $t('sidebar.audit_logs') || 'Audit Logs',
+            icon: 'activity',
+            href: `${tenantPrefix}/admin/audit-logs`,
+            show: $can('read', 'audit_logs'),
+          },
+        ]),
       },
       {
-        label: $t('sidebar.audit_logs') || 'Audit Logs',
-        icon: 'activity',
-        href: `${tenantPrefix}/admin/audit-logs`,
-        show: $can('read', 'audit_logs'),
+        title: $t('sidebar.sections.operations') || 'Operations',
+        items: visibleItems([
+          {
+            label: $t('sidebar.storage') || 'Storage',
+            icon: 'folder',
+            href: `${tenantPrefix}/admin/storage`,
+            show: true,
+          },
+          {
+            label: $t('sidebar.email_outbox') || 'Email Outbox',
+            icon: 'mail',
+            href: `${tenantPrefix}/admin/email-outbox`,
+            show: $can('read', 'email_outbox'),
+          },
+          {
+            label: $t('sidebar.support') || 'Support',
+            icon: 'life-buoy',
+            href: `${tenantPrefix}/admin/support`,
+            show: $can('read_all', 'support'),
+          },
+        ]),
       },
       {
-        label: $t('sidebar.subscription') || 'Subscription',
-        icon: 'credit-card',
-        href: `${tenantPrefix}/admin/subscription`,
-        show: true,
+        title: $t('sidebar.sections.billing') || 'Billing',
+        items: visibleItems([
+          {
+            label: $t('sidebar.subscription') || 'Subscription',
+            icon: 'credit-card',
+            href: `${tenantPrefix}/admin/subscription`,
+            show: true,
+          },
+        ]),
       },
       {
-        label: $t('sidebar.settings'),
-        icon: 'settings',
-        href: `${tenantPrefix}/admin/settings`,
-        show: $can('read', 'settings'),
+        title: $t('sidebar.sections.configuration') || 'Configuration',
+        items: visibleItems([
+          {
+            label: $t('sidebar.settings'),
+            icon: 'settings',
+            href: `${tenantPrefix}/admin/settings`,
+            show: $can('read', 'settings'),
+          },
+          {
+            label: $t('sidebar.announcements') || 'Announcements',
+            icon: 'megaphone',
+            href: `${tenantPrefix}/admin/announcements`,
+            show: $can('manage', 'announcements'),
+          },
+        ]),
       },
-      {
-        label: $t('sidebar.email_outbox') || 'Email Outbox',
-        icon: 'mail',
-        href: `${tenantPrefix}/admin/email-outbox`,
-        show: $can('read', 'email_outbox'),
-      },
-      {
-        label: $t('sidebar.storage') || 'Storage',
-        icon: 'folder',
-        href: `${tenantPrefix}/admin/storage`,
-        show: true,
-      },
-      {
-        label: $t('sidebar.announcements') || 'Announcements',
-        icon: 'megaphone',
-        href: `${tenantPrefix}/admin/announcements`,
-        show: $can('manage', 'announcements'),
-      },
-      {
-        label: $t('sidebar.backups') || 'Backups',
-        icon: 'archive',
-        href: `${tenantPrefix}/admin/backups`,
-        // Tenant backups are intentionally disabled (managed by Super Admin only).
-        show: false,
-      },
-      {
-        label: $t('sidebar.support') || 'Support',
-        icon: 'life-buoy',
-        href: `${tenantPrefix}/admin/support`,
-        show: $can('read_all', 'support'),
-      },
-    ].filter((i) => i.show);
+    ];
+
+    return sections.filter((s) => s.items.length > 0);
   });
 
   let isDropdownOpen = $state(false);
 
   let isUrlSuperadmin = $derived($page.url.pathname.startsWith('/superadmin'));
   let isUrlAdmin = $derived($page.url.pathname.includes('/admin'));
-  let currentMenu = $derived(isUrlSuperadmin ? superAdminMenu : isUrlAdmin ? adminMenu : appMenu);
+  let currentMenuSections = $derived(
+    isUrlSuperadmin ? superAdminMenuSections : isUrlAdmin ? adminMenuSections : appMenuSections,
+  );
 
   // When inside `/superadmin`, we still want a quick jump back to the tenant admin panel.
   // If we're on a custom domain, tenantPrefix is empty and `/admin` is the correct route.
@@ -250,17 +272,27 @@
   <!-- Navigation - use {#key} to force re-render when authVersion changes -->
   {#key $authVersion}
     <nav class="sidebar-nav">
-      {#each currentMenu as item}
-        <button
-          class="nav-item"
-          class:active={isActive(item)}
-          aria-label={item.label}
-          data-tooltip={item.label}
-          onclick={() => navigate(item.href)}
-        >
-          <Icon name={item.icon} size={18} />
-          <span class="label">{item.label}</span>
-        </button>
+      {#each currentMenuSections as section, idx}
+        {#if section.title && !$isSidebarCollapsed}
+          <div class="nav-section" aria-hidden="true">{section.title}</div>
+        {/if}
+
+        {#each section.items as item}
+          <button
+            class="nav-item"
+            class:active={isActive(item)}
+            aria-label={item.label}
+            data-tooltip={item.label}
+            onclick={() => navigate(item.href)}
+          >
+            <Icon name={item.icon} size={18} />
+            <span class="label">{item.label}</span>
+          </button>
+        {/each}
+
+        {#if idx < currentMenuSections.length - 1}
+          <div class="nav-divider" aria-hidden="true"></div>
+        {/if}
       {/each}
     </nav>
   {/key}
@@ -515,6 +547,23 @@
   .nav-item.active {
     background: var(--bg-active);
     color: var(--text-primary);
+  }
+
+  .nav-section {
+    padding: 10px 12px 6px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--text-secondary), var(--text-primary) 10%);
+    opacity: 0.85;
+  }
+
+  .nav-divider {
+    height: 1px;
+    margin: 8px 10px;
+    background: var(--border-subtle);
+    opacity: 0.8;
   }
 
   /* Footer */

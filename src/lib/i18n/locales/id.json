@@ -382,6 +382,18 @@
     "admin_panel": "Panel Admin",
     "profile": "Profil",
     "logout": "Keluar"
+    ,
+    "sections": {
+      "workspace": "Workspace",
+      "help": "Bantuan",
+      "platform": "Platform",
+      "billing": "Billing",
+      "operations": "Operasional",
+      "security": "Keamanan",
+      "access": "Akses",
+      "compliance": "Kepatuhan",
+      "configuration": "Konfigurasi"
+    }
   },
   "topbar": {
     "search_placeholder": "Cari...",

@@ -382,6 +382,18 @@
     "admin_panel": "Admin Panel",
     "profile": "Profile",
     "logout": "Logout"
+    ,
+    "sections": {
+      "workspace": "Workspace",
+      "help": "Help",
+      "platform": "Platform",
+      "billing": "Billing",
+      "operations": "Operations",
+      "security": "Security",
+      "access": "Access",
+      "compliance": "Compliance",
+      "configuration": "Configuration"
+    }
   },
   "topbar": {
     "search_placeholder": "Search...",
