@@ -129,6 +129,9 @@
     "saving": "Menyimpan...",
     "loading": "Memuat...",
     "updated": "Diperbarui",
+    "deleted": "Dihapus",
+    "forbidden": "Akses Ditolak",
+    "no_permission": "Anda tidak memiliki izin untuk melihat halaman ini.",
     "empty": {
       "no_results": "Tidak ada hasil"
     },
@@ -315,7 +318,8 @@
       "online": {
         "description": "Bayar aman dengan Kartu Kredit, GoPay, ShopeePay, atau Virtual Account via Midtrans.",
         "pay_now": "Bayar Sekarang",
-        "check_status": "Cek Status Pembayaran"
+        "check_status": "Cek Status Pembayaran",
+        "checking": "Memeriksa..."
       },
       "manual": {
         "instructions": "Silakan transfer sejumlah total ke salah satu rekening berikut:",
@@ -432,6 +436,7 @@
     "fields": {
       "subject": "Subjek",
       "subject_placeholder": "mis. Tidak bisa login ke akun saya",
+      "priority": "Prioritas",
       "message": "Pesan",
       "message_placeholder": "Jelaskan masalah atau permintaan Anda...",
       "attachments": "Lampiran",
@@ -1790,6 +1795,7 @@
       }
     },
     "subscription": {
+      "title": "Langganan",
       "tabs": {
         "overview": "Ringkasan",
         "plans": "Paket Tersedia",

@@ -129,6 +129,9 @@
     "saving": "Saving...",
     "loading": "Loading...",
     "updated": "Updated",
+    "deleted": "Deleted",
+    "forbidden": "Forbidden",
+    "no_permission": "You do not have permission to view this page.",
     "empty": {
       "no_results": "No results"
     },
@@ -315,7 +318,8 @@
       "online": {
         "description": "Pay securely with Credit Card, GoPay, ShopeePay, or Virtual Account via Midtrans.",
         "pay_now": "Pay Now",
-        "check_status": "Check Payment Status"
+        "check_status": "Check Payment Status",
+        "checking": "Checking..."
       },
       "manual": {
         "instructions": "Please transfer the exact amount to one of the following accounts:",
@@ -432,6 +436,7 @@
     "fields": {
       "subject": "Subject",
       "subject_placeholder": "e.g. Cannot login to my account",
+      "priority": "Priority",
       "message": "Message",
       "message_placeholder": "Describe your issue or request...",
       "attachments": "Attachments",
@@ -1790,6 +1795,7 @@
       }
     },
     "subscription": {
+      "title": "Subscription",
       "tabs": {
         "overview": "Overview",
         "plans": "Available Plans",

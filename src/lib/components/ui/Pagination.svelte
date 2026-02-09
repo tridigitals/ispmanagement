@@ -55,7 +55,7 @@
         class="icon-btn"
         disabled={page === 0}
         onclick={() => handlePageChange(page - 1)}
-        aria-label={$t('components.pagination.previous') || 'Previous page'}
+        aria-label={$t('components.pagination.previous_page') || 'Previous page'}
       >
         <Icon name="chevron-left" size={20} />
       </button>
@@ -63,7 +63,7 @@
         class="icon-btn"
         disabled={page >= totalPages - 1}
         onclick={() => handlePageChange(page + 1)}
-        aria-label={$t('components.pagination.next') || 'Next page'}
+        aria-label={$t('components.pagination.next_page') || 'Next page'}
       >
         <Icon name="chevron-right" size={20} />
       </button>
