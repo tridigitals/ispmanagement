@@ -18,7 +18,7 @@ use services::metrics_service::MetricsService;
 use services::{
     AnnouncementScheduler, AuditService, AuthService, BackupService, EmailOutboxService,
     EmailService, NotificationService, PaymentService, PlanService, RoleService, SettingsService,
-    SystemService, TeamService, UserService,
+    SystemService, TeamService, UserService, MikrotikService,
 };
 use tauri::Manager;
 use tracing::info;
@@ -219,6 +219,10 @@ pub fn run() {
                 );
                 let payment_service = PaymentService::new(pool.clone(), notification_service.clone());
 
+                // MikroTik monitoring (tenant-scoped)
+                let mikrotik_service = MikrotikService::new(pool.clone(), notification_service.clone());
+                std::sync::Arc::new(mikrotik_service.clone()).start_poller();
+
                 // Start Announcement Scheduler (scheduled broadcasts -> notifications)
                 let announcement_scheduler =
                     AnnouncementScheduler::new(pool.clone(), notification_service.clone(), audit_service.clone());
@@ -245,6 +249,7 @@ pub fn run() {
                 app_handle.manage(payment_service.clone());
                 app_handle.manage(notification_service.clone());
                 app_handle.manage(email_outbox_service.clone());
+                app_handle.manage(mikrotik_service.clone());
                 app_handle.manage(ws_hub.clone());
                 app_handle.manage(metrics_service.clone());
                 info!("Services added to Tauri state.");
@@ -266,6 +271,7 @@ pub fn run() {
                         storage_service,
                         payment_service,
                         notification_service,
+                        mikrotik_service,
                         backup_service,
                         ws_hub,
                         app_dir,
@@ -444,6 +450,13 @@ pub fn run() {
                                     get_support_ticket,
                                     reply_support_ticket,
                                     update_support_ticket,
+                                    // MikroTik / Routers
+                                    list_mikrotik_routers,
+                                    create_mikrotik_router,
+                                    update_mikrotik_router,
+                                    delete_mikrotik_router,
+                                    test_mikrotik_router,
+                                    list_mikrotik_router_metrics,
                                     // Announcements
                                     list_active_announcements,
                                     list_recent_announcements,

@@ -1,6 +1,7 @@
 use crate::services::{
     AuditService, AuthService, EmailService, NotificationService, PaymentService, PlanService,
     RoleService, SettingsService, StorageService, SystemService, TeamService, UserService,
+    MikrotikService,
 };
 use axum::{
     extract::DefaultBodyLimit,
@@ -43,6 +44,7 @@ pub mod team;
 pub mod tenant;
 pub mod users;
 pub mod websocket;
+pub mod mikrotik;
 
 pub use websocket::{WsEvent, WsHub};
 
@@ -74,6 +76,7 @@ pub struct AppState {
     pub storage_service: Arc<StorageService>,
     pub payment_service: Arc<PaymentService>,
     pub notification_service: Arc<NotificationService>,
+    pub mikrotik_service: Arc<MikrotikService>,
     pub backup_service: Arc<crate::services::BackupService>,
     pub ws_hub: Arc<WsHub>,
     pub app_data_dir: PathBuf,
@@ -98,6 +101,7 @@ pub async fn start_server(
     storage_service: StorageService,
     payment_service: PaymentService,
     notification_service: NotificationService,
+    mikrotik_service: MikrotikService,
     backup_service: crate::services::BackupService,
     ws_hub: Arc<WsHub>,
     app_data_dir: PathBuf,
@@ -221,6 +225,7 @@ pub async fn start_server(
         storage_service: Arc::new(storage_service),
         payment_service: Arc::new(payment_service.clone()),
         notification_service: Arc::new(notification_service),
+        mikrotik_service: Arc::new(mikrotik_service),
         backup_service: Arc::new(backup_service),
         ws_hub,
         app_data_dir,
@@ -443,6 +448,8 @@ pub async fn start_server(
         .nest("/api/notifications", notifications::router())
         // Email Outbox (admin monitor)
         .nest("/api/email-outbox", email_outbox::router())
+        // MikroTik routers (tenant admin)
+        .nest("/api/admin/mikrotik", mikrotik::router())
         // Announcements (banner + admin broadcast)
         .nest("/api/announcements", announcements::router())
         // Settings Routes

@@ -22,6 +22,7 @@ pub mod payment_service;
 pub mod plan_service;
 pub mod storage_service;
 pub mod system_service;
+pub mod mikrotik_service;
 
 pub use alert_service::AlertService;
 pub use announcement_service::AnnouncementScheduler;
@@ -40,3 +41,4 @@ pub use system_service::SystemService;
 pub use team_service::TeamService;
 pub use unsubscribe_token::*;
 pub use user_service::UserService;
+pub use mikrotik_service::MikrotikService;

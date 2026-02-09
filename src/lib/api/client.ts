@@ -192,6 +192,17 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       update_current_tenant: { method: 'PUT', path: '/tenant/me' },
       // Audit Logs (Admin / Tenant scoped)
       list_tenant_audit_logs: { method: 'GET', path: '/admin/audit-logs' },
+
+      // MikroTik routers (Tenant admin)
+      list_mikrotik_routers: { method: 'GET', path: '/admin/mikrotik/routers' },
+      create_mikrotik_router: { method: 'POST', path: '/admin/mikrotik/routers' },
+      update_mikrotik_router: { method: 'PUT', path: '/admin/mikrotik/routers/:id' },
+      delete_mikrotik_router: { method: 'DELETE', path: '/admin/mikrotik/routers/:id' },
+      test_mikrotik_router: { method: 'POST', path: '/admin/mikrotik/routers/:id/test' },
+      list_mikrotik_router_metrics: {
+        method: 'GET',
+        path: '/admin/mikrotik/routers/:routerId/metrics',
+      },
       // Backup
       list_backups: { method: 'GET', path: '/backups' },
       create_backup: { method: 'POST', path: '/backups' },
@@ -911,6 +922,45 @@ export const audit = {
     },
   ): Promise<PaginatedResponse<AuditLog>> =>
     safeInvoke('list_tenant_audit_logs', { token: getTokenOrThrow(), page, perPage, ...filters }),
+};
+
+export const mikrotik = {
+  routers: {
+    list: (): Promise<any[]> => safeInvoke('list_mikrotik_routers', { token: getTokenOrThrow() }),
+    create: (router: {
+      name: string;
+      host: string;
+      port?: number;
+      username: string;
+      password: string;
+      use_tls?: boolean;
+      enabled?: boolean;
+    }): Promise<any> =>
+      safeInvoke('create_mikrotik_router', { token: getTokenOrThrow(), router }),
+    update: (
+      id: string,
+      router: {
+        name?: string;
+        host?: string;
+        port?: number;
+        username?: string;
+        password?: string;
+        use_tls?: boolean;
+        enabled?: boolean;
+      },
+    ): Promise<any> =>
+      safeInvoke('update_mikrotik_router', { token: getTokenOrThrow(), id, router }),
+    delete: (id: string): Promise<void> =>
+      safeInvoke('delete_mikrotik_router', { token: getTokenOrThrow(), id }),
+    test: (id: string): Promise<any> =>
+      safeInvoke('test_mikrotik_router', { token: getTokenOrThrow(), id }),
+    metrics: (routerId: string, limit?: number): Promise<any[]> =>
+      safeInvoke('list_mikrotik_router_metrics', {
+        token: getTokenOrThrow(),
+        routerId,
+        limit,
+      }),
+  },
 };
 
 export const support = {

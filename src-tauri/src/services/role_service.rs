@@ -39,6 +39,9 @@ impl RoleService {
             ("roles", "delete", "Delete roles"),
             // Dashboard permissions
             ("dashboard", "read", "View dashboard"),
+            // Network / Routers (tenant scoped)
+            ("network_routers", "read", "View routers and status"),
+            ("network_routers", "manage", "Manage router inventory"),
             // Backups permissions
             ("backups", "read", "View backups"),
             ("backups", "create", "Create backups"),
@@ -87,6 +90,8 @@ impl RoleService {
                     "roles:update",
                     "roles:delete",
                     "dashboard:read",
+                    "network_routers:read",
+                    "network_routers:manage",
                     "backups:read",
                     "backups:create",
                     "backups:download",
@@ -119,6 +124,8 @@ impl RoleService {
                     "settings:update",
                     "roles:read",
                     "dashboard:read",
+                    "network_routers:read",
+                    "network_routers:manage",
                     "backups:read",
                     "backups:create",
                     "backups:download",
