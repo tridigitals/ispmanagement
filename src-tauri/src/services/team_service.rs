@@ -180,6 +180,7 @@ impl TeamService {
             .await
             .map_err(|e| e.to_string())?;
 
+        let created_user = existing_user.is_none();
         let user_id = if let Some(user) = existing_user {
             // User exists, just link them
             user.id
@@ -273,6 +274,18 @@ impl TeamService {
             .map_err(|e| e.to_string())?;
 
         // Audit Log
+        let details = serde_json::json!({
+            "message": "Added team member",
+            "tenant_id": tenant_id,
+            "member_id": member_id,
+            "user_id": user_id,
+            "email": email,
+            "name": name,
+            "role_name": role_name,
+            "role_id": role_id,
+            "created_user": created_user
+        })
+        .to_string();
         self.audit_service
             .log(
                 actor_id,
@@ -280,7 +293,7 @@ impl TeamService {
                 "TEAM_MEMBER_ADD",
                 "team",
                 Some(&user_id),
-                Some(&format!("Added user {} to team as {}", email, role_name)),
+                Some(details.as_str()),
                 ip_address,
             )
             .await;
@@ -308,6 +321,39 @@ impl TeamService {
         actor_id: Option<&str>,
         ip_address: Option<&str>,
     ) -> Result<(), String> {
+        #[cfg(feature = "postgres")]
+        let before: Option<(String, String, Option<String>, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT tm.user_id::text, u.email, tm.role, tm.role_id::text
+            FROM tenant_members tm
+            JOIN users u ON u.id = tm.user_id
+            WHERE tm.id = $1 AND tm.tenant_id = $2
+        "#,
+        )
+        .bind(member_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        #[cfg(feature = "sqlite")]
+        let before: Option<(String, String, Option<String>, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT tm.user_id, u.email, tm.role, tm.role_id
+            FROM tenant_members tm
+            JOIN users u ON u.id = tm.user_id
+            WHERE tm.id = ? AND tm.tenant_id = ?
+        "#,
+        )
+        .bind(member_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        let (user_id, email, role_name_before, role_id_before) =
+            before.ok_or_else(|| "Member not found".to_string())?;
+
         let role_name: String = sqlx::query_scalar("SELECT name FROM roles WHERE id = $1")
             .bind(role_id)
             .fetch_one(&self.pool)
@@ -325,14 +371,26 @@ impl TeamService {
             .map_err(|e| e.to_string())?;
 
         // Audit Log
+        let details = serde_json::json!({
+            "message": "Updated team member role",
+            "tenant_id": tenant_id,
+            "member_id": member_id,
+            "user_id": user_id,
+            "email": email,
+            "role_name_before": role_name_before,
+            "role_id_before": role_id_before,
+            "role_name_after": role_name,
+            "role_id_after": role_id
+        })
+        .to_string();
         self.audit_service
             .log(
                 actor_id,
                 Some(tenant_id),
                 "TEAM_MEMBER_UPDATE",
                 "team",
-                Some(member_id),
-                Some(&format!("Updated member role to {}", role_name)),
+                Some(&user_id),
+                Some(details.as_str()),
                 ip_address,
             )
             .await;
@@ -348,6 +406,39 @@ impl TeamService {
         actor_id: Option<&str>,
         ip_address: Option<&str>,
     ) -> Result<(), String> {
+        #[cfg(feature = "postgres")]
+        let before: Option<(String, String, Option<String>, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT tm.user_id::text, u.email, tm.role, tm.role_id::text
+            FROM tenant_members tm
+            JOIN users u ON u.id = tm.user_id
+            WHERE tm.id = $1 AND tm.tenant_id = $2
+        "#,
+        )
+        .bind(member_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        #[cfg(feature = "sqlite")]
+        let before: Option<(String, String, Option<String>, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT tm.user_id, u.email, tm.role, tm.role_id
+            FROM tenant_members tm
+            JOIN users u ON u.id = tm.user_id
+            WHERE tm.id = ? AND tm.tenant_id = ?
+        "#,
+        )
+        .bind(member_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        let (user_id, email, role_name_before, role_id_before) =
+            before.ok_or_else(|| "Member not found".to_string())?;
+
         let query = "DELETE FROM tenant_members WHERE id = $1";
 
         sqlx::query(query)
@@ -357,14 +448,24 @@ impl TeamService {
             .map_err(|e| e.to_string())?;
 
         // Audit Log
+        let details = serde_json::json!({
+            "message": "Removed team member",
+            "tenant_id": tenant_id,
+            "member_id": member_id,
+            "user_id": user_id,
+            "email": email,
+            "role_name_before": role_name_before,
+            "role_id_before": role_id_before
+        })
+        .to_string();
         self.audit_service
             .log(
                 actor_id,
                 Some(tenant_id),
                 "TEAM_MEMBER_REMOVE",
                 "team",
-                Some(member_id),
-                Some("Removed member from team"),
+                Some(&user_id),
+                Some(details.as_str()),
                 ip_address,
             )
             .await;
