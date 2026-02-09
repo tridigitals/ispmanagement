@@ -29,8 +29,10 @@
   };
 
   type NavSection = {
+    id: string;
     title?: string;
     items: NavItem[];
+    default_open?: boolean;
   };
 
   function visibleItems(items: NavItem[]) {
@@ -43,6 +45,7 @@
 
     const sections: NavSection[] = [
       {
+        id: 'workspace',
         title: $t('sidebar.sections.workspace') || 'Workspace',
         items: visibleItems([
           {
@@ -60,6 +63,7 @@
         ]),
       },
       {
+        id: 'help',
         title: $t('sidebar.sections.help') || 'Help',
         items: visibleItems([
           {
@@ -75,38 +79,46 @@
     return sections.filter((s) => s.items.length > 0);
   });
 
-  let superAdminMenuSections = $derived([
-    {
-      title: $t('sidebar.sections.platform') || 'Platform',
-      items: [
-        { label: $t('sidebar.dashboard') || 'Dashboard', icon: 'grid', href: '/superadmin' },
-        { label: $t('sidebar.tenants') || 'Tenants', icon: 'database', href: '/superadmin/tenants' },
-        { label: $t('sidebar.users') || 'Users', icon: 'users', href: '/superadmin/users' },
-      ],
-    },
-    {
-      title: $t('sidebar.sections.billing') || 'Billing',
-      items: [
-        { label: $t('sidebar.plans') || 'Plans', icon: 'credit-card', href: '/superadmin/plans' },
-        { label: $t('sidebar.invoices') || 'Invoices', icon: 'file-text', href: '/superadmin/invoices' },
-      ],
-    },
-    {
-      title: $t('sidebar.sections.operations') || 'Operations',
-      items: [
-        { label: $t('sidebar.storage') || 'Storage', icon: 'folder', href: '/superadmin/storage' },
-        { label: $t('sidebar.backups') || 'Backups', icon: 'archive', href: '/superadmin/backups' },
-        { label: $t('sidebar.system') || 'System', icon: 'server', href: '/superadmin/system' },
-      ],
-    },
-    {
-      title: $t('sidebar.sections.security') || 'Security',
-      items: [
-        { label: $t('sidebar.audit_logs') || 'Audit Logs', icon: 'activity', href: '/superadmin/audit-logs' },
-        { label: $t('sidebar.settings') || 'Settings', icon: 'settings', href: '/superadmin/settings' },
-      ],
-    },
-  ] satisfies NavSection[]);
+  let superAdminMenuSections = $derived.by(() => {
+    const sections: NavSection[] = [
+      {
+        id: 'platform',
+        title: $t('sidebar.sections.platform') || 'Platform',
+        items: [
+          { label: $t('sidebar.dashboard') || 'Dashboard', icon: 'grid', href: '/superadmin' },
+          { label: $t('sidebar.tenants') || 'Tenants', icon: 'database', href: '/superadmin/tenants' },
+          { label: $t('sidebar.users') || 'Users', icon: 'users', href: '/superadmin/users' },
+        ],
+      },
+      {
+        id: 'billing',
+        title: $t('sidebar.sections.billing') || 'Billing',
+        items: [
+          { label: $t('sidebar.plans') || 'Plans', icon: 'credit-card', href: '/superadmin/plans' },
+          { label: $t('sidebar.invoices') || 'Invoices', icon: 'file-text', href: '/superadmin/invoices' },
+        ],
+      },
+      {
+        id: 'operations',
+        title: $t('sidebar.sections.operations') || 'Operations',
+        items: [
+          { label: $t('sidebar.storage') || 'Storage', icon: 'folder', href: '/superadmin/storage' },
+          { label: $t('sidebar.backups') || 'Backups', icon: 'archive', href: '/superadmin/backups' },
+          { label: $t('sidebar.system') || 'System', icon: 'server', href: '/superadmin/system' },
+        ],
+      },
+      {
+        id: 'security',
+        title: $t('sidebar.sections.security') || 'Security',
+        items: [
+          { label: $t('sidebar.audit_logs') || 'Audit Logs', icon: 'activity', href: '/superadmin/audit-logs' },
+          { label: $t('sidebar.settings') || 'Settings', icon: 'settings', href: '/superadmin/settings' },
+        ],
+      },
+    ];
+
+    return sections.filter((s) => s.items.length > 0);
+  });
 
   // Add $user as explicit dependency to force reactivity when user permissions change
   let adminMenuSections = $derived.by(() => {
@@ -115,12 +127,14 @@
 
     const sections: NavSection[] = [
       {
+        id: 'workspace',
         title: $t('sidebar.sections.workspace') || 'Workspace',
         items: visibleItems([
           { label: $t('sidebar.overview'), icon: 'shield', href: `${tenantPrefix}/admin`, show: true },
         ]),
       },
       {
+        id: 'access',
         title: $t('sidebar.sections.access') || 'Access',
         items: visibleItems([
           { label: $t('sidebar.team'), icon: 'users', href: `${tenantPrefix}/admin/team`, show: $can('read', 'team') },
@@ -128,6 +142,7 @@
         ]),
       },
       {
+        id: 'compliance',
         title: $t('sidebar.sections.compliance') || 'Compliance',
         items: visibleItems([
           {
@@ -139,6 +154,7 @@
         ]),
       },
       {
+        id: 'operations',
         title: $t('sidebar.sections.operations') || 'Operations',
         items: visibleItems([
           {
@@ -162,6 +178,7 @@
         ]),
       },
       {
+        id: 'billing',
         title: $t('sidebar.sections.billing') || 'Billing',
         items: visibleItems([
           {
@@ -173,6 +190,7 @@
         ]),
       },
       {
+        id: 'configuration',
         title: $t('sidebar.sections.configuration') || 'Configuration',
         items: visibleItems([
           {
@@ -198,9 +216,60 @@
 
   let isUrlSuperadmin = $derived($page.url.pathname.startsWith('/superadmin'));
   let isUrlAdmin = $derived($page.url.pathname.includes('/admin'));
+  let menuScope = $derived(isUrlSuperadmin ? 'superadmin' : isUrlAdmin ? 'admin' : 'app');
   let currentMenuSections = $derived(
     isUrlSuperadmin ? superAdminMenuSections : isUrlAdmin ? adminMenuSections : appMenuSections,
   );
+
+  let openSections = $state<Record<string, boolean>>({});
+
+  function sectionStorageKey(scope: string) {
+    return `sidebar.section_state.${scope}`;
+  }
+
+  function isSectionOpen(id: string) {
+    if ($isSidebarCollapsed) return true;
+    return openSections[id] ?? true;
+  }
+
+  function toggleSection(id: string, e?: MouseEvent) {
+    e?.stopPropagation();
+    openSections = { ...openSections, [id]: !isSectionOpen(id) };
+  }
+
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+
+    const key = sectionStorageKey(menuScope);
+    let saved: Record<string, boolean> = {};
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) saved = JSON.parse(raw);
+    } catch {
+      saved = {};
+    }
+
+    const next: Record<string, boolean> = {};
+    for (const s of currentMenuSections) {
+      const defaultOpen = s.default_open ?? true;
+      next[s.id] = saved[s.id] ?? defaultOpen;
+
+      // Never hide the active route behind a collapsed section.
+      if (s.items.some((it) => isActive(it))) next[s.id] = true;
+    }
+
+    openSections = next;
+  });
+
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+    const key = sectionStorageKey(menuScope);
+    try {
+      localStorage.setItem(key, JSON.stringify(openSections));
+    } catch {
+      // ignore
+    }
+  });
 
   // When inside `/superadmin`, we still want a quick jump back to the tenant admin panel.
   // If we're on a custom domain, tenantPrefix is empty and `/admin` is the correct route.
@@ -280,21 +349,33 @@
     <nav class="sidebar-nav">
       {#each currentMenuSections as section, idx}
         {#if section.title && !$isSidebarCollapsed}
-          <div class="nav-section" aria-hidden="true">{section.title}</div>
+          <button
+            type="button"
+            class="nav-section-btn"
+            aria-expanded={isSectionOpen(section.id)}
+            onclick={(e) => toggleSection(section.id, e)}
+          >
+            <span class="nav-section-title">{section.title}</span>
+            <span class="nav-section-chev" class:open={isSectionOpen(section.id)}>
+              <Icon name="chevron-down" size={14} />
+            </span>
+          </button>
         {/if}
 
-        {#each section.items as item}
-          <button
-            class="nav-item"
-            class:active={isActive(item)}
-            aria-label={item.label}
-            data-tooltip={item.label}
-            onclick={() => navigate(item.href)}
-          >
-            <Icon name={item.icon} size={18} />
-            <span class="label">{item.label}</span>
-          </button>
-        {/each}
+        {#if isSectionOpen(section.id)}
+          {#each section.items as item}
+            <button
+              class="nav-item"
+              class:active={isActive(item)}
+              aria-label={item.label}
+              data-tooltip={item.label}
+              onclick={() => navigate(item.href)}
+            >
+              <Icon name={item.icon} size={18} />
+              <span class="label">{item.label}</span>
+            </button>
+          {/each}
+        {/if}
 
         {#if idx < currentMenuSections.length - 1}
           <div class="nav-divider" aria-hidden="true"></div>
@@ -590,14 +671,49 @@
     color: var(--text-primary);
   }
 
-  .nav-section {
+  .nav-section-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
     padding: 10px 12px 6px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    border-radius: 10px;
+    transition: background 0.15s ease;
+  }
+
+  .nav-section-btn:hover {
+    background: color-mix(in srgb, var(--bg-hover), transparent 35%);
+  }
+
+  .nav-section-btn:focus-visible {
+    outline: 2px solid rgba(99, 102, 241, 0.45);
+    outline-offset: 2px;
+  }
+
+  .nav-section-title {
     font-size: 0.7rem;
     font-weight: 800;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: color-mix(in srgb, var(--text-secondary), var(--text-primary) 10%);
-    opacity: 0.85;
+    opacity: 0.9;
+  }
+
+  .nav-section-chev {
+    color: var(--text-secondary);
+    transition: transform 0.16s ease;
+    transform: rotate(-90deg);
+    display: grid;
+    place-items: center;
+  }
+
+  .nav-section-chev.open {
+    transform: rotate(0deg);
   }
 
   .nav-divider {
