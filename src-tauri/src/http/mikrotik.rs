@@ -7,7 +7,7 @@ use crate::models::{
 use axum::{
     extract::{Path, Query, State},
     http::HeaderMap,
-    routing::{get, post, put},
+    routing::{get, post},
     Json, Router,
 };
 use serde::Deserialize;
@@ -17,7 +17,7 @@ pub fn router() -> Router<AppState> {
         .route("/routers", get(list_routers).post(create_router))
         .route(
             "/routers/{id}",
-            put(update_router).delete(delete_router),
+            get(get_router).put(update_router).delete(delete_router),
         )
         .route("/routers/{id}/test", post(test_router))
         .route("/routers/{id}/metrics", get(list_metrics))
@@ -52,6 +52,27 @@ async fn list_routers(
 
     let rows = state.mikrotik_service.list_routers(&tenant_id).await?;
     Ok(Json(rows))
+}
+
+// GET /api/admin/mikrotik/routers/{id}
+async fn get_router(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<MikrotikRouter>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await?;
+
+    let router = state
+        .mikrotik_service
+        .get_router(&tenant_id, &id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Router not found".to_string()))?;
+
+    Ok(Json(router))
 }
 
 // POST /api/admin/mikrotik/routers

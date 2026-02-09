@@ -371,6 +371,7 @@
     "system": "System",
     "support": "Support",
     "announcements": "Announcements",
+    "routers": "Routers",
     "expand": "Expand sidebar",
     "collapse": "Collapse sidebar",
     "exit": "Exit",
@@ -386,6 +387,7 @@
     "sections": {
       "workspace": "Workspace",
       "help": "Help",
+      "network": "Network",
       "platform": "Platform",
       "billing": "Billing",
       "operations": "Operations",
@@ -1713,6 +1715,48 @@
       },
       "toasts": {
         "updated": "Ticket updated"
+      }
+    },
+    "network": {
+      "routers": {
+        "title": "Routers",
+        "subtitle": "Manage MikroTik routers and monitoring",
+        "search": "Search routers...",
+        "empty": "No routers yet",
+        "actions": {
+          "add": "Add Router",
+          "edit": "Edit",
+          "delete": "Delete",
+          "test": "Test Connection",
+          "open": "Open",
+          "refresh": "Refresh"
+        },
+        "columns": {
+          "name": "Name",
+          "host": "Host",
+          "status": "Status",
+          "latency": "Latency",
+          "seen": "Last Seen",
+          "actions": "Actions"
+        },
+        "badges": {
+          "online": "Online",
+          "offline": "Offline",
+          "unknown": "Unknown"
+        },
+        "form": {
+          "name": "Name",
+          "host": "Host",
+          "port": "Port",
+          "username": "Username",
+          "password": "Password",
+          "enabled": "Enabled"
+        },
+        "toasts": {
+          "created": "Router created",
+          "updated": "Router updated",
+          "deleted": "Router deleted"
+        }
       }
     },
     "email_outbox": {

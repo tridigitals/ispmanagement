@@ -371,6 +371,7 @@
     "system": "Sistem",
     "support": "Dukungan",
     "announcements": "Pengumuman",
+    "routers": "Router",
     "expand": "Perluas sidebar",
     "collapse": "Ciutkan sidebar",
     "exit": "Keluar",
@@ -386,6 +387,7 @@
     "sections": {
       "workspace": "Workspace",
       "help": "Bantuan",
+      "network": "Jaringan",
       "platform": "Platform",
       "billing": "Billing",
       "operations": "Operasional",
@@ -1713,6 +1715,48 @@
       },
       "toasts": {
         "updated": "Tiket diperbarui"
+      }
+    },
+    "network": {
+      "routers": {
+        "title": "Router",
+        "subtitle": "Kelola router MikroTik dan monitoring",
+        "search": "Cari router...",
+        "empty": "Belum ada router",
+        "actions": {
+          "add": "Tambah Router",
+          "edit": "Edit",
+          "delete": "Hapus",
+          "test": "Test Koneksi",
+          "open": "Buka",
+          "refresh": "Refresh"
+        },
+        "columns": {
+          "name": "Nama",
+          "host": "Host",
+          "status": "Status",
+          "latency": "Latensi",
+          "seen": "Terakhir Terlihat",
+          "actions": "Aksi"
+        },
+        "badges": {
+          "online": "Online",
+          "offline": "Offline",
+          "unknown": "Unknown"
+        },
+        "form": {
+          "name": "Nama",
+          "host": "Host",
+          "port": "Port",
+          "username": "Username",
+          "password": "Password",
+          "enabled": "Aktif"
+        },
+        "toasts": {
+          "created": "Router berhasil dibuat",
+          "updated": "Router berhasil diperbarui",
+          "deleted": "Router berhasil dihapus"
+        }
       }
     },
     "email_outbox": {

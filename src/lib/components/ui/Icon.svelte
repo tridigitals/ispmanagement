@@ -84,6 +84,7 @@
     Quote,
     Eraser,
     MapPin,
+    Router,
   } from 'lucide-svelte';
 
   let {
@@ -187,6 +188,7 @@
     'message-circle': MessageCircle,
     megaphone: Megaphone,
     'map-pin': MapPin,
+    router: Router,
   };
 
   let IconComponent = $derived(icons[name] || HelpCircle);

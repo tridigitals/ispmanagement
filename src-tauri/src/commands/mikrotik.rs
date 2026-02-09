@@ -29,9 +29,38 @@ pub async fn list_mikrotik_routers(
 }
 
 #[tauri::command]
+pub async fn get_mikrotik_router(
+    token: String,
+    id: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<MikrotikRouter, String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    mikrotik
+        .get_router(&tenant_id, &id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "Router not found".to_string())
+}
+
+#[tauri::command]
 pub async fn create_mikrotik_router(
     token: String,
-    router: CreateMikrotikRouterRequest,
+    name: String,
+    host: String,
+    port: Option<i32>,
+    username: String,
+    password: String,
+    use_tls: Option<bool>,
+    enabled: Option<bool>,
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
 ) -> Result<MikrotikRouter, String> {
@@ -45,7 +74,18 @@ pub async fn create_mikrotik_router(
         .map_err(|e| e.to_string())?;
 
     mikrotik
-        .create_router(&tenant_id, router)
+        .create_router(
+            &tenant_id,
+            CreateMikrotikRouterRequest {
+                name,
+                host,
+                port,
+                username,
+                password,
+                use_tls,
+                enabled,
+            },
+        )
         .await
         .map_err(|e| e.to_string())
 }
@@ -54,7 +94,13 @@ pub async fn create_mikrotik_router(
 pub async fn update_mikrotik_router(
     token: String,
     id: String,
-    router: UpdateMikrotikRouterRequest,
+    name: Option<String>,
+    host: Option<String>,
+    port: Option<i32>,
+    username: Option<String>,
+    password: Option<String>,
+    use_tls: Option<bool>,
+    enabled: Option<bool>,
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
 ) -> Result<MikrotikRouter, String> {
@@ -68,7 +114,19 @@ pub async fn update_mikrotik_router(
         .map_err(|e| e.to_string())?;
 
     mikrotik
-        .update_router(&tenant_id, &id, router)
+        .update_router(
+            &tenant_id,
+            &id,
+            UpdateMikrotikRouterRequest {
+                name,
+                host,
+                port,
+                username,
+                password,
+                use_tls,
+                enabled,
+            },
+        )
         .await
         .map_err(|e| e.to_string())
 }
@@ -120,7 +178,9 @@ pub async fn test_mikrotik_router(
 #[tauri::command]
 pub async fn list_mikrotik_router_metrics(
     token: String,
-    router_id: String,
+    router_id: Option<String>,
+    #[allow(non_snake_case)]
+    routerId: Option<String>,
     limit: Option<u32>,
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
@@ -134,9 +194,10 @@ pub async fn list_mikrotik_router_metrics(
         .await
         .map_err(|e| e.to_string())?;
 
+    let rid = router_id.or(routerId).ok_or_else(|| "Missing routerId".to_string())?;
+
     mikrotik
-        .list_metrics(&tenant_id, &router_id, limit.unwrap_or(120))
+        .list_metrics(&tenant_id, &rid, limit.unwrap_or(120))
         .await
         .map_err(|e| e.to_string())
 }
-

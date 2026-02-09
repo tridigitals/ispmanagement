@@ -199,6 +199,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       update_mikrotik_router: { method: 'PUT', path: '/admin/mikrotik/routers/:id' },
       delete_mikrotik_router: { method: 'DELETE', path: '/admin/mikrotik/routers/:id' },
       test_mikrotik_router: { method: 'POST', path: '/admin/mikrotik/routers/:id/test' },
+      get_mikrotik_router: { method: 'GET', path: '/admin/mikrotik/routers/:id' },
       list_mikrotik_router_metrics: {
         method: 'GET',
         path: '/admin/mikrotik/routers/:routerId/metrics',
@@ -927,6 +928,8 @@ export const audit = {
 export const mikrotik = {
   routers: {
     list: (): Promise<any[]> => safeInvoke('list_mikrotik_routers', { token: getTokenOrThrow() }),
+    get: (id: string): Promise<any> =>
+      safeInvoke('get_mikrotik_router', { token: getTokenOrThrow(), id }),
     create: (router: {
       name: string;
       host: string;
@@ -936,7 +939,17 @@ export const mikrotik = {
       use_tls?: boolean;
       enabled?: boolean;
     }): Promise<any> =>
-      safeInvoke('create_mikrotik_router', { token: getTokenOrThrow(), router }),
+      safeInvoke('create_mikrotik_router', {
+        token: getTokenOrThrow(),
+        name: router.name,
+        host: router.host,
+        port: router.port,
+        username: router.username,
+        password: router.password,
+        use_tls: router.use_tls,
+        useTls: router.use_tls,
+        enabled: router.enabled,
+      }),
     update: (
       id: string,
       router: {
@@ -949,7 +962,18 @@ export const mikrotik = {
         enabled?: boolean;
       },
     ): Promise<any> =>
-      safeInvoke('update_mikrotik_router', { token: getTokenOrThrow(), id, router }),
+      safeInvoke('update_mikrotik_router', {
+        token: getTokenOrThrow(),
+        id,
+        name: router.name,
+        host: router.host,
+        port: router.port,
+        username: router.username,
+        password: router.password,
+        use_tls: router.use_tls,
+        useTls: router.use_tls,
+        enabled: router.enabled,
+      }),
     delete: (id: string): Promise<void> =>
       safeInvoke('delete_mikrotik_router', { token: getTokenOrThrow(), id }),
     test: (id: string): Promise<any> =>
@@ -958,6 +982,7 @@ export const mikrotik = {
       safeInvoke('list_mikrotik_router_metrics', {
         token: getTokenOrThrow(),
         routerId,
+        router_id: routerId,
         limit,
       }),
   },
@@ -1747,6 +1772,7 @@ export const api = {
   team,
   superadmin,
   audit,
+  mikrotik,
   support,
   announcements,
   settings,

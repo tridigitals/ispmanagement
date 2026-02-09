@@ -456,6 +456,7 @@ pub fn run() {
                                     update_mikrotik_router,
                                     delete_mikrotik_router,
                                     test_mikrotik_router,
+                                    get_mikrotik_router,
                                     list_mikrotik_router_metrics,
                                     // Announcements
                                     list_active_announcements,

@@ -134,6 +134,18 @@
         ]),
       },
       {
+        id: 'network',
+        title: $t('sidebar.sections.network') || 'Network',
+        items: visibleItems([
+          {
+            label: $t('sidebar.routers') || 'Routers',
+            icon: 'router',
+            href: `${tenantPrefix}/admin/network/routers`,
+            show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+          },
+        ]),
+      },
+      {
         id: 'access',
         title: $t('sidebar.sections.access') || 'Access',
         items: visibleItems([
