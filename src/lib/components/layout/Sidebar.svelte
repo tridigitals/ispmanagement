@@ -221,7 +221,7 @@
     isUrlSuperadmin ? superAdminMenuSections : isUrlAdmin ? adminMenuSections : appMenuSections,
   );
 
-  let openSections = $state<Record<string, boolean>>({});
+  let openSectionId = $state<string | null>(null);
 
   function sectionStorageKey(scope: string) {
     return `sidebar.section_state.${scope}`;
@@ -229,43 +229,53 @@
 
   function isSectionOpen(id: string) {
     if ($isSidebarCollapsed) return true;
-    return openSections[id] ?? true;
+    return openSectionId === id;
   }
 
   function toggleSection(id: string, e?: MouseEvent) {
     e?.stopPropagation();
-    openSections = { ...openSections, [id]: !isSectionOpen(id) };
+    // Accordion behavior: keep only one section open at a time.
+    // We intentionally do not "close" the active section to avoid an empty sidebar state.
+    openSectionId = id;
   }
 
   $effect(() => {
     if (typeof window === 'undefined') return;
 
     const key = sectionStorageKey(menuScope);
-    let saved: Record<string, boolean> = {};
+    let saved: string | null = null;
     try {
       const raw = localStorage.getItem(key);
-      if (raw) saved = JSON.parse(raw);
+      if (raw) saved = raw;
     } catch {
-      saved = {};
+      saved = null;
     }
 
-    const next: Record<string, boolean> = {};
-    for (const s of currentMenuSections) {
-      const defaultOpen = s.default_open ?? true;
-      next[s.id] = saved[s.id] ?? defaultOpen;
+    const first = currentMenuSections[0]?.id || null;
 
-      // Never hide the active route behind a collapsed section.
-      if (s.items.some((it) => isActive(it))) next[s.id] = true;
-    }
+    // Only accept saved section ids that still exist in the current menu.
+    const validSaved =
+      saved && currentMenuSections.some((s) => s.id === saved) ? saved : null;
 
-    openSections = next;
+    openSectionId = validSaved || first;
+  });
+
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+
+    // If there's an active link, keep only that section open.
+    // This runs on navigation and doesn't interfere with manual toggles (no nav).
+    const _path = $page.url.pathname;
+    const activeSection = currentMenuSections.find((s) => s.items.some((it) => isActive(it)))?.id;
+    if (activeSection && openSectionId !== activeSection) openSectionId = activeSection;
   });
 
   $effect(() => {
     if (typeof window === 'undefined') return;
     const key = sectionStorageKey(menuScope);
     try {
-      localStorage.setItem(key, JSON.stringify(openSections));
+      if (openSectionId) localStorage.setItem(key, openSectionId);
+      else localStorage.removeItem(key);
     } catch {
       // ignore
     }
