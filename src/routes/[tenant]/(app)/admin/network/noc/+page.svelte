@@ -390,7 +390,7 @@
 
   .stats {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 12px;
     margin-bottom: 14px;
   }
@@ -434,7 +434,7 @@
 
   .filters {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 12px;
     flex-wrap: wrap;
     margin-bottom: 12px;

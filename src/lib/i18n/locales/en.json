@@ -1788,6 +1788,34 @@
           "updated": "Router updated",
           "deleted": "Router deleted"
         }
+      },
+      "noc": {
+        "title": "Network NOC",
+        "subtitle": "A quick operational view of all routers: status, health, and traffic.",
+        "search": "Search routers...",
+        "empty": "No routers",
+        "stats": {
+          "total": "Total",
+          "online": "Online",
+          "offline": "Offline",
+          "hot": "Hot"
+        },
+        "filters": {
+          "any": "Any",
+          "online": "Online",
+          "offline": "Offline",
+          "hot": "Hot",
+          "latency": "Latency",
+          "cpu": "CPU"
+        },
+        "columns": {
+          "router": "Router",
+          "status": "Status",
+          "health": "Health",
+          "traffic": "Traffic",
+          "latency": "Latency",
+          "seen": "Last Seen"
+        }
       }
     },
     "email_outbox": {

@@ -1788,6 +1788,34 @@
           "updated": "Router berhasil diperbarui",
           "deleted": "Router berhasil dihapus"
         }
+      },
+      "noc": {
+        "title": "Network NOC",
+        "subtitle": "Tampilan operasional cepat untuk semua router: status, kesehatan, dan trafik.",
+        "search": "Cari router...",
+        "empty": "Belum ada router",
+        "stats": {
+          "total": "Total",
+          "online": "Online",
+          "offline": "Offline",
+          "hot": "Hot"
+        },
+        "filters": {
+          "any": "Semua",
+          "online": "Online",
+          "offline": "Offline",
+          "hot": "Hot",
+          "latency": "Latensi",
+          "cpu": "CPU"
+        },
+        "columns": {
+          "router": "Router",
+          "status": "Status",
+          "health": "Kesehatan",
+          "traffic": "Trafik",
+          "latency": "Latensi",
+          "seen": "Terakhir Terlihat"
+        }
       }
     },
     "email_outbox": {
