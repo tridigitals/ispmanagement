@@ -7,6 +7,7 @@
   import { api } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import Table from '$lib/components/ui/Table.svelte';
 
   type RouterRow = {
     id: string;
@@ -91,6 +92,9 @@
       .map((m) => (m.cpu_load == null ? null : Math.max(0, Math.min(100, m.cpu_load))));
     return pts.filter((v) => v != null) as number[];
   });
+
+  let activeTab = $state<'overview' | 'interfaces' | 'ip' | 'metrics'>('overview');
+  let ifFilter = $state<'all' | 'running' | 'down' | 'disabled'>('all');
 
   let refreshHandle: any = null;
   let refreshInFlight = false;
@@ -196,6 +200,104 @@
     if (h > 0) return `${h}h ${m}m`;
     return `${m}m`;
   }
+
+  type InterfaceRow = InterfaceSnap & {
+    status: 'running' | 'down' | 'disabled';
+  };
+
+  const interfaceRows = $derived.by(() => {
+    const list = snapshot?.interfaces || [];
+    const rows: InterfaceRow[] = list.map((it) => {
+      const status: InterfaceRow['status'] = it.disabled
+        ? 'disabled'
+        : it.running
+          ? 'running'
+          : 'down';
+      return { ...it, status };
+    });
+
+    switch (ifFilter) {
+      case 'running':
+        return rows.filter((r) => r.status === 'running');
+      case 'down':
+        return rows.filter((r) => r.status === 'down');
+      case 'disabled':
+        return rows.filter((r) => r.status === 'disabled');
+      default:
+        return rows;
+    }
+  });
+
+  const interfaceTableData = $derived.by(() =>
+    interfaceRows.map((r) => ({
+      id: r.name,
+      name: r.name,
+      type: r.interface_type || '—',
+      status: r.status,
+      mtu: r.mtu ?? '—',
+      mac: r.mac_address || '—',
+      rx: formatBytes(r.rx_byte),
+      tx: formatBytes(r.tx_byte),
+      downs: r.link_downs ?? '—',
+      disabled: Boolean(r.disabled),
+    })),
+  );
+
+  const interfaceColumns = $derived([
+    { key: 'name', label: 'Name' },
+    { key: 'type', label: 'Type' },
+    { key: 'status', label: 'Status' },
+    { key: 'mtu', label: 'MTU', align: 'right' as const, width: '90px' },
+    { key: 'mac', label: 'MAC', class: 'mono' },
+    { key: 'rx', label: 'RX', class: 'mono', align: 'right' as const, width: '120px' },
+    { key: 'tx', label: 'TX', class: 'mono', align: 'right' as const, width: '120px' },
+    { key: 'downs', label: 'Downs', class: 'mono', align: 'right' as const, width: '90px' },
+  ]);
+
+  const ipRows = $derived.by(() => snapshot?.ip_addresses || []);
+
+  const ipTableData = $derived.by(() =>
+    ipRows.map((ip, idx) => ({
+      id: `${ip.address}:${ip.interface || ''}:${idx}`,
+      address: ip.address,
+      interface: ip.interface || '—',
+      network: ip.network || '—',
+      dynamic: Boolean(ip.dynamic),
+      disabled: Boolean(ip.disabled),
+    })),
+  );
+
+  const ipColumns = $derived([
+    { key: 'address', label: 'Address', class: 'mono' },
+    { key: 'interface', label: 'Interface' },
+    { key: 'network', label: 'Network', class: 'mono' },
+    { key: 'flags', label: 'Flags' },
+  ]);
+
+  const metricRows = $derived.by(() =>
+    metrics.map((m) => ({
+      ...m,
+      id: m.ts,
+      cpu: m.cpu_load == null ? '—' : `${m.cpu_load}%`,
+      mem:
+        m.total_memory_bytes == null || m.free_memory_bytes == null
+          ? '—'
+          : `${formatBytes(m.free_memory_bytes)} / ${formatBytes(m.total_memory_bytes)}`,
+      disk:
+        m.total_hdd_bytes == null || m.free_hdd_bytes == null
+          ? '—'
+          : `${formatBytes(m.free_hdd_bytes)} / ${formatBytes(m.total_hdd_bytes)}`,
+      uptime: formatUptime(m.uptime_seconds),
+    })),
+  );
+
+  const metricColumns = $derived([
+    { key: 'ts', label: 'Time', class: 'mono' },
+    { key: 'cpu', label: 'CPU', class: 'mono', align: 'right' as const, width: '90px' },
+    { key: 'mem', label: 'Memory', class: 'mono', align: 'right' as const, width: '220px' },
+    { key: 'disk', label: 'Disk', class: 'mono', align: 'right' as const, width: '220px' },
+    { key: 'uptime', label: 'Uptime', class: 'mono', align: 'right' as const, width: '120px' },
+  ]);
 </script>
 
 <div class="page-content fade-in">
@@ -284,191 +386,282 @@
       </div>
     </div>
 
-    <div class="grid">
-      <div class="card">
-        <div class="card-head">
-          <h2>CPU</h2>
-          <span class="muted">Last 120 samples</span>
-        </div>
-        <div class="spark">
-          {#if cpuSeries.length === 0}
-            <div class="muted">No metrics yet.</div>
-          {:else}
-            {#each cpuSeries as v}
-              <div class="bar" style={`height:${v}%;`} title={`${v}%`}></div>
-            {/each}
-          {/if}
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-head">
-          <h2>Resources</h2>
-          <span class="muted">Live snapshot</span>
-        </div>
-
-        {#if snapshot}
-          {@const memUsed = pctUsed(snapshot.total_memory_bytes, snapshot.free_memory_bytes)}
-          {@const diskUsed = pctUsed(snapshot.total_hdd_bytes, snapshot.free_hdd_bytes)}
-
-          <div class="rows">
-            <div class="row">
-              <span class="muted">CPU load</span>
-              <span class="mono">{snapshot.cpu_load ?? '—'}%</span>
-            </div>
-            <div class="row">
-              <span class="muted">Memory used</span>
-              <span class="mono">{memUsed == null ? '—' : `${memUsed}%`}</span>
-            </div>
-            <div class="row">
-              <span class="muted">Disk used</span>
-              <span class="mono">{diskUsed == null ? '—' : `${diskUsed}%`}</span>
-            </div>
-            <div class="row">
-              <span class="muted">Uptime</span>
-              <span class="mono">{formatUptime(snapshot.uptime_seconds)}</span>
-            </div>
-            <div class="row">
-              <span class="muted">Memory</span>
-              <span class="mono"
-                >{formatBytes(snapshot.free_memory_bytes)} / {formatBytes(snapshot.total_memory_bytes)}</span
-              >
-            </div>
-            <div class="row">
-              <span class="muted">Disk</span>
-              <span class="mono"
-                >{formatBytes(snapshot.free_hdd_bytes)} / {formatBytes(snapshot.total_hdd_bytes)}</span
-              >
-            </div>
-          </div>
-        {:else}
-          <div class="muted">No snapshot yet.</div>
+    <div class="tabs">
+      <button
+        type="button"
+        class="tab {activeTab === 'overview' ? 'active' : ''}"
+        onclick={() => (activeTab = 'overview')}
+      >
+        <Icon name="activity" size={16} />
+        Overview
+      </button>
+      <button
+        type="button"
+        class="tab {activeTab === 'interfaces' ? 'active' : ''}"
+        onclick={() => (activeTab = 'interfaces')}
+      >
+        <Icon name="router" size={16} />
+        Interfaces
+        {#if snapshot?.interfaces?.length}
+          <span class="tab-count">{snapshot.interfaces.length}</span>
         {/if}
-      </div>
+      </button>
+      <button
+        type="button"
+        class="tab {activeTab === 'ip' ? 'active' : ''}"
+        onclick={() => (activeTab = 'ip')}
+      >
+        <Icon name="map-pin" size={16} />
+        IP Addresses
+        {#if snapshot?.ip_addresses?.length}
+          <span class="tab-count">{snapshot.ip_addresses.length}</span>
+        {/if}
+      </button>
+      <button
+        type="button"
+        class="tab {activeTab === 'metrics' ? 'active' : ''}"
+        onclick={() => (activeTab = 'metrics')}
+      >
+        <Icon name="trending-up" size={16} />
+        Metrics
+      </button>
     </div>
 
-    {#if snapshot}
-      <div class="grid2">
+    {#if activeTab === 'overview'}
+      <div class="grid">
         <div class="card">
           <div class="card-head">
-            <h2>Hardware</h2>
-            <span class="muted">Live</span>
+            <h2>CPU</h2>
+            <span class="muted">Last 120 samples</span>
           </div>
-          <div class="rows">
-            <div class="row">
-              <span class="muted">Board</span>
-              <span class="mono">{snapshot.board_name || '—'}</span>
-            </div>
-            <div class="row">
-              <span class="muted">Architecture</span>
-              <span class="mono">{snapshot.architecture || '—'}</span>
-            </div>
-            <div class="row">
-              <span class="muted">CPU</span>
-              <span class="mono">{snapshot.cpu || '—'}</span>
-            </div>
+          <div class="spark">
+            {#if cpuSeries.length === 0}
+              <div class="muted">No metrics yet.</div>
+            {:else}
+              {#each cpuSeries as v}
+                <div class="bar" style={`height:${v}%;`} title={`${v}%`}></div>
+              {/each}
+            {/if}
           </div>
         </div>
 
         <div class="card">
           <div class="card-head">
-            <h2>Health</h2>
-            <span class="muted">Optional</span>
+            <h2>Resources</h2>
+            <span class="muted">Live snapshot</span>
           </div>
-          {#if snapshot.health}
+
+          {#if snapshot}
+            {@const memUsed = pctUsed(snapshot.total_memory_bytes, snapshot.free_memory_bytes)}
+            {@const diskUsed = pctUsed(snapshot.total_hdd_bytes, snapshot.free_hdd_bytes)}
+
             <div class="rows">
               <div class="row">
-                <span class="muted">Temperature</span>
-                <span class="mono">{snapshot.health.temperature_c ?? '—'} °C</span>
+                <span class="muted">CPU load</span>
+                <span class="mono">{snapshot.cpu_load ?? '—'}%</span>
               </div>
               <div class="row">
-                <span class="muted">CPU temperature</span>
-                <span class="mono">{snapshot.health.cpu_temperature_c ?? '—'} °C</span>
+                <span class="muted">Memory used</span>
+                <span class="mono">{memUsed == null ? '—' : `${memUsed}%`}</span>
               </div>
               <div class="row">
-                <span class="muted">Voltage</span>
-                <span class="mono">{snapshot.health.voltage_v ?? '—'} V</span>
+                <span class="muted">Disk used</span>
+                <span class="mono">{diskUsed == null ? '—' : `${diskUsed}%`}</span>
+              </div>
+              <div class="row">
+                <span class="muted">Uptime</span>
+                <span class="mono">{formatUptime(snapshot.uptime_seconds)}</span>
+              </div>
+              <div class="row">
+                <span class="muted">Memory</span>
+                <span class="mono"
+                  >{formatBytes(snapshot.free_memory_bytes)} / {formatBytes(
+                    snapshot.total_memory_bytes,
+                  )}</span
+                >
+              </div>
+              <div class="row">
+                <span class="muted">Disk</span>
+                <span class="mono"
+                  >{formatBytes(snapshot.free_hdd_bytes)} / {formatBytes(snapshot.total_hdd_bytes)}</span
+                >
               </div>
             </div>
           {:else}
-            <div class="muted">Not supported on this device.</div>
+            <div class="muted">No snapshot yet.</div>
           {/if}
         </div>
       </div>
 
+      {#if snapshot}
+        <div class="grid2">
+          <div class="card">
+            <div class="card-head">
+              <h2>Hardware</h2>
+              <span class="muted">Live</span>
+            </div>
+            <div class="rows">
+              <div class="row">
+                <span class="muted">Board</span>
+                <span class="mono">{snapshot.board_name || '—'}</span>
+              </div>
+              <div class="row">
+                <span class="muted">Architecture</span>
+                <span class="mono">{snapshot.architecture || '—'}</span>
+              </div>
+              <div class="row">
+                <span class="muted">CPU</span>
+                <span class="mono">{snapshot.cpu || '—'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2>Health</h2>
+              <span class="muted">Optional</span>
+            </div>
+            {#if snapshot.health}
+              <div class="rows">
+                <div class="row">
+                  <span class="muted">Temperature</span>
+                  <span class="mono">{snapshot.health.temperature_c ?? '—'} °C</span>
+                </div>
+                <div class="row">
+                  <span class="muted">CPU temperature</span>
+                  <span class="mono">{snapshot.health.cpu_temperature_c ?? '—'} °C</span>
+                </div>
+                <div class="row">
+                  <span class="muted">Voltage</span>
+                  <span class="mono">{snapshot.health.voltage_v ?? '—'} V</span>
+                </div>
+              </div>
+            {:else}
+              <div class="muted">Not supported on this device.</div>
+            {/if}
+          </div>
+        </div>
+      {/if}
+    {:else if activeTab === 'interfaces'}
       <div class="card full">
         <div class="card-head">
           <h2>Interfaces</h2>
-          <span class="muted">{snapshot.interfaces.length} total</span>
+          <span class="muted">{interfaceRows.length} shown</span>
         </div>
+
+        <div class="seg">
+          <button
+            type="button"
+            class="seg-btn {ifFilter === 'all' ? 'active' : ''}"
+            onclick={() => (ifFilter = 'all')}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            class="seg-btn {ifFilter === 'running' ? 'active' : ''}"
+            onclick={() => (ifFilter = 'running')}
+          >
+            Running
+          </button>
+          <button
+            type="button"
+            class="seg-btn {ifFilter === 'down' ? 'active' : ''}"
+            onclick={() => (ifFilter = 'down')}
+          >
+            Down
+          </button>
+          <button
+            type="button"
+            class="seg-btn {ifFilter === 'disabled' ? 'active' : ''}"
+            onclick={() => (ifFilter = 'disabled')}
+          >
+            Disabled
+          </button>
+        </div>
+
         <div class="table-wrap">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th class="right">MTU</th>
-                <th class="right">RX</th>
-                <th class="right">TX</th>
-                <th class="right">Downs</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each snapshot.interfaces as it (it.name)}
-                <tr class:dim={it.disabled}>
-                  <td class="mono">{it.name}</td>
-                  <td class="muted">{it.interface_type || '—'}</td>
-                  <td>
-                    {#if it.disabled}
-                      <span class="pill off">Disabled</span>
-                    {:else if it.running}
-                      <span class="pill ok">Running</span>
-                    {:else}
-                      <span class="pill warn">Down</span>
-                    {/if}
-                  </td>
-                  <td class="mono right">{it.mtu ?? '—'}</td>
-                  <td class="mono right">{formatBytes(it.rx_byte)}</td>
-                  <td class="mono right">{formatBytes(it.tx_byte)}</td>
-                  <td class="mono right">{it.link_downs ?? '—'}</td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
+          <Table
+            columns={interfaceColumns}
+            data={interfaceTableData}
+            keyField="id"
+            pagination={true}
+            pageSize={10}
+            searchable={true}
+            searchPlaceholder="Search interfaces..."
+            mobileView="scroll"
+          >
+            {#snippet cell({ item, key }: any)}
+              {#if key === 'status'}
+                {#if item.status === 'disabled'}
+                  <span class="pill off">Disabled</span>
+                {:else if item.status === 'running'}
+                  <span class="pill ok">Running</span>
+                {:else}
+                  <span class="pill warn">Down</span>
+                {/if}
+              {:else}
+                {item[key] ?? ''}
+              {/if}
+            {/snippet}
+          </Table>
         </div>
       </div>
-
+    {:else if activeTab === 'ip'}
       <div class="card full">
         <div class="card-head">
           <h2>IP Addresses</h2>
-          <span class="muted">{snapshot.ip_addresses.length} total</span>
+          <span class="muted">{ipRows.length} total</span>
         </div>
-        {#if snapshot.ip_addresses.length === 0}
-          <div class="muted">No IP addresses.</div>
-        {:else}
-          <div class="ip-grid">
-            {#each snapshot.ip_addresses as ip, idx (ip.address + ':' + (ip.interface || '') + ':' + idx)}
-              <div class="ip-item">
-                <div class="ip-top">
-                  <span class="mono">{ip.address}</span>
-                  {#if ip.dynamic}
+        <div class="table-wrap">
+          <Table
+            columns={ipColumns}
+            data={ipTableData}
+            keyField="id"
+            pagination={true}
+            pageSize={10}
+            searchable={true}
+            searchPlaceholder="Search IPs..."
+            mobileView="scroll"
+          >
+            {#snippet cell({ item, key }: any)}
+              {#if key === 'flags'}
+                <div class="flag-row">
+                  {#if item.dynamic}
                     <span class="pill info">Dynamic</span>
                   {/if}
-                  {#if ip.disabled}
+                  {#if item.disabled}
                     <span class="pill off">Disabled</span>
                   {/if}
-                </div>
-                <div class="ip-meta">
-                  <span class="muted">{ip.interface || '—'}</span>
-                  {#if ip.network}
-                    <span class="muted">· {ip.network}</span>
+                  {#if !item.dynamic && !item.disabled}
+                    <span class="muted">—</span>
                   {/if}
                 </div>
-              </div>
-            {/each}
-          </div>
-        {/if}
+              {:else}
+                {item[key] ?? ''}
+              {/if}
+            {/snippet}
+          </Table>
+        </div>
+      </div>
+    {:else if activeTab === 'metrics'}
+      <div class="card full">
+        <div class="card-head">
+          <h2>Metrics</h2>
+          <span class="muted">{metrics.length} samples</span>
+        </div>
+        <div class="table-wrap">
+          <Table
+            columns={metricColumns}
+            data={metricRows}
+            keyField="id"
+            pagination={true}
+            pageSize={25}
+            searchable={true}
+            searchPlaceholder="Search metrics..."
+            mobileView="scroll"
+          />
+        </div>
       </div>
     {/if}
   {:else}
@@ -712,6 +905,83 @@
     margin-top: 12px;
   }
 
+  .tabs {
+    margin-top: 12px;
+    margin-bottom: 12px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-weight: 900;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .tab:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  .tab.active {
+    border-color: rgba(99, 102, 241, 0.35);
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--text-primary);
+  }
+
+  .tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-card), transparent 8%);
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 900;
+    margin-left: 2px;
+  }
+
+  .seg {
+    margin: 10px 0 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .seg-btn {
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-secondary);
+    padding: 8px 10px;
+    border-radius: 999px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .seg-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  .seg-btn.active {
+    border-color: rgba(99, 102, 241, 0.35);
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--text-primary);
+  }
+
   .card {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
@@ -809,40 +1079,6 @@
     background: color-mix(in srgb, var(--bg-card), transparent 8%);
   }
 
-  .table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 840px;
-  }
-
-  .table th,
-  .table td {
-    padding: 10px 12px;
-    border-bottom: 1px solid color-mix(in srgb, var(--border-color), transparent 30%);
-    text-align: left;
-    white-space: nowrap;
-  }
-
-  .table th {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    background: color-mix(in srgb, var(--bg-card), transparent 2%);
-    color: var(--text-secondary);
-    font-weight: 900;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    font-size: 0.72rem;
-  }
-
-  .right {
-    text-align: right !important;
-  }
-
-  tr.dim td {
-    opacity: 0.7;
-  }
-
   .pill {
     display: inline-flex;
     align-items: center;
@@ -879,29 +1115,11 @@
     color: rgba(99, 102, 241, 0.95);
   }
 
-  .ip-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .ip-item {
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-card), transparent 8%);
-    border-radius: 16px;
-    padding: 12px;
-  }
-
-  .ip-top {
-    display: flex;
+  .flag-row {
+    display: inline-flex;
     align-items: center;
-    flex-wrap: wrap;
     gap: 8px;
-  }
-
-  .ip-meta {
-    margin-top: 6px;
-    color: var(--text-secondary);
+    flex-wrap: wrap;
   }
 
   @media (max-width: 900px) {
@@ -922,10 +1140,6 @@
     }
 
     .grid2 {
-      grid-template-columns: 1fr;
-    }
-
-    .ip-grid {
       grid-template-columns: 1fr;
     }
   }
