@@ -114,7 +114,11 @@
 
 <div class="page-content fade-in">
   <div class="head">
-    <button class="back" type="button" onclick={() => goto('..')}>
+    <button
+      class="back"
+      type="button"
+      onclick={() => goto($page.url.pathname.replace(/\/[^/]+\/?$/, ''))}
+    >
       <Icon name="arrow-left" size={16} />
       {$t('common.back') || 'Back'}
     </button>
