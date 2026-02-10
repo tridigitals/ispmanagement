@@ -138,6 +138,12 @@
         title: $t('sidebar.sections.network') || 'Network',
         items: visibleItems([
           {
+            label: $t('sidebar.noc') || 'NOC',
+            icon: 'activity',
+            href: `${tenantPrefix}/admin/network/noc`,
+            show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+          },
+          {
             label: $t('sidebar.routers') || 'Routers',
             icon: 'router',
             href: `${tenantPrefix}/admin/network/routers`,

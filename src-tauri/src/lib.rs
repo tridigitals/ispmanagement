@@ -454,6 +454,7 @@ pub fn run() {
                                     update_support_ticket,
                                     // MikroTik / Routers
                                     list_mikrotik_routers,
+                                    list_mikrotik_noc,
                                     create_mikrotik_router,
                                     update_mikrotik_router,
                                     delete_mikrotik_router,

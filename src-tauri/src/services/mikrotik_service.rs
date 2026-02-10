@@ -14,7 +14,7 @@ use crate::error::{AppError, AppResult};
 use crate::models::{
     CreateMikrotikRouterRequest, MikrotikHealthSnapshot, MikrotikInterfaceSnapshot,
     MikrotikInterfaceMetric, MikrotikIpAddressSnapshot, MikrotikRouter, MikrotikRouterMetric,
-    MikrotikRouterSnapshot, MikrotikTestResult, UpdateMikrotikRouterRequest,
+    MikrotikRouterNocRow, MikrotikRouterSnapshot, MikrotikTestResult, UpdateMikrotikRouterRequest,
 };
 use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
 use crate::services::{AuditService, NotificationService};
@@ -56,6 +56,36 @@ impl MikrotikService {
         .map_err(AppError::Database)?;
 
         Ok(routers)
+    }
+
+    pub async fn list_noc(&self, tenant_id: &str) -> AppResult<Vec<MikrotikRouterNocRow>> {
+        // Portable SQL: correlated subqueries for "latest" metric columns per router.
+        let rows = sqlx::query_as::<_, MikrotikRouterNocRow>(
+            r#"
+            SELECT
+              r.id, r.tenant_id, r.name, r.host, r.port, r.username, r.use_tls, r.enabled,
+              r.identity, r.ros_version, r.is_online, r.last_seen_at, r.latency_ms, r.last_error,
+              r.created_at, r.updated_at,
+
+              (SELECT m.cpu_load FROM mikrotik_router_metrics m WHERE m.router_id = r.id ORDER BY m.ts DESC LIMIT 1) AS cpu_load,
+              (SELECT m.total_memory_bytes FROM mikrotik_router_metrics m WHERE m.router_id = r.id ORDER BY m.ts DESC LIMIT 1) AS total_memory_bytes,
+              (SELECT m.free_memory_bytes FROM mikrotik_router_metrics m WHERE m.router_id = r.id ORDER BY m.ts DESC LIMIT 1) AS free_memory_bytes,
+              (SELECT m.total_hdd_bytes FROM mikrotik_router_metrics m WHERE m.router_id = r.id ORDER BY m.ts DESC LIMIT 1) AS total_hdd_bytes,
+              (SELECT m.free_hdd_bytes FROM mikrotik_router_metrics m WHERE m.router_id = r.id ORDER BY m.ts DESC LIMIT 1) AS free_hdd_bytes,
+              (SELECT m.uptime_seconds FROM mikrotik_router_metrics m WHERE m.router_id = r.id ORDER BY m.ts DESC LIMIT 1) AS uptime_seconds,
+              (SELECT m.rx_bps FROM mikrotik_router_metrics m WHERE m.router_id = r.id ORDER BY m.ts DESC LIMIT 1) AS rx_bps,
+              (SELECT m.tx_bps FROM mikrotik_router_metrics m WHERE m.router_id = r.id ORDER BY m.ts DESC LIMIT 1) AS tx_bps
+            FROM mikrotik_routers r
+            WHERE r.tenant_id = $1
+            ORDER BY r.updated_at DESC
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        Ok(rows)
     }
 
     pub async fn get_router(&self, tenant_id: &str, id: &str) -> AppResult<Option<MikrotikRouter>> {

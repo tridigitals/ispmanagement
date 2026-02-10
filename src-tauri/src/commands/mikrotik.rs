@@ -2,7 +2,7 @@
 
 use crate::models::{
     CreateMikrotikRouterRequest, MikrotikInterfaceMetric, MikrotikRouter, MikrotikRouterMetric,
-    MikrotikTestResult, UpdateMikrotikRouterRequest,
+    MikrotikRouterNocRow, MikrotikTestResult, UpdateMikrotikRouterRequest,
 };
 use crate::services::{AuditService, AuthService, MikrotikService};
 use tauri::State;
@@ -26,6 +26,24 @@ pub async fn list_mikrotik_routers(
         .list_routers(&tenant_id)
         .await
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_mikrotik_noc(
+    token: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<Vec<MikrotikRouterNocRow>, String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    mikrotik.list_noc(&tenant_id).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]

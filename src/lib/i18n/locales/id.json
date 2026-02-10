@@ -372,6 +372,7 @@
     "support": "Dukungan",
     "announcements": "Pengumuman",
     "routers": "Router",
+    "noc": "NOC",
     "expand": "Perluas sidebar",
     "collapse": "Ciutkan sidebar",
     "exit": "Keluar",
@@ -1636,6 +1637,36 @@
     }
   },
   "admin": {
+    "network": {
+      "noc": {
+        "title": "Network NOC",
+        "subtitle": "Tampilan operasional cepat untuk semua router: status, kesehatan, dan trafik.",
+        "search": "Cari router...",
+        "empty": "Belum ada router",
+        "stats": {
+          "total": "Total",
+          "online": "Online",
+          "offline": "Offline",
+          "hot": "Hot"
+        },
+        "filters": {
+          "any": "Semua",
+          "online": "Online",
+          "offline": "Offline",
+          "hot": "Hot",
+          "latency": "Latensi",
+          "cpu": "CPU"
+        },
+        "columns": {
+          "router": "Router",
+          "status": "Status",
+          "health": "Kesehatan",
+          "traffic": "Trafik",
+          "latency": "Latensi",
+          "seen": "Terakhir Terlihat"
+        }
+      }
+    },
     "roles": {
       "title": "Semua Peran",
       "subtitle": "Kelola definisi peran dan izin",

@@ -14,6 +14,7 @@ use serde::Deserialize;
 
 pub fn router() -> Router<AppState> {
     Router::new()
+        .route("/noc", get(get_noc))
         .route("/routers", get(list_routers).post(create_router))
         .route(
             "/routers/{id}",
@@ -54,6 +55,21 @@ async fn list_routers(
         .await?;
 
     let rows = state.mikrotik_service.list_routers(&tenant_id).await?;
+    Ok(Json(rows))
+}
+
+// GET /api/admin/mikrotik/noc
+async fn get_noc(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> AppResult<Json<Vec<crate::models::MikrotikRouterNocRow>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await?;
+
+    let rows = state.mikrotik_service.list_noc(&tenant_id).await?;
     Ok(Json(rows))
 }
 

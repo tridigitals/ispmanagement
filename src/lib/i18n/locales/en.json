@@ -372,6 +372,7 @@
     "support": "Support",
     "announcements": "Announcements",
     "routers": "Routers",
+    "noc": "NOC",
     "expand": "Expand sidebar",
     "collapse": "Collapse sidebar",
     "exit": "Exit",
@@ -1636,6 +1637,36 @@
     }
   },
   "admin": {
+    "network": {
+      "noc": {
+        "title": "Network NOC",
+        "subtitle": "A quick operational view of all routers: status, health, and traffic.",
+        "search": "Search routers...",
+        "empty": "No routers",
+        "stats": {
+          "total": "Total",
+          "online": "Online",
+          "offline": "Offline",
+          "hot": "Hot"
+        },
+        "filters": {
+          "any": "Any",
+          "online": "Online",
+          "offline": "Offline",
+          "hot": "Hot",
+          "latency": "Latency",
+          "cpu": "CPU"
+        },
+        "columns": {
+          "router": "Router",
+          "status": "Status",
+          "health": "Health",
+          "traffic": "Traffic",
+          "latency": "Latency",
+          "seen": "Last Seen"
+        }
+      }
+    },
     "roles": {
       "title": "All Roles",
       "subtitle": "Manage role definitions and permissions",

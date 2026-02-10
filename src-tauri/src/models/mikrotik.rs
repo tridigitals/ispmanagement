@@ -205,3 +205,33 @@ pub struct MikrotikRouterSnapshot {
     pub ip_addresses: Vec<MikrotikIpAddressSnapshot>,
     pub health: Option<MikrotikHealthSnapshot>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct MikrotikRouterNocRow {
+    pub id: String,
+    pub tenant_id: String,
+    pub name: String,
+    pub host: String,
+    pub port: i32,
+    pub username: String,
+    pub use_tls: bool,
+    pub enabled: bool,
+    pub identity: Option<String>,
+    pub ros_version: Option<String>,
+    pub is_online: bool,
+    pub last_seen_at: Option<DateTime<Utc>>,
+    pub latency_ms: Option<i32>,
+    pub last_error: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+
+    // Latest router metrics (optional if no samples yet)
+    pub cpu_load: Option<i32>,
+    pub total_memory_bytes: Option<i64>,
+    pub free_memory_bytes: Option<i64>,
+    pub total_hdd_bytes: Option<i64>,
+    pub free_hdd_bytes: Option<i64>,
+    pub uptime_seconds: Option<i64>,
+    pub rx_bps: Option<i64>,
+    pub tx_bps: Option<i64>,
+}
