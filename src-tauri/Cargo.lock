@@ -5277,6 +5277,7 @@ checksum = "a50f4cf475b65d88e057964e0e9bb1f0aa9bbb2036dc65c64596b42932536984"
 name = "saas-tauri"
 version = "0.1.0"
 dependencies = [
+ "aes-gcm",
  "anyhow",
  "argon2",
  "async-trait",
@@ -5294,6 +5295,7 @@ dependencies = [
  "mikrotik-rs",
  "once_cell",
  "rand 0.8.5",
+ "rand_core 0.6.4",
  "reqwest",
  "serde",
  "serde_json",

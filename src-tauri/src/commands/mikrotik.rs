@@ -4,7 +4,7 @@ use crate::models::{
     CreateMikrotikRouterRequest, MikrotikRouter, MikrotikRouterMetric, MikrotikTestResult,
     UpdateMikrotikRouterRequest,
 };
-use crate::services::{AuthService, MikrotikService};
+use crate::services::{AuditService, AuthService, MikrotikService};
 use tauri::State;
 
 #[tauri::command]
@@ -85,6 +85,7 @@ pub async fn create_mikrotik_router(
     enabled: Option<bool>,
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
+    audit: State<'_, AuditService>,
 ) -> Result<MikrotikRouter, String> {
     let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
     let tenant_id = claims
@@ -95,7 +96,7 @@ pub async fn create_mikrotik_router(
         .await
         .map_err(|e| e.to_string())?;
 
-    mikrotik
+    let router = mikrotik
         .create_router(
             &tenant_id,
             CreateMikrotikRouterRequest {
@@ -109,7 +110,21 @@ pub async fn create_mikrotik_router(
             },
         )
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    audit
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "create",
+            "mikrotik_router",
+            Some(&router.id),
+            Some(&format!("Created router '{}' ({})", router.name, router.host)),
+            None,
+        )
+        .await;
+
+    Ok(router)
 }
 
 #[tauri::command]
@@ -125,6 +140,7 @@ pub async fn update_mikrotik_router(
     enabled: Option<bool>,
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
+    audit: State<'_, AuditService>,
 ) -> Result<MikrotikRouter, String> {
     let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
     let tenant_id = claims
@@ -135,7 +151,7 @@ pub async fn update_mikrotik_router(
         .await
         .map_err(|e| e.to_string())?;
 
-    mikrotik
+    let router = mikrotik
         .update_router(
             &tenant_id,
             &id,
@@ -150,7 +166,21 @@ pub async fn update_mikrotik_router(
             },
         )
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    audit
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "update",
+            "mikrotik_router",
+            Some(&router.id),
+            Some(&format!("Updated router '{}' ({})", router.name, router.host)),
+            None,
+        )
+        .await;
+
+    Ok(router)
 }
 
 #[tauri::command]
@@ -159,6 +189,7 @@ pub async fn delete_mikrotik_router(
     id: String,
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
+    audit: State<'_, AuditService>,
 ) -> Result<(), String> {
     let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
     let tenant_id = claims
@@ -169,10 +200,32 @@ pub async fn delete_mikrotik_router(
         .await
         .map_err(|e| e.to_string())?;
 
+    let existing = mikrotik
+        .get_router(&tenant_id, &id)
+        .await
+        .map_err(|e| e.to_string())?;
+
     mikrotik
         .delete_router(&tenant_id, &id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    let details = existing
+        .as_ref()
+        .map(|r| format!("Deleted router '{}' ({})", r.name, r.host));
+    audit
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "delete",
+            "mikrotik_router",
+            Some(&id),
+            details.as_deref(),
+            None,
+        )
+        .await;
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -181,6 +234,7 @@ pub async fn test_mikrotik_router(
     id: String,
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
+    audit: State<'_, AuditService>,
 ) -> Result<MikrotikTestResult, String> {
     let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
     let tenant_id = claims
@@ -191,10 +245,32 @@ pub async fn test_mikrotik_router(
         .await
         .map_err(|e| e.to_string())?;
 
-    mikrotik
+    let res = mikrotik
         .test_connection(&tenant_id, &id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    let details = if res.ok {
+        format!(
+            "Tested router connection: ok identity={:?} version={:?} latency_ms={:?}",
+            res.identity, res.ros_version, res.latency_ms
+        )
+    } else {
+        format!("Tested router connection: failed error={:?}", res.error)
+    };
+    audit
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "test_connection",
+            "mikrotik_router",
+            Some(&id),
+            Some(&details),
+            None,
+        )
+        .await;
+
+    Ok(res)
 }
 
 #[tauri::command]

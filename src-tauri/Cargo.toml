@@ -100,6 +100,8 @@ base64ct = { version = "1.8.3", features = ["alloc"] }
 tauri-plugin-notification = "2.3.3"
 totp-rs = { version = "5.7.0", features = ["qr", "gen_secret"] }
 mikrotik-rs = "0.5.1"
+aes-gcm = "0.10"
+rand_core = "0.6"
 
 [profile.dev]
 incremental = false

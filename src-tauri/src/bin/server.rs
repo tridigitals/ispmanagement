@@ -102,7 +102,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let backup_service = BackupService::new(pool.clone(), app_data_dir.clone());
 
     // MikroTik monitoring (tenant-scoped)
-    let mikrotik_service = MikrotikService::new(pool.clone(), notification_service.clone());
+    let mikrotik_service =
+        MikrotikService::new(pool.clone(), notification_service.clone(), audit_service.clone());
     Arc::new(mikrotik_service.clone()).start_poller();
 
     // Scheduled broadcasts -> notifications

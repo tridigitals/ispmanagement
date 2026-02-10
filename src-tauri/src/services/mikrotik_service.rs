@@ -6,8 +6,8 @@
 //! - Background poller to update online/offline + store snapshots
 //!
 //! Notes:
-//! - Passwords are stored in DB as plaintext for now (never returned via API).
-//!   For production, consider encrypt-at-rest using an app secret.
+//! - Passwords are stored encrypted-at-rest in DB (never returned via API).
+//!   Encryption uses `MIKROTIK_CRED_KEY` (see `crate::security::secret`).
 
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
@@ -16,7 +16,8 @@ use crate::models::{
     MikrotikIpAddressSnapshot, MikrotikRouter, MikrotikRouterMetric, MikrotikRouterSnapshot,
     MikrotikTestResult, UpdateMikrotikRouterRequest,
 };
-use crate::services::NotificationService;
+use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
+use crate::services::{AuditService, NotificationService};
 use chrono::Utc;
 use mikrotik_rs::{protocol::command::CommandBuilder, protocol::CommandResponse, MikrotikDevice};
 use std::sync::Arc;
@@ -28,13 +29,15 @@ use tracing::{info, warn};
 pub struct MikrotikService {
     pool: DbPool,
     notification_service: NotificationService,
+    audit_service: AuditService,
 }
 
 impl MikrotikService {
-    pub fn new(pool: DbPool, notification_service: NotificationService) -> Self {
+    pub fn new(pool: DbPool, notification_service: NotificationService, audit_service: AuditService) -> Self {
         Self {
             pool,
             notification_service,
+            audit_service,
         }
     }
 
@@ -75,13 +78,14 @@ impl MikrotikService {
         tenant_id: &str,
         req: CreateMikrotikRouterRequest,
     ) -> AppResult<MikrotikRouter> {
+        let encrypted_password = encrypt_secret(req.password.as_str())?;
         let router = MikrotikRouter::new(
             tenant_id.to_string(),
             req.name,
             req.host,
             req.port.unwrap_or(8728),
             req.username,
-            req.password,
+            encrypted_password,
             req.use_tls.unwrap_or(false),
             req.enabled.unwrap_or(true),
         );
@@ -138,7 +142,10 @@ impl MikrotikService {
         let host = req.host.unwrap_or(existing.host);
         let port = req.port.unwrap_or(existing.port);
         let username = req.username.unwrap_or(existing.username);
-        let password = req.password.unwrap_or(existing.password);
+        let password = match req.password {
+            Some(p) if !p.trim().is_empty() => encrypt_secret(p.as_str())?,
+            _ => existing.password,
+        };
         let use_tls = req.use_tls.unwrap_or(existing.use_tls);
         let enabled = req.enabled.unwrap_or(existing.enabled);
 
@@ -236,17 +243,13 @@ impl MikrotikService {
             .ok_or_else(|| AppError::NotFound("Router not found".to_string()))?;
 
         let addr = format!("{}:{}", router.host, router.port);
-        let password = if router.password.trim().is_empty() {
-            None
-        } else {
-            Some(router.password.as_str())
-        };
+        let password = decrypt_secret_opt(router.password.as_str())?;
 
         let started = Instant::now();
 
         let dev = match timeout(
             Duration::from_secs(5),
-            MikrotikDevice::connect(addr, router.username.as_str(), password),
+            MikrotikDevice::connect(addr, router.username.as_str(), password.as_deref()),
         )
         .await
         {
@@ -508,15 +511,12 @@ impl MikrotikService {
     ) -> Result<(Option<String>, Option<String>), anyhow::Error> {
         // RouterOS API is plain TCP by default (8728). TLS is optional and not implemented here.
         let addr = format!("{}:{}", router.host, router.port);
-        let password = if router.password.trim().is_empty() {
-            None
-        } else {
-            Some(router.password.as_str())
-        };
+        let password = decrypt_secret_opt(router.password.as_str())
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
         let dev = timeout(
             Duration::from_secs(5),
-            MikrotikDevice::connect(addr, router.username.as_str(), password),
+            MikrotikDevice::connect(addr, router.username.as_str(), password.as_deref()),
         )
         .await
         .map_err(|_| anyhow::anyhow!("Connection timed out"))?
@@ -671,6 +671,18 @@ impl MikrotikService {
                         "success",
                     )
                     .await;
+
+                    self.audit_service
+                        .log(
+                            None,
+                            Some(&tenant_id),
+                            "status_online",
+                            "mikrotik_router",
+                            Some(&router.id),
+                            Some(&format!("{} is back online", router.name)),
+                            None,
+                        )
+                        .await;
                 }
             }
             Err(e) => {
@@ -702,6 +714,18 @@ impl MikrotikService {
                         "error",
                     )
                     .await;
+
+                    self.audit_service
+                        .log(
+                            None,
+                            Some(&tenant_id),
+                            "status_offline",
+                            "mikrotik_router",
+                            Some(&router.id),
+                            Some(&format!("{} became unreachable: {}", router.name, msg)),
+                            None,
+                        )
+                        .await;
                 }
             }
         }
@@ -721,15 +745,12 @@ impl MikrotikService {
         router: &MikrotikRouter,
     ) -> Result<MikrotikRouterMetric, anyhow::Error> {
         let addr = format!("{}:{}", router.host, router.port);
-        let password = if router.password.trim().is_empty() {
-            None
-        } else {
-            Some(router.password.as_str())
-        };
+        let password = decrypt_secret_opt(router.password.as_str())
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
         let dev = timeout(
             Duration::from_secs(5),
-            MikrotikDevice::connect(addr, router.username.as_str(), password),
+            MikrotikDevice::connect(addr, router.username.as_str(), password.as_deref()),
         )
         .await
         .map_err(|_| anyhow::anyhow!("Connection timed out"))?

@@ -92,6 +92,19 @@ async fn create_router(
         .mikrotik_service
         .create_router(&tenant_id, payload)
         .await?;
+
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "create",
+            "mikrotik_router",
+            Some(&router.id),
+            Some(&format!("Created router '{}' ({})", router.name, router.host)),
+            None,
+        )
+        .await;
     Ok(Json(router))
 }
 
@@ -112,6 +125,19 @@ async fn update_router(
         .mikrotik_service
         .update_router(&tenant_id, &id, payload)
         .await?;
+
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "update",
+            "mikrotik_router",
+            Some(&router.id),
+            Some(&format!("Updated router '{}' ({})", router.name, router.host)),
+            None,
+        )
+        .await;
     Ok(Json(router))
 }
 
@@ -127,7 +153,24 @@ async fn delete_router(
         .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
         .await?;
 
+    let existing = state.mikrotik_service.get_router(&tenant_id, &id).await?;
     state.mikrotik_service.delete_router(&tenant_id, &id).await?;
+
+    let details = existing
+        .as_ref()
+        .map(|r| format!("Deleted router '{}' ({})", r.name, r.host));
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "delete",
+            "mikrotik_router",
+            Some(&id),
+            details.as_deref(),
+            None,
+        )
+        .await;
     Ok(())
 }
 
@@ -144,6 +187,27 @@ async fn test_router(
         .await?;
 
     let res = state.mikrotik_service.test_connection(&tenant_id, &id).await?;
+
+    let details = if res.ok {
+        format!(
+            "Tested router connection: ok identity={:?} version={:?} latency_ms={:?}",
+            res.identity, res.ros_version, res.latency_ms
+        )
+    } else {
+        format!("Tested router connection: failed error={:?}", res.error)
+    };
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "test_connection",
+            "mikrotik_router",
+            Some(&id),
+            Some(&details),
+            None,
+        )
+        .await;
     Ok(Json(res))
 }
 

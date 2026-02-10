@@ -8,6 +8,7 @@ pub mod db;
 pub mod error;
 pub mod http;
 pub mod models;
+pub mod security;
 pub mod services;
 
 use commands::audit::{list_audit_logs, list_tenant_audit_logs};
@@ -220,7 +221,8 @@ pub fn run() {
                 let payment_service = PaymentService::new(pool.clone(), notification_service.clone());
 
                 // MikroTik monitoring (tenant-scoped)
-                let mikrotik_service = MikrotikService::new(pool.clone(), notification_service.clone());
+                let mikrotik_service =
+                    MikrotikService::new(pool.clone(), notification_service.clone(), audit_service.clone());
                 std::sync::Arc::new(mikrotik_service.clone()).start_poller();
 
                 // Start Announcement Scheduler (scheduled broadcasts -> notifications)
