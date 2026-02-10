@@ -24,6 +24,50 @@
     updated_at?: string | null;
   };
 
+  type InterfaceSnap = {
+    name: string;
+    interface_type?: string | null;
+    running?: boolean | null;
+    disabled?: boolean | null;
+    mtu?: number | null;
+    mac_address?: string | null;
+    rx_byte?: number | null;
+    tx_byte?: number | null;
+    rx_packet?: number | null;
+    tx_packet?: number | null;
+    link_downs?: number | null;
+  };
+
+  type IpSnap = {
+    address: string;
+    network?: string | null;
+    interface?: string | null;
+    disabled?: boolean | null;
+    dynamic?: boolean | null;
+  };
+
+  type HealthSnap = {
+    temperature_c?: number | null;
+    voltage_v?: number | null;
+    cpu_temperature_c?: number | null;
+  };
+
+  type RouterSnapshot = {
+    router: RouterRow;
+    cpu_load?: number | null;
+    total_memory_bytes?: number | null;
+    free_memory_bytes?: number | null;
+    total_hdd_bytes?: number | null;
+    free_hdd_bytes?: number | null;
+    uptime_seconds?: number | null;
+    board_name?: string | null;
+    architecture?: string | null;
+    cpu?: string | null;
+    interfaces: InterfaceSnap[];
+    ip_addresses: IpSnap[];
+    health?: HealthSnap | null;
+  };
+
   type MetricRow = {
     ts: string;
     cpu_load?: number | null;
@@ -34,8 +78,10 @@
     uptime_seconds?: number | null;
   };
 
-  let loading = $state(true);
+  let initialLoading = $state(true);
+  let refreshing = $state(false);
   let router = $state<RouterRow | null>(null);
+  let snapshot = $state<RouterSnapshot | null>(null);
   let metrics = $state<MetricRow[]>([]);
 
   let cpuSeries = $derived.by(() => {
@@ -47,17 +93,18 @@
   });
 
   let refreshHandle: any = null;
+  let refreshInFlight = false;
 
   onMount(() => {
     if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
       goto('/unauthorized');
       return;
     }
-    void refresh();
+    void refresh({ silent: true });
 
     // Re-check status/metrics periodically.
     refreshHandle = setInterval(() => {
-      void refresh();
+      void refresh({ silent: true });
     }, 5000);
   });
 
@@ -65,20 +112,34 @@
     if (refreshHandle) clearInterval(refreshHandle);
   });
 
-  async function refresh() {
-    loading = true;
+  async function refresh(opts?: { silent?: boolean }) {
+    if (refreshInFlight) return;
+    refreshInFlight = true;
+
+    if (!router) initialLoading = true;
+    else refreshing = true;
+
     const id = $page.params.id || '';
     if (!id) {
-      loading = false;
+      initialLoading = false;
+      refreshing = false;
+      refreshInFlight = false;
       return;
     }
     try {
-      router = (await api.mikrotik.routers.get(id)) as any;
-      metrics = (await api.mikrotik.routers.metrics(id, 120)) as any;
+      const [snap, m] = await Promise.all([
+        api.mikrotik.routers.snapshot(id) as any,
+        api.mikrotik.routers.metrics(id, 120) as any,
+      ]);
+      snapshot = snap as RouterSnapshot;
+      router = (snapshot?.router || null) as any;
+      metrics = (m || []) as any;
     } catch (e: any) {
-      toast.error(e?.message || e);
+      if (!opts?.silent) toast.error(e?.message || e);
     } finally {
-      loading = false;
+      initialLoading = false;
+      refreshing = false;
+      refreshInFlight = false;
     }
   }
 
@@ -93,7 +154,7 @@
       } else {
         toast.error(res?.error || 'Failed to connect');
       }
-      await refresh();
+      await refresh({ silent: true });
     } catch (e: any) {
       toast.error(e?.message || e);
     }
@@ -110,6 +171,31 @@
     const used = total - free;
     return Math.max(0, Math.min(100, Math.round((used / total) * 100)));
   }
+
+  function formatBytes(n?: number | null) {
+    if (n == null) return $t('common.na') || '—';
+    const abs = Math.abs(n);
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let u = 0;
+    let v = abs;
+    while (v >= 1024 && u < units.length - 1) {
+      v /= 1024;
+      u++;
+    }
+    const s = `${v >= 10 || u === 0 ? v.toFixed(0) : v.toFixed(1)} ${units[u]}`;
+    return n < 0 ? `-${s}` : s;
+  }
+
+  function formatUptime(secs?: number | null) {
+    if (secs == null) return $t('common.na') || '—';
+    const s = Math.max(0, Math.floor(secs));
+    const d = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    if (d > 0) return `${d}d ${h}h`;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+  }
 </script>
 
 <div class="page-content fade-in">
@@ -124,7 +210,12 @@
     </button>
 
     <div class="head-actions">
-      <button class="btn ghost" type="button" onclick={refresh} title={$t('common.refresh') || 'Refresh'}>
+      <button
+        class="btn ghost"
+        type="button"
+        onclick={() => refresh()}
+        title={$t('common.refresh') || 'Refresh'}
+      >
         <Icon name="refresh-cw" size={16} />
         {$t('admin.network.routers.actions.refresh') || $t('common.refresh') || 'Refresh'}
       </button>
@@ -135,7 +226,7 @@
     </div>
   </div>
 
-  {#if loading}
+  {#if initialLoading}
     <div class="skeleton">
       <div class="line"></div>
       <div class="line"></div>
@@ -172,6 +263,14 @@
         <div class="badge" class:online={router.is_online} class:offline={!router.is_online}>
           {statusLabel()}
         </div>
+        <div class="hint">
+          {#if refreshing}
+            <span class="spin"><Icon name="refresh-cw" size={14} /></span>
+            <span class="muted">{$t('common.loading') || 'Loading...'}</span>
+          {:else}
+            <span class="muted">{$t('common.updated') || 'Updated'}</span>
+          {/if}
+        </div>
         <div class="kv">
           <div class="kv-item">
             <span class="kv-label">Latency</span>
@@ -205,18 +304,17 @@
       <div class="card">
         <div class="card-head">
           <h2>Resources</h2>
-          <span class="muted">Latest snapshot</span>
+          <span class="muted">Live snapshot</span>
         </div>
 
-        {#if metrics[0]}
-          {@const latest = metrics[0]}
-          {@const memUsed = pctUsed(latest.total_memory_bytes, latest.free_memory_bytes)}
-          {@const diskUsed = pctUsed(latest.total_hdd_bytes, latest.free_hdd_bytes)}
+        {#if snapshot}
+          {@const memUsed = pctUsed(snapshot.total_memory_bytes, snapshot.free_memory_bytes)}
+          {@const diskUsed = pctUsed(snapshot.total_hdd_bytes, snapshot.free_hdd_bytes)}
 
           <div class="rows">
             <div class="row">
               <span class="muted">CPU load</span>
-              <span class="mono">{latest.cpu_load ?? '—'}%</span>
+              <span class="mono">{snapshot.cpu_load ?? '—'}%</span>
             </div>
             <div class="row">
               <span class="muted">Memory used</span>
@@ -228,14 +326,151 @@
             </div>
             <div class="row">
               <span class="muted">Uptime</span>
-              <span class="mono">{latest.uptime_seconds ?? '—'} s</span>
+              <span class="mono">{formatUptime(snapshot.uptime_seconds)}</span>
+            </div>
+            <div class="row">
+              <span class="muted">Memory</span>
+              <span class="mono"
+                >{formatBytes(snapshot.free_memory_bytes)} / {formatBytes(snapshot.total_memory_bytes)}</span
+              >
+            </div>
+            <div class="row">
+              <span class="muted">Disk</span>
+              <span class="mono"
+                >{formatBytes(snapshot.free_hdd_bytes)} / {formatBytes(snapshot.total_hdd_bytes)}</span
+              >
             </div>
           </div>
         {:else}
-          <div class="muted">No metrics yet.</div>
+          <div class="muted">No snapshot yet.</div>
         {/if}
       </div>
     </div>
+
+    {#if snapshot}
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head">
+            <h2>Hardware</h2>
+            <span class="muted">Live</span>
+          </div>
+          <div class="rows">
+            <div class="row">
+              <span class="muted">Board</span>
+              <span class="mono">{snapshot.board_name || '—'}</span>
+            </div>
+            <div class="row">
+              <span class="muted">Architecture</span>
+              <span class="mono">{snapshot.architecture || '—'}</span>
+            </div>
+            <div class="row">
+              <span class="muted">CPU</span>
+              <span class="mono">{snapshot.cpu || '—'}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Health</h2>
+            <span class="muted">Optional</span>
+          </div>
+          {#if snapshot.health}
+            <div class="rows">
+              <div class="row">
+                <span class="muted">Temperature</span>
+                <span class="mono">{snapshot.health.temperature_c ?? '—'} °C</span>
+              </div>
+              <div class="row">
+                <span class="muted">CPU temperature</span>
+                <span class="mono">{snapshot.health.cpu_temperature_c ?? '—'} °C</span>
+              </div>
+              <div class="row">
+                <span class="muted">Voltage</span>
+                <span class="mono">{snapshot.health.voltage_v ?? '—'} V</span>
+              </div>
+            </div>
+          {:else}
+            <div class="muted">Not supported on this device.</div>
+          {/if}
+        </div>
+      </div>
+
+      <div class="card full">
+        <div class="card-head">
+          <h2>Interfaces</h2>
+          <span class="muted">{snapshot.interfaces.length} total</span>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th class="right">MTU</th>
+                <th class="right">RX</th>
+                <th class="right">TX</th>
+                <th class="right">Downs</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each snapshot.interfaces as it (it.name)}
+                <tr class:dim={it.disabled}>
+                  <td class="mono">{it.name}</td>
+                  <td class="muted">{it.interface_type || '—'}</td>
+                  <td>
+                    {#if it.disabled}
+                      <span class="pill off">Disabled</span>
+                    {:else if it.running}
+                      <span class="pill ok">Running</span>
+                    {:else}
+                      <span class="pill warn">Down</span>
+                    {/if}
+                  </td>
+                  <td class="mono right">{it.mtu ?? '—'}</td>
+                  <td class="mono right">{formatBytes(it.rx_byte)}</td>
+                  <td class="mono right">{formatBytes(it.tx_byte)}</td>
+                  <td class="mono right">{it.link_downs ?? '—'}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card full">
+        <div class="card-head">
+          <h2>IP Addresses</h2>
+          <span class="muted">{snapshot.ip_addresses.length} total</span>
+        </div>
+        {#if snapshot.ip_addresses.length === 0}
+          <div class="muted">No IP addresses.</div>
+        {:else}
+          <div class="ip-grid">
+            {#each snapshot.ip_addresses as ip, idx (ip.address + ':' + (ip.interface || '') + ':' + idx)}
+              <div class="ip-item">
+                <div class="ip-top">
+                  <span class="mono">{ip.address}</span>
+                  {#if ip.dynamic}
+                    <span class="pill info">Dynamic</span>
+                  {/if}
+                  {#if ip.disabled}
+                    <span class="pill off">Disabled</span>
+                  {/if}
+                </div>
+                <div class="ip-meta">
+                  <span class="muted">{ip.interface || '—'}</span>
+                  {#if ip.network}
+                    <span class="muted">· {ip.network}</span>
+                  {/if}
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    {/if}
   {:else}
     <div class="empty">
       <Icon name="alert-circle" size={18} />
@@ -388,6 +623,32 @@
     gap: 10px;
   }
 
+  .hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-card), transparent 10%);
+  }
+
+  .spin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    animation: spin 1.1s linear infinite;
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
   .badge {
     display: inline-flex;
     align-items: center;
@@ -444,11 +705,22 @@
     gap: 12px;
   }
 
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
   .card {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 18px;
     padding: 14px;
+  }
+
+  .card.full {
+    margin-top: 12px;
   }
 
   .card-head {
@@ -530,6 +802,108 @@
     color: var(--text-secondary);
   }
 
+  .table-wrap {
+    overflow: auto;
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-card), transparent 8%);
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 840px;
+  }
+
+  .table th,
+  .table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color), transparent 30%);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .table th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: color-mix(in srgb, var(--bg-card), transparent 2%);
+    color: var(--text-secondary);
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+  }
+
+  .right {
+    text-align: right !important;
+  }
+
+  tr.dim td {
+    opacity: 0.7;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-weight: 900;
+    font-size: 0.72rem;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-hover), transparent 15%);
+    color: var(--text-secondary);
+  }
+
+  .pill.ok {
+    border-color: rgba(34, 197, 94, 0.28);
+    background: rgba(34, 197, 94, 0.12);
+    color: rgba(34, 197, 94, 0.95);
+  }
+
+  .pill.warn {
+    border-color: rgba(245, 158, 11, 0.35);
+    background: rgba(245, 158, 11, 0.12);
+    color: rgba(245, 158, 11, 0.95);
+  }
+
+  .pill.off {
+    border-color: rgba(148, 163, 184, 0.28);
+    background: rgba(148, 163, 184, 0.12);
+    color: rgba(148, 163, 184, 0.95);
+  }
+
+  .pill.info {
+    border-color: rgba(99, 102, 241, 0.28);
+    background: rgba(99, 102, 241, 0.12);
+    color: rgba(99, 102, 241, 0.95);
+  }
+
+  .ip-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .ip-item {
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-card), transparent 8%);
+    border-radius: 16px;
+    padding: 12px;
+  }
+
+  .ip-top {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .ip-meta {
+    margin-top: 6px;
+    color: var(--text-secondary);
+  }
+
   @media (max-width: 900px) {
     .page-content {
       padding: 18px;
@@ -544,6 +918,14 @@
     }
 
     .grid {
+      grid-template-columns: 1fr;
+    }
+
+    .grid2 {
+      grid-template-columns: 1fr;
+    }
+
+    .ip-grid {
       grid-template-columns: 1fr;
     }
   }

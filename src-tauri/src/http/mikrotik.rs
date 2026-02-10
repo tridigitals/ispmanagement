@@ -21,6 +21,7 @@ pub fn router() -> Router<AppState> {
         )
         .route("/routers/{id}/test", post(test_router))
         .route("/routers/{id}/metrics", get(list_metrics))
+        .route("/routers/{id}/snapshot", get(get_snapshot))
 }
 
 fn bearer_token(headers: &HeaderMap) -> AppResult<String> {
@@ -169,4 +170,20 @@ async fn list_metrics(
         .list_metrics(&tenant_id, &id, q.limit.unwrap_or(120))
         .await?;
     Ok(Json(rows))
+}
+
+// GET /api/admin/mikrotik/routers/{id}/snapshot
+async fn get_snapshot(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<crate::models::MikrotikRouterSnapshot>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await?;
+
+    let snap = state.mikrotik_service.get_snapshot(&tenant_id, &id).await?;
+    Ok(Json(snap))
 }

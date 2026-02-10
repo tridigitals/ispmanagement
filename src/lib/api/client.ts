@@ -200,6 +200,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       delete_mikrotik_router: { method: 'DELETE', path: '/admin/mikrotik/routers/:id' },
       test_mikrotik_router: { method: 'POST', path: '/admin/mikrotik/routers/:id/test' },
       get_mikrotik_router: { method: 'GET', path: '/admin/mikrotik/routers/:id' },
+      get_mikrotik_router_snapshot: { method: 'GET', path: '/admin/mikrotik/routers/:id/snapshot' },
       list_mikrotik_router_metrics: {
         method: 'GET',
         path: '/admin/mikrotik/routers/:routerId/metrics',
@@ -930,6 +931,8 @@ export const mikrotik = {
     list: (): Promise<any[]> => safeInvoke('list_mikrotik_routers', { token: getTokenOrThrow() }),
     get: (id: string): Promise<any> =>
       safeInvoke('get_mikrotik_router', { token: getTokenOrThrow(), id }),
+    snapshot: (id: string): Promise<any> =>
+      safeInvoke('get_mikrotik_router_snapshot', { token: getTokenOrThrow(), id }),
     create: (router: {
       name: string;
       host: string;

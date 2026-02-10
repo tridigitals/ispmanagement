@@ -125,3 +125,50 @@ impl MikrotikRouterMetric {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MikrotikInterfaceSnapshot {
+    pub name: String,
+    pub interface_type: Option<String>,
+    pub running: Option<bool>,
+    pub disabled: Option<bool>,
+    pub mtu: Option<i32>,
+    pub mac_address: Option<String>,
+    pub rx_byte: Option<i64>,
+    pub tx_byte: Option<i64>,
+    pub rx_packet: Option<i64>,
+    pub tx_packet: Option<i64>,
+    pub link_downs: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MikrotikIpAddressSnapshot {
+    pub address: String,
+    pub network: Option<String>,
+    pub interface: Option<String>,
+    pub disabled: Option<bool>,
+    pub dynamic: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MikrotikHealthSnapshot {
+    pub temperature_c: Option<f64>,
+    pub voltage_v: Option<f64>,
+    pub cpu_temperature_c: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MikrotikRouterSnapshot {
+    pub router: MikrotikRouter,
+    pub cpu_load: Option<i32>,
+    pub total_memory_bytes: Option<i64>,
+    pub free_memory_bytes: Option<i64>,
+    pub total_hdd_bytes: Option<i64>,
+    pub free_hdd_bytes: Option<i64>,
+    pub uptime_seconds: Option<i64>,
+    pub board_name: Option<String>,
+    pub architecture: Option<String>,
+    pub cpu: Option<String>,
+    pub interfaces: Vec<MikrotikInterfaceSnapshot>,
+    pub ip_addresses: Vec<MikrotikIpAddressSnapshot>,
+    pub health: Option<MikrotikHealthSnapshot>,
+}

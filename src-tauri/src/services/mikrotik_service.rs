@@ -12,8 +12,9 @@
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    CreateMikrotikRouterRequest, MikrotikRouter, MikrotikRouterMetric, MikrotikTestResult,
-    UpdateMikrotikRouterRequest,
+    CreateMikrotikRouterRequest, MikrotikHealthSnapshot, MikrotikInterfaceSnapshot,
+    MikrotikIpAddressSnapshot, MikrotikRouter, MikrotikRouterMetric, MikrotikRouterSnapshot,
+    MikrotikTestResult, UpdateMikrotikRouterRequest,
 };
 use crate::services::NotificationService;
 use chrono::Utc;
@@ -222,6 +223,206 @@ impl MikrotikService {
         .map_err(AppError::Database)?;
 
         Ok(rows)
+    }
+
+    /// Fetch a "live" snapshot from the router (best-effort).
+    ///
+    /// This is used by the admin detail UI to show richer data without forcing
+    /// the background poller to store huge payloads.
+    pub async fn get_snapshot(&self, tenant_id: &str, id: &str) -> AppResult<MikrotikRouterSnapshot> {
+        let mut router = self
+            .get_router(tenant_id, id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Router not found".to_string()))?;
+
+        let addr = format!("{}:{}", router.host, router.port);
+        let password = if router.password.trim().is_empty() {
+            None
+        } else {
+            Some(router.password.as_str())
+        };
+
+        let started = Instant::now();
+
+        let dev = match timeout(
+            Duration::from_secs(5),
+            MikrotikDevice::connect(addr, router.username.as_str(), password),
+        )
+        .await
+        {
+            Ok(Ok(dev)) => dev,
+            Ok(Err(e)) => {
+                let now = Utc::now();
+                let latency_ms = Some(started.elapsed().as_millis().min(i32::MAX as u128) as i32);
+                let msg = e.to_string();
+
+                let _ = sqlx::query(
+                    r#"
+                    UPDATE mikrotik_routers SET
+                      is_online = false,
+                      latency_ms = $1,
+                      last_error = $2,
+                      updated_at = $3
+                    WHERE id = $4 AND tenant_id = $5
+                    "#,
+                )
+                .bind(latency_ms)
+                .bind(&msg)
+                .bind(now)
+                .bind(&router.id)
+                .bind(&router.tenant_id)
+                .execute(&self.pool)
+                .await;
+
+                router.is_online = false;
+                router.latency_ms = latency_ms;
+                router.last_error = Some(msg);
+                router.last_seen_at = None;
+                router.updated_at = now;
+
+                return Ok(MikrotikRouterSnapshot {
+                    router,
+                    cpu_load: None,
+                    total_memory_bytes: None,
+                    free_memory_bytes: None,
+                    total_hdd_bytes: None,
+                    free_hdd_bytes: None,
+                    uptime_seconds: None,
+                    board_name: None,
+                    architecture: None,
+                    cpu: None,
+                    interfaces: vec![],
+                    ip_addresses: vec![],
+                    health: None,
+                });
+            }
+            Err(_) => {
+                let now = Utc::now();
+                let latency_ms = Some(started.elapsed().as_millis().min(i32::MAX as u128) as i32);
+                let msg = "Connection timed out".to_string();
+
+                let _ = sqlx::query(
+                    r#"
+                    UPDATE mikrotik_routers SET
+                      is_online = false,
+                      latency_ms = $1,
+                      last_error = $2,
+                      updated_at = $3
+                    WHERE id = $4 AND tenant_id = $5
+                    "#,
+                )
+                .bind(latency_ms)
+                .bind(&msg)
+                .bind(now)
+                .bind(&router.id)
+                .bind(&router.tenant_id)
+                .execute(&self.pool)
+                .await;
+
+                router.is_online = false;
+                router.latency_ms = latency_ms;
+                router.last_error = Some(msg);
+                router.last_seen_at = None;
+                router.updated_at = now;
+
+                return Ok(MikrotikRouterSnapshot {
+                    router,
+                    cpu_load: None,
+                    total_memory_bytes: None,
+                    free_memory_bytes: None,
+                    total_hdd_bytes: None,
+                    free_hdd_bytes: None,
+                    uptime_seconds: None,
+                    board_name: None,
+                    architecture: None,
+                    cpu: None,
+                    interfaces: vec![],
+                    ip_addresses: vec![],
+                    health: None,
+                });
+            }
+        };
+
+        let latency_ms = Some(started.elapsed().as_millis().min(i32::MAX as u128) as i32);
+
+        // identity + version (best-effort)
+        let identity = self.fetch_identity_snapshot(&dev).await.ok().flatten();
+
+        // Resource
+        let (
+            cpu_load,
+            total_memory_bytes,
+            free_memory_bytes,
+            total_hdd_bytes,
+            free_hdd_bytes,
+            uptime_seconds,
+            board_name,
+            architecture,
+            cpu,
+            version,
+        ) = self.fetch_resource_snapshot(&dev).await.unwrap_or_default();
+
+        // Interfaces
+        let interfaces = self.fetch_interfaces_snapshot(&dev).await.unwrap_or_default();
+
+        // IP addresses
+        let ip_addresses = self.fetch_ip_addresses_snapshot(&dev).await.unwrap_or_default();
+
+        // Health (optional on some devices)
+        let health = match self.fetch_health_snapshot(&dev).await {
+            Ok(v) => Some(v),
+            Err(e) if e.to_string().contains("health_not_supported") => None,
+            Err(_) => None,
+        };
+
+        // Treat successful snapshot as an explicit online signal.
+        let now = Utc::now();
+        let _ = sqlx::query(
+            r#"
+            UPDATE mikrotik_routers SET
+              is_online = true,
+              last_seen_at = $1,
+              latency_ms = $2,
+              last_error = NULL,
+              identity = COALESCE($3, identity),
+              ros_version = COALESCE($4, ros_version),
+              updated_at = $5
+            WHERE id = $6 AND tenant_id = $7
+            "#,
+        )
+        .bind(now)
+        .bind(latency_ms)
+        .bind(identity.clone())
+        .bind(version.clone())
+        .bind(now)
+        .bind(&router.id)
+        .bind(&router.tenant_id)
+        .execute(&self.pool)
+        .await;
+
+        router.is_online = true;
+        router.last_seen_at = Some(now);
+        router.latency_ms = latency_ms;
+        router.last_error = None;
+        router.identity = identity.or(router.identity);
+        router.ros_version = version.or(router.ros_version);
+        router.updated_at = now;
+
+        Ok(MikrotikRouterSnapshot {
+            router,
+            cpu_load,
+            total_memory_bytes,
+            free_memory_bytes,
+            total_hdd_bytes,
+            free_hdd_bytes,
+            uptime_seconds,
+            board_name,
+            architecture,
+            cpu,
+            interfaces,
+            ip_addresses,
+            health,
+        })
     }
 
     pub async fn test_connection(&self, tenant_id: &str, id: &str) -> AppResult<MikrotikTestResult> {
@@ -576,6 +777,287 @@ impl MikrotikService {
         }
 
         Ok(metric)
+    }
+
+    async fn fetch_resource_snapshot(
+        &self,
+        dev: &MikrotikDevice,
+    ) -> Result<
+        (
+            Option<i32>,
+            Option<i64>,
+            Option<i64>,
+            Option<i64>,
+            Option<i64>,
+            Option<i64>,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+        ),
+        anyhow::Error,
+    > {
+        let cmd = CommandBuilder::new()
+            .command("/system/resource/print")
+            .build();
+        let mut rx = dev
+            .send_command(cmd)
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        let mut cpu_load: Option<i32> = None;
+        let mut total_memory_bytes: Option<i64> = None;
+        let mut free_memory_bytes: Option<i64> = None;
+        let mut total_hdd_bytes: Option<i64> = None;
+        let mut free_hdd_bytes: Option<i64> = None;
+        let mut uptime_seconds: Option<i64> = None;
+        let mut board_name: Option<String> = None;
+        let mut architecture: Option<String> = None;
+        let mut cpu: Option<String> = None;
+        let mut version: Option<String> = None;
+
+        while let Some(res) = rx.recv().await {
+            let r = res.map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            if let CommandResponse::Reply(reply) = r {
+                cpu_load = reply
+                    .attributes
+                    .get("cpu-load")
+                    .and_then(|v| v.as_ref().and_then(|s| s.parse::<i32>().ok()));
+                total_memory_bytes = reply
+                    .attributes
+                    .get("total-memory")
+                    .and_then(|v| v.as_ref().and_then(|s| s.parse::<i64>().ok()));
+                free_memory_bytes = reply
+                    .attributes
+                    .get("free-memory")
+                    .and_then(|v| v.as_ref().and_then(|s| s.parse::<i64>().ok()));
+                total_hdd_bytes = reply
+                    .attributes
+                    .get("total-hdd-space")
+                    .and_then(|v| v.as_ref().and_then(|s| s.parse::<i64>().ok()));
+                free_hdd_bytes = reply
+                    .attributes
+                    .get("free-hdd-space")
+                    .and_then(|v| v.as_ref().and_then(|s| s.parse::<i64>().ok()));
+                uptime_seconds = reply
+                    .attributes
+                    .get("uptime")
+                    .and_then(|v| v.as_deref().map(parse_uptime_to_secs));
+
+                board_name = reply.attributes.get("board-name").and_then(|v| v.clone());
+                architecture = reply
+                    .attributes
+                    .get("architecture-name")
+                    .and_then(|v| v.clone());
+                cpu = reply.attributes.get("cpu").and_then(|v| v.clone());
+                version = reply.attributes.get("version").and_then(|v| v.clone());
+            }
+        }
+
+        Ok((
+            cpu_load,
+            total_memory_bytes,
+            free_memory_bytes,
+            total_hdd_bytes,
+            free_hdd_bytes,
+            uptime_seconds,
+            board_name,
+            architecture,
+            cpu,
+            version,
+        ))
+    }
+
+    async fn fetch_identity_snapshot(
+        &self,
+        dev: &MikrotikDevice,
+    ) -> Result<Option<String>, anyhow::Error> {
+        let cmd = CommandBuilder::new()
+            .command("/system/identity/print")
+            .build();
+        let mut rx = dev
+            .send_command(cmd)
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        let mut identity: Option<String> = None;
+        while let Some(res) = rx.recv().await {
+            let r = res.map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            if let CommandResponse::Reply(reply) = r {
+                identity = reply.attributes.get("name").and_then(|v| v.clone());
+            }
+        }
+
+        Ok(identity)
+    }
+
+    async fn fetch_interfaces_snapshot(
+        &self,
+        dev: &MikrotikDevice,
+    ) -> Result<Vec<MikrotikInterfaceSnapshot>, anyhow::Error> {
+        let cmd = CommandBuilder::new()
+            .command("/interface/print")
+            .build();
+        let mut rx = dev
+            .send_command(cmd)
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        let mut out: Vec<MikrotikInterfaceSnapshot> = vec![];
+        while let Some(res) = rx.recv().await {
+            let r = res.map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            if let CommandResponse::Reply(reply) = r {
+                let name = reply
+                    .attributes
+                    .get("name")
+                    .and_then(|v| v.clone())
+                    .unwrap_or_else(|| "unknown".to_string());
+
+                let running = reply
+                    .attributes
+                    .get("running")
+                    .and_then(|v| v.as_ref().and_then(|s| s.parse::<bool>().ok()));
+                let disabled = reply
+                    .attributes
+                    .get("disabled")
+                    .and_then(|v| v.as_ref().and_then(|s| s.parse::<bool>().ok()));
+                let mtu = reply
+                    .attributes
+                    .get("mtu")
+                    .and_then(|v| v.as_ref().and_then(|s| s.parse::<i32>().ok()));
+
+                out.push(MikrotikInterfaceSnapshot {
+                    name,
+                    interface_type: reply.attributes.get("type").and_then(|v| v.clone()),
+                    running,
+                    disabled,
+                    mtu,
+                    mac_address: reply
+                        .attributes
+                        .get("mac-address")
+                        .and_then(|v| v.clone()),
+                    rx_byte: reply
+                        .attributes
+                        .get("rx-byte")
+                        .and_then(|v| v.as_ref().and_then(|s| s.parse::<i64>().ok())),
+                    tx_byte: reply
+                        .attributes
+                        .get("tx-byte")
+                        .and_then(|v| v.as_ref().and_then(|s| s.parse::<i64>().ok())),
+                    rx_packet: reply
+                        .attributes
+                        .get("rx-packet")
+                        .and_then(|v| v.as_ref().and_then(|s| s.parse::<i64>().ok())),
+                    tx_packet: reply
+                        .attributes
+                        .get("tx-packet")
+                        .and_then(|v| v.as_ref().and_then(|s| s.parse::<i64>().ok())),
+                    link_downs: reply
+                        .attributes
+                        .get("link-downs")
+                        .and_then(|v| v.as_ref().and_then(|s| s.parse::<i64>().ok())),
+                });
+            }
+        }
+
+        // Stable sort for UX
+        out.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+        Ok(out)
+    }
+
+    async fn fetch_ip_addresses_snapshot(
+        &self,
+        dev: &MikrotikDevice,
+    ) -> Result<Vec<MikrotikIpAddressSnapshot>, anyhow::Error> {
+        let cmd = CommandBuilder::new()
+            .command("/ip/address/print")
+            .build();
+        let mut rx = dev
+            .send_command(cmd)
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        let mut out: Vec<MikrotikIpAddressSnapshot> = vec![];
+        while let Some(res) = rx.recv().await {
+            let r = res.map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            if let CommandResponse::Reply(reply) = r {
+                let address = reply
+                    .attributes
+                    .get("address")
+                    .and_then(|v| v.clone())
+                    .unwrap_or_else(|| "unknown".to_string());
+                let disabled = reply
+                    .attributes
+                    .get("disabled")
+                    .and_then(|v| v.as_ref().and_then(|s| s.parse::<bool>().ok()));
+                let dynamic = reply
+                    .attributes
+                    .get("dynamic")
+                    .and_then(|v| v.as_ref().and_then(|s| s.parse::<bool>().ok()));
+
+                out.push(MikrotikIpAddressSnapshot {
+                    address,
+                    network: reply.attributes.get("network").and_then(|v| v.clone()),
+                    interface: reply.attributes.get("interface").and_then(|v| v.clone()),
+                    disabled,
+                    dynamic,
+                });
+            }
+        }
+
+        Ok(out)
+    }
+
+    async fn fetch_health_snapshot(&self, dev: &MikrotikDevice) -> Result<MikrotikHealthSnapshot, anyhow::Error> {
+        let cmd = CommandBuilder::new()
+            .command("/system/health/print")
+            .build();
+        let mut rx = dev
+            .send_command(cmd)
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        let mut temperature_c: Option<f64> = None;
+        let mut voltage_v: Option<f64> = None;
+        let mut cpu_temperature_c: Option<f64> = None;
+
+        while let Some(res) = rx.recv().await {
+            let r = res.map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            match r {
+                CommandResponse::Reply(reply) => {
+                    // RouterOS returns varying keys depending on hardware.
+                    temperature_c = reply
+                        .attributes
+                        .get("temperature")
+                        .and_then(|v| v.as_ref().and_then(|s| s.parse::<f64>().ok()))
+                        .or_else(|| {
+                            reply
+                                .attributes
+                                .get("board-temperature1")
+                                .and_then(|v| v.as_ref().and_then(|s| s.parse::<f64>().ok()))
+                        });
+                    cpu_temperature_c = reply
+                        .attributes
+                        .get("cpu-temperature")
+                        .and_then(|v| v.as_ref().and_then(|s| s.parse::<f64>().ok()));
+                    voltage_v = reply
+                        .attributes
+                        .get("voltage")
+                        .and_then(|v| v.as_ref().and_then(|s| s.parse::<f64>().ok()));
+                }
+                CommandResponse::Trap(_trap) => {
+                    // Command not supported on this device; treat as absent.
+                    return Err(anyhow::anyhow!("health_not_supported"));
+                }
+                _ => {}
+            }
+        }
+
+        Ok(MikrotikHealthSnapshot {
+            temperature_c,
+            voltage_v,
+            cpu_temperature_c,
+        })
     }
 
     async fn notify_tenant(
