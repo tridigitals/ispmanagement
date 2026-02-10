@@ -7,14 +7,29 @@ use sha2::{Digest, Sha256};
 
 const PREFIX: &str = "enc:v1:";
 
+fn get_master_secret() -> AppResult<String> {
+    // Prefer a single app-wide master secret (can be used for other purposes too).
+    // Keep backward compatibility with the old env var.
+    let raw = std::env::var("APP_SECRET")
+        .ok()
+        .filter(|v| !v.trim().is_empty())
+        .or_else(|| {
+            std::env::var("MIKROTIK_CRED_KEY")
+                .ok()
+                .filter(|v| !v.trim().is_empty())
+        })
+        .ok_or_else(|| {
+            AppError::Internal("Missing env APP_SECRET (or legacy MIKROTIK_CRED_KEY)".into())
+        })?;
+
+    Ok(raw)
+}
+
 fn derive_key() -> AppResult<[u8; 32]> {
-    // We intentionally allow passing a passphrase-like string.
-    // It is hashed into a fixed 32-byte key.
-    let raw = std::env::var("MIKROTIK_CRED_KEY")
-        .map_err(|_| AppError::Internal("Missing env MIKROTIK_CRED_KEY".into()))?;
-    if raw.trim().is_empty() {
-        return Err(AppError::Internal("Missing env MIKROTIK_CRED_KEY".into()));
-    }
+    // Domain-separated derivation from the master secret.
+    // This prevents key reuse across different crypto purposes.
+    let master = get_master_secret()?;
+    let raw = format!("{master}:mikrotik_credentials:v1");
     let digest = Sha256::digest(raw.as_bytes());
     let mut out = [0u8; 32];
     out.copy_from_slice(&digest[..32]);
