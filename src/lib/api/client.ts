@@ -205,6 +205,14 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         method: 'GET',
         path: '/admin/mikrotik/routers/:routerId/metrics',
       },
+      list_mikrotik_interface_metrics: {
+        method: 'GET',
+        path: '/admin/mikrotik/routers/:routerId/interfaces/metrics',
+      },
+      list_mikrotik_interface_latest: {
+        method: 'GET',
+        path: '/admin/mikrotik/routers/:routerId/interfaces/latest',
+      },
       // Backup
       list_backups: { method: 'GET', path: '/backups' },
       create_backup: { method: 'POST', path: '/backups' },
@@ -987,6 +995,20 @@ export const mikrotik = {
         routerId,
         router_id: routerId,
         limit,
+      }),
+    interfaceMetrics: (routerId: string, params?: { interface?: string; limit?: number }): Promise<any[]> =>
+      safeInvoke('list_mikrotik_interface_metrics', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+        interface: params?.interface,
+        limit: params?.limit,
+      }),
+    interfaceLatest: (routerId: string): Promise<any[]> =>
+      safeInvoke('list_mikrotik_interface_latest', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
       }),
   },
 };

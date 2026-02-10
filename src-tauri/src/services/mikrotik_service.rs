@@ -13,8 +13,8 @@ use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     CreateMikrotikRouterRequest, MikrotikHealthSnapshot, MikrotikInterfaceSnapshot,
-    MikrotikIpAddressSnapshot, MikrotikRouter, MikrotikRouterMetric, MikrotikRouterSnapshot,
-    MikrotikTestResult, UpdateMikrotikRouterRequest,
+    MikrotikInterfaceMetric, MikrotikIpAddressSnapshot, MikrotikRouter, MikrotikRouterMetric,
+    MikrotikRouterSnapshot, MikrotikTestResult, UpdateMikrotikRouterRequest,
 };
 use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
 use crate::services::{AuditService, NotificationService};
@@ -24,6 +24,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::time::{timeout, Duration};
 use tracing::{info, warn};
+use chrono::DateTime;
 
 #[derive(Clone)]
 pub struct MikrotikService {
@@ -230,6 +231,106 @@ impl MikrotikService {
         .map_err(AppError::Database)?;
 
         Ok(rows)
+    }
+
+    pub async fn list_interface_metrics(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        interface_name: Option<&str>,
+        limit: u32,
+    ) -> AppResult<Vec<MikrotikInterfaceMetric>> {
+        // Ensure router belongs to tenant
+        let exists: Option<String> = sqlx::query_scalar(
+            "SELECT id FROM mikrotik_routers WHERE id = $1 AND tenant_id = $2",
+        )
+        .bind(router_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        if exists.is_none() {
+            return Err(AppError::Forbidden("No access to router".into()));
+        }
+
+        let rows = if let Some(ifname) = interface_name {
+            sqlx::query_as::<_, MikrotikInterfaceMetric>(
+                r#"
+                SELECT * FROM mikrotik_interface_metrics
+                WHERE router_id = $1 AND interface_name = $2
+                ORDER BY ts DESC
+                LIMIT $3
+                "#,
+            )
+            .bind(router_id)
+            .bind(ifname)
+            .bind(limit as i64)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(AppError::Database)?
+        } else {
+            sqlx::query_as::<_, MikrotikInterfaceMetric>(
+                r#"
+                SELECT * FROM mikrotik_interface_metrics
+                WHERE router_id = $1
+                ORDER BY ts DESC
+                LIMIT $2
+                "#,
+            )
+            .bind(router_id)
+            .bind(limit as i64)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(AppError::Database)?
+        };
+
+        Ok(rows)
+    }
+
+    pub async fn list_latest_interface_metrics(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+    ) -> AppResult<Vec<MikrotikInterfaceMetric>> {
+        // Ensure router belongs to tenant
+        let exists: Option<String> = sqlx::query_scalar(
+            "SELECT id FROM mikrotik_routers WHERE id = $1 AND tenant_id = $2",
+        )
+        .bind(router_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        if exists.is_none() {
+            return Err(AppError::Forbidden("No access to router".into()));
+        }
+
+        // Portable approach: order by interface_name + ts desc, then de-dupe in Rust.
+        let mut rows = sqlx::query_as::<_, MikrotikInterfaceMetric>(
+            r#"
+            SELECT * FROM mikrotik_interface_metrics
+            WHERE router_id = $1
+            ORDER BY interface_name ASC, ts DESC
+            "#,
+        )
+        .bind(router_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let mut out: Vec<MikrotikInterfaceMetric> = vec![];
+        let mut last: Option<String> = None;
+        for r in rows.drain(..) {
+            if last.as_deref() == Some(r.interface_name.as_str()) {
+                continue;
+            }
+            last = Some(r.interface_name.clone());
+            out.push(r);
+        }
+
+        Ok(out)
     }
 
     /// Fetch a "live" snapshot from the router (best-effort).
@@ -662,6 +763,24 @@ impl MikrotikService {
                 .execute(&self.pool)
                 .await;
 
+                // Per-interface metrics (best-effort). Also compute aggregate rx/tx bps.
+                if let Ok((rx_bps, tx_bps)) = self.poll_interface_metrics(&router, now).await {
+                    if rx_bps.is_some() || tx_bps.is_some() {
+                        let _ = sqlx::query(
+                            r#"
+                            UPDATE mikrotik_router_metrics
+                            SET rx_bps = $1, tx_bps = $2
+                            WHERE id = $3
+                            "#,
+                        )
+                        .bind(rx_bps)
+                        .bind(tx_bps)
+                        .bind(&metric.id)
+                        .execute(&self.pool)
+                        .await;
+                    }
+                }
+
                 if !prev_online {
                     self.notify_tenant(
                         &tenant_id,
@@ -738,6 +857,116 @@ impl MikrotikService {
         );
 
         Ok(())
+    }
+
+    async fn poll_interface_metrics(
+        &self,
+        router: &MikrotikRouter,
+        ts: DateTime<Utc>,
+    ) -> Result<(Option<i64>, Option<i64>), anyhow::Error> {
+        #[derive(sqlx::FromRow, Debug)]
+        struct PrevIfaceRow {
+            interface_name: String,
+            ts: DateTime<Utc>,
+            rx_byte: Option<i64>,
+            tx_byte: Option<i64>,
+        }
+
+        let password = decrypt_secret_opt(router.password.as_str())?;
+        let addr = format!("{}:{}", router.host, router.port);
+        let dev = timeout(
+            Duration::from_secs(5),
+            MikrotikDevice::connect(addr, router.username.as_str(), password.as_deref()),
+        )
+        .await
+        .map_err(|_| anyhow::anyhow!("Connection timed out"))?
+        .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        let interfaces = self.fetch_interfaces_snapshot(&dev).await?;
+
+        // Fetch last metrics for all interfaces in one shot.
+        let mut prev_rows = sqlx::query_as::<_, PrevIfaceRow>(
+            r#"
+            SELECT interface_name, ts, rx_byte, tx_byte
+            FROM mikrotik_interface_metrics
+            WHERE router_id = $1
+            ORDER BY interface_name ASC, ts DESC
+            "#,
+        )
+        .bind(&router.id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        let mut prev_map: std::collections::HashMap<String, PrevIfaceRow> = std::collections::HashMap::new();
+        for r in prev_rows.drain(..) {
+            if prev_map.contains_key(&r.interface_name) {
+                continue;
+            }
+            prev_map.insert(r.interface_name.clone(), r);
+        }
+
+        let mut sum_rx: Option<i64> = None;
+        let mut sum_tx: Option<i64> = None;
+
+        for it in interfaces {
+            let prev = prev_map.get(&it.name);
+            let mut m = MikrotikInterfaceMetric::new(router.id.clone(), it.name.clone());
+            m.ts = ts;
+            m.rx_byte = it.rx_byte;
+            m.tx_byte = it.tx_byte;
+            m.running = it.running;
+            m.disabled = it.disabled;
+            m.link_downs = it.link_downs;
+
+            if let (Some(prev_row), Some(cur_rx), Some(prev_rx)) = (prev, it.rx_byte, prev.and_then(|p| p.rx_byte)) {
+                let dt = (ts - prev_row.ts).num_milliseconds() as f64 / 1000.0;
+                if dt > 0.0 {
+                    let delta = cur_rx - prev_rx;
+                    if delta >= 0 {
+                        let bps = ((delta as f64) * 8.0 / dt).round() as i64;
+                        m.rx_bps = Some(bps);
+                        sum_rx = Some(sum_rx.unwrap_or(0) + bps);
+                    }
+                }
+            }
+
+            if let (Some(prev_row), Some(cur_tx), Some(prev_tx)) = (prev, it.tx_byte, prev.and_then(|p| p.tx_byte)) {
+                let dt = (ts - prev_row.ts).num_milliseconds() as f64 / 1000.0;
+                if dt > 0.0 {
+                    let delta = cur_tx - prev_tx;
+                    if delta >= 0 {
+                        let bps = ((delta as f64) * 8.0 / dt).round() as i64;
+                        m.tx_bps = Some(bps);
+                        sum_tx = Some(sum_tx.unwrap_or(0) + bps);
+                    }
+                }
+            }
+
+            let _ = sqlx::query(
+                r#"
+                INSERT INTO mikrotik_interface_metrics
+                (id, router_id, interface_name, ts, rx_byte, tx_byte, rx_bps, tx_bps, running, disabled, link_downs)
+                VALUES
+                ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                "#,
+            )
+            .bind(&m.id)
+            .bind(&m.router_id)
+            .bind(&m.interface_name)
+            .bind(m.ts)
+            .bind(m.rx_byte)
+            .bind(m.tx_byte)
+            .bind(m.rx_bps)
+            .bind(m.tx_bps)
+            .bind(m.running)
+            .bind(m.disabled)
+            .bind(m.link_downs)
+            .execute(&self.pool)
+            .await;
+        }
+
+        Ok((sum_rx, sum_tx))
     }
 
     async fn fetch_resource_metric(

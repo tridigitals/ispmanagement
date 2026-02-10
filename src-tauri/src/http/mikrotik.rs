@@ -1,8 +1,8 @@
 use crate::error::{AppError, AppResult};
 use crate::http::AppState;
 use crate::models::{
-    CreateMikrotikRouterRequest, MikrotikRouter, MikrotikRouterMetric, MikrotikTestResult,
-    UpdateMikrotikRouterRequest,
+    CreateMikrotikRouterRequest, MikrotikInterfaceMetric, MikrotikRouter, MikrotikRouterMetric,
+    MikrotikTestResult, UpdateMikrotikRouterRequest,
 };
 use axum::{
     extract::{Path, Query, State},
@@ -21,6 +21,8 @@ pub fn router() -> Router<AppState> {
         )
         .route("/routers/{id}/test", post(test_router))
         .route("/routers/{id}/metrics", get(list_metrics))
+        .route("/routers/{id}/interfaces/metrics", get(list_interface_metrics))
+        .route("/routers/{id}/interfaces/latest", get(list_interface_latest))
         .route("/routers/{id}/snapshot", get(get_snapshot))
 }
 
@@ -232,6 +234,51 @@ async fn list_metrics(
     let rows = state
         .mikrotik_service
         .list_metrics(&tenant_id, &id, q.limit.unwrap_or(120))
+        .await?;
+    Ok(Json(rows))
+}
+
+#[derive(Deserialize)]
+pub struct InterfaceMetricsQuery {
+    pub interface: Option<String>,
+    pub limit: Option<u32>,
+}
+
+// GET /api/admin/mikrotik/routers/{id}/interfaces/metrics?interface=ether1&limit=120
+async fn list_interface_metrics(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Query(q): Query<InterfaceMetricsQuery>,
+) -> AppResult<Json<Vec<MikrotikInterfaceMetric>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await?;
+
+    let rows = state
+        .mikrotik_service
+        .list_interface_metrics(&tenant_id, &id, q.interface.as_deref(), q.limit.unwrap_or(120))
+        .await?;
+    Ok(Json(rows))
+}
+
+// GET /api/admin/mikrotik/routers/{id}/interfaces/latest
+async fn list_interface_latest(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<Vec<MikrotikInterfaceMetric>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await?;
+
+    let rows = state
+        .mikrotik_service
+        .list_latest_interface_metrics(&tenant_id, &id)
         .await?;
     Ok(Json(rows))
 }

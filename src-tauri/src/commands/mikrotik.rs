@@ -1,8 +1,8 @@
 //! MikroTik router inventory + monitoring commands (tenant admin).
 
 use crate::models::{
-    CreateMikrotikRouterRequest, MikrotikRouter, MikrotikRouterMetric, MikrotikTestResult,
-    UpdateMikrotikRouterRequest,
+    CreateMikrotikRouterRequest, MikrotikInterfaceMetric, MikrotikRouter, MikrotikRouterMetric,
+    MikrotikTestResult, UpdateMikrotikRouterRequest,
 };
 use crate::services::{AuditService, AuthService, MikrotikService};
 use tauri::State;
@@ -296,6 +296,60 @@ pub async fn list_mikrotik_router_metrics(
 
     mikrotik
         .list_metrics(&tenant_id, &rid, limit.unwrap_or(120))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_mikrotik_interface_metrics(
+    token: String,
+    router_id: Option<String>,
+    #[allow(non_snake_case)]
+    routerId: Option<String>,
+    interface: Option<String>,
+    limit: Option<u32>,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<Vec<MikrotikInterfaceMetric>, String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let rid = router_id.or(routerId).ok_or_else(|| "Missing routerId".to_string())?;
+
+    mikrotik
+        .list_interface_metrics(&tenant_id, &rid, interface.as_deref(), limit.unwrap_or(120))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_mikrotik_interface_latest(
+    token: String,
+    router_id: Option<String>,
+    #[allow(non_snake_case)]
+    routerId: Option<String>,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<Vec<MikrotikInterfaceMetric>, String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let rid = router_id.or(routerId).ok_or_else(|| "Missing routerId".to_string())?;
+
+    mikrotik
+        .list_latest_interface_metrics(&tenant_id, &rid)
         .await
         .map_err(|e| e.to_string())
 }

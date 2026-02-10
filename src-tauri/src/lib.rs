@@ -461,6 +461,8 @@ pub fn run() {
                                     get_mikrotik_router,
                                     get_mikrotik_router_snapshot,
                                     list_mikrotik_router_metrics,
+                                    list_mikrotik_interface_metrics,
+                                    list_mikrotik_interface_latest,
                                     // Announcements
                                     list_active_announcements,
                                     list_recent_announcements,

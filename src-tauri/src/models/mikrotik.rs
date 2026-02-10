@@ -107,6 +107,39 @@ pub struct MikrotikRouterMetric {
     pub tx_bps: Option<i64>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct MikrotikInterfaceMetric {
+    pub id: String,
+    pub router_id: String,
+    pub interface_name: String,
+    pub ts: DateTime<Utc>,
+    pub rx_byte: Option<i64>,
+    pub tx_byte: Option<i64>,
+    pub rx_bps: Option<i64>,
+    pub tx_bps: Option<i64>,
+    pub running: Option<bool>,
+    pub disabled: Option<bool>,
+    pub link_downs: Option<i64>,
+}
+
+impl MikrotikInterfaceMetric {
+    pub fn new(router_id: String, interface_name: String) -> Self {
+        Self {
+            id: Uuid::new_v4().to_string(),
+            router_id,
+            interface_name,
+            ts: Utc::now(),
+            rx_byte: None,
+            tx_byte: None,
+            rx_bps: None,
+            tx_bps: None,
+            running: None,
+            disabled: None,
+            link_downs: None,
+        }
+    }
+}
+
 impl MikrotikRouterMetric {
     pub fn new(router_id: String) -> Self {
         Self {

@@ -84,6 +84,12 @@
   let router = $state<RouterRow | null>(null);
   let snapshot = $state<RouterSnapshot | null>(null);
   let metrics = $state<MetricRow[]>([]);
+  let ifacePrev = $state<Record<string, { rx: number; tx: number; ts: number }>>({});
+  let ifaceRates = $state<Record<string, { rx_bps: number | null; tx_bps: number | null }>>({});
+
+  let selectedInterface = $state<string | null>(null);
+  let ifaceHistoryLoading = $state(false);
+  let ifaceHistory = $state<any[]>([]);
 
   let cpuSeries = $derived.by(() => {
     const pts = metrics
@@ -138,6 +144,39 @@
       snapshot = snap as RouterSnapshot;
       router = (snapshot?.router || null) as any;
       metrics = (m || []) as any;
+
+      // Live per-interface bps (computed from UI refresh deltas).
+      if (snapshot?.interfaces?.length) {
+        const nowMs = Date.now();
+        const nextPrev = { ...ifacePrev };
+        const nextRates: Record<string, { rx_bps: number | null; tx_bps: number | null }> = {};
+
+        for (const it of snapshot.interfaces) {
+          const rx = typeof it.rx_byte === 'number' ? it.rx_byte : null;
+          const tx = typeof it.tx_byte === 'number' ? it.tx_byte : null;
+          const prev = nextPrev[it.name];
+
+          let rx_bps: number | null = null;
+          let tx_bps: number | null = null;
+
+          if (prev && prev.ts > 0) {
+            const dt = nowMs - prev.ts;
+            if (dt > 0) {
+              if (rx != null && rx >= prev.rx) rx_bps = Math.round(((rx - prev.rx) * 8 * 1000) / dt);
+              if (tx != null && tx >= prev.tx) tx_bps = Math.round(((tx - prev.tx) * 8 * 1000) / dt);
+            }
+          }
+
+          nextRates[it.name] = { rx_bps, tx_bps };
+
+          if (rx != null || tx != null) {
+            nextPrev[it.name] = { rx: rx ?? prev?.rx ?? 0, tx: tx ?? prev?.tx ?? 0, ts: nowMs };
+          }
+        }
+
+        ifacePrev = nextPrev;
+        ifaceRates = nextRates;
+      }
     } catch (e: any) {
       if (!opts?.silent) toast.error(e?.message || e);
     } finally {
@@ -201,6 +240,36 @@
     return `${m}m`;
   }
 
+  function formatBps(bps?: number | null) {
+    if (bps == null) return $t('common.na') || '—';
+    const abs = Math.abs(bps);
+    const units = ['bps', 'Kbps', 'Mbps', 'Gbps'];
+    let u = 0;
+    let v = abs;
+    while (v >= 1000 && u < units.length - 1) {
+      v /= 1000;
+      u++;
+    }
+    const s = `${v >= 10 || u === 0 ? v.toFixed(0) : v.toFixed(1)} ${units[u]}`;
+    return bps < 0 ? `-${s}` : s;
+  }
+
+  async function openInterface(name: string) {
+    if (!router) return;
+    selectedInterface = name;
+    ifaceHistoryLoading = true;
+    try {
+      ifaceHistory = (await api.mikrotik.routers.interfaceMetrics(router.id, {
+        interface: name,
+        limit: 120,
+      })) as any[];
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    } finally {
+      ifaceHistoryLoading = false;
+    }
+  }
+
   type InterfaceRow = InterfaceSnap & {
     status: 'running' | 'down' | 'disabled';
   };
@@ -236,6 +305,8 @@
       status: r.status,
       mtu: r.mtu ?? '—',
       mac: r.mac_address || '—',
+      rx_rate: formatBps(ifaceRates[r.name]?.rx_bps ?? null),
+      tx_rate: formatBps(ifaceRates[r.name]?.tx_bps ?? null),
       rx: formatBytes(r.rx_byte),
       tx: formatBytes(r.tx_byte),
       downs: r.link_downs ?? '—',
@@ -249,9 +320,12 @@
     { key: 'status', label: 'Status' },
     { key: 'mtu', label: 'MTU', align: 'right' as const, width: '90px' },
     { key: 'mac', label: 'MAC', class: 'mono' },
+    { key: 'rx_rate', label: 'RX Rate', class: 'mono', align: 'right' as const, width: '130px' },
+    { key: 'tx_rate', label: 'TX Rate', class: 'mono', align: 'right' as const, width: '130px' },
     { key: 'rx', label: 'RX', class: 'mono', align: 'right' as const, width: '120px' },
     { key: 'tx', label: 'TX', class: 'mono', align: 'right' as const, width: '120px' },
     { key: 'downs', label: 'Downs', class: 'mono', align: 'right' as const, width: '90px' },
+    { key: 'actions', label: '', align: 'right' as const, width: '60px' },
   ]);
 
   const ipRows = $derived.by(() => snapshot?.ip_addresses || []);
@@ -592,7 +666,11 @@
             mobileView="scroll"
           >
             {#snippet cell({ item, key }: any)}
-              {#if key === 'status'}
+              {#if key === 'name'}
+                <button class="link" type="button" onclick={() => openInterface(item.name)}>
+                  <span class="mono">{item.name}</span>
+                </button>
+              {:else if key === 'status'}
                 {#if item.status === 'disabled'}
                   <span class="pill off">Disabled</span>
                 {:else if item.status === 'running'}
@@ -600,6 +678,15 @@
                 {:else}
                   <span class="pill warn">Down</span>
                 {/if}
+              {:else if key === 'actions'}
+                <button
+                  class="icon-btn"
+                  type="button"
+                  onclick={() => openInterface(item.name)}
+                  title="Open"
+                >
+                  <Icon name="arrow-right" size={16} />
+                </button>
               {:else}
                 {item[key] ?? ''}
               {/if}
@@ -607,6 +694,67 @@
           </Table>
         </div>
       </div>
+
+      {#if selectedInterface}
+        <div class="card full">
+          <div class="card-head">
+            <h2>Traffic History</h2>
+            <span class="muted mono">{selectedInterface}</span>
+          </div>
+          {#if ifaceHistoryLoading}
+            <div class="muted">{$t('common.loading') || 'Loading...'}</div>
+          {:else if ifaceHistory.length === 0}
+            <div class="muted">No history yet (wait for poller).</div>
+          {:else}
+            {@const rxSeries = ifaceHistory
+              .slice()
+              .reverse()
+              .map((x) => (typeof x.rx_bps === 'number' ? x.rx_bps : null))
+              .filter((v) => v != null) as number[]}
+            {@const txSeries = ifaceHistory
+              .slice()
+              .reverse()
+              .map((x) => (typeof x.tx_bps === 'number' ? x.tx_bps : null))
+              .filter((v) => v != null) as number[]}
+
+            <div class="traffic-grid">
+              <div class="traffic-card">
+                <div class="traffic-top">
+                  <span class="muted">RX</span>
+                  <span class="mono">{formatBps(ifaceRates[selectedInterface]?.rx_bps ?? null)}</span>
+                </div>
+                <div class="spark small">
+                  {#if rxSeries.length === 0}
+                    <div class="muted">No RX samples.</div>
+                  {:else}
+                    {@const max = Math.max(...rxSeries, 1)}
+                    {#each rxSeries as v}
+                      <div class="bar rx" style={`height:${Math.round((v / max) * 100)}%;`} title={formatBps(v)}></div>
+                    {/each}
+                  {/if}
+                </div>
+              </div>
+
+              <div class="traffic-card">
+                <div class="traffic-top">
+                  <span class="muted">TX</span>
+                  <span class="mono">{formatBps(ifaceRates[selectedInterface]?.tx_bps ?? null)}</span>
+                </div>
+                <div class="spark small">
+                  {#if txSeries.length === 0}
+                    <div class="muted">No TX samples.</div>
+                  {:else}
+                    {@const max = Math.max(...txSeries, 1)}
+                    {#each txSeries as v}
+                      <div class="bar tx" style={`height:${Math.round((v / max) * 100)}%;`} title={formatBps(v)}></div>
+                    {/each}
+                  {/if}
+                </div>
+              </div>
+            </div>
+          {/if}
+        </div>
+      {/if}
     {:else if activeTab === 'ip'}
       <div class="card full">
         <div class="card-head">
@@ -1122,6 +1270,67 @@
     flex-wrap: wrap;
   }
 
+  .traffic-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .traffic-card {
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-card), transparent 8%);
+    border-radius: 18px;
+    padding: 12px;
+  }
+
+  .traffic-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 10px;
+    font-weight: 900;
+  }
+
+  .spark.small {
+    height: 120px;
+  }
+
+  .bar.rx {
+    background: linear-gradient(180deg, rgba(34, 197, 94, 0.9), rgba(34, 197, 94, 0.25));
+  }
+
+  .bar.tx {
+    background: linear-gradient(180deg, rgba(99, 102, 241, 0.9), rgba(99, 102, 241, 0.25));
+  }
+
+  .link {
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .link:hover {
+    text-decoration: underline;
+  }
+
+  .icon-btn {
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-primary);
+    border-radius: 12px;
+    padding: 8px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+  }
+
+  .icon-btn:hover {
+    background: var(--bg-hover);
+  }
+
   @media (max-width: 900px) {
     .page-content {
       padding: 18px;
@@ -1140,6 +1349,10 @@
     }
 
     .grid2 {
+      grid-template-columns: 1fr;
+    }
+
+    .traffic-grid {
       grid-template-columns: 1fr;
     }
   }
