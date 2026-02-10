@@ -4,10 +4,12 @@
   import { goto } from '$app/navigation';
   import { t } from 'svelte-i18n';
   import { can } from '$lib/stores/auth';
+  import { appSettings } from '$lib/stores/settings';
   import { api } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
+  import { formatDateTime, timeAgo } from '$lib/utils/date';
 
   type RouterRow = {
     id: string;
@@ -454,7 +456,16 @@
           </div>
           <div class="kv-item">
             <span class="kv-label">Last seen</span>
-            <span class="kv-value">{router.last_seen_at || '—'}</span>
+            {#if router.last_seen_at}
+              <span
+                class="kv-value"
+                title={formatDateTime(router.last_seen_at, { timeZone: $appSettings.app_timezone })}
+              >
+                {timeAgo(router.last_seen_at)}
+              </span>
+            {:else}
+              <span class="kv-value">—</span>
+            {/if}
           </div>
         </div>
       </div>

@@ -4,11 +4,13 @@
   import { page } from '$app/stores';
   import { t } from 'svelte-i18n';
   import { can } from '$lib/stores/auth';
+  import { appSettings } from '$lib/stores/settings';
   import { api } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
   import Table from '$lib/components/ui/Table.svelte';
+  import { formatDateTime, timeAgo } from '$lib/utils/date';
 
   type RouterRow = {
     id: string;
@@ -310,7 +312,15 @@
             <span class="muted">—</span>
           {/if}
         {:else if key === 'seen'}
-          <span class="muted">{item.last_seen_at || '—'}</span>
+          {#if item.last_seen_at}
+            <span
+              class="muted"
+              title={formatDateTime(item.last_seen_at, { timeZone: $appSettings.app_timezone })}
+              >{timeAgo(item.last_seen_at)}</span
+            >
+          {:else}
+            <span class="muted">—</span>
+          {/if}
         {:else if key === 'actions'}
           <div class="actions">
             <button class="icon-btn" type="button" onclick={() => openDetail(item)} title={$t('admin.network.routers.actions.open') || 'Open'}>
