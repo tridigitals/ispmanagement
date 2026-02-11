@@ -222,7 +222,12 @@ pub fn run() {
 
                 // MikroTik monitoring (tenant-scoped)
                 let mikrotik_service =
-                    MikrotikService::new(pool.clone(), notification_service.clone(), audit_service.clone());
+                    MikrotikService::new(
+                        pool.clone(),
+                        notification_service.clone(),
+                        audit_service.clone(),
+                        settings_service.clone(),
+                    );
                 std::sync::Arc::new(mikrotik_service.clone()).start_poller();
 
                 // Start Announcement Scheduler (scheduled broadcasts -> notifications)
@@ -455,6 +460,9 @@ pub fn run() {
                                     // MikroTik / Routers
                                     list_mikrotik_routers,
                                     list_mikrotik_noc,
+                                    list_mikrotik_alerts,
+                                    ack_mikrotik_alert,
+                                    resolve_mikrotik_alert,
                                     create_mikrotik_router,
                                     update_mikrotik_router,
                                     delete_mikrotik_router,
@@ -464,6 +472,7 @@ pub fn run() {
                                     list_mikrotik_router_metrics,
                                     list_mikrotik_interface_metrics,
                                     list_mikrotik_interface_latest,
+                                    get_mikrotik_live_interface_counters,
                                     // Announcements
                                     list_active_announcements,
                                     list_recent_announcements,

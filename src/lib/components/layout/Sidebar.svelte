@@ -144,6 +144,18 @@
             show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
           },
           {
+            label: $t('sidebar.wallboard') || 'Wallboard',
+            icon: 'monitor',
+            href: `${tenantPrefix}/admin/network/noc/wallboard`,
+            show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+          },
+          {
+            label: $t('sidebar.alerts') || 'Alerts',
+            icon: 'alert-triangle',
+            href: `${tenantPrefix}/admin/network/alerts`,
+            show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+          },
+          {
             label: $t('sidebar.routers') || 'Routers',
             icon: 'router',
             href: `${tenantPrefix}/admin/network/routers`,

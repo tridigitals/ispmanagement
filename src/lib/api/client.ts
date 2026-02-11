@@ -196,6 +196,9 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       // MikroTik routers (Tenant admin)
       list_mikrotik_routers: { method: 'GET', path: '/admin/mikrotik/routers' },
       list_mikrotik_noc: { method: 'GET', path: '/admin/mikrotik/noc' },
+      list_mikrotik_alerts: { method: 'GET', path: '/admin/mikrotik/alerts' },
+      ack_mikrotik_alert: { method: 'POST', path: '/admin/mikrotik/alerts/:id/ack' },
+      resolve_mikrotik_alert: { method: 'POST', path: '/admin/mikrotik/alerts/:id/resolve' },
       create_mikrotik_router: { method: 'POST', path: '/admin/mikrotik/routers' },
       update_mikrotik_router: { method: 'PUT', path: '/admin/mikrotik/routers/:id' },
       delete_mikrotik_router: { method: 'DELETE', path: '/admin/mikrotik/routers/:id' },
@@ -213,6 +216,10 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       list_mikrotik_interface_latest: {
         method: 'GET',
         path: '/admin/mikrotik/routers/:routerId/interfaces/latest',
+      },
+      get_mikrotik_live_interface_counters: {
+        method: 'GET',
+        path: '/admin/mikrotik/routers/:routerId/interfaces/live',
       },
       // Backup
       list_backups: { method: 'GET', path: '/backups' },
@@ -951,6 +958,8 @@ export const mikrotik = {
       password: string;
       use_tls?: boolean;
       enabled?: boolean;
+      maintenance_until?: string | null;
+      maintenance_reason?: string | null;
     }): Promise<any> =>
       safeInvoke('create_mikrotik_router', {
         token: getTokenOrThrow(),
@@ -962,6 +971,10 @@ export const mikrotik = {
         use_tls: router.use_tls,
         useTls: router.use_tls,
         enabled: router.enabled,
+        maintenance_until: router.maintenance_until,
+        maintenanceUntil: router.maintenance_until,
+        maintenance_reason: router.maintenance_reason,
+        maintenanceReason: router.maintenance_reason,
       }),
     update: (
       id: string,
@@ -973,6 +986,8 @@ export const mikrotik = {
         password?: string;
         use_tls?: boolean;
         enabled?: boolean;
+        maintenance_until?: string | null;
+        maintenance_reason?: string | null;
       },
     ): Promise<any> =>
       safeInvoke('update_mikrotik_router', {
@@ -986,6 +1001,11 @@ export const mikrotik = {
         use_tls: router.use_tls,
         useTls: router.use_tls,
         enabled: router.enabled,
+        // Always pass maintenance fields so server can clear them.
+        maintenance_until: router.maintenance_until ?? null,
+        maintenanceUntil: router.maintenance_until ?? null,
+        maintenance_reason: router.maintenance_reason ?? null,
+        maintenanceReason: router.maintenance_reason ?? null,
       }),
     delete: (id: string): Promise<void> =>
       safeInvoke('delete_mikrotik_router', { token: getTokenOrThrow(), id }),
@@ -1012,6 +1032,26 @@ export const mikrotik = {
         routerId,
         router_id: routerId,
       }),
+    interfaceLive: (routerId: string, names: string[]): Promise<any[]> =>
+      safeInvoke('get_mikrotik_live_interface_counters', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+        names,
+      }),
+  },
+  alerts: {
+    list: (params?: { activeOnly?: boolean; limit?: number }): Promise<any[]> =>
+      safeInvoke('list_mikrotik_alerts', {
+        token: getTokenOrThrow(),
+        active_only: params?.activeOnly,
+        activeOnly: params?.activeOnly,
+        limit: params?.limit,
+      }),
+    ack: (id: string): Promise<any> =>
+      safeInvoke('ack_mikrotik_alert', { token: getTokenOrThrow(), id }),
+    resolve: (id: string): Promise<any> =>
+      safeInvoke('resolve_mikrotik_alert', { token: getTokenOrThrow(), id }),
   },
 };
 

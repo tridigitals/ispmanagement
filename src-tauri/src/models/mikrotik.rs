@@ -22,6 +22,8 @@ pub struct MikrotikRouter {
     pub last_seen_at: Option<DateTime<Utc>>,
     pub latency_ms: Option<i32>,
     pub last_error: Option<String>,
+    pub maintenance_until: Option<DateTime<Utc>>,
+    pub maintenance_reason: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -54,6 +56,8 @@ impl MikrotikRouter {
             last_seen_at: None,
             latency_ms: None,
             last_error: None,
+            maintenance_until: None,
+            maintenance_reason: None,
             created_at: now,
             updated_at: now,
         }
@@ -69,6 +73,8 @@ pub struct CreateMikrotikRouterRequest {
     pub password: String,
     pub use_tls: Option<bool>,
     pub enabled: Option<bool>,
+    pub maintenance_until: Option<DateTime<Utc>>,
+    pub maintenance_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -81,6 +87,8 @@ pub struct UpdateMikrotikRouterRequest {
     pub password: Option<String>,
     pub use_tls: Option<bool>,
     pub enabled: Option<bool>,
+    pub maintenance_until: Option<DateTime<Utc>>,
+    pub maintenance_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -174,6 +182,15 @@ pub struct MikrotikInterfaceSnapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MikrotikInterfaceCounter {
+    pub name: String,
+    pub running: Option<bool>,
+    pub disabled: Option<bool>,
+    pub rx_byte: Option<i64>,
+    pub tx_byte: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MikrotikIpAddressSnapshot {
     pub address: String,
     pub network: Option<String>,
@@ -222,6 +239,8 @@ pub struct MikrotikRouterNocRow {
     pub last_seen_at: Option<DateTime<Utc>>,
     pub latency_ms: Option<i32>,
     pub last_error: Option<String>,
+    pub maintenance_until: Option<DateTime<Utc>>,
+    pub maintenance_reason: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 
@@ -234,4 +253,59 @@ pub struct MikrotikRouterNocRow {
     pub uptime_seconds: Option<i64>,
     pub rx_bps: Option<i64>,
     pub tx_bps: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct MikrotikAlert {
+    pub id: String,
+    pub tenant_id: String,
+    pub router_id: String,
+    pub alert_type: String, // offline | cpu | latency
+    pub severity: String,   // info | warning | critical
+    pub status: String,     // open | ack | resolved
+    pub title: String,
+    pub message: String,
+    pub value_num: Option<f64>,
+    pub threshold_num: Option<f64>,
+    pub triggered_at: DateTime<Utc>,
+    pub last_seen_at: DateTime<Utc>,
+    pub resolved_at: Option<DateTime<Utc>>,
+    pub acked_at: Option<DateTime<Utc>>,
+    pub acked_by: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl MikrotikAlert {
+    pub fn new(
+        tenant_id: String,
+        router_id: String,
+        alert_type: String,
+        severity: String,
+        title: String,
+        message: String,
+        value_num: Option<f64>,
+        threshold_num: Option<f64>,
+    ) -> Self {
+        let now = Utc::now();
+        Self {
+            id: Uuid::new_v4().to_string(),
+            tenant_id,
+            router_id,
+            alert_type,
+            severity,
+            status: "open".to_string(),
+            title,
+            message,
+            value_num,
+            threshold_num,
+            triggered_at: now,
+            last_seen_at: now,
+            resolved_at: None,
+            acked_at: None,
+            acked_by: None,
+            created_at: now,
+            updated_at: now,
+        }
+    }
 }

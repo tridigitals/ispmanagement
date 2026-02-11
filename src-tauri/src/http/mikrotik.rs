@@ -1,8 +1,8 @@
 use crate::error::{AppError, AppResult};
 use crate::http::AppState;
 use crate::models::{
-    CreateMikrotikRouterRequest, MikrotikInterfaceMetric, MikrotikRouter, MikrotikRouterMetric,
-    MikrotikTestResult, UpdateMikrotikRouterRequest,
+    CreateMikrotikRouterRequest, MikrotikAlert, MikrotikInterfaceCounter, MikrotikInterfaceMetric,
+    MikrotikRouter, MikrotikRouterMetric, MikrotikTestResult, UpdateMikrotikRouterRequest,
 };
 use axum::{
     extract::{Path, Query, State},
@@ -15,6 +15,9 @@ use serde::Deserialize;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/noc", get(get_noc))
+        .route("/alerts", get(list_alerts))
+        .route("/alerts/{id}/ack", post(ack_alert))
+        .route("/alerts/{id}/resolve", post(resolve_alert))
         .route("/routers", get(list_routers).post(create_router))
         .route(
             "/routers/{id}",
@@ -24,6 +27,7 @@ pub fn router() -> Router<AppState> {
         .route("/routers/{id}/metrics", get(list_metrics))
         .route("/routers/{id}/interfaces/metrics", get(list_interface_metrics))
         .route("/routers/{id}/interfaces/latest", get(list_interface_latest))
+        .route("/routers/{id}/interfaces/live", get(get_interface_live))
         .route("/routers/{id}/snapshot", get(get_snapshot))
 }
 
@@ -41,6 +45,71 @@ async fn tenant_and_claims(state: &AppState, headers: &HeaderMap) -> AppResult<(
     let claims = state.auth_service.validate_token(&token).await?;
     let tenant_id = claims.tenant_id.clone().ok_or(AppError::Unauthorized)?;
     Ok((tenant_id, claims))
+}
+
+#[derive(Debug, Deserialize)]
+struct AlertsQuery {
+    active_only: Option<bool>,
+    limit: Option<u32>,
+}
+
+// GET /api/admin/mikrotik/alerts?active_only=true&limit=200
+async fn list_alerts(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<AlertsQuery>,
+) -> AppResult<Json<Vec<MikrotikAlert>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await?;
+
+    let rows = state
+        .mikrotik_service
+        .list_alerts(&tenant_id, q.active_only.unwrap_or(true), q.limit.unwrap_or(200))
+        .await?;
+    Ok(Json(rows))
+}
+
+// POST /api/admin/mikrotik/alerts/{id}/ack
+async fn ack_alert(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<serde_json::Value>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    state
+        .mikrotik_service
+        .ack_alert(&tenant_id, &id, &claims.sub)
+        .await?;
+
+    Ok(Json(serde_json::json!({ "ok": true })))
+}
+
+// POST /api/admin/mikrotik/alerts/{id}/resolve
+async fn resolve_alert(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<serde_json::Value>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    state
+        .mikrotik_service
+        .resolve_alert_by_id(&tenant_id, &id, &claims.sub)
+        .await?;
+
+    Ok(Json(serde_json::json!({ "ok": true })))
 }
 
 // GET /api/admin/mikrotik/routers
@@ -296,6 +365,39 @@ async fn list_interface_latest(
         .mikrotik_service
         .list_latest_interface_metrics(&tenant_id, &id)
         .await?;
+    Ok(Json(rows))
+}
+
+#[derive(Debug, Deserialize)]
+struct LiveQuery {
+    names: String, // comma-separated
+}
+
+// GET /api/admin/mikrotik/routers/{id}/interfaces/live?names=ether1,ether2
+async fn get_interface_live(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Query(q): Query<LiveQuery>,
+) -> AppResult<Json<Vec<MikrotikInterfaceCounter>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await?;
+
+    let names: Vec<String> = q
+        .names
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    let rows = state
+        .mikrotik_service
+        .get_live_interface_counters(&tenant_id, &id, names)
+        .await?;
+
     Ok(Json(rows))
 }
 

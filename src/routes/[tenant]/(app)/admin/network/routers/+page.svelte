@@ -10,6 +10,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
   import Table from '$lib/components/ui/Table.svelte';
+  import DateTimeLocalInput from '$lib/components/ui/DateTimeLocalInput.svelte';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
 
   type RouterRow = {
@@ -25,6 +26,8 @@
     last_seen_at?: string | null;
     latency_ms?: number | null;
     last_error?: string | null;
+    maintenance_until?: string | null;
+    maintenance_reason?: string | null;
     updated_at?: string;
   };
 
@@ -33,6 +36,7 @@
   let search = $state('');
   let refreshing = $state(false);
   let lastRefreshAt = $state<number | null>(null);
+  let isMobile = $state(false);
 
   let showModal = $state(false);
   let editing: RouterRow | null = $state(null);
@@ -43,6 +47,29 @@
   let formUsername = $state('');
   let formPassword = $state('');
   let formEnabled = $state(true);
+  let formMaintenanceEnabled = $state(false);
+  let formMaintenanceUntilLocal = $state('');
+  let formMaintenanceReason = $state('');
+
+  function isoToLocalInput(iso?: string | null) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const mm = pad(d.getMonth() + 1);
+    const dd = pad(d.getDate());
+    const hh = pad(d.getHours());
+    const mi = pad(d.getMinutes());
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+  }
+
+  function localInputToIso(local: string): string | null {
+    if (!local) return null;
+    const d = new Date(local);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString();
+  }
 
   const filtered = $derived.by(() => {
     const q = search.trim().toLowerCase();
@@ -76,6 +103,19 @@
       goto('/unauthorized');
       return;
     }
+
+    if (typeof window !== 'undefined') {
+      const mq = window.matchMedia('(max-width: 1024px)');
+      const sync = () => (isMobile = mq.matches);
+      sync();
+      try {
+        mq.addEventListener('change', sync);
+      } catch {
+        // @ts-ignore
+        mq.addListener?.(sync);
+      }
+    }
+
     void load();
 
     // Keep status reasonably fresh without requiring manual refresh.
@@ -123,6 +163,9 @@
     formUsername = '';
     formPassword = '';
     formEnabled = true;
+    formMaintenanceEnabled = false;
+    formMaintenanceUntilLocal = '';
+    formMaintenanceReason = '';
     showModal = true;
   }
 
@@ -134,6 +177,11 @@
     formUsername = r.username || '';
     formPassword = '';
     formEnabled = r.enabled ?? true;
+    const untilIso = r.maintenance_until ?? null;
+    const untilMs = untilIso ? new Date(untilIso).getTime() : NaN;
+    formMaintenanceEnabled = Number.isFinite(untilMs) ? untilMs > Date.now() : false;
+    formMaintenanceUntilLocal = isoToLocalInput(untilIso);
+    formMaintenanceReason = r.maintenance_reason || '';
     showModal = true;
   }
 
@@ -150,6 +198,11 @@
     }
 
     try {
+      const maintenance_until = formMaintenanceEnabled
+        ? localInputToIso(formMaintenanceUntilLocal)
+        : null;
+      const maintenance_reason = formMaintenanceEnabled ? formMaintenanceReason.trim() || null : null;
+
       if (editing) {
         await api.mikrotik.routers.update(editing.id, {
           name,
@@ -158,6 +211,8 @@
           username: formUsername.trim(),
           password: formPassword.trim() ? formPassword : undefined,
           enabled: formEnabled,
+          maintenance_until,
+          maintenance_reason,
         });
         toast.success($t('admin.network.routers.toasts.updated') || 'Router updated');
       } else {
@@ -168,6 +223,8 @@
           username: formUsername.trim(),
           password: formPassword,
           enabled: formEnabled,
+          maintenance_until,
+          maintenance_reason,
         });
         toast.success($t('admin.network.routers.toasts.created') || 'Router created');
       }
@@ -284,6 +341,7 @@
       data={filtered}
       loading={loading}
       emptyText={$t('admin.network.routers.empty') || 'No routers yet'}
+      mobileView={isMobile ? 'card' : 'scroll'}
     >
       {#snippet cell({ item, key }: any)}
         {#if key === 'name'}
@@ -292,6 +350,11 @@
               <span class="name">{item.name}</span>
               {#if item.identity}
                 <span class="chip">{item.identity}</span>
+              {/if}
+              {#if item.maintenance_until && new Date(item.maintenance_until).getTime() > Date.now()}
+                <span class="chip warn" title={item.maintenance_reason || ''}>
+                  {$t('admin.network.routers.badges.maintenance') || 'Maintenance'}
+                </span>
               {/if}
             </div>
             <div class="muted">{item.username}@{item.host}:{item.port}</div>
@@ -392,6 +455,25 @@
       <input type="checkbox" bind:checked={formEnabled} />
       <span>{$t('admin.network.routers.form.enabled') || 'Enabled'}</span>
     </label>
+
+    <div class="divider"></div>
+
+    <label class="check">
+      <input type="checkbox" bind:checked={formMaintenanceEnabled} />
+      <span>{$t('admin.network.routers.form.maintenance') || 'Maintenance (mute alerts)'}</span>
+    </label>
+
+    {#if formMaintenanceEnabled}
+      <DateTimeLocalInput
+        label={$t('admin.network.routers.form.maintenance_until') || 'Maintenance until'}
+        bind:value={formMaintenanceUntilLocal}
+        placeholder="YYYY-MM-DD HH:mm"
+      />
+      <label>
+        <span>{$t('admin.network.routers.form.maintenance_reason') || 'Reason (optional)'}</span>
+        <input bind:value={formMaintenanceReason} placeholder="e.g. Upgrade firmware" />
+      </label>
+    {/if}
 
     <div class="modal-actions">
       <button class="btn ghost" type="button" onclick={() => (showModal = false)}>
@@ -563,6 +645,12 @@
     color: var(--text-secondary);
   }
 
+  .chip.warn {
+    border-color: rgba(245, 158, 11, 0.28);
+    background: rgba(245, 158, 11, 0.12);
+    color: rgba(245, 158, 11, 0.95);
+  }
+
   .mono {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
       'Courier New', monospace;
@@ -633,6 +721,12 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 2px 0;
   }
 
   label {

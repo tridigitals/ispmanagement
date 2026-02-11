@@ -85,6 +85,9 @@
     Eraser,
     MapPin,
     Router,
+    GripVertical,
+    Pause,
+    Play,
   } from 'lucide-svelte';
 
   let {
@@ -189,6 +192,9 @@
     megaphone: Megaphone,
     'map-pin': MapPin,
     router: Router,
+    'grip-vertical': GripVertical,
+    pause: Pause,
+    play: Play,
   };
 
   let IconComponent = $derived(icons[name] || HelpCircle);

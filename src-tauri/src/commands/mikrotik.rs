@@ -1,7 +1,7 @@
 //! MikroTik router inventory + monitoring commands (tenant admin).
 
 use crate::models::{
-    CreateMikrotikRouterRequest, MikrotikInterfaceMetric, MikrotikRouter, MikrotikRouterMetric,
+    CreateMikrotikRouterRequest, MikrotikAlert, MikrotikInterfaceCounter, MikrotikInterfaceMetric, MikrotikRouter, MikrotikRouterMetric,
     MikrotikRouterNocRow, MikrotikTestResult, UpdateMikrotikRouterRequest,
 };
 use crate::services::{AuditService, AuthService, MikrotikService};
@@ -44,6 +44,73 @@ pub async fn list_mikrotik_noc(
         .map_err(|e| e.to_string())?;
 
     mikrotik.list_noc(&tenant_id).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_mikrotik_alerts(
+    token: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+    active_only: Option<bool>,
+    limit: Option<u32>,
+) -> Result<Vec<MikrotikAlert>, String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    mikrotik
+        .list_alerts(&tenant_id, active_only.unwrap_or(true), limit.unwrap_or(200))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn ack_mikrotik_alert(
+    token: String,
+    id: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<(), String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    mikrotik
+        .ack_alert(&tenant_id, &id, &claims.sub)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn resolve_mikrotik_alert(
+    token: String,
+    id: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<(), String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    mikrotik
+        .resolve_alert_by_id(&tenant_id, &id, &claims.sub)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -101,6 +168,8 @@ pub async fn create_mikrotik_router(
     password: String,
     use_tls: Option<bool>,
     enabled: Option<bool>,
+    maintenance_until: Option<String>,
+    maintenance_reason: Option<String>,
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
     audit: State<'_, AuditService>,
@@ -125,6 +194,11 @@ pub async fn create_mikrotik_router(
                 password,
                 use_tls,
                 enabled,
+                maintenance_until: maintenance_until
+                    .as_deref()
+                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+                    .map(|dt| dt.with_timezone(&chrono::Utc)),
+                maintenance_reason,
             },
         )
         .await
@@ -156,6 +230,8 @@ pub async fn update_mikrotik_router(
     password: Option<String>,
     use_tls: Option<bool>,
     enabled: Option<bool>,
+    maintenance_until: Option<String>,
+    maintenance_reason: Option<String>,
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
     audit: State<'_, AuditService>,
@@ -181,6 +257,11 @@ pub async fn update_mikrotik_router(
                 password,
                 use_tls,
                 enabled,
+                maintenance_until: maintenance_until
+                    .as_deref()
+                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+                    .map(|dt| dt.with_timezone(&chrono::Utc)),
+                maintenance_reason,
             },
         )
         .await
@@ -368,6 +449,29 @@ pub async fn list_mikrotik_interface_latest(
 
     mikrotik
         .list_latest_interface_metrics(&tenant_id, &rid)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_mikrotik_live_interface_counters(
+    token: String,
+    router_id: String,
+    names: Vec<String>,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<Vec<MikrotikInterfaceCounter>, String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    mikrotik
+        .get_live_interface_counters(&tenant_id, &router_id, names)
         .await
         .map_err(|e| e.to_string())
 }

@@ -24,6 +24,8 @@
     last_seen_at?: string | null;
     latency_ms?: number | null;
     last_error?: string | null;
+    maintenance_until?: string | null;
+    maintenance_reason?: string | null;
     updated_at?: string | null;
   };
 
@@ -89,6 +91,9 @@
   let ifacePrev = $state<Record<string, { rx: number; tx: number; ts: number }>>({});
   let ifaceRates = $state<Record<string, { rx_bps: number | null; tx_bps: number | null }>>({});
 
+  let isMobile = $state(false);
+  let mqCleanup: (() => void) | null = null;
+
   let selectedInterface = $state<string | null>(null);
   let ifaceHistoryLoading = $state(false);
   let ifaceHistory = $state<any[]>([]);
@@ -101,8 +106,16 @@
     return pts.filter((v) => v != null) as number[];
   });
 
-  let activeTab = $state<'overview' | 'interfaces' | 'ip' | 'metrics'>('overview');
+  let activeTab = $state<'overview' | 'interfaces' | 'traffic' | 'ip' | 'metrics'>('overview');
   let ifFilter = $state<'all' | 'running' | 'down' | 'disabled'>('all');
+
+  let watchSearch = $state('');
+  let watched = $state<string[]>([]);
+  let liveLoading = $state(false);
+  let livePrev = $state<Record<string, { rx: number; tx: number; ts: number }>>({});
+  let liveSeries = $state<Record<string, { rx: number[]; tx: number[] }>>({});
+  let liveRates = $state<Record<string, { rx_bps: number | null; tx_bps: number | null }>>({});
+  let liveHandle: any = null;
 
   let refreshHandle: any = null;
   let refreshInFlight = false;
@@ -112,6 +125,23 @@
       goto('/unauthorized');
       return;
     }
+
+    if (typeof window !== 'undefined') {
+      const mq = window.matchMedia('(max-width: 1024px)');
+      const sync = () => (isMobile = mq.matches);
+      sync();
+
+      try {
+        mq.addEventListener('change', sync);
+        mqCleanup = () => mq.removeEventListener('change', sync);
+      } catch {
+        // @ts-ignore
+        mq.addListener?.(sync);
+        // @ts-ignore
+        mqCleanup = () => mq.removeListener?.(sync);
+      }
+    }
+
     void refresh({ silent: true });
 
     // Re-check status/metrics periodically.
@@ -122,7 +152,103 @@
 
   onDestroy(() => {
     if (refreshHandle) clearInterval(refreshHandle);
+    mqCleanup?.();
+    if (liveHandle) clearInterval(liveHandle);
   });
+
+  $effect(() => {
+    if (liveHandle) {
+      clearInterval(liveHandle);
+      liveHandle = null;
+    }
+
+    if (activeTab !== 'traffic') return;
+    if (!router?.id) return;
+    if (!watched.length) return;
+
+    void pollLive();
+    liveHandle = setInterval(() => void pollLive(), 1000);
+  });
+
+  function toggleWatched(name: string) {
+    const set = new Set(watched);
+    if (set.has(name)) set.delete(name);
+    else {
+      if (set.size >= 6) {
+        toast.error($t('admin.network.routers.traffic.max_watch') || 'Max 6 interfaces.');
+        return;
+      }
+      set.add(name);
+    }
+    watched = Array.from(set);
+  }
+
+  function clearWatched() {
+    watched = [];
+    livePrev = {};
+    liveSeries = {};
+    liveRates = {};
+  }
+
+  async function pollLive() {
+    if (!router?.id) return;
+    if (!watched.length) return;
+    if (liveLoading) return;
+
+    liveLoading = true;
+    try {
+      const rows = (await api.mikrotik.routers.interfaceLive(router.id, watched)) as any[];
+      const nowMs = Date.now();
+
+      const nextPrev = { ...livePrev };
+      const nextRates: Record<string, { rx_bps: number | null; tx_bps: number | null }> = {
+        ...liveRates,
+      };
+      const nextSeries: Record<string, { rx: number[]; tx: number[] }> = { ...liveSeries };
+
+      for (const r of rows) {
+        const name = String(r.name || '');
+        if (!name) continue;
+
+        const rx = typeof r.rx_byte === 'number' ? r.rx_byte : null;
+        const tx = typeof r.tx_byte === 'number' ? r.tx_byte : null;
+
+        const prev = nextPrev[name];
+        let rx_bps: number | null = null;
+        let tx_bps: number | null = null;
+
+        if (prev && prev.ts > 0) {
+          const dt = nowMs - prev.ts;
+          if (dt > 0) {
+            if (rx != null && rx >= prev.rx) rx_bps = Math.round(((rx - prev.rx) * 8 * 1000) / dt);
+            if (tx != null && tx >= prev.tx) tx_bps = Math.round(((tx - prev.tx) * 8 * 1000) / dt);
+          }
+        }
+
+        nextRates[name] = { rx_bps, tx_bps };
+
+        const series = nextSeries[name] || { rx: [], tx: [] };
+        const rxPoint = rx_bps == null ? 0 : Math.max(0, rx_bps);
+        const txPoint = tx_bps == null ? 0 : Math.max(0, tx_bps);
+        series.rx = [...series.rx, rxPoint].slice(-60);
+        series.tx = [...series.tx, txPoint].slice(-60);
+        nextSeries[name] = series;
+
+        if (rx != null || tx != null) {
+          nextPrev[name] = { rx: rx ?? prev?.rx ?? 0, tx: tx ?? prev?.tx ?? 0, ts: nowMs };
+        }
+      }
+
+      livePrev = nextPrev;
+      liveRates = nextRates;
+      liveSeries = nextSeries;
+    } catch (e: any) {
+      // Avoid spamming toasts; show once in a while via console
+      console.warn('[Traffic] live poll failed', e);
+    } finally {
+      liveLoading = false;
+    }
+  }
 
   async function refresh(opts?: { silent?: boolean }) {
     if (refreshInFlight) return;
@@ -231,17 +357,6 @@
     return n < 0 ? `-${s}` : s;
   }
 
-  function formatUptime(secs?: number | null) {
-    if (secs == null) return $t('common.na') || '—';
-    const s = Math.max(0, Math.floor(secs));
-    const d = Math.floor(s / 86400);
-    const h = Math.floor((s % 86400) / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    if (d > 0) return `${d}d ${h}h`;
-    if (h > 0) return `${h}h ${m}m`;
-    return `${m}m`;
-  }
-
   function formatBps(bps?: number | null) {
     if (bps == null) return $t('common.na') || '—';
     const abs = Math.abs(bps);
@@ -254,6 +369,17 @@
     }
     const s = `${v >= 10 || u === 0 ? v.toFixed(0) : v.toFixed(1)} ${units[u]}`;
     return bps < 0 ? `-${s}` : s;
+  }
+
+  function formatUptime(secs?: number | null) {
+    if (secs == null) return $t('common.na') || '—';
+    const s = Math.max(0, Math.floor(secs));
+    const d = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    if (d > 0) return `${d}d ${h}h`;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
   }
 
   async function openInterface(name: string) {
@@ -416,6 +542,11 @@
         <div class="kicker">
           <span class="dot" class:online={router.is_online}></span>
           <span class="k">MikroTik</span>
+          {#if router.maintenance_until && new Date(router.maintenance_until).getTime() > Date.now()}
+            <span class="chip warn" title={router.maintenance_reason || ''}>
+              {$t('admin.network.routers.badges.maintenance') || 'Maintenance'}
+            </span>
+          {/if}
         </div>
         <h1 class="title">{router.name}</h1>
         <div class="meta">
@@ -489,6 +620,17 @@
         Interfaces
         {#if snapshot?.interfaces?.length}
           <span class="tab-count">{snapshot.interfaces.length}</span>
+        {/if}
+      </button>
+      <button
+        type="button"
+        class="tab {activeTab === 'traffic' ? 'active' : ''}"
+        onclick={() => (activeTab = 'traffic')}
+      >
+        <Icon name="activity" size={16} />
+        {$t('admin.network.routers.tabs.traffic') || 'Traffic'}
+        {#if watched.length}
+          <span class="tab-count">{watched.length}</span>
         {/if}
       </button>
       <button
@@ -674,7 +816,7 @@
             pageSize={10}
             searchable={true}
             searchPlaceholder="Search interfaces..."
-            mobileView="scroll"
+            mobileView={isMobile ? 'card' : 'scroll'}
           >
             {#snippet cell({ item, key }: any)}
               {#if key === 'name'}
@@ -781,7 +923,7 @@
             pageSize={10}
             searchable={true}
             searchPlaceholder="Search IPs..."
-            mobileView="scroll"
+            mobileView={isMobile ? 'card' : 'scroll'}
           >
             {#snippet cell({ item, key }: any)}
               {#if key === 'flags'}
@@ -803,6 +945,102 @@
           </Table>
         </div>
       </div>
+    {:else if activeTab === 'traffic'}
+      <div class="grid live-grid">
+        <div class="card">
+          <div class="card-head">
+            <h2>{$t('admin.network.routers.traffic.watch') || 'Watch Interfaces'}</h2>
+            <span class="muted">{watched.length}/6</span>
+          </div>
+
+          {#if snapshot?.interfaces?.length}
+            <div class="watch-toolbar">
+              <div class="search small">
+                <Icon name="search" size={16} />
+                <input
+                  class="search-input"
+                  bind:value={watchSearch}
+                  placeholder={$t('admin.network.routers.traffic.search') || 'Search interfaces...'}
+                />
+              </div>
+              <button class="btn ghost" type="button" onclick={clearWatched} disabled={!watched.length}>
+                <Icon name="x" size={16} />
+                {$t('common.clear') || 'Clear'}
+              </button>
+            </div>
+
+            <div class="watch-list">
+              {#each snapshot.interfaces
+                .slice()
+                .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+                .filter((i) => i.name.toLowerCase().includes(watchSearch.trim().toLowerCase())) as i}
+                <button
+                  type="button"
+                  class="watch-item {watched.includes(i.name) ? 'on' : ''}"
+                  onclick={() => toggleWatched(i.name)}
+                  title={i.interface_type || ''}
+                >
+                  <span class="mono">{i.name}</span>
+                  <span class="muted">{i.interface_type || ''}</span>
+                  <span class="spacer"></span>
+                  {#if watched.includes(i.name)}
+                    <Icon name="check-circle" size={16} />
+                  {:else}
+                    <Icon name="circle" size={16} />
+                  {/if}
+                </button>
+              {/each}
+            </div>
+          {:else}
+            <div class="muted">No interfaces yet.</div>
+          {/if}
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>{$t('admin.network.routers.traffic.realtime') || 'Realtime Traffic'}</h2>
+            <span class="muted">{liveLoading ? ($t('common.loading') || 'Loading...') : '1s'}</span>
+          </div>
+
+          {#if watched.length === 0}
+            <div class="empty">
+              <Icon name="activity" size={18} />
+              {$t('admin.network.routers.traffic.empty') || 'Select one or more interfaces to watch.'}
+            </div>
+          {:else}
+            <div class="live-cards">
+              {#each watched as name (name)}
+                {@const rx = liveSeries[name]?.rx ?? []}
+                {@const tx = liveSeries[name]?.tx ?? []}
+                {@const max = Math.max(1, ...rx, ...tx)}
+                <div class="live-card">
+                  <div class="live-top">
+                    <span class="mono">{name}</span>
+                    <span class="chip small">RX</span>
+                    <span class="mono">{formatBps(liveRates[name]?.rx_bps ?? null)}</span>
+                    <span class="sep">·</span>
+                    <span class="chip small">TX</span>
+                    <span class="mono">{formatBps(liveRates[name]?.tx_bps ?? null)}</span>
+                  </div>
+
+                  <div class="spark small">
+                    <div class="bars">
+                      {#each rx as v, idx (idx)}
+                        <div class="bar rx" style={`height:${Math.round((v / max) * 100)}%;`} title={`RX ${formatBps(v)}`}></div>
+                      {/each}
+                    </div>
+                    <div class="bars">
+                      {#each tx as v, idx (idx)}
+                        <div class="bar tx" style={`height:${Math.round((v / max) * 100)}%;`} title={`TX ${formatBps(v)}`}></div>
+                      {/each}
+                    </div>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      </div>
     {:else if activeTab === 'metrics'}
       <div class="card full">
         <div class="card-head">
@@ -818,7 +1056,7 @@
             pageSize={25}
             searchable={true}
             searchPlaceholder="Search metrics..."
-            mobileView="scroll"
+            mobileView={isMobile ? 'card' : 'scroll'}
           />
         </div>
       </div>
@@ -953,6 +1191,12 @@
     background: color-mix(in srgb, var(--bg-hover), transparent 20%);
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
+  }
+
+  .chip.warn {
+    border-color: rgba(245, 158, 11, 0.28);
+    background: rgba(245, 158, 11, 0.12);
+    color: rgba(245, 158, 11, 0.95);
   }
 
   .alert {
@@ -1118,6 +1362,94 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  .live-grid {
+    grid-template-columns: 0.9fr 1.1fr;
+    align-items: start;
+  }
+
+  .watch-toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+
+  .search.small {
+    padding: 8px 10px;
+    min-width: min(380px, 100%);
+  }
+
+  .watch-list {
+    display: grid;
+    gap: 8px;
+    max-height: 520px;
+    overflow: auto;
+    padding-right: 4px;
+  }
+
+  .watch-item {
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-primary);
+    border-radius: 14px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+
+  .watch-item:hover {
+    background: var(--bg-hover);
+  }
+
+  .watch-item.on {
+    border-color: rgba(99, 102, 241, 0.35);
+    background: rgba(99, 102, 241, 0.12);
+  }
+
+  .spacer {
+    flex: 1;
+  }
+
+  .live-cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .live-card {
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-card), transparent 6%);
+    border-radius: 18px;
+    padding: 12px;
+  }
+
+  .live-top {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .chip.small {
+    padding: 2px 8px;
+    font-weight: 900;
+  }
+
+  .bars {
+    height: 48px;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 2px;
+    align-items: end;
+    opacity: 0.95;
   }
 
   .seg-btn {
@@ -1364,6 +1696,14 @@
     }
 
     .traffic-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .live-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .live-cards {
       grid-template-columns: 1fr;
     }
   }

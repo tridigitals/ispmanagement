@@ -13,11 +13,11 @@ use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     CreateMikrotikRouterRequest, MikrotikHealthSnapshot, MikrotikInterfaceSnapshot,
-    MikrotikInterfaceMetric, MikrotikIpAddressSnapshot, MikrotikRouter, MikrotikRouterMetric,
+    MikrotikInterfaceCounter, MikrotikInterfaceMetric, MikrotikIpAddressSnapshot, MikrotikAlert, MikrotikRouter, MikrotikRouterMetric,
     MikrotikRouterNocRow, MikrotikRouterSnapshot, MikrotikTestResult, UpdateMikrotikRouterRequest,
 };
 use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
-use crate::services::{AuditService, NotificationService};
+use crate::services::{AuditService, NotificationService, SettingsService};
 use chrono::Utc;
 use mikrotik_rs::{protocol::command::CommandBuilder, protocol::CommandResponse, MikrotikDevice};
 use std::sync::Arc;
@@ -26,19 +26,42 @@ use tokio::time::{timeout, Duration};
 use tracing::{info, warn};
 use chrono::DateTime;
 
+// Default thresholds (kept in sync with UI "risk" filters).
+// TODO: make configurable per tenant via Settings.
+const CPU_RISK: i32 = 70;
+const CPU_HOT: i32 = 85;
+const LATENCY_RISK_MS: i32 = 200;
+const LATENCY_HOT_MS: i32 = 400;
+
+#[derive(Clone, Copy)]
+struct Thresholds {
+    enabled: bool,
+    cpu_risk: i32,
+    cpu_hot: i32,
+    latency_risk_ms: i32,
+    latency_hot_ms: i32,
+}
+
 #[derive(Clone)]
 pub struct MikrotikService {
     pool: DbPool,
     notification_service: NotificationService,
     audit_service: AuditService,
+    settings_service: SettingsService,
 }
 
 impl MikrotikService {
-    pub fn new(pool: DbPool, notification_service: NotificationService, audit_service: AuditService) -> Self {
+    pub fn new(
+        pool: DbPool,
+        notification_service: NotificationService,
+        audit_service: AuditService,
+        settings_service: SettingsService,
+    ) -> Self {
         Self {
             pool,
             notification_service,
             audit_service,
+            settings_service,
         }
     }
 
@@ -65,6 +88,7 @@ impl MikrotikService {
             SELECT
               r.id, r.tenant_id, r.name, r.host, r.port, r.username, r.use_tls, r.enabled,
               r.identity, r.ros_version, r.is_online, r.last_seen_at, r.latency_ms, r.last_error,
+              r.maintenance_until, r.maintenance_reason,
               r.created_at, r.updated_at,
 
               (SELECT m.cpu_load FROM mikrotik_router_metrics m WHERE m.router_id = r.id ORDER BY m.ts DESC LIMIT 1) AS cpu_load,
@@ -86,6 +110,125 @@ impl MikrotikService {
         .map_err(AppError::Database)?;
 
         Ok(rows)
+    }
+
+    pub async fn list_alerts(
+        &self,
+        tenant_id: &str,
+        active_only: bool,
+        limit: u32,
+    ) -> AppResult<Vec<MikrotikAlert>> {
+        let rows = if active_only {
+            sqlx::query_as::<_, MikrotikAlert>(
+                r#"
+                SELECT * FROM mikrotik_alerts
+                WHERE tenant_id = $1 AND resolved_at IS NULL
+                ORDER BY updated_at DESC
+                LIMIT $2
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(limit as i64)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(AppError::Database)?
+        } else {
+            sqlx::query_as::<_, MikrotikAlert>(
+                r#"
+                SELECT * FROM mikrotik_alerts
+                WHERE tenant_id = $1
+                ORDER BY updated_at DESC
+                LIMIT $2
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(limit as i64)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(AppError::Database)?
+        };
+
+        Ok(rows)
+    }
+
+    pub async fn ack_alert(&self, tenant_id: &str, alert_id: &str, user_id: &str) -> AppResult<()> {
+        let now = Utc::now();
+        sqlx::query(
+            r#"
+            UPDATE mikrotik_alerts
+            SET status = 'ack',
+                acked_at = $1,
+                acked_by = $2,
+                updated_at = $3
+            WHERE id = $4 AND tenant_id = $5 AND resolved_at IS NULL
+            "#,
+        )
+        .bind(now)
+        .bind(user_id)
+        .bind(now)
+        .bind(alert_id)
+        .bind(tenant_id)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+        Ok(())
+    }
+
+    pub async fn resolve_alert_by_id(
+        &self,
+        tenant_id: &str,
+        alert_id: &str,
+        user_id: &str,
+    ) -> AppResult<()> {
+        let now = Utc::now();
+
+        let alert: Option<MikrotikAlert> = sqlx::query_as::<_, MikrotikAlert>(
+            r#"
+            SELECT * FROM mikrotik_alerts
+            WHERE id = $1 AND tenant_id = $2
+            "#,
+        )
+        .bind(alert_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let alert = alert.ok_or_else(|| AppError::NotFound("Alert not found".to_string()))?;
+
+        sqlx::query(
+            r#"
+            UPDATE mikrotik_alerts
+            SET status = 'resolved',
+                resolved_at = $1,
+                updated_at = $2
+            WHERE id = $3 AND tenant_id = $4 AND resolved_at IS NULL
+            "#,
+        )
+        .bind(now)
+        .bind(now)
+        .bind(alert_id)
+        .bind(tenant_id)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        self.audit_service
+            .log(
+                Some(user_id),
+                Some(tenant_id),
+                "resolve",
+                "mikrotik_alert",
+                Some(alert_id),
+                Some(&format!(
+                    "Resolved alert {} for router {} (type: {})",
+                    alert.title, alert.router_id, alert.alert_type
+                )),
+                None,
+            )
+            .await;
+
+        Ok(())
     }
 
     pub async fn get_router(&self, tenant_id: &str, id: &str) -> AppResult<Option<MikrotikRouter>> {
@@ -126,11 +269,13 @@ impl MikrotikService {
             INSERT INTO mikrotik_routers
             (id, tenant_id, name, host, port, username, password, use_tls, enabled,
              identity, ros_version, is_online, last_seen_at, latency_ms, last_error,
+             maintenance_until, maintenance_reason,
              created_at, updated_at)
             VALUES
             ($1,$2,$3,$4,$5,$6,$7,$8,$9,
              $10,$11,$12,$13,$14,$15,
-             $16,$17)
+             $16,$17,
+             $18,$19)
             "#,
         )
         .bind(&router.id)
@@ -148,6 +293,8 @@ impl MikrotikService {
         .bind(&router.last_seen_at)
         .bind(&router.latency_ms)
         .bind(&router.last_error)
+        .bind(req.maintenance_until)
+        .bind(req.maintenance_reason)
         .bind(router.created_at)
         .bind(router.updated_at)
         .execute(&self.pool)
@@ -179,6 +326,10 @@ impl MikrotikService {
         };
         let use_tls = req.use_tls.unwrap_or(existing.use_tls);
         let enabled = req.enabled.unwrap_or(existing.enabled);
+        // Maintenance is treated as an explicit admin action; allow clearing by passing null.
+        // Our client always sends these fields on update.
+        let maintenance_until = req.maintenance_until;
+        let maintenance_reason = req.maintenance_reason;
 
         sqlx::query(
             r#"
@@ -190,8 +341,10 @@ impl MikrotikService {
               password = $5,
               use_tls = $6,
               enabled = $7,
-              updated_at = $8
-            WHERE id = $9 AND tenant_id = $10
+              maintenance_until = $8,
+              maintenance_reason = $9,
+              updated_at = $10
+            WHERE id = $11 AND tenant_id = $12
             "#,
         )
         .bind(&name)
@@ -201,6 +354,8 @@ impl MikrotikService {
         .bind(&password)
         .bind(use_tls)
         .bind(enabled)
+        .bind(maintenance_until)
+        .bind(maintenance_reason)
         .bind(now)
         .bind(id)
         .bind(tenant_id)
@@ -358,6 +513,58 @@ impl MikrotikService {
             }
             last = Some(r.interface_name.clone());
             out.push(r);
+        }
+
+        Ok(out)
+    }
+
+    /// Live per-interface counters (best-effort) used for realtime UI polling.
+    /// This does not persist anything to DB.
+    pub async fn get_live_interface_counters(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        names: Vec<String>,
+    ) -> AppResult<Vec<MikrotikInterfaceCounter>> {
+        if names.is_empty() {
+            return Err(AppError::Validation("names is required".into()));
+        }
+        if names.len() > 12 {
+            return Err(AppError::Validation("too many interfaces (max 12)".into()));
+        }
+
+        let router = self
+            .get_router(tenant_id, router_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Router not found".to_string()))?;
+
+        let password = decrypt_secret_opt(router.password.as_str())?;
+        let addr = format!("{}:{}", router.host, router.port);
+        let dev = timeout(
+            Duration::from_secs(5),
+            MikrotikDevice::connect(addr, router.username.as_str(), password.as_deref()),
+        )
+        .await
+        .map_err(|_| AppError::Internal("Connection timed out".into()))?
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        // Fetch all interface snapshots and filter. RouterOS doesn't reliably support
+        // "IN" queries across all versions; we keep it portable.
+        let snaps = self.fetch_interfaces_snapshot(&dev).await.unwrap_or_default();
+        let set: std::collections::HashSet<String> = names.into_iter().collect();
+
+        let mut out: Vec<MikrotikInterfaceCounter> = vec![];
+        for s in snaps {
+            if !set.contains(&s.name) {
+                continue;
+            }
+            out.push(MikrotikInterfaceCounter {
+                name: s.name,
+                running: s.running,
+                disabled: s.disabled,
+                rx_byte: s.rx_byte,
+                tx_byte: s.tx_byte,
+            });
         }
 
         Ok(out)
@@ -736,6 +943,11 @@ impl MikrotikService {
         let now = Utc::now();
         let latency_ms = Some(started.elapsed().as_millis().min(i32::MAX as u128) as i32);
 
+        let in_maintenance = router
+            .maintenance_until
+            .map(|u| u > now)
+            .unwrap_or(false);
+
         match probe {
             Ok((identity, version)) => {
                 // Basic resource snapshot
@@ -811,6 +1023,15 @@ impl MikrotikService {
                     }
                 }
 
+                // Resolve "offline" incident and evaluate CPU/latency incidents.
+                if in_maintenance {
+                    let _ = self.resolve_all_router_alerts(&tenant_id, &router.id).await;
+                } else {
+                    let _ = self.resolve_alert(&tenant_id, &router.id, "offline").await;
+                    let _ = self.eval_cpu_alert(&tenant_id, &router, metric.cpu_load, now).await;
+                    let _ = self.eval_latency_alert(&tenant_id, &router, latency_ms, now).await;
+                }
+
                 if !prev_online {
                     self.notify_tenant(
                         &tenant_id,
@@ -854,6 +1075,26 @@ impl MikrotikService {
                 .await
                 .map_err(AppError::Database)?;
 
+                if in_maintenance {
+                    let _ = self.resolve_all_router_alerts(&tenant_id, &router.id).await;
+                } else {
+                    // Create/refresh "offline" incident. CPU/latency becomes unknown when offline, so resolve them.
+                    let _ = self.upsert_alert(
+                        &tenant_id,
+                        &router,
+                        "offline",
+                        "critical",
+                        "Router offline",
+                        format!("{} is unreachable.", router.name),
+                        None,
+                        None,
+                        now,
+                    )
+                    .await;
+                    let _ = self.resolve_alert(&tenant_id, &router.id, "cpu").await;
+                    let _ = self.resolve_alert(&tenant_id, &router.id, "latency").await;
+                }
+
                 if prev_online {
                     self.notify_tenant(
                         &tenant_id,
@@ -887,6 +1128,314 @@ impl MikrotikService {
         );
 
         Ok(())
+    }
+
+    async fn eval_cpu_alert(
+        &self,
+        tenant_id: &str,
+        router: &MikrotikRouter,
+        cpu_load: Option<i32>,
+        now: DateTime<Utc>,
+    ) -> AppResult<()> {
+        let th = self.get_thresholds(tenant_id).await;
+        if !th.enabled {
+            let _ = self.resolve_all_router_alerts(tenant_id, &router.id).await;
+            return Ok(());
+        }
+
+        if let Some(cpu) = cpu_load {
+            if cpu >= th.cpu_risk {
+                let created = self
+                    .upsert_alert(
+                        tenant_id,
+                        router,
+                        "cpu",
+                        if cpu >= th.cpu_hot { "critical" } else { "warning" },
+                        "High CPU",
+                        format!("{} CPU is {}% (threshold: {}%).", router.name, cpu, th.cpu_risk),
+                        Some(cpu as f64),
+                        Some(th.cpu_risk as f64),
+                        now,
+                    )
+                    .await?;
+
+                if created {
+                    self.notify_tenant(
+                        tenant_id,
+                        "High CPU",
+                        format!("{} CPU is {}%.", router.name, cpu),
+                        Some(format!("/admin/network/routers/{}", router.id)),
+                        "warning",
+                    )
+                    .await;
+
+                    self.audit_service
+                        .log(
+                            None,
+                            Some(tenant_id),
+                            "alert_cpu",
+                            "mikrotik_alert",
+                            Some(&router.id),
+                            Some(&format!("CPU alert: {}% on {}", cpu, router.name)),
+                            None,
+                        )
+                        .await;
+                }
+
+                return Ok(());
+            }
+        }
+
+        let _ = self.resolve_alert(tenant_id, &router.id, "cpu").await;
+        Ok(())
+    }
+
+    async fn eval_latency_alert(
+        &self,
+        tenant_id: &str,
+        router: &MikrotikRouter,
+        latency_ms: Option<i32>,
+        now: DateTime<Utc>,
+    ) -> AppResult<()> {
+        let th = self.get_thresholds(tenant_id).await;
+        if !th.enabled {
+            let _ = self.resolve_all_router_alerts(tenant_id, &router.id).await;
+            return Ok(());
+        }
+
+        if let Some(lat) = latency_ms {
+            if lat >= th.latency_risk_ms {
+                let created = self
+                    .upsert_alert(
+                        tenant_id,
+                        router,
+                        "latency",
+                        if lat >= th.latency_hot_ms { "critical" } else { "warning" },
+                        "High latency",
+                        format!(
+                            "{} latency is {}ms (threshold: {}ms).",
+                            router.name, lat, th.latency_risk_ms
+                        ),
+                        Some(lat as f64),
+                        Some(th.latency_risk_ms as f64),
+                        now,
+                    )
+                    .await?;
+
+                if created {
+                    self.notify_tenant(
+                        tenant_id,
+                        "High latency",
+                        format!("{} latency is {}ms.", router.name, lat),
+                        Some(format!("/admin/network/routers/{}", router.id)),
+                        "warning",
+                    )
+                    .await;
+
+                    self.audit_service
+                        .log(
+                            None,
+                            Some(tenant_id),
+                            "alert_latency",
+                            "mikrotik_alert",
+                            Some(&router.id),
+                            Some(&format!("Latency alert: {}ms on {}", lat, router.name)),
+                            None,
+                        )
+                        .await;
+                }
+
+                return Ok(());
+            }
+        }
+
+        let _ = self.resolve_alert(tenant_id, &router.id, "latency").await;
+        Ok(())
+    }
+
+    async fn upsert_alert(
+        &self,
+        tenant_id: &str,
+        router: &MikrotikRouter,
+        alert_type: &str,
+        severity: &str,
+        title: &str,
+        message: String,
+        value_num: Option<f64>,
+        threshold_num: Option<f64>,
+        now: DateTime<Utc>,
+    ) -> AppResult<bool> {
+        // returns true if created new incident
+        let existing: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT id FROM mikrotik_alerts
+            WHERE tenant_id = $1 AND router_id = $2 AND alert_type = $3 AND resolved_at IS NULL
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&router.id)
+        .bind(alert_type)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        if let Some(id) = existing {
+            sqlx::query(
+                r#"
+                UPDATE mikrotik_alerts
+                SET severity = $1,
+                    title = $2,
+                    message = $3,
+                    value_num = $4,
+                    threshold_num = $5,
+                    last_seen_at = $6,
+                    updated_at = $7
+                WHERE id = $8
+                "#,
+            )
+            .bind(severity)
+            .bind(title)
+            .bind(&message)
+            .bind(value_num)
+            .bind(threshold_num)
+            .bind(now)
+            .bind(now)
+            .bind(&id)
+            .execute(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
+            return Ok(false);
+        }
+
+        let mut alert = MikrotikAlert::new(
+            tenant_id.to_string(),
+            router.id.clone(),
+            alert_type.to_string(),
+            severity.to_string(),
+            title.to_string(),
+            message,
+            value_num,
+            threshold_num,
+        );
+        alert.triggered_at = now;
+        alert.last_seen_at = now;
+        alert.created_at = now;
+        alert.updated_at = now;
+
+        sqlx::query(
+            r#"
+            INSERT INTO mikrotik_alerts
+            (id, tenant_id, router_id, alert_type, severity, status, title, message,
+             value_num, threshold_num, triggered_at, last_seen_at, resolved_at,
+             acked_at, acked_by, created_at, updated_at)
+            VALUES
+            ($1,$2,$3,$4,$5,$6,$7,$8,
+             $9,$10,$11,$12,$13,
+             $14,$15,$16,$17)
+            "#,
+        )
+        .bind(&alert.id)
+        .bind(&alert.tenant_id)
+        .bind(&alert.router_id)
+        .bind(&alert.alert_type)
+        .bind(&alert.severity)
+        .bind(&alert.status)
+        .bind(&alert.title)
+        .bind(&alert.message)
+        .bind(alert.value_num)
+        .bind(alert.threshold_num)
+        .bind(alert.triggered_at)
+        .bind(alert.last_seen_at)
+        .bind(alert.resolved_at)
+        .bind(alert.acked_at)
+        .bind(&alert.acked_by)
+        .bind(alert.created_at)
+        .bind(alert.updated_at)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        Ok(true)
+    }
+
+    async fn resolve_alert(&self, tenant_id: &str, router_id: &str, alert_type: &str) -> AppResult<()> {
+        let now = Utc::now();
+        let _ = sqlx::query(
+            r#"
+            UPDATE mikrotik_alerts
+            SET status = 'resolved',
+                resolved_at = $1,
+                updated_at = $2
+            WHERE tenant_id = $3 AND router_id = $4 AND alert_type = $5 AND resolved_at IS NULL
+            "#,
+        )
+        .bind(now)
+        .bind(now)
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(alert_type)
+        .execute(&self.pool)
+        .await;
+        Ok(())
+    }
+
+    async fn resolve_all_router_alerts(&self, tenant_id: &str, router_id: &str) -> AppResult<()> {
+        let _ = self.resolve_alert(tenant_id, router_id, "offline").await;
+        let _ = self.resolve_alert(tenant_id, router_id, "cpu").await;
+        let _ = self.resolve_alert(tenant_id, router_id, "latency").await;
+        Ok(())
+    }
+
+    async fn get_thresholds(&self, tenant_id: &str) -> Thresholds {
+        async fn get_i32(
+            svc: &SettingsService,
+            tenant_id: &str,
+            key: &str,
+            default: i32,
+        ) -> i32 {
+            match svc.get_value(Some(tenant_id), key).await {
+                Ok(Some(v)) => v.trim().parse::<i32>().ok().unwrap_or(default),
+                _ => default,
+            }
+        }
+
+        async fn get_bool(
+            svc: &SettingsService,
+            tenant_id: &str,
+            key: &str,
+            default: bool,
+        ) -> bool {
+            match svc.get_value(Some(tenant_id), key).await {
+                Ok(Some(v)) => matches!(v.trim().to_lowercase().as_str(), "true" | "1" | "yes" | "on"),
+                _ => default,
+            }
+        }
+
+        let enabled = get_bool(&self.settings_service, tenant_id, "mikrotik_alerting_enabled", true).await;
+        let cpu_risk = get_i32(&self.settings_service, tenant_id, "mikrotik_alert_cpu_risk", CPU_RISK).await;
+        let cpu_hot = get_i32(&self.settings_service, tenant_id, "mikrotik_alert_cpu_hot", CPU_HOT).await;
+        let latency_risk_ms = get_i32(
+            &self.settings_service,
+            tenant_id,
+            "mikrotik_alert_latency_risk_ms",
+            LATENCY_RISK_MS,
+        )
+        .await;
+        let latency_hot_ms = get_i32(
+            &self.settings_service,
+            tenant_id,
+            "mikrotik_alert_latency_hot_ms",
+            LATENCY_HOT_MS,
+        )
+        .await;
+
+        Thresholds {
+            enabled,
+            cpu_risk,
+            cpu_hot: cpu_hot.max(cpu_risk),
+            latency_risk_ms,
+            latency_hot_ms: latency_hot_ms.max(latency_risk_ms),
+        }
     }
 
     async fn poll_interface_metrics(

@@ -10,6 +10,8 @@
   import Table from '$lib/components/ui/Table.svelte';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
   import { toast } from '$lib/stores/toast';
+  import { getSlugFromDomain } from '$lib/utils/domain';
+  import { user, tenant } from '$lib/stores/auth';
 
   type NocRow = {
     id: string;
@@ -22,6 +24,8 @@
     last_error?: string | null;
     identity?: string | null;
     ros_version?: string | null;
+    maintenance_until?: string | null;
+    maintenance_reason?: string | null;
 
     cpu_load?: number | null;
     total_memory_bytes?: number | null;
@@ -36,23 +40,85 @@
   let loading = $state(true);
   let refreshing = $state(false);
   let rows = $state<NocRow[]>([]);
+  let isMobile = $state(false);
+  let mqCleanup: (() => void) | null = null;
 
   let statusFilter = $state<'all' | 'offline' | 'online'>('all');
   let riskFilter = $state<'all' | 'hot' | 'latency' | 'cpu'>('all');
 
+  // Thresholds for NOC risk filters.
+  // "CPU" and "Latency" are meant to be practical daily filters (lower thresholds),
+  // while "Hot" is reserved for critical attention (higher thresholds or offline).
+  let CPU_RISK = $state(70);
+  let LATENCY_RISK = $state(200);
+  let CPU_HOT = $state(85);
+  let LATENCY_HOT = $state(400);
+
   let refreshHandle: any = null;
+
+  // For custom domains, tenantPrefix should be empty (same logic as Sidebar).
+  let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
+  let effectiveTenantSlug = $derived($tenant?.slug || $user?.tenant_slug || '');
+  let isCustomDomain = $derived(domainSlug && domainSlug === effectiveTenantSlug);
+  let tenantPrefix = $derived(
+    effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
+  );
 
   onMount(() => {
     if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
       goto('/unauthorized');
       return;
     }
+
+    if (typeof window !== 'undefined') {
+      const mq = window.matchMedia('(max-width: 1024px)');
+      const sync = () => (isMobile = mq.matches);
+      sync();
+
+      try {
+        mq.addEventListener('change', sync);
+        mqCleanup = () => mq.removeEventListener('change', sync);
+      } catch {
+        // @ts-ignore
+        mq.addListener?.(sync);
+        // @ts-ignore
+        mqCleanup = () => mq.removeListener?.(sync);
+      }
+    }
+
+    // Load thresholds from tenant settings (best-effort).
+    void (async () => {
+      try {
+        const keys = [
+          'mikrotik_alert_cpu_risk',
+          'mikrotik_alert_cpu_hot',
+          'mikrotik_alert_latency_risk_ms',
+          'mikrotik_alert_latency_hot_ms',
+        ] as const;
+        const vals = await Promise.all(keys.map((k) => api.settings.getValue(k)));
+        const map = Object.fromEntries(keys.map((k, i) => [k, vals[i]])) as Record<string, string | null>;
+
+        const cpuRisk = Number.parseInt(map['mikrotik_alert_cpu_risk'] || '', 10);
+        const cpuHot = Number.parseInt(map['mikrotik_alert_cpu_hot'] || '', 10);
+        const latRisk = Number.parseInt(map['mikrotik_alert_latency_risk_ms'] || '', 10);
+        const latHot = Number.parseInt(map['mikrotik_alert_latency_hot_ms'] || '', 10);
+
+        if (Number.isFinite(cpuRisk) && cpuRisk > 0) CPU_RISK = cpuRisk;
+        if (Number.isFinite(cpuHot) && cpuHot > 0) CPU_HOT = Math.max(cpuHot, CPU_RISK);
+        if (Number.isFinite(latRisk) && latRisk > 0) LATENCY_RISK = latRisk;
+        if (Number.isFinite(latHot) && latHot > 0) LATENCY_HOT = Math.max(latHot, LATENCY_RISK);
+      } catch {
+        // ignore
+      }
+    })();
+
     void load();
     refreshHandle = setInterval(() => void refreshSilent(), 5000);
   });
 
   onDestroy(() => {
     if (refreshHandle) clearInterval(refreshHandle);
+    mqCleanup?.();
   });
 
   async function load() {
@@ -103,6 +169,50 @@
     return $t('admin.network.routers.badges.offline') || 'Offline';
   }
 
+  function statusTooltip(k: 'all' | 'online' | 'offline') {
+    const key =
+      k === 'all'
+        ? 'admin.network.noc.tooltips.status_all'
+        : k === 'online'
+          ? 'admin.network.noc.tooltips.status_online'
+          : 'admin.network.noc.tooltips.status_offline';
+
+    const fallback =
+      k === 'all'
+        ? 'Show all routers.'
+        : k === 'online'
+          ? 'Show routers that are currently reachable.'
+          : 'Show routers that are currently unreachable.';
+
+    const s = $t(key) as any;
+    return !s || s === key ? fallback : s;
+  }
+
+  function riskTooltip(k: 'all' | 'hot' | 'latency' | 'cpu') {
+    if (k === 'all') {
+      const key = 'admin.network.noc.tooltips.risk_any';
+      const s = $t(key) as any;
+      return !s || s === key ? 'No additional risk filtering.' : s;
+    }
+    if (k === 'hot') {
+      const key = 'admin.network.noc.tooltips.risk_hot';
+      const s = $t(key) as any;
+      const base =
+        !s || s === key ? 'Critical attention: offline, very high CPU, or very high latency.' : s;
+      return `${base} (offline • CPU ≥ ${CPU_HOT}% • latency ≥ ${LATENCY_HOT}ms)`;
+    }
+    if (k === 'latency') {
+      const key = 'admin.network.noc.tooltips.risk_latency';
+      const s = $t(key) as any;
+      const base = !s || s === key ? 'Show routers with high latency.' : s;
+      return `${base} (≥ ${LATENCY_RISK}ms)`;
+    }
+    const key = 'admin.network.noc.tooltips.risk_cpu';
+    const s = $t(key) as any;
+    const base = !s || s === key ? 'Show routers with high CPU load.' : s;
+    return `${base} (≥ ${CPU_RISK}%)`;
+  }
+
   const filtered = $derived.by(() => {
     let out = rows.slice();
     if (statusFilter === 'offline') out = out.filter((r) => !r.is_online);
@@ -111,12 +221,16 @@
     // "Hot" means: offline OR very high cpu OR high latency.
     if (riskFilter !== 'all') {
       out = out.filter((r) => {
+        const maintenanceUntil = r.maintenance_until ? new Date(r.maintenance_until).getTime() : NaN;
+        const inMaintenance = Number.isFinite(maintenanceUntil) ? maintenanceUntil > Date.now() : false;
+        if (inMaintenance) return false; // muted
+
         const cpu = r.cpu_load ?? 0;
         const lat = r.latency_ms ?? 0;
-        const isHot = !r.is_online || cpu >= 85 || lat >= 400;
+        const isHot = !r.is_online || cpu >= CPU_HOT || lat >= LATENCY_HOT;
         if (riskFilter === 'hot') return isHot;
-        if (riskFilter === 'latency') return lat >= 400;
-        if (riskFilter === 'cpu') return cpu >= 85;
+        if (riskFilter === 'latency') return lat >= LATENCY_RISK;
+        if (riskFilter === 'cpu') return cpu >= CPU_RISK;
         return true;
       });
     }
@@ -127,7 +241,12 @@
     const total = rows.length;
     const online = rows.filter((r) => r.is_online).length;
     const offline = total - online;
-    const hot = rows.filter((r) => !r.is_online || (r.cpu_load ?? 0) >= 85 || (r.latency_ms ?? 0) >= 400)
+    const hot = rows.filter(
+      (r) =>
+        // Exclude maintenance from hot count; it's muted.
+        !(r.maintenance_until && new Date(r.maintenance_until).getTime() > Date.now()) &&
+        (!r.is_online || (r.cpu_load ?? 0) >= CPU_HOT || (r.latency_ms ?? 0) >= LATENCY_HOT),
+    )
       .length;
     return { total, online, offline, hot };
   });
@@ -161,6 +280,15 @@
       <button class="btn ghost" type="button" onclick={load} title={$t('common.refresh') || 'Refresh'}>
         <Icon name="refresh-cw" size={16} />
         {$t('common.refresh') || 'Refresh'}
+      </button>
+      <button
+        class="btn ghost"
+        type="button"
+        onclick={() => goto(`${tenantPrefix}/admin/network/noc/wallboard`)}
+        title={$t('sidebar.wallboard') || 'Wallboard'}
+      >
+        <Icon name="monitor" size={16} />
+        {$t('sidebar.wallboard') || 'Wallboard'}
       </button>
       <div class="hint">
         {#if refreshing}
@@ -206,28 +334,63 @@
 
   <div class="filters">
     <div class="seg">
-      <button type="button" class="seg-btn {statusFilter === 'all' ? 'active' : ''}" onclick={() => (statusFilter = 'all')}>
+      <button
+        type="button"
+        class="seg-btn {statusFilter === 'all' ? 'active' : ''}"
+        title={statusTooltip('all')}
+        onclick={() => (statusFilter = 'all')}
+      >
         {$t('common.all') || 'All'}
       </button>
-      <button type="button" class="seg-btn {statusFilter === 'online' ? 'active' : ''}" onclick={() => (statusFilter = 'online')}>
+      <button
+        type="button"
+        class="seg-btn {statusFilter === 'online' ? 'active' : ''}"
+        title={statusTooltip('online')}
+        onclick={() => (statusFilter = 'online')}
+      >
         {$t('admin.network.noc.filters.online') || 'Online'}
       </button>
-      <button type="button" class="seg-btn {statusFilter === 'offline' ? 'active' : ''}" onclick={() => (statusFilter = 'offline')}>
+      <button
+        type="button"
+        class="seg-btn {statusFilter === 'offline' ? 'active' : ''}"
+        title={statusTooltip('offline')}
+        onclick={() => (statusFilter = 'offline')}
+      >
         {$t('admin.network.noc.filters.offline') || 'Offline'}
       </button>
     </div>
 
     <div class="seg">
-      <button type="button" class="seg-btn {riskFilter === 'all' ? 'active' : ''}" onclick={() => (riskFilter = 'all')}>
+      <button
+        type="button"
+        class="seg-btn {riskFilter === 'all' ? 'active' : ''}"
+        title={riskTooltip('all')}
+        onclick={() => (riskFilter = 'all')}
+      >
         {$t('admin.network.noc.filters.any') || 'Any'}
       </button>
-      <button type="button" class="seg-btn {riskFilter === 'hot' ? 'active' : ''}" onclick={() => (riskFilter = 'hot')}>
+      <button
+        type="button"
+        class="seg-btn {riskFilter === 'hot' ? 'active' : ''}"
+        title={riskTooltip('hot')}
+        onclick={() => (riskFilter = 'hot')}
+      >
         {$t('admin.network.noc.filters.hot') || 'Hot'}
       </button>
-      <button type="button" class="seg-btn {riskFilter === 'latency' ? 'active' : ''}" onclick={() => (riskFilter = 'latency')}>
+      <button
+        type="button"
+        class="seg-btn {riskFilter === 'latency' ? 'active' : ''}"
+        title={riskTooltip('latency')}
+        onclick={() => (riskFilter = 'latency')}
+      >
         {$t('admin.network.noc.filters.latency') || 'Latency'}
       </button>
-      <button type="button" class="seg-btn {riskFilter === 'cpu' ? 'active' : ''}" onclick={() => (riskFilter = 'cpu')}>
+      <button
+        type="button"
+        class="seg-btn {riskFilter === 'cpu' ? 'active' : ''}"
+        title={riskTooltip('cpu')}
+        onclick={() => (riskFilter = 'cpu')}
+      >
         {$t('admin.network.noc.filters.cpu') || 'CPU'}
       </button>
     </div>
@@ -243,7 +406,7 @@
       pageSize={10}
       searchable={true}
       searchPlaceholder={$t('admin.network.noc.search') || 'Search routers...'}
-      mobileView="scroll"
+      mobileView={isMobile ? 'card' : 'scroll'}
       emptyText={$t('admin.network.noc.empty') || 'No routers'}
     >
       {#snippet cell({ item, key }: any)}
@@ -256,6 +419,11 @@
               {/if}
               {#if item.ros_version}
                 <span class="muted">ROS {item.ros_version}</span>
+              {/if}
+              {#if item.maintenance_until && new Date(item.maintenance_until).getTime() > Date.now()}
+                <span class="chip warn" title={item.maintenance_reason || ''}>
+                  {$t('admin.network.routers.badges.maintenance') || 'Maintenance'}
+                </span>
               {/if}
             </div>
             <div class="muted mono">{item.username}@{item.host}:{item.port}</div>
@@ -272,7 +440,7 @@
           {@const mem = pctUsed(item.total_memory_bytes, item.free_memory_bytes)}
           {@const disk = pctUsed(item.total_hdd_bytes, item.free_hdd_bytes)}
           <div class="mini">
-            <span class:bad={cpu != null && cpu >= 85} class="mono">{cpu == null ? '—' : `${cpu}%`}</span>
+            <span class:bad={cpu != null && cpu >= CPU_RISK} class="mono">{cpu == null ? '—' : `${cpu}%`}</span>
             <span class="muted">CPU</span>
             <span class="sep">·</span>
             <span class:bad={mem != null && mem >= 90} class="mono">{mem == null ? '—' : `${mem}%`}</span>
@@ -291,7 +459,7 @@
           </div>
         {:else if key === 'latency'}
           {#if item.latency_ms != null}
-            <span class="mono {item.latency_ms >= 400 ? 'bad' : ''}">{item.latency_ms} ms</span>
+            <span class="mono {item.latency_ms >= LATENCY_RISK ? 'bad' : ''}">{item.latency_ms} ms</span>
           {:else}
             <span class="muted">—</span>
           {/if}
@@ -507,6 +675,12 @@
     background: color-mix(in srgb, var(--bg-hover), transparent 20%);
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
+  }
+
+  .chip.warn {
+    border-color: rgba(245, 158, 11, 0.28);
+    background: rgba(245, 158, 11, 0.12);
+    color: rgba(245, 158, 11, 0.95);
   }
 
   .mono {

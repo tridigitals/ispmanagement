@@ -104,6 +104,7 @@
     "open": "Buka",
     "download": "Unduh",
     "load_more": "Muat lagi",
+    "page": "Halaman",
     "next": "Berikutnya",
     "previous": "Sebelumnya",
     "retry": "Coba Lagi",
@@ -373,6 +374,8 @@
     "announcements": "Pengumuman",
     "routers": "Router",
     "noc": "NOC",
+    "wallboard": "Wallboard",
+    "alerts": "Alert",
     "expand": "Perluas sidebar",
     "collapse": "Ciutkan sidebar",
     "exit": "Keluar",
@@ -1649,6 +1652,15 @@
           "offline": "Offline",
           "hot": "Hot"
         },
+        "tooltips": {
+          "status_all": "Tampilkan semua router",
+          "status_online": "Tampilkan router yang sedang bisa diakses",
+          "status_offline": "Tampilkan router yang sedang tidak bisa diakses",
+          "risk_any": "Tanpa filter risiko tambahan",
+          "risk_hot": "Perlu perhatian: offline, CPU sangat tinggi, atau latensi sangat tinggi",
+          "risk_latency": "Tampilkan router dengan latensi tinggi",
+          "risk_cpu": "Tampilkan router dengan beban CPU tinggi"
+        },
         "filters": {
           "any": "Semua",
           "online": "Online",
@@ -1664,6 +1676,42 @@
           "traffic": "Trafik",
           "latency": "Latensi",
           "seen": "Terakhir Terlihat"
+        }
+      },
+      "alerts": {
+        "title": "Alert Router",
+        "subtitle": "Insiden terdeteksi dari polling router.",
+        "search": "Cari alert...",
+        "empty": "Tidak ada alert",
+        "actions": {
+          "toggle": "Tampilkan aktif/selesai",
+          "active": "Aktif",
+          "all": "Semua",
+          "ack": "Acknowledgement",
+          "resolve": "Selesaikan",
+          "snooze_30m": "Snooze 30m"
+        },
+        "columns": {
+          "alert": "Alert",
+          "type": "Tipe",
+          "severity": "Severity",
+          "status": "Status",
+          "seen": "Terakhir Terlihat"
+        },
+        "types": {
+          "offline": "Offline",
+          "cpu": "CPU",
+          "latency": "Latensi"
+        },
+        "severity": {
+          "info": "Info",
+          "warning": "Peringatan",
+          "critical": "Kritis"
+        },
+        "toasts": {
+          "acked": "Alert di-acknowledge",
+          "resolved": "Alert diselesaikan",
+          "snoozed": "Router di-snooze"
         }
       }
     },
@@ -1770,10 +1818,21 @@
           "seen": "Terakhir Terlihat",
           "actions": "Aksi"
         },
+        "tabs": {
+          "traffic": "Trafik"
+        },
         "badges": {
           "online": "Online",
           "offline": "Offline",
-          "unknown": "Unknown"
+          "unknown": "Unknown",
+          "maintenance": "Maintenance"
+        },
+        "traffic": {
+          "watch": "Pantau Interface",
+          "realtime": "Trafik Realtime",
+          "search": "Cari interface...",
+          "empty": "Pilih satu atau lebih interface untuk dipantau.",
+          "max_watch": "Maksimal 6 interface."
         },
         "form": {
           "name": "Nama",
@@ -1781,12 +1840,74 @@
           "port": "Port",
           "username": "Username",
           "password": "Password",
-          "enabled": "Aktif"
+          "enabled": "Aktif",
+          "maintenance": "Maintenance (mute alert)",
+          "maintenance_until": "Maintenance sampai",
+          "maintenance_reason": "Alasan (opsional)"
         },
         "toasts": {
           "created": "Router berhasil dibuat",
           "updated": "Router berhasil diperbarui",
           "deleted": "Router berhasil dihapus"
+        }
+      },
+      "wallboard": {
+        "kicker": "WALLBOARD",
+        "title": "Network Wallboard",
+        "subtitle": "Tampilan NOC live yang nyaman untuk ditayangkan 24/7.",
+        "search": "Cari router...",
+        "empty": "Tidak ada router yang sesuai filter.",
+        "poll": "Polling",
+        "kiosk": "Kiosk",
+        "fullscreen": "Layar penuh",
+        "keep_awake": "Jaga layar aktif",
+        "pause": "Jeda",
+        "resume": "Lanjut",
+        "stale": "Tertunda",
+        "drag": "Geser untuk urutkan",
+        "exit": "Keluar wallboard",
+        "last_seen": "Terakhir terlihat",
+        "watch": "Pantau",
+        "watch_select": "Pilih",
+        "watch_search": "Cari interface...",
+        "watch_selected": "terpilih",
+        "watch_loading": "Memuat interface...",
+        "watch_none": "Tidak ada interface.",
+        "watch_max": "Maks 8 interface per router.",
+        "watch_placeholder": "ether1, ether2, ether3",
+        "watch_hint": "Pisahkan dengan koma. Maks 8 per router.",
+        "auto_fill": "Isi otomatis",
+        "add_tile": "Tambah tile interface",
+        "add_tile_sub": "Pilih router + interface",
+        "pick_tile": "Tambah tile interface",
+        "edit_tile": "Edit tile interface",
+        "pick_router": "Pilih router",
+        "pick_search": "Cari router...",
+        "pick_interface": "Interface",
+        "pick_interface_hint": "Pilih router terlebih dahulu.",
+        "pick_interface_search": "Cari interface...",
+        "full_kicker": "TAMPILAN INTERFACE",
+        "tile_settings": "Pengaturan tile",
+        "warn_below_rx": "Peringatan jika RX di bawah",
+        "warn_below_tx": "Peringatan jika TX di bawah",
+        "thresholds": {
+          "title": "Threshold",
+          "change_interface": "Ganti interface"
+        },
+        "layouts": {
+          "2x2": "Layout 2x2",
+          "3x2": "Layout 3x2",
+          "3x3": "Layout 3x3",
+          "4x3": "Layout 4x3"
+        },
+        "filters": {
+          "all": "Semua",
+          "online": "Online",
+          "offline": "Offline"
+        },
+        "controls": {
+          "filter": "Filter",
+          "layout": "Layout"
         }
       },
       "noc": {
@@ -1799,6 +1920,15 @@
           "online": "Online",
           "offline": "Offline",
           "hot": "Hot"
+        },
+        "tooltips": {
+          "status_all": "Tampilkan semua router",
+          "status_online": "Tampilkan router yang sedang bisa diakses",
+          "status_offline": "Tampilkan router yang sedang tidak bisa diakses",
+          "risk_any": "Tanpa filter risiko tambahan",
+          "risk_hot": "Perlu perhatian: offline, CPU sangat tinggi, atau latensi sangat tinggi",
+          "risk_latency": "Tampilkan router dengan latensi tinggi",
+          "risk_cpu": "Tampilkan router dengan beban CPU tinggi"
         },
         "filters": {
           "any": "Semua",
@@ -1815,6 +1945,38 @@
           "traffic": "Trafik",
           "latency": "Latensi",
           "seen": "Terakhir Terlihat"
+        }
+      },
+      "alerts": {
+        "title": "Alert Router",
+        "subtitle": "Insiden terdeteksi dari polling router.",
+        "search": "Cari alert...",
+        "empty": "Tidak ada alert",
+        "actions": {
+          "toggle": "Tampilkan aktif/selesai",
+          "active": "Aktif",
+          "all": "Semua",
+          "ack": "Acknowledgement"
+        },
+        "columns": {
+          "alert": "Alert",
+          "type": "Tipe",
+          "severity": "Severity",
+          "status": "Status",
+          "seen": "Terakhir Terlihat"
+        },
+        "types": {
+          "offline": "Offline",
+          "cpu": "CPU",
+          "latency": "Latensi"
+        },
+        "severity": {
+          "info": "Info",
+          "warning": "Peringatan",
+          "critical": "Kritis"
+        },
+        "toasts": {
+          "acked": "Alert di-acknowledge"
         }
       }
     },
@@ -2094,12 +2256,27 @@
       },
       "categories": {
         "general": "Umum",
+        "network": "Jaringan",
         "storage": "Penyimpanan",
         "auth": "Autentikasi",
         "security": "Keamanan",
         "email": "Email",
         "branding": "Branding & Domain",
         "payment": "Pembayaran"
+      },
+      "network": {
+        "alerting": {
+          "title": "Alert Router",
+          "desc": "Aktifkan insiden dan notifikasi yang dihasilkan dari polling MikroTik."
+        },
+        "thresholds": {
+          "title": "Ambang Batas",
+          "desc": "Dipakai oleh filter NOC dan background poller untuk membuka insiden.",
+          "cpu_risk": "CPU risk (%)",
+          "cpu_hot": "CPU hot (%)",
+          "latency_risk": "Latensi risk (ms)",
+          "latency_hot": "Latensi hot (ms)"
+        }
       },
       "keys": {
         "app_name": "Nama Aplikasi",

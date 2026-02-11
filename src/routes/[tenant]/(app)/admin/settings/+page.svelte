@@ -60,6 +60,17 @@
       icon: 'shield',
       keys: [], // Managed manually
     },
+    network: {
+      label: $t('admin.settings.categories.network') || 'Network',
+      icon: 'activity',
+      keys: [
+        'mikrotik_alerting_enabled',
+        'mikrotik_alert_cpu_risk',
+        'mikrotik_alert_cpu_hot',
+        'mikrotik_alert_latency_risk_ms',
+        'mikrotik_alert_latency_hot_ms',
+      ],
+    },
     storage: {
       label: $t('admin.settings.categories.storage') || 'Storage',
       icon: 'database',
@@ -183,6 +194,11 @@
           val = (val || 'IDR').toUpperCase();
           if (val !== 'IDR' && val !== 'USD') val = 'IDR';
         }
+        if (key === 'mikrotik_alerting_enabled' && !val) val = 'true';
+        if (key === 'mikrotik_alert_cpu_risk' && !val) val = '70';
+        if (key === 'mikrotik_alert_cpu_hot' && !val) val = '85';
+        if (key === 'mikrotik_alert_latency_risk_ms' && !val) val = '200';
+        if (key === 'mikrotik_alert_latency_hot_ms' && !val) val = '400';
         localSettings[key] = val;
       });
     });
@@ -633,6 +649,100 @@
                   />
                   <span class="slider"></span>
                 </label>
+              </div>
+            {:else if activeTab === 'network'}
+              <div class="setting-item setting-item-row mt-6">
+                <div class="setting-info">
+                  <h3>{$t('admin.settings.network.alerting.title') || 'Router Alerting'}</h3>
+                  <p>
+                    {$t('admin.settings.network.alerting.desc') ||
+                      'Enable incidents and notifications derived from MikroTik polling.'}
+                  </p>
+                </div>
+                <label class="toggle">
+                  <input
+                    type="checkbox"
+                    checked={localSettings['mikrotik_alerting_enabled'] === 'true'}
+                    onchange={(e) =>
+                      handleChange('mikrotik_alerting_enabled', e.currentTarget.checked)
+                    }
+                  />
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div class="config-panel fade-in mt-6">
+                <h3>{$t('admin.settings.network.thresholds.title') || 'Thresholds'}</h3>
+                <p class="help-text">
+                  {$t('admin.settings.network.thresholds.desc') ||
+                    'Used by NOC filters and by the background poller to open incidents.'}
+                </p>
+
+                <div class="config-grid">
+                  <div class="setting-item">
+                    <label for="mikrotik-alert-cpu-risk">
+                      {$t('admin.settings.network.thresholds.cpu_risk') || 'CPU risk (%)'}
+                    </label>
+                    <div class="setting-control">
+                      <Input
+                        id="mikrotik-alert-cpu-risk"
+                        type="number"
+                        value={localSettings['mikrotik_alert_cpu_risk']}
+                        oninput={(e: any) =>
+                          handleChange('mikrotik_alert_cpu_risk', e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div class="setting-item">
+                    <label for="mikrotik-alert-cpu-hot">
+                      {$t('admin.settings.network.thresholds.cpu_hot') || 'CPU hot (%)'}
+                    </label>
+                    <div class="setting-control">
+                      <Input
+                        id="mikrotik-alert-cpu-hot"
+                        type="number"
+                        value={localSettings['mikrotik_alert_cpu_hot']}
+                        oninput={(e: any) =>
+                          handleChange('mikrotik_alert_cpu_hot', e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div class="setting-item">
+                    <label for="mikrotik-alert-lat-risk">
+                      {$t('admin.settings.network.thresholds.latency_risk') || 'Latency risk (ms)'}
+                    </label>
+                    <div class="setting-control">
+                      <Input
+                        id="mikrotik-alert-lat-risk"
+                        type="number"
+                        value={localSettings['mikrotik_alert_latency_risk_ms']}
+                        oninput={(e: any) =>
+                          handleChange('mikrotik_alert_latency_risk_ms', e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div class="setting-item">
+                    <label for="mikrotik-alert-lat-hot">
+                      {$t('admin.settings.network.thresholds.latency_hot') || 'Latency hot (ms)'}
+                    </label>
+                    <div class="setting-control">
+                      <Input
+                        id="mikrotik-alert-lat-hot"
+                        type="number"
+                        value={localSettings['mikrotik_alert_latency_hot_ms']}
+                        oninput={(e: any) =>
+                          handleChange('mikrotik_alert_latency_hot_ms', e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             {:else if activeTab === 'storage'}
               <!-- Redesigned Storage Settings -->

@@ -104,6 +104,7 @@
     "open": "Open",
     "download": "Download",
     "load_more": "Load more",
+    "page": "Page",
     "next": "Next",
     "previous": "Previous",
     "retry": "Retry",
@@ -373,6 +374,8 @@
     "announcements": "Announcements",
     "routers": "Routers",
     "noc": "NOC",
+    "wallboard": "Wallboard",
+    "alerts": "Alerts",
     "expand": "Expand sidebar",
     "collapse": "Collapse sidebar",
     "exit": "Exit",
@@ -1637,6 +1640,25 @@
     }
   },
   "admin": {
+    "settings": {
+      "categories": {
+        "network": "Network"
+      },
+      "network": {
+        "alerting": {
+          "title": "Router Alerting",
+          "desc": "Enable incidents and notifications derived from MikroTik polling."
+        },
+        "thresholds": {
+          "title": "Thresholds",
+          "desc": "Used by NOC filters and by the background poller to open incidents.",
+          "cpu_risk": "CPU risk (%)",
+          "cpu_hot": "CPU hot (%)",
+          "latency_risk": "Latency risk (ms)",
+          "latency_hot": "Latency hot (ms)"
+        }
+      }
+    },
     "network": {
       "noc": {
         "title": "Network NOC",
@@ -1648,6 +1670,15 @@
           "online": "Online",
           "offline": "Offline",
           "hot": "Hot"
+        },
+        "tooltips": {
+          "status_all": "Show all routers",
+          "status_online": "Show routers that are currently reachable",
+          "status_offline": "Show routers that are currently unreachable",
+          "risk_any": "No additional risk filtering",
+          "risk_hot": "Critical attention: offline, very high CPU, or very high latency",
+          "risk_latency": "Show routers with high latency",
+          "risk_cpu": "Show routers with high CPU load"
         },
         "filters": {
           "any": "Any",
@@ -1664,6 +1695,42 @@
           "traffic": "Traffic",
           "latency": "Latency",
           "seen": "Last Seen"
+        }
+      },
+      "alerts": {
+        "title": "Router Alerts",
+        "subtitle": "Incidents detected from router polling.",
+        "search": "Search alerts...",
+        "empty": "No alerts",
+        "actions": {
+          "toggle": "Toggle active/resolved",
+          "active": "Active",
+          "all": "All",
+          "ack": "Acknowledge",
+          "resolve": "Resolve",
+          "snooze_30m": "Snooze 30m"
+        },
+        "columns": {
+          "alert": "Alert",
+          "type": "Type",
+          "severity": "Severity",
+          "status": "Status",
+          "seen": "Last Seen"
+        },
+        "types": {
+          "offline": "Offline",
+          "cpu": "CPU",
+          "latency": "Latency"
+        },
+        "severity": {
+          "info": "Info",
+          "warning": "Warning",
+          "critical": "Critical"
+        },
+        "toasts": {
+          "acked": "Alert acknowledged",
+          "resolved": "Alert resolved",
+          "snoozed": "Router snoozed"
         }
       }
     },
@@ -1770,10 +1837,21 @@
           "seen": "Last Seen",
           "actions": "Actions"
         },
+        "tabs": {
+          "traffic": "Traffic"
+        },
         "badges": {
           "online": "Online",
           "offline": "Offline",
-          "unknown": "Unknown"
+          "unknown": "Unknown",
+          "maintenance": "Maintenance"
+        },
+        "traffic": {
+          "watch": "Watch Interfaces",
+          "realtime": "Realtime Traffic",
+          "search": "Search interfaces...",
+          "empty": "Select one or more interfaces to watch.",
+          "max_watch": "Max 6 interfaces."
         },
         "form": {
           "name": "Name",
@@ -1781,12 +1859,74 @@
           "port": "Port",
           "username": "Username",
           "password": "Password",
-          "enabled": "Enabled"
+          "enabled": "Enabled",
+          "maintenance": "Maintenance (mute alerts)",
+          "maintenance_until": "Maintenance until",
+          "maintenance_reason": "Reason (optional)"
         },
         "toasts": {
           "created": "Router created",
           "updated": "Router updated",
           "deleted": "Router deleted"
+        }
+      },
+      "wallboard": {
+        "kicker": "WALLBOARD",
+        "title": "Network Wallboard",
+        "subtitle": "Live NOC view optimized for 24/7 display.",
+        "search": "Search routers...",
+        "empty": "No routers match your filters.",
+        "poll": "Poll",
+        "kiosk": "Kiosk",
+        "fullscreen": "Fullscreen",
+        "keep_awake": "Keep awake",
+        "pause": "Pause",
+        "resume": "Resume",
+        "stale": "Stale",
+        "drag": "Drag to reorder",
+        "exit": "Exit wallboard",
+        "last_seen": "Last seen",
+        "watch": "Watch",
+        "watch_select": "Select",
+        "watch_search": "Search interfaces...",
+        "watch_selected": "selected",
+        "watch_loading": "Loading interfaces...",
+        "watch_none": "No interfaces.",
+        "watch_max": "Max 8 interfaces per router.",
+        "watch_placeholder": "ether1, ether2, ether3",
+        "watch_hint": "Comma-separated. Max 8 per router.",
+        "auto_fill": "Auto fill",
+        "add_tile": "Add interface tile",
+        "add_tile_sub": "Choose a router + interface",
+        "pick_tile": "Add interface tile",
+        "edit_tile": "Edit interface tile",
+        "pick_router": "Pick a router",
+        "pick_search": "Search routers...",
+        "pick_interface": "Interface",
+        "pick_interface_hint": "Select a router first.",
+        "pick_interface_search": "Search interfaces...",
+        "full_kicker": "INTERFACE VIEW",
+        "tile_settings": "Tile settings",
+        "warn_below_rx": "Warn if RX below",
+        "warn_below_tx": "Warn if TX below",
+        "thresholds": {
+          "title": "Thresholds",
+          "change_interface": "Change interface"
+        },
+        "layouts": {
+          "2x2": "2x2 layout",
+          "3x2": "3x2 layout",
+          "3x3": "3x3 layout",
+          "4x3": "4x3 layout"
+        },
+        "filters": {
+          "all": "All",
+          "online": "Online",
+          "offline": "Offline"
+        },
+        "controls": {
+          "filter": "Filter",
+          "layout": "Layout"
         }
       },
       "noc": {
@@ -1799,6 +1939,15 @@
           "online": "Online",
           "offline": "Offline",
           "hot": "Hot"
+        },
+        "tooltips": {
+          "status_all": "Show all routers",
+          "status_online": "Show routers that are currently reachable",
+          "status_offline": "Show routers that are currently unreachable",
+          "risk_any": "No additional risk filtering",
+          "risk_hot": "Critical attention: offline, very high CPU, or very high latency",
+          "risk_latency": "Show routers with high latency",
+          "risk_cpu": "Show routers with high CPU load"
         },
         "filters": {
           "any": "Any",
@@ -1815,6 +1964,38 @@
           "traffic": "Traffic",
           "latency": "Latency",
           "seen": "Last Seen"
+        }
+      },
+      "alerts": {
+        "title": "Router Alerts",
+        "subtitle": "Incidents detected from router polling.",
+        "search": "Search alerts...",
+        "empty": "No alerts",
+        "actions": {
+          "toggle": "Toggle active/resolved",
+          "active": "Active",
+          "all": "All",
+          "ack": "Acknowledge"
+        },
+        "columns": {
+          "alert": "Alert",
+          "type": "Type",
+          "severity": "Severity",
+          "status": "Status",
+          "seen": "Last Seen"
+        },
+        "types": {
+          "offline": "Offline",
+          "cpu": "CPU",
+          "latency": "Latency"
+        },
+        "severity": {
+          "info": "Info",
+          "warning": "Warning",
+          "critical": "Critical"
+        },
+        "toasts": {
+          "acked": "Alert acknowledged"
         }
       }
     },
@@ -2094,12 +2275,27 @@
       },
       "categories": {
         "general": "General",
+        "network": "Network",
         "storage": "Storage",
         "auth": "Authentication",
         "security": "Security",
         "email": "Email",
         "branding": "Branding & Domain",
         "payment": "Payments"
+      },
+      "network": {
+        "alerting": {
+          "title": "Router Alerting",
+          "desc": "Enable incidents and notifications derived from MikroTik polling."
+        },
+        "thresholds": {
+          "title": "Thresholds",
+          "desc": "Used by NOC filters and by the background poller to open incidents.",
+          "cpu_risk": "CPU risk (%)",
+          "cpu_hot": "CPU hot (%)",
+          "latency_risk": "Latency risk (ms)",
+          "latency_hot": "Latency hot (ms)"
+        }
       },
       "keys": {
         "app_name": "App Name",
