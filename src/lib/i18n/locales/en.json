@@ -1816,6 +1816,7 @@
           "password": "Password",
           "profile": "Profile",
           "remote_address": "Remote IP / Pool",
+          "pool": "Address pool",
           "comment": "Comment",
           "disabled": "Disabled"
         },
@@ -2135,6 +2136,9 @@
           "reconcile": "Reconcile",
           "open_customer": "Open customer",
           "apply": "Apply to router"
+        },
+        "form": {
+          "disabled_hint": "Disable this PPPoE account (will be applied to router when you click Apply)."
         },
         "toasts": {
           "applied": "Applied to router",

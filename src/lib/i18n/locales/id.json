@@ -1794,6 +1794,7 @@
           "password": "Password",
           "profile": "Profile",
           "remote_address": "Remote IP / Pool",
+          "pool": "IP Pool",
           "comment": "Catatan",
           "disabled": "Nonaktif"
         },
@@ -2113,6 +2114,9 @@
           "reconcile": "Sinkronkan",
           "open_customer": "Buka pelanggan",
           "apply": "Terapkan ke router"
+        },
+        "form": {
+          "disabled_hint": "Nonaktifkan akun PPPoE ini (akan diterapkan ke router saat Anda klik Terapkan)."
         },
         "toasts": {
           "applied": "Berhasil diterapkan ke router",

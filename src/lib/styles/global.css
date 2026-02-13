@@ -143,6 +143,23 @@ textarea {
   min-height: var(--touch-target);
 }
 
+/* Native select/option theming (prevents white dropdowns in dark mode) */
+select {
+  color: var(--text-primary);
+}
+
+select option,
+select optgroup {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+[data-theme='light'] select option,
+[data-theme='light'] select optgroup {
+  background-color: #ffffff;
+  color: var(--text-primary);
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
