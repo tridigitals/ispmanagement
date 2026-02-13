@@ -88,6 +88,8 @@
     GripVertical,
     Pause,
     Play,
+    Filter,
+    Clock3,
   } from 'lucide-svelte';
 
   let {
@@ -195,6 +197,8 @@
     'grip-vertical': GripVertical,
     pause: Pause,
     play: Play,
+    filter: Filter,
+    clock: Clock3,
   };
 
   let IconComponent = $derived(icons[name] || HelpCircle);

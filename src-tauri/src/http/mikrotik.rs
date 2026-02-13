@@ -2,7 +2,8 @@ use crate::error::{AppError, AppResult};
 use crate::http::AppState;
 use crate::models::{
     CreateMikrotikRouterRequest, MikrotikAlert, MikrotikInterfaceCounter, MikrotikInterfaceMetric,
-    MikrotikRouter, MikrotikRouterMetric, MikrotikTestResult, UpdateMikrotikRouterRequest,
+    MikrotikIpPool, MikrotikLogEntry, MikrotikLogSyncResult, MikrotikPppProfile, MikrotikRouter,
+    MikrotikRouterMetric, MikrotikTestResult, PaginatedResponse, UpdateMikrotikRouterRequest,
 };
 use axum::{
     extract::{Path, Query, State},
@@ -18,11 +19,17 @@ pub fn router() -> Router<AppState> {
         .route("/alerts", get(list_alerts))
         .route("/alerts/{id}/ack", post(ack_alert))
         .route("/alerts/{id}/resolve", post(resolve_alert))
+        .route("/logs", get(list_logs))
         .route("/routers", get(list_routers).post(create_router))
         .route(
             "/routers/{id}",
             get(get_router).put(update_router).delete(delete_router),
         )
+        .route("/routers/{id}/logs/sync", post(sync_logs))
+        .route("/routers/{id}/ppp-profiles", get(list_ppp_profiles))
+        .route("/routers/{id}/ppp-profiles/sync", post(sync_ppp_profiles))
+        .route("/routers/{id}/ip-pools", get(list_ip_pools))
+        .route("/routers/{id}/ip-pools/sync", post(sync_ip_pools))
         .route("/routers/{id}/test", post(test_router))
         .route("/routers/{id}/metrics", get(list_metrics))
         .route("/routers/{id}/interfaces/metrics", get(list_interface_metrics))
@@ -51,6 +58,21 @@ async fn tenant_and_claims(state: &AppState, headers: &HeaderMap) -> AppResult<(
 struct AlertsQuery {
     active_only: Option<bool>,
     limit: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+struct LogsQuery {
+    router_id: Option<String>,
+    level: Option<String>,
+    topic: Option<String>,
+    q: Option<String>,
+    page: Option<u32>,
+    per_page: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SyncLogsBody {
+    fetch_limit: Option<u32>,
 }
 
 // GET /api/admin/mikrotik/alerts?active_only=true&limit=200
@@ -142,6 +164,58 @@ async fn get_noc(
     Ok(Json(rows))
 }
 
+// GET /api/admin/mikrotik/logs
+async fn list_logs(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<LogsQuery>,
+) -> AppResult<Json<PaginatedResponse<MikrotikLogEntry>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await?;
+
+    let rows = state
+        .mikrotik_service
+        .list_logs(
+            &tenant_id,
+            q.router_id,
+            q.level,
+            q.topic,
+            q.q,
+            q.page.unwrap_or(1),
+            q.per_page.unwrap_or(25),
+        )
+        .await?;
+    Ok(Json(rows))
+}
+
+// POST /api/admin/mikrotik/routers/{id}/logs/sync
+async fn sync_logs(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    body: Option<Json<SyncLogsBody>>,
+) -> AppResult<Json<MikrotikLogSyncResult>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    let fetch_limit = body
+        .and_then(|b| b.fetch_limit)
+        .unwrap_or(500)
+        .clamp(50, 50_000);
+
+    let rows = state
+        .mikrotik_service
+        .sync_logs_for_router(&tenant_id, &id, fetch_limit)
+        .await?;
+    Ok(Json(rows))
+}
+
 // GET /api/admin/mikrotik/routers/{id}
 async fn get_router(
     State(state): State<AppState>,
@@ -161,6 +235,82 @@ async fn get_router(
         .ok_or_else(|| AppError::NotFound("Router not found".to_string()))?;
 
     Ok(Json(router))
+}
+
+// GET /api/admin/mikrotik/routers/{id}/ppp-profiles
+async fn list_ppp_profiles(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<Vec<MikrotikPppProfile>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await?;
+
+    let rows = state
+        .mikrotik_service
+        .list_ppp_profiles(&tenant_id, &id)
+        .await?;
+    Ok(Json(rows))
+}
+
+// POST /api/admin/mikrotik/routers/{id}/ppp-profiles/sync
+async fn sync_ppp_profiles(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<Vec<MikrotikPppProfile>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    let rows = state
+        .mikrotik_service
+        .sync_ppp_profiles(&tenant_id, &id)
+        .await?;
+    Ok(Json(rows))
+}
+
+// GET /api/admin/mikrotik/routers/{id}/ip-pools
+async fn list_ip_pools(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<Vec<MikrotikIpPool>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await?;
+
+    let rows = state
+        .mikrotik_service
+        .list_ip_pools(&tenant_id, &id)
+        .await?;
+    Ok(Json(rows))
+}
+
+// POST /api/admin/mikrotik/routers/{id}/ip-pools/sync
+async fn sync_ip_pools(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<Vec<MikrotikIpPool>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    let rows = state
+        .mikrotik_service
+        .sync_ip_pools(&tenant_id, &id)
+        .await?;
+    Ok(Json(rows))
 }
 
 // POST /api/admin/mikrotik/routers

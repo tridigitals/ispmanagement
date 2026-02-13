@@ -1,7 +1,7 @@
 use crate::services::{
     AuditService, AuthService, EmailService, NotificationService, PaymentService, PlanService,
     RoleService, SettingsService, StorageService, SystemService, TeamService, UserService,
-    MikrotikService,
+    MikrotikService, CustomerService, PppoeService,
 };
 use axum::{
     extract::DefaultBodyLimit,
@@ -45,6 +45,8 @@ pub mod tenant;
 pub mod users;
 pub mod websocket;
 pub mod mikrotik;
+pub mod customers;
+pub mod pppoe;
 
 pub use websocket::{WsEvent, WsHub};
 
@@ -77,6 +79,8 @@ pub struct AppState {
     pub payment_service: Arc<PaymentService>,
     pub notification_service: Arc<NotificationService>,
     pub mikrotik_service: Arc<MikrotikService>,
+    pub customer_service: Arc<CustomerService>,
+    pub pppoe_service: Arc<PppoeService>,
     pub backup_service: Arc<crate::services::BackupService>,
     pub ws_hub: Arc<WsHub>,
     pub app_data_dir: PathBuf,
@@ -102,6 +106,8 @@ pub async fn start_server(
     payment_service: PaymentService,
     notification_service: NotificationService,
     mikrotik_service: MikrotikService,
+    customer_service: CustomerService,
+    pppoe_service: PppoeService,
     backup_service: crate::services::BackupService,
     ws_hub: Arc<WsHub>,
     app_data_dir: PathBuf,
@@ -226,6 +232,8 @@ pub async fn start_server(
         payment_service: Arc::new(payment_service.clone()),
         notification_service: Arc::new(notification_service),
         mikrotik_service: Arc::new(mikrotik_service),
+        customer_service: Arc::new(customer_service),
+        pppoe_service: Arc::new(pppoe_service),
         backup_service: Arc::new(backup_service),
         ws_hub,
         app_data_dir,
@@ -452,6 +460,10 @@ pub async fn start_server(
         .nest("/api/admin/mikrotik", mikrotik::router())
         // Announcements (banner + admin broadcast)
         .nest("/api/announcements", announcements::router())
+        // Customers + portal (tenant scoped)
+        .nest("/api/customers", customers::router())
+        // PPPoE accounts (tenant scoped)
+        .nest("/api/admin/pppoe", pppoe::router())
         // Settings Routes
         .route(
             "/api/settings",

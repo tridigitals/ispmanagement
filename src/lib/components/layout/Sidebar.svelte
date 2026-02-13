@@ -55,6 +55,12 @@
             show: true,
           },
           {
+            label: $t('sidebar.locations') || 'Locations',
+            icon: 'map-pin',
+            href: `${tenantPrefix}/dashboard/locations`,
+            show: $can('read_own', 'customers'),
+          },
+          {
             label: $t('sidebar.announcements') || 'Announcements',
             icon: 'megaphone',
             href: `${tenantPrefix}/announcements`,
@@ -131,6 +137,12 @@
         title: $t('sidebar.sections.workspace') || 'Workspace',
         items: visibleItems([
           { label: $t('sidebar.overview'), icon: 'shield', href: `${tenantPrefix}/admin`, show: true },
+          {
+            label: $t('sidebar.customers') || 'Customers',
+            icon: 'user-check',
+            href: `${tenantPrefix}/admin/customers`,
+            show: $can('read', 'customers') || $can('manage', 'customers'),
+          },
         ]),
       },
       {
@@ -156,10 +168,34 @@
             show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
           },
           {
+            label: $t('sidebar.logs') || 'Logs',
+            icon: 'file-text',
+            href: `${tenantPrefix}/admin/network/logs`,
+            show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+          },
+          {
             label: $t('sidebar.routers') || 'Routers',
             icon: 'router',
             href: `${tenantPrefix}/admin/network/routers`,
             show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+          },
+          {
+            label: $t('sidebar.ppp_profiles') || 'PPP Profiles',
+            icon: 'key',
+            href: `${tenantPrefix}/admin/network/ppp-profiles`,
+            show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+          },
+          {
+            label: $t('sidebar.ip_pools') || 'IP Pools',
+            icon: 'database',
+            href: `${tenantPrefix}/admin/network/ip-pools`,
+            show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+          },
+          {
+            label: $t('sidebar.pppoe') || 'PPPoE',
+            icon: 'key',
+            href: `${tenantPrefix}/admin/network/pppoe`,
+            show: $can('read', 'pppoe') || $can('manage', 'pppoe'),
           },
         ]),
       },
@@ -804,6 +840,7 @@
 
   .profile-section {
     position: relative;
+    min-width: 0;
   }
 
   .profile-btn {
@@ -888,8 +925,10 @@
     flex-direction: column;
     z-index: 100;
     animation: dropdownPop 0.14s ease-out;
-    width: max-content;
-    min-width: 100%;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .dropdown-menu::after {
@@ -910,6 +949,8 @@
     bottom: 0;
     margin-left: 8px;
     margin-bottom: 0;
+    width: clamp(210px, 28vw, 280px);
+    max-width: min(280px, calc(100vw - 24px));
   }
 
   .sidebar.collapsed .dropdown-menu::after {
@@ -923,6 +964,7 @@
     align-items: center;
     gap: 10px;
     padding: 10px 10px 8px;
+    min-width: 0;
   }
 
   .dropdown-avatar {
@@ -945,6 +987,7 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
+    overflow: hidden;
   }
 
   .dropdown-name {
@@ -955,7 +998,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 240px;
+    max-width: 100%;
   }
 
   .dropdown-sub {
@@ -964,7 +1007,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 240px;
+    max-width: 100%;
   }
 
   .dot {

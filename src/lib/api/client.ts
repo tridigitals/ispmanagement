@@ -92,6 +92,25 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       get_support_ticket: { method: 'GET', path: '/support/tickets/:id' },
       reply_support_ticket: { method: 'POST', path: '/support/tickets/:id/messages' },
       update_support_ticket: { method: 'PUT', path: '/support/tickets/:id' },
+
+      // Customers (tenant scoped)
+      list_customers: { method: 'GET', path: '/customers' },
+      get_customer: { method: 'GET', path: '/customers/:customerId' },
+      create_customer: { method: 'POST', path: '/customers' },
+      update_customer: { method: 'PUT', path: '/customers/:customerId' },
+      delete_customer: { method: 'DELETE', path: '/customers/:customerId' },
+      list_customer_locations: { method: 'GET', path: '/customers/:customerId/locations' },
+      create_customer_location: { method: 'POST', path: '/customers/locations' },
+      update_customer_location: { method: 'PUT', path: '/customers/locations/:locationId' },
+      delete_customer_location: { method: 'DELETE', path: '/customers/locations/:locationId' },
+      list_customer_portal_users: { method: 'GET', path: '/customers/:customerId/portal-users' },
+      add_customer_portal_user: { method: 'POST', path: '/customers/portal-users/add' },
+      create_customer_portal_user: { method: 'POST', path: '/customers/portal-users/create' },
+      remove_customer_portal_user: {
+        method: 'DELETE',
+        path: '/customers/portal-users/:customerUserId',
+      },
+      list_my_customer_locations: { method: 'GET', path: '/customers/portal/my-locations' },
       // Settings
       get_logo: { method: 'GET', path: '/settings/logo' },
       get_all_settings: { method: 'GET', path: '/settings' },
@@ -197,6 +216,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       list_mikrotik_routers: { method: 'GET', path: '/admin/mikrotik/routers' },
       list_mikrotik_noc: { method: 'GET', path: '/admin/mikrotik/noc' },
       list_mikrotik_alerts: { method: 'GET', path: '/admin/mikrotik/alerts' },
+      list_mikrotik_logs: { method: 'GET', path: '/admin/mikrotik/logs' },
       ack_mikrotik_alert: { method: 'POST', path: '/admin/mikrotik/alerts/:id/ack' },
       resolve_mikrotik_alert: { method: 'POST', path: '/admin/mikrotik/alerts/:id/resolve' },
       create_mikrotik_router: { method: 'POST', path: '/admin/mikrotik/routers' },
@@ -221,6 +241,47 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         method: 'GET',
         path: '/admin/mikrotik/routers/:routerId/interfaces/live',
       },
+      list_mikrotik_ppp_profiles: {
+        method: 'GET',
+        path: '/admin/mikrotik/routers/:routerId/ppp-profiles',
+      },
+      sync_mikrotik_ppp_profiles: {
+        method: 'POST',
+        path: '/admin/mikrotik/routers/:routerId/ppp-profiles/sync',
+      },
+      list_mikrotik_ip_pools: {
+        method: 'GET',
+        path: '/admin/mikrotik/routers/:routerId/ip-pools',
+      },
+      sync_mikrotik_ip_pools: {
+        method: 'POST',
+        path: '/admin/mikrotik/routers/:routerId/ip-pools/sync',
+      },
+      sync_mikrotik_logs: {
+        method: 'POST',
+        path: '/admin/mikrotik/routers/:routerId/logs/sync',
+      },
+
+      // PPPoE (Tenant admin)
+      list_pppoe_accounts: { method: 'GET', path: '/admin/pppoe/accounts' },
+      get_pppoe_account: { method: 'GET', path: '/admin/pppoe/accounts/:id' },
+      create_pppoe_account: { method: 'POST', path: '/admin/pppoe/accounts' },
+      update_pppoe_account: { method: 'PUT', path: '/admin/pppoe/accounts/:id' },
+      delete_pppoe_account: { method: 'DELETE', path: '/admin/pppoe/accounts/:id' },
+      apply_pppoe_account: { method: 'POST', path: '/admin/pppoe/accounts/:id/apply' },
+      reconcile_pppoe_router: {
+        method: 'POST',
+        path: '/admin/pppoe/routers/:routerId/reconcile',
+      },
+      preview_pppoe_import_from_router: {
+        method: 'GET',
+        path: '/admin/pppoe/routers/:routerId/import/preview',
+      },
+      import_pppoe_from_router: {
+        method: 'POST',
+        path: '/admin/pppoe/routers/:routerId/import',
+      },
+
       // Backup
       list_backups: { method: 'GET', path: '/backups' },
       create_backup: { method: 'POST', path: '/backups' },
@@ -539,6 +600,65 @@ export interface SupportTicket {
 export interface SupportTicketDetail {
   ticket: SupportTicket;
   messages: SupportTicketMessage[];
+}
+
+export interface Customer {
+  id: string;
+  tenant_id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  notes: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerLocation {
+  id: string;
+  tenant_id: string;
+  customer_id: string;
+  label: string;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerPortalUser {
+  customer_user_id: string;
+  user_id: string;
+  email: string;
+  name: string;
+  created_at: string;
+}
+
+export interface PppoeAccountPublic {
+  id: string;
+  tenant_id: string;
+  router_id: string;
+  customer_id: string;
+  location_id: string;
+  username: string;
+  profile_id: string | null;
+  router_profile_name: string | null;
+  remote_address: string | null;
+  address_pool: string | null;
+  disabled: boolean;
+  comment: string | null;
+  router_present: boolean;
+  router_secret_id: string | null;
+  last_sync_at: string | null;
+  last_error: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Announcement {
@@ -1039,6 +1159,30 @@ export const mikrotik = {
         router_id: routerId,
         names,
       }),
+    pppProfiles: (routerId: string): Promise<any[]> =>
+      safeInvoke('list_mikrotik_ppp_profiles', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+      }),
+    syncPppProfiles: (routerId: string): Promise<any[]> =>
+      safeInvoke('sync_mikrotik_ppp_profiles', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+      }),
+    ipPools: (routerId: string): Promise<any[]> =>
+      safeInvoke('list_mikrotik_ip_pools', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+      }),
+    syncIpPools: (routerId: string): Promise<any[]> =>
+      safeInvoke('sync_mikrotik_ip_pools', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+      }),
   },
   alerts: {
     list: (params?: { activeOnly?: boolean; limit?: number }): Promise<any[]> =>
@@ -1052,6 +1196,34 @@ export const mikrotik = {
       safeInvoke('ack_mikrotik_alert', { token: getTokenOrThrow(), id }),
     resolve: (id: string): Promise<any> =>
       safeInvoke('resolve_mikrotik_alert', { token: getTokenOrThrow(), id }),
+  },
+  logs: {
+    list: (params?: {
+      routerId?: string;
+      level?: string;
+      topic?: string;
+      q?: string;
+      page?: number;
+      perPage?: number;
+    }): Promise<PaginatedResponse<any>> =>
+      safeInvoke('list_mikrotik_logs', {
+        token: getTokenOrThrow(),
+        router_id: params?.routerId,
+        routerId: params?.routerId,
+        level: params?.level,
+        topic: params?.topic,
+        q: params?.q,
+        page: params?.page,
+        per_page: params?.perPage,
+      }),
+    sync: (routerId: string, fetchLimit?: number): Promise<any> =>
+      safeInvoke('sync_mikrotik_logs', {
+        token: getTokenOrThrow(),
+        router_id: routerId,
+        routerId,
+        fetch_limit: fetchLimit,
+        fetchLimit,
+      }),
   },
 };
 
@@ -1119,6 +1291,257 @@ export const support = {
       assignedTo: data.assignedTo ?? undefined,
       assigned_to: data.assignedTo ?? undefined,
     }),
+};
+
+export const customers = {
+  list: (params?: {
+    q?: string;
+    page?: number;
+    perPage?: number;
+  }): Promise<PaginatedResponse<Customer>> =>
+    safeInvoke('list_customers', {
+      token: getTokenOrThrow(),
+      q: params?.q,
+      page: params?.page,
+      per_page: params?.perPage,
+    }),
+
+  get: (customerId: string): Promise<Customer> =>
+    safeInvoke('get_customer', {
+      token: getTokenOrThrow(),
+      customerId,
+      customer_id: customerId,
+    }),
+
+  create: (dto: {
+    name: string;
+    email?: string | null;
+    phone?: string | null;
+    notes?: string | null;
+    is_active?: boolean;
+  }): Promise<Customer> =>
+    safeInvoke('create_customer', {
+      token: getTokenOrThrow(),
+      ...dto,
+    }),
+
+  update: (
+    customerId: string,
+    dto: {
+      name?: string;
+      email?: string | null;
+      phone?: string | null;
+      notes?: string | null;
+      is_active?: boolean;
+    },
+  ): Promise<Customer> =>
+    safeInvoke('update_customer', {
+      token: getTokenOrThrow(),
+      customerId,
+      customer_id: customerId,
+      ...dto,
+    }),
+
+  delete: (customerId: string): Promise<void> =>
+    safeInvoke('delete_customer', {
+      token: getTokenOrThrow(),
+      customerId,
+      customer_id: customerId,
+    }),
+
+  locations: {
+    list: (customerId: string): Promise<CustomerLocation[]> =>
+      safeInvoke('list_customer_locations', {
+        token: getTokenOrThrow(),
+        customerId,
+        customer_id: customerId,
+      }),
+    create: (dto: {
+      customer_id: string;
+      label: string;
+      address_line1?: string | null;
+      address_line2?: string | null;
+      city?: string | null;
+      state?: string | null;
+      postal_code?: string | null;
+      country?: string | null;
+      latitude?: number | null;
+      longitude?: number | null;
+      notes?: string | null;
+    }): Promise<CustomerLocation> =>
+      safeInvoke('create_customer_location', {
+        token: getTokenOrThrow(),
+        ...dto,
+      }),
+    update: (
+      locationId: string,
+      dto: Partial<
+        Pick<
+          CustomerLocation,
+          | 'label'
+          | 'address_line1'
+          | 'address_line2'
+          | 'city'
+          | 'state'
+          | 'postal_code'
+          | 'country'
+          | 'latitude'
+          | 'longitude'
+          | 'notes'
+        >
+      >,
+    ): Promise<CustomerLocation> =>
+      safeInvoke('update_customer_location', {
+        token: getTokenOrThrow(),
+        locationId,
+        location_id: locationId,
+        ...dto,
+      }),
+    delete: (locationId: string): Promise<void> =>
+      safeInvoke('delete_customer_location', {
+        token: getTokenOrThrow(),
+        locationId,
+        location_id: locationId,
+      }),
+  },
+
+  portalUsers: {
+    list: (customerId: string): Promise<CustomerPortalUser[]> =>
+      safeInvoke('list_customer_portal_users', {
+        token: getTokenOrThrow(),
+        customerId,
+        customer_id: customerId,
+      }),
+    addExisting: (dto: { customer_id: string; user_id: string }): Promise<CustomerPortalUser> =>
+      safeInvoke('add_customer_portal_user', {
+        token: getTokenOrThrow(),
+        ...dto,
+      }),
+    createNew: (dto: {
+      customer_id: string;
+      email: string;
+      name: string;
+      password: string;
+    }): Promise<CustomerPortalUser> =>
+      safeInvoke('create_customer_portal_user', {
+        token: getTokenOrThrow(),
+        ...dto,
+      }),
+    remove: (customerUserId: string): Promise<void> =>
+      safeInvoke('remove_customer_portal_user', {
+        token: getTokenOrThrow(),
+        customerUserId,
+        customer_user_id: customerUserId,
+      }),
+  },
+
+  portal: {
+    myLocations: (): Promise<CustomerLocation[]> =>
+      safeInvoke('list_my_customer_locations', { token: getTokenOrThrow() }),
+  },
+};
+
+export const pppoe = {
+  accounts: {
+    list: (params?: {
+      customer_id?: string;
+      location_id?: string;
+      router_id?: string;
+      q?: string;
+      page?: number;
+      per_page?: number;
+    }): Promise<PaginatedResponse<PppoeAccountPublic>> =>
+      safeInvoke('list_pppoe_accounts', { token: getTokenOrThrow(), ...(params || {}) }),
+
+    get: (id: string): Promise<PppoeAccountPublic> =>
+      safeInvoke('get_pppoe_account', { token: getTokenOrThrow(), id }),
+
+    create: (dto: {
+      router_id: string;
+      customer_id: string;
+      location_id: string;
+      username: string;
+      password: string;
+      profile_id?: string | null;
+      router_profile_name?: string | null;
+      remote_address?: string | null;
+      address_pool?: string | null;
+      disabled?: boolean;
+      comment?: string | null;
+    }): Promise<PppoeAccountPublic> =>
+      safeInvoke('create_pppoe_account', {
+        token: getTokenOrThrow(),
+        router_id: dto.router_id,
+        customer_id: dto.customer_id,
+        location_id: dto.location_id,
+        username: dto.username,
+        password: dto.password,
+        profile_id: dto.profile_id ?? null,
+        router_profile_name: dto.router_profile_name ?? null,
+        remote_address: dto.remote_address ?? null,
+        address_pool: dto.address_pool ?? null,
+        disabled: dto.disabled ?? false,
+        comment: dto.comment ?? null,
+      }),
+
+    update: (
+      id: string,
+      dto: {
+        username?: string;
+        password?: string;
+        profile_id?: string | null;
+        router_profile_name?: string | null;
+        remote_address?: string | null;
+        address_pool?: string | null;
+        disabled?: boolean;
+        comment?: string | null;
+      },
+    ): Promise<PppoeAccountPublic> =>
+      safeInvoke('update_pppoe_account', {
+        token: getTokenOrThrow(),
+        id,
+        username: dto.username,
+        password: dto.password,
+        profile_id: dto.profile_id ?? undefined,
+        router_profile_name: dto.router_profile_name ?? undefined,
+        remote_address: dto.remote_address ?? undefined,
+        address_pool: dto.address_pool ?? undefined,
+        disabled: dto.disabled,
+        comment: dto.comment ?? undefined,
+      }),
+
+    delete: (id: string): Promise<void> =>
+      safeInvoke('delete_pppoe_account', { token: getTokenOrThrow(), id }),
+
+    apply: (id: string): Promise<PppoeAccountPublic> =>
+      safeInvoke('apply_pppoe_account', { token: getTokenOrThrow(), id }),
+
+    reconcileRouter: (routerId: string): Promise<any> =>
+      safeInvoke('reconcile_pppoe_router', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+      }),
+  },
+  import: {
+    preview: (routerId: string, params?: { include_disabled?: boolean }): Promise<any[]> =>
+      safeInvoke('preview_pppoe_import_from_router', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+        include_disabled: params?.include_disabled,
+        includeDisabled: params?.include_disabled,
+      }),
+    run: (routerId: string, dto: { usernames: string[]; customer_id?: string; location_id?: string }): Promise<any> =>
+      safeInvoke('import_pppoe_from_router', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+        usernames: dto.usernames,
+        customer_id: dto.customer_id,
+        location_id: dto.location_id,
+      }),
+  },
 };
 
 export const announcements = {
@@ -1837,6 +2260,8 @@ export const api = {
   users,
   roles,
   team,
+  customers,
+  pppoe,
   superadmin,
   audit,
   mikrotik,

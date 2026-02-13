@@ -101,19 +101,26 @@
     "delete": "Delete",
     "edit": "Edit",
     "details": "Details",
+    "validation_error": "Validation error",
+    "status": "Status",
+    "action": "Action",
     "open": "Open",
     "download": "Download",
     "load_more": "Load more",
     "page": "Page",
+    "results": "results",
+    "search": "Search",
     "next": "Next",
     "previous": "Previous",
     "retry": "Retry",
     "refresh": "Refresh",
+    "remove": "Remove",
     "reset": "Reset",
     "upgrade_plan": "Upgrade Plan",
     "file_saved": "File saved successfully",
     "otp_placeholder": "000000",
     "otp_placeholder_spaced": "000 000",
+    "select": "Select",
     "active": "Active",
     "inactive": "Inactive",
     "all": "All",
@@ -371,11 +378,17 @@
     "backups": "Backups",
     "system": "System",
     "support": "Support",
+    "customers": "Customers",
+    "locations": "Locations",
     "announcements": "Announcements",
     "routers": "Routers",
     "noc": "NOC",
     "wallboard": "Wallboard",
     "alerts": "Alerts",
+    "logs": "Logs",
+    "pppoe": "PPPoE",
+    "ppp_profiles": "PPP Profiles",
+    "ip_pools": "IP Pools",
     "expand": "Expand sidebar",
     "collapse": "Collapse sidebar",
     "exit": "Exit",
@@ -1456,6 +1469,17 @@
       "title": "Administrator Mode",
       "description": "You have system-wide permissions. Access management tools here."
     },
+    "locations": {
+      "kicker": "Customer portal",
+      "title": "My Locations",
+      "subtitle": "Your service locations. If something looks wrong, contact support.",
+      "location": "Location",
+      "empty": "No locations yet.",
+      "empty_hint": "Your admin has not linked your account to a customer location.",
+      "toasts": {
+        "load_failed": "Failed to load locations"
+      }
+    },
     "stats": {
       "account_role": "Account Role",
       "member_since": "Member Since",
@@ -1647,16 +1671,194 @@
       "network": {
         "alerting": {
           "title": "Router Alerting",
-          "desc": "Enable incidents and notifications derived from MikroTik polling."
+          "desc": "Enable incidents and notifications derived from MikroTik polling.",
+          "email_title": "Email alerts",
+          "email_desc": "Also send email to members who can access Network Routers."
         },
         "thresholds": {
           "title": "Thresholds",
           "desc": "Used by NOC filters and by the background poller to open incidents.",
+          "offline_after_secs": "Offline incident after (seconds)",
           "cpu_risk": "CPU risk (%)",
           "cpu_hot": "CPU hot (%)",
           "latency_risk": "Latency risk (ms)",
           "latency_hot": "Latency hot (ms)"
         }
+      }
+    },
+    "customers": {
+      "title": "Customers",
+      "subtitle": "Manage customer accounts and service locations.",
+      "actions": {
+        "new": "New customer"
+      },
+      "search": "Search customers...",
+      "results": "results",
+      "empty": "No customers yet.",
+      "stats": {
+        "total": "Total",
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "columns": {
+        "customer": "Customer",
+        "contact": "Contact",
+        "status": "Status",
+        "updated": "Updated"
+      },
+      "fields": {
+        "name": "Name",
+        "email": "Email",
+        "phone": "Phone",
+        "notes": "Notes",
+        "active": "Active"
+      },
+      "new": {
+        "title": "New customer"
+      },
+      "delete": {
+        "title": "Delete customer",
+        "message": "This will remove the customer and all related data."
+      },
+      "detail": {
+        "title": "Customer",
+        "subtitle": "Customer details"
+      },
+      "tabs": {
+        "overview": "Overview",
+        "locations": "Locations",
+        "portal": "Portal users",
+        "pppoe": "PPPoE"
+      },
+      "overview": {
+        "title": "Customer profile"
+      },
+      "locations": {
+        "title": "Locations",
+        "subtitle": "Service locations under this customer.",
+        "actions": {
+          "add": "Add location"
+        },
+        "empty": "No locations yet.",
+        "columns": {
+          "label": "Label",
+          "address": "Address",
+          "updated": "Updated"
+        },
+        "new": {
+          "title": "Add location"
+        },
+        "fields": {
+          "label": "Label",
+          "address1": "Address line 1",
+          "address2": "Address line 2",
+          "city": "City",
+          "state": "State",
+          "postal": "Postal code",
+          "country": "Country",
+          "notes": "Notes"
+        },
+        "toasts": {
+          "load_failed": "Failed to load locations",
+          "created": "Location added",
+          "create_failed": "Failed to add location: {message}"
+        }
+      },
+      "portal": {
+        "title": "Portal users",
+        "subtitle": "Users who can login to the customer portal.",
+        "actions": {
+          "add": "Add user"
+        },
+        "empty": "No portal users yet.",
+        "columns": {
+          "user": "User",
+          "added": "Added"
+        },
+        "new": {
+          "title": "Add portal user",
+          "hint": "This user will be linked to the customer and can login to the dashboard.",
+          "fields": {
+            "email": "Email",
+            "name": "Name",
+            "password": "Password"
+          }
+        },
+        "remove": {
+          "title": "Remove portal user",
+          "message": "This will unlink the user from the customer."
+        },
+        "toasts": {
+          "load_failed": "Failed to load portal users",
+          "created": "Portal user added",
+          "create_failed": "Failed to add portal user: {message}",
+          "removed": "Portal user removed",
+          "remove_failed": "Failed to remove portal user: {message}"
+        }
+      },
+      "pppoe": {
+        "title": "PPPoE accounts",
+        "subtitle": "Manage PPPoE secrets for this customer (per-router). The database is the source of truth.",
+        "search": "Search username...",
+        "empty": "No PPPoE accounts yet.",
+        "confirm_delete": "Delete this PPPoE account?",
+        "columns": {
+          "username": "Username",
+          "router": "Router",
+          "location": "Location",
+          "assignment": "IP / Profile",
+          "sync": "Sync"
+        },
+        "fields": {
+          "router": "Router",
+          "location": "Location",
+          "username": "Username",
+          "password": "Password",
+          "profile": "Profile",
+          "remote_address": "Remote IP / Pool",
+          "comment": "Comment",
+          "disabled": "Disabled"
+        },
+        "sync": {
+          "present": "On router",
+          "missing": "Missing"
+        },
+        "actions": {
+          "add": "Add PPPoE",
+          "apply": "Apply to router",
+          "reconcile": "Reconcile",
+          "reconcile_hint": "Mark which accounts exist on the router"
+        },
+        "new": {
+          "title": "Add PPPoE account"
+        },
+        "edit": {
+          "title": "Edit PPPoE account",
+          "password_hint": "Leave blank to keep"
+        },
+        "toasts": {
+          "routers_failed": "Failed to load routers",
+          "load_failed": "Failed to load PPPoE accounts: {message}",
+          "created": "PPPoE account created",
+          "create_failed": "Failed to create PPPoE account: {message}",
+          "updated": "PPPoE account updated",
+          "update_failed": "Failed to update PPPoE account: {message}",
+          "applied": "Applied to router",
+          "apply_failed": "Failed to apply PPPoE account: {message}",
+          "reconciled": "Reconciled router state",
+          "reconcile_failed": "Failed to reconcile router state: {message}",
+          "deleted": "PPPoE account deleted",
+          "delete_failed": "Failed to delete PPPoE account: {message}"
+        }
+      },
+      "toasts": {
+        "load_failed": "Failed to load customers",
+        "created": "Customer created",
+        "create_failed": "Failed to create customer: {message}",
+        "updated": "Customer updated",
+        "update_failed": "Failed to update customer: {message}",
+        "deleted": "Customer deleted",
+        "delete_failed": "Failed to delete customer: {message}"
       }
     },
     "network": {
@@ -1731,6 +1933,35 @@
           "acked": "Alert acknowledged",
           "resolved": "Alert resolved",
           "snoozed": "Router snoozed"
+        }
+      },
+      "logs": {
+        "title": "Router Logs",
+        "subtitle": "Read and store MikroTik logs for troubleshooting and audits.",
+        "search": "Search log message...",
+        "empty": "No logs",
+        "actions": {
+          "refresh": "Refresh",
+          "sync_selected": "Sync selected router",
+          "sync_all": "Sync all routers"
+        },
+        "filters": {
+          "router": "Router",
+          "all_routers": "All routers",
+          "level": "Level",
+          "all_levels": "All levels",
+          "topic": "Topic"
+        },
+        "columns": {
+          "time": "Time",
+          "router": "Router",
+          "level": "Level",
+          "topics": "Topics",
+          "message": "Message"
+        },
+        "toasts": {
+          "sync_ok": "Log sync completed",
+          "sync_failed": "Failed to sync logs"
         }
       }
     },
@@ -1816,6 +2047,102 @@
       }
     },
     "network": {
+      "pppoe": {
+        "title": "PPPoE",
+        "subtitle": "Tenant-wide view of PPPoE accounts across routers.",
+        "search": "Search PPPoE...",
+        "empty": "No PPPoE accounts.",
+        "import": {
+          "cta": "Import",
+          "title": "Import PPPoE from MikroTik",
+          "subtitle": "Scan /ppp/secret and import selected accounts into the database (per-router).",
+          "search": "Search username...",
+          "done": "Import completed",
+          "labels": {
+            "new": "New",
+            "update": "Update",
+            "same": "Same",
+            "enabled": "Enabled",
+            "disabled": "Disabled"
+          },
+          "result": {
+            "created": "Created",
+            "updated": "Updated",
+            "skipped": "Skipped",
+            "missing_password": "Missing password"
+          },
+          "errors": {
+            "select_router": "Select a router",
+            "permission": "Missing permission",
+            "select_one": "Select at least one item",
+            "customer_location_pair": "Select both customer and location, or leave both empty."
+          },
+          "steps": {
+            "select": "Select",
+            "preview": "Preview",
+            "import": "Import"
+          },
+          "fields": {
+            "include_disabled": "Include disabled",
+            "include_disabled_hint": "Also scan secrets that are disabled on the router.",
+            "customer_optional": "Assign to customer (optional)",
+            "location_optional": "Location (optional)",
+            "location_hint": "If you pick a customer, you must also pick a location.",
+            "unassigned": "Unassigned (recommended for bulk import)"
+          },
+          "actions": {
+            "scan": "Scan secrets",
+            "select_new_update": "Select new+update",
+            "import": "Import selected",
+            "import_more": "Import more",
+            "go_to_list": "Go to PPPoE list"
+          },
+          "columns": {
+            "password": "Password"
+          },
+          "summary": {
+            "items": "items"
+          }
+        },
+        "stats": {
+          "total": "Total",
+          "present": "On router",
+          "missing": "Missing",
+          "disabled": "Disabled"
+        },
+        "filters": {
+          "all": "All",
+          "router": "Router",
+          "sync": "Sync",
+          "disabled": "State",
+          "any": "Any",
+          "present": "On router",
+          "missing": "Missing",
+          "enabled": "Enabled",
+          "disabled_only": "Disabled"
+        },
+        "columns": {
+          "username": "Username",
+          "customer": "Customer",
+          "router": "Router",
+          "sync": "Sync"
+        },
+        "sync": {
+          "present": "On router",
+          "missing": "Missing"
+        },
+        "actions": {
+          "reconcile": "Reconcile",
+          "open_customer": "Open customer",
+          "apply": "Apply to router"
+        },
+        "toasts": {
+          "applied": "Applied to router",
+          "apply_failed": "Failed to apply PPPoE account: {message}",
+          "reconciled": "Reconciled router state",
+          "reconcile_failed": "Failed to reconcile router state: {message}"
+        }
+      },
       "routers": {
         "title": "Routers",
         "subtitle": "Manage MikroTik routers and monitoring",
@@ -1838,13 +2165,63 @@
           "actions": "Actions"
         },
         "tabs": {
-          "traffic": "Traffic"
+          "traffic": "Traffic",
+          "ppp_profiles": "PPP Profiles",
+          "ip_pools": "IP Pools"
         },
         "badges": {
           "online": "Online",
           "offline": "Offline",
           "unknown": "Unknown",
           "maintenance": "Maintenance"
+        },
+        "ppp_profiles": {
+          "title": "PPP Profiles",
+          "subtitle": "Per-router RouterOS PPP profiles (synced into database for mapping & import).",
+          "search": "Search profiles...",
+          "empty": "No profiles found.",
+          "actions": {
+            "sync": "Sync from router"
+          },
+          "columns": {
+            "name": "Name",
+            "local": "Local",
+            "remote": "Remote",
+            "rate": "Rate",
+            "dns": "DNS",
+            "state": "State",
+            "synced": "Synced"
+          },
+          "state": {
+            "present": "On router",
+            "missing": "Missing"
+          },
+          "toasts": {
+            "synced": "Synced PPP profiles"
+          }
+        },
+        "ip_pools": {
+          "title": "IP Pools",
+          "subtitle": "Per-router RouterOS IP pools (used for PPPoE remote-address mapping).",
+          "search": "Search pools...",
+          "empty": "No IP pools found.",
+          "actions": {
+            "sync": "Sync from router"
+          },
+          "columns": {
+            "name": "Name",
+            "ranges": "Ranges",
+            "next": "Next pool",
+            "state": "State",
+            "synced": "Synced"
+          },
+          "state": {
+            "present": "On router",
+            "missing": "Missing"
+          },
+          "toasts": {
+            "synced": "Synced IP pools"
+          }
         },
         "traffic": {
           "watch": "Watch Interfaces",
@@ -1880,10 +2257,12 @@
         "kiosk": "Kiosk",
         "fullscreen": "Fullscreen",
         "keep_awake": "Keep awake",
+        "fit": "Fit",
         "pause": "Pause",
         "resume": "Resume",
         "stale": "Stale",
         "drag": "Drag to reorder",
+        "show_controls": "Show controls",
         "exit": "Exit wallboard",
         "last_seen": "Last seen",
         "watch": "Watch",
@@ -1909,15 +2288,28 @@
         "tile_settings": "Tile settings",
         "warn_below_rx": "Warn if RX below",
         "warn_below_tx": "Warn if TX below",
+        "alerts_open": "Open alerts",
+        "ack_router_alerts": "Acknowledge router alerts",
+        "focus_mode": "Focus mode",
+        "focus_mode_hint": "Toggle focus mode (F)",
         "thresholds": {
           "title": "Thresholds",
           "change_interface": "Change interface"
+        },
+        "chart": {
+          "peak": "RX Peak",
+          "avg": "RX Avg",
+          "peak_tx": "TX Peak",
+          "avg_tx": "TX Avg"
         },
         "layouts": {
           "2x2": "2x2 layout",
           "3x2": "3x2 layout",
           "3x3": "3x3 layout",
-          "4x3": "4x3 layout"
+          "4x3": "4x3 layout",
+          "4x4": "4x4 layout",
+          "5x4": "5x4 layout",
+          "6x4": "6x4 layout"
         },
         "filters": {
           "all": "All",
@@ -1926,7 +2318,13 @@
         },
         "controls": {
           "filter": "Filter",
-          "layout": "Layout"
+          "layout": "Layout",
+          "pager": "Pager",
+          "manual": "Manual",
+          "auto_rotate": "Auto rotate",
+          "rotate_every": "Rotate",
+          "open": "Open settings",
+          "title": "Wallboard Settings"
         }
       },
       "noc": {
@@ -1975,7 +2373,9 @@
           "toggle": "Toggle active/resolved",
           "active": "Active",
           "all": "All",
-          "ack": "Acknowledge"
+          "ack": "Acknowledge",
+          "resolve": "Resolve",
+          "snooze_30m": "Snooze 30m"
         },
         "columns": {
           "alert": "Alert",
@@ -1996,6 +2396,35 @@
         },
         "toasts": {
           "acked": "Alert acknowledged"
+        }
+      },
+      "logs": {
+        "title": "Router Logs",
+        "subtitle": "Read and store MikroTik logs for troubleshooting and audits.",
+        "search": "Search log message...",
+        "empty": "No logs",
+        "actions": {
+          "refresh": "Refresh",
+          "sync_selected": "Sync selected router",
+          "sync_all": "Sync all routers"
+        },
+        "filters": {
+          "router": "Router",
+          "all_routers": "All routers",
+          "level": "Level",
+          "all_levels": "All levels",
+          "topic": "Topic"
+        },
+        "columns": {
+          "time": "Time",
+          "router": "Router",
+          "level": "Level",
+          "topics": "Topics",
+          "message": "Message"
+        },
+        "toasts": {
+          "sync_ok": "Log sync completed",
+          "sync_failed": "Failed to sync logs"
         }
       }
     },

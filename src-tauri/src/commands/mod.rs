@@ -19,6 +19,8 @@ pub mod team;
 pub mod tenant;
 pub mod users;
 pub mod mikrotik;
+pub mod customers;
+pub mod pppoe;
 
 #[tauri::command]
 pub fn get_app_version() -> String {
@@ -43,3 +45,5 @@ pub use team::*;
 pub use tenant::*;
 pub use users::*;
 pub use mikrotik::*;
+pub use customers::*;
+pub use pppoe::*;

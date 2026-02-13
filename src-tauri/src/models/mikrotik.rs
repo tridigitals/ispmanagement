@@ -256,6 +256,44 @@ pub struct MikrotikRouterNocRow {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct MikrotikPppProfile {
+    pub id: String,
+    pub tenant_id: String,
+    pub router_id: String,
+    pub name: String,
+    pub local_address: Option<String>,
+    pub remote_address: Option<String>,
+    pub rate_limit: Option<String>,
+    pub dns_server: Option<String>,
+    pub only_one: Option<bool>,
+    pub change_tcp_mss: Option<bool>,
+    pub use_compression: Option<bool>,
+    pub use_encryption: Option<bool>,
+    pub use_ipv6: Option<bool>,
+    pub bridge: Option<String>,
+    pub comment: Option<String>,
+    pub router_present: bool,
+    pub last_sync_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct MikrotikIpPool {
+    pub id: String,
+    pub tenant_id: String,
+    pub router_id: String,
+    pub name: String,
+    pub ranges: Option<String>,
+    pub next_pool: Option<String>,
+    pub comment: Option<String>,
+    pub router_present: bool,
+    pub last_sync_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct MikrotikAlert {
     pub id: String,
     pub tenant_id: String,
@@ -274,6 +312,27 @@ pub struct MikrotikAlert {
     pub acked_by: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct MikrotikLogEntry {
+    pub id: String,
+    pub tenant_id: String,
+    pub router_id: String,
+    pub router_log_id: Option<String>,
+    pub logged_at: DateTime<Utc>,
+    pub router_time: Option<String>,
+    pub topics: Option<String>,
+    pub level: Option<String>,
+    pub message: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MikrotikLogSyncResult {
+    pub seen: u32,
+    pub upserted: u32,
 }
 
 impl MikrotikAlert {

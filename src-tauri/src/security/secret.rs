@@ -25,11 +25,11 @@ fn get_master_secret() -> AppResult<String> {
     Ok(raw)
 }
 
-fn derive_key() -> AppResult<[u8; 32]> {
+fn derive_key_for(purpose: &str) -> AppResult<[u8; 32]> {
     // Domain-separated derivation from the master secret.
     // This prevents key reuse across different crypto purposes.
     let master = get_master_secret()?;
-    let raw = format!("{master}:mikrotik_credentials:v1");
+    let raw = format!("{master}:{purpose}:v1");
     let digest = Sha256::digest(raw.as_bytes());
     let mut out = [0u8; 32];
     out.copy_from_slice(&digest[..32]);
@@ -37,6 +37,11 @@ fn derive_key() -> AppResult<[u8; 32]> {
 }
 
 pub fn encrypt_secret(plaintext: &str) -> AppResult<String> {
+    // Backward compatible: this function remains dedicated for MikroTik router credentials.
+    encrypt_secret_for("mikrotik_credentials", plaintext)
+}
+
+pub fn encrypt_secret_for(purpose: &str, plaintext: &str) -> AppResult<String> {
     if plaintext.trim().is_empty() {
         return Ok(String::new());
     }
@@ -44,7 +49,7 @@ pub fn encrypt_secret(plaintext: &str) -> AppResult<String> {
         return Ok(plaintext.to_string());
     }
 
-    let key = derive_key()?;
+    let key = derive_key_for(purpose)?;
     let cipher = Aes256Gcm::new_from_slice(&key).map_err(|_| AppError::Internal("Invalid key".into()))?;
 
     let mut nonce_bytes = [0u8; 12];
@@ -67,6 +72,11 @@ pub fn encrypt_secret(plaintext: &str) -> AppResult<String> {
 }
 
 pub fn decrypt_secret(stored: &str) -> AppResult<String> {
+    // Backward compatible: this function remains dedicated for MikroTik router credentials.
+    decrypt_secret_for("mikrotik_credentials", stored)
+}
+
+pub fn decrypt_secret_for(purpose: &str, stored: &str) -> AppResult<String> {
     if stored.trim().is_empty() {
         return Ok(String::new());
     }
@@ -75,7 +85,7 @@ pub fn decrypt_secret(stored: &str) -> AppResult<String> {
         return Ok(stored.to_string());
     }
 
-    let key = derive_key()?;
+    let key = derive_key_for(purpose)?;
     let cipher = Aes256Gcm::new_from_slice(&key).map_err(|_| AppError::Internal("Invalid key".into()))?;
 
     let b64 = &stored[PREFIX.len()..];
@@ -96,6 +106,15 @@ pub fn decrypt_secret(stored: &str) -> AppResult<String> {
 
 pub fn decrypt_secret_opt(stored: &str) -> AppResult<Option<String>> {
     let s = decrypt_secret(stored)?;
+    if s.trim().is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(s))
+    }
+}
+
+pub fn decrypt_secret_opt_for(purpose: &str, stored: &str) -> AppResult<Option<String>> {
+    let s = decrypt_secret_for(purpose, stored)?;
     if s.trim().is_empty() {
         Ok(None)
     } else {

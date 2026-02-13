@@ -39,9 +39,18 @@ impl RoleService {
             ("roles", "delete", "Delete roles"),
             // Dashboard permissions
             ("dashboard", "read", "View dashboard"),
+            // Customers (tenant scoped)
+            ("customers", "read", "View customers"),
+            ("customers", "manage", "Manage customers"),
+            ("customers", "read_own", "View own customer portal data"),
+            ("customer_locations", "read", "View customer locations"),
+            ("customer_locations", "manage", "Manage customer locations"),
             // Network / Routers (tenant scoped)
             ("network_routers", "read", "View routers and status"),
             ("network_routers", "manage", "Manage router inventory"),
+            // PPPoE (tenant scoped)
+            ("pppoe", "read", "View PPPoE accounts"),
+            ("pppoe", "manage", "Manage PPPoE accounts"),
             // Backups permissions
             ("backups", "read", "View backups"),
             ("backups", "create", "Create backups"),
@@ -90,8 +99,14 @@ impl RoleService {
                     "roles:update",
                     "roles:delete",
                     "dashboard:read",
+                    "customers:read",
+                    "customers:manage",
+                    "customer_locations:read",
+                    "customer_locations:manage",
                     "network_routers:read",
                     "network_routers:manage",
+                    "pppoe:read",
+                    "pppoe:manage",
                     "backups:read",
                     "backups:create",
                     "backups:download",
@@ -124,8 +139,14 @@ impl RoleService {
                     "settings:update",
                     "roles:read",
                     "dashboard:read",
+                    "customers:read",
+                    "customers:manage",
+                    "customer_locations:read",
+                    "customer_locations:manage",
                     "network_routers:read",
                     "network_routers:manage",
+                    "pppoe:read",
+                    "pppoe:manage",
                     "backups:read",
                     "backups:create",
                     "backups:download",
@@ -159,6 +180,19 @@ impl RoleService {
                 ],
             ),
             ("Viewer", "Read-only access", true, vec!["dashboard:read"]),
+            (
+                "Customer",
+                "Customer portal access (dashboard only)",
+                true,
+                vec![
+                    "dashboard:read",
+                    "announcements:read",
+                    "support:create",
+                    "support:read",
+                    "support:reply",
+                    "customers:read_own",
+                ],
+            ),
         ]
     }
 

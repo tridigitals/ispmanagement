@@ -98,6 +98,35 @@
   let ifaceHistoryLoading = $state(false);
   let ifaceHistory = $state<any[]>([]);
 
+  type PppProfileRow = {
+    id: string;
+    name: string;
+    local_address?: string | null;
+    remote_address?: string | null;
+    rate_limit?: string | null;
+    dns_server?: string | null;
+    comment?: string | null;
+    router_present: boolean;
+    last_sync_at?: string | null;
+  };
+
+  type IpPoolRow = {
+    id: string;
+    name: string;
+    ranges?: string | null;
+    next_pool?: string | null;
+    comment?: string | null;
+    router_present: boolean;
+    last_sync_at?: string | null;
+  };
+
+  let pppProfilesLoading = $state(false);
+  let ipPoolsLoading = $state(false);
+  let pppProfiles = $state<PppProfileRow[]>([]);
+  let ipPools = $state<IpPoolRow[]>([]);
+  let pppLoadedFor = $state<string | null>(null);
+  let poolsLoadedFor = $state<string | null>(null);
+
   let cpuSeries = $derived.by(() => {
     const pts = metrics
       .slice()
@@ -106,7 +135,7 @@
     return pts.filter((v) => v != null) as number[];
   });
 
-  let activeTab = $state<'overview' | 'interfaces' | 'traffic' | 'ip' | 'metrics'>('overview');
+  let activeTab = $state<'overview' | 'interfaces' | 'ip' | 'metrics'>('overview');
   let ifFilter = $state<'all' | 'running' | 'down' | 'disabled'>('all');
 
   let watchSearch = $state('');
@@ -161,13 +190,6 @@
       clearInterval(liveHandle);
       liveHandle = null;
     }
-
-    if (activeTab !== 'traffic') return;
-    if (!router?.id) return;
-    if (!watched.length) return;
-
-    void pollLive();
-    liveHandle = setInterval(() => void pollLive(), 1000);
   });
 
   function toggleWatched(name: string) {
@@ -311,6 +333,76 @@
       initialLoading = false;
       refreshing = false;
       refreshInFlight = false;
+    }
+  }
+
+  async function loadPppProfiles(opts?: { silent?: boolean }) {
+    const id = $page.params.id || '';
+    if (!id) return;
+    if (pppProfilesLoading) return;
+
+    pppProfilesLoading = true;
+    try {
+      const rows = (await api.mikrotik.routers.pppProfiles(id)) as any[];
+      pppProfiles = (rows || []) as any;
+      pppLoadedFor = id;
+    } catch (e: any) {
+      if (!opts?.silent) toast.error(e?.message || e);
+    } finally {
+      pppProfilesLoading = false;
+    }
+  }
+
+  async function syncPppProfiles() {
+    const id = $page.params.id || '';
+    if (!id) return;
+    if (pppProfilesLoading) return;
+
+    pppProfilesLoading = true;
+    try {
+      const rows = (await api.mikrotik.routers.syncPppProfiles(id)) as any[];
+      pppProfiles = (rows || []) as any;
+      pppLoadedFor = id;
+      toast.success($t('admin.network.routers.ppp_profiles.toasts.synced') || 'Synced PPP profiles');
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    } finally {
+      pppProfilesLoading = false;
+    }
+  }
+
+  async function loadIpPools(opts?: { silent?: boolean }) {
+    const id = $page.params.id || '';
+    if (!id) return;
+    if (ipPoolsLoading) return;
+
+    ipPoolsLoading = true;
+    try {
+      const rows = (await api.mikrotik.routers.ipPools(id)) as any[];
+      ipPools = (rows || []) as any;
+      poolsLoadedFor = id;
+    } catch (e: any) {
+      if (!opts?.silent) toast.error(e?.message || e);
+    } finally {
+      ipPoolsLoading = false;
+    }
+  }
+
+  async function syncIpPools() {
+    const id = $page.params.id || '';
+    if (!id) return;
+    if (ipPoolsLoading) return;
+
+    ipPoolsLoading = true;
+    try {
+      const rows = (await api.mikrotik.routers.syncIpPools(id)) as any[];
+      ipPools = (rows || []) as any;
+      poolsLoadedFor = id;
+      toast.success($t('admin.network.routers.ip_pools.toasts.synced') || 'Synced IP pools');
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    } finally {
+      ipPoolsLoading = false;
     }
   }
 
@@ -476,6 +568,95 @@
     { key: 'flags', label: 'Flags' },
   ]);
 
+  const pppProfileTableData = $derived.by(() =>
+    pppProfiles.map((p, idx) => ({
+      id: p.id || `${p.name}:${idx}`,
+      name: p.name,
+      local_address: p.local_address || 'â€”',
+      remote_address: p.remote_address || 'â€”',
+      rate_limit: p.rate_limit || 'â€”',
+      dns_server: p.dns_server || 'â€”',
+      present: Boolean(p.router_present),
+      last_sync_at: p.last_sync_at,
+    })),
+  );
+
+  const pppProfileColumns = $derived([
+    { key: 'name', label: $t('admin.network.routers.ppp_profiles.columns.name') || 'Name' },
+    {
+      key: 'local_address',
+      label: $t('admin.network.routers.ppp_profiles.columns.local') || 'Local',
+      class: 'mono',
+      width: '170px',
+    },
+    {
+      key: 'remote_address',
+      label: $t('admin.network.routers.ppp_profiles.columns.remote') || 'Remote',
+      class: 'mono',
+      width: '170px',
+    },
+    {
+      key: 'rate_limit',
+      label: $t('admin.network.routers.ppp_profiles.columns.rate') || 'Rate',
+      class: 'mono',
+      width: '160px',
+    },
+    {
+      key: 'dns_server',
+      label: $t('admin.network.routers.ppp_profiles.columns.dns') || 'DNS',
+      class: 'mono',
+      width: '170px',
+    },
+    {
+      key: 'present',
+      label: $t('admin.network.routers.ppp_profiles.columns.state') || 'State',
+      width: '120px',
+    },
+    {
+      key: 'last_sync_at',
+      label: $t('admin.network.routers.ppp_profiles.columns.synced') || 'Synced',
+      class: 'mono',
+      width: '120px',
+    },
+  ]);
+
+  const ipPoolTableData = $derived.by(() =>
+    ipPools.map((p, idx) => ({
+      id: p.id || `${p.name}:${idx}`,
+      name: p.name,
+      ranges: p.ranges || 'â€”',
+      next_pool: p.next_pool || 'â€”',
+      present: Boolean(p.router_present),
+      last_sync_at: p.last_sync_at,
+    })),
+  );
+
+  const ipPoolColumns = $derived([
+    { key: 'name', label: $t('admin.network.routers.ip_pools.columns.name') || 'Name' },
+    {
+      key: 'ranges',
+      label: $t('admin.network.routers.ip_pools.columns.ranges') || 'Ranges',
+      class: 'mono',
+    },
+    {
+      key: 'next_pool',
+      label: $t('admin.network.routers.ip_pools.columns.next') || 'Next pool',
+      class: 'mono',
+      width: '160px',
+    },
+    {
+      key: 'present',
+      label: $t('admin.network.routers.ip_pools.columns.state') || 'State',
+      width: '120px',
+    },
+    {
+      key: 'last_sync_at',
+      label: $t('admin.network.routers.ip_pools.columns.synced') || 'Synced',
+      class: 'mono',
+      width: '120px',
+    },
+  ]);
+
   const metricRows = $derived.by(() =>
     metrics.map((m) => ({
       ...m,
@@ -620,17 +801,6 @@
         Interfaces
         {#if snapshot?.interfaces?.length}
           <span class="tab-count">{snapshot.interfaces.length}</span>
-        {/if}
-      </button>
-      <button
-        type="button"
-        class="tab {activeTab === 'traffic' ? 'active' : ''}"
-        onclick={() => (activeTab = 'traffic')}
-      >
-        <Icon name="activity" size={16} />
-        {$t('admin.network.routers.tabs.traffic') || 'Traffic'}
-        {#if watched.length}
-          <span class="tab-count">{watched.length}</span>
         {/if}
       </button>
       <button
@@ -943,102 +1113,6 @@
               {/if}
             {/snippet}
           </Table>
-        </div>
-      </div>
-    {:else if activeTab === 'traffic'}
-      <div class="grid live-grid">
-        <div class="card">
-          <div class="card-head">
-            <h2>{$t('admin.network.routers.traffic.watch') || 'Watch Interfaces'}</h2>
-            <span class="muted">{watched.length}/6</span>
-          </div>
-
-          {#if snapshot?.interfaces?.length}
-            <div class="watch-toolbar">
-              <div class="search small">
-                <Icon name="search" size={16} />
-                <input
-                  class="search-input"
-                  bind:value={watchSearch}
-                  placeholder={$t('admin.network.routers.traffic.search') || 'Search interfaces...'}
-                />
-              </div>
-              <button class="btn ghost" type="button" onclick={clearWatched} disabled={!watched.length}>
-                <Icon name="x" size={16} />
-                {$t('common.clear') || 'Clear'}
-              </button>
-            </div>
-
-            <div class="watch-list">
-              {#each snapshot.interfaces
-                .slice()
-                .sort((a, b) => String(a.name).localeCompare(String(b.name)))
-                .filter((i) => i.name.toLowerCase().includes(watchSearch.trim().toLowerCase())) as i}
-                <button
-                  type="button"
-                  class="watch-item {watched.includes(i.name) ? 'on' : ''}"
-                  onclick={() => toggleWatched(i.name)}
-                  title={i.interface_type || ''}
-                >
-                  <span class="mono">{i.name}</span>
-                  <span class="muted">{i.interface_type || ''}</span>
-                  <span class="spacer"></span>
-                  {#if watched.includes(i.name)}
-                    <Icon name="check-circle" size={16} />
-                  {:else}
-                    <Icon name="circle" size={16} />
-                  {/if}
-                </button>
-              {/each}
-            </div>
-          {:else}
-            <div class="muted">No interfaces yet.</div>
-          {/if}
-        </div>
-
-        <div class="card">
-          <div class="card-head">
-            <h2>{$t('admin.network.routers.traffic.realtime') || 'Realtime Traffic'}</h2>
-            <span class="muted">{liveLoading ? ($t('common.loading') || 'Loading...') : '1s'}</span>
-          </div>
-
-          {#if watched.length === 0}
-            <div class="empty">
-              <Icon name="activity" size={18} />
-              {$t('admin.network.routers.traffic.empty') || 'Select one or more interfaces to watch.'}
-            </div>
-          {:else}
-            <div class="live-cards">
-              {#each watched as name (name)}
-                {@const rx = liveSeries[name]?.rx ?? []}
-                {@const tx = liveSeries[name]?.tx ?? []}
-                {@const max = Math.max(1, ...rx, ...tx)}
-                <div class="live-card">
-                  <div class="live-top">
-                    <span class="mono">{name}</span>
-                    <span class="chip small">RX</span>
-                    <span class="mono">{formatBps(liveRates[name]?.rx_bps ?? null)}</span>
-                    <span class="sep">·</span>
-                    <span class="chip small">TX</span>
-                    <span class="mono">{formatBps(liveRates[name]?.tx_bps ?? null)}</span>
-                  </div>
-
-                  <div class="spark small">
-                    <div class="bars">
-                      {#each rx as v, idx (idx)}
-                        <div class="bar rx" style={`height:${Math.round((v / max) * 100)}%;`} title={`RX ${formatBps(v)}`}></div>
-                      {/each}
-                    </div>
-                    <div class="bars">
-                      {#each tx as v, idx (idx)}
-                        <div class="bar tx" style={`height:${Math.round((v / max) * 100)}%;`} title={`TX ${formatBps(v)}`}></div>
-                      {/each}
-                    </div>
-                  </div>
-                </div>
-              {/each}
-            </div>
-          {/if}
         </div>
       </div>
     {:else if activeTab === 'metrics'}

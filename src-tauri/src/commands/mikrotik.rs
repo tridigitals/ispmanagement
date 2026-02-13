@@ -1,8 +1,10 @@
 //! MikroTik router inventory + monitoring commands (tenant admin).
 
 use crate::models::{
-    CreateMikrotikRouterRequest, MikrotikAlert, MikrotikInterfaceCounter, MikrotikInterfaceMetric, MikrotikRouter, MikrotikRouterMetric,
-    MikrotikRouterNocRow, MikrotikTestResult, UpdateMikrotikRouterRequest,
+    CreateMikrotikRouterRequest, MikrotikAlert, MikrotikInterfaceCounter, MikrotikInterfaceMetric,
+    MikrotikIpPool, MikrotikLogEntry, MikrotikLogSyncResult, MikrotikPppProfile, MikrotikRouter,
+    MikrotikRouterMetric, MikrotikRouterNocRow, MikrotikTestResult, PaginatedResponse,
+    UpdateMikrotikRouterRequest,
 };
 use crate::services::{AuditService, AuthService, MikrotikService};
 use tauri::State;
@@ -65,6 +67,68 @@ pub async fn list_mikrotik_alerts(
 
     mikrotik
         .list_alerts(&tenant_id, active_only.unwrap_or(true), limit.unwrap_or(200))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_mikrotik_logs(
+    token: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+    router_id: Option<String>,
+    level: Option<String>,
+    topic: Option<String>,
+    q: Option<String>,
+    page: Option<u32>,
+    per_page: Option<u32>,
+) -> Result<PaginatedResponse<MikrotikLogEntry>, String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    mikrotik
+        .list_logs(
+            &tenant_id,
+            router_id,
+            level,
+            topic,
+            q,
+            page.unwrap_or(1),
+            per_page.unwrap_or(25),
+        )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn sync_mikrotik_logs(
+    token: String,
+    router_id: String,
+    fetch_limit: Option<u32>,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<MikrotikLogSyncResult, String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    mikrotik
+        .sync_logs_for_router(
+            &tenant_id,
+            &router_id,
+            fetch_limit.unwrap_or(500).clamp(50, 50_000),
+        )
         .await
         .map_err(|e| e.to_string())
 }
@@ -154,6 +218,94 @@ pub async fn get_mikrotik_router_snapshot(
 
     mikrotik
         .get_snapshot(&tenant_id, &id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_mikrotik_ppp_profiles(
+    token: String,
+    router_id: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<Vec<MikrotikPppProfile>, String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    mikrotik
+        .list_ppp_profiles(&tenant_id, &router_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn sync_mikrotik_ppp_profiles(
+    token: String,
+    router_id: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<Vec<MikrotikPppProfile>, String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    mikrotik
+        .sync_ppp_profiles(&tenant_id, &router_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_mikrotik_ip_pools(
+    token: String,
+    router_id: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<Vec<MikrotikIpPool>, String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    mikrotik
+        .list_ip_pools(&tenant_id, &router_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn sync_mikrotik_ip_pools(
+    token: String,
+    router_id: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<Vec<MikrotikIpPool>, String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    mikrotik
+        .sync_ip_pools(&tenant_id, &router_id)
         .await
         .map_err(|e| e.to_string())
 }

@@ -6,7 +6,7 @@ use saas_tauri_lib::{
         metrics_service::MetricsService, AnnouncementScheduler, AuditService, AuthService,
         BackupService, EmailOutboxService, EmailService, NotificationService, PaymentService,
         PlanService, RoleService, SettingsService, StorageService, SystemService, TeamService,
-        UserService, MikrotikService,
+        UserService, MikrotikService, CustomerService, PppoeService,
     },
 };
 use std::env;
@@ -74,6 +74,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         settings_service.clone(),
     );
     let user_service = UserService::new(pool.clone(), audit_service.clone());
+    let customer_service = CustomerService::new(
+        pool.clone(),
+        auth_service.clone(),
+        audit_service.clone(),
+        user_service.clone(),
+    );
+    let pppoe_service = PppoeService::new(pool.clone(), auth_service.clone(), audit_service.clone());
     let team_service = TeamService::new(
         pool.clone(),
         auth_service.clone(),
@@ -143,6 +150,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         payment_service,
         notification_service,
         mikrotik_service,
+        customer_service,
+        pppoe_service,
         backup_service,
         ws_hub,
         app_data_dir,

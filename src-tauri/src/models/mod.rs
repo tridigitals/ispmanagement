@@ -15,6 +15,8 @@ pub mod trusted_device;
 pub mod user;
 pub mod user_address;
 pub mod mikrotik;
+pub mod customer;
+pub mod pppoe;
 
 pub use announcements::*;
 pub use audit_log::*;
@@ -31,6 +33,8 @@ pub use trusted_device::*;
 pub use user::*;
 pub use user_address::*;
 pub use mikrotik::*;
+pub use customer::*;
+pub use pppoe::*;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct PaginatedResponse<T> {

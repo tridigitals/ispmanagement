@@ -1,13 +1,13 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { page as pageStore } from '$app/stores';
   import { t } from 'svelte-i18n';
   import { can } from '$lib/stores/auth';
   import { api } from '$lib/api/client';
   import Icon from '$lib/components/ui/Icon.svelte';
   import MiniSelect from '$lib/components/ui/MiniSelect.svelte';
   import { toast } from '$lib/stores/toast';
-  import { timeAgo } from '$lib/utils/date';
   import { isSidebarCollapsed } from '$lib/stores/ui';
 
   type NocRow = {
@@ -47,10 +47,21 @@
     tx_bps: number | null;
     last_seen_at: number;
   };
+  type AlertRow = {
+    id: string;
+    router_id: string;
+    severity: string;
+    status: string;
+    title: string;
+    message: string;
+    last_seen_at?: string | null;
+    updated_at?: string | null;
+  };
 
   let loading = $state(true);
   let refreshing = $state(false);
   let rows = $state<NocRow[]>([]);
+  let alerts = $state<AlertRow[]>([]);
 
   let statusFilter = $state<'all' | 'offline' | 'online'>('all');
 
@@ -74,8 +85,11 @@
   };
 
   type LayoutPreset = '2x2' | '3x2' | '3x3' | '4x3';
+  type RotateMode = 'manual' | 'auto';
   let layout = $state<LayoutPreset>('3x3');
   let lastLayout = $state<LayoutPreset>('3x3');
+  let rotateMode = $state<RotateMode>('manual');
+  let rotateMs = $state(10000);
   // All configured tiles (can be longer than current layout capacity).
   // When layout is smaller, we show tiles in "pages" instead of truncating.
   let slotsAll = $state<(Slot | null)[]>([]);
@@ -106,19 +120,54 @@
   const lastBytes = new Map<string, { rx: number; tx: number; at: number }>();
 
   let tick: any = null;
+  let alertTick: any = null;
   let wakeLock: any = null;
   let persistTimer: any = null;
   let lastRemotePayload: string | null = null;
   let remoteLoaded = $state(false);
   let paused = $state(false);
+  let focusMode = $state(false);
+  let alertsOpen = $state(false);
   let renderNow = $state(Date.now());
+  let uninstallAutoHide: (() => void) | null = null;
 
   let dragFrom = $state<number | null>(null);
   let dragOver = $state<number | null>(null);
   let dragging = $state(false);
 
+  const tenantPrefix = $derived.by(() => {
+    const tid = String($pageStore.params.tenant || '');
+    return tid ? `/${tid}` : '';
+  });
+
+  // Fit-to-screen (no scroll): scale and center wallboard content inside a fixed viewport.
+  let fit = $state(false);
+  let fitViewport: HTMLDivElement | null = null;
+  let fitContent: HTMLDivElement | null = null;
+  let fitScale = $state(1);
+  let fitX = $state(0);
+  let fitY = $state(0);
+  let fitObs: ResizeObserver | null = null;
+
+  // Auto-hide toolbar when Fit is enabled (NOC display friendly).
+  let controlsHidden = $state(false);
+  let lastActivityAt = $state(Date.now());
+  let hideHandle: any = null;
+
   const SETTINGS_LAYOUT_KEY = 'mikrotik_wallboard_layout';
   const SETTINGS_SLOTS_KEY = 'mikrotik_wallboard_slots_json';
+  const ROTATE_MODE_KEY = 'mikrotik_wallboard_rotate_mode';
+  const ROTATE_MS_KEY = 'mikrotik_wallboard_rotate_ms';
+  const FOCUS_MODE_KEY = 'mikrotik_wallboard_focus_mode';
+  const STATUS_FILTER_KEY = 'mikrotik_wallboard_status_filter';
+  const POLL_MS_KEY = 'mikrotik_wallboard_poll_ms';
+  const KEEP_AWAKE_KEY = 'mikrotik_wallboard_keep_awake';
+  const KIOSK_KEY = 'mikrotik_wallboard_kiosk';
+  const FIT_TARGET_ASPECT = 16 / 9;
+
+  function isLayoutPreset(v: string | null): v is LayoutPreset {
+    return v === '2x2' || v === '3x2' || v === '3x3' || v === '4x3';
+  }
 
   function formatBps(bps?: number | null) {
     if (bps == null) return $t('common.na') || '—';
@@ -134,10 +183,76 @@
     return bps < 0 ? `-${s}` : s;
   }
 
+  function peakBps(list: number[]) {
+    if (!list.length) return null;
+    return Math.max(...list);
+  }
+
+  function avgBps(list: number[]) {
+    if (!list.length) return null;
+    return Math.round(list.reduce((a, b) => a + b, 0) / list.length);
+  }
+
   function routerTitle(r: NocRow) {
     const name = r.identity || r.name;
     const ros = r.ros_version ? ` • ROS ${r.ros_version}` : '';
     return `${name}${ros}`;
+  }
+
+  const sortedAlerts = $derived.by(() => {
+    const rank = (s?: string) => {
+      const x = String(s || '').toLowerCase();
+      if (x === 'critical') return 3;
+      if (x === 'warning') return 2;
+      return 1;
+    };
+    return [...alerts]
+      .filter((a) => String(a.status || '').toLowerCase() !== 'resolved')
+      .sort((a, b) => {
+        const bySeverity = rank(b.severity) - rank(a.severity);
+        if (bySeverity !== 0) return bySeverity;
+        const ta = Date.parse(a.last_seen_at || a.updated_at || '');
+        const tb = Date.parse(b.last_seen_at || b.updated_at || '');
+        return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
+      });
+  });
+
+  const routerAlertMap = $derived.by(() => {
+    const map: Record<string, { total: number; critical: number; warning: number; ids: string[] }> = {};
+    for (const a of sortedAlerts) {
+      const rid = String(a.router_id || '');
+      if (!rid) continue;
+      map[rid] ||= { total: 0, critical: 0, warning: 0, ids: [] };
+      map[rid].total += 1;
+      const sev = String(a.severity || '').toLowerCase();
+      if (sev === 'critical') map[rid].critical += 1;
+      else if (sev === 'warning') map[rid].warning += 1;
+      map[rid].ids.push(a.id);
+    }
+    return map;
+  });
+
+  async function loadAlerts(silent = true) {
+    try {
+      alerts = (await api.mikrotik.alerts.list({ activeOnly: true, limit: 300 })) as any;
+    } catch (e: any) {
+      if (!silent) toast.error(e?.message || e);
+    }
+  }
+
+  async function ackRouterAlerts(routerId: string) {
+    if (!$can('manage', 'network_routers')) return;
+    const ids = routerAlertMap[routerId]?.ids || [];
+    if (!ids.length) return;
+    try {
+      for (const id of ids.slice(0, 50)) {
+        await api.mikrotik.alerts.ack(id);
+      }
+      toast.success($t('admin.network.alerts.toasts.acked') || 'Alert acknowledged');
+      await loadAlerts(false);
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    }
   }
 
   function slotCountForLayout(p: LayoutPreset) {
@@ -163,6 +278,19 @@
         return 3;
       case '4x3':
         return 4;
+    }
+  }
+
+  function rowsForLayout(p: LayoutPreset) {
+    switch (p) {
+      case '2x2':
+        return 2;
+      case '3x2':
+        return 2;
+      case '3x3':
+        return 3;
+      case '4x3':
+        return 3;
     }
   }
 
@@ -302,24 +430,6 @@
     persistConfig();
   }
 
-  function autoFill() {
-    // Fill empty slots with `ether1` across routers (simple default).
-    const size = slotCountForLayout(layout);
-    const start = page * size;
-    const list = filterRows(rows).slice(0, size);
-    const next = [...slotsAll];
-    ensureSlotIndex(start + size - 1);
-    for (let i = 0; i < size; i++) {
-      const gi = start + i;
-      if (next[gi]) continue;
-      const r = list.shift();
-      if (!r) break;
-      next[gi] = { routerId: r.id, iface: 'ether1' };
-    }
-    slotsAll = next;
-    persistConfig();
-  }
-
   async function loadInterfaces(routerId: string) {
     if (ifaceCatalog[routerId]?.length) return;
     ifaceLoading[routerId] = true;
@@ -343,6 +453,13 @@
     try {
       localStorage.setItem('mikrotik_wallboard_layout', layout);
       localStorage.setItem('mikrotik_wallboard_slots', JSON.stringify(slotsAll));
+      localStorage.setItem(ROTATE_MODE_KEY, rotateMode);
+      localStorage.setItem(ROTATE_MS_KEY, String(rotateMs));
+      localStorage.setItem(FOCUS_MODE_KEY, focusMode ? '1' : '0');
+      localStorage.setItem(STATUS_FILTER_KEY, statusFilter);
+      localStorage.setItem(POLL_MS_KEY, String(pollMs));
+      localStorage.setItem(KEEP_AWAKE_KEY, keepAwake ? '1' : '0');
+      localStorage.setItem(KIOSK_KEY, kiosk ? '1' : '0');
     } catch {
       // ignore
     }
@@ -351,7 +468,21 @@
   function loadConfig() {
     try {
       const l = localStorage.getItem('mikrotik_wallboard_layout') as LayoutPreset | null;
-      if (l === '2x2' || l === '3x2' || l === '3x3' || l === '4x3') layout = l;
+      if (isLayoutPreset(l)) layout = l;
+      const rm = localStorage.getItem(ROTATE_MODE_KEY);
+      if (rm === 'manual' || rm === 'auto') rotateMode = rm;
+      const rms = Number(localStorage.getItem(ROTATE_MS_KEY) || 10000);
+      if ([5000, 10000, 15000, 30000, 60000].includes(rms)) rotateMs = rms;
+      const fm = localStorage.getItem(FOCUS_MODE_KEY);
+      if (fm != null) focusMode = fm === '1' || fm === 'true';
+      const sf = localStorage.getItem(STATUS_FILTER_KEY);
+      if (sf === 'all' || sf === 'online' || sf === 'offline') statusFilter = sf;
+      const pm = Number(localStorage.getItem(POLL_MS_KEY) || 1000);
+      if ([1000, 2000, 5000].includes(pm)) pollMs = pm;
+      const ka = localStorage.getItem(KEEP_AWAKE_KEY);
+      if (ka != null) keepAwake = ka === '1' || ka === 'true';
+      const kz = localStorage.getItem(KIOSK_KEY);
+      if (kz != null) kiosk = kz === '1' || kz === 'true';
       const s = localStorage.getItem('mikrotik_wallboard_slots');
       if (s) {
         const parsed = JSON.parse(s);
@@ -385,7 +516,7 @@
         api.settings.getValue(SETTINGS_SLOTS_KEY),
       ]);
 
-      if (remoteLayout === '2x2' || remoteLayout === '3x2' || remoteLayout === '3x3' || remoteLayout === '4x3') {
+      if (isLayoutPreset(remoteLayout)) {
         layout = remoteLayout;
       }
 
@@ -450,6 +581,7 @@
     } finally {
       refreshing = false;
     }
+    await loadAlerts(true);
   }
 
   function filterRows(list: NocRow[]) {
@@ -593,6 +725,87 @@
     window.addEventListener('pointercancel', onDragCancel as any);
   }
 
+  function recomputeFit() {
+    if (!fit || !fitViewport || !fitContent) {
+      fitScale = 1;
+      fitX = 0;
+      fitY = 0;
+      return;
+    }
+
+    const viewportW = fitViewport.clientWidth;
+    const viewportH = fitViewport.clientHeight;
+    const contentW = fitContent.offsetWidth;
+    const contentH = fitContent.offsetHeight;
+    if (!viewportW || !viewportH || !contentW || !contentH) return;
+
+    // Fit into a fixed 16:9 stage (letterbox on non-16:9 screens), then center content inside it.
+    let stageW = viewportW;
+    let stageH = Math.round(stageW / FIT_TARGET_ASPECT);
+    if (stageH > viewportH) {
+      stageH = viewportH;
+      stageW = Math.round(stageH * FIT_TARGET_ASPECT);
+    }
+
+    const stageX = Math.floor((viewportW - stageW) / 2);
+    const stageY = Math.floor((viewportH - stageH) / 2);
+
+    const pad = 12; // breathing room to avoid edge clipping
+    const s = Math.min(1, (stageW - pad * 2) / contentW, (stageH - pad * 2) / contentH);
+    fitScale = Math.max(0.25, s);
+    fitX = stageX + Math.max(0, Math.floor((stageW - contentW * fitScale) / 2));
+    fitY = stageY + Math.max(0, Math.floor((stageH - contentH * fitScale) / 2));
+  }
+
+  function showControls() {
+    controlsHidden = false;
+    lastActivityAt = Date.now();
+    if (hideHandle) clearTimeout(hideHandle);
+    hideHandle = null;
+  }
+
+  function toggleAlertsPanel() {
+    alertsOpen = !alertsOpen;
+  }
+
+  function installAutoHideListeners() {
+    if (typeof window === 'undefined') return;
+
+    const onAny = () => showControls();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (alertsOpen) {
+          alertsOpen = false;
+          return;
+        }
+      }
+      if (e.key.toLowerCase() === 'f' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase() || '';
+        const editing = tag === 'input' || tag === 'textarea' || tag === 'select';
+        if (!editing) {
+          focusMode = !focusMode;
+          e.preventDefault();
+        }
+      }
+      if (e.key === 'Escape') return;
+      showControls();
+    };
+
+    window.addEventListener('mousemove', onAny, { passive: true });
+    window.addEventListener('pointermove', onAny, { passive: true });
+    window.addEventListener('wheel', onAny, { passive: true });
+    window.addEventListener('touchstart', onAny, { passive: true });
+    window.addEventListener('keydown', onKey);
+
+    return () => {
+      window.removeEventListener('mousemove', onAny as any);
+      window.removeEventListener('pointermove', onAny as any);
+      window.removeEventListener('wheel', onAny as any);
+      window.removeEventListener('touchstart', onAny as any);
+      window.removeEventListener('keydown', onKey as any);
+    };
+  }
+
   async function toggleFullscreen() {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
@@ -631,8 +844,21 @@
   function exitWallboard() {
     applyKiosk(false);
     $isSidebarCollapsed = false;
-    // Go back to the NOC page (works both with and without tenant prefix/custom domain).
-    goto('../');
+    // Use absolute tenant-aware path to avoid relative-navigation mismatches in grouped routes.
+    goto(`${tenantPrefix}/admin/network/noc`);
+  }
+
+  async function navigateWithTransition(path: string) {
+    try {
+      const start = (document as any).startViewTransition;
+      if (typeof start === 'function') {
+        await start(() => goto(path)).finished;
+        return;
+      }
+    } catch {
+      // fallback
+    }
+    await goto(path);
   }
 
   onMount(() => {
@@ -643,8 +869,20 @@
 
     loadConfig();
     ensureSlots();
-    applyKiosk(true);
+    applyKiosk(kiosk);
     void loadRemoteConfig();
+
+    // Fit-to-screen setup (avoid scrollbars).
+    if (typeof window !== 'undefined') window.addEventListener('resize', recomputeFit);
+    if (typeof ResizeObserver !== 'undefined') {
+      fitObs = new ResizeObserver(() => recomputeFit());
+      if (fitViewport) fitObs.observe(fitViewport);
+      if (fitContent) fitObs.observe(fitContent);
+    }
+    setTimeout(recomputeFit, 0);
+
+    uninstallAutoHide = installAutoHideListeners() ?? null;
+    showControls();
 
     void (async () => {
       loading = true;
@@ -657,15 +895,27 @@
     })();
 
     tick = setInterval(() => void pollLiveOnce(), pollMs);
+    alertTick = setInterval(() => void loadAlerts(true), 10000);
   });
 
   onDestroy(() => {
     if (tick) clearInterval(tick);
+    if (alertTick) clearInterval(alertTick);
     if (persistTimer) clearTimeout(persistTimer);
     // Best-effort flush so layout/slots don't get lost on fast logout/navigation.
     void persistRemoteNow();
     void applyWakeLock(false);
     if (typeof document !== 'undefined') document.body.classList.remove('kiosk-wallboard');
+    if (typeof window !== 'undefined') window.removeEventListener('resize', recomputeFit);
+    try {
+      fitObs?.disconnect?.();
+    } catch {
+      // ignore
+    }
+    if (hideHandle) clearTimeout(hideHandle);
+    try {
+      uninstallAutoHide?.();
+    } catch {}
   });
 
   $effect(() => {
@@ -677,6 +927,14 @@
     }
     if (tick) clearInterval(tick);
     tick = setInterval(() => void pollLiveOnce(), pollMs);
+  });
+
+  $effect(() => {
+    if (rotateMode !== 'auto' || pageCount <= 1) return;
+    const h = setInterval(() => {
+      page = page >= pageCount - 1 ? 0 : page + 1;
+    }, rotateMs);
+    return () => clearInterval(h);
   });
 
   $effect(() => {
@@ -699,54 +957,40 @@
 
     persistConfig();
     schedulePersistRemote();
+    setTimeout(recomputeFit, 0);
   });
 
   $effect(() => {
     void applyWakeLock(keepAwake);
   });
+
+  $effect(() => {
+    if (typeof document === 'undefined') return;
+    document.body.classList.toggle('wallboard-fit', fit);
+    controlsHidden = false;
+    if (hideHandle) clearTimeout(hideHandle);
+    hideHandle = null;
+    setTimeout(recomputeFit, 0);
+  });
+
+  $effect(() => {
+    focusMode;
+    persistConfig();
+    setTimeout(recomputeFit, 0);
+  });
 </script>
 
-<div class="wallboard">
+<div class="wallboard-viewport" class:fit bind:this={fitViewport}>
+  <div
+    class="wallboard"
+    class:focus={focusMode}
+    bind:this={fitContent}
+    style={fit
+      ? `transform: translate(${fitX}px, ${fitY}px) scale(${fitScale}); transform-origin: top left;`
+      : ''}
+  >
   <div class="wb-top">
-    <div class="titles">
-      <div class="kicker">
-        <span class="dot"></span>
-        {$t('admin.network.wallboard.kicker') || 'WALLBOARD'}
-      </div>
-      <h1 class="title">{$t('admin.network.wallboard.title') || 'Network Wallboard'}</h1>
-      <p class="subtitle">
-        {$t('admin.network.wallboard.subtitle') || 'Live NOC view optimized for 24/7 display.'}
-      </p>
-    </div>
-
-    <div class="controls">
-      <div class="mini-field">
-        <MiniSelect
-          bind:value={statusFilter}
-          label={$t('admin.network.wallboard.controls.filter') || 'Filter'}
-          ariaLabel={$t('admin.network.wallboard.controls.filter') || 'Filter'}
-          options={[
-            { value: 'all', label: $t('admin.network.wallboard.filters.all') || 'All' },
-            { value: 'online', label: $t('admin.network.wallboard.filters.online') || 'Online' },
-            { value: 'offline', label: $t('admin.network.wallboard.filters.offline') || 'Offline' },
-          ]}
-        />
-      </div>
-
-      <div class="mini-field">
-        <MiniSelect
-          bind:value={layout}
-          label={$t('admin.network.wallboard.controls.layout') || 'Layout'}
-          ariaLabel={$t('admin.network.wallboard.controls.layout') || 'Layout'}
-          options={[
-            { value: '2x2', label: '2x2' },
-            { value: '3x2', label: '3x2' },
-            { value: '3x3', label: '3x3' },
-            { value: '4x3', label: '4x3' },
-          ]}
-        />
-      </div>
-
+    <div class="controls wall-actions">
       {#if pageCount > 1}
         <div class="pager" aria-label="Pages">
           <button
@@ -785,13 +1029,24 @@
           <Icon name={paused ? 'play' : 'pause'} size={16} />
           {paused ? $t('admin.network.wallboard.resume') || 'Resume' : $t('admin.network.wallboard.pause') || 'Pause'}
         </button>
-        <button onclick={autoFill} title={$t('admin.network.wallboard.auto_fill') || 'Auto fill'}>
-          <Icon name="grid" size={16} />
-          {$t('admin.network.wallboard.auto_fill') || 'Auto fill'}
-        </button>
         <button onclick={() => void toggleFullscreen()}>
           <Icon name="monitor" size={16} />
           {$t('admin.network.wallboard.fullscreen') || 'Fullscreen'}
+        </button>
+        <button
+          class:active={focusMode}
+          onclick={() => (focusMode = !focusMode)}
+          title={$t('admin.network.wallboard.focus_mode_hint') || 'Focus mode (F)'}
+        >
+          <Icon name="target" size={16} />
+          {$t('admin.network.wallboard.focus_mode') || 'Focus'}
+        </button>
+      </div>
+
+      <div class="seg">
+        <button onclick={() => void navigateWithTransition(`${tenantPrefix}/admin/network/noc/wallboard/settings`)}>
+          <Icon name="settings" size={16} />
+          {$t('admin.network.wallboard.controls.open') || 'Settings'}
         </button>
         <button onclick={exitWallboard} title={$t('admin.network.wallboard.exit') || $t('sidebar.exit') || 'Exit'}>
           <Icon name="arrow-left" size={16} />
@@ -799,32 +1054,45 @@
         </button>
       </div>
 
-      <div class="seg">
-        <label class="toggle">
-          <input type="checkbox" bind:checked={keepAwake} />
-          <span>{$t('admin.network.wallboard.keep_awake') || 'Keep awake'}</span>
-        </label>
-        <label class="toggle">
-          <input type="checkbox" bind:checked={kiosk} onchange={() => applyKiosk(kiosk)} />
-          <span>{$t('admin.network.wallboard.kiosk') || 'Kiosk'}</span>
-        </label>
-      </div>
-
       <div class="poll">
         <span class="muted">{$t('admin.network.wallboard.poll') || 'Poll'}</span>
-        <MiniSelect
-          bind:value={pollMs}
-          ariaLabel={$t('admin.network.wallboard.poll') || 'Poll'}
-          minWidth={86}
-          options={[
-            { value: 1000, label: '1s' },
-            { value: 2000, label: '2s' },
-            { value: 5000, label: '5s' },
-          ]}
-        />
+        <strong class="mono">{Math.round(pollMs / 1000)}s</strong>
       </div>
+      {#if rotateMode === 'auto'}
+        <div class="poll">
+          <span class="muted">{$t('admin.network.wallboard.controls.auto_rotate') || 'Auto rotate'}</span>
+          <strong class="mono">{Math.round(rotateMs / 1000)}s</strong>
+        </div>
+      {/if}
     </div>
   </div>
+
+  {#if sortedAlerts.length > 0 && alertsOpen}
+    <div id="wallboard-alert-panel" class="alert-strip floating-alert-panel">
+      <div class="alert-strip-head">
+        <Icon name="alert-triangle" size={15} />
+        <span class="alert-strip-title">
+          {$t('admin.network.wallboard.alerts_open') || 'Open alerts'}
+        </span>
+        <span class="alert-strip-count">{sortedAlerts.length}</span>
+      </div>
+      <div class="alert-strip-list">
+        {#each sortedAlerts.slice(0, 8) as a (a.id)}
+          <button
+            type="button"
+            class="alert-chip"
+            class:crit={String(a.severity || '').toLowerCase() === 'critical'}
+            onclick={() => goto(`${tenantPrefix}/admin/network/alerts`)}
+            title={a.message}
+          >
+            <span class="mono">{routerById(a.router_id)?.identity || routerById(a.router_id)?.name || a.router_id}</span>
+            <span class="muted">·</span>
+            <span>{a.title}</span>
+          </button>
+        {/each}
+      </div>
+    </div>
+  {/if}
 
   {#if loading}
     <div class="empty">
@@ -832,7 +1100,7 @@
       {$t('common.loading') || 'Loading...'}
     </div>
   {:else}
-    <div class="grid" style={`--cols:${colsForLayout(layout)};`}>
+    <div class="grid" class:compact={layout === '4x3'} style={`--cols:${colsForLayout(layout)}; --rows:${rowsForLayout(layout)};`}>
       {#each slots as slot, idx (idx)}
         {@const gidx = globalIndex(idx)}
         {@const r = slot ? routerById(slot.routerId) : null}
@@ -859,6 +1127,10 @@
           {@const rx = series[slot.routerId]?.[iface]?.rx ?? []}
           {@const tx = series[slot.routerId]?.[iface]?.tx ?? []}
           {@const max = Math.max(1, ...rx, ...tx)}
+          {@const rxPeak = peakBps(rx)}
+          {@const txPeak = peakBps(tx)}
+          {@const rxAvg = avgBps(rx)}
+          {@const txAvg = avgBps(tx)}
           {@const rxNow = liveRates[slot.routerId]?.[iface]?.rx_bps ?? null}
           {@const txNow = liveRates[slot.routerId]?.[iface]?.tx_bps ?? null}
           {@const lastSeenAt = liveRates[slot.routerId]?.[iface]?.last_seen_at ?? null}
@@ -877,6 +1149,7 @@
             txNow != null &&
             txNow >= 0 &&
             txNow < slot.warn_below_tx_bps}
+          {@const ra = routerAlertMap[slot.routerId]}
           <div
             class="tile iface-tile"
             class:warn={warnRx || warnTx}
@@ -891,18 +1164,40 @@
               <div class="left">
                 <div class="name">
                   <span class="mono">{iface}</span>
-                  <span class="iface-chip">IFACE</span>
                 </div>
                 <div class="meta">
                   <span class="mono">{r ? (r.identity || r.name) : slot.routerId}</span>
-                  {#if r}
-                    <span class="muted">·</span>
-                    <span class="mono muted">{r.host}:{r.port}</span>
-                  {/if}
                 </div>
               </div>
 
       <div class="right">
+        {#if ra?.total}
+          <button
+            class="icon-x attn"
+            type="button"
+            onclick={(e) => {
+              e.stopPropagation();
+              goto(`${tenantPrefix}/admin/network/alerts`);
+            }}
+            title={`${ra.total} ${$t('admin.network.wallboard.alerts_open') || 'open alerts'}`}
+          >
+            <Icon name="alert-triangle" size={16} />
+            <span class="attn-count">{ra.total}</span>
+          </button>
+          {#if $can('manage', 'network_routers')}
+            <button
+              class="icon-x"
+              type="button"
+              onclick={(e) => {
+                e.stopPropagation();
+                void ackRouterAlerts(slot.routerId);
+              }}
+              title={$t('admin.network.wallboard.ack_router_alerts') || 'Acknowledge router alerts'}
+            >
+              <Icon name="check-circle" size={16} />
+            </button>
+          {/if}
+        {/if}
         <button
           class="icon-x drag"
           type="button"
@@ -950,33 +1245,42 @@
             </div>
 
             <div class="tile-body">
-              <div class="traffic big">
-                <div class="line">
-                  <span class="chip">RX</span>
-                  <span class="mono rate" class:warn={warnRx}>{formatBps(rxNow)}</span>
-                  <span class="sep">·</span>
-                  <span class="chip">TX</span>
-                  <span class="mono rate" class:warn={warnTx}>{formatBps(txNow)}</span>
-                </div>
-                <div class="line muted">
-                  <span>
-                    {$t('admin.network.wallboard.last_seen') || 'Last seen'}:{' '}
-                    {r?.last_seen_at ? timeAgo(r.last_seen_at) : ($t('common.na') || '—')}
-                  </span>
-                </div>
-              </div>
-
               <div class="spark wide">
                 <div class="bars" class:warn={warnRx}>
+                  <div class="spark-panel-title">
+                    <span class="spark-chip">RX</span>
+                    <span class="mono rate" class:warn={warnRx}>{formatBps(rxNow)}</span>
+                  </div>
                   {#each rx as v, i (i)}
-                    <div class="bar rx" style={`height:${Math.round((v / max) * 100)}%;`}></div>
+                    <div
+                      class="bar rx"
+                      style={`height:${Math.round((v / max) * 100)}%;`}
+                      data-value={formatBps(v)}
+                      title={`RX • ${formatBps(v)}`}
+                    ></div>
                   {/each}
                 </div>
                 <div class="bars" class:warn={warnTx}>
+                  <div class="spark-panel-title">
+                    <span class="spark-chip">TX</span>
+                    <span class="mono rate" class:warn={warnTx}>{formatBps(txNow)}</span>
+                  </div>
                   {#each tx as v, i (i)}
-                    <div class="bar tx" style={`height:${Math.round((v / max) * 100)}%;`}></div>
+                    <div
+                      class="bar tx"
+                      style={`height:${Math.round((v / max) * 100)}%;`}
+                      data-value={formatBps(v)}
+                      title={`TX • ${formatBps(v)}`}
+                    ></div>
                   {/each}
                 </div>
+              </div>
+
+              <div class="chart-meta muted">
+                <span>{($t('admin.network.wallboard.chart.peak') || 'Peak') + ': ' + formatBps(rxPeak)}</span>
+                <span>{($t('admin.network.wallboard.chart.avg') || 'Avg') + ': ' + formatBps(rxAvg)}</span>
+                <span>{($t('admin.network.wallboard.chart.peak_tx') || 'TX Peak') + ': ' + formatBps(txPeak)}</span>
+                <span>{($t('admin.network.wallboard.chart.avg_tx') || 'TX Avg') + ': ' + formatBps(txAvg)}</span>
               </div>
             </div>
           </div>
@@ -984,6 +1288,24 @@
       {/each}
     </div>
   {/if}
+  </div>
+
+  {#if sortedAlerts.length > 0}
+    <button
+      class="floating-alert-btn"
+      class:open={alertsOpen}
+      type="button"
+      onclick={toggleAlertsPanel}
+      aria-expanded={alertsOpen}
+      aria-controls="wallboard-alert-panel"
+      aria-label={$t('admin.network.wallboard.alerts_open') || 'Open alerts'}
+      title={$t('admin.network.wallboard.alerts_open') || 'Open alerts'}
+    >
+      <Icon name="alert-triangle" size={17} />
+      <span class="floating-alert-count">{sortedAlerts.length > 99 ? '99+' : sortedAlerts.length}</span>
+    </button>
+  {/if}
+
 </div>
 
 {#if pickerIndex !== null}
@@ -1054,7 +1376,6 @@
                     }}
                   >
                     <span class="name">{routerTitle(r)}</span>
-                    <span class="muted mono">{r.host}:{r.port}</span>
                     <span class="spacer"></span>
                     <span class="badge" class:ok={r.is_online} class:bad={!r.is_online}>
                       <span class="dot"></span>
@@ -1159,6 +1480,10 @@
   {@const rx = s ? series[s.routerId]?.[iface]?.rx ?? [] : []}
   {@const tx = s ? series[s.routerId]?.[iface]?.tx ?? [] : []}
   {@const max = Math.max(1, ...rx, ...tx)}
+  {@const rxPeak = peakBps(rx)}
+  {@const txPeak = peakBps(tx)}
+  {@const rxAvg = avgBps(rx)}
+  {@const txAvg = avgBps(tx)}
   {@const rxNow = s ? liveRates[s.routerId]?.[iface]?.rx_bps ?? null : null}
   {@const txNow = s ? liveRates[s.routerId]?.[iface]?.tx_bps ?? null : null}
   {@const warnRx =
@@ -1178,9 +1503,6 @@
             <span class="muted">·</span>
             <span>{r ? (r.identity || r.name) : s?.routerId}</span>
           </div>
-          {#if r}
-            <div class="muted mono">{r.host}:{r.port}</div>
-          {/if}
         </div>
         <div class="full-actions">
           <button
@@ -1210,10 +1532,6 @@
             <div class="k">TX</div>
             <div class="v mono" class:warn={warnTx}>{formatBps(txNow)}</div>
           </div>
-          <div class="stat-big">
-            <div class="k">{$t('admin.network.wallboard.last_seen') || 'Last seen'}</div>
-            <div class="v">{r?.last_seen_at ? timeAgo(r.last_seen_at) : ($t('common.na') || '—')}</div>
-          </div>
         </div>
 
         <div class="spark huge">
@@ -1227,6 +1545,12 @@
               <div class="bar tx" style={`height:${Math.round((v / max) * 100)}%;`}></div>
             {/each}
           </div>
+        </div>
+        <div class="chart-meta chart-meta-big muted">
+          <span>{($t('admin.network.wallboard.chart.peak') || 'Peak') + ': ' + formatBps(rxPeak)}</span>
+          <span>{($t('admin.network.wallboard.chart.avg') || 'Avg') + ': ' + formatBps(rxAvg)}</span>
+          <span>{($t('admin.network.wallboard.chart.peak_tx') || 'TX Peak') + ': ' + formatBps(txPeak)}</span>
+          <span>{($t('admin.network.wallboard.chart.avg_tx') || 'TX Avg') + ': ' + formatBps(txAvg)}</span>
         </div>
       </div>
     </div>
@@ -1252,9 +1576,6 @@
             <span class="muted">·</span>
             <span>{r ? (r.identity || r.name) : s?.routerId}</span>
           </div>
-          {#if r}
-            <div class="muted mono">{r.host}:{r.port}</div>
-          {/if}
         </div>
         <div class="full-actions">
           <button
@@ -1338,8 +1659,16 @@
 {/if}
 
 <style>
+  .wallboard-viewport {
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
   :global(body.kiosk-wallboard header.topbar) {
     display: none;
+  }
+  :global(body.wallboard-fit) {
+    overflow: hidden;
   }
   :global(body.wall-dragging),
   :global(body.wall-dragging *) {
@@ -1357,8 +1686,32 @@
     padding-left: clamp(6px, 1vw, 12px);
   }
 
-  .wallboard {
+  .wallboard-viewport.fit {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    z-index: 60;
+    background: color-mix(in srgb, var(--bg-base, #000) 85%, transparent);
+  }
+
+.wallboard {
+    height: 100dvh;
+    box-sizing: border-box;
     padding: 22px;
+    animation: wallboard-in 180ms ease-out;
+  }
+  .wallboard.focus .wb-top {
+    margin-bottom: 10px;
+  }
+  .wallboard.focus .controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .wallboard.focus .alert-strip {
+    margin-bottom: 8px;
+  }
+  .wallboard.focus .spark.wide {
+    height: 108px;
   }
 
   .wb-top {
@@ -1366,17 +1719,7 @@
     align-items: flex-end;
     justify-content: space-between;
     gap: 18px;
-    margin-bottom: 18px;
-  }
-
-  .kicker {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--text-muted);
-    letter-spacing: 0.14em;
-    font-weight: 700;
-    font-size: 11px;
+    margin-bottom: 8px;
   }
 
   .dot {
@@ -1387,22 +1730,15 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, #6b6bff 25%, transparent);
   }
 
-  .title {
-    margin: 8px 0 4px;
-    font-size: 30px;
-    line-height: 1.1;
-  }
-  .subtitle {
-    margin: 0;
-    color: var(--text-muted);
-    max-width: 58ch;
-  }
-
   .controls {
     display: flex;
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .controls.wall-actions {
+    width: 100%;
     justify-content: flex-end;
   }
 
@@ -1456,10 +1792,6 @@
     background: color-mix(in srgb, var(--accent) 22%, transparent);
   }
 
-  .mini-field {
-    display: inline-flex;
-  }
-
   .pager {
     display: inline-flex;
     align-items: center;
@@ -1495,21 +1827,6 @@
     opacity: 0.55;
     cursor: default;
   }
-  .toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    color: var(--text-primary);
-    font-weight: 650;
-    font-size: 13px;
-    cursor: pointer;
-    user-select: none;
-  }
-  .toggle input {
-    accent-color: var(--accent);
-  }
-
   .poll {
     display: inline-flex;
     align-items: center;
@@ -1522,6 +1839,123 @@
 
   .muted {
     color: var(--text-muted);
+  }
+
+  .alert-strip {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: color-mix(in srgb, var(--bg-surface) 70%, transparent);
+  }
+  .alert-strip.floating-alert-panel {
+    position: fixed;
+    right: 18px;
+    bottom: 68px;
+    z-index: 74;
+    width: min(460px, calc(100vw - 36px));
+    margin-bottom: 0;
+    border-color: color-mix(in srgb, var(--color-warning) 45%, var(--border-color));
+    background: color-mix(in srgb, var(--color-warning) 10%, var(--bg-surface));
+    box-shadow: var(--shadow-lg);
+    max-height: min(38vh, 340px);
+    overflow: auto;
+  }
+  .floating-alert-btn {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 75;
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
+    border: 1px solid color-mix(in srgb, var(--color-warning) 45%, var(--border-color));
+    background: color-mix(in srgb, var(--color-warning) 12%, var(--bg-surface));
+    color: color-mix(in srgb, var(--color-warning) 88%, var(--text-primary));
+    display: grid;
+    place-items: center;
+    padding: 0;
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+  }
+  .floating-alert-btn.open {
+    border-color: color-mix(in srgb, var(--color-warning) 65%, var(--border-color));
+    background: color-mix(in srgb, var(--color-warning) 18%, var(--bg-surface));
+  }
+  .floating-alert-count {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    padding: 0 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid color-mix(in srgb, var(--color-warning) 35%, var(--border-color));
+    background: color-mix(in srgb, var(--color-warning) 20%, var(--bg-surface));
+    color: color-mix(in srgb, var(--color-warning) 95%, var(--text-primary));
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .alert-strip-head {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    color: var(--text-primary);
+  }
+
+  .alert-strip-title {
+    font-size: 0.86rem;
+  }
+
+  .alert-strip-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 20px;
+    border-radius: 999px;
+    padding: 0 8px;
+    font-size: 0.74rem;
+    font-weight: 900;
+    border: 1px solid color-mix(in srgb, var(--color-warning) 40%, var(--border-color));
+    background: color-mix(in srgb, var(--color-warning) 16%, transparent);
+  }
+
+  .alert-strip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .alert-chip {
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: color-mix(in srgb, var(--bg-surface) 75%, transparent);
+    color: var(--text-primary);
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    max-width: min(100%, 420px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .alert-chip.crit {
+    border-color: color-mix(in srgb, var(--color-danger) 45%, var(--border-color));
+    background: color-mix(in srgb, var(--color-danger) 14%, transparent);
   }
 
   .empty {
@@ -1538,7 +1972,10 @@
   .grid {
     display: grid;
     grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+    grid-template-rows: repeat(var(--rows, 3), minmax(0, 1fr));
     gap: 14px;
+    min-height: 0;
+    height: calc(100dvh - 110px);
   }
 
   .tile {
@@ -1550,7 +1987,7 @@
       color-mix(in srgb, var(--bg-surface) 92%, transparent)
     );
     overflow: hidden;
-    min-height: 260px;
+    min-height: 0;
   }
   .tile.iface-tile {
     cursor: pointer;
@@ -1608,6 +2045,18 @@
     background: color-mix(in srgb, var(--bg-surface) 55%, transparent);
     color: var(--text-primary);
     cursor: pointer;
+  }
+  .icon-x.attn {
+    border-color: color-mix(in srgb, var(--color-warning) 45%, var(--border-color));
+    color: color-mix(in srgb, var(--color-warning) 80%, var(--text-primary));
+    gap: 6px;
+    padding-inline: 8px;
+    min-width: 42px;
+  }
+  .attn-count {
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1;
   }
   .icon-x:hover:not(:disabled) {
     border-color: color-mix(in srgb, var(--accent) 35%, var(--border-color));
@@ -1719,53 +2168,24 @@
     padding: 14px;
   }
 
-  .traffic {
-    margin-top: 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    padding: 10px 10px;
-    background: color-mix(in srgb, var(--bg-surface) 55%, transparent);
-  }
-  .line {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .chip {
+  .spark-chip {
     display: inline-flex;
     align-items: center;
-    padding: 4px 8px;
+    padding: 2px 6px;
     border-radius: 999px;
     border: 1px solid var(--border-color);
     color: var(--text-muted);
     font-weight: 800;
-    font-size: 11px;
+    font-size: 10px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-  }
-  .sep {
-    color: var(--text-muted);
+    background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
   }
   .mono {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
       monospace;
   }
 
-  .iface-chip {
-    margin-left: 8px;
-    padding: 3px 8px;
-    border-radius: 999px;
-    border: 1px solid var(--border-color);
-    color: var(--text-muted);
-    font-size: 11px;
-    font-weight: 850;
-    letter-spacing: 0.12em;
-  }
-
-  .traffic.big {
-    padding: 12px;
-  }
   .rate.warn {
     color: var(--color-danger);
     font-weight: 950;
@@ -1800,18 +2220,20 @@
 
   .spark {
     margin-top: 10px;
+    position: relative;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
     height: 46px;
   }
   .spark.wide {
-    height: 84px;
+    height: 112px;
   }
   .spark.huge {
     height: min(44dvh, 420px);
   }
   .bars {
+    position: relative;
     display: grid;
     grid-auto-flow: column;
     grid-auto-columns: 1fr;
@@ -1820,17 +2242,62 @@
     height: 100%;
     border: 1px solid var(--border-color);
     border-radius: 10px;
-    padding: 6px;
-    background: color-mix(in srgb, var(--bg-surface) 45%, transparent);
+    padding: 26px 6px 6px;
+    background:
+      linear-gradient(
+        to top,
+        color-mix(in srgb, var(--border-color) 45%, transparent) 1px,
+        transparent 1px
+      ) 0 0 / 100% 25%,
+      color-mix(in srgb, var(--bg-surface) 45%, transparent);
     overflow: hidden;
+  }
+  .spark-panel-title {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    right: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    z-index: 2;
+    pointer-events: none;
   }
   .bars.warn {
     border-color: color-mix(in srgb, var(--color-danger) 55%, var(--border-color));
     background: color-mix(in srgb, var(--color-danger) 8%, var(--bg-surface));
   }
   .bar {
+    position: relative;
     border-radius: 6px;
     opacity: 0.95;
+    transition: filter 120ms ease;
+  }
+  .bar:hover {
+    filter: brightness(1.08);
+  }
+  .bar::after {
+    content: attr(data-value);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 6px);
+    transform: translateX(-50%);
+    white-space: nowrap;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-primary);
+    background: color-mix(in srgb, var(--bg-surface) 90%, transparent);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 100ms ease;
+    z-index: 3;
+  }
+  .bar:hover::after {
+    opacity: 1;
   }
   .bars.warn .bar {
     background: linear-gradient(180deg, #ff8a8a, var(--color-danger));
@@ -1842,12 +2309,83 @@
     background: linear-gradient(180deg, #7bffb2, #22c55e);
   }
 
+  .chart-meta {
+    margin-top: 8px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 10px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .chart-meta span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .chart-meta-big {
+    margin-top: 10px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    font-size: 12px;
+  }
+
+  .grid.compact {
+    gap: 10px;
+  }
+  .grid.compact .tile-head {
+    padding: 10px 10px 8px;
+  }
+  .grid.compact .tile-body {
+    padding: 10px;
+  }
+  .grid.compact .spark.wide {
+    height: 86px;
+  }
+  .grid.compact .chart-meta {
+    margin-top: 6px;
+    gap: 4px 8px;
+    font-size: 10px;
+  }
+  .grid.compact .add-inner {
+    padding: 10px;
+  }
+  .grid.compact .plus {
+    width: 48px;
+    height: 48px;
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+
+  @keyframes wallboard-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   @media (max-width: 1280px) {
     .grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: none;
+      height: auto;
     }
   }
   @media (max-width: 920px) {
+    .alert-strip.floating-alert-panel {
+      right: 10px;
+      bottom: 58px;
+      width: calc(100vw - 20px);
+    }
+    .floating-alert-btn {
+      right: 10px;
+      bottom: 10px;
+    }
+    .wallboard.focus .controls {
+      justify-content: flex-start;
+    }
     .wb-top {
       flex-direction: column;
       align-items: flex-start;
@@ -1856,6 +2394,12 @@
       justify-content: flex-start;
     }
     .grid {
+      grid-template-columns: 1fr;
+      grid-template-rows: none;
+      height: auto;
+    }
+    .chart-meta,
+    .chart-meta-big {
       grid-template-columns: 1fr;
     }
   }

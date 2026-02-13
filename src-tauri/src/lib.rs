@@ -19,7 +19,8 @@ use services::metrics_service::MetricsService;
 use services::{
     AnnouncementScheduler, AuditService, AuthService, BackupService, EmailOutboxService,
     EmailService, NotificationService, PaymentService, PlanService, RoleService, SettingsService,
-    SystemService, TeamService, UserService, MikrotikService,
+    SystemService, TeamService, UserService, MikrotikService, CustomerService,
+    PppoeService,
 };
 use tauri::Manager;
 use tracing::info;
@@ -196,6 +197,10 @@ pub fn run() {
                 let email_service = EmailService::new(settings_service.clone());
                 let auth_service = AuthService::new(pool.clone(), jwt_secret, email_service.clone(), audit_service.clone(), settings_service.clone());
                 let user_service = UserService::new(pool.clone(), audit_service.clone());
+                let customer_service =
+                    CustomerService::new(pool.clone(), auth_service.clone(), audit_service.clone(), user_service.clone());
+                let pppoe_service =
+                    PppoeService::new(pool.clone(), auth_service.clone(), audit_service.clone());
                 let team_service = TeamService::new(pool.clone(), auth_service.clone(), audit_service.clone(), plan_service.clone());
                 let metrics_service = std::sync::Arc::new(MetricsService::new());
                 let system_service = SystemService::new(pool.clone(), metrics_service.clone());
@@ -244,6 +249,8 @@ pub fn run() {
                 // Manage state - Crucial: This must happen before setup returns
                 app_handle.manage(auth_service.clone());
                 app_handle.manage(user_service.clone());
+                app_handle.manage(customer_service.clone());
+                app_handle.manage(pppoe_service.clone());
                 app_handle.manage(settings_service.clone());
                 app_handle.manage(email_service.clone());
                 app_handle.manage(team_service.clone());
@@ -279,6 +286,8 @@ pub fn run() {
                         payment_service,
                         notification_service,
                         mikrotik_service,
+                        customer_service,
+                        pppoe_service,
                         backup_service,
                         ws_hub,
                         app_dir,
@@ -457,10 +466,36 @@ pub fn run() {
                                     get_support_ticket,
                                     reply_support_ticket,
                                     update_support_ticket,
+                                    // Customers (tenant scoped)
+                                    list_customers,
+                                    get_customer,
+                                    create_customer,
+                                    update_customer,
+                                    delete_customer,
+                                    list_customer_locations,
+                                    create_customer_location,
+                                    update_customer_location,
+                                    delete_customer_location,
+                                    list_customer_portal_users,
+                                    add_customer_portal_user,
+                                    create_customer_portal_user,
+                                    remove_customer_portal_user,
+                                    list_my_customer_locations,
+                                    // PPPoE (tenant scoped)
+                                    list_pppoe_accounts,
+                                    get_pppoe_account,
+                                    create_pppoe_account,
+                                    update_pppoe_account,
+                                    delete_pppoe_account,
+                                    apply_pppoe_account,
+                                    reconcile_pppoe_router,
+                                    preview_pppoe_import_from_router,
+                                    import_pppoe_from_router,
                                     // MikroTik / Routers
                                     list_mikrotik_routers,
                                     list_mikrotik_noc,
                                     list_mikrotik_alerts,
+                                    list_mikrotik_logs,
                                     ack_mikrotik_alert,
                                     resolve_mikrotik_alert,
                                     create_mikrotik_router,
@@ -473,6 +508,11 @@ pub fn run() {
                                     list_mikrotik_interface_metrics,
                                     list_mikrotik_interface_latest,
                                     get_mikrotik_live_interface_counters,
+                                    list_mikrotik_ppp_profiles,
+                                    sync_mikrotik_ppp_profiles,
+                                    list_mikrotik_ip_pools,
+                                    sync_mikrotik_ip_pools,
+                                    sync_mikrotik_logs,
                                     // Announcements
                                     list_active_announcements,
                                     list_recent_announcements,

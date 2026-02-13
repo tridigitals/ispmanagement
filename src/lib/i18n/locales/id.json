@@ -101,19 +101,26 @@
     "delete": "Hapus",
     "edit": "Edit",
     "details": "Detail",
+    "validation_error": "Validasi gagal",
+    "status": "Status",
+    "action": "Aksi",
     "open": "Buka",
     "download": "Unduh",
     "load_more": "Muat lagi",
     "page": "Halaman",
+    "results": "hasil",
+    "search": "Cari",
     "next": "Berikutnya",
     "previous": "Sebelumnya",
     "retry": "Coba Lagi",
     "refresh": "Muat ulang",
+    "remove": "Hapus",
     "reset": "Atur ulang",
     "upgrade_plan": "Upgrade Paket",
     "file_saved": "File berhasil disimpan",
     "otp_placeholder": "000000",
     "otp_placeholder_spaced": "000 000",
+    "select": "Pilih",
     "active": "Aktif",
     "inactive": "Nonaktif",
     "all": "Semua",
@@ -371,11 +378,17 @@
     "backups": "Cadangan",
     "system": "Sistem",
     "support": "Dukungan",
+    "customers": "Pelanggan",
+    "locations": "Lokasi",
     "announcements": "Pengumuman",
     "routers": "Router",
     "noc": "NOC",
     "wallboard": "Wallboard",
     "alerts": "Alert",
+    "logs": "Log",
+    "pppoe": "PPPoE",
+    "ppp_profiles": "Profil PPP",
+    "ip_pools": "Pool IP",
     "expand": "Perluas sidebar",
     "collapse": "Ciutkan sidebar",
     "exit": "Keluar",
@@ -1456,6 +1469,17 @@
       "title": "Mode Administrator",
       "description": "Anda memiliki izin sistem penuh. Akses alat manajemen di sini."
     },
+    "locations": {
+      "kicker": "Portal pelanggan",
+      "title": "Lokasi Saya",
+      "subtitle": "Lokasi layanan Anda. Jika ada yang tidak sesuai, hubungi dukungan.",
+      "location": "Lokasi",
+      "empty": "Belum ada lokasi.",
+      "empty_hint": "Admin belum menautkan akun Anda ke lokasi pelanggan.",
+      "toasts": {
+        "load_failed": "Gagal memuat lokasi"
+      }
+    },
     "stats": {
       "account_role": "Peran Akun",
       "member_since": "Anggota Sejak",
@@ -1640,6 +1664,181 @@
     }
   },
   "admin": {
+    "customers": {
+      "title": "Pelanggan",
+      "subtitle": "Kelola data pelanggan dan lokasi layanan.",
+      "actions": {
+        "new": "Pelanggan baru"
+      },
+      "search": "Cari pelanggan...",
+      "results": "hasil",
+      "empty": "Belum ada pelanggan.",
+      "stats": {
+        "total": "Total",
+        "active": "Aktif",
+        "inactive": "Nonaktif"
+      },
+      "columns": {
+        "customer": "Pelanggan",
+        "contact": "Kontak",
+        "status": "Status",
+        "updated": "Diperbarui"
+      },
+      "fields": {
+        "name": "Nama",
+        "email": "Email",
+        "phone": "Telepon",
+        "notes": "Catatan",
+        "active": "Aktif"
+      },
+      "new": {
+        "title": "Pelanggan baru"
+      },
+      "delete": {
+        "title": "Hapus pelanggan",
+        "message": "Ini akan menghapus pelanggan dan semua data terkait."
+      },
+      "detail": {
+        "title": "Pelanggan",
+        "subtitle": "Detail pelanggan"
+      },
+      "tabs": {
+        "overview": "Ringkasan",
+        "locations": "Lokasi",
+        "portal": "User portal",
+        "pppoe": "PPPoE"
+      },
+      "overview": {
+        "title": "Profil pelanggan"
+      },
+      "locations": {
+        "title": "Lokasi",
+        "subtitle": "Lokasi layanan di bawah pelanggan ini.",
+        "actions": {
+          "add": "Tambah lokasi"
+        },
+        "empty": "Belum ada lokasi.",
+        "columns": {
+          "label": "Label",
+          "address": "Alamat",
+          "updated": "Diperbarui"
+        },
+        "new": {
+          "title": "Tambah lokasi"
+        },
+        "fields": {
+          "label": "Label",
+          "address1": "Alamat baris 1",
+          "address2": "Alamat baris 2",
+          "city": "Kota",
+          "state": "Provinsi",
+          "postal": "Kode pos",
+          "country": "Negara",
+          "notes": "Catatan"
+        },
+        "toasts": {
+          "load_failed": "Gagal memuat lokasi",
+          "created": "Lokasi ditambahkan",
+          "create_failed": "Gagal menambahkan lokasi: {message}"
+        }
+      },
+      "portal": {
+        "title": "User portal",
+        "subtitle": "User yang bisa login ke portal pelanggan.",
+        "actions": {
+          "add": "Tambah user"
+        },
+        "empty": "Belum ada user portal.",
+        "columns": {
+          "user": "User",
+          "added": "Ditambahkan"
+        },
+        "new": {
+          "title": "Tambah user portal",
+          "hint": "User ini akan ditautkan ke pelanggan dan bisa login ke dashboard.",
+          "fields": {
+            "email": "Email",
+            "name": "Nama",
+            "password": "Password"
+          }
+        },
+        "remove": {
+          "title": "Hapus user portal",
+          "message": "Ini hanya akan melepas tautan user dari pelanggan."
+        },
+        "toasts": {
+          "load_failed": "Gagal memuat user portal",
+          "created": "User portal ditambahkan",
+          "create_failed": "Gagal menambahkan user portal: {message}",
+          "removed": "User portal dihapus",
+          "remove_failed": "Gagal menghapus user portal: {message}"
+        }
+      },
+      "pppoe": {
+        "title": "Akun PPPoE",
+        "subtitle": "Kelola PPPoE secret untuk pelanggan ini (per-router). Database adalah sumber kebenaran.",
+        "search": "Cari username...",
+        "empty": "Belum ada akun PPPoE.",
+        "confirm_delete": "Hapus akun PPPoE ini?",
+        "columns": {
+          "username": "Username",
+          "router": "Router",
+          "location": "Lokasi",
+          "assignment": "IP / Profile",
+          "sync": "Sinkron"
+        },
+        "fields": {
+          "router": "Router",
+          "location": "Lokasi",
+          "username": "Username",
+          "password": "Password",
+          "profile": "Profile",
+          "remote_address": "Remote IP / Pool",
+          "comment": "Catatan",
+          "disabled": "Nonaktif"
+        },
+        "sync": {
+          "present": "Ada di router",
+          "missing": "Tidak ada"
+        },
+        "actions": {
+          "add": "Tambah PPPoE",
+          "apply": "Terapkan ke router",
+          "reconcile": "Sinkronkan",
+          "reconcile_hint": "Tandai akun mana yang ada di router"
+        },
+        "new": {
+          "title": "Tambah akun PPPoE"
+        },
+        "edit": {
+          "title": "Edit akun PPPoE",
+          "password_hint": "Kosongkan untuk tetap"
+        },
+        "toasts": {
+          "routers_failed": "Gagal memuat router",
+          "load_failed": "Gagal memuat akun PPPoE: {message}",
+          "created": "Akun PPPoE dibuat",
+          "create_failed": "Gagal membuat akun PPPoE: {message}",
+          "updated": "Akun PPPoE diperbarui",
+          "update_failed": "Gagal memperbarui akun PPPoE: {message}",
+          "applied": "Berhasil diterapkan ke router",
+          "apply_failed": "Gagal menerapkan akun PPPoE: {message}",
+          "reconciled": "Berhasil sinkron dengan router",
+          "reconcile_failed": "Gagal sinkron dengan router: {message}",
+          "deleted": "Akun PPPoE dihapus",
+          "delete_failed": "Gagal menghapus akun PPPoE: {message}"
+        }
+      },
+      "toasts": {
+        "load_failed": "Gagal memuat pelanggan",
+        "created": "Pelanggan dibuat",
+        "create_failed": "Gagal membuat pelanggan: {message}",
+        "updated": "Pelanggan diperbarui",
+        "update_failed": "Gagal memperbarui pelanggan: {message}",
+        "deleted": "Pelanggan dihapus",
+        "delete_failed": "Gagal menghapus pelanggan: {message}"
+      }
+    },
     "network": {
       "noc": {
         "title": "Network NOC",
@@ -1712,6 +1911,35 @@
           "acked": "Alert di-acknowledge",
           "resolved": "Alert diselesaikan",
           "snoozed": "Router di-snooze"
+        }
+      },
+      "logs": {
+        "title": "Log Router",
+        "subtitle": "Baca dan simpan log MikroTik untuk troubleshooting dan audit.",
+        "search": "Cari pesan log...",
+        "empty": "Tidak ada log",
+        "actions": {
+          "refresh": "Refresh",
+          "sync_selected": "Sinkron router terpilih",
+          "sync_all": "Sinkron semua router"
+        },
+        "filters": {
+          "router": "Router",
+          "all_routers": "Semua router",
+          "level": "Level",
+          "all_levels": "Semua level",
+          "topic": "Topik"
+        },
+        "columns": {
+          "time": "Waktu",
+          "router": "Router",
+          "level": "Level",
+          "topics": "Topik",
+          "message": "Pesan"
+        },
+        "toasts": {
+          "sync_ok": "Sinkron log selesai",
+          "sync_failed": "Gagal sinkron log"
         }
       }
     },
@@ -1797,6 +2025,102 @@
       }
     },
     "network": {
+      "pppoe": {
+        "title": "PPPoE",
+        "subtitle": "Tampilan tenant untuk akun PPPoE di semua router.",
+        "search": "Cari PPPoE...",
+        "empty": "Tidak ada akun PPPoE.",
+        "import": {
+          "cta": "Import",
+          "title": "Import PPPoE dari MikroTik",
+          "subtitle": "Scan /ppp/secret dan import akun terpilih ke database (per-router).",
+          "search": "Cari username...",
+          "done": "Import selesai",
+          "labels": {
+            "new": "Baru",
+            "update": "Perbarui",
+            "same": "Sama",
+            "enabled": "Aktif",
+            "disabled": "Nonaktif"
+          },
+          "result": {
+            "created": "Dibuat",
+            "updated": "Diperbarui",
+            "skipped": "Dilewati",
+            "missing_password": "Password tidak tersedia"
+          },
+          "errors": {
+            "select_router": "Pilih router",
+            "permission": "Tidak punya izin",
+            "select_one": "Pilih minimal satu item",
+            "customer_location_pair": "Pilih pelanggan dan lokasi sekaligus, atau kosongkan keduanya."
+          },
+          "steps": {
+            "select": "Pilih",
+            "preview": "Preview",
+            "import": "Import"
+          },
+          "fields": {
+            "include_disabled": "Sertakan yang nonaktif",
+            "include_disabled_hint": "Ikut scan secret yang statusnya disabled di router.",
+            "customer_optional": "Tetapkan ke pelanggan (opsional)",
+            "location_optional": "Lokasi (opsional)",
+            "location_hint": "Jika pilih pelanggan, wajib pilih lokasi juga.",
+            "unassigned": "Belum ditetapkan (disarankan untuk import massal)"
+          },
+          "actions": {
+            "scan": "Scan secret",
+            "select_new_update": "Pilih baru+update",
+            "import": "Import terpilih",
+            "import_more": "Import lagi",
+            "go_to_list": "Ke daftar PPPoE"
+          },
+          "columns": {
+            "password": "Password"
+          },
+          "summary": {
+            "items": "item"
+          }
+        },
+        "stats": {
+          "total": "Total",
+          "present": "Ada di router",
+          "missing": "Tidak ada",
+          "disabled": "Nonaktif"
+        },
+        "filters": {
+          "all": "Semua",
+          "router": "Router",
+          "sync": "Sinkron",
+          "disabled": "Status",
+          "any": "Semua",
+          "present": "Ada di router",
+          "missing": "Tidak ada",
+          "enabled": "Aktif",
+          "disabled_only": "Nonaktif"
+        },
+        "columns": {
+          "username": "Username",
+          "customer": "Pelanggan",
+          "router": "Router",
+          "sync": "Sinkron"
+        },
+        "sync": {
+          "present": "Ada di router",
+          "missing": "Tidak ada"
+        },
+        "actions": {
+          "reconcile": "Sinkronkan",
+          "open_customer": "Buka pelanggan",
+          "apply": "Terapkan ke router"
+        },
+        "toasts": {
+          "applied": "Berhasil diterapkan ke router",
+          "apply_failed": "Gagal menerapkan akun PPPoE: {message}",
+          "reconciled": "Berhasil sinkron dengan router",
+          "reconcile_failed": "Gagal sinkron dengan router: {message}"
+        }
+      },
       "routers": {
         "title": "Router",
         "subtitle": "Kelola router MikroTik dan monitoring",
@@ -1819,13 +2143,63 @@
           "actions": "Aksi"
         },
         "tabs": {
-          "traffic": "Trafik"
+          "traffic": "Trafik",
+          "ppp_profiles": "Profil PPP",
+          "ip_pools": "Pool IP"
         },
         "badges": {
           "online": "Online",
           "offline": "Offline",
           "unknown": "Unknown",
           "maintenance": "Maintenance"
+        },
+        "ppp_profiles": {
+          "title": "Profil PPP",
+          "subtitle": "Profil PPP RouterOS per-router (disinkronkan ke database untuk mapping & import).",
+          "search": "Cari profil...",
+          "empty": "Belum ada profil.",
+          "actions": {
+            "sync": "Sinkron dari router"
+          },
+          "columns": {
+            "name": "Nama",
+            "local": "Local",
+            "remote": "Remote",
+            "rate": "Rate",
+            "dns": "DNS",
+            "state": "Status",
+            "synced": "Sinkron"
+          },
+          "state": {
+            "present": "Ada di router",
+            "missing": "Tidak ada"
+          },
+          "toasts": {
+            "synced": "Profil PPP berhasil disinkron"
+          }
+        },
+        "ip_pools": {
+          "title": "Pool IP",
+          "subtitle": "IP pool RouterOS per-router (dipakai untuk mapping PPPoE remote-address).",
+          "search": "Cari pool...",
+          "empty": "Belum ada IP pool.",
+          "actions": {
+            "sync": "Sinkron dari router"
+          },
+          "columns": {
+            "name": "Nama",
+            "ranges": "Range",
+            "next": "Pool berikutnya",
+            "state": "Status",
+            "synced": "Sinkron"
+          },
+          "state": {
+            "present": "Ada di router",
+            "missing": "Tidak ada"
+          },
+          "toasts": {
+            "synced": "IP pool berhasil disinkron"
+          }
         },
         "traffic": {
           "watch": "Pantau Interface",
@@ -1861,10 +2235,12 @@
         "kiosk": "Kiosk",
         "fullscreen": "Layar penuh",
         "keep_awake": "Jaga layar aktif",
+        "fit": "Pas",
         "pause": "Jeda",
         "resume": "Lanjut",
         "stale": "Tertunda",
         "drag": "Geser untuk urutkan",
+        "show_controls": "Tampilkan kontrol",
         "exit": "Keluar wallboard",
         "last_seen": "Terakhir terlihat",
         "watch": "Pantau",
@@ -1890,15 +2266,28 @@
         "tile_settings": "Pengaturan tile",
         "warn_below_rx": "Peringatan jika RX di bawah",
         "warn_below_tx": "Peringatan jika TX di bawah",
+        "alerts_open": "Peringatan aktif",
+        "ack_router_alerts": "Tandai peringatan router",
+        "focus_mode": "Mode fokus",
+        "focus_mode_hint": "Aktif/nonaktif mode fokus (F)",
         "thresholds": {
           "title": "Threshold",
           "change_interface": "Ganti interface"
+        },
+        "chart": {
+          "peak": "Puncak RX",
+          "avg": "Rata-rata RX",
+          "peak_tx": "Puncak TX",
+          "avg_tx": "Rata-rata TX"
         },
         "layouts": {
           "2x2": "Layout 2x2",
           "3x2": "Layout 3x2",
           "3x3": "Layout 3x3",
-          "4x3": "Layout 4x3"
+          "4x3": "Layout 4x3",
+          "4x4": "Layout 4x4",
+          "5x4": "Layout 5x4",
+          "6x4": "Layout 6x4"
         },
         "filters": {
           "all": "Semua",
@@ -1907,7 +2296,13 @@
         },
         "controls": {
           "filter": "Filter",
-          "layout": "Layout"
+          "layout": "Layout",
+          "pager": "Pager",
+          "manual": "Manual",
+          "auto_rotate": "Putar otomatis",
+          "rotate_every": "Interval",
+          "open": "Buka pengaturan",
+          "title": "Pengaturan Wallboard"
         }
       },
       "noc": {
@@ -1956,7 +2351,9 @@
           "toggle": "Tampilkan aktif/selesai",
           "active": "Aktif",
           "all": "Semua",
-          "ack": "Acknowledgement"
+          "ack": "Acknowledgement",
+          "resolve": "Selesaikan",
+          "snooze_30m": "Tunda 30m"
         },
         "columns": {
           "alert": "Alert",
@@ -1977,6 +2374,35 @@
         },
         "toasts": {
           "acked": "Alert di-acknowledge"
+        }
+      },
+      "logs": {
+        "title": "Log Router",
+        "subtitle": "Baca dan simpan log MikroTik untuk troubleshooting dan audit.",
+        "search": "Cari pesan log...",
+        "empty": "Tidak ada log",
+        "actions": {
+          "refresh": "Refresh",
+          "sync_selected": "Sinkron router terpilih",
+          "sync_all": "Sinkron semua router"
+        },
+        "filters": {
+          "router": "Router",
+          "all_routers": "Semua router",
+          "level": "Level",
+          "all_levels": "Semua level",
+          "topic": "Topik"
+        },
+        "columns": {
+          "time": "Waktu",
+          "router": "Router",
+          "level": "Level",
+          "topics": "Topik",
+          "message": "Pesan"
+        },
+        "toasts": {
+          "sync_ok": "Sinkron log selesai",
+          "sync_failed": "Gagal sinkron log"
         }
       }
     },
@@ -2267,11 +2693,14 @@
       "network": {
         "alerting": {
           "title": "Alert Router",
-          "desc": "Aktifkan insiden dan notifikasi yang dihasilkan dari polling MikroTik."
+          "desc": "Aktifkan insiden dan notifikasi yang dihasilkan dari polling MikroTik.",
+          "email_title": "Alert email",
+          "email_desc": "Juga kirim email ke anggota yang bisa mengakses Network Routers."
         },
         "thresholds": {
           "title": "Ambang Batas",
           "desc": "Dipakai oleh filter NOC dan background poller untuk membuka insiden.",
+          "offline_after_secs": "Insiden offline setelah (detik)",
           "cpu_risk": "CPU risk (%)",
           "cpu_hot": "CPU hot (%)",
           "latency_risk": "Latensi risk (ms)",
