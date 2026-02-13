@@ -632,7 +632,7 @@
                 <Icon name="send" size={16} />
               </button>
               <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => openEdit(row)}>
-                <Icon name="edit-3" size={16} />
+                <Icon name="edit" size={16} />
               </button>
               <button class="btn-icon danger" title={$t('common.delete') || 'Delete'} onclick={() => deleteAccount(row)}>
                 <Icon name="trash-2" size={16} />
@@ -650,6 +650,7 @@
 <Modal
   show={showCreate}
   title={$t('admin.customers.pppoe.new.title') || 'Add PPPoE account'}
+  width="760px"
   onclose={() => (showCreate = false)}
 >
   <div class="form">
@@ -750,7 +751,7 @@
 
     {#if loadingRouterMeta}
       <div class="hint">
-        <Icon name="loader" size={14} />
+        <span class="spin"><Icon name="refresh-cw" size={14} /></span>
         <span>{$t('common.loading') || 'Loading...'} suggestions…</span>
       </div>
     {/if}
@@ -760,6 +761,7 @@
 <Modal
   show={showEdit}
   title={$t('admin.customers.pppoe.edit.title') || 'Edit PPPoE account'}
+  width="760px"
   onclose={() => (showEdit = false)}
 >
   <div class="form">
@@ -771,11 +773,24 @@
         </select>
       </label>
       <label>
-        <span>{$t('admin.customers.pppoe.fields.location') || 'Location'}</span>
-        <select class="input" bind:value={formLocationId} disabled>
-          <option value={formLocationId}>{formLocationId ? formLocationId.slice(0, 8) + '…' : '—'}</option>
+        <span>{$t('admin.customers.pppoe.fields.customer') || 'Customer'}</span>
+        <select class="input" bind:value={formCustomerId} disabled>
+          <option value={formCustomerId}>{customerName(formCustomerId)}</option>
         </select>
       </label>
+    </div>
+
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.location') || 'Location'}</span>
+        <select class="input" bind:value={formLocationId} disabled>
+          <option value={formLocationId}>
+            {locations.find((l) => l.id === formLocationId)?.label ||
+              (formLocationId ? formLocationId.slice(0, 8) + '…' : '—')}
+          </option>
+        </select>
+      </label>
+      <div></div>
     </div>
 
     <div class="grid2">
@@ -1149,6 +1164,44 @@
     gap: 0.9rem;
   }
 
+  .form label {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .form label > span {
+    color: var(--text-secondary);
+    font-weight: 850;
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .input {
+    width: 100%;
+    padding: 0.85rem 0.95rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+    outline: none;
+    font-weight: 650;
+  }
+
+  :global([data-theme='light']) .input {
+    background: rgba(0, 0, 0, 0.03);
+  }
+
+  .input:focus {
+    border-color: rgba(99, 102, 241, 0.55);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.14);
+  }
+
+  .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+      monospace;
+  }
+
   .grid2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1177,6 +1230,20 @@
     color: var(--text-secondary);
     font-weight: 650;
     font-size: 0.9rem;
+  }
+
+  .spin {
+    display: inline-flex;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   @media (max-width: 768px) {
