@@ -68,6 +68,7 @@ struct LogsQuery {
     q: Option<String>,
     page: Option<u32>,
     per_page: Option<u32>,
+    include_total: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -186,6 +187,7 @@ async fn list_logs(
             q.q,
             q.page.unwrap_or(1),
             q.per_page.unwrap_or(25),
+            q.include_total.unwrap_or(false),
         )
         .await?;
     Ok(Json(rows))

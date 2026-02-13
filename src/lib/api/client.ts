@@ -1205,6 +1205,7 @@ export const mikrotik = {
       q?: string;
       page?: number;
       perPage?: number;
+      includeTotal?: boolean;
     }): Promise<PaginatedResponse<any>> =>
       safeInvoke('list_mikrotik_logs', {
         token: getTokenOrThrow(),
@@ -1215,6 +1216,8 @@ export const mikrotik = {
         q: params?.q,
         page: params?.page,
         per_page: params?.perPage,
+        include_total: params?.includeTotal,
+        includeTotal: params?.includeTotal,
       }),
     sync: (routerId: string, fetchLimit?: number): Promise<any> =>
       safeInvoke('sync_mikrotik_logs', {

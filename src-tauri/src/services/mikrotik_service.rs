@@ -181,20 +181,14 @@ impl MikrotikService {
         q: Option<String>,
         page: u32,
         per_page: u32,
+        include_total: bool,
     ) -> AppResult<PaginatedResponse<MikrotikLogEntry>> {
         let q = q.unwrap_or_default().trim().to_string();
         let offset = (page.saturating_sub(1)) * per_page;
 
-        #[derive(sqlx::FromRow)]
-        struct Row {
-            #[sqlx(flatten)]
-            entry: MikrotikLogEntry,
-            total_count: i64,
-        }
-
-        let rows: Vec<Row> = sqlx::query_as(
+        let data: Vec<MikrotikLogEntry> = sqlx::query_as(
             r#"
-            SELECT l.*, COUNT(*) OVER() AS total_count
+            SELECT l.*
             FROM mikrotik_logs l
             WHERE l.tenant_id = $1
               AND ($2::text IS NULL OR l.router_id = $2)
@@ -206,18 +200,39 @@ impl MikrotikService {
             "#,
         )
         .bind(tenant_id)
-        .bind(router_id)
-        .bind(level)
-        .bind(topic)
-        .bind(q)
+        .bind(&router_id)
+        .bind(&level)
+        .bind(&topic)
+        .bind(&q)
         .bind(per_page as i64)
         .bind(offset as i64)
         .fetch_all(&self.pool)
         .await
         .map_err(AppError::Database)?;
 
-        let total = rows.first().map(|r| r.total_count).unwrap_or(0);
-        let data = rows.into_iter().map(|r| r.entry).collect();
+        let total = if include_total {
+            sqlx::query_scalar::<_, i64>(
+                r#"
+                SELECT COUNT(*)
+                FROM mikrotik_logs l
+                WHERE l.tenant_id = $1
+                  AND ($2::text IS NULL OR l.router_id = $2)
+                  AND ($3::text IS NULL OR l.level = $3)
+                  AND ($4::text IS NULL OR l.topics ILIKE '%' || $4 || '%')
+                  AND ($5 = '' OR l.message ILIKE '%' || $5 || '%')
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(&router_id)
+            .bind(&level)
+            .bind(&topic)
+            .bind(&q)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(AppError::Database)?
+        } else {
+            -1
+        };
 
         Ok(PaginatedResponse {
             data,

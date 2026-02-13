@@ -82,6 +82,7 @@ pub async fn list_mikrotik_logs(
     q: Option<String>,
     page: Option<u32>,
     per_page: Option<u32>,
+    include_total: Option<bool>,
 ) -> Result<PaginatedResponse<MikrotikLogEntry>, String> {
     let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
     let tenant_id = claims
@@ -101,6 +102,7 @@ pub async fn list_mikrotik_logs(
             q,
             page.unwrap_or(1),
             per_page.unwrap_or(25),
+            include_total.unwrap_or(false),
         )
         .await
         .map_err(|e| e.to_string())

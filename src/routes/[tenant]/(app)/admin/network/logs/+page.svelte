@@ -28,7 +28,6 @@
   let loading = $state(true);
   let syncing = $state(false);
   let isMobile = $state(false);
-  let refreshHandle: any = null;
 
   let routers = $state<RouterRow[]>([]);
   let rows = $state<LogRow[]>([]);
@@ -38,6 +37,13 @@
   let level = $state('');
   let topic = $state('');
   const FULL_SYNC_FETCH_LIMIT = 25000;
+
+  let total = $state<number>(-1);
+  let pageNum = $state(1);
+  let perPage = $state(200);
+  let loadingMore = $state(false);
+  let ready = $state(false);
+  let hasMore = $state(true);
 
   const columns = $derived.by(() => [
     { key: 'time', label: $t('admin.network.logs.columns.time') || 'Time', width: '180px' },
@@ -66,17 +72,16 @@
     }
 
     void load();
-    refreshHandle = setInterval(() => void loadRows(), 8000);
+    ready = true;
   });
 
   onDestroy(() => {
-    if (refreshHandle) clearInterval(refreshHandle);
   });
 
   async function load() {
     loading = true;
     try {
-      await Promise.all([loadRouters(), loadRows()]);
+      await Promise.all([loadRouters(), loadRows(true)]);
     } catch (e: any) {
       toast.error(e?.message || e);
     } finally {
@@ -88,7 +93,25 @@
     routers = (await api.mikrotik.routers.list()) as RouterRow[];
   }
 
-  async function loadRows() {
+  $effect(() => {
+    if (!ready) return;
+    const _q = q;
+    const _t = topic;
+    const timer = setTimeout(() => void loadRows(true), 300);
+    return () => clearTimeout(timer);
+  });
+
+  async function loadRows(reset: boolean) {
+    if (loadingMore && !reset) return;
+    if (reset) {
+      pageNum = 1;
+      rows = [];
+      total = -1;
+      hasMore = true;
+    }
+
+    if (!hasMore && !reset) return;
+
     const params = {
       routerId: routerId || undefined,
       level: level || undefined,
@@ -96,33 +119,26 @@
       q: q.trim() || undefined,
     };
 
-    const first = await api.mikrotik.logs.list({
-      ...params,
-      page: 1,
-      perPage: 500,
-    });
+    loadingMore = true;
+    try {
+      const res = await api.mikrotik.logs.list({
+        ...params,
+        page: pageNum,
+        perPage,
+        includeTotal: false,
+      });
 
-    let all = first.data || [];
-    const total = Number(first.total || all.length);
-    const effectivePerPage =
-      Number((first as any).per_page || all.length || 500) || 500;
-
-    if (all.length < total) {
-      const maxPages = Math.min(Math.ceil(total / Math.max(1, effectivePerPage)), 200);
-      for (let p = 2; p <= maxPages; p++) {
-        const next = await api.mikrotik.logs.list({
-          ...params,
-          page: p,
-          perPage: effectivePerPage,
-        });
-        const chunk = next.data || [];
-        if (!chunk.length) break;
-        all = [...all, ...chunk];
-        if (all.length >= total) break;
-      }
+      const chunk = res.data || [];
+      total = Number(res.total ?? -1);
+      rows = reset ? chunk : [...rows, ...chunk];
+      hasMore = chunk.length >= perPage;
+      if (hasMore) pageNum += 1;
+    } catch (e: any) {
+      toast.error(e?.message || e);
+      hasMore = false;
+    } finally {
+      loadingMore = false;
     }
-
-    rows = all;
   }
 
   async function syncSelected() {
@@ -131,7 +147,7 @@
     try {
       await api.mikrotik.logs.sync(routerId, FULL_SYNC_FETCH_LIMIT);
       toast.success($t('admin.network.logs.toasts.sync_ok') || 'Log sync completed');
-      await loadRows();
+      await loadRows(true);
     } catch (e: any) {
       toast.error(
         ($t('admin.network.logs.toasts.sync_failed') || 'Failed to sync logs') +
@@ -151,7 +167,7 @@
         await api.mikrotik.logs.sync(id, FULL_SYNC_FETCH_LIMIT);
       }
       toast.success($t('admin.network.logs.toasts.sync_ok') || 'Log sync completed');
-      await loadRows();
+      await loadRows(true);
     } catch (e: any) {
       toast.error(
         ($t('admin.network.logs.toasts.sync_failed') || 'Failed to sync logs') +
@@ -185,7 +201,7 @@
         </p>
       </div>
       <div class="head-actions">
-        <button class="btn ghost" type="button" onclick={loadRows} title={$t('common.refresh') || 'Refresh'}>
+        <button class="btn ghost" type="button" onclick={() => void loadRows(true)} title={$t('common.refresh') || 'Refresh'}>
           <Icon name="refresh-cw" size={16} />
           {$t('admin.network.logs.actions.refresh') || 'Refresh'}
         </button>
@@ -203,7 +219,7 @@
     <div class="filters">
       <label>
         <span>{$t('admin.network.logs.filters.router') || 'Router'}</span>
-        <select bind:value={routerId} onchange={() => void loadRows()}>
+        <select bind:value={routerId} onchange={() => void loadRows(true)}>
           <option value="">{$t('admin.network.logs.filters.all_routers') || 'All routers'}</option>
           {#each routers as r}
             <option value={r.id}>{r.name}</option>
@@ -213,7 +229,7 @@
 
       <label>
         <span>{$t('admin.network.logs.filters.level') || 'Level'}</span>
-        <select bind:value={level} onchange={() => void loadRows()}>
+        <select bind:value={level} onchange={() => void loadRows(true)}>
           <option value="">{$t('admin.network.logs.filters.all_levels') || 'All levels'}</option>
           <option value="critical">critical</option>
           <option value="error">error</option>
@@ -225,14 +241,13 @@
 
       <label>
         <span>{$t('admin.network.logs.filters.topic') || 'Topic'}</span>
-        <input bind:value={topic} oninput={() => void loadRows()} placeholder="system,error,interface..." />
+        <input bind:value={topic} placeholder="system,error,interface..." />
       </label>
 
       <label class="search">
         <span>{$t('common.search') || 'Search'}</span>
         <input
           bind:value={q}
-          oninput={() => void loadRows()}
           placeholder={$t('admin.network.logs.search') || 'Search log message...'}
         />
       </label>
@@ -243,9 +258,8 @@
         {columns}
         data={rows}
         keyField="id"
-        {loading}
-        pagination={true}
-        pageSize={25}
+        loading={loading || loadingMore}
+        pagination={false}
         searchable={false}
         mobileView={isMobile ? 'card' : 'scroll'}
         emptyText={$t('admin.network.logs.empty') || 'No logs'}
@@ -273,6 +287,28 @@
           {/if}
         {/snippet}
       </Table>
+
+      <div class="pager">
+        <div class="pager-left">
+          <span class="muted">
+            {rows.length}
+            {#if total >= 0}
+              / {total}
+            {/if}
+            {$t('common.results') || 'results'}
+          </span>
+        </div>
+        <div class="pager-right">
+          {#if hasMore}
+            <button class="btn btn-secondary" type="button" onclick={() => void loadRows(false)} disabled={loadingMore || loading}>
+              <Icon name="chevron-down" size={16} />
+              {$t('common.load_more') || 'Load more'}
+            </button>
+          {:else}
+            <span class="muted">{$t('common.end') || 'End'}</span>
+          {/if}
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -284,7 +320,7 @@
   .logs-shell {
     border: 1px solid var(--border-color);
     border-radius: 18px;
-    background: var(--bg-primary);
+    background: var(--bg-surface);
     box-shadow: var(--shadow-md);
     padding: 1rem 1rem 0.8rem;
   }
@@ -309,26 +345,20 @@
   .filters input, .filters select {
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    background: var(--bg-secondary);
+    background: var(--bg-tertiary);
     color: var(--text-primary);
     padding: 0.6rem 0.75rem;
   }
-  .filters select {
-    color-scheme: dark;
-  }
-  :global([data-theme='light']) .filters select {
-    color-scheme: light;
-  }
-  .filters select option {
-    background: #0f1117;
-    color: #e5e7eb;
-  }
-  :global([data-theme='light']) .filters select option {
-    background: #ffffff;
-    color: #111827;
-  }
   .table-wrap {
     margin-top: 0.4rem;
+  }
+
+  .pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 0.25rem 0.25rem;
   }
   .search { grid-column: span 1; }
   .stack { display: grid; gap: 0.2rem; }
