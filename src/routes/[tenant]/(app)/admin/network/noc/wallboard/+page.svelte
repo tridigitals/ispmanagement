@@ -58,6 +58,11 @@
     updated_at?: string | null;
   };
 
+  type HoverBar = {
+    tileKey: string;
+    idx: number;
+  } | null;
+
   let loading = $state(true);
   let refreshing = $state(false);
   let rows = $state<NocRow[]>([]);
@@ -135,6 +140,8 @@
   let dragOver = $state<number | null>(null);
   let dragging = $state(false);
 
+  let hoverBar = $state<HoverBar>(null);
+
   const tenantPrefix = $derived.by(() => {
     const tid = String($pageStore.params.tenant || '');
     return tid ? `/${tid}` : '';
@@ -162,7 +169,6 @@
   const STATUS_FILTER_KEY = 'mikrotik_wallboard_status_filter';
   const POLL_MS_KEY = 'mikrotik_wallboard_poll_ms';
   const KEEP_AWAKE_KEY = 'mikrotik_wallboard_keep_awake';
-  const KIOSK_KEY = 'mikrotik_wallboard_kiosk';
   const FIT_TARGET_ASPECT = 16 / 9;
 
   function isLayoutPreset(v: string | null): v is LayoutPreset {
@@ -459,7 +465,6 @@
       localStorage.setItem(STATUS_FILTER_KEY, statusFilter);
       localStorage.setItem(POLL_MS_KEY, String(pollMs));
       localStorage.setItem(KEEP_AWAKE_KEY, keepAwake ? '1' : '0');
-      localStorage.setItem(KIOSK_KEY, kiosk ? '1' : '0');
     } catch {
       // ignore
     }
@@ -481,8 +486,6 @@
       if ([1000, 2000, 5000].includes(pm)) pollMs = pm;
       const ka = localStorage.getItem(KEEP_AWAKE_KEY);
       if (ka != null) keepAwake = ka === '1' || ka === 'true';
-      const kz = localStorage.getItem(KIOSK_KEY);
-      if (kz != null) kiosk = kz === '1' || kz === 'true';
       const s = localStorage.getItem('mikrotik_wallboard_slots');
       if (s) {
         const parsed = JSON.parse(s);
@@ -679,6 +682,16 @@
     slotsAll = next;
   }
 
+  function getHoverIndexFromPoint(x: number, y: number) {
+    const target = document.elementFromPoint(x, y) as HTMLElement | null;
+    const bar = target?.closest?.('.bar') as HTMLElement | null;
+    if (!bar) return null;
+    const raw = bar.dataset?.idx;
+    if (!raw) return null;
+    const idx = Number.parseInt(raw, 10);
+    return Number.isFinite(idx) && idx >= 0 ? idx : null;
+  }
+
   function getSlotIndexFromPoint(x: number, y: number) {
     const el = document.elementFromPoint(x, y) as HTMLElement | null;
     const host = el?.closest?.('[data-wall-slot]') as HTMLElement | null;
@@ -869,7 +882,9 @@
 
     loadConfig();
     ensureSlots();
-    applyKiosk(kiosk);
+    // Wallboard is meant for NOC/full window display. Keep kiosk enabled while this route is active.
+    kiosk = true;
+    applyKiosk(true);
     void loadRemoteConfig();
 
     // Fit-to-screen setup (avoid scrollbars).
@@ -1150,6 +1165,13 @@
             txNow >= 0 &&
             txNow < slot.warn_below_tx_bps}
           {@const ra = routerAlertMap[slot.routerId]}
+          {@const tileKey = `${slot.routerId}:${iface}:${gidx}`}
+          {@const hoverIdx =
+            hoverBar && hoverBar.tileKey === tileKey
+              ? Math.min(rx.length ? rx.length - 1 : 0, Math.max(0, hoverBar.idx))
+              : null}
+          {@const hoverRx = hoverIdx != null ? rx[hoverIdx] ?? null : null}
+          {@const hoverTx = hoverIdx != null ? tx[hoverIdx] ?? null : null}
           <div
             class="tile iface-tile"
             class:warn={warnRx || warnTx}
@@ -1251,12 +1273,15 @@
                     <span class="spark-chip">RX</span>
                     <span class="mono rate" class:warn={warnRx}>{formatBps(rxNow)}</span>
                   </div>
+                  {#if hoverIdx != null}
+                    <div class="spark-crosshair" style={`--x:${((hoverIdx + 0.5) / Math.max(1, rx.length)) * 100}%`}></div>
+                  {/if}
                   {#each rx as v, i (i)}
                     <div
                       class="bar rx"
+                      class:active={hoverIdx === i}
                       style={`height:${Math.round((v / max) * 100)}%;`}
-                      data-value={formatBps(v)}
-                      title={`RX • ${formatBps(v)}`}
+                      data-idx={i}
                     ></div>
                   {/each}
                 </div>
@@ -1265,14 +1290,41 @@
                     <span class="spark-chip">TX</span>
                     <span class="mono rate" class:warn={warnTx}>{formatBps(txNow)}</span>
                   </div>
+                  {#if hoverIdx != null}
+                    <div class="spark-crosshair" style={`--x:${((hoverIdx + 0.5) / Math.max(1, tx.length)) * 100}%`}></div>
+                  {/if}
                   {#each tx as v, i (i)}
                     <div
                       class="bar tx"
+                      class:active={hoverIdx === i}
                       style={`height:${Math.round((v / max) * 100)}%;`}
-                      data-value={formatBps(v)}
-                      title={`TX • ${formatBps(v)}`}
+                      data-idx={i}
                     ></div>
                   {/each}
+                </div>
+
+                <div
+                  class="spark-hover"
+                  role="presentation"
+                  aria-hidden="true"
+                  onpointermove={(e) => {
+                    const idx = getHoverIndexFromPoint(e.clientX, e.clientY);
+                    if (idx == null) return;
+                    hoverBar = { tileKey, idx };
+                  }}
+                  onpointerleave={() => {
+                    if (hoverBar?.tileKey === tileKey) hoverBar = null;
+                  }}
+                >
+                  {#if hoverIdx != null}
+                    <div class="spark-tooltip" role="status" aria-live="polite">
+                      <span class="spark-chip">RX</span>
+                      <span class="mono">{formatBps(hoverRx)}</span>
+                      <span class="spark-sep">·</span>
+                      <span class="spark-chip">TX</span>
+                      <span class="mono">{formatBps(hoverTx)}</span>
+                    </div>
+                  {/if}
                 </div>
               </div>
 
@@ -2181,6 +2233,31 @@
     text-transform: uppercase;
     background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
   }
+  .spark-sep {
+    color: var(--text-muted);
+  }
+  .spark-hover {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+  }
+  .spark-tooltip {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-surface) 90%, transparent);
+    color: var(--text-primary);
+    font-size: 11px;
+    font-weight: 750;
+    pointer-events: none;
+    box-shadow: var(--shadow-sm);
+  }
   .mono {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
       monospace;
@@ -2264,6 +2341,18 @@
     z-index: 2;
     pointer-events: none;
   }
+  .spark-crosshair {
+    position: absolute;
+    top: 26px;
+    bottom: 6px;
+    left: var(--x, 50%);
+    width: 1px;
+    transform: translateX(-0.5px);
+    background: color-mix(in srgb, var(--text-muted) 50%, transparent);
+    opacity: 0.75;
+    pointer-events: none;
+    z-index: 1;
+  }
   .bars.warn {
     border-color: color-mix(in srgb, var(--color-danger) 55%, var(--border-color));
     background: color-mix(in srgb, var(--color-danger) 8%, var(--bg-surface));
@@ -2277,27 +2366,10 @@
   .bar:hover {
     filter: brightness(1.08);
   }
-  .bar::after {
-    content: attr(data-value);
-    position: absolute;
-    left: 50%;
-    bottom: calc(100% + 6px);
-    transform: translateX(-50%);
-    white-space: nowrap;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 2px 6px;
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--text-primary);
-    background: color-mix(in srgb, var(--bg-surface) 90%, transparent);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 100ms ease;
-    z-index: 3;
-  }
-  .bar:hover::after {
-    opacity: 1;
+  .bar.active {
+    filter: brightness(1.12);
+    outline: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    outline-offset: 1px;
   }
   .bars.warn .bar {
     background: linear-gradient(180deg, #ff8a8a, var(--color-danger));

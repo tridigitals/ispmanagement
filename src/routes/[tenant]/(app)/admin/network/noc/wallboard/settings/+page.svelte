@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { page as pageStore } from '$app/stores';
   import { t } from 'svelte-i18n';
+  import { can } from '$lib/stores/auth';
   import MiniSelect from '$lib/components/ui/MiniSelect.svelte';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { api } from '$lib/api/client';
@@ -19,7 +20,6 @@
   const STATUS_FILTER_KEY = 'mikrotik_wallboard_status_filter';
   const POLL_MS_KEY = 'mikrotik_wallboard_poll_ms';
   const KEEP_AWAKE_KEY = 'mikrotik_wallboard_keep_awake';
-  const KIOSK_KEY = 'mikrotik_wallboard_kiosk';
 
   let layout = $state<LayoutPreset>('3x3');
   let rotateMode = $state<RotateMode>('manual');
@@ -27,7 +27,6 @@
   let statusFilter = $state<StatusFilter>('all');
   let pollMs = $state(1000);
   let keepAwake = $state(false);
-  let kiosk = $state(true);
   let focusMode = $state(false);
   let saving = $state(false);
 
@@ -50,8 +49,6 @@
       if ([1000, 2000, 5000].includes(pm)) pollMs = pm;
       const ka = localStorage.getItem(KEEP_AWAKE_KEY);
       if (ka != null) keepAwake = ka === '1' || ka === 'true';
-      const kz = localStorage.getItem(KIOSK_KEY);
-      if (kz != null) kiosk = kz === '1' || kz === 'true';
       const fm = localStorage.getItem(FOCUS_MODE_KEY);
       if (fm != null) focusMode = fm === '1' || fm === 'true';
     } catch {
@@ -75,7 +72,6 @@
     localStorage.setItem(STATUS_FILTER_KEY, statusFilter);
     localStorage.setItem(POLL_MS_KEY, String(pollMs));
     localStorage.setItem(KEEP_AWAKE_KEY, keepAwake ? '1' : '0');
-    localStorage.setItem(KIOSK_KEY, kiosk ? '1' : '0');
     localStorage.setItem(FOCUS_MODE_KEY, focusMode ? '1' : '0');
   }
 
@@ -115,6 +111,10 @@
   }
 
   onMount(() => {
+    if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
+      goto('/unauthorized');
+      return;
+    }
     document.body.classList.add('wallboard-settings');
     loadLocal();
     void loadRemoteLayout();
@@ -215,11 +215,6 @@
     <label class="toggle">
       <input type="checkbox" bind:checked={keepAwake} />
       <span>{$t('admin.network.wallboard.keep_awake') || 'Keep awake'}</span>
-    </label>
-
-    <label class="toggle">
-      <input type="checkbox" bind:checked={kiosk} />
-      <span>{$t('admin.network.wallboard.kiosk') || 'Kiosk'}</span>
     </label>
 
     <label class="toggle">
