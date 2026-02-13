@@ -38,12 +38,11 @@
   let topic = $state('');
   const FULL_SYNC_FETCH_LIMIT = 25000;
 
-  let total = $state<number>(-1);
-  let pageNum = $state(1);
-  let perPage = $state(200);
+  let pageNum = $state(1); // 1-based for API
+  let perPage = $state(25);
   let loadingMore = $state(false);
   let ready = $state(false);
-  let hasMore = $state(true);
+  let hasNext = $state(false);
 
   const columns = $derived.by(() => [
     { key: 'time', label: $t('admin.network.logs.columns.time') || 'Time', width: '180px' },
@@ -81,7 +80,7 @@
   async function load() {
     loading = true;
     try {
-      await Promise.all([loadRouters(), loadRows(true)]);
+      await Promise.all([loadRouters(), loadRowsPage(1)]);
     } catch (e: any) {
       toast.error(e?.message || e);
     } finally {
@@ -97,20 +96,13 @@
     if (!ready) return;
     const _q = q;
     const _t = topic;
-    const timer = setTimeout(() => void loadRows(true), 300);
+    const timer = setTimeout(() => void loadRowsPage(1), 300);
     return () => clearTimeout(timer);
   });
 
-  async function loadRows(reset: boolean) {
-    if (loadingMore && !reset) return;
-    if (reset) {
-      pageNum = 1;
-      rows = [];
-      total = -1;
-      hasMore = true;
-    }
-
-    if (!hasMore && !reset) return;
+  async function loadRowsPage(nextPage: number) {
+    if (loadingMore) return;
+    if (nextPage < 1) return;
 
     const params = {
       routerId: routerId || undefined,
@@ -123,19 +115,18 @@
     try {
       const res = await api.mikrotik.logs.list({
         ...params,
-        page: pageNum,
+        page: nextPage,
         perPage,
         includeTotal: false,
       });
 
       const chunk = res.data || [];
-      total = Number(res.total ?? -1);
-      rows = reset ? chunk : [...rows, ...chunk];
-      hasMore = chunk.length >= perPage;
-      if (hasMore) pageNum += 1;
+      rows = chunk;
+      pageNum = nextPage;
+      hasNext = chunk.length >= perPage;
     } catch (e: any) {
       toast.error(e?.message || e);
-      hasMore = false;
+      hasNext = false;
     } finally {
       loadingMore = false;
     }
@@ -147,7 +138,7 @@
     try {
       await api.mikrotik.logs.sync(routerId, FULL_SYNC_FETCH_LIMIT);
       toast.success($t('admin.network.logs.toasts.sync_ok') || 'Log sync completed');
-      await loadRows(true);
+      await loadRowsPage(1);
     } catch (e: any) {
       toast.error(
         ($t('admin.network.logs.toasts.sync_failed') || 'Failed to sync logs') +
@@ -167,7 +158,7 @@
         await api.mikrotik.logs.sync(id, FULL_SYNC_FETCH_LIMIT);
       }
       toast.success($t('admin.network.logs.toasts.sync_ok') || 'Log sync completed');
-      await loadRows(true);
+      await loadRowsPage(1);
     } catch (e: any) {
       toast.error(
         ($t('admin.network.logs.toasts.sync_failed') || 'Failed to sync logs') +
@@ -201,7 +192,7 @@
         </p>
       </div>
       <div class="head-actions">
-        <button class="btn ghost" type="button" onclick={() => void loadRows(true)} title={$t('common.refresh') || 'Refresh'}>
+        <button class="btn ghost" type="button" onclick={() => void loadRowsPage(1)} title={$t('common.refresh') || 'Refresh'}>
           <Icon name="refresh-cw" size={16} />
           {$t('admin.network.logs.actions.refresh') || 'Refresh'}
         </button>
@@ -219,7 +210,7 @@
     <div class="filters">
       <label>
         <span>{$t('admin.network.logs.filters.router') || 'Router'}</span>
-        <select bind:value={routerId} onchange={() => void loadRows(true)}>
+        <select bind:value={routerId} onchange={() => void loadRowsPage(1)}>
           <option value="">{$t('admin.network.logs.filters.all_routers') || 'All routers'}</option>
           {#each routers as r}
             <option value={r.id}>{r.name}</option>
@@ -229,7 +220,7 @@
 
       <label>
         <span>{$t('admin.network.logs.filters.level') || 'Level'}</span>
-        <select bind:value={level} onchange={() => void loadRows(true)}>
+        <select bind:value={level} onchange={() => void loadRowsPage(1)}>
           <option value="">{$t('admin.network.logs.filters.all_levels') || 'All levels'}</option>
           <option value="critical">critical</option>
           <option value="error">error</option>
@@ -290,23 +281,27 @@
 
       <div class="pager">
         <div class="pager-left">
-          <span class="muted">
-            {rows.length}
-            {#if total >= 0}
-              / {total}
-            {/if}
-            {$t('common.results') || 'results'}
-          </span>
+          <span class="muted">{rows.length} {$t('common.results') || 'results'}</span>
         </div>
         <div class="pager-right">
-          {#if hasMore}
-            <button class="btn btn-secondary" type="button" onclick={() => void loadRows(false)} disabled={loadingMore || loading}>
-              <Icon name="chevron-down" size={16} />
-              {$t('common.load_more') || 'Load more'}
-            </button>
-          {:else}
-            <span class="muted">{$t('common.end') || 'End'}</span>
-          {/if}
+          <span class="muted">{$t('common.page') || 'Page'} {pageNum}</span>
+          <label class="per-page">
+            <span class="muted">{$t('components.pagination.rows_per_page') || 'Rows per page:'}</span>
+            <select bind:value={perPage} onchange={() => void loadRowsPage(1)}>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </label>
+          <button class="btn btn-secondary" type="button" onclick={() => void loadRowsPage(pageNum - 1)} disabled={loadingMore || loading || pageNum <= 1}>
+            <Icon name="chevron-left" size={16} />
+            {$t('common.previous') || 'Previous'}
+          </button>
+          <button class="btn btn-secondary" type="button" onclick={() => void loadRowsPage(pageNum + 1)} disabled={loadingMore || loading || !hasNext}>
+            {$t('common.next') || 'Next'}
+            <Icon name="chevron-right" size={16} />
+          </button>
         </div>
       </div>
     </div>
@@ -359,6 +354,29 @@
     justify-content: space-between;
     gap: 1rem;
     padding: 0.9rem 0.25rem 0.25rem;
+  }
+
+  .pager-right {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .per-page {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .per-page select {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    padding: 0.45rem 0.6rem;
+    min-height: 38px;
   }
   .search { grid-column: span 1; }
   .stack { display: grid; gap: 0.2rem; }
