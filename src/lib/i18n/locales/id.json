@@ -1789,6 +1789,7 @@
         },
         "fields": {
           "router": "Router",
+          "customer": "Pelanggan",
           "location": "Lokasi",
           "username": "Username",
           "password": "Password",

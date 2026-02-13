@@ -1811,6 +1811,7 @@
         },
         "fields": {
           "router": "Router",
+          "customer": "Customer",
           "location": "Location",
           "username": "Username",
           "password": "Password",
