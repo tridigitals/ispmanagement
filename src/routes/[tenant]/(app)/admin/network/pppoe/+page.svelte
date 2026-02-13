@@ -8,6 +8,7 @@
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
+  import Toggle from '$lib/components/ui/Toggle.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
   import StatsCard from '$lib/components/dashboard/StatsCard.svelte';
@@ -730,10 +731,15 @@
       <input class="input" bind:value={formComment} />
     </label>
 
-    <label class="row">
-      <input type="checkbox" bind:checked={formDisabled} />
-      <span>{$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}</span>
-    </label>
+    <div class="toggle-row">
+      <div class="toggle-text">
+        <div class="toggle-title">{$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}</div>
+        <div class="toggle-sub">
+          {$t('admin.network.pppoe.form.disabled_hint') || 'Disable this PPPoE account (will be applied to router when you click Apply).'}
+        </div>
+      </div>
+      <Toggle bind:checked={formDisabled} ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'} />
+    </div>
 
     <div class="actions">
       <button class="btn btn-secondary" onclick={() => (showCreate = false)} disabled={saving}>
@@ -831,10 +837,15 @@
       </label>
     </div>
 
-    <label class="row">
-      <input type="checkbox" bind:checked={formDisabled} />
-      <span>{$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}</span>
-    </label>
+    <div class="toggle-row">
+      <div class="toggle-text">
+        <div class="toggle-title">{$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}</div>
+        <div class="toggle-sub">
+          {$t('admin.network.pppoe.form.disabled_hint') || 'Disable this PPPoE account (will be applied to router when you click Apply).'}
+        </div>
+      </div>
+      <Toggle bind:checked={formDisabled} ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'} />
+    </div>
 
     <div class="actions">
       <button class="btn btn-secondary" onclick={() => (showEdit = false)} disabled={saving}>
@@ -1208,12 +1219,37 @@
     gap: 0.8rem;
   }
 
-  .row {
+  .toggle-row {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    justify-content: space-between;
+    gap: 0.9rem;
+    padding: 0.9rem 1rem;
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  :global([data-theme='light']) .toggle-row {
+    background: rgba(0, 0, 0, 0.02);
+  }
+
+  .toggle-text {
+    min-width: 0;
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  .toggle-title {
+    color: var(--text-primary);
+    font-weight: 900;
+  }
+
+  .toggle-sub {
     color: var(--text-secondary);
     font-weight: 650;
+    font-size: 0.92rem;
+    line-height: 1.35;
   }
 
   .actions {
