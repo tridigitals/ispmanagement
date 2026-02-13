@@ -7,6 +7,7 @@
   import { api, type PppoeAccountPublic } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import Modal from '$lib/components/ui/Modal.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
   import StatsCard from '$lib/components/dashboard/StatsCard.svelte';
@@ -14,18 +15,44 @@
 
   type RouterRow = { id: string; name: string; host?: string; port?: number };
   type CustomerRow = { id: string; name: string };
+  type LocationRow = { id: string; label: string };
+  type ProfileSuggestion = { id: string; name: string };
+  type PoolSuggestion = { id: string; name: string };
 
   let loading = $state(true);
   let error = $state('');
   let accounts = $state<PppoeAccountPublic[]>([]);
   let routers = $state<RouterRow[]>([]);
   let customers = $state<CustomerRow[]>([]);
+  let locations = $state<LocationRow[]>([]);
   let refreshing = $state(false);
 
   let q = $state('');
   let routerId = $state('');
   let status = $state<'any' | 'present' | 'missing'>('any');
   let disabled = $state<'any' | 'enabled' | 'disabled'>('any');
+
+  // Create/Edit modal state
+  let showCreate = $state(false);
+  let showEdit = $state(false);
+  let saving = $state(false);
+  let editRow = $state<PppoeAccountPublic | null>(null);
+
+  let formRouterId = $state('');
+  let formCustomerId = $state('');
+  let formLocationId = $state('');
+  let formUsername = $state('');
+  let formPassword = $state('');
+  let formRouterProfileName = $state('');
+  let formRemoteAddress = $state('');
+  let formAddressPool = $state('');
+  let formDisabled = $state(false);
+  let formComment = $state('');
+
+  let profileSuggestions = $state<ProfileSuggestion[]>([]);
+  let poolSuggestions = $state<PoolSuggestion[]>([]);
+  let loadingRouterMeta = $state(false);
+  const routerMetaCache = new Map<string, { profiles: ProfileSuggestion[]; pools: PoolSuggestion[] }>();
 
   const tenantPrefix = $derived.by(() => {
     const tid = String($page.params.tenant || '');
@@ -71,7 +98,7 @@
     { key: 'customer', label: $t('admin.network.pppoe.columns.customer') || 'Customer' },
     { key: 'router', label: $t('admin.network.pppoe.columns.router') || 'Router' },
     { key: 'sync', label: $t('admin.network.pppoe.columns.sync') || 'Sync' },
-    { key: 'actions', label: '', align: 'right' as const, width: '220px' },
+    { key: 'actions', label: '', align: 'right' as const, width: '300px' },
   ]);
 
   onMount(() => {
@@ -109,6 +136,165 @@
       customers = (res.data || []).map((c) => ({ id: c.id, name: c.name }));
     } catch (e: any) {
       // Non-critical; list can still show ids.
+    }
+  }
+
+  async function loadLocations(customerId: string) {
+    if (!customerId) {
+      locations = [];
+      return;
+    }
+    try {
+      const rows = await api.customers.locations.list(customerId);
+      locations = (rows || []).map((l: any) => ({ id: l.id, label: l.label }));
+    } catch {
+      locations = [];
+    }
+  }
+
+  async function loadRouterMeta(routerId: string) {
+    if (!routerId) {
+      profileSuggestions = [];
+      poolSuggestions = [];
+      return;
+    }
+    const cached = routerMetaCache.get(routerId);
+    if (cached) {
+      profileSuggestions = cached.profiles;
+      poolSuggestions = cached.pools;
+      return;
+    }
+    loadingRouterMeta = true;
+    try {
+      const [profiles, pools] = await Promise.all([
+        api.mikrotik.routers.pppProfiles(routerId),
+        api.mikrotik.routers.ipPools(routerId),
+      ]);
+      const mappedProfiles = (profiles || []).map((p: any) => ({ id: p.id, name: p.name }));
+      const mappedPools = (pools || []).map((p: any) => ({ id: p.id, name: p.name }));
+      routerMetaCache.set(routerId, { profiles: mappedProfiles, pools: mappedPools });
+      profileSuggestions = mappedProfiles;
+      poolSuggestions = mappedPools;
+    } catch {
+      profileSuggestions = [];
+      poolSuggestions = [];
+    } finally {
+      loadingRouterMeta = false;
+    }
+  }
+
+  function resetForm() {
+    formRouterId = '';
+    formCustomerId = '';
+    formLocationId = '';
+    formUsername = '';
+    formPassword = '';
+    formRouterProfileName = '';
+    formRemoteAddress = '';
+    formAddressPool = '';
+    formDisabled = false;
+    formComment = '';
+    locations = [];
+    profileSuggestions = [];
+    poolSuggestions = [];
+    editRow = null;
+  }
+
+  async function openCreate() {
+    if (!$can('manage', 'pppoe')) {
+      toast.error($t('common.forbidden') || 'Forbidden');
+      return;
+    }
+    resetForm();
+    showCreate = true;
+  }
+
+  async function openEdit(row: PppoeAccountPublic) {
+    if (!$can('manage', 'pppoe')) {
+      toast.error($t('common.forbidden') || 'Forbidden');
+      return;
+    }
+
+    resetForm();
+    editRow = row;
+    formRouterId = row.router_id;
+    formCustomerId = row.customer_id;
+    formLocationId = row.location_id;
+    formUsername = row.username;
+    formPassword = '';
+    formRouterProfileName = row.router_profile_name || '';
+    formRemoteAddress = row.remote_address || '';
+    formAddressPool = row.address_pool || '';
+    formDisabled = Boolean(row.disabled);
+    formComment = row.comment || '';
+    showEdit = true;
+
+    await Promise.all([loadLocations(row.customer_id), loadRouterMeta(row.router_id)]);
+  }
+
+  async function submitCreate() {
+    if (saving) return;
+    if (!formRouterId || !formCustomerId || !formLocationId || !formUsername.trim() || !formPassword) return;
+
+    saving = true;
+    try {
+      await api.pppoe.accounts.create({
+        router_id: formRouterId,
+        customer_id: formCustomerId,
+        location_id: formLocationId,
+        username: formUsername.trim(),
+        password: formPassword,
+        router_profile_name: formRouterProfileName.trim() || null,
+        remote_address: formRemoteAddress.trim() || null,
+        address_pool: formAddressPool.trim() || null,
+        disabled: formDisabled,
+        comment: formComment.trim() || null,
+      });
+      toast.success($t('admin.customers.pppoe.toasts.created') || 'PPPoE account created');
+      showCreate = false;
+      await loadAccounts();
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function submitEdit() {
+    if (saving) return;
+    if (!editRow) return;
+    if (!formUsername.trim()) return;
+
+    saving = true;
+    try {
+      await api.pppoe.accounts.update(editRow.id, {
+        username: formUsername.trim(),
+        password: formPassword || undefined,
+        router_profile_name: formRouterProfileName.trim() || null,
+        remote_address: formRemoteAddress.trim() || null,
+        address_pool: formAddressPool.trim() || null,
+        disabled: formDisabled,
+        comment: formComment.trim() || null,
+      });
+      toast.success($t('admin.customers.pppoe.toasts.updated') || 'PPPoE account updated');
+      showEdit = false;
+      await loadAccounts();
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function deleteAccount(row: PppoeAccountPublic) {
+    if (!$can('manage', 'pppoe')) return;
+    if (!confirm($t('admin.customers.pppoe.confirm_delete') || 'Delete this PPPoE account?')) return;
+    try {
+      await api.pppoe.accounts.delete(row.id);
+      toast.success($t('common.deleted') || 'Deleted');
+      await loadAccounts();
+    } catch (e: any) {
+      toast.error(e?.message || e);
     }
   }
 
@@ -227,6 +413,12 @@
             <Icon name="refresh-cw" size={16} />
             {$t('common.refresh') || 'Refresh'}
           </button>
+          {#if $can('manage', 'pppoe')}
+            <button class="btn btn-primary" onclick={openCreate}>
+              <Icon name="plus" size={16} />
+              {$t('admin.customers.pppoe.actions.add') || 'Add PPPoE'}
+            </button>
+          {/if}
           {#if $can('manage', 'pppoe')}
             <button
               class="btn btn-secondary"
@@ -427,7 +619,7 @@
             <button
               class="btn-icon"
               title={$t('admin.network.pppoe.actions.open_customer') || 'Open customer'}
-              onclick={() => goto(`${tenantPrefix}/admin/customers/${row.customer_id}`)}
+              onclick={() => row.customer_id && goto(`${tenantPrefix}/admin/customers/${row.customer_id}`)}
             >
               <Icon name="external-link" size={16} />
             </button>
@@ -439,6 +631,12 @@
               >
                 <Icon name="send" size={16} />
               </button>
+              <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => openEdit(row)}>
+                <Icon name="edit-3" size={16} />
+              </button>
+              <button class="btn-icon danger" title={$t('common.delete') || 'Delete'} onclick={() => deleteAccount(row)}>
+                <Icon name="trash-2" size={16} />
+              </button>
             {/if}
           </div>
         {:else}
@@ -448,6 +646,204 @@
     </Table>
   </div>
 </div>
+
+<Modal
+  show={showCreate}
+  title={$t('admin.customers.pppoe.new.title') || 'Add PPPoE account'}
+  onclose={() => (showCreate = false)}
+>
+  <div class="form">
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.router') || 'Router'}</span>
+        <select class="input" bind:value={formRouterId} onchange={() => void loadRouterMeta(formRouterId)}>
+          <option value="">{($t('common.select') || 'Select') + '...'}</option>
+          {#each routers as r}
+            <option value={r.id}>{r.name}</option>
+          {/each}
+        </select>
+      </label>
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.customer') || 'Customer'}</span>
+        <select
+          class="input"
+          bind:value={formCustomerId}
+          onchange={() => {
+            formLocationId = '';
+            void loadLocations(formCustomerId);
+          }}
+        >
+          <option value="">{($t('common.select') || 'Select') + '...'}</option>
+          {#each customers as c}
+            <option value={c.id}>{c.name}</option>
+          {/each}
+        </select>
+      </label>
+    </div>
+
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.location') || 'Location'}</span>
+        <select class="input" bind:value={formLocationId} disabled={!formCustomerId}>
+          <option value="">{($t('common.select') || 'Select') + '...'}</option>
+          {#each locations as l}
+            <option value={l.id}>{l.label}</option>
+          {/each}
+        </select>
+      </label>
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.username') || 'Username'}</span>
+        <input class="input" bind:value={formUsername} />
+      </label>
+    </div>
+
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.password') || 'Password'}</span>
+        <input class="input" type="password" bind:value={formPassword} />
+      </label>
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.profile') || 'Profile'}</span>
+        <input
+          class="input"
+          bind:value={formRouterProfileName}
+          list="pppoe-profile-suggestions"
+          placeholder="default / paket-10mbps"
+        />
+      </label>
+    </div>
+
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.remote_address') || 'Remote IP'}</span>
+        <input class="input mono" bind:value={formRemoteAddress} placeholder="10.10.10.10" />
+      </label>
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.pool') || 'Address pool'}</span>
+        <input class="input" bind:value={formAddressPool} list="pppoe-pool-suggestions" placeholder="pool-pppoe" />
+      </label>
+    </div>
+
+    <label>
+      <span>{$t('admin.customers.pppoe.fields.comment') || 'Comment'}</span>
+      <input class="input" bind:value={formComment} />
+    </label>
+
+    <label class="row">
+      <input type="checkbox" bind:checked={formDisabled} />
+      <span>{$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}</span>
+    </label>
+
+    <div class="actions">
+      <button class="btn btn-secondary" onclick={() => (showCreate = false)} disabled={saving}>
+        {$t('common.cancel') || 'Cancel'}
+      </button>
+      <button
+        class="btn btn-primary"
+        onclick={submitCreate}
+        disabled={saving || !formRouterId || !formCustomerId || !formLocationId || !formUsername.trim() || !formPassword}
+      >
+        <Icon name="plus" size={16} />
+        {$t('common.create') || 'Create'}
+      </button>
+    </div>
+
+    {#if loadingRouterMeta}
+      <div class="hint">
+        <Icon name="loader" size={14} />
+        <span>{$t('common.loading') || 'Loading...'} suggestions…</span>
+      </div>
+    {/if}
+  </div>
+</Modal>
+
+<Modal
+  show={showEdit}
+  title={$t('admin.customers.pppoe.edit.title') || 'Edit PPPoE account'}
+  onclose={() => (showEdit = false)}
+>
+  <div class="form">
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.router') || 'Router'}</span>
+        <select class="input" bind:value={formRouterId} disabled>
+          <option value={formRouterId}>{routerName(formRouterId)}</option>
+        </select>
+      </label>
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.location') || 'Location'}</span>
+        <select class="input" bind:value={formLocationId} disabled>
+          <option value={formLocationId}>{formLocationId ? formLocationId.slice(0, 8) + '…' : '—'}</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.username') || 'Username'}</span>
+        <input class="input" bind:value={formUsername} />
+      </label>
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.password') || 'Password'}</span>
+        <input
+          class="input"
+          type="password"
+          bind:value={formPassword}
+          placeholder={$t('admin.customers.pppoe.edit.password_hint') || 'Leave blank to keep'}
+        />
+      </label>
+    </div>
+
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.profile') || 'Profile'}</span>
+        <input class="input" bind:value={formRouterProfileName} list="pppoe-profile-suggestions" />
+      </label>
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.remote_address') || 'Remote IP'}</span>
+        <input class="input mono" bind:value={formRemoteAddress} placeholder="10.10.10.10" />
+      </label>
+    </div>
+
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.pool') || 'Address pool'}</span>
+        <input class="input" bind:value={formAddressPool} list="pppoe-pool-suggestions" placeholder="pool-pppoe" />
+      </label>
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.comment') || 'Comment'}</span>
+        <input class="input" bind:value={formComment} />
+      </label>
+    </div>
+
+    <label class="row">
+      <input type="checkbox" bind:checked={formDisabled} />
+      <span>{$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}</span>
+    </label>
+
+    <div class="actions">
+      <button class="btn btn-secondary" onclick={() => (showEdit = false)} disabled={saving}>
+        {$t('common.cancel') || 'Cancel'}
+      </button>
+      <button class="btn btn-primary" onclick={submitEdit} disabled={saving || !formUsername.trim()}>
+        <Icon name="check-circle" size={16} />
+        {$t('common.save') || 'Save'}
+      </button>
+    </div>
+  </div>
+</Modal>
+
+<datalist id="pppoe-profile-suggestions">
+  {#each profileSuggestions as p}
+    <option value={p.name}></option>
+  {/each}
+</datalist>
+
+<datalist id="pppoe-pool-suggestions">
+  {#each poolSuggestions as p}
+    <option value={p.name}></option>
+  {/each}
+</datalist>
 
 <style>
   .hero {
@@ -748,6 +1144,41 @@
     white-space: nowrap;
   }
 
+  .form {
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--text-secondary);
+    font-weight: 650;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    padding-top: 0.25rem;
+  }
+
+  .hint {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    font-weight: 650;
+    font-size: 0.9rem;
+  }
+
   @media (max-width: 768px) {
     .stats-grid {
       grid-template-columns: 1fr;
@@ -768,6 +1199,10 @@
     }
     .error-line {
       max-width: 100%;
+    }
+
+    .grid2 {
+      grid-template-columns: 1fr;
     }
   }
 
