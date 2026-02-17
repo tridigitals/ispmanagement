@@ -51,6 +51,12 @@ impl RoleService {
             // PPPoE (tenant scoped)
             ("pppoe", "read", "View PPPoE accounts"),
             ("pppoe", "manage", "Manage PPPoE accounts"),
+            // ISP Packages (tenant scoped)
+            ("isp_packages", "read", "View ISP packages"),
+            ("isp_packages", "manage", "Manage ISP packages"),
+            // Billing / Payments (tenant scoped)
+            ("billing", "read", "View billing and subscription data"),
+            ("billing", "manage", "Manage billing actions"),
             // Backups permissions
             ("backups", "read", "View backups"),
             ("backups", "create", "Create backups"),
@@ -107,6 +113,10 @@ impl RoleService {
                     "network_routers:manage",
                     "pppoe:read",
                     "pppoe:manage",
+                    "isp_packages:read",
+                    "isp_packages:manage",
+                    "billing:read",
+                    "billing:manage",
                     "backups:read",
                     "backups:create",
                     "backups:download",
@@ -147,6 +157,10 @@ impl RoleService {
                     "network_routers:manage",
                     "pppoe:read",
                     "pppoe:manage",
+                    "isp_packages:read",
+                    "isp_packages:manage",
+                    "billing:read",
+                    "billing:manage",
                     "backups:read",
                     "backups:create",
                     "backups:download",

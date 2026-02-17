@@ -39,6 +39,7 @@ pub struct BankAccount {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CreateInvoiceRequest {
     pub tenant_id: String,
     pub amount: f64,
@@ -48,6 +49,7 @@ pub struct CreateInvoiceRequest {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct CreateBankAccountRequest {
     pub bank_name: String,
     pub account_number: String,

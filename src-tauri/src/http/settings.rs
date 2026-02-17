@@ -239,6 +239,7 @@ pub async fn get_setting_value(
 }
 
 #[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UpsertSettingRequest {
     key: String,
     value: String,
@@ -345,6 +346,7 @@ pub async fn delete_setting(
 }
 
 #[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UploadLogoRequest {
     content: String, // Base64 content
 }
@@ -402,6 +404,7 @@ pub async fn upload_logo(
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct TestEmailRequest {
     to_email: String,
 }
@@ -412,9 +415,13 @@ pub async fn send_test_email(
     Json(payload): Json<TestEmailRequest>,
 ) -> Result<Json<String>, crate::error::AppError> {
     let token = get_token(&headers)?;
-    state.auth_service.check_admin(&token).await?;
-
     let claims = state.auth_service.validate_token(&token).await?;
+    if let Some(ref tenant_id) = claims.tenant_id {
+        state
+            .auth_service
+            .check_permission(&claims.sub, tenant_id, "settings", "update")
+            .await?;
+    }
     state
         .notification_service
         .force_send_email(
@@ -437,9 +444,13 @@ pub async fn test_smtp_connection(
 ) -> Result<Json<crate::services::email_service::SmtpConnectionTestResult>, crate::error::AppError>
 {
     let token = get_token(&headers)?;
-    state.auth_service.check_admin(&token).await?;
-
     let claims = state.auth_service.validate_token(&token).await?;
+    if let Some(ref tenant_id) = claims.tenant_id {
+        state
+            .auth_service
+            .check_permission(&claims.sub, tenant_id, "settings", "update")
+            .await?;
+    }
     let res = state
         .email_service
         .test_smtp_connection_for_tenant(claims.tenant_id.as_deref())

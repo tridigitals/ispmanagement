@@ -1,5 +1,6 @@
 use super::AppState;
 use crate::models::{LoginDto, RegisterDto, UserResponse};
+use crate::security::access_rules;
 use crate::services::{AuthResponse, AuthSettings};
 use axum::{
     extract::ConnectInfo,
@@ -146,6 +147,7 @@ pub async fn register(
 }
 
 #[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct VerifyEmailDto {
     token: String,
 }
@@ -159,6 +161,7 @@ pub async fn verify_email(
 }
 
 #[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ForgotPasswordDto {
     email: String,
 }
@@ -172,6 +175,7 @@ pub async fn forgot_password(
 }
 
 #[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ResetPasswordDto {
     token: String,
     password: String,
@@ -189,6 +193,7 @@ pub async fn reset_password(
 }
 
 #[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ValidateTokenDto {
     token: String,
 }
@@ -203,6 +208,7 @@ pub async fn validate_token(
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct Verify2faDto {
     temp_token: String,
     code: String,
@@ -242,6 +248,7 @@ pub async fn verify_login_2fa(
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct RequestEmailOtpDto {
     temp_token: String,
 }
@@ -318,6 +325,7 @@ pub async fn enable_2fa(
 }
 
 #[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Verify2FASetupDto {
     secret: String,
     code: String,
@@ -347,6 +355,7 @@ pub async fn verify_2fa_setup(
 }
 
 #[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Disable2FADto {
     code: String,
 }
@@ -408,12 +417,44 @@ pub async fn reset_user_2fa(
         .ok_or_else(|| crate::error::AppError::Unauthorized)?;
 
     let claims = state.auth_service.validate_token(auth_header).await?;
+    let target_is_super_admin: bool = sqlx::query_scalar("SELECT is_super_admin FROM users WHERE id = $1")
+        .bind(&user_id)
+        .fetch_optional(&state.auth_service.pool)
+        .await
+        .map_err(crate::error::AppError::Database)?
+        .ok_or(crate::error::AppError::NotFound("User not found".to_string()))?;
 
-    // Must be Admin or Super Admin
-    if !claims.is_super_admin && claims.role != "admin" && claims.role != "Owner" {
-        return Err(crate::error::AppError::Forbidden(
-            "Only administrators can reset 2FA".to_string(),
-        ));
+    if !claims.is_super_admin {
+        let tenant_id = claims
+            .tenant_id
+            .clone()
+            .ok_or(crate::error::AppError::Forbidden(
+                "Tenant context required".to_string(),
+            ))?;
+        let has_team_update_permission = state
+            .auth_service
+            .has_permission(&claims.sub, &tenant_id, "team", "update")
+            .await?;
+
+        let target_in_same_tenant: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM tenant_members WHERE tenant_id = $1 AND user_id = $2)",
+        )
+        .bind(&tenant_id)
+        .bind(&user_id)
+        .fetch_one(&state.auth_service.pool)
+        .await
+        .map_err(crate::error::AppError::Database)?;
+
+        if !access_rules::can_reset_user_2fa(
+            claims.is_super_admin,
+            has_team_update_permission,
+            target_in_same_tenant,
+            target_is_super_admin,
+        ) {
+            return Err(crate::error::AppError::Forbidden(
+                "Not allowed to reset 2FA for target user".to_string(),
+            ));
+        }
     }
 
     state
@@ -426,6 +467,7 @@ pub async fn reset_user_2fa(
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct Set2FAPreferenceDto {
     method: String,
 }
@@ -477,6 +519,7 @@ pub async fn request_email_2fa_setup(
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VerifyEmail2FASetupDto {
     pub code: String,
 }

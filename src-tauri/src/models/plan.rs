@@ -91,6 +91,7 @@ pub struct TenantSubscriptionWithPlan {
 // ==================== Request/Response DTOs ====================
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CreatePlanRequest {
     pub name: String,
     pub slug: String,
@@ -103,6 +104,7 @@ pub struct CreatePlanRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UpdatePlanRequest {
     pub name: Option<String>,
     pub slug: Option<String>,
@@ -115,6 +117,7 @@ pub struct UpdatePlanRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CreateFeatureRequest {
     pub code: String,
     pub name: String,
@@ -126,6 +129,7 @@ pub struct CreateFeatureRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateFeatureRequest {
     pub code: Option<String>,
     pub name: Option<String>,
@@ -138,6 +142,7 @@ pub struct UpdateFeatureRequest {
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
+#[serde(deny_unknown_fields)]
 pub struct SetPlanFeatureRequest {
     pub plan_id: String,
     pub feature_id: String,
@@ -146,6 +151,7 @@ pub struct SetPlanFeatureRequest {
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
+#[serde(deny_unknown_fields)]
 pub struct AssignPlanRequest {
     pub tenant_id: String,
     pub plan_id: String,

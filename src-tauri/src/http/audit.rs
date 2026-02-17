@@ -7,6 +7,7 @@ use axum::{
 };
 
 #[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct AuditLogQuery {
     page: Option<u32>,
     #[serde(rename = "perPage")]

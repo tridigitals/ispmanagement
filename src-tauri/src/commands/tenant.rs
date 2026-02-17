@@ -37,6 +37,10 @@ pub async fn update_current_tenant(
         .await
         .map_err(|e| e.to_string())?;
     let tenant_id = claims.tenant_id.ok_or("Not a tenant user")?;
+    auth_service
+        .check_permission(&claims.sub, &tenant_id, "settings", "update")
+        .await
+        .map_err(|e| e.to_string())?;
 
     // 1. Get Current Tenant
     let current: Tenant = sqlx::query_as("SELECT * FROM tenants WHERE id = $1")

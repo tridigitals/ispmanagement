@@ -374,9 +374,10 @@ impl NotificationService {
         Ok(())
     }
 
-    pub async fn unsubscribe_push(&self, endpoint: &str) -> AppResult<()> {
-        sqlx::query("DELETE FROM push_subscriptions WHERE endpoint = $1")
+    pub async fn unsubscribe_push_for_user(&self, endpoint: &str, user_id: &str) -> AppResult<()> {
+        sqlx::query("DELETE FROM push_subscriptions WHERE endpoint = $1 AND user_id = $2")
             .bind(endpoint)
+            .bind(user_id)
             .execute(&self.pool)
             .await
             .map_err(AppError::Database)?;
@@ -513,7 +514,9 @@ impl NotificationService {
                     if response.status().is_success() {
                         tracing::info!("Push sent to {}", sub.endpoint);
                     } else if response.status() == 410 {
-                        let _ = self.unsubscribe_push(&sub.endpoint).await;
+                        let _ = self
+                            .unsubscribe_push_for_user(&sub.endpoint, user_id)
+                            .await;
                         tracing::info!("Removed expired subscription: {}", sub.endpoint);
                     } else {
                         tracing::warn!(

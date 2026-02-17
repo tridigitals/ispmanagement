@@ -1,6 +1,7 @@
 //! Authentication Commands
 
 use crate::models::{LoginDto, RegisterDto, TrustedDevice, UserResponse};
+use crate::security::access_rules;
 use crate::services::{AuthResponse, AuthService};
 use tauri::State;
 use validator::Validate;
@@ -352,10 +353,41 @@ pub async fn reset_user_2fa(
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
+    let target_is_super_admin: bool =
+        sqlx::query_scalar("SELECT is_super_admin FROM users WHERE id = $1")
+            .bind(&user_id)
+            .fetch_optional(&auth_service.pool)
+            .await
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| "User not found".to_string())?;
 
-    // Must be at least Admin or Super Admin
-    if !claims.is_super_admin && claims.role != "admin" && claims.role != "Owner" {
-        return Err("Unauthorized: Only administrators can reset 2FA".to_string());
+    if !claims.is_super_admin {
+        let tenant_id = claims
+            .tenant_id
+            .clone()
+            .ok_or_else(|| "Tenant context required".to_string())?;
+        let has_team_update_permission = auth_service
+            .has_permission(&claims.sub, &tenant_id, "team", "update")
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let target_in_same_tenant: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM tenant_members WHERE tenant_id = $1 AND user_id = $2)",
+        )
+        .bind(&tenant_id)
+        .bind(&user_id)
+        .fetch_one(&auth_service.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        if !access_rules::can_reset_user_2fa(
+            claims.is_super_admin,
+            has_team_update_permission,
+            target_in_same_tenant,
+            target_is_super_admin,
+        ) {
+            return Err("Not allowed to reset 2FA for target user".to_string());
+        }
     }
 
     auth_service

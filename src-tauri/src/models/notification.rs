@@ -96,6 +96,7 @@ impl PushSubscription {
 // Request DTOs
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UpdatePreferenceRequest {
     pub channel: String,
     pub category: String,
@@ -103,8 +104,15 @@ pub struct UpdatePreferenceRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CreatePushSubscriptionRequest {
     pub endpoint: String,
     pub p256dh: String,
     pub auth: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UnsubscribePushRequest {
+    pub endpoint: String,
 }

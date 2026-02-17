@@ -1,6 +1,8 @@
 use crate::error::AppResult;
 use crate::http::AppState;
-use crate::models::{CreatePushSubscriptionRequest, UpdatePreferenceRequest, UserResponse};
+use crate::models::{
+    CreatePushSubscriptionRequest, UnsubscribePushRequest, UpdatePreferenceRequest, UserResponse,
+};
 use axum::{
     extract::{Path, Query, State},
     http::HeaderMap,
@@ -10,6 +12,7 @@ use axum::{
 use serde::Deserialize;
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ListNotificationsQuery {
     pub page: Option<u32>,
     pub per_page: Option<u32>,
@@ -160,18 +163,13 @@ async fn subscribe_push(
 async fn unsubscribe_push(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Json(payload): Json<serde_json::Value>, // Expecting { "endpoint": "..." }
+    Json(payload): Json<UnsubscribePushRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
-    let _user = get_current_user(&state, &headers).await?;
-
-    let endpoint = payload
-        .get("endpoint")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| crate::error::AppError::Validation("Endpoint is required".to_string()))?;
+    let user = get_current_user(&state, &headers).await?;
 
     state
         .notification_service
-        .unsubscribe_push(endpoint)
+        .unsubscribe_push_for_user(&payload.endpoint, &user.id)
         .await?;
     Ok(Json(serde_json::json!({ "success": true })))
 }

@@ -86,6 +86,36 @@ fn require_superadmin(claims: &Claims) -> Result<(), (StatusCode, Json<ErrorResp
     Ok(())
 }
 
+async fn require_plan_read_access(
+    state: &AppState,
+    claims: &Claims,
+) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
+    if claims.is_super_admin {
+        return Ok(());
+    }
+    let tenant_id = claims.tenant_id.as_deref().ok_or_else(|| {
+        (
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                error: "Tenant context required".to_string(),
+            }),
+        )
+    })?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, tenant_id, "billing", "read")
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::FORBIDDEN,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })?;
+    Ok(())
+}
+
 // ==================== PLANS ====================
 
 async fn list_plans(
@@ -93,6 +123,7 @@ async fn list_plans(
     headers: HeaderMap,
 ) -> Result<Json<Vec<Plan>>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
+    require_plan_read_access(&state, &claims).await?;
 
     let plans = if claims.is_super_admin {
         state.plan_service.list_plans().await
@@ -276,6 +307,7 @@ async fn delete_feature(
 // ==================== PLAN FEATURES ====================
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct SetPlanFeatureBody {
     feature_id: String,
     value: String,
@@ -308,6 +340,7 @@ async fn set_plan_feature(
 // ==================== SUBSCRIPTIONS ====================
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct SubscriptionDetailsParams {
     tenant_id: Option<String>,
 }
@@ -318,6 +351,7 @@ async fn get_subscription_details(
     Query(params): Query<SubscriptionDetailsParams>,
 ) -> Result<Json<TenantSubscriptionDetails>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
+    require_plan_read_access(&state, &claims).await?;
 
     // Determine target tenant_id
     let target_tenant_id = match params.tenant_id {
@@ -367,6 +401,7 @@ async fn get_subscription(
     Path(tenant_id): Path<String>,
 ) -> Result<Json<Option<TenantSubscription>>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
+    require_plan_read_access(&state, &claims).await?;
 
     // Allow superadmin or own tenant
     if !claims.is_super_admin && claims.tenant_id.as_deref() != Some(tenant_id.as_str()) {
@@ -394,6 +429,7 @@ async fn get_subscription(
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct AssignPlanBody {
     plan_id: String,
 }
@@ -430,6 +466,7 @@ async fn check_access(
     Path((tenant_id, feature_code)): Path<(String, String)>,
 ) -> Result<Json<FeatureAccess>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
+    require_plan_read_access(&state, &claims).await?;
 
     // Allow superadmin or own tenant
     if !claims.is_super_admin && claims.tenant_id.as_deref() != Some(tenant_id.as_str()) {

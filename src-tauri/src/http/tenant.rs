@@ -32,6 +32,7 @@ pub async fn get_current_tenant(
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct UpdateTenantSelfRequest {
     pub name: Option<String>,
     pub custom_domain: Option<String>,
@@ -55,6 +56,11 @@ pub async fn update_current_tenant(
         .tenant_id
         .ok_or_else(|| AppError::Validation("Not a tenant user".to_string()))?;
     let ip = extract_ip(&headers, addr);
+
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "settings", "update")
+        .await?;
 
     // 1. Get Current Tenant
     let current: Tenant = sqlx::query_as("SELECT * FROM tenants WHERE id = $1")

@@ -1,7 +1,7 @@
 //! Payment Commands
 
 use crate::models::{BankAccount, CreateBankAccountRequest, Invoice};
-use crate::services::{AuthService, PaymentService, PlanService};
+use crate::services::{AuthService, Claims, PaymentService, PlanService};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use tauri::State;
@@ -13,6 +13,62 @@ pub struct FxRateResponse {
     pub rate: f64,
     pub source: String,
     pub fetched_at: DateTime<Utc>,
+}
+
+async fn require_payment_read_access(
+    auth_service: &AuthService,
+    claims: &Claims,
+) -> Result<(), String> {
+    if claims.is_super_admin {
+        return Ok(());
+    }
+    let tenant_id = claims
+        .tenant_id
+        .as_deref()
+        .ok_or_else(|| "Tenant context required".to_string())?;
+    auth_service
+        .check_permission(&claims.sub, tenant_id, "billing", "read")
+        .await
+        .map_err(|e| e.to_string())
+}
+
+async fn require_payment_manage_access(
+    auth_service: &AuthService,
+    claims: &Claims,
+) -> Result<(), String> {
+    if claims.is_super_admin {
+        return Ok(());
+    }
+    let tenant_id = claims
+        .tenant_id
+        .as_deref()
+        .ok_or_else(|| "Tenant context required".to_string())?;
+    auth_service
+        .check_permission(&claims.sub, tenant_id, "billing", "manage")
+        .await
+        .map_err(|e| e.to_string())
+}
+
+async fn authorize_invoice_access(
+    claims: &Claims,
+    payment_service: &PaymentService,
+    invoice_id: &str,
+) -> Result<Invoice, String> {
+    let invoice = payment_service
+        .get_invoice(invoice_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    if claims.is_super_admin {
+        return Ok(invoice);
+    }
+    let tenant_id = claims
+        .tenant_id
+        .as_deref()
+        .ok_or_else(|| "Tenant context required".to_string())?;
+    if tenant_id != invoice.tenant_id {
+        return Err("Invoice access denied".to_string());
+    }
+    Ok(invoice)
 }
 
 #[tauri::command]
@@ -27,6 +83,7 @@ pub async fn get_fx_rate(
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
+    require_payment_read_access(&auth_service, &claims).await?;
 
     let base = base_currency.trim().to_uppercase();
     let quote = quote_currency.trim().to_uppercase();
@@ -58,7 +115,12 @@ pub async fn create_invoice_for_plan(
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
+    require_payment_manage_access(&auth_service, &claims).await?;
     let tenant_id = claims.tenant_id.ok_or("No tenant context")?;
+    let billing_cycle = billing_cycle.trim().to_ascii_lowercase();
+    if billing_cycle != "monthly" && billing_cycle != "yearly" {
+        return Err("billing_cycle must be monthly or yearly".to_string());
+    }
 
     let plan = plan_service
         .get_plan(&plan_id)
@@ -89,15 +151,12 @@ pub async fn get_invoice(
     auth_service: State<'_, AuthService>,
     payment_service: State<'_, PaymentService>,
 ) -> Result<Invoice, String> {
-    let _ = auth_service
+    let claims = auth_service
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
-    // Add logic to ensure user owns invoice (tenant check)
-    payment_service
-        .get_invoice(&id)
-        .await
-        .map_err(|e| e.to_string())
+    require_payment_read_access(&auth_service, &claims).await?;
+    authorize_invoice_access(&claims, &payment_service, &id).await
 }
 
 #[tauri::command]
@@ -110,6 +169,7 @@ pub async fn list_invoices(
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
+    require_payment_read_access(&auth_service, &claims).await?;
     let tenant_id = claims.tenant_id.ok_or("No tenant context")?;
     payment_service
         .list_invoices(Some(&tenant_id))
@@ -143,10 +203,12 @@ pub async fn pay_invoice_midtrans(
     auth_service: State<'_, AuthService>,
     payment_service: State<'_, PaymentService>,
 ) -> Result<String, String> {
-    let _ = auth_service
+    let claims = auth_service
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
+    require_payment_manage_access(&auth_service, &claims).await?;
+    let _ = authorize_invoice_access(&claims, &payment_service, &id).await?;
     payment_service
         .initiate_midtrans(&id)
         .await
@@ -160,10 +222,12 @@ pub async fn check_payment_status(
     auth_service: State<'_, AuthService>,
     payment_service: State<'_, PaymentService>,
 ) -> Result<String, String> {
-    let _ = auth_service
+    let claims = auth_service
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
+    require_payment_read_access(&auth_service, &claims).await?;
+    let _ = authorize_invoice_access(&claims, &payment_service, &id).await?;
     payment_service
         .check_transaction_status(&id)
         .await
@@ -176,14 +240,11 @@ pub async fn list_bank_accounts(
     auth_service: State<'_, AuthService>,
     payment_service: State<'_, PaymentService>,
 ) -> Result<Vec<BankAccount>, String> {
-    // Basic auth check
-    let _ = auth_service
+    let claims = auth_service
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
-    // In future, maybe restrict to superadmin or allow tenants to see them?
-    // Tenants need to SEE them to pay. Superadmin needs to MANAGE them.
-    // For list, let's allow authenticated users.
+    require_payment_read_access(&auth_service, &claims).await?;
 
     payment_service
         .list_bank_accounts()
@@ -249,13 +310,12 @@ pub async fn submit_payment_proof(
     auth_service: State<'_, AuthService>,
     payment_service: State<'_, PaymentService>,
 ) -> Result<(), String> {
-    let _ = auth_service
+    let claims = auth_service
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
-    // Any user can upload proof for their invoice? Yes, but better if we verified ownership.
-    // However, `get_invoice` checks ownership? `PaymentService::get_invoice` usually just fetches.
-    // For now, allow upload. Ideally we check if `invoice.tenant_id == claims.tenant_id`.
+    require_payment_manage_access(&auth_service, &claims).await?;
+    let _ = authorize_invoice_access(&claims, &payment_service, &invoice_id).await?;
 
     payment_service
         .submit_payment_proof(&invoice_id, &file_path)

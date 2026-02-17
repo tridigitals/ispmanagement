@@ -4,6 +4,7 @@ use crate::models::{
     CreateUserAddressDto, CreateUserDto, PaginatedResponse, UpdateUserAddressDto, UpdateUserDto,
     UserAddress, UserResponse,
 };
+use crate::security::access_rules;
 use crate::services::{AuthService, UserService};
 
 use tauri::State;
@@ -24,7 +25,7 @@ pub async fn list_users(
         .map_err(|e| e.to_string())?;
 
     // Improved Security: Only Super Admin can list all global users
-    if !claims.is_super_admin {
+    if !access_rules::can_access_global_user_management(claims.is_super_admin) {
         return Err("Unauthorized".to_string());
     }
 
@@ -58,7 +59,7 @@ pub async fn get_user(
         .map_err(|e| e.to_string())?;
 
     // Improved Security: Only Super Admin can get arbitrary user details via this API
-    if !claims.is_super_admin {
+    if !access_rules::can_access_global_user_management(claims.is_super_admin) {
         return Err("Unauthorized".to_string());
     }
 
@@ -81,7 +82,7 @@ pub async fn create_user(
         .map_err(|e| e.to_string())?;
 
     // Improved Security: Only Super Admin can create global users directly
-    if !claims.is_super_admin {
+    if !access_rules::can_access_global_user_management(claims.is_super_admin) {
         return Err("Unauthorized".to_string());
     }
 
@@ -119,19 +120,14 @@ pub async fn update_user(
         .await
         .map_err(|e| e.to_string())?;
 
-    // Security Fix: Prevent Tenant Admins (role=admin) from updating arbitrary global users.
-    // Allow update if:
-    // 1. User is Super Admin
-    // 2. User is updating themselves
-    let is_self = claims.sub == id;
-
-    if !claims.is_super_admin && !is_self {
+    let attempts_privileged_change = role.is_some() || is_active.is_some();
+    if !access_rules::can_update_user(
+        claims.is_super_admin,
+        &claims.sub,
+        &id,
+        attempts_privileged_change,
+    ) {
         return Err("Unauthorized".to_string());
-    }
-
-    // Additional restriction: Non-superadmins cannot change role or active status
-    if !claims.is_super_admin && (role.is_some() || is_active.is_some()) {
-        return Err("Unauthorized: Cannot change role or status".to_string());
     }
 
     let dto = UpdateUserDto {
@@ -166,7 +162,7 @@ pub async fn delete_user(
         .map_err(|e| e.to_string())?;
 
     // Improved Security: Only Super Admin can delete global users
-    if !claims.is_super_admin {
+    if !access_rules::can_access_global_user_management(claims.is_super_admin) {
         return Err("Unauthorized".to_string());
     }
 

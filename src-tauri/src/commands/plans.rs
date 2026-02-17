@@ -4,8 +4,22 @@ use crate::models::{
     CreatePlanRequest, FeatureAccess, FeatureDefinition, Plan, PlanWithFeatures,
     TenantSubscription, TenantSubscriptionDetails, UpdatePlanRequest,
 };
-use crate::services::{AuthService, PlanService};
+use crate::services::{AuthService, Claims, PlanService};
 use tauri::State;
+
+async fn require_plan_read_access(auth_service: &AuthService, claims: &Claims) -> Result<(), String> {
+    if claims.is_super_admin {
+        return Ok(());
+    }
+    let tenant_id = claims
+        .tenant_id
+        .as_deref()
+        .ok_or_else(|| "Tenant context required".to_string())?;
+    auth_service
+        .check_permission(&claims.sub, tenant_id, "billing", "read")
+        .await
+        .map_err(|e| e.to_string())
+}
 
 /// Get detailed tenant subscription info (Usage vs Limits)
 #[tauri::command]
@@ -19,6 +33,7 @@ pub async fn get_tenant_subscription_details(
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
+    require_plan_read_access(&auth_service, &claims).await?;
 
     let target_tenant_id = if let Some(tid) = tenant_id {
         if !claims.is_super_admin && claims.tenant_id.as_deref() != Some(&tid) {
@@ -48,6 +63,7 @@ pub async fn list_plans(
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
+    require_plan_read_access(&auth_service, &claims).await?;
 
     if claims.is_super_admin {
         plan_service.list_plans().await.map_err(|e| e.to_string())
@@ -275,6 +291,7 @@ pub async fn get_tenant_subscription(
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
+    require_plan_read_access(&auth_service, &claims).await?;
 
     // Allow superadmin or if checking own tenant
     if !claims.is_super_admin && claims.tenant_id.as_deref() != Some(&tenant_id) {
@@ -300,6 +317,7 @@ pub async fn check_feature_access(
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
+    require_plan_read_access(&auth_service, &claims).await?;
 
     // Allow superadmin or if checking own tenant
     if !claims.is_super_admin && claims.tenant_id.as_deref() != Some(&tenant_id) {

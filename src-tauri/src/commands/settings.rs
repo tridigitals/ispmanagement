@@ -9,6 +9,54 @@ use std::fs;
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, State};
 
+async fn require_settings_read_access(
+    auth_service: &AuthService,
+    claims: &crate::services::Claims,
+) -> Result<(), String> {
+    if claims.is_super_admin {
+        return Ok(());
+    }
+    if let Some(tenant_id) = claims.tenant_id.as_deref() {
+        auth_service
+            .check_permission(&claims.sub, tenant_id, "settings", "read")
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+async fn require_settings_update_access(
+    auth_service: &AuthService,
+    claims: &crate::services::Claims,
+) -> Result<(), String> {
+    if claims.is_super_admin {
+        return Ok(());
+    }
+    if let Some(tenant_id) = claims.tenant_id.as_deref() {
+        auth_service
+            .check_permission(&claims.sub, tenant_id, "settings", "update")
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+async fn require_settings_delete_access(
+    auth_service: &AuthService,
+    claims: &crate::services::Claims,
+) -> Result<(), String> {
+    if claims.is_super_admin {
+        return Ok(());
+    }
+    if let Some(tenant_id) = claims.tenant_id.as_deref() {
+        auth_service
+            .check_permission(&claims.sub, tenant_id, "settings", "delete")
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[derive(serde::Serialize)]
 pub struct PublicSettings {
     pub app_name: Option<String>,
@@ -116,12 +164,7 @@ pub async fn get_all_settings(
         .await
         .map_err(|e| e.to_string())?;
 
-    // Security check: must be admin or superadmin
-    // (Actual role names might vary, usually 'admin' or 'owner')
-    // Ideally use permission check, but for now checking role or super_admin flag
-    if !claims.is_super_admin && claims.role != "admin" {
-        return Err("Unauthorized".to_string());
-    }
+    require_settings_read_access(&auth_service, &claims).await?;
 
     // If Super Admin, fetch GLOBAL settings (tenant_id = None)
     // If Tenant Admin, fetch TENANT settings
@@ -158,9 +201,7 @@ pub async fn get_setting(
         .await
         .map_err(|e| e.to_string())?;
 
-    if !claims.is_super_admin && claims.role != "admin" {
-        return Err("Unauthorized".to_string());
-    }
+    require_settings_read_access(&auth_service, &claims).await?;
 
     let target_tenant_id = if claims.is_super_admin {
         None
@@ -187,9 +228,7 @@ pub async fn get_setting_value(
         .await
         .map_err(|e| e.to_string())?;
 
-    if !claims.is_super_admin && claims.role != "admin" {
-        return Err("Unauthorized".to_string());
-    }
+    require_settings_read_access(&auth_service, &claims).await?;
 
     let target_tenant_id = if claims.is_super_admin {
         None
@@ -218,10 +257,7 @@ pub async fn upsert_setting(
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
-    // Allow superadmin, and tenant admins that have admin role
-    if !claims.is_super_admin && claims.role != "admin" {
-        return Err("Unauthorized".to_string());
-    }
+    require_settings_update_access(&auth_service, &claims).await?;
 
     // For superadmin, save settings as GLOBAL (tenant_id = None)
     let tenant_id_for_save = if claims.is_super_admin {
@@ -283,9 +319,7 @@ pub async fn delete_setting(
         .await
         .map_err(|e| e.to_string())?;
 
-    if !claims.is_super_admin && claims.role != "admin" {
-        return Err("Unauthorized".to_string());
-    }
+    require_settings_delete_access(&auth_service, &claims).await?;
 
     let target_tenant_id = if claims.is_super_admin {
         None
@@ -312,9 +346,7 @@ pub async fn upload_logo(
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
-    if claims.role != "admin" {
-        return Err("Unauthorized".to_string());
-    }
+    require_settings_update_access(&auth_service, &claims).await?;
 
     // Decode Base64
     let bytes = general_purpose::STANDARD
@@ -406,15 +438,11 @@ pub async fn send_test_email(
     auth_service: State<'_, AuthService>,
     email_outbox_service: State<'_, crate::services::EmailOutboxService>,
 ) -> Result<String, String> {
-    auth_service
-        .check_admin(&token)
-        .await
-        .map_err(|e| e.to_string())?;
-
     let claims = auth_service
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
+    require_settings_update_access(&auth_service, &claims).await?;
 
     email_outbox_service
         .send_or_enqueue(
@@ -436,15 +464,11 @@ pub async fn test_smtp_connection(
     auth_service: State<'_, AuthService>,
     email_service: State<'_, crate::services::EmailService>,
 ) -> Result<crate::services::email_service::SmtpConnectionTestResult, String> {
-    auth_service
-        .check_admin(&token)
-        .await
-        .map_err(|e| e.to_string())?;
-
     let claims = auth_service
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
+    require_settings_update_access(&auth_service, &claims).await?;
 
     email_service
         .test_smtp_connection_for_tenant(claims.tenant_id.as_deref())

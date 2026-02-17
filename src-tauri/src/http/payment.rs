@@ -33,6 +33,7 @@ struct ErrorResponse {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct FxRateQuery {
     base_currency: String,
     quote_currency: String,
@@ -91,12 +92,79 @@ fn require_superadmin(claims: &Claims) -> Result<(), (StatusCode, Json<ErrorResp
     Ok(())
 }
 
+async fn require_payment_read_access(
+    state: &AppState,
+    claims: &Claims,
+) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
+    if claims.is_super_admin {
+        return Ok(());
+    }
+
+    let tenant_id = claims.tenant_id.as_deref().ok_or_else(|| {
+        (
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                error: "Tenant context required".to_string(),
+            }),
+        )
+    })?;
+
+    state
+        .auth_service
+        .check_permission(&claims.sub, tenant_id, "billing", "read")
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::FORBIDDEN,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })?;
+
+    Ok(())
+}
+
+async fn require_payment_manage_access(
+    state: &AppState,
+    claims: &Claims,
+) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
+    if claims.is_super_admin {
+        return Ok(());
+    }
+
+    let tenant_id = claims.tenant_id.as_deref().ok_or_else(|| {
+        (
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                error: "Tenant context required".to_string(),
+            }),
+        )
+    })?;
+
+    state
+        .auth_service
+        .check_permission(&claims.sub, tenant_id, "billing", "manage")
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::FORBIDDEN,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })?;
+
+    Ok(())
+}
+
 async fn get_fx_rate(
     State(state): State<AppState>,
     headers: HeaderMap,
     Query(q): Query<FxRateQuery>,
 ) -> Result<Json<FxRateResponse>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
+    require_payment_read_access(&state, &claims).await?;
 
     let base = q.base_currency.trim().to_uppercase();
     let quote = q.quote_currency.trim().to_uppercase();
@@ -128,11 +196,19 @@ async fn list_invoices(
     headers: HeaderMap,
 ) -> Result<Json<Vec<Invoice>>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
-    let tenant_id = claims.tenant_id.as_deref();
+    require_payment_read_access(&state, &claims).await?;
+    let Some(tenant_id) = claims.tenant_id.as_deref() else {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Tenant context required".to_string(),
+            }),
+        ));
+    };
 
     state
         .payment_service
-        .list_invoices(tenant_id)
+        .list_invoices(Some(tenant_id))
         .await
         .map(Json)
         .map_err(|e| {
@@ -169,9 +245,49 @@ async fn list_all_invoices(
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 struct CreateInvoiceForPlanBody {
     plan_id: String,
     billing_cycle: String,
+}
+
+async fn authorize_invoice_access(
+    state: &AppState,
+    claims: &Claims,
+    invoice_id: &str,
+) -> Result<Invoice, (StatusCode, Json<ErrorResponse>)> {
+    let invoice = state.payment_service.get_invoice(invoice_id).await.map_err(|e| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: e.to_string(),
+            }),
+        )
+    })?;
+
+    if claims.is_super_admin {
+        return Ok(invoice);
+    }
+
+    let Some(tenant_id) = claims.tenant_id.as_deref() else {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                error: "Tenant context required".to_string(),
+            }),
+        ));
+    };
+
+    if tenant_id != invoice.tenant_id {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                error: "Invoice access denied".to_string(),
+            }),
+        ));
+    }
+
+    Ok(invoice)
 }
 
 async fn create_invoice_for_plan(
@@ -180,6 +296,7 @@ async fn create_invoice_for_plan(
     Json(body): Json<CreateInvoiceForPlanBody>,
 ) -> Result<Json<Invoice>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
+    require_payment_manage_access(&state, &claims).await?;
     let tenant_id = claims.tenant_id.ok_or_else(|| {
         (
             StatusCode::BAD_REQUEST,
@@ -202,14 +319,24 @@ async fn create_invoice_for_plan(
             )
         })?;
 
-    let amount = if body.billing_cycle == "yearly" {
+    let billing_cycle = body.billing_cycle.trim().to_ascii_lowercase();
+    if billing_cycle != "monthly" && billing_cycle != "yearly" {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "billingCycle must be monthly or yearly".to_string(),
+            }),
+        ));
+    }
+
+    let amount = if billing_cycle == "yearly" {
         plan.price_yearly
     } else {
         plan.price_monthly
     };
 
-    let desc = format!("{} Plan ({} billing)", plan.name, body.billing_cycle);
-    let ext_id = format!("{}:{}", body.plan_id, body.billing_cycle);
+    let desc = format!("{} Plan ({} billing)", plan.name, billing_cycle);
+    let ext_id = format!("{}:{}", body.plan_id, billing_cycle);
 
     state
         .payment_service
@@ -231,22 +358,10 @@ async fn get_invoice(
     headers: HeaderMap,
     Path(id): Path<String>,
 ) -> Result<Json<Invoice>, (StatusCode, Json<ErrorResponse>)> {
-    let _claims = authenticate(&state, &headers).await?;
-
-    // In a real app, we should verify that the invoice belongs to the tenant
-    state
-        .payment_service
-        .get_invoice(&id)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    error: e.to_string(),
-                }),
-            )
-        })
+    let claims = authenticate(&state, &headers).await?;
+    require_payment_read_access(&state, &claims).await?;
+    let invoice = authorize_invoice_access(&state, &claims, &id).await?;
+    Ok(Json(invoice))
 }
 
 async fn pay_invoice_midtrans(
@@ -254,7 +369,9 @@ async fn pay_invoice_midtrans(
     headers: HeaderMap,
     Path(id): Path<String>,
 ) -> Result<Json<String>, (StatusCode, Json<ErrorResponse>)> {
-    let _claims = authenticate(&state, &headers).await?;
+    let claims = authenticate(&state, &headers).await?;
+    require_payment_manage_access(&state, &claims).await?;
+    let _ = authorize_invoice_access(&state, &claims, &id).await?;
 
     state
         .payment_service
@@ -276,7 +393,9 @@ async fn check_payment_status(
     headers: HeaderMap,
     Path(id): Path<String>,
 ) -> Result<Json<String>, (StatusCode, Json<ErrorResponse>)> {
-    let _claims = authenticate(&state, &headers).await?;
+    let claims = authenticate(&state, &headers).await?;
+    require_payment_read_access(&state, &claims).await?;
+    let _ = authorize_invoice_access(&state, &claims, &id).await?;
 
     state
         .payment_service
@@ -297,7 +416,8 @@ async fn list_bank_accounts(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<Vec<BankAccount>>, (StatusCode, Json<ErrorResponse>)> {
-    let _claims = authenticate(&state, &headers).await?;
+    let claims = authenticate(&state, &headers).await?;
+    require_payment_read_access(&state, &claims).await?;
 
     state
         .payment_service
@@ -365,20 +485,41 @@ async fn midtrans_notification(
     Json(payload): Json<Value>,
 ) -> impl IntoResponse {
     let payment_service = &state.payment_service;
-    println!("Received Midtrans Notification: {:?}", payload);
+    tracing::info!("Received Midtrans notification");
 
     // 1. Extract fields
     let order_id = payload["order_id"].as_str().unwrap_or("");
-    let _status_code = payload["status_code"].as_str().unwrap_or("");
-    let _gross_amount = payload["gross_amount"].as_str().unwrap_or("");
-    let _signature_key = payload["signature_key"].as_str().unwrap_or("");
+    let status_code = payload["status_code"].as_str().unwrap_or("");
+    let gross_amount = payload["gross_amount"].as_str().unwrap_or("");
+    let signature_key = payload["signature_key"].as_str().unwrap_or("");
     let transaction_status = payload["transaction_status"].as_str().unwrap_or("");
 
-    if order_id.is_empty() {
+    if order_id.is_empty()
+        || status_code.is_empty()
+        || gross_amount.is_empty()
+        || signature_key.is_empty()
+    {
         return (StatusCode::BAD_REQUEST, "Invalid Payload");
     }
 
-    // 2. Determine Payment Status
+    // 2. Verify Midtrans signature before processing status changes.
+    let signature_ok = match payment_service
+        .verify_midtrans_signature(order_id, status_code, gross_amount, signature_key)
+        .await
+    {
+        Ok(ok) => ok,
+        Err(e) => {
+            tracing::error!("Failed Midtrans signature verification: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Verification Error");
+        }
+    };
+
+    if !signature_ok {
+        tracing::warn!("Midtrans notification rejected due to invalid signature");
+        return (StatusCode::UNAUTHORIZED, "Invalid Signature");
+    }
+
+    // 3. Determine Payment Status
     let mut payment_status = match transaction_status {
         "capture" => "paid",
         "settlement" => "paid",
@@ -395,7 +536,7 @@ async fn midtrans_notification(
         }
     }
 
-    // 3. Update Invoice Status
+    // 4. Update Invoice Status
     match payment_service
         .process_midtrans_notification(order_id, payment_status)
         .await

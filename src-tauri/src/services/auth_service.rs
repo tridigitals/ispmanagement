@@ -390,14 +390,70 @@ impl AuthService {
         })
     }
 
-    /// Check if user has admin role
-    /// Check if user has admin role
-    pub async fn check_admin(&self, token: &str) -> AppResult<Claims> {
-        let claims = self.validate_token(token).await?;
-        if claims.role != "admin" {
-            return Err(AppError::Unauthorized);
-        }
-        Ok(claims)
+    /// Apply RLS context to an active transaction (PostgreSQL).
+    ///
+    /// Uses `set_config(..., true)` so values are transaction-local and cannot leak
+    /// across pooled connections.
+    #[cfg(feature = "postgres")]
+    pub async fn apply_rls_context_tx(
+        &self,
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+        claims: &Claims,
+    ) -> AppResult<()> {
+        self.apply_rls_context_tx_values(
+            tx,
+            claims.tenant_id.as_deref(),
+            Some(claims.sub.as_str()),
+            claims.is_super_admin,
+        )
+        .await
+    }
+
+    /// SQLite no-op counterpart so call sites can stay uniform.
+    #[cfg(feature = "sqlite")]
+    pub async fn apply_rls_context_tx(
+        &self,
+        _tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        _claims: &Claims,
+    ) -> AppResult<()> {
+        Ok(())
+    }
+
+    /// Apply RLS context using raw values. Useful in service-layer transactions that
+    /// only know `tenant_id` and privilege level.
+    #[cfg(feature = "postgres")]
+    pub async fn apply_rls_context_tx_values(
+        &self,
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+        tenant_id: Option<&str>,
+        user_id: Option<&str>,
+        is_super_admin: bool,
+    ) -> AppResult<()> {
+        let tenant_id = tenant_id.unwrap_or("").to_string();
+        let user_id = user_id.unwrap_or("").to_string();
+        let is_superadmin = if is_super_admin { "true" } else { "false" };
+
+        sqlx::query(
+            "SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_user_id', $2, true), set_config('app.current_is_superadmin', $3, true)",
+        )
+        .bind(tenant_id)
+        .bind(user_id)
+        .bind(is_superadmin)
+        .execute(&mut **tx)
+        .await?;
+
+        Ok(())
+    }
+
+    #[cfg(feature = "sqlite")]
+    pub async fn apply_rls_context_tx_values(
+        &self,
+        _tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        _tenant_id: Option<&str>,
+        _user_id: Option<&str>,
+        _is_super_admin: bool,
+    ) -> AppResult<()> {
+        Ok(())
     }
 
     /// Logout (revoke current session)
@@ -2250,18 +2306,24 @@ impl AuthService {
         let query = "UPDATE users SET two_factor_enabled = false, two_factor_secret = NULL, two_factor_recovery_codes = NULL, email_otp_code = NULL, email_otp_expires = NULL, preferred_2fa_method = 'totp', updated_at = $1 WHERE id = $2";
 
         #[cfg(feature = "postgres")]
-        sqlx::query(query)
+        let rows_affected = sqlx::query(query)
             .bind(Utc::now())
             .bind(user_id)
             .execute(&self.pool)
-            .await?;
+            .await?
+            .rows_affected();
 
         #[cfg(feature = "sqlite")]
-        sqlx::query("UPDATE users SET two_factor_enabled = false, two_factor_secret = NULL, two_factor_recovery_codes = NULL, email_otp_code = NULL, email_otp_expires = NULL, preferred_2fa_method = 'totp', updated_at = ? WHERE id = ?")
+        let rows_affected = sqlx::query("UPDATE users SET two_factor_enabled = false, two_factor_secret = NULL, two_factor_recovery_codes = NULL, email_otp_code = NULL, email_otp_expires = NULL, preferred_2fa_method = 'totp', updated_at = ? WHERE id = ?")
             .bind(Utc::now().to_rfc3339())
             .bind(user_id)
             .execute(&self.pool)
-            .await?;
+            .await?
+            .rows_affected();
+
+        if rows_affected == 0 {
+            return Err(AppError::NotFound("User not found".to_string()));
+        }
 
         self.audit_service
             .log(

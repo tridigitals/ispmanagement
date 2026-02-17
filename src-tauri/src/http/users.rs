@@ -4,6 +4,7 @@ use crate::models::{
     CreateUserAddressDto, CreateUserDto, PaginatedResponse, UpdateUserAddressDto, UpdateUserDto,
     UserAddress, UserResponse,
 };
+use crate::security::access_rules;
 use axum::{
     extract::{ConnectInfo, Path, Query, State},
     http::HeaderMap,
@@ -14,6 +15,7 @@ use serde_json::json;
 use std::net::SocketAddr;
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ListUsersQuery {
     page: Option<u32>,
     #[serde(rename = "perPage")]
@@ -35,7 +37,10 @@ pub async fn list_users(
     Query(query): Query<ListUsersQuery>,
 ) -> Result<Json<PaginatedResponse<UserResponse>>, crate::error::AppError> {
     let token = extract_token(&headers)?;
-    state.auth_service.check_admin(&token).await?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    if !access_rules::can_access_global_user_management(claims.is_super_admin) {
+        return Err(crate::error::AppError::Unauthorized);
+    }
 
     let page = query.page.unwrap_or(1);
     let per_page = query.per_page.unwrap_or(10);
@@ -56,13 +61,17 @@ pub async fn get_user(
     Path(id): Path<String>,
 ) -> Result<Json<UserResponse>, crate::error::AppError> {
     let token = extract_token(&headers)?;
-    state.auth_service.check_admin(&token).await?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    if !access_rules::can_access_global_user_management(claims.is_super_admin) {
+        return Err(crate::error::AppError::Unauthorized);
+    }
 
     let user = state.user_service.get_by_id(&id).await?;
     Ok(Json(user))
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CreateUserDto2 {
     email: String,
     password: String,
@@ -76,7 +85,10 @@ pub async fn create_user(
     Json(payload): Json<CreateUserDto2>,
 ) -> Result<Json<UserResponse>, crate::error::AppError> {
     let token = extract_token(&headers)?;
-    let claims = state.auth_service.check_admin(&token).await?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    if !access_rules::can_access_global_user_management(claims.is_super_admin) {
+        return Err(crate::error::AppError::Unauthorized);
+    }
     let ip = extract_ip(&headers, addr);
 
     use validator::Validate;
@@ -101,6 +113,7 @@ pub async fn create_user(
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateUserDto2 {
     email: Option<String>,
     name: Option<String>,
@@ -120,13 +133,13 @@ pub async fn update_user(
     let claims = state.auth_service.validate_token(&token).await?;
     let ip = extract_ip(&headers, addr);
 
-    // Check if admin OR if updating self
-    if claims.role != "admin" && claims.sub != id {
-        return Err(crate::error::AppError::Unauthorized);
-    }
-
-    // Prevent non-admins from changing their own role or active status
-    if claims.role != "admin" && (payload.role.is_some() || payload.is_active.is_some()) {
+    let attempts_privileged_change = payload.role.is_some() || payload.is_active.is_some();
+    if !access_rules::can_update_user(
+        claims.is_super_admin,
+        &claims.sub,
+        &id,
+        attempts_privileged_change,
+    ) {
         return Err(crate::error::AppError::Unauthorized);
     }
 
@@ -160,7 +173,10 @@ pub async fn delete_user(
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, crate::error::AppError> {
     let token = extract_token(&headers)?;
-    let claims = state.auth_service.check_admin(&token).await?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    if !access_rules::can_access_global_user_management(claims.is_super_admin) {
+        return Err(crate::error::AppError::Unauthorized);
+    }
     let ip = extract_ip(&headers, addr);
 
     state

@@ -7,6 +7,7 @@ use base64::{engine::general_purpose, Engine as _};
 use chrono::Utc;
 use reqwest::Client;
 use serde_json::json;
+use sha2::{Digest, Sha512};
 use uuid::Uuid;
 
 use crate::services::NotificationService;
@@ -742,6 +743,86 @@ impl PaymentService {
         }
 
         Ok(())
+    }
+
+    /// Verify Midtrans webhook signature for a given invoice number.
+    pub async fn verify_midtrans_signature(
+        &self,
+        invoice_number: &str,
+        status_code: &str,
+        gross_amount: &str,
+        signature_key: &str,
+    ) -> AppResult<bool> {
+        #[cfg(feature = "postgres")]
+        let merchant_id: Option<String> =
+            sqlx::query_scalar("SELECT merchant_id FROM invoices WHERE invoice_number = $1")
+                .bind(invoice_number)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?
+                .flatten();
+
+        #[cfg(feature = "sqlite")]
+        let merchant_id: Option<String> =
+            sqlx::query_scalar("SELECT merchant_id FROM invoices WHERE invoice_number = ?")
+                .bind(invoice_number)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?
+                .flatten();
+
+        let server_key = if let Some(mid) = merchant_id {
+            #[cfg(feature = "postgres")]
+            let key: Option<String> = sqlx::query_scalar(
+                "SELECT value FROM settings WHERE key = 'payment_midtrans_server_key' AND tenant_id = $1",
+            )
+            .bind(mid)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+            #[cfg(feature = "sqlite")]
+            let key: Option<String> = sqlx::query_scalar(
+                "SELECT value FROM settings WHERE key = 'payment_midtrans_server_key' AND tenant_id = ?",
+            )
+            .bind(mid)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+            key.unwrap_or_default()
+        } else {
+            #[cfg(feature = "postgres")]
+            let key: Option<String> = sqlx::query_scalar(
+                "SELECT value FROM settings WHERE key = 'payment_midtrans_server_key' AND tenant_id IS NULL",
+            )
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+            #[cfg(feature = "sqlite")]
+            let key: Option<String> = sqlx::query_scalar(
+                "SELECT value FROM settings WHERE key = 'payment_midtrans_server_key' AND tenant_id IS NULL",
+            )
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+            key.unwrap_or_default()
+        };
+
+        if server_key.is_empty() {
+            return Err(AppError::Configuration(
+                "Midtrans Server Key not configured for webhook verification".to_string(),
+            ));
+        }
+
+        let payload = format!("{invoice_number}{status_code}{gross_amount}{server_key}");
+        let mut hasher = Sha512::new();
+        hasher.update(payload.as_bytes());
+        let expected = format!("{:x}", hasher.finalize());
+
+        Ok(expected.eq_ignore_ascii_case(signature_key))
     }
 
     async fn activate_subscription(

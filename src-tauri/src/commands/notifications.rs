@@ -184,14 +184,13 @@ pub async fn unsubscribe_push(
     notification_service: State<'_, NotificationService>,
     auth_service: State<'_, AuthService>,
 ) -> Result<(), String> {
-    // Validate token
-    let _ = auth_service
+    let claims = auth_service
         .validate_token(&token)
         .await
         .map_err(|e| e.to_string())?;
 
     notification_service
-        .unsubscribe_push(&endpoint)
+        .unsubscribe_push_for_user(&endpoint, &claims.sub)
         .await
         .map_err(|e| e.to_string())
 }
