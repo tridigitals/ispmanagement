@@ -23,6 +23,7 @@ pub struct Announcement {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CreateAnnouncementDto {
     pub scope: Option<String>, // "tenant" | "global"
     pub tenant_id: Option<String>,
@@ -41,6 +42,7 @@ pub struct CreateAnnouncementDto {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateAnnouncementDto {
     pub cover_file_id: Option<Option<String>>,
     pub title: Option<String>,

@@ -3,8 +3,10 @@ use crate::http::auth::extract_ip;
 use crate::http::AppState;
 use crate::models::{
     AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
-    CreateCustomerRequest, Customer, CustomerLocation, CustomerPortalUser, PaginatedResponse,
-    UpdateCustomerLocationRequest, UpdateCustomerRequest,
+    CreateCustomerRequest, CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
+    Customer, CustomerLocation,
+    CustomerPortalUser, CustomerSubscription, CustomerSubscriptionView, PaginatedResponse,
+    UpdateCustomerLocationRequest, UpdateCustomerRequest, UpdateCustomerSubscriptionRequest,
 };
 use axum::{
     extract::{ConnectInfo, Path, Query, State},
@@ -19,12 +21,14 @@ pub fn router() -> Router<AppState> {
     Router::new()
         // Admin
         .route("/", get(list_customers).post(create_customer))
+        .route("/with-portal", post(create_customer_with_portal))
         .route(
             "/{id}",
             get(get_customer).put(update_customer).delete(delete_customer),
         )
         .route("/{id}/locations", get(list_locations))
         .route("/{id}/portal-users", get(list_portal_users))
+        .route("/{id}/subscriptions", get(list_subscriptions).post(create_subscription))
         // Locations (write)
         .route("/locations", post(create_location))
         .route(
@@ -35,6 +39,10 @@ pub fn router() -> Router<AppState> {
         .route("/portal-users/add", post(add_portal_user))
         .route("/portal-users/create", post(create_portal_user))
         .route("/portal-users/{customer_user_id}", delete(remove_portal_user))
+        .route(
+            "/subscriptions/{subscription_id}",
+            axum::routing::put(update_subscription).delete(delete_subscription),
+        )
         // Customer portal
         .route("/portal/my-locations", get(list_my_locations))
 }
@@ -61,6 +69,12 @@ async fn tenant_and_claims(
 #[derive(Debug, Deserialize)]
 struct ListQuery {
     q: Option<String>,
+    page: Option<u32>,
+    per_page: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ListSubscriptionQuery {
     page: Option<u32>,
     per_page: Option<u32>,
 }
@@ -111,6 +125,22 @@ async fn create_customer(
     let row = state
         .customer_service
         .create_customer(&claims.sub, &tenant_id, dto, Some(&ip))
+        .await?;
+    Ok(Json(row))
+}
+
+// POST /api/customers/with-portal
+async fn create_customer_with_portal(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Json(dto): Json<CreateCustomerWithPortalRequest>,
+) -> AppResult<Json<Customer>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+    let row = state
+        .customer_service
+        .create_customer_with_portal(&claims.sub, &tenant_id, dto, Some(&ip))
         .await?;
     Ok(Json(row))
 }
@@ -286,3 +316,74 @@ async fn list_my_locations(
     Ok(Json(rows))
 }
 
+// GET /api/customers/{id}/subscriptions
+async fn list_subscriptions(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Query(q): Query<ListSubscriptionQuery>,
+) -> AppResult<Json<PaginatedResponse<CustomerSubscriptionView>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let rows = state
+        .customer_service
+        .list_customer_subscriptions(
+            &claims.sub,
+            &tenant_id,
+            &id,
+            q.page.unwrap_or(1),
+            q.per_page.unwrap_or(25),
+        )
+        .await?;
+    Ok(Json(rows))
+}
+
+// POST /api/customers/{id}/subscriptions
+async fn create_subscription(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(id): Path<String>,
+    Json(mut dto): Json<CreateCustomerSubscriptionRequest>,
+) -> AppResult<Json<CustomerSubscription>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+    dto.customer_id = id;
+    let row = state
+        .customer_service
+        .create_customer_subscription(&claims.sub, &tenant_id, dto, Some(&ip))
+        .await?;
+    Ok(Json(row))
+}
+
+// PUT /api/customers/subscriptions/{subscription_id}
+async fn update_subscription(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(subscription_id): Path<String>,
+    Json(dto): Json<UpdateCustomerSubscriptionRequest>,
+) -> AppResult<Json<CustomerSubscription>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+    let row = state
+        .customer_service
+        .update_customer_subscription(&claims.sub, &tenant_id, &subscription_id, dto, Some(&ip))
+        .await?;
+    Ok(Json(row))
+}
+
+// DELETE /api/customers/subscriptions/{subscription_id}
+async fn delete_subscription(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(subscription_id): Path<String>,
+) -> AppResult<Json<serde_json::Value>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+    state
+        .customer_service
+        .delete_customer_subscription(&claims.sub, &tenant_id, &subscription_id, Some(&ip))
+        .await?;
+    Ok(Json(serde_json::json!({ "ok": true })))
+}

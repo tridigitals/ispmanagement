@@ -58,7 +58,7 @@
             label: $t('sidebar.locations') || 'Locations',
             icon: 'map-pin',
             href: `${tenantPrefix}/dashboard/locations`,
-            show: $can('read_own', 'customers'),
+            show: true,
           },
           {
             label: $t('sidebar.announcements') || 'Announcements',
@@ -190,6 +190,12 @@
             icon: 'database',
             href: `${tenantPrefix}/admin/network/ip-pools`,
             show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+          },
+          {
+            label: $t('sidebar.packages') || 'Packages',
+            icon: 'package',
+            href: `${tenantPrefix}/admin/network/packages`,
+            show: $can('read', 'isp_packages') || $can('manage', 'isp_packages'),
           },
           {
             label: $t('sidebar.pppoe') || 'PPPoE',

@@ -29,6 +29,15 @@ pub async fn get_roles(
     let token = extract_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
 
+    if let Some(tid) = claims.tenant_id.as_deref() {
+        state
+            .auth_service
+            .check_permission(&claims.sub, tid, "roles", "read")
+            .await?;
+    } else if !claims.is_super_admin {
+        return Err(crate::error::AppError::Forbidden("Forbidden".to_string()));
+    }
+
     let tenant_id = claims.tenant_id.as_deref();
     let roles = state.role_service.list_roles(tenant_id).await?;
 
@@ -41,7 +50,15 @@ pub async fn get_permissions(
     headers: HeaderMap,
 ) -> Result<Json<Vec<Permission>>, crate::error::AppError> {
     let token = extract_token(&headers)?;
-    state.auth_service.validate_token(&token).await?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    if let Some(tid) = claims.tenant_id.as_deref() {
+        state
+            .auth_service
+            .check_permission(&claims.sub, tid, "roles", "read")
+            .await?;
+    } else if !claims.is_super_admin {
+        return Err(crate::error::AppError::Forbidden("Forbidden".to_string()));
+    }
 
     let permissions = state.role_service.list_permissions().await?;
     Ok(Json(permissions))
@@ -54,13 +71,22 @@ pub async fn get_role(
     Path(id): Path<String>,
 ) -> Result<Json<Option<RoleWithPermissions>>, crate::error::AppError> {
     let token = extract_token(&headers)?;
-    state.auth_service.validate_token(&token).await?;
+    let claims = state.auth_service.validate_token(&token).await?;
+    if let Some(tid) = claims.tenant_id.as_deref() {
+        state
+            .auth_service
+            .check_permission(&claims.sub, tid, "roles", "read")
+            .await?;
+    } else if !claims.is_super_admin {
+        return Err(crate::error::AppError::Forbidden("Forbidden".to_string()));
+    }
 
     let role = state.role_service.get_role_by_id(&id).await?;
     Ok(Json(role))
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CreateRolePayload {
     name: String,
     description: Option<String>,
@@ -110,6 +136,7 @@ pub async fn create_new_role(
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateRolePayload {
     name: Option<String>,
     description: Option<String>,

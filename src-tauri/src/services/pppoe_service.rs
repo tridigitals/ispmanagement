@@ -850,6 +850,7 @@ impl PppoeService {
             dto.location_id,
             dto.username.trim().to_string(),
             password_enc,
+            dto.package_id,
             dto.profile_id,
             dto.router_profile_name,
             dto.remote_address,
@@ -862,10 +863,10 @@ impl PppoeService {
         sqlx::query(
             r#"
             INSERT INTO pppoe_accounts
-              (id, tenant_id, router_id, customer_id, location_id, username, password_enc, profile_id, router_profile_name,
+              (id, tenant_id, router_id, customer_id, location_id, username, password_enc, package_id, profile_id, router_profile_name,
                remote_address, address_pool, disabled, comment, router_present, router_secret_id, last_sync_at, last_error, created_at, updated_at)
             VALUES
-              ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+              ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
             "#,
         )
         .bind(&account.id)
@@ -875,6 +876,7 @@ impl PppoeService {
         .bind(&account.location_id)
         .bind(&account.username)
         .bind(&account.password_enc)
+        .bind(&account.package_id)
         .bind(&account.profile_id)
         .bind(&account.router_profile_name)
         .bind(&account.remote_address)
@@ -960,6 +962,10 @@ impl PppoeService {
                 account.password_enc = encrypt_secret_for(PURPOSE_PPPOE, p.as_str())?;
             }
         }
+        if let Some(v) = dto.package_id {
+            let vv = v.trim().to_string();
+            account.package_id = if vv.is_empty() { None } else { Some(vv) };
+        }
         if let Some(v) = dto.profile_id {
             account.profile_id = Some(v);
         }
@@ -991,19 +997,21 @@ impl PppoeService {
             UPDATE pppoe_accounts SET
               username = $1,
               password_enc = $2,
-              profile_id = $3,
-              router_profile_name = $4,
-              remote_address = $5,
-              address_pool = $6,
-              disabled = $7,
-              comment = $8,
-              updated_at = $9,
+              package_id = $3,
+              profile_id = $4,
+              router_profile_name = $5,
+              remote_address = $6,
+              address_pool = $7,
+              disabled = $8,
+              comment = $9,
+              updated_at = $10,
               last_error = NULL
-            WHERE tenant_id = $10 AND id = $11
+            WHERE tenant_id = $11 AND id = $12
             "#,
         )
         .bind(&account.username)
         .bind(&account.password_enc)
+        .bind(&account.package_id)
         .bind(&account.profile_id)
         .bind(&account.router_profile_name)
         .bind(&account.remote_address)

@@ -1,8 +1,10 @@
 
 use crate::models::{
     AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
-    CreateCustomerRequest, Customer, CustomerLocation, CustomerPortalUser, PaginatedResponse,
-    UpdateCustomerLocationRequest, UpdateCustomerRequest,
+    CreateCustomerRequest, CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
+    Customer, CustomerLocation,
+    CustomerPortalUser, CustomerSubscription, CustomerSubscriptionView, PaginatedResponse,
+    UpdateCustomerLocationRequest, UpdateCustomerRequest, UpdateCustomerSubscriptionRequest,
 };
 use crate::services::{AuthService, CustomerService};
 use tauri::State;
@@ -59,6 +61,24 @@ pub async fn create_customer(
 
     customers
         .create_customer(&claims.sub, &tenant_id, dto, Some("127.0.0.1"))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn create_customer_with_portal(
+    token: String,
+    dto: CreateCustomerWithPortalRequest,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<Customer, String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .create_customer_with_portal(&claims.sub, &tenant_id, dto, Some("127.0.0.1"))
         .await
         .map_err(|e| e.to_string())
 }
@@ -274,3 +294,94 @@ pub async fn list_my_customer_locations(
         .map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub async fn list_customer_subscriptions(
+    token: String,
+    customer_id: String,
+    page: Option<u32>,
+    per_page: Option<u32>,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<PaginatedResponse<CustomerSubscriptionView>, String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .list_customer_subscriptions(
+            &claims.sub,
+            &tenant_id,
+            &customer_id,
+            page.unwrap_or(1),
+            per_page.unwrap_or(25),
+        )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn create_customer_subscription(
+    token: String,
+    dto: CreateCustomerSubscriptionRequest,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<CustomerSubscription, String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .create_customer_subscription(&claims.sub, &tenant_id, dto, Some("127.0.0.1"))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn update_customer_subscription(
+    token: String,
+    subscription_id: String,
+    dto: UpdateCustomerSubscriptionRequest,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<CustomerSubscription, String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .update_customer_subscription(
+            &claims.sub,
+            &tenant_id,
+            &subscription_id,
+            dto,
+            Some("127.0.0.1"),
+        )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn delete_customer_subscription(
+    token: String,
+    subscription_id: String,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<(), String> {
+    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .delete_customer_subscription(
+            &claims.sub,
+            &tenant_id,
+            &subscription_id,
+            Some("127.0.0.1"),
+        )
+        .await
+        .map_err(|e| e.to_string())
+}

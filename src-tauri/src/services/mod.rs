@@ -25,6 +25,7 @@ pub mod system_service;
 pub mod mikrotik_service;
 pub mod customer_service;
 pub mod pppoe_service;
+pub mod isp_package_service;
 
 pub use alert_service::AlertService;
 pub use announcement_service::AnnouncementScheduler;
@@ -46,3 +47,4 @@ pub use user_service::UserService;
 pub use mikrotik_service::MikrotikService;
 pub use customer_service::CustomerService;
 pub use pppoe_service::PppoeService;
+pub use isp_package_service::IspPackageService;

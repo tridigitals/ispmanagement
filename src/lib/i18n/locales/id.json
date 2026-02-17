@@ -125,6 +125,7 @@
     "active": "Aktif",
     "inactive": "Nonaktif",
     "all": "Semua",
+    "add": "Tambah",
     "global": "Global",
     "na": "—",
     "per_month_short": "/bln",
@@ -390,6 +391,7 @@
     "pppoe": "PPPoE",
     "ppp_profiles": "Profil PPP",
     "ip_pools": "Pool IP",
+    "packages": "Paket",
     "expand": "Perluas sidebar",
     "collapse": "Ciutkan sidebar",
     "exit": "Keluar",
@@ -400,8 +402,7 @@
     "user_view": "Tampilan Pengguna",
     "admin_panel": "Panel Admin",
     "profile": "Profil",
-    "logout": "Keluar"
-    ,
+    "logout": "Keluar",
     "sections": {
       "workspace": "Workspace",
       "help": "Bantuan",
@@ -1475,6 +1476,15 @@
       "title": "Lokasi Saya",
       "subtitle": "Lokasi layanan Anda. Jika ada yang tidak sesuai, hubungi dukungan.",
       "location": "Lokasi",
+      "source": {
+        "customer": "Pelanggan",
+        "profile": "Profil"
+      },
+      "summary": {
+        "total": "Total lokasi",
+        "customer": "Terhubung pelanggan",
+        "profile": "Alamat profil"
+      },
       "empty": "Belum ada lokasi.",
       "empty_hint": "Admin belum menautkan akun Anda ke lokasi pelanggan.",
       "toasts": {
@@ -1693,7 +1703,23 @@
         "active": "Aktif"
       },
       "new": {
-        "title": "Pelanggan baru"
+        "title": "Pelanggan baru",
+        "portal": {
+          "title": "Buat login portal",
+          "subtitle": "Jika aktif, customer langsung dibuatkan akun login dashboard.",
+          "password": "Password",
+          "password_confirm": "Konfirmasi password",
+          "validation": {
+            "email_required": "Email wajib diisi jika membuat login portal.",
+            "password_min": "Password minimal 6 karakter.",
+            "password_mismatch": "Konfirmasi password tidak sama."
+          },
+          "toasts": {
+            "create_failed": "Customer berhasil dibuat, tapi akun login portal gagal dibuat.",
+            "create_failed_atomic": "Akun login portal gagal dibuat. Pembuatan customer dibatalkan (rollback).",
+            "create_failed_with_rollback": "Akun login portal gagal dibuat dan rollback pembuatan customer juga gagal."
+          }
+        }
       },
       "delete": {
         "title": "Hapus pelanggan",
@@ -1707,6 +1733,7 @@
         "overview": "Ringkasan",
         "locations": "Lokasi",
         "portal": "User portal",
+        "subscriptions": "Langganan",
         "pppoe": "PPPoE"
       },
       "overview": {
@@ -1775,6 +1802,29 @@
           "remove_failed": "Gagal menghapus user portal: {message}"
         }
       },
+      "subscriptions": {
+        "title": "Langganan",
+        "subtitle": "Langganan paket pelanggan untuk kebutuhan billing dan assignment layanan.",
+        "empty": "Belum ada langganan.",
+        "new": {
+          "title": "Tambah langganan"
+        },
+        "edit": {
+          "title": "Edit langganan"
+        },
+        "fields": {
+          "location": "Lokasi",
+          "package": "Paket",
+          "router": "Router (opsional)",
+          "billing_cycle": "Siklus tagihan",
+          "price": "Harga",
+          "currency": "Mata uang",
+          "status": "Status",
+          "starts_at": "Mulai",
+          "ends_at": "Berakhir",
+          "notes": "Catatan"
+        }
+      },
       "pppoe": {
         "title": "Akun PPPoE",
         "subtitle": "Kelola PPPoE secret untuk pelanggan ini (per-router). Database adalah sumber kebenaran.",
@@ -1794,6 +1844,7 @@
           "location": "Lokasi",
           "username": "Username",
           "password": "Password",
+          "package": "Paket",
           "profile": "Profile",
           "remote_address": "Remote IP / Pool",
           "pool": "IP Pool",
@@ -1843,191 +1894,63 @@
       }
     },
     "network": {
-      "noc": {
-        "title": "Network NOC",
-        "subtitle": "Tampilan operasional cepat untuk semua router: status, kesehatan, dan trafik.",
-        "search": "Cari router...",
-        "empty": "Belum ada router",
-        "stats": {
-          "total": "Total",
-          "online": "Online",
-          "offline": "Offline",
-          "hot": "Hot"
-        },
-        "tooltips": {
-          "status_all": "Tampilkan semua router",
-          "status_online": "Tampilkan router yang sedang bisa diakses",
-          "status_offline": "Tampilkan router yang sedang tidak bisa diakses",
-          "risk_any": "Tanpa filter risiko tambahan",
-          "risk_hot": "Perlu perhatian: offline, CPU sangat tinggi, atau latensi sangat tinggi",
-          "risk_latency": "Tampilkan router dengan latensi tinggi",
-          "risk_cpu": "Tampilkan router dengan beban CPU tinggi"
-        },
-        "filters": {
-          "any": "Semua",
-          "online": "Online",
-          "offline": "Offline",
-          "hot": "Hot",
-          "latency": "Latensi",
-          "cpu": "CPU"
-        },
+      "packages": {
+        "title": "Paket",
+        "subtitle": "Buat paket internet dan map ke profil PPP router (per-router).",
+        "search": "Cari paket...",
+        "empty": "Belum ada paket.",
+        "confirm_delete": "Hapus paket ini?",
         "columns": {
-          "router": "Router",
+          "name": "Nama",
           "status": "Status",
-          "health": "Kesehatan",
-          "traffic": "Trafik",
-          "latency": "Latensi",
-          "seen": "Terakhir Terlihat"
-        }
-      },
-      "alerts": {
-        "title": "Alert Router",
-        "subtitle": "Insiden terdeteksi dari polling router.",
-        "search": "Cari alert...",
-        "empty": "Tidak ada alert",
-        "actions": {
-          "toggle": "Tampilkan aktif/selesai",
+          "mappings": "Ter-mapping",
+          "price": "Harga"
+        },
+        "fields": {
+          "name": "Nama",
+          "description": "Deskripsi",
+          "features": "Fitur",
+          "feature_placeholder": "Tambah fitur lalu tekan Enter",
+          "features_empty": "Belum ada fitur.",
           "active": "Aktif",
-          "all": "Semua",
-          "ack": "Acknowledgement",
-          "resolve": "Selesaikan",
-          "snooze_30m": "Snooze 30m"
+          "active_hint": "Paket nonaktif akan disembunyikan dari pilihan.",
+          "price_monthly": "Harga per bulan",
+          "price_hint": "Disimpan dalam mata uang dasar; akan ditampilkan dalam mata uang tenant bila memungkinkan.",
+          "price_yearly": "Harga per tahun",
+          "enable_yearly": "Aktifkan harga tahunan",
+          "enable_yearly_hint": "Nyalakan jika paket ini punya tagihan tahunan.",
+          "currency_active": "Mata uang aktif",
+          "currency_base": "Mata uang dasar"
         },
-        "columns": {
-          "alert": "Alert",
-          "type": "Tipe",
-          "severity": "Severity",
-          "status": "Status",
-          "seen": "Terakhir Terlihat"
+        "mapping": {
+          "title": "Mapping Router",
+          "package": "Paket",
+          "router": "Router",
+          "profile": "Profil PPP Router",
+          "pool": "IP Pool (opsional)",
+          "inline_title": "Mapping ke router sekarang",
+          "inline_hint": "Opsional: isi otomatis profile/pool router untuk paket ini (per-router)."
         },
-        "types": {
-          "offline": "Offline",
-          "cpu": "CPU",
-          "latency": "Latensi"
-        },
-        "severity": {
-          "info": "Info",
-          "warning": "Peringatan",
-          "critical": "Kritis"
-        },
-        "toasts": {
-          "acked": "Alert di-acknowledge",
-          "resolved": "Alert diselesaikan",
-          "snoozed": "Router di-snooze"
-        }
-      },
-      "logs": {
-        "title": "Log Router",
-        "subtitle": "Baca dan simpan log MikroTik untuk troubleshooting dan audit.",
-        "search": "Cari pesan log...",
-        "empty": "Tidak ada log",
         "actions": {
-          "refresh": "Refresh",
-          "sync_selected": "Sinkron router terpilih",
-          "sync_all": "Sinkron semua router"
+          "add": "Tambah paket",
+          "edit": "Edit paket",
+          "map": "Map ke router",
+          "add_feature": "Tambah fitur"
         },
-        "filters": {
-          "router": "Router",
-          "all_routers": "Semua router",
-          "level": "Level",
-          "all_levels": "Semua level",
-          "topic": "Topik"
-        },
-        "columns": {
-          "time": "Waktu",
-          "router": "Router",
-          "level": "Level",
-          "topics": "Topik",
-          "message": "Pesan"
+        "tabs": {
+          "details": "Detail",
+          "features": "Fitur"
         },
         "toasts": {
-          "sync_ok": "Sinkron log selesai",
-          "sync_failed": "Gagal sinkron log"
+          "created": "Paket dibuat",
+          "updated": "Paket diperbarui",
+          "mapping_saved": "Mapping tersimpan"
+        },
+        "validation": {
+          "monthly_required": "Harga bulanan wajib diisi dan harus lebih dari 0.",
+          "yearly_required": "Harga tahunan harus lebih dari 0 saat diaktifkan."
         }
-      }
-    },
-    "roles": {
-      "title": "Semua Peran",
-      "subtitle": "Kelola definisi peran dan izin",
-      "count": "peran",
-      "search": "Cari peran...",
-      "empty": "Tidak ada peran",
-      "permissions_settings": "Pengaturan Izin",
-      "columns": {
-        "name": "Nama Peran",
-        "type": "Tipe",
-        "level": "Level",
-        "permissions": "Izin"
       },
-      "badges": {
-        "system": "Sistem",
-        "custom": "Kustom"
-      },
-      "level_prefix": "Lvl",
-      "permissions": "izin",
-      "actions": {
-        "create": "Buat Peran",
-        "edit": "Edit Peran",
-        "delete": "Hapus Peran",
-        "delete_short": "Hapus",
-        "save": "Simpan Peran"
-      },
-      "delete": {
-        "title": "Hapus Peran",
-        "message": "Yakin ingin menghapus permanen peran \"{name}\"? Semua pengguna dengan peran ini mungkin kehilangan izin.",
-        "confirm": "Hapus Peran"
-      },
-      "placeholders": {
-        "name": "contoh: Editor",
-        "description": "Deskripsi peran"
-      },
-      "form": {
-        "name_label": "Nama Peran",
-        "description_label": "Deskripsi",
-        "level_label": "Level",
-        "system_name_locked": "Nama peran sistem tidak dapat diubah"
-      },
-      "toasts": {
-        "created": "Peran berhasil dibuat",
-        "updated": "Peran berhasil diperbarui",
-        "deleted": "Peran berhasil dihapus"
-      },
-      "errors": {
-        "save_failed": "Gagal menyimpan peran",
-        "delete_failed": "Gagal menghapus peran: "
-      }
-    },
-    "support": {
-      "title": "Tiket Dukungan",
-      "subtitle": "Kelola permintaan dukungan tenant",
-      "search": "Cari tiket...",
-      "empty": "Tidak ada tiket",
-      "columns": {
-        "subject": "Subjek",
-        "user": "User",
-        "status": "Status",
-        "priority": "Prioritas",
-        "updated": "Diperbarui",
-        "messages": "Pesan"
-      },
-      "panels": {
-        "manage": "Kelola",
-        "reply": "Balas"
-      },
-      "fields": {
-        "status": "Status",
-        "priority": "Prioritas",
-        "assignee": "Penanggung Jawab",
-        "internal": "Catatan internal"
-      },
-      "hints": {
-        "assign": "Penanggung jawab menggunakan user_id anggota tim. Kosongkan jika tidak ditugaskan."
-      },
-      "toasts": {
-        "updated": "Tiket diperbarui"
-      }
-    },
-    "network": {
       "pppoe": {
         "title": "PPPoE",
         "subtitle": "Tampilan tenant untuk akun PPPoE di semua router.",
@@ -2118,6 +2041,7 @@
           "apply": "Terapkan ke router"
         },
         "form": {
+          "package_hint": "Jika memilih paket, profile/pool akan terisi otomatis untuk router yang dipilih (masih bisa diubah).",
           "disabled_hint": "Nonaktifkan akun PPPoE ini (akan diterapkan ke router saat Anda klik Terapkan)."
         },
         "toasts": {
@@ -2410,6 +2334,87 @@
           "sync_ok": "Sinkron log selesai",
           "sync_failed": "Gagal sinkron log"
         }
+      }
+    },
+    "roles": {
+      "title": "Semua Peran",
+      "subtitle": "Kelola definisi peran dan izin",
+      "count": "peran",
+      "search": "Cari peran...",
+      "empty": "Tidak ada peran",
+      "permissions_settings": "Pengaturan Izin",
+      "columns": {
+        "name": "Nama Peran",
+        "type": "Tipe",
+        "level": "Level",
+        "permissions": "Izin"
+      },
+      "badges": {
+        "system": "Sistem",
+        "custom": "Kustom"
+      },
+      "level_prefix": "Lvl",
+      "permissions": "izin",
+      "actions": {
+        "create": "Buat Peran",
+        "edit": "Edit Peran",
+        "delete": "Hapus Peran",
+        "delete_short": "Hapus",
+        "save": "Simpan Peran"
+      },
+      "delete": {
+        "title": "Hapus Peran",
+        "message": "Yakin ingin menghapus permanen peran \"{name}\"? Semua pengguna dengan peran ini mungkin kehilangan izin.",
+        "confirm": "Hapus Peran"
+      },
+      "placeholders": {
+        "name": "contoh: Editor",
+        "description": "Deskripsi peran"
+      },
+      "form": {
+        "name_label": "Nama Peran",
+        "description_label": "Deskripsi",
+        "level_label": "Level",
+        "system_name_locked": "Nama peran sistem tidak dapat diubah"
+      },
+      "toasts": {
+        "created": "Peran berhasil dibuat",
+        "updated": "Peran berhasil diperbarui",
+        "deleted": "Peran berhasil dihapus"
+      },
+      "errors": {
+        "save_failed": "Gagal menyimpan peran",
+        "delete_failed": "Gagal menghapus peran: "
+      }
+    },
+    "support": {
+      "title": "Tiket Dukungan",
+      "subtitle": "Kelola permintaan dukungan tenant",
+      "search": "Cari tiket...",
+      "empty": "Tidak ada tiket",
+      "columns": {
+        "subject": "Subjek",
+        "user": "User",
+        "status": "Status",
+        "priority": "Prioritas",
+        "updated": "Diperbarui",
+        "messages": "Pesan"
+      },
+      "panels": {
+        "manage": "Kelola",
+        "reply": "Balas"
+      },
+      "fields": {
+        "status": "Status",
+        "priority": "Prioritas",
+        "assignee": "Penanggung Jawab",
+        "internal": "Catatan internal"
+      },
+      "hints": {
+        "assign": "Penanggung jawab menggunakan user_id anggota tim. Kosongkan jika tidak ditugaskan."
+      },
+      "toasts": {
+        "updated": "Tiket diperbarui"
       }
     },
     "email_outbox": {

@@ -20,7 +20,7 @@ use services::{
     AnnouncementScheduler, AuditService, AuthService, BackupService, EmailOutboxService,
     EmailService, NotificationService, PaymentService, PlanService, RoleService, SettingsService,
     SystemService, TeamService, UserService, MikrotikService, CustomerService,
-    PppoeService,
+    PppoeService, IspPackageService,
 };
 use tauri::Manager;
 use tracing::info;
@@ -201,6 +201,8 @@ pub fn run() {
                     CustomerService::new(pool.clone(), auth_service.clone(), audit_service.clone(), user_service.clone());
                 let pppoe_service =
                     PppoeService::new(pool.clone(), auth_service.clone(), audit_service.clone());
+                let isp_package_service =
+                    IspPackageService::new(pool.clone(), auth_service.clone(), audit_service.clone());
                 let team_service = TeamService::new(pool.clone(), auth_service.clone(), audit_service.clone(), plan_service.clone());
                 let metrics_service = std::sync::Arc::new(MetricsService::new());
                 let system_service = SystemService::new(pool.clone(), metrics_service.clone());
@@ -251,6 +253,7 @@ pub fn run() {
                 app_handle.manage(user_service.clone());
                 app_handle.manage(customer_service.clone());
                 app_handle.manage(pppoe_service.clone());
+                app_handle.manage(isp_package_service.clone());
                 app_handle.manage(settings_service.clone());
                 app_handle.manage(email_service.clone());
                 app_handle.manage(team_service.clone());
@@ -288,6 +291,7 @@ pub fn run() {
                         mikrotik_service,
                         customer_service,
                         pppoe_service,
+                        isp_package_service,
                         backup_service,
                         ws_hub,
                         app_dir,
@@ -470,6 +474,7 @@ pub fn run() {
                                     list_customers,
                                     get_customer,
                                     create_customer,
+                                    create_customer_with_portal,
                                     update_customer,
                                     delete_customer,
                                     list_customer_locations,
@@ -481,6 +486,10 @@ pub fn run() {
                                     create_customer_portal_user,
                                     remove_customer_portal_user,
                                     list_my_customer_locations,
+                                    list_customer_subscriptions,
+                                    create_customer_subscription,
+                                    update_customer_subscription,
+                                    delete_customer_subscription,
                                     // PPPoE (tenant scoped)
                                     list_pppoe_accounts,
                                     get_pppoe_account,
@@ -491,6 +500,13 @@ pub fn run() {
                                     reconcile_pppoe_router,
                                     preview_pppoe_import_from_router,
                                     import_pppoe_from_router,
+                                    // ISP Packages (tenant scoped)
+                                    list_isp_packages,
+                                    create_isp_package,
+                                    update_isp_package,
+                                    delete_isp_package,
+                                    list_isp_package_router_mappings,
+                                    upsert_isp_package_router_mapping,
                                     // MikroTik / Routers
                                     list_mikrotik_routers,
                                     list_mikrotik_noc,

@@ -62,6 +62,7 @@ pub struct SupportTicketDetail {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct CreateSupportTicketDto {
     pub subject: String,
     pub message: String,
@@ -71,6 +72,7 @@ pub struct CreateSupportTicketDto {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct ReplySupportTicketDto {
     pub message: String,
     pub is_internal: Option<bool>,
@@ -79,6 +81,7 @@ pub struct ReplySupportTicketDto {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct UpdateSupportTicketDto {
     pub status: Option<String>,   // open|pending|closed
     pub priority: Option<String>, // low|normal|high|urgent

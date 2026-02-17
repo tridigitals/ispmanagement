@@ -15,6 +15,55 @@ use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 use tokio_util::io::ReaderStream;
 use tracing::{error, info, warn};
 
+fn extract_bearer_token(headers: &HeaderMap) -> Result<String, Response> {
+    headers
+        .get(header::AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+        .filter(|h| h.starts_with("Bearer "))
+        .map(|h| h[7..].to_string())
+        .ok_or_else(|| (StatusCode::UNAUTHORIZED, "Missing Token").into_response())
+}
+
+async fn authorize_file_access(
+    state: &AppState,
+    headers: &HeaderMap,
+    file_id: &str,
+) -> Result<(), Response> {
+    let token = extract_bearer_token(headers)?;
+    let claims = state
+        .auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid Token").into_response())?;
+
+    let record = state
+        .storage_service
+        .get_file(file_id)
+        .await
+        .map_err(|_| StatusCode::NOT_FOUND.into_response())?;
+
+    if claims.is_super_admin {
+        return Ok(());
+    }
+
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or_else(|| (StatusCode::FORBIDDEN, "No Tenant Context").into_response())?;
+    let tenant_ok = tenant_id == record.tenant_id;
+    if !tenant_ok {
+        return Err((StatusCode::FORBIDDEN, "No Tenant Context").into_response());
+    }
+
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "storage", "read")
+        .await
+        .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden").into_response())?;
+
+    Ok(())
+}
+
 #[derive(serde::Deserialize)]
 pub struct ListFileParams {
     pub page: Option<u32>,
@@ -52,6 +101,15 @@ pub async fn list_files(
     );
 
     if let Some(tid) = claims.tenant_id {
+        if state
+            .auth_service
+            .check_permission(&claims.sub, &tid, "storage", "read")
+            .await
+            .is_err()
+        {
+            return (StatusCode::FORBIDDEN, "Forbidden").into_response();
+        }
+
         info!("[ListFiles] Branch: Tenant Mode ({})", tid);
         match state
             .storage_service
@@ -122,6 +180,15 @@ pub async fn delete_file(
     let record = state.storage_service.get_file(&id).await.ok();
 
     if let Some(tid) = claims.tenant_id {
+        if state
+            .auth_service
+            .check_permission(&claims.sub, &tid, "storage", "delete")
+            .await
+            .is_err()
+        {
+            return (StatusCode::FORBIDDEN, "Forbidden").into_response();
+        }
+
         match state.storage_service.delete_tenant_file(&id, &tid).await {
             Ok(_) => {
                 if let Some(r) = record.as_ref().filter(|r| r.tenant_id == tid) {
@@ -189,6 +256,10 @@ pub async fn serve_file(
     headers: HeaderMap,
     Path(id): Path<String>,
 ) -> Response {
+    if let Err(resp) = authorize_file_access(&state, &headers, &id).await {
+        return resp;
+    }
+
     let (record, content) = match state.storage_service.get_file_content(&id).await {
         Ok(res) => res,
         Err(_) => return StatusCode::NOT_FOUND.into_response(),
@@ -273,7 +344,15 @@ pub async fn serve_file(
     }
 }
 
-pub async fn download_file(State(state): State<AppState>, Path(id): Path<String>) -> Response {
+pub async fn download_file(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Response {
+    if let Err(resp) = authorize_file_access(&state, &headers, &id).await {
+        return resp;
+    }
+
     let (record, content) = match state.storage_service.get_file_content(&id).await {
         Ok(res) => res,
         Err(_) => return StatusCode::NOT_FOUND.into_response(),
@@ -368,6 +447,17 @@ pub async fn upload_file_http(
             }
         }
     };
+
+    if !claims.is_super_admin {
+        if state
+            .auth_service
+            .check_permission(&claims.sub, &tenant_id, "storage", "upload")
+            .await
+            .is_err()
+        {
+            return (StatusCode::FORBIDDEN, "Forbidden").into_response();
+        }
+    }
 
     let max_mb: u64 = state
         .settings_service
@@ -549,6 +639,7 @@ pub struct InitResponse {
 }
 
 #[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CompleteRequest {
     pub upload_id: String,
     pub file_name: String,
@@ -563,8 +654,23 @@ pub async fn init_upload(State(state): State<AppState>, headers: HeaderMap) -> R
         .map(|h| h[7..].to_string());
 
     if let Some(token) = auth_header {
-        if state.auth_service.validate_token(&token).await.is_err() {
-            return (StatusCode::UNAUTHORIZED, "Invalid Token").into_response();
+        let claims = match state.auth_service.validate_token(&token).await {
+            Ok(c) => c,
+            Err(_) => return (StatusCode::UNAUTHORIZED, "Invalid Token").into_response(),
+        };
+
+        if !claims.is_super_admin {
+            let Some(tid) = claims.tenant_id else {
+                return (StatusCode::FORBIDDEN, "No Tenant Context").into_response();
+            };
+            if state
+                .auth_service
+                .check_permission(&claims.sub, &tid, "storage", "upload")
+                .await
+                .is_err()
+            {
+                return (StatusCode::FORBIDDEN, "Forbidden").into_response();
+            }
         }
     } else {
         return (StatusCode::UNAUTHORIZED, "Missing Token").into_response();
@@ -588,8 +694,22 @@ pub async fn upload_chunk(
         .map(|h| h[7..].to_string());
 
     if let Some(token) = auth_header {
-        if state.auth_service.validate_token(&token).await.is_err() {
-            return (StatusCode::UNAUTHORIZED, "Invalid Token").into_response();
+        let claims = match state.auth_service.validate_token(&token).await {
+            Ok(c) => c,
+            Err(_) => return (StatusCode::UNAUTHORIZED, "Invalid Token").into_response(),
+        };
+        if !claims.is_super_admin {
+            let Some(tid) = claims.tenant_id else {
+                return (StatusCode::FORBIDDEN, "No Tenant Context").into_response();
+            };
+            if state
+                .auth_service
+                .check_permission(&claims.sub, &tid, "storage", "upload")
+                .await
+                .is_err()
+            {
+                return (StatusCode::FORBIDDEN, "Forbidden").into_response();
+            }
         }
     } else {
         return (StatusCode::UNAUTHORIZED, "Missing Token").into_response();
@@ -660,6 +780,17 @@ pub async fn complete_upload(
             }
         }
     };
+
+    if !claims.is_super_admin {
+        if state
+            .auth_service
+            .check_permission(&claims.sub, &tenant_id, "storage", "upload")
+            .await
+            .is_err()
+        {
+            return (StatusCode::FORBIDDEN, "Forbidden").into_response();
+        }
+    }
 
     match state
         .storage_service

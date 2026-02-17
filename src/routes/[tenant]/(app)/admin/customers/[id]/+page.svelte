@@ -6,18 +6,27 @@
   import { get } from 'svelte/store';
   import { toast } from 'svelte-sonner';
   import { can } from '$lib/stores/auth';
-  import { api, type Customer, type CustomerLocation, type CustomerPortalUser } from '$lib/api/client';
+  import {
+    api,
+    type Customer,
+    type CustomerLocation,
+    type CustomerPortalUser,
+    type CustomerSubscriptionView,
+    type IspPackageRouterMappingView,
+  } from '$lib/api/client';
   import type { PppoeAccountPublic } from '$lib/api/client';
   import { timeAgo } from '$lib/utils/date';
 
   import Icon from '$lib/components/ui/Icon.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
+  import Select2 from '$lib/components/ui/Select2.svelte';
+  import Toggle from '$lib/components/ui/Toggle.svelte';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import Table from '$lib/components/ui/Table.svelte';
 
   const customerId = $derived(String($page.params.id || ''));
 
-  let activeTab = $state<'overview' | 'locations' | 'portal' | 'pppoe'>('overview');
+  let activeTab = $state<'overview' | 'locations' | 'portal' | 'subscriptions' | 'pppoe'>('overview');
 
   let customer = $state<Customer | null>(null);
   let loadingCustomer = $state(true);
@@ -27,6 +36,27 @@
 
   let portalUsers = $state<CustomerPortalUser[]>([]);
   let loadingPortalUsers = $state(false);
+
+  // Subscriptions
+  let subscriptions = $state<CustomerSubscriptionView[]>([]);
+  let loadingSubscriptions = $state(false);
+  let showAddSubscription = $state(false);
+  let showEditSubscription = $state(false);
+  let editingSubscription = $state<CustomerSubscriptionView | null>(null);
+  let savingSubscription = $state(false);
+  let deletingSubscription = $state<string | null>(null);
+  let subscriptionPackages = $state<any[]>([]);
+
+  let subLocationId = $state('');
+  let subPackageId = $state('');
+  let subRouterId = $state('');
+  let subBillingCycle = $state<'monthly' | 'yearly'>('monthly');
+  let subPrice = $state('');
+  let subCurrency = $state('');
+  let subStatus = $state<'active' | 'suspended' | 'cancelled'>('active');
+  let subStartsAt = $state('');
+  let subEndsAt = $state('');
+  let subNotes = $state('');
 
   // PPPoE
   let pppoeAccounts = $state<PppoeAccountPublic[]>([]);
@@ -48,12 +78,38 @@
   let pppoeAddressPool = $state('');
   let pppoeDisabled = $state(false);
   let pppoeComment = $state('');
+  let pppoePackageId = $state('');
+  let pppoePackageMappings = $state<IspPackageRouterMappingView[]>([]);
+  const pppoePackageOptions = $derived.by(() => {
+    const seen = new Set<string>();
+    const out: Array<{ label: string; value: string }> = [];
+    for (const m of pppoePackageMappings) {
+      if (!m?.package_id || seen.has(m.package_id)) continue;
+      seen.add(m.package_id);
+      out.push({ label: m.package_name, value: m.package_id });
+    }
+    return out;
+  });
 
   // Router-scoped inventory (used as suggestions for profile/pool fields)
   let pppoeProfiles = $state<any[]>([]);
   let pppoePools = $state<any[]>([]);
   let pppoeInventoryLoading = $state(false);
   let pppoeInventoryRouter = $state<string | null>(null);
+
+  const pppoeProfileOptions = $derived.by(() => {
+    const base = (pppoeProfiles || []).map((p: any) => ({ label: String(p.name), value: String(p.name) }));
+    const cur = pppoeRouterProfileName?.trim();
+    if (cur && !base.some((o) => o.value === cur)) return [{ label: cur, value: cur }, ...base];
+    return base;
+  });
+
+  const pppoePoolOptions = $derived.by(() => {
+    const base = (pppoePools || []).map((p: any) => ({ label: String(p.name), value: String(p.name) }));
+    const cur = pppoeAddressPool?.trim();
+    if (cur && !base.some((o) => o.value === cur)) return [{ label: cur, value: cur }, ...base];
+    return base;
+  });
 
   const pppoeColumns = $derived.by(() => [
     { key: 'username', label: $t('admin.customers.pppoe.columns.username') || 'Username' },
@@ -112,6 +168,40 @@
     { key: 'actions', label: '', align: 'right' as const },
   ]);
 
+  const subscriptionColumns = $derived.by(() => [
+    { key: 'package', label: 'Package' },
+    { key: 'billing', label: 'Billing' },
+    { key: 'location', label: 'Location' },
+    { key: 'router', label: 'Router' },
+    { key: 'period', label: 'Period' },
+    { key: 'actions', label: '', align: 'right' as const },
+  ]);
+
+  const billingCycleOptions = [
+    { label: 'Monthly', value: 'monthly' },
+    { label: 'Yearly', value: 'yearly' },
+  ];
+
+  const subscriptionStatusOptions = [
+    { label: 'Active', value: 'active' },
+    { label: 'Suspended', value: 'suspended' },
+    { label: 'Cancelled', value: 'cancelled' },
+  ];
+
+  const subscriptionRouterOptions = $derived.by(() =>
+    pppoeRouters.map((r) => ({ label: r.name, value: r.id })),
+  );
+
+  const subscriptionLocationOptions = $derived.by(() =>
+    locations.map((l) => ({ label: l.label, value: l.id })),
+  );
+
+  const subscriptionPackageOptions = $derived.by(() =>
+    subscriptionPackages
+      .filter((p: any) => p?.is_active !== false)
+      .map((p: any) => ({ label: p.name, value: p.id })),
+  );
+
   onMount(async () => {
     if (!$can('read', 'customers') && !$can('manage', 'customers')) {
       goto('/unauthorized');
@@ -128,6 +218,15 @@
     if (activeTab !== 'pppoe') return;
     if (!$can('read', 'pppoe') && !$can('manage', 'pppoe')) return;
     void loadPppoeAccounts();
+  });
+
+  $effect(() => {
+    if (activeTab !== 'subscriptions') return;
+    if (!$can('read', 'customers') && !$can('manage', 'customers')) return;
+    void loadSubscriptions();
+    if (subscriptionPackages.length === 0) {
+      void loadSubscriptionPackages();
+    }
   });
 
   async function loadPppoeInventory(routerId: string, opts?: { silent?: boolean }) {
@@ -152,6 +251,47 @@
     }
   }
 
+  async function loadPppoePackages(routerId: string) {
+    if (!routerId) {
+      pppoePackageMappings = [];
+      return;
+    }
+    try {
+      pppoePackageMappings = await api.ispPackages.routerMappings.list({ router_id: routerId });
+    } catch {
+      pppoePackageMappings = [];
+    }
+  }
+
+  function maybeAutoSelectPppoePackageFromProfile() {
+    const profile = pppoeRouterProfileName?.trim();
+    if (!pppoeRouterId || !profile) return;
+    if (pppoePackageId) return;
+
+    const matches = pppoePackageMappings.filter((m) => (m.router_profile_name || '') === profile);
+    if (matches.length === 1) {
+      pppoePackageId = matches[0].package_id;
+      applyPppoePackage(pppoePackageId);
+      return;
+    }
+
+    if (!pppoeAddressPool) {
+      const withPool = matches.find((m) => m.address_pool);
+      if (withPool?.address_pool) pppoeAddressPool = withPool.address_pool;
+    }
+  }
+
+  function applyPppoePackage(pkgId: string) {
+    if (!pkgId) return;
+    const m = pppoePackageMappings.find((x) => x.package_id === pkgId);
+    if (!m) return;
+    pppoeRouterProfileName = m.router_profile_name || '';
+    if (m.address_pool) {
+      pppoeAddressPool = m.address_pool;
+      pppoeRemoteAddress = '';
+    }
+  }
+
   $effect(() => {
     if (!showAddPppoe && !showEditPppoe) return;
     if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) return;
@@ -161,11 +301,17 @@
       pppoeProfiles = [];
       pppoePools = [];
       pppoeInventoryRouter = null;
+      pppoePackageMappings = [];
       return;
     }
 
-    if (pppoeInventoryRouter === rid) return;
+    if (pppoeInventoryRouter === rid) {
+      // still ensure packages are loaded once per router selection
+      if (pppoePackageMappings.length === 0) void loadPppoePackages(rid);
+      return;
+    }
     void loadPppoeInventory(rid, { silent: true });
+    void loadPppoePackages(rid);
   });
 
   async function loadCustomer() {
@@ -216,6 +362,133 @@
     }
   }
 
+  async function loadSubscriptionPackages() {
+    try {
+      const res = await api.ispPackages.packages.list({ page: 1, per_page: 500, q: '' });
+      subscriptionPackages = res.data || [];
+    } catch {
+      subscriptionPackages = [];
+    }
+  }
+
+  async function loadSubscriptions() {
+    loadingSubscriptions = true;
+    try {
+      const res = await api.customers.subscriptions.list(customerId, { page: 1, per_page: 200 });
+      subscriptions = res.data || [];
+    } catch (e: any) {
+      toast.error(`Failed to load subscriptions: ${e?.message || e}`);
+    } finally {
+      loadingSubscriptions = false;
+    }
+  }
+
+  function resetSubscriptionForm() {
+    subLocationId = locations[0]?.id || '';
+    subPackageId = '';
+    subRouterId = '';
+    subBillingCycle = 'monthly';
+    subPrice = '';
+    subCurrency = '';
+    subStatus = 'active';
+    subStartsAt = '';
+    subEndsAt = '';
+    subNotes = '';
+  }
+
+  function openCreateSubscription() {
+    resetSubscriptionForm();
+    subCurrency = subCurrency || 'IDR';
+    showAddSubscription = true;
+  }
+
+  function openEditSubscription(row: CustomerSubscriptionView) {
+    editingSubscription = row;
+    subLocationId = row.location_id;
+    subPackageId = row.package_id;
+    subRouterId = row.router_id || '';
+    subBillingCycle = (row.billing_cycle === 'yearly' ? 'yearly' : 'monthly') as 'monthly' | 'yearly';
+    subPrice = String(row.price ?? '');
+    subCurrency = row.currency_code || '';
+    subStatus = (['active', 'suspended', 'cancelled'].includes(row.status)
+      ? row.status
+      : 'active') as 'active' | 'suspended' | 'cancelled';
+    subStartsAt = row.starts_at ? row.starts_at.slice(0, 10) : '';
+    subEndsAt = row.ends_at ? row.ends_at.slice(0, 10) : '';
+    subNotes = row.notes || '';
+    showEditSubscription = true;
+  }
+
+  async function submitCreateSubscription() {
+    const price = Number(subPrice);
+    if (!subLocationId || !subPackageId || !Number.isFinite(price) || price < 0) return;
+    savingSubscription = true;
+    try {
+      await api.customers.subscriptions.create(customerId, {
+        location_id: subLocationId,
+        package_id: subPackageId,
+        router_id: subRouterId || null,
+        billing_cycle: subBillingCycle,
+        price,
+        currency_code: subCurrency || null,
+        status: subStatus,
+        starts_at: subStartsAt || null,
+        ends_at: subEndsAt || null,
+        notes: subNotes.trim() || null,
+      });
+      toast.success('Subscription created');
+      showAddSubscription = false;
+      await loadSubscriptions();
+    } catch (e: any) {
+      toast.error(`Failed to create subscription: ${e?.message || e}`);
+    } finally {
+      savingSubscription = false;
+    }
+  }
+
+  async function submitUpdateSubscription() {
+    if (!editingSubscription) return;
+    const price = Number(subPrice);
+    if (!subLocationId || !subPackageId || !Number.isFinite(price) || price < 0) return;
+    savingSubscription = true;
+    try {
+      await api.customers.subscriptions.update(editingSubscription.id, {
+        location_id: subLocationId,
+        package_id: subPackageId,
+        router_id: subRouterId || null,
+        billing_cycle: subBillingCycle,
+        price,
+        currency_code: subCurrency || null,
+        status: subStatus,
+        starts_at: subStartsAt || null,
+        ends_at: subEndsAt || null,
+        notes: subNotes.trim() || null,
+      });
+      toast.success('Subscription updated');
+      showEditSubscription = false;
+      editingSubscription = null;
+      await loadSubscriptions();
+    } catch (e: any) {
+      toast.error(`Failed to update subscription: ${e?.message || e}`);
+    } finally {
+      savingSubscription = false;
+    }
+  }
+
+  async function deleteSubscription(id: string) {
+    if (!confirm('Delete this subscription?')) return;
+    deletingSubscription = id;
+    try {
+      await api.customers.subscriptions.delete(id);
+      toast.success('Subscription deleted');
+      await loadSubscriptions();
+    } catch (e: any) {
+      toast.error(`Failed to delete subscription: ${e?.message || e}`);
+    } finally {
+      deletingSubscription = null;
+    }
+  }
+
   async function loadPppoeRouters() {
     if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) return;
     loadingPppoeRouters = true;
@@ -253,11 +526,13 @@
     pppoeLocationId = '';
     pppoeUsername = '';
     pppoePassword = '';
+    pppoePackageId = '';
     pppoeRouterProfileName = '';
     pppoeRemoteAddress = '';
     pppoeAddressPool = '';
     pppoeDisabled = false;
     pppoeComment = '';
+    pppoePackageMappings = [];
   }
 
   function openCreatePppoe() {
@@ -271,6 +546,7 @@
     pppoeLocationId = row.location_id;
     pppoeUsername = row.username;
     pppoePassword = '';
+    pppoePackageId = row.package_id || '';
     pppoeRouterProfileName = row.router_profile_name || '';
     pppoeRemoteAddress = row.remote_address || '';
     pppoeAddressPool = row.address_pool || '';
@@ -289,6 +565,7 @@
         location_id: pppoeLocationId,
         username: pppoeUsername.trim(),
         password: pppoePassword,
+        package_id: pppoePackageId || null,
         router_profile_name: pppoeRouterProfileName.trim() || null,
         remote_address: pppoeRemoteAddress.trim() || null,
         address_pool: pppoeAddressPool.trim() || null,
@@ -316,6 +593,7 @@
       await api.pppoe.accounts.update(editingPppoe.id, {
         username: pppoeUsername.trim() || undefined,
         password: pppoePassword || undefined,
+        package_id: pppoePackageId || null,
         router_profile_name: pppoeRouterProfileName.trim() || null,
         remote_address: pppoeRemoteAddress.trim() || null,
         address_pool: pppoeAddressPool.trim() || null,
@@ -551,6 +829,9 @@
     <button class:active={activeTab === 'portal'} onclick={() => (activeTab = 'portal')}>
       {$t('admin.customers.tabs.portal') || 'Portal users'}
     </button>
+    <button class:active={activeTab === 'subscriptions'} onclick={() => (activeTab = 'subscriptions')}>
+      {$t('admin.customers.tabs.subscriptions') || 'Subscriptions'}
+    </button>
     {#if $can('read', 'pppoe') || $can('manage', 'pppoe')}
       <button class:active={activeTab === 'pppoe'} onclick={() => (activeTab = 'pppoe')}>
         {$t('admin.customers.tabs.pppoe') || 'PPPoE'}
@@ -699,6 +980,74 @@
           {/snippet}
         </Table>
       </div>
+    {:else if activeTab === 'subscriptions'}
+      <div class="card section">
+        <div class="section-head">
+          <div>
+            <h3>{$t('admin.customers.subscriptions.title') || 'Subscriptions'}</h3>
+            <p class="subtitle">
+              {$t('admin.customers.subscriptions.subtitle') ||
+                'Customer package subscriptions for billing and service assignment.'}
+            </p>
+          </div>
+          <div class="header-actions">
+            <button class="btn btn-secondary" onclick={loadSubscriptions} disabled={loadingSubscriptions}>
+              <Icon name="refresh-cw" size={16} />
+              {$t('common.refresh') || 'Refresh'}
+            </button>
+            {#if $can('manage', 'customers')}
+              <button class="btn btn-primary" onclick={openCreateSubscription}>
+                <Icon name="plus" size={16} />
+                {$t('common.add') || 'Add'}
+              </button>
+            {/if}
+          </div>
+        </div>
+
+        <Table
+          columns={subscriptionColumns}
+          data={subscriptions}
+          loading={loadingSubscriptions}
+          emptyText={$t('admin.customers.subscriptions.empty') || 'No subscriptions yet.'}
+          pagination
+        >
+          {#snippet cell({ item, key })}
+            {@const row = item as CustomerSubscriptionView}
+            {#if key === 'package'}
+              <div class="name">{row.package_name || row.package_id}</div>
+              <div class="sub">{row.status}</div>
+            {:else if key === 'billing'}
+              <div class="name">{row.billing_cycle}</div>
+              <div class="sub mono">{row.currency_code} {Number(row.price || 0).toLocaleString()}</div>
+            {:else if key === 'location'}
+              <div>{row.location_label || '-'}</div>
+            {:else if key === 'router'}
+              <div>{row.router_name || '-'}</div>
+            {:else if key === 'period'}
+              <div class="sub">{row.starts_at ? new Date(row.starts_at).toLocaleDateString() : '-'}</div>
+              <div class="sub">{row.ends_at ? new Date(row.ends_at).toLocaleDateString() : '-'}</div>
+            {:else if key === 'actions'}
+              <div class="row-actions">
+                {#if $can('manage', 'customers')}
+                  <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => openEditSubscription(row)}>
+                    <Icon name="edit-3" size={16} />
+                  </button>
+                  <button
+                    class="btn-icon danger"
+                    title={$t('common.delete') || 'Delete'}
+                    onclick={() => deleteSubscription(row.id)}
+                    disabled={deletingSubscription === row.id}
+                  >
+                    <Icon name="trash-2" size={16} />
+                  </button>
+                {/if}
+              </div>
+            {:else}
+              {item[key] ?? ''}
+            {/if}
+          {/snippet}
+        </Table>
+      </div>
     {:else if activeTab === 'pppoe'}
       <div class="card section">
         <div class="section-head">
@@ -787,7 +1136,7 @@
                     <Icon name="send" size={16} />
                   </button>
                   <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => openEditPppoe(row)}>
-                    <Icon name="edit-3" size={16} />
+                    <Icon name="edit" size={16} />
                   </button>
                   <button class="btn-icon danger" title={$t('common.delete') || 'Delete'} onclick={() => deletePppoe(row)}>
                     <Icon name="trash-2" size={16} />
@@ -813,23 +1162,55 @@
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.pppoe.fields.router') || 'Router'}</span>
-        <select class="input" bind:value={pppoeRouterId} disabled={loadingPppoeRouters}>
-          <option value="">{($t('common.select') || 'Select') + '...'}</option>
-          {#each pppoeRouters as r}
-            <option value={r.id}>{r.name}</option>
-          {/each}
-        </select>
+        <Select2
+          bind:value={pppoeRouterId}
+          options={pppoeRouters.map((r) => ({ label: r.name, value: r.id }))}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          disabled={loadingPppoeRouters}
+          maxItems={5000}
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+          onchange={() => {
+            pppoePackageId = '';
+            pppoeRouterProfileName = '';
+            pppoeRemoteAddress = '';
+            pppoeAddressPool = '';
+          }}
+        />
       </label>
       <label>
         <span>{$t('admin.customers.pppoe.fields.location') || 'Location'}</span>
-        <select class="input" bind:value={pppoeLocationId}>
-          <option value="">{($t('common.select') || 'Select') + '...'}</option>
-          {#each locations as l}
-            <option value={l.id}>{l.label}</option>
-          {/each}
-        </select>
+        <Select2
+          bind:value={pppoeLocationId}
+          options={locations.map((l) => ({ label: l.label, value: l.id }))}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          maxItems={5000}
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+        />
       </label>
     </div>
+
+    <label>
+      <span>{$t('admin.customers.pppoe.fields.package') || 'Package'}</span>
+      <Select2
+        bind:value={pppoePackageId}
+        options={pppoePackageOptions}
+        placeholder={($t('common.select') || 'Select') + '...'}
+        width="100%"
+        disabled={!pppoeRouterId || pppoePackageOptions.length === 0}
+        maxItems={5000}
+        searchPlaceholder={$t('common.search') || 'Search'}
+        noResultsText={$t('common.no_results') || 'No results'}
+        onchange={() => applyPppoePackage(pppoePackageId)}
+      />
+      <div class="field-hint">
+        {$t('admin.network.pppoe.form.package_hint') ||
+          'If you select a package, profile/pool will be prefilled for the selected router (you can still override).'}
+      </div>
+    </label>
 
     <div class="grid2">
       <label>
@@ -845,22 +1226,61 @@
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.pppoe.fields.profile') || 'Profile'}</span>
-        <input
-          class="input"
+        <Select2
           bind:value={pppoeRouterProfileName}
-          list="pppoe-profile-suggestions"
-          placeholder="default / paket-10mbps"
+          options={pppoeProfileOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          disabled={!pppoeRouterId || pppoeProfileOptions.length === 0}
+          maxItems={5000}
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+          onchange={() => maybeAutoSelectPppoePackageFromProfile()}
         />
       </label>
       <label>
-        <span>{$t('admin.customers.pppoe.fields.remote_address') || 'Remote IP / Pool'}</span>
+        <span>{$t('admin.customers.pppoe.fields.remote_address') || 'Remote IP'}</span>
         <input
-          class="input"
+          class="input mono"
           bind:value={pppoeRemoteAddress}
-          list="pppoe-pool-suggestions"
-          placeholder="10.10.10.10 / pool-pppoe"
+          placeholder="10.10.10.10"
+          disabled={!pppoeRouterId}
         />
       </label>
+    </div>
+
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.pool') || 'Address pool'}</span>
+        <Select2
+          bind:value={pppoeAddressPool}
+          options={pppoePoolOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          disabled={!pppoeRouterId || pppoePoolOptions.length === 0}
+          maxItems={5000}
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+        />
+      </label>
+      <div></div>
+    </div>
+
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.pool') || 'Address pool'}</span>
+        <Select2
+          bind:value={pppoeAddressPool}
+          options={pppoePoolOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          disabled={!pppoeRouterId || pppoePoolOptions.length === 0}
+          maxItems={5000}
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+        />
+      </label>
+      <div></div>
     </div>
 
     <label>
@@ -868,10 +1288,16 @@
       <input class="input" bind:value={pppoeComment} />
     </label>
 
-    <label class="row">
-      <input type="checkbox" bind:checked={pppoeDisabled} />
-      <span>{$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}</span>
-    </label>
+    <div class="toggle-row">
+      <div class="toggle-text">
+        <div class="toggle-title">{$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}</div>
+        <div class="toggle-sub">
+          {$t('admin.network.pppoe.form.disabled_hint') ||
+            'Disable this PPPoE account (will be applied to router when you click Apply).'}
+        </div>
+      </div>
+      <Toggle bind:checked={pppoeDisabled} ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'} />
+    </div>
 
     <div class="actions">
       <button class="btn btn-secondary" onclick={() => (showAddPppoe = false)}>
@@ -897,6 +1323,48 @@
   <div class="form">
     <div class="grid2">
       <label>
+        <span>{$t('admin.customers.pppoe.fields.router') || 'Router'}</span>
+        <Select2
+          bind:value={pppoeRouterId}
+          options={pppoeRouters.map((r) => ({ label: r.name, value: r.id }))}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          disabled={loadingPppoeRouters}
+          maxItems={5000}
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+          onchange={() => {
+            pppoePackageId = '';
+            pppoeRouterProfileName = '';
+            pppoeRemoteAddress = '';
+            pppoeAddressPool = '';
+          }}
+        />
+      </label>
+      <div></div>
+    </div>
+
+    <label>
+      <span>{$t('admin.customers.pppoe.fields.package') || 'Package'}</span>
+      <Select2
+        bind:value={pppoePackageId}
+        options={pppoePackageOptions}
+        placeholder={($t('common.select') || 'Select') + '...'}
+        width="100%"
+        disabled={!pppoeRouterId || pppoePackageOptions.length === 0}
+        maxItems={5000}
+        searchPlaceholder={$t('common.search') || 'Search'}
+        noResultsText={$t('common.no_results') || 'No results'}
+        onchange={() => applyPppoePackage(pppoePackageId)}
+      />
+      <div class="field-hint">
+        {$t('admin.network.pppoe.form.package_hint') ||
+          'If you select a package, profile/pool will be prefilled for the selected router (you can still override).'}
+      </div>
+    </label>
+
+    <div class="grid2">
+      <label>
         <span>{$t('admin.customers.pppoe.fields.username') || 'Username'}</span>
         <input class="input" bind:value={pppoeUsername} />
       </label>
@@ -909,12 +1377,39 @@
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.pppoe.fields.profile') || 'Profile'}</span>
-        <input class="input" bind:value={pppoeRouterProfileName} list="pppoe-profile-suggestions" />
+        <Select2
+          bind:value={pppoeRouterProfileName}
+          options={pppoeProfileOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          disabled={!pppoeRouterId || pppoeProfileOptions.length === 0}
+          maxItems={5000}
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+          onchange={() => maybeAutoSelectPppoePackageFromProfile()}
+        />
       </label>
       <label>
-        <span>{$t('admin.customers.pppoe.fields.remote_address') || 'Remote IP / Pool'}</span>
-        <input class="input" bind:value={pppoeRemoteAddress} list="pppoe-pool-suggestions" />
+        <span>{$t('admin.customers.pppoe.fields.remote_address') || 'Remote IP'}</span>
+        <input class="input mono" bind:value={pppoeRemoteAddress} placeholder="10.10.10.10" />
       </label>
+    </div>
+
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.pppoe.fields.pool') || 'Address pool'}</span>
+        <Select2
+          bind:value={pppoeAddressPool}
+          options={pppoePoolOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          disabled={!pppoeRouterId || pppoePoolOptions.length === 0}
+          maxItems={5000}
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+        />
+      </label>
+      <div></div>
     </div>
 
     <label>
@@ -922,10 +1417,16 @@
       <input class="input" bind:value={pppoeComment} />
     </label>
 
-    <label class="row">
-      <input type="checkbox" bind:checked={pppoeDisabled} />
-      <span>{$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}</span>
-    </label>
+    <div class="toggle-row">
+      <div class="toggle-text">
+        <div class="toggle-title">{$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}</div>
+        <div class="toggle-sub">
+          {$t('admin.network.pppoe.form.disabled_hint') ||
+            'Disable this PPPoE account (will be applied to router when you click Apply).'}
+        </div>
+      </div>
+      <Toggle bind:checked={pppoeDisabled} ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'} />
+    </div>
 
     <div class="actions">
       <button class="btn btn-secondary" onclick={() => (showEditPppoe = false)}>
@@ -939,17 +1440,184 @@
   </div>
 </Modal>
 
-<datalist id="pppoe-profile-suggestions">
-  {#each pppoeProfiles as p}
-    <option value={p.name}></option>
-  {/each}
-</datalist>
+<Modal
+  show={showAddSubscription}
+  title={$t('admin.customers.subscriptions.new.title') || 'Add subscription'}
+  onclose={() => (showAddSubscription = false)}
+>
+  <div class="form">
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.subscriptions.fields.location') || 'Location'}</span>
+        <Select2
+          bind:value={subLocationId}
+          options={subscriptionLocationOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+        />
+      </label>
+      <label>
+        <span>{$t('admin.customers.subscriptions.fields.package') || 'Package'}</span>
+        <Select2
+          bind:value={subPackageId}
+          options={subscriptionPackageOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+        />
+      </label>
+    </div>
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.subscriptions.fields.router') || 'Router (optional)'}</span>
+        <Select2
+          bind:value={subRouterId}
+          options={subscriptionRouterOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+        />
+      </label>
+      <label>
+        <span>{$t('admin.customers.subscriptions.fields.billing_cycle') || 'Billing cycle'}</span>
+        <Select2 bind:value={subBillingCycle} options={billingCycleOptions} width="100%" />
+      </label>
+    </div>
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.subscriptions.fields.price') || 'Price'}</span>
+        <input class="input" type="number" min="0" step="0.01" bind:value={subPrice} />
+      </label>
+      <label>
+        <span>{$t('admin.customers.subscriptions.fields.currency') || 'Currency'}</span>
+        <input class="input" bind:value={subCurrency} placeholder="IDR" />
+      </label>
+    </div>
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.subscriptions.fields.status') || 'Status'}</span>
+        <Select2 bind:value={subStatus} options={subscriptionStatusOptions} width="100%" />
+      </label>
+      <div></div>
+    </div>
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.subscriptions.fields.starts_at') || 'Starts at'}</span>
+        <input class="input" type="date" bind:value={subStartsAt} />
+      </label>
+      <label>
+        <span>{$t('admin.customers.subscriptions.fields.ends_at') || 'Ends at'}</span>
+        <input class="input" type="date" bind:value={subEndsAt} />
+      </label>
+    </div>
+    <label>
+      <span>{$t('admin.customers.subscriptions.fields.notes') || 'Notes'}</span>
+      <textarea class="input" rows="3" bind:value={subNotes}></textarea>
+    </label>
+    <div class="actions">
+      <button class="btn btn-secondary" onclick={() => (showAddSubscription = false)}>
+        {$t('common.cancel') || 'Cancel'}
+      </button>
+      <button
+        class="btn btn-primary"
+        onclick={submitCreateSubscription}
+        disabled={savingSubscription || !subLocationId || !subPackageId || !subPrice}
+      >
+        <Icon name="plus" size={16} />
+        {$t('common.create') || 'Create'}
+      </button>
+    </div>
+  </div>
+</Modal>
 
-<datalist id="pppoe-pool-suggestions">
-  {#each pppoePools as p}
-    <option value={p.name}></option>
-  {/each}
-</datalist>
+<Modal
+  show={showEditSubscription}
+  title={$t('admin.customers.subscriptions.edit.title') || 'Edit subscription'}
+  onclose={() => {
+    showEditSubscription = false;
+    editingSubscription = null;
+  }}
+>
+  <div class="form">
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.subscriptions.fields.location') || 'Location'}</span>
+        <Select2
+          bind:value={subLocationId}
+          options={subscriptionLocationOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+        />
+      </label>
+      <label>
+        <span>{$t('admin.customers.subscriptions.fields.package') || 'Package'}</span>
+        <Select2
+          bind:value={subPackageId}
+          options={subscriptionPackageOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+        />
+      </label>
+    </div>
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.subscriptions.fields.router') || 'Router (optional)'}</span>
+        <Select2
+          bind:value={subRouterId}
+          options={subscriptionRouterOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+        />
+      </label>
+      <label>
+        <span>{$t('admin.customers.subscriptions.fields.billing_cycle') || 'Billing cycle'}</span>
+        <Select2 bind:value={subBillingCycle} options={billingCycleOptions} width="100%" />
+      </label>
+    </div>
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.subscriptions.fields.price') || 'Price'}</span>
+        <input class="input" type="number" min="0" step="0.01" bind:value={subPrice} />
+      </label>
+      <label>
+        <span>{$t('admin.customers.subscriptions.fields.currency') || 'Currency'}</span>
+        <input class="input" bind:value={subCurrency} placeholder="IDR" />
+      </label>
+    </div>
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.subscriptions.fields.status') || 'Status'}</span>
+        <Select2 bind:value={subStatus} options={subscriptionStatusOptions} width="100%" />
+      </label>
+      <div></div>
+    </div>
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.subscriptions.fields.starts_at') || 'Starts at'}</span>
+        <input class="input" type="date" bind:value={subStartsAt} />
+      </label>
+      <label>
+        <span>{$t('admin.customers.subscriptions.fields.ends_at') || 'Ends at'}</span>
+        <input class="input" type="date" bind:value={subEndsAt} />
+      </label>
+    </div>
+    <label>
+      <span>{$t('admin.customers.subscriptions.fields.notes') || 'Notes'}</span>
+      <textarea class="input" rows="3" bind:value={subNotes}></textarea>
+    </label>
+    <div class="actions">
+      <button class="btn btn-secondary" onclick={() => (showEditSubscription = false)}>
+        {$t('common.cancel') || 'Cancel'}
+      </button>
+      <button
+        class="btn btn-primary"
+        onclick={submitUpdateSubscription}
+        disabled={savingSubscription || !subLocationId || !subPackageId || !subPrice}
+      >
+        <Icon name="check-circle" size={16} />
+        {$t('common.save') || 'Save'}
+      </button>
+    </div>
+  </div>
+</Modal>
 
 <Modal
   show={showAddLocation}
@@ -1232,6 +1900,35 @@
     gap: 0.6rem;
   }
 
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.9rem;
+    padding: 0.85rem 0.95rem;
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-surface), transparent 8%);
+  }
+
+  .toggle-text {
+    min-width: 0;
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  .toggle-title {
+    color: var(--text-primary);
+    font-weight: 800;
+  }
+
+  .toggle-sub {
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.9rem;
+    line-height: 1.35;
+  }
+
   .actions {
     display: flex;
     justify-content: flex-end;
@@ -1271,6 +1968,13 @@
     color: var(--text-secondary);
     font-size: 0.85rem;
     margin-top: 0.15rem;
+  }
+
+  .field-hint {
+    margin-top: 0.35rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.35;
   }
 
   .mono {

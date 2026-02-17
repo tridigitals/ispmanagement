@@ -166,6 +166,7 @@ pub struct UpdateUserDto {
 
 /// DTO for user login
 #[derive(Debug, Deserialize, Validate)]
+#[serde(deny_unknown_fields)]
 pub struct LoginDto {
     #[validate(
         email(message = "Invalid email format"),
@@ -178,6 +179,7 @@ pub struct LoginDto {
 
 /// DTO for user registration
 #[derive(Debug, Deserialize, Validate)]
+#[serde(deny_unknown_fields)]
 pub struct RegisterDto {
     #[validate(
         email(message = "Invalid email format"),

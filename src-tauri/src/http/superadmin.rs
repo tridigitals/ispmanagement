@@ -19,6 +19,7 @@ pub struct TenantListResponse {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct CreateTenantRequest {
     pub name: String,
     pub slug: String,
@@ -33,7 +34,7 @@ pub struct CreateTenantRequest {
 async fn check_super_admin(
     state: &AppState,
     headers: &HeaderMap,
-) -> Result<(), crate::error::AppError> {
+) -> Result<crate::services::auth_service::Claims, crate::error::AppError> {
     let token = headers
         .get("Authorization")
         .and_then(|h| h.to_str().ok())
@@ -46,20 +47,23 @@ async fn check_super_admin(
         return Err(crate::error::AppError::Unauthorized);
     }
 
-    Ok(())
+    Ok(claims)
 }
 
 pub async fn list_tenants(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<TenantListResponse>, crate::error::AppError> {
-    check_super_admin(&state, &headers).await?;
+    let claims = check_super_admin(&state, &headers).await?;
+    let mut tx = state.auth_service.pool.begin().await?;
+    state.auth_service.apply_rls_context_tx(&mut tx, &claims).await?;
 
     let tenants: Vec<Tenant> = sqlx::query_as("SELECT * FROM tenants ORDER BY created_at DESC")
-        .fetch_all(&state.auth_service.pool)
+        .fetch_all(&mut *tx)
         .await?;
 
     let total = tenants.len() as i64;
+    tx.commit().await?;
 
     Ok(Json(TenantListResponse {
         data: tenants,
@@ -72,12 +76,15 @@ pub async fn delete_tenant(
     headers: HeaderMap,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, crate::error::AppError> {
-    check_super_admin(&state, &headers).await?;
+    let claims = check_super_admin(&state, &headers).await?;
+    let mut tx = state.auth_service.pool.begin().await?;
+    state.auth_service.apply_rls_context_tx(&mut tx, &claims).await?;
 
     sqlx::query("DELETE FROM tenants WHERE id = $1")
         .bind(id)
-        .execute(&state.auth_service.pool)
+        .execute(&mut *tx)
         .await?;
+    tx.commit().await?;
 
     Ok(Json(json!({"message": "Tenant deleted successfully"})))
 }
@@ -87,7 +94,7 @@ pub async fn create_tenant(
     headers: HeaderMap,
     Json(payload): Json<CreateTenantRequest>,
 ) -> Result<Json<Tenant>, crate::error::AppError> {
-    check_super_admin(&state, &headers).await?;
+    let claims = check_super_admin(&state, &headers).await?;
 
     // 1. Create Tenant object
     let mut tenant = Tenant::new(payload.name, payload.slug);
@@ -123,6 +130,7 @@ pub async fn create_tenant(
 
     // 3. Start Transaction
     let mut tx = state.auth_service.pool.begin().await?;
+    state.auth_service.apply_rls_context_tx(&mut tx, &claims).await?;
 
     // Insert Tenant
     sqlx::query(
@@ -175,6 +183,7 @@ pub async fn create_tenant(
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct UpdateTenantRequest {
     pub name: String,
     pub slug: String,
@@ -189,14 +198,7 @@ pub async fn update_tenant(
     Path(id): Path<String>,
     Json(payload): Json<UpdateTenantRequest>,
 ) -> Result<Json<Tenant>, crate::error::AppError> {
-    check_super_admin(&state, &headers).await?;
-
-    let token = headers
-        .get("Authorization")
-        .and_then(|h| h.to_str().ok())
-        .and_then(|h| h.strip_prefix("Bearer "))
-        .ok_or(crate::error::AppError::Unauthorized)?;
-    let claims = state.auth_service.validate_token(token).await?;
+    let claims = check_super_admin(&state, &headers).await?;
     let ip = extract_ip(&headers, addr);
 
     // Check if tenant exists
@@ -230,6 +232,7 @@ pub async fn update_tenant(
 
     // Update
     let mut tx = state.auth_service.pool.begin().await?;
+    state.auth_service.apply_rls_context_tx(&mut tx, &claims).await?;
 
     let tenant: Tenant = sqlx::query_as(
         "UPDATE tenants SET name = $1, slug = $2, custom_domain = $3, is_active = $4, updated_at = $5 WHERE id = $6 RETURNING *"

@@ -25,6 +25,28 @@ impl UserService {
         }
     }
 
+    #[cfg(feature = "postgres")]
+    async fn apply_user_rls_context_tx(
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+        user_id: &str,
+    ) -> AppResult<()> {
+        sqlx::query(
+            "SELECT set_config('app.current_tenant_id', '', true), set_config('app.current_user_id', $1, true), set_config('app.current_is_superadmin', 'false', true)",
+        )
+        .bind(user_id)
+        .execute(&mut **tx)
+        .await?;
+        Ok(())
+    }
+
+    #[cfg(feature = "sqlite")]
+    async fn apply_user_rls_context_tx(
+        _tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        _user_id: &str,
+    ) -> AppResult<()> {
+        Ok(())
+    }
+
     /// List all users with pagination (optimized single query with window function)
     pub async fn list(&self, page: u32, per_page: u32) -> AppResult<(Vec<UserResponse>, i64)> {
         let offset = (page.saturating_sub(1)) * per_page;
@@ -352,6 +374,7 @@ impl UserService {
         );
 
         let mut tx = self.pool.begin().await?;
+        Self::apply_user_rls_context_tx(&mut tx, user_id).await?;
 
         if addr.is_default_shipping {
             #[cfg(feature = "postgres")]
@@ -536,6 +559,7 @@ impl UserService {
         addr.updated_at = Utc::now();
 
         let mut tx = self.pool.begin().await?;
+        Self::apply_user_rls_context_tx(&mut tx, user_id).await?;
 
         if addr.is_default_shipping {
             #[cfg(feature = "postgres")]

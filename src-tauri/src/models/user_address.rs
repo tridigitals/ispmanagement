@@ -61,6 +61,7 @@ impl UserAddress {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct CreateUserAddressDto {
     pub label: Option<String>,
     pub recipient_name: Option<String>,
@@ -77,6 +78,7 @@ pub struct CreateUserAddressDto {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct UpdateUserAddressDto {
     pub label: Option<String>,
     pub recipient_name: Option<String>,

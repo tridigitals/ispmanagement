@@ -35,6 +35,35 @@ pub struct StorageService {
 }
 
 impl StorageService {
+    #[cfg(feature = "postgres")]
+    async fn apply_rls_context_tx_values(
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+        tenant_id: Option<&str>,
+        is_super_admin: bool,
+    ) -> AppResult<()> {
+        let tenant_id = tenant_id.unwrap_or("").to_string();
+        let is_superadmin = if is_super_admin { "true" } else { "false" };
+
+        sqlx::query(
+            "SELECT set_config('app.current_tenant_id', $1, true), set_config('app.current_is_superadmin', $2, true)",
+        )
+        .bind(tenant_id)
+        .bind(is_superadmin)
+        .execute(&mut **tx)
+        .await?;
+
+        Ok(())
+    }
+
+    #[cfg(feature = "sqlite")]
+    async fn apply_rls_context_tx_values(
+        _tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        _tenant_id: Option<&str>,
+        _is_super_admin: bool,
+    ) -> AppResult<()> {
+        Ok(())
+    }
+
     pub fn new(pool: DbPool, plan_service: PlanService, app_data_dir: PathBuf) -> Self {
         let storage_path = app_data_dir.join("uploads");
         if !storage_path.exists() {
@@ -373,6 +402,7 @@ impl StorageService {
             .begin()
             .await
             .map_err(|e| AppError::Internal(format!("Failed to begin transaction: {}", e)))?;
+        Self::apply_rls_context_tx_values(&mut tx, Some(tenant_id), false).await?;
 
         let size = data.len() as i64;
 
@@ -783,6 +813,7 @@ impl StorageService {
             .begin()
             .await
             .map_err(|e| AppError::Internal(format!("Failed to begin transaction: {}", e)))?;
+        Self::apply_rls_context_tx_values(&mut tx, None, true).await?;
 
         #[cfg(feature = "postgres")]
         let record: Option<crate::models::FileRecord> =
@@ -863,6 +894,7 @@ impl StorageService {
             .begin()
             .await
             .map_err(|e| AppError::Internal(format!("Failed to begin transaction: {}", e)))?;
+        Self::apply_rls_context_tx_values(&mut tx, Some(tenant_id), false).await?;
 
         #[cfg(feature = "postgres")]
         let record: Option<crate::models::FileRecord> =

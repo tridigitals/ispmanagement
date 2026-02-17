@@ -33,11 +33,17 @@ pub async fn list_team_members(
         .tenant_id
         .ok_or_else(|| crate::error::AppError::Validation("No tenant ID in token".to_string()))?;
 
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "team", "read")
+        .await?;
+
     let members = state.team_service.list_members(&tenant_id).await?;
     Ok(Json(members))
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct AddMemberDto {
     email: String,
     name: String,
@@ -106,6 +112,7 @@ pub async fn add_team_member(
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateMemberDto {
     role_id: String,
 }

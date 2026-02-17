@@ -68,6 +68,7 @@ async fn list_backups(
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 struct CreateBackupRequest {
     backup_type: String, // "global" or "tenant"
     target_id: Option<String>,

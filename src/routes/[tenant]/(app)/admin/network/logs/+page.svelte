@@ -43,6 +43,8 @@
   let loadingMore = $state(false);
   let ready = $state(false);
   let hasNext = $state(false);
+  let total = $state<number>(-1); // optional; fetched only on filter changes
+  let lastTotalKey = $state('');
 
   const columns = $derived.by(() => [
     { key: 'time', label: $t('admin.network.logs.columns.time') || 'Time', width: '180px' },
@@ -111,19 +113,32 @@
       q: q.trim() || undefined,
     };
 
+    const totalKey = JSON.stringify({
+      routerId: params.routerId || '',
+      level: params.level || '',
+      topic: params.topic || '',
+      q: params.q || '',
+    });
+    const shouldFetchTotal = nextPage === 1 && (totalKey !== lastTotalKey || total < 0);
+
     loadingMore = true;
     try {
       const res = await api.mikrotik.logs.list({
         ...params,
         page: nextPage,
         perPage,
-        includeTotal: false,
+        includeTotal: shouldFetchTotal,
       });
 
       const chunk = res.data || [];
       rows = chunk;
       pageNum = nextPage;
       hasNext = chunk.length >= perPage;
+
+      if (shouldFetchTotal) {
+        total = Number(res.total ?? -1);
+        lastTotalKey = totalKey;
+      }
     } catch (e: any) {
       toast.error(e?.message || e);
       hasNext = false;
@@ -196,10 +211,12 @@
           <Icon name="refresh-cw" size={16} />
           {$t('admin.network.logs.actions.refresh') || 'Refresh'}
         </button>
-        <button class="btn ghost" type="button" onclick={syncSelected} disabled={!routerId || syncing}>
-          <Icon name="download" size={16} />
-          {$t('admin.network.logs.actions.sync_selected') || 'Sync selected router'}
-        </button>
+        {#if routerId}
+          <button class="btn ghost" type="button" onclick={syncSelected} disabled={syncing}>
+            <Icon name="download" size={16} />
+            {$t('admin.network.logs.actions.sync_selected') || 'Sync selected router'}
+          </button>
+        {/if}
         <button class="btn" type="button" onclick={syncAll} disabled={syncing || routers.length === 0}>
           <Icon name="database" size={16} />
           {$t('admin.network.logs.actions.sync_all') || 'Sync all routers'}
@@ -281,7 +298,13 @@
 
       <div class="pager">
         <div class="pager-left">
-          <span class="muted">{rows.length} {$t('common.results') || 'results'}</span>
+          <span class="muted">
+            {rows.length}
+            {#if total >= 0}
+              / {total}
+            {/if}
+            {$t('common.results') || 'results'}
+          </span>
         </div>
         <div class="pager-right">
           <span class="muted">{$t('common.page') || 'Page'} {pageNum}</span>

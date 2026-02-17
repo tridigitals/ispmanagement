@@ -4,10 +4,11 @@
   import { page } from '$app/stores';
   import { t } from 'svelte-i18n';
   import { can } from '$lib/stores/auth';
-  import { api, type PppoeAccountPublic } from '$lib/api/client';
+  import { api, type IspPackageRouterMappingView, type PppoeAccountPublic } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
+  import Select2 from '$lib/components/ui/Select2.svelte';
   import Toggle from '$lib/components/ui/Toggle.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
@@ -49,11 +50,39 @@
   let formAddressPool = $state('');
   let formDisabled = $state(false);
   let formComment = $state('');
+  let formPackageId = $state('');
 
   let profileSuggestions = $state<ProfileSuggestion[]>([]);
   let poolSuggestions = $state<PoolSuggestion[]>([]);
   let loadingRouterMeta = $state(false);
   const routerMetaCache = new Map<string, { profiles: ProfileSuggestion[]; pools: PoolSuggestion[] }>();
+
+  const profileOptions = $derived.by(() => {
+    const base = (profileSuggestions || []).map((p) => ({ label: p.name, value: p.name }));
+    const cur = formRouterProfileName?.trim();
+    if (cur && !base.some((o) => o.value === cur)) return [{ label: cur, value: cur }, ...base];
+    return base;
+  });
+
+  const poolOptions = $derived.by(() => {
+    const base = (poolSuggestions || []).map((p) => ({ label: p.name, value: p.name }));
+    const cur = formAddressPool?.trim();
+    if (cur && !base.some((o) => o.value === cur)) return [{ label: cur, value: cur }, ...base];
+    return base;
+  });
+
+  let routerPackageMappings = $state<IspPackageRouterMappingView[]>([]);
+  const packageOptions = $derived.by(() => {
+    // Show only active mapped packages for selected router
+    const seen = new Set<string>();
+    const out: Array<{ label: string; value: string }> = [];
+    for (const m of routerPackageMappings) {
+      if (!m?.package_id || seen.has(m.package_id)) continue;
+      seen.add(m.package_id);
+      out.push({ label: m.package_name, value: m.package_id });
+    }
+    return out;
+  });
 
   const tenantPrefix = $derived.by(() => {
     const tid = String($page.params.tenant || '');
@@ -64,6 +93,10 @@
   const customerName = (id: string) => customers.find((c) => c.id === id)?.name || '-';
   const routerHost = (id: string) => routers.find((r) => r.id === id)?.host || '';
   const routerPort = (id: string) => routers.find((r) => r.id === id)?.port || 0;
+
+  const routerOptions = $derived.by(() => routers.map((r) => ({ label: r.name, value: r.id })));
+  const customerOptions = $derived.by(() => customers.map((c) => ({ label: c.name, value: c.id })));
+  const locationOptions = $derived.by(() => locations.map((l) => ({ label: l.label, value: l.id })));
 
   const viewRows = $derived.by(() =>
     accounts.filter((a) => {
@@ -184,12 +217,55 @@
     }
   }
 
+  async function loadRouterPackages(routerId: string) {
+    if (!routerId) {
+      routerPackageMappings = [];
+      return;
+    }
+    try {
+      routerPackageMappings = await api.ispPackages.routerMappings.list({ router_id: routerId });
+    } catch {
+      routerPackageMappings = [];
+    }
+  }
+
+  function maybeAutoSelectPackageFromProfile() {
+    const profile = formRouterProfileName?.trim();
+    if (!formRouterId || !profile) return;
+    if (formPackageId) return;
+
+    const matches = routerPackageMappings.filter((m) => (m.router_profile_name || '') === profile);
+    if (matches.length === 1) {
+      formPackageId = matches[0].package_id;
+      applyPackageToForm(formPackageId);
+      return;
+    }
+
+    if (!formAddressPool) {
+      const withPool = matches.find((m) => m.address_pool);
+      if (withPool?.address_pool) formAddressPool = withPool.address_pool;
+    }
+  }
+
+  function applyPackageToForm(pkgId: string) {
+    if (!pkgId) return;
+    const m = routerPackageMappings.find((x) => x.package_id === pkgId);
+    if (!m) return;
+    // Prefill but allow overrides.
+    formRouterProfileName = m.router_profile_name || '';
+    if (m.address_pool) {
+      formAddressPool = m.address_pool;
+      formRemoteAddress = '';
+    }
+  }
+
   function resetForm() {
     formRouterId = '';
     formCustomerId = '';
     formLocationId = '';
     formUsername = '';
     formPassword = '';
+    formPackageId = '';
     formRouterProfileName = '';
     formRemoteAddress = '';
     formAddressPool = '';
@@ -198,6 +274,7 @@
     locations = [];
     profileSuggestions = [];
     poolSuggestions = [];
+    routerPackageMappings = [];
     editRow = null;
   }
 
@@ -223,6 +300,7 @@
     formLocationId = row.location_id;
     formUsername = row.username;
     formPassword = '';
+    formPackageId = row.package_id || '';
     formRouterProfileName = row.router_profile_name || '';
     formRemoteAddress = row.remote_address || '';
     formAddressPool = row.address_pool || '';
@@ -230,7 +308,7 @@
     formComment = row.comment || '';
     showEdit = true;
 
-    await Promise.all([loadLocations(row.customer_id), loadRouterMeta(row.router_id)]);
+    await Promise.all([loadLocations(row.customer_id), loadRouterMeta(row.router_id), loadRouterPackages(row.router_id)]);
   }
 
   async function submitCreate() {
@@ -245,6 +323,7 @@
         location_id: formLocationId,
         username: formUsername.trim(),
         password: formPassword,
+        package_id: formPackageId || null,
         router_profile_name: formRouterProfileName.trim() || null,
         remote_address: formRemoteAddress.trim() || null,
         address_pool: formAddressPool.trim() || null,
@@ -271,6 +350,7 @@
       await api.pppoe.accounts.update(editRow.id, {
         username: formUsername.trim(),
         password: formPassword || undefined,
+        package_id: formPackageId || null,
         router_profile_name: formRouterProfileName.trim() || null,
         remote_address: formRemoteAddress.trim() || null,
         address_pool: formAddressPool.trim() || null,
@@ -529,12 +609,15 @@
 
           <label class="router-filter">
             <span class="label">{$t('admin.network.pppoe.filters.router') || 'Router'}</span>
-            <select class="select" bind:value={routerId} onchange={() => void loadAccounts()}>
-              <option value="">{($t('admin.network.pppoe.filters.all') || 'All') + '...'}</option>
-              {#each routers as r}
-                <option value={r.id}>{r.name}</option>
-              {/each}
-            </select>
+            <Select2
+              bind:value={routerId}
+              options={routerOptions}
+              placeholder={($t('admin.network.pppoe.filters.all') || 'All') + '...'}
+              width="100%"
+              searchPlaceholder={$t('common.search') || 'Search'}
+              noResultsText={$t('common.no_results') || 'No results'}
+              onchange={() => void loadAccounts()}
+            />
           </label>
         </div>
       {/snippet}
@@ -658,40 +741,72 @@
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.pppoe.fields.router') || 'Router'}</span>
-        <select class="input" bind:value={formRouterId} onchange={() => void loadRouterMeta(formRouterId)}>
-          <option value="">{($t('common.select') || 'Select') + '...'}</option>
-          {#each routers as r}
-            <option value={r.id}>{r.name}</option>
-          {/each}
-        </select>
+        <Select2
+          bind:value={formRouterId}
+          options={routerOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+          onchange={() => {
+            // Reset router-scoped selections when router changes
+            formPackageId = '';
+            formRouterProfileName = '';
+            formRemoteAddress = '';
+            formAddressPool = '';
+            void loadRouterMeta(formRouterId);
+            void loadRouterPackages(formRouterId);
+          }}
+        />
       </label>
       <label>
         <span>{$t('admin.customers.pppoe.fields.customer') || 'Customer'}</span>
-        <select
-          class="input"
+        <Select2
           bind:value={formCustomerId}
+          options={customerOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          maxItems={5000}
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
           onchange={() => {
             formLocationId = '';
             void loadLocations(formCustomerId);
           }}
-        >
-          <option value="">{($t('common.select') || 'Select') + '...'}</option>
-          {#each customers as c}
-            <option value={c.id}>{c.name}</option>
-          {/each}
-        </select>
+        />
       </label>
     </div>
+
+    <label>
+      <span>{$t('admin.customers.pppoe.fields.package') || 'Package'}</span>
+      <Select2
+        bind:value={formPackageId}
+        options={packageOptions}
+        placeholder={($t('common.select') || 'Select') + '...'}
+        width="100%"
+        disabled={!formRouterId || packageOptions.length === 0}
+        searchPlaceholder={$t('common.search') || 'Search'}
+        noResultsText={$t('common.no_results') || 'No results'}
+        onchange={() => applyPackageToForm(formPackageId)}
+      />
+      <div class="field-hint">
+        {$t('admin.network.pppoe.form.package_hint') ||
+          'If you select a package, profile/pool will be prefilled for the selected router (you can still override).'}
+      </div>
+    </label>
 
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.pppoe.fields.location') || 'Location'}</span>
-        <select class="input" bind:value={formLocationId} disabled={!formCustomerId}>
-          <option value="">{($t('common.select') || 'Select') + '...'}</option>
-          {#each locations as l}
-            <option value={l.id}>{l.label}</option>
-          {/each}
-        </select>
+        <Select2
+          bind:value={formLocationId}
+          options={locationOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          disabled={!formCustomerId}
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+        />
       </label>
       <label>
         <span>{$t('admin.customers.pppoe.fields.username') || 'Username'}</span>
@@ -706,11 +821,15 @@
       </label>
       <label>
         <span>{$t('admin.customers.pppoe.fields.profile') || 'Profile'}</span>
-        <input
-          class="input"
+        <Select2
           bind:value={formRouterProfileName}
-          list="pppoe-profile-suggestions"
-          placeholder="default / paket-10mbps"
+          options={profileOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          disabled={!formRouterId || profileOptions.length === 0}
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+          onchange={() => maybeAutoSelectPackageFromProfile()}
         />
       </label>
     </div>
@@ -718,11 +837,19 @@
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.pppoe.fields.remote_address') || 'Remote IP'}</span>
-        <input class="input mono" bind:value={formRemoteAddress} placeholder="10.10.10.10" />
+        <input class="input mono" bind:value={formRemoteAddress} placeholder="10.10.10.10" disabled={!formRouterId} />
       </label>
       <label>
         <span>{$t('admin.customers.pppoe.fields.pool') || 'Address pool'}</span>
-        <input class="input" bind:value={formAddressPool} list="pppoe-pool-suggestions" placeholder="pool-pppoe" />
+        <Select2
+          bind:value={formAddressPool}
+          options={poolOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          disabled={!formRouterId || poolOptions.length === 0}
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+        />
       </label>
     </div>
 
@@ -774,30 +901,59 @@
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.pppoe.fields.router') || 'Router'}</span>
-        <select class="input" bind:value={formRouterId} disabled>
-          <option value={formRouterId}>{routerName(formRouterId)}</option>
-        </select>
+        <Select2
+          bind:value={formRouterId}
+          options={routerOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+          onchange={() => {
+            formPackageId = '';
+            formRouterProfileName = '';
+            formRemoteAddress = '';
+            formAddressPool = '';
+            void loadRouterMeta(formRouterId);
+            void loadRouterPackages(formRouterId);
+          }}
+        />
       </label>
       <label>
         <span>{$t('admin.customers.pppoe.fields.customer') || 'Customer'}</span>
-        <select class="input" bind:value={formCustomerId} disabled>
-          <option value={formCustomerId}>{customerName(formCustomerId)}</option>
-        </select>
+        <input class="input" value={customerName(formCustomerId)} disabled />
       </label>
     </div>
 
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.pppoe.fields.location') || 'Location'}</span>
-        <select class="input" bind:value={formLocationId} disabled>
-          <option value={formLocationId}>
-            {locations.find((l) => l.id === formLocationId)?.label ||
-              (formLocationId ? formLocationId.slice(0, 8) + '…' : '—')}
-          </option>
-        </select>
+        <input
+          class="input"
+          value={locations.find((l) => l.id === formLocationId)?.label ||
+            (formLocationId ? formLocationId.slice(0, 8) + '…' : '—')}
+          disabled
+        />
       </label>
       <div></div>
     </div>
+
+    <label>
+      <span>{$t('admin.customers.pppoe.fields.package') || 'Package'}</span>
+      <Select2
+        bind:value={formPackageId}
+        options={packageOptions}
+        placeholder={($t('common.select') || 'Select') + '...'}
+        width="100%"
+        disabled={packageOptions.length === 0}
+        searchPlaceholder={$t('common.search') || 'Search'}
+        noResultsText={$t('common.no_results') || 'No results'}
+        onchange={() => applyPackageToForm(formPackageId)}
+      />
+      <div class="field-hint">
+        {$t('admin.network.pppoe.form.package_hint') ||
+          'If you select a package, profile/pool will be prefilled for the selected router (you can still override).'}
+      </div>
+    </label>
 
     <div class="grid2">
       <label>
@@ -818,7 +974,16 @@
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.pppoe.fields.profile') || 'Profile'}</span>
-        <input class="input" bind:value={formRouterProfileName} list="pppoe-profile-suggestions" />
+        <Select2
+          bind:value={formRouterProfileName}
+          options={profileOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          disabled={!formRouterId || profileOptions.length === 0}
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+          onchange={() => maybeAutoSelectPackageFromProfile()}
+        />
       </label>
       <label>
         <span>{$t('admin.customers.pppoe.fields.remote_address') || 'Remote IP'}</span>
@@ -829,7 +994,15 @@
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.pppoe.fields.pool') || 'Address pool'}</span>
-        <input class="input" bind:value={formAddressPool} list="pppoe-pool-suggestions" placeholder="pool-pppoe" />
+        <Select2
+          bind:value={formAddressPool}
+          options={poolOptions}
+          placeholder={($t('common.select') || 'Select') + '...'}
+          width="100%"
+          disabled={!formRouterId || poolOptions.length === 0}
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+        />
       </label>
       <label>
         <span>{$t('admin.customers.pppoe.fields.comment') || 'Comment'}</span>
@@ -858,18 +1031,6 @@
     </div>
   </div>
 </Modal>
-
-<datalist id="pppoe-profile-suggestions">
-  {#each profileSuggestions as p}
-    <option value={p.name}></option>
-  {/each}
-</datalist>
-
-<datalist id="pppoe-pool-suggestions">
-  {#each poolSuggestions as p}
-    <option value={p.name}></option>
-  {/each}
-</datalist>
 
 <style>
   .hero {
@@ -1257,6 +1418,14 @@
     justify-content: flex-end;
     gap: 0.6rem;
     padding-top: 0.25rem;
+  }
+
+  .field-hint {
+    margin-top: 6px;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.9rem;
+    line-height: 1.35;
   }
 
   .hint {

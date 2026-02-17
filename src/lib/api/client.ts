@@ -97,6 +97,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       list_customers: { method: 'GET', path: '/customers' },
       get_customer: { method: 'GET', path: '/customers/:customerId' },
       create_customer: { method: 'POST', path: '/customers' },
+      create_customer_with_portal: { method: 'POST', path: '/customers/with-portal' },
       update_customer: { method: 'PUT', path: '/customers/:customerId' },
       delete_customer: { method: 'DELETE', path: '/customers/:customerId' },
       list_customer_locations: { method: 'GET', path: '/customers/:customerId/locations' },
@@ -109,6 +110,16 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       remove_customer_portal_user: {
         method: 'DELETE',
         path: '/customers/portal-users/:customerUserId',
+      },
+      list_customer_subscriptions: { method: 'GET', path: '/customers/:customerId/subscriptions' },
+      create_customer_subscription: { method: 'POST', path: '/customers/:customerId/subscriptions' },
+      update_customer_subscription: {
+        method: 'PUT',
+        path: '/customers/subscriptions/:subscriptionId',
+      },
+      delete_customer_subscription: {
+        method: 'DELETE',
+        path: '/customers/subscriptions/:subscriptionId',
       },
       list_my_customer_locations: { method: 'GET', path: '/customers/portal/my-locations' },
       // Settings
@@ -281,6 +292,14 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         method: 'POST',
         path: '/admin/pppoe/routers/:routerId/import',
       },
+
+      // ISP Packages (Tenant admin)
+      list_isp_packages: { method: 'GET', path: '/admin/isp-packages/packages' },
+      create_isp_package: { method: 'POST', path: '/admin/isp-packages/packages' },
+      update_isp_package: { method: 'PUT', path: '/admin/isp-packages/packages/:id' },
+      delete_isp_package: { method: 'DELETE', path: '/admin/isp-packages/packages/:id' },
+      list_isp_package_router_mappings: { method: 'GET', path: '/admin/isp-packages/router-mappings' },
+      upsert_isp_package_router_mapping: { method: 'POST', path: '/admin/isp-packages/router-mappings' },
 
       // Backup
       list_backups: { method: 'GET', path: '/backups' },
@@ -640,6 +659,30 @@ export interface CustomerPortalUser {
   created_at: string;
 }
 
+export interface CustomerSubscription {
+  id: string;
+  tenant_id: string;
+  customer_id: string;
+  location_id: string;
+  package_id: string;
+  router_id: string | null;
+  billing_cycle: 'monthly' | 'yearly' | string;
+  price: number;
+  currency_code: string;
+  status: 'active' | 'suspended' | 'cancelled' | string;
+  starts_at: string | null;
+  ends_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerSubscriptionView extends CustomerSubscription {
+  package_name: string | null;
+  location_label: string | null;
+  router_name: string | null;
+}
+
 export interface PppoeAccountPublic {
   id: string;
   tenant_id: string;
@@ -647,6 +690,7 @@ export interface PppoeAccountPublic {
   customer_id: string;
   location_id: string;
   username: string;
+  package_id: string | null;
   profile_id: string | null;
   router_profile_name: string | null;
   remote_address: string | null;
@@ -657,6 +701,31 @@ export interface PppoeAccountPublic {
   router_secret_id: string | null;
   last_sync_at: string | null;
   last_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IspPackage {
+  id: string;
+  tenant_id: string;
+  name: string;
+  description: string | null;
+  features: string[];
+  is_active: boolean;
+  price_monthly: number;
+  price_yearly: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IspPackageRouterMappingView {
+  id: string;
+  tenant_id: string;
+  router_id: string;
+  package_id: string;
+  package_name: string;
+  router_profile_name: string;
+  address_pool: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -1328,6 +1397,21 @@ export const customers = {
       ...dto,
     }),
 
+  createWithPortal: (dto: {
+    name: string;
+    email?: string | null;
+    phone?: string | null;
+    notes?: string | null;
+    is_active?: boolean;
+    portal_email: string;
+    portal_name?: string | null;
+    portal_password: string;
+  }): Promise<Customer> =>
+    safeInvoke('create_customer_with_portal', {
+      token: getTokenOrThrow(),
+      dto,
+    }),
+
   update: (
     customerId: string,
     dto: {
@@ -1438,6 +1522,71 @@ export const customers = {
       }),
   },
 
+  subscriptions: {
+    list: (
+      customerId: string,
+      params?: { page?: number; per_page?: number },
+    ): Promise<PaginatedResponse<CustomerSubscriptionView>> =>
+      safeInvoke('list_customer_subscriptions', {
+        token: getTokenOrThrow(),
+        customerId,
+        customer_id: customerId,
+        page: params?.page,
+        per_page: params?.per_page,
+      }),
+    create: (
+      customerId: string,
+      dto: {
+        location_id: string;
+        package_id: string;
+        router_id?: string | null;
+        billing_cycle: 'monthly' | 'yearly' | string;
+        price: number;
+        currency_code?: string | null;
+        status?: 'active' | 'suspended' | 'cancelled' | string;
+        starts_at?: string | null;
+        ends_at?: string | null;
+        notes?: string | null;
+      },
+    ): Promise<CustomerSubscription> =>
+      safeInvoke('create_customer_subscription', {
+        token: getTokenOrThrow(),
+        customerId,
+        customer_id: customerId,
+        dto: {
+          customer_id: customerId,
+          ...dto,
+        },
+      }),
+    update: (
+      subscriptionId: string,
+      dto: {
+        location_id?: string;
+        package_id?: string;
+        router_id?: string | null;
+        billing_cycle?: 'monthly' | 'yearly' | string;
+        price?: number;
+        currency_code?: string | null;
+        status?: 'active' | 'suspended' | 'cancelled' | string;
+        starts_at?: string | null;
+        ends_at?: string | null;
+        notes?: string | null;
+      },
+    ): Promise<CustomerSubscription> =>
+      safeInvoke('update_customer_subscription', {
+        token: getTokenOrThrow(),
+        subscriptionId,
+        subscription_id: subscriptionId,
+        dto,
+      }),
+    delete: (subscriptionId: string): Promise<void> =>
+      safeInvoke('delete_customer_subscription', {
+        token: getTokenOrThrow(),
+        subscriptionId,
+        subscription_id: subscriptionId,
+      }),
+  },
+
   portal: {
     myLocations: (): Promise<CustomerLocation[]> =>
       safeInvoke('list_my_customer_locations', { token: getTokenOrThrow() }),
@@ -1465,6 +1614,7 @@ export const pppoe = {
       location_id: string;
       username: string;
       password: string;
+      package_id?: string | null;
       profile_id?: string | null;
       router_profile_name?: string | null;
       remote_address?: string | null;
@@ -1479,6 +1629,7 @@ export const pppoe = {
         location_id: dto.location_id,
         username: dto.username,
         password: dto.password,
+        package_id: dto.package_id ?? null,
         profile_id: dto.profile_id ?? null,
         router_profile_name: dto.router_profile_name ?? null,
         remote_address: dto.remote_address ?? null,
@@ -1492,6 +1643,7 @@ export const pppoe = {
       dto: {
         username?: string;
         password?: string;
+        package_id?: string | null;
         profile_id?: string | null;
         router_profile_name?: string | null;
         remote_address?: string | null;
@@ -1505,6 +1657,7 @@ export const pppoe = {
         id,
         username: dto.username,
         password: dto.password,
+        package_id: dto.package_id ?? undefined,
         profile_id: dto.profile_id ?? undefined,
         router_profile_name: dto.router_profile_name ?? undefined,
         remote_address: dto.remote_address ?? undefined,
@@ -1543,6 +1696,61 @@ export const pppoe = {
         usernames: dto.usernames,
         customer_id: dto.customer_id,
         location_id: dto.location_id,
+      }),
+  },
+};
+
+export const ispPackages = {
+  packages: {
+    list: (params?: { q?: string; page?: number; per_page?: number }): Promise<PaginatedResponse<IspPackage>> =>
+      safeInvoke('list_isp_packages', { token: getTokenOrThrow(), ...(params || {}) }),
+    create: (dto: { name: string; description?: string | null; features?: string[]; is_active?: boolean; price_monthly?: number; price_yearly?: number }): Promise<IspPackage> =>
+      safeInvoke('create_isp_package', {
+        token: getTokenOrThrow(),
+        name: dto.name,
+        description: dto.description ?? null,
+        features: dto.features ?? [],
+        isActive: dto.is_active ?? true,
+        is_active: dto.is_active ?? true,
+        priceMonthly: dto.price_monthly ?? 0,
+        priceYearly: dto.price_yearly ?? 0,
+        price_monthly: dto.price_monthly ?? 0,
+        price_yearly: dto.price_yearly ?? 0,
+      }),
+    update: (id: string, dto: { name?: string; description?: string | null; features?: string[]; is_active?: boolean; price_monthly?: number; price_yearly?: number }): Promise<IspPackage> =>
+      safeInvoke('update_isp_package', {
+        token: getTokenOrThrow(),
+        id,
+        name: dto.name,
+        description: dto.description ?? undefined,
+        features: dto.features,
+        isActive: dto.is_active,
+        is_active: dto.is_active,
+        priceMonthly: dto.price_monthly,
+        priceYearly: dto.price_yearly,
+        price_monthly: dto.price_monthly,
+        price_yearly: dto.price_yearly,
+      }),
+    delete: (id: string): Promise<void> => safeInvoke('delete_isp_package', { token: getTokenOrThrow(), id }),
+  },
+  routerMappings: {
+    list: (params?: { router_id?: string }): Promise<IspPackageRouterMappingView[]> =>
+      safeInvoke('list_isp_package_router_mappings', {
+        token: getTokenOrThrow(),
+        router_id: params?.router_id,
+        routerId: params?.router_id,
+      }),
+    upsert: (dto: { router_id: string; package_id: string; router_profile_name: string; address_pool?: string | null }): Promise<any> =>
+      safeInvoke('upsert_isp_package_router_mapping', {
+        token: getTokenOrThrow(),
+        router_id: dto.router_id,
+        routerId: dto.router_id,
+        package_id: dto.package_id,
+        packageId: dto.package_id,
+        router_profile_name: dto.router_profile_name,
+        routerProfileName: dto.router_profile_name,
+        address_pool: dto.address_pool ?? null,
+        addressPool: dto.address_pool ?? null,
       }),
   },
 };
@@ -2265,6 +2473,7 @@ export const api = {
   team,
   customers,
   pppoe,
+  ispPackages,
   superadmin,
   audit,
   mikrotik,

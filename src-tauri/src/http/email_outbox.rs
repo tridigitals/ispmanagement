@@ -25,6 +25,7 @@ pub struct EmailOutboxStatsQuery {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct BulkIdsRequest {
     pub ids: Vec<String>,
 }

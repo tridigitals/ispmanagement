@@ -65,6 +65,7 @@ impl MikrotikRouter {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CreateMikrotikRouterRequest {
     pub name: String,
     pub host: String,
@@ -78,6 +79,7 @@ pub struct CreateMikrotikRouterRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateMikrotikRouterRequest {
     pub name: Option<String>,
     pub host: Option<String>,

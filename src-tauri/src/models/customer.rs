@@ -119,6 +119,7 @@ impl CustomerUser {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CreateCustomerRequest {
     pub name: String,
     pub email: Option<String>,
@@ -128,6 +129,20 @@ pub struct CreateCustomerRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CreateCustomerWithPortalRequest {
+    pub name: String,
+    pub email: Option<String>,
+    pub phone: Option<String>,
+    pub notes: Option<String>,
+    pub is_active: Option<bool>,
+    pub portal_email: String,
+    pub portal_name: Option<String>,
+    pub portal_password: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateCustomerRequest {
     pub name: Option<String>,
     pub email: Option<String>,
@@ -137,6 +152,7 @@ pub struct UpdateCustomerRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CreateCustomerLocationRequest {
     pub customer_id: String,
     pub label: String,
@@ -152,6 +168,7 @@ pub struct CreateCustomerLocationRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateCustomerLocationRequest {
     pub label: Option<String>,
     pub address_line1: Option<String>,
@@ -166,12 +183,14 @@ pub struct UpdateCustomerLocationRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct AddCustomerPortalUserRequest {
     pub customer_id: String,
     pub user_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CreateCustomerPortalUserRequest {
     pub customer_id: String,
     pub email: String,
@@ -186,4 +205,78 @@ pub struct CustomerPortalUser {
     pub email: String,
     pub name: String,
     pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct CustomerSubscription {
+    pub id: String,
+    pub tenant_id: String,
+    pub customer_id: String,
+    pub location_id: String,
+    pub package_id: String,
+    pub router_id: Option<String>,
+    pub billing_cycle: String, // monthly | yearly
+    #[sqlx(try_from = "f64")]
+    pub price: f64,
+    pub currency_code: String,
+    pub status: String, // active | suspended | cancelled
+    pub starts_at: Option<DateTime<Utc>>,
+    pub ends_at: Option<DateTime<Utc>>,
+    pub notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct CustomerSubscriptionView {
+    pub id: String,
+    pub tenant_id: String,
+    pub customer_id: String,
+    pub location_id: String,
+    pub package_id: String,
+    pub router_id: Option<String>,
+    pub billing_cycle: String,
+    #[sqlx(try_from = "f64")]
+    pub price: f64,
+    pub currency_code: String,
+    pub status: String,
+    pub starts_at: Option<DateTime<Utc>>,
+    pub ends_at: Option<DateTime<Utc>>,
+    pub notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub package_name: Option<String>,
+    pub location_label: Option<String>,
+    pub router_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CreateCustomerSubscriptionRequest {
+    pub customer_id: String,
+    pub location_id: String,
+    pub package_id: String,
+    pub router_id: Option<String>,
+    pub billing_cycle: String,
+    pub price: f64,
+    pub currency_code: Option<String>,
+    pub status: Option<String>,
+    pub starts_at: Option<String>,
+    pub ends_at: Option<String>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateCustomerSubscriptionRequest {
+    pub location_id: Option<String>,
+    pub package_id: Option<String>,
+    pub router_id: Option<String>,
+    pub billing_cycle: Option<String>,
+    pub price: Option<f64>,
+    pub currency_code: Option<String>,
+    pub status: Option<String>,
+    pub starts_at: Option<String>,
+    pub ends_at: Option<String>,
+    pub notes: Option<String>,
 }

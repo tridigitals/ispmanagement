@@ -1,7 +1,7 @@
 use crate::services::{
     AuditService, AuthService, EmailService, NotificationService, PaymentService, PlanService,
     RoleService, SettingsService, StorageService, SystemService, TeamService, UserService,
-    MikrotikService, CustomerService, PppoeService,
+    MikrotikService, CustomerService, PppoeService, IspPackageService,
 };
 use axum::{
     extract::DefaultBodyLimit,
@@ -47,6 +47,7 @@ pub mod websocket;
 pub mod mikrotik;
 pub mod customers;
 pub mod pppoe;
+pub mod isp_packages;
 
 pub use websocket::{WsEvent, WsHub};
 
@@ -81,6 +82,7 @@ pub struct AppState {
     pub mikrotik_service: Arc<MikrotikService>,
     pub customer_service: Arc<CustomerService>,
     pub pppoe_service: Arc<PppoeService>,
+    pub isp_package_service: Arc<IspPackageService>,
     pub backup_service: Arc<crate::services::BackupService>,
     pub ws_hub: Arc<WsHub>,
     pub app_data_dir: PathBuf,
@@ -108,6 +110,7 @@ pub async fn start_server(
     mikrotik_service: MikrotikService,
     customer_service: CustomerService,
     pppoe_service: PppoeService,
+    isp_package_service: IspPackageService,
     backup_service: crate::services::BackupService,
     ws_hub: Arc<WsHub>,
     app_data_dir: PathBuf,
@@ -234,6 +237,7 @@ pub async fn start_server(
         mikrotik_service: Arc::new(mikrotik_service),
         customer_service: Arc::new(customer_service),
         pppoe_service: Arc::new(pppoe_service),
+        isp_package_service: Arc::new(isp_package_service),
         backup_service: Arc::new(backup_service),
         ws_hub,
         app_data_dir,
@@ -464,6 +468,8 @@ pub async fn start_server(
         .nest("/api/customers", customers::router())
         // PPPoE accounts (tenant scoped)
         .nest("/api/admin/pppoe", pppoe::router())
+        // ISP packages + router mapping (tenant scoped)
+        .nest("/api/admin/isp-packages", isp_packages::router())
         // Settings Routes
         .route(
             "/api/settings",

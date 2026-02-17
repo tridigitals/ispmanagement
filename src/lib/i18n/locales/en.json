@@ -125,6 +125,7 @@
     "active": "Active",
     "inactive": "Inactive",
     "all": "All",
+    "add": "Add",
     "global": "Global",
     "na": "—",
     "per_month_short": "/mo",
@@ -390,6 +391,7 @@
     "pppoe": "PPPoE",
     "ppp_profiles": "PPP Profiles",
     "ip_pools": "IP Pools",
+    "packages": "Packages",
     "expand": "Expand sidebar",
     "collapse": "Collapse sidebar",
     "exit": "Exit",
@@ -400,8 +402,7 @@
     "user_view": "User View",
     "admin_panel": "Admin Panel",
     "profile": "Profile",
-    "logout": "Logout"
-    ,
+    "logout": "Logout",
     "sections": {
       "workspace": "Workspace",
       "help": "Help",
@@ -1475,6 +1476,15 @@
       "title": "My Locations",
       "subtitle": "Your service locations. If something looks wrong, contact support.",
       "location": "Location",
+      "source": {
+        "customer": "Customer",
+        "profile": "Profile"
+      },
+      "summary": {
+        "total": "Total locations",
+        "customer": "Customer-linked",
+        "profile": "Profile addresses"
+      },
       "empty": "No locations yet.",
       "empty_hint": "Your admin has not linked your account to a customer location.",
       "toasts": {
@@ -1666,25 +1676,170 @@
   },
   "admin": {
     "settings": {
+      "title": "Global Settings",
+      "subtitle": "Manage application configuration, security, and integrations.",
+      "save_success": "Changes saved successfully",
+      "save_error": "Failed to save settings",
+      "load_error": "Failed to load settings",
+      "reset_button": "Reset",
+      "save_button": "Save Changes",
+      "saving": "Saving...",
+      "toasts": {
+        "load_failed": "Failed to load settings",
+        "logo_uploaded": "Logo uploaded",
+        "logo_upload_failed": "Failed to upload logo",
+        "saved": "Settings saved",
+        "save_failed": "Failed to save settings"
+      },
+      "placeholders": {
+        "custom_domain": "e.g. app.yourcompany.com",
+        "locked": "Locked"
+      },
+      "subtitle_dynamic": "Manage your {tab} settings",
+      "branding": {
+        "custom_domain_help_prefix": "Point your domain's CNAME record to",
+        "custom_domain_help_suffix": "(or configured alias).",
+        "custom_domain_pro_title": "Custom Domain is a Pro Feature",
+        "custom_domain_pro_desc": "Upgrade your plan to use your own domain name."
+      },
+      "security": {
+        "enforce_2fa_desc": "Require all members of this organization to enable 2FA before accessing the dashboard."
+      },
+      "storage": {
+        "select_provider": "Select Storage Provider"
+      },
+      "email": {
+        "provider_label": "Email Delivery Provider",
+        "connection_details": "Connection Details",
+        "queue": {
+          "title": "Delivery Queue & Retry",
+          "desc": "Queue outgoing emails and automatically retry transient failures.",
+          "enabled": "Enable Email Outbox",
+          "enabled_desc": "Recommended for production to prevent lost emails.",
+          "max_attempts": "Max Attempts",
+          "base_delay": "Base Delay (seconds)",
+          "view_outbox": "View Outbox"
+        },
+        "placeholders": {
+          "from_name": "e.g. Acme Support",
+          "from_address": "noreply@yourdomain.com",
+          "smtp_host": "smtp.mailtrap.io",
+          "smtp_port": "587"
+        },
+        "test": {
+          "desc": "Send a test email or verify SMTP connectivity.",
+          "recipient_placeholder": "Enter recipient email",
+          "sending": "Sending...",
+          "send": "Send Test"
+        },
+        "smtp_test": {
+          "button": "Test SMTP",
+          "testing": "Testing...",
+          "ok": "SMTP connection verified",
+          "failed": "SMTP test failed",
+          "hint": "Checks connectivity and auth without sending an email."
+        }
+      },
+      "payment": {
+        "methods_label": "Payment Methods",
+        "midtrans": {
+          "merchant_id": "Merchant ID",
+          "client_key": "Client Key",
+          "server_key": "Server Key"
+        },
+        "manual": {
+          "add_one": "Add One",
+          "instructions_label": "Payment Instructions",
+          "placeholder_instructions": "Please transfer to BCA 1234567890 a/n PT Company...",
+          "bank_accounts": "Bank Accounts",
+          "add_bank": "Add Bank",
+          "bank_form": {
+            "bank_name_label": "Bank Name",
+            "bank_name_placeholder": "Bank Name (e.g. BCA)",
+            "account_number_label": "Account Number",
+            "account_number_placeholder": "Account Number",
+            "account_holder_label": "Account Holder Name",
+            "account_holder_placeholder": "Account Holder Name",
+            "add": "Add",
+            "add_account": "Add Account",
+            "remove_account": "Remove Account"
+          }
+        }
+      },
       "categories": {
-        "network": "Network"
+        "general": "General",
+        "network": "Network",
+        "storage": "Storage",
+        "auth": "Authentication",
+        "security": "Security",
+        "email": "Email",
+        "branding": "Branding & Domain",
+        "payment": "Payments"
       },
       "network": {
         "alerting": {
           "title": "Router Alerting",
-          "desc": "Enable incidents and notifications derived from MikroTik polling.",
-          "email_title": "Email alerts",
-          "email_desc": "Also send email to members who can access Network Routers."
+          "desc": "Enable incidents and notifications derived from MikroTik polling."
         },
         "thresholds": {
           "title": "Thresholds",
           "desc": "Used by NOC filters and by the background poller to open incidents.",
-          "offline_after_secs": "Offline incident after (seconds)",
           "cpu_risk": "CPU risk (%)",
           "cpu_hot": "CPU hot (%)",
           "latency_risk": "Latency risk (ms)",
           "latency_hot": "Latency hot (ms)"
         }
+      },
+      "keys": {
+        "app_name": "App Name",
+        "app_description": "App Description",
+        "app_version": "App Version",
+        "organization_name": "Organization Name",
+        "custom_domain": "Custom Domain",
+        "support_email": "Support Email",
+        "default_locale": "Default Language",
+        "currency_symbol": "Currency Symbol",
+        "maintenance_mode": "Maintenance Mode",
+        "app_logo_path": "App Logo",
+        "storage_provider": "Storage Provider",
+        "storage_local_path": "Local Path",
+        "storage_s3_bucket": "Bucket Name",
+        "storage_s3_region": "Region",
+        "auth_allow_registration": "Allow Registration",
+        "auth_require_email_verification": "Require Email Verification",
+        "auth_jwt_expiry_hours": "JWT Expiry (Hours)",
+        "auth_session_timeout_minutes": "Session Timeout (Minutes)",
+        "auth_password_min_length": "Min Password Length",
+        "auth_password_require_uppercase": "Require Uppercase",
+        "auth_password_require_number": "Require Number",
+        "auth_password_require_special": "Require Special Char",
+        "auth_max_login_attempts": "Max Login Attempts",
+        "auth_lockout_duration_minutes": "Lockout Duration (Minutes)",
+        "auth_logout_all_on_password_change": "Logout All on Password Change",
+        "email_provider": "Email Provider",
+        "email_smtp_host": "SMTP Host",
+        "email_smtp_port": "SMTP Port",
+        "email_smtp_username": "SMTP Username",
+        "email_smtp_password": "SMTP Password",
+        "email_smtp_encryption": "Encryption",
+        "email_api_key": "API Key",
+        "email_from_address": "From Address",
+        "email_from_name": "From Name"
+      },
+      "test_email": {
+        "title": "Test Email Configuration",
+        "description": "Save your changes first, then send a test email to verify your SMTP settings.",
+        "placeholder": "Enter email address",
+        "button": "Send Test Email",
+        "sending": "Sending..."
+      },
+      "sections": {
+        "enforce_2fa": "Enforce Two-Factor Authentication",
+        "configuration": "Configuration",
+        "sender_info": "Sender Information",
+        "test_configuration": "Test Configuration",
+        "midtrans": "Midtrans Payment Gateway",
+        "bank_transfer_manual": "Bank Transfer (Manual)"
       }
     },
     "customers": {
@@ -1715,7 +1870,22 @@
         "active": "Active"
       },
       "new": {
-        "title": "New customer"
+        "title": "New customer",
+        "portal": {
+          "title": "Create portal login",
+          "password": "Password",
+          "password_confirm": "Confirm password",
+          "validation": {
+            "email_required": "Email is required when creating portal login.",
+            "password_min": "Password must be at least 6 characters.",
+            "password_mismatch": "Password confirmation does not match."
+          },
+          "toasts": {
+            "create_failed": "Customer created, but failed to create portal login account.",
+            "create_failed_atomic": "Failed to create portal login account. Customer creation was rolled back.",
+            "create_failed_with_rollback": "Failed to create portal login account and failed to rollback customer creation."
+          }
+        }
       },
       "delete": {
         "title": "Delete customer",
@@ -1729,6 +1899,7 @@
         "overview": "Overview",
         "locations": "Locations",
         "portal": "Portal users",
+        "subscriptions": "Subscriptions",
         "pppoe": "PPPoE"
       },
       "overview": {
@@ -1797,6 +1968,29 @@
           "remove_failed": "Failed to remove portal user: {message}"
         }
       },
+      "subscriptions": {
+        "title": "Subscriptions",
+        "subtitle": "Customer package subscriptions for billing and service assignment.",
+        "empty": "No subscriptions yet.",
+        "new": {
+          "title": "Add subscription"
+        },
+        "edit": {
+          "title": "Edit subscription"
+        },
+        "fields": {
+          "location": "Location",
+          "package": "Package",
+          "router": "Router (optional)",
+          "billing_cycle": "Billing cycle",
+          "price": "Price",
+          "currency": "Currency",
+          "status": "Status",
+          "starts_at": "Starts at",
+          "ends_at": "Ends at",
+          "notes": "Notes"
+        }
+      },
       "pppoe": {
         "title": "PPPoE accounts",
         "subtitle": "Manage PPPoE secrets for this customer (per-router). The database is the source of truth.",
@@ -1816,6 +2010,7 @@
           "location": "Location",
           "username": "Username",
           "password": "Password",
+          "package": "Package",
           "profile": "Profile",
           "remote_address": "Remote IP / Pool",
           "pool": "Address pool",
@@ -1865,191 +2060,63 @@
       }
     },
     "network": {
-      "noc": {
-        "title": "Network NOC",
-        "subtitle": "A quick operational view of all routers: status, health, and traffic.",
-        "search": "Search routers...",
-        "empty": "No routers",
-        "stats": {
-          "total": "Total",
-          "online": "Online",
-          "offline": "Offline",
-          "hot": "Hot"
-        },
-        "tooltips": {
-          "status_all": "Show all routers",
-          "status_online": "Show routers that are currently reachable",
-          "status_offline": "Show routers that are currently unreachable",
-          "risk_any": "No additional risk filtering",
-          "risk_hot": "Critical attention: offline, very high CPU, or very high latency",
-          "risk_latency": "Show routers with high latency",
-          "risk_cpu": "Show routers with high CPU load"
-        },
-        "filters": {
-          "any": "Any",
-          "online": "Online",
-          "offline": "Offline",
-          "hot": "Hot",
-          "latency": "Latency",
-          "cpu": "CPU"
-        },
+      "packages": {
+        "title": "Packages",
+        "subtitle": "Create internet packages and map them to router PPP profiles (per-router).",
+        "search": "Search packages...",
+        "empty": "No packages.",
+        "confirm_delete": "Delete this package?",
         "columns": {
-          "router": "Router",
+          "name": "Name",
           "status": "Status",
-          "health": "Health",
-          "traffic": "Traffic",
-          "latency": "Latency",
-          "seen": "Last Seen"
-        }
-      },
-      "alerts": {
-        "title": "Router Alerts",
-        "subtitle": "Incidents detected from router polling.",
-        "search": "Search alerts...",
-        "empty": "No alerts",
-        "actions": {
-          "toggle": "Toggle active/resolved",
+          "mappings": "Mapped",
+          "price": "Price"
+        },
+        "fields": {
+          "name": "Name",
+          "description": "Description",
+          "features": "Features",
+          "feature_placeholder": "Add feature and press Enter",
+          "features_empty": "No features yet.",
           "active": "Active",
-          "all": "All",
-          "ack": "Acknowledge",
-          "resolve": "Resolve",
-          "snooze_30m": "Snooze 30m"
+          "active_hint": "Inactive packages will be hidden from selection.",
+          "price_monthly": "Monthly price",
+          "price_hint": "Stored in base currency; displayed in your tenant currency when possible.",
+          "price_yearly": "Yearly price",
+          "enable_yearly": "Enable yearly price",
+          "enable_yearly_hint": "Turn on if this package has yearly billing.",
+          "currency_active": "Active currency",
+          "currency_base": "Base currency"
         },
-        "columns": {
-          "alert": "Alert",
-          "type": "Type",
-          "severity": "Severity",
-          "status": "Status",
-          "seen": "Last Seen"
+        "mapping": {
+          "title": "Router Mapping",
+          "package": "Package",
+          "router": "Router",
+          "profile": "Router PPP Profile",
+          "pool": "Address pool (optional)",
+          "inline_title": "Map to router now",
+          "inline_hint": "Optional: prefill router profile/pool for this package (per-router)."
         },
-        "types": {
-          "offline": "Offline",
-          "cpu": "CPU",
-          "latency": "Latency"
-        },
-        "severity": {
-          "info": "Info",
-          "warning": "Warning",
-          "critical": "Critical"
-        },
-        "toasts": {
-          "acked": "Alert acknowledged",
-          "resolved": "Alert resolved",
-          "snoozed": "Router snoozed"
-        }
-      },
-      "logs": {
-        "title": "Router Logs",
-        "subtitle": "Read and store MikroTik logs for troubleshooting and audits.",
-        "search": "Search log message...",
-        "empty": "No logs",
         "actions": {
-          "refresh": "Refresh",
-          "sync_selected": "Sync selected router",
-          "sync_all": "Sync all routers"
+          "add": "Add package",
+          "edit": "Edit package",
+          "map": "Map to router",
+          "add_feature": "Add feature"
         },
-        "filters": {
-          "router": "Router",
-          "all_routers": "All routers",
-          "level": "Level",
-          "all_levels": "All levels",
-          "topic": "Topic"
-        },
-        "columns": {
-          "time": "Time",
-          "router": "Router",
-          "level": "Level",
-          "topics": "Topics",
-          "message": "Message"
+        "tabs": {
+          "details": "Details",
+          "features": "Features"
         },
         "toasts": {
-          "sync_ok": "Log sync completed",
-          "sync_failed": "Failed to sync logs"
+          "created": "Package created",
+          "updated": "Package updated",
+          "mapping_saved": "Mapping saved"
+        },
+        "validation": {
+          "monthly_required": "Monthly price is required and must be greater than 0.",
+          "yearly_required": "Yearly price must be greater than 0 when enabled."
         }
-      }
-    },
-    "roles": {
-      "title": "All Roles",
-      "subtitle": "Manage role definitions and permissions",
-      "count": "roles",
-      "search": "Search roles...",
-      "empty": "No roles found",
-      "permissions_settings": "Permissions Settings",
-      "columns": {
-        "name": "Role Name",
-        "type": "Type",
-        "level": "Level",
-        "permissions": "Permissions"
       },
-      "badges": {
-        "system": "System",
-        "custom": "Custom"
-      },
-      "level_prefix": "Lvl",
-      "permissions": "permissions",
-      "actions": {
-        "create": "Create Role",
-        "edit": "Edit Role",
-        "delete": "Delete Role",
-        "delete_short": "Delete",
-        "save": "Save Role"
-      },
-      "delete": {
-        "title": "Delete Role",
-        "message": "Are you sure you want to permanently delete the role \"{name}\"? All users assigned to this role might lose permissions.",
-        "confirm": "Delete Role"
-      },
-      "placeholders": {
-        "name": "e.g. Editor",
-        "description": "Role description"
-      },
-      "form": {
-        "name_label": "Role Name",
-        "description_label": "Description",
-        "level_label": "Level",
-        "system_name_locked": "System role names cannot be changed"
-      },
-      "toasts": {
-        "created": "Role created successfully",
-        "updated": "Role updated successfully",
-        "deleted": "Role deleted successfully"
-      },
-      "errors": {
-        "save_failed": "Failed to save role",
-        "delete_failed": "Failed to delete role: "
-      }
-    },
-    "support": {
-      "title": "Support Tickets",
-      "subtitle": "Manage tenant support requests",
-      "search": "Search tickets...",
-      "empty": "No tickets",
-      "columns": {
-        "subject": "Subject",
-        "user": "User",
-        "status": "Status",
-        "priority": "Priority",
-        "updated": "Updated",
-        "messages": "Messages"
-      },
-      "panels": {
-        "manage": "Manage",
-        "reply": "Reply"
-      },
-      "fields": {
-        "status": "Status",
-        "priority": "Priority",
-        "assignee": "Assignee",
-        "internal": "Internal note"
-      },
-      "hints": {
-        "assign": "Assignee expects a team member user_id. Leave empty to keep unassigned."
-      },
-      "toasts": {
-        "updated": "Ticket updated"
-      }
-    },
-    "network": {
       "pppoe": {
         "title": "PPPoE",
         "subtitle": "Tenant-wide view of PPPoE accounts across routers.",
@@ -2140,6 +2207,7 @@
           "apply": "Apply to router"
         },
         "form": {
+          "package_hint": "If you select a package, profile/pool will be prefilled for the selected router (you can still override).",
           "disabled_hint": "Disable this PPPoE account (will be applied to router when you click Apply)."
         },
         "toasts": {
@@ -2434,6 +2502,87 @@
         }
       }
     },
+    "roles": {
+      "title": "All Roles",
+      "subtitle": "Manage role definitions and permissions",
+      "count": "roles",
+      "search": "Search roles...",
+      "empty": "No roles found",
+      "permissions_settings": "Permissions Settings",
+      "columns": {
+        "name": "Role Name",
+        "type": "Type",
+        "level": "Level",
+        "permissions": "Permissions"
+      },
+      "badges": {
+        "system": "System",
+        "custom": "Custom"
+      },
+      "level_prefix": "Lvl",
+      "permissions": "permissions",
+      "actions": {
+        "create": "Create Role",
+        "edit": "Edit Role",
+        "delete": "Delete Role",
+        "delete_short": "Delete",
+        "save": "Save Role"
+      },
+      "delete": {
+        "title": "Delete Role",
+        "message": "Are you sure you want to permanently delete the role \"{name}\"? All users assigned to this role might lose permissions.",
+        "confirm": "Delete Role"
+      },
+      "placeholders": {
+        "name": "e.g. Editor",
+        "description": "Role description"
+      },
+      "form": {
+        "name_label": "Role Name",
+        "description_label": "Description",
+        "level_label": "Level",
+        "system_name_locked": "System role names cannot be changed"
+      },
+      "toasts": {
+        "created": "Role created successfully",
+        "updated": "Role updated successfully",
+        "deleted": "Role deleted successfully"
+      },
+      "errors": {
+        "save_failed": "Failed to save role",
+        "delete_failed": "Failed to delete role: "
+      }
+    },
+    "support": {
+      "title": "Support Tickets",
+      "subtitle": "Manage tenant support requests",
+      "search": "Search tickets...",
+      "empty": "No tickets",
+      "columns": {
+        "subject": "Subject",
+        "user": "User",
+        "status": "Status",
+        "priority": "Priority",
+        "updated": "Updated",
+        "messages": "Messages"
+      },
+      "panels": {
+        "manage": "Manage",
+        "reply": "Reply"
+      },
+      "fields": {
+        "status": "Status",
+        "priority": "Priority",
+        "assignee": "Assignee",
+        "internal": "Internal note"
+      },
+      "hints": {
+        "assign": "Assignee expects a team member user_id. Leave empty to keep unassigned."
+      },
+      "toasts": {
+        "updated": "Ticket updated"
+      }
+    },
     "email_outbox": {
       "title": "Email Outbox",
       "subtitle": "Monitor queued and failed emails, and retry delivery.",
@@ -2615,173 +2764,6 @@
       },
       "toasts": {
         "load_failed": "Failed to load invoices"
-      }
-    },
-    "settings": {
-      "title": "Global Settings",
-      "subtitle": "Manage application configuration, security, and integrations.",
-      "save_success": "Changes saved successfully",
-      "save_error": "Failed to save settings",
-      "load_error": "Failed to load settings",
-      "reset_button": "Reset",
-      "save_button": "Save Changes",
-      "saving": "Saving...",
-      "toasts": {
-        "load_failed": "Failed to load settings",
-        "logo_uploaded": "Logo uploaded",
-        "logo_upload_failed": "Failed to upload logo",
-        "saved": "Settings saved",
-        "save_failed": "Failed to save settings"
-      },
-      "placeholders": {
-        "custom_domain": "e.g. app.yourcompany.com",
-        "locked": "Locked"
-      },
-      "subtitle_dynamic": "Manage your {tab} settings",
-      "branding": {
-        "custom_domain_help_prefix": "Point your domain's CNAME record to",
-        "custom_domain_help_suffix": "(or configured alias).",
-        "custom_domain_pro_title": "Custom Domain is a Pro Feature",
-        "custom_domain_pro_desc": "Upgrade your plan to use your own domain name."
-      },
-      "security": {
-        "enforce_2fa_desc": "Require all members of this organization to enable 2FA before accessing the dashboard."
-      },
-      "storage": {
-        "select_provider": "Select Storage Provider"
-      },
-      "email": {
-        "provider_label": "Email Delivery Provider",
-        "connection_details": "Connection Details",
-        "queue": {
-          "title": "Delivery Queue & Retry",
-          "desc": "Queue outgoing emails and automatically retry transient failures.",
-          "enabled": "Enable Email Outbox",
-          "enabled_desc": "Recommended for production to prevent lost emails.",
-          "max_attempts": "Max Attempts",
-          "base_delay": "Base Delay (seconds)",
-          "view_outbox": "View Outbox"
-        },
-        "placeholders": {
-          "from_name": "e.g. Acme Support",
-          "from_address": "noreply@yourdomain.com",
-          "smtp_host": "smtp.mailtrap.io",
-          "smtp_port": "587"
-        },
-        "test": {
-          "desc": "Send a test email or verify SMTP connectivity.",
-          "recipient_placeholder": "Enter recipient email",
-          "sending": "Sending...",
-          "send": "Send Test"
-        },
-        "smtp_test": {
-          "button": "Test SMTP",
-          "testing": "Testing...",
-          "ok": "SMTP connection verified",
-          "failed": "SMTP test failed",
-          "hint": "Checks connectivity and auth without sending an email."
-        }
-      },
-      "payment": {
-        "methods_label": "Payment Methods",
-        "midtrans": {
-          "merchant_id": "Merchant ID",
-          "client_key": "Client Key",
-          "server_key": "Server Key"
-        },
-        "manual": {
-          "add_one": "Add One",
-          "instructions_label": "Payment Instructions",
-          "placeholder_instructions": "Please transfer to BCA 1234567890 a/n PT Company...",
-          "bank_accounts": "Bank Accounts",
-          "add_bank": "Add Bank",
-          "bank_form": {
-            "bank_name_label": "Bank Name",
-            "bank_name_placeholder": "Bank Name (e.g. BCA)",
-            "account_number_label": "Account Number",
-            "account_number_placeholder": "Account Number",
-            "account_holder_label": "Account Holder Name",
-            "account_holder_placeholder": "Account Holder Name",
-            "add": "Add",
-            "add_account": "Add Account",
-            "remove_account": "Remove Account"
-          }
-        }
-      },
-      "categories": {
-        "general": "General",
-        "network": "Network",
-        "storage": "Storage",
-        "auth": "Authentication",
-        "security": "Security",
-        "email": "Email",
-        "branding": "Branding & Domain",
-        "payment": "Payments"
-      },
-      "network": {
-        "alerting": {
-          "title": "Router Alerting",
-          "desc": "Enable incidents and notifications derived from MikroTik polling."
-        },
-        "thresholds": {
-          "title": "Thresholds",
-          "desc": "Used by NOC filters and by the background poller to open incidents.",
-          "cpu_risk": "CPU risk (%)",
-          "cpu_hot": "CPU hot (%)",
-          "latency_risk": "Latency risk (ms)",
-          "latency_hot": "Latency hot (ms)"
-        }
-      },
-      "keys": {
-        "app_name": "App Name",
-        "app_description": "App Description",
-        "app_version": "App Version",
-        "organization_name": "Organization Name",
-        "custom_domain": "Custom Domain",
-        "support_email": "Support Email",
-        "default_locale": "Default Language",
-        "currency_symbol": "Currency Symbol",
-        "maintenance_mode": "Maintenance Mode",
-        "app_logo_path": "App Logo",
-        "storage_provider": "Storage Provider",
-        "storage_local_path": "Local Path",
-        "storage_s3_bucket": "Bucket Name",
-        "storage_s3_region": "Region",
-        "auth_allow_registration": "Allow Registration",
-        "auth_require_email_verification": "Require Email Verification",
-        "auth_jwt_expiry_hours": "JWT Expiry (Hours)",
-        "auth_session_timeout_minutes": "Session Timeout (Minutes)",
-        "auth_password_min_length": "Min Password Length",
-        "auth_password_require_uppercase": "Require Uppercase",
-        "auth_password_require_number": "Require Number",
-        "auth_password_require_special": "Require Special Char",
-        "auth_max_login_attempts": "Max Login Attempts",
-        "auth_lockout_duration_minutes": "Lockout Duration (Minutes)",
-        "auth_logout_all_on_password_change": "Logout All on Password Change",
-        "email_provider": "Email Provider",
-        "email_smtp_host": "SMTP Host",
-        "email_smtp_port": "SMTP Port",
-        "email_smtp_username": "SMTP Username",
-        "email_smtp_password": "SMTP Password",
-        "email_smtp_encryption": "Encryption",
-        "email_api_key": "API Key",
-        "email_from_address": "From Address",
-        "email_from_name": "From Name"
-      },
-      "test_email": {
-        "title": "Test Email Configuration",
-        "description": "Save your changes first, then send a test email to verify your SMTP settings.",
-        "placeholder": "Enter email address",
-        "button": "Send Test Email",
-        "sending": "Sending..."
-      },
-      "sections": {
-        "enforce_2fa": "Enforce Two-Factor Authentication",
-        "configuration": "Configuration",
-        "sender_info": "Sender Information",
-        "test_configuration": "Test Configuration",
-        "midtrans": "Midtrans Payment Gateway",
-        "bank_transfer_manual": "Bank Transfer (Manual)"
       }
     },
     "team": {

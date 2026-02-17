@@ -15,6 +15,7 @@ pub struct IsInstalledResponse {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct InstallRequest {
     admin_name: String,
     admin_email: String,

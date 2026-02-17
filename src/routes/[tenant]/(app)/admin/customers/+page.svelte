@@ -37,6 +37,8 @@
   let createEmail = $state('');
   let createPhone = $state('');
   let createNotes = $state('');
+  let createPortalPassword = $state('');
+  let createPortalPasswordConfirm = $state('');
 
   let showDelete = $state(false);
   let deleting = $state(false);
@@ -81,19 +83,46 @@
 
   async function createCustomer() {
     if (!createName.trim()) return;
+    if (!createEmail.trim()) {
+      toast.error(
+        get(t)('admin.customers.new.portal.validation.email_required') ||
+          'Email wajib diisi jika ingin membuat akun login.',
+      );
+      return;
+    }
+    if (!createPortalPassword || createPortalPassword.length < 6) {
+      toast.error(
+        get(t)('admin.customers.new.portal.validation.password_min') ||
+          'Password minimal 6 karakter.',
+      );
+      return;
+    }
+    if (createPortalPassword !== createPortalPasswordConfirm) {
+      toast.error(
+        get(t)('admin.customers.new.portal.validation.password_mismatch') ||
+          'Konfirmasi password tidak sama.',
+      );
+      return;
+    }
     creating = true;
     try {
-      await api.customers.create({
+      await api.customers.createWithPortal({
         name: createName.trim(),
         email: createEmail.trim() || null,
         phone: createPhone.trim() || null,
         notes: createNotes.trim() || null,
+        portal_email: createEmail.trim(),
+        portal_name: createName.trim(),
+        portal_password: createPortalPassword,
       });
+
       showCreate = false;
       createName = '';
       createEmail = '';
       createPhone = '';
       createNotes = '';
+      createPortalPassword = '';
+      createPortalPasswordConfirm = '';
       page = 0;
       await load();
       toast.success(get(t)('admin.customers.toasts.created') || 'Customer created');
@@ -287,6 +316,18 @@
       <span>{$t('admin.customers.fields.notes') || 'Notes'}</span>
       <textarea class="input" rows="4" bind:value={createNotes}></textarea>
     </label>
+
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.new.portal.password') || 'Password'}</span>
+        <input class="input" type="text" bind:value={createPortalPassword} />
+      </label>
+      <label>
+        <span>{$t('admin.customers.new.portal.password_confirm') || 'Confirm password'}</span>
+        <input class="input" type="text" bind:value={createPortalPasswordConfirm} />
+      </label>
+    </div>
+
     <div class="actions">
       <button class="btn btn-secondary" onclick={() => (showCreate = false)}>
         {$t('common.cancel') || 'Cancel'}
@@ -294,7 +335,14 @@
       <button
         class="btn btn-primary"
         onclick={createCustomer}
-        disabled={creating || !createName.trim()}
+        disabled={
+          creating ||
+          !createName.trim() ||
+          !createEmail.trim() ||
+          !createPortalPassword ||
+          !createPortalPasswordConfirm ||
+          createPortalPassword !== createPortalPasswordConfirm
+        }
       >
         <Icon name="plus" size={16} />
         {$t('common.create') || 'Create'}
@@ -315,6 +363,10 @@
 />
 
 <style>
+  .page-content {
+    padding: 1.25rem 1.5rem 1.5rem;
+  }
+
   .page-header {
     display: flex;
     justify-content: space-between;
@@ -521,6 +573,10 @@
   }
 
   @media (max-width: 900px) {
+    .page-content {
+      padding: 1rem;
+    }
+
     .stats-grid {
       grid-template-columns: 1fr;
     }

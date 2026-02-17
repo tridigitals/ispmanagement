@@ -47,6 +47,7 @@ pub struct PppoeAccount {
     pub username: String,
     #[serde(skip_serializing)]
     pub password_enc: String,
+    pub package_id: Option<String>,
     pub profile_id: Option<String>,
     pub router_profile_name: Option<String>,
     pub remote_address: Option<String>,
@@ -70,6 +71,7 @@ impl PppoeAccount {
         location_id: String,
         username: String,
         password_enc: String,
+        package_id: Option<String>,
         profile_id: Option<String>,
         router_profile_name: Option<String>,
         remote_address: Option<String>,
@@ -86,6 +88,7 @@ impl PppoeAccount {
             location_id,
             username,
             password_enc,
+            package_id,
             profile_id,
             router_profile_name,
             remote_address,
@@ -103,12 +106,14 @@ impl PppoeAccount {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CreatePppoeAccountRequest {
     pub router_id: String,
     pub customer_id: String,
     pub location_id: String,
     pub username: String,
     pub password: String,
+    pub package_id: Option<String>,
     pub profile_id: Option<String>,
     pub router_profile_name: Option<String>,
     pub remote_address: Option<String>,
@@ -118,9 +123,11 @@ pub struct CreatePppoeAccountRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UpdatePppoeAccountRequest {
     pub username: Option<String>,
     pub password: Option<String>,
+    pub package_id: Option<String>,
     pub profile_id: Option<String>,
     pub router_profile_name: Option<String>,
     pub remote_address: Option<String>,
@@ -137,6 +144,7 @@ pub struct PppoeAccountPublic {
     pub customer_id: String,
     pub location_id: String,
     pub username: String,
+    pub package_id: Option<String>,
     pub profile_id: Option<String>,
     pub router_profile_name: Option<String>,
     pub remote_address: Option<String>,
@@ -160,6 +168,7 @@ impl From<PppoeAccount> for PppoeAccountPublic {
             customer_id: a.customer_id,
             location_id: a.location_id,
             username: a.username,
+            package_id: a.package_id,
             profile_id: a.profile_id,
             router_profile_name: a.router_profile_name,
             remote_address: a.remote_address,
@@ -198,6 +207,7 @@ pub struct PppoeImportCandidate {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct PppoeImportFromRouterRequest {
     pub usernames: Vec<String>,
     pub customer_id: Option<String>,
