@@ -1072,10 +1072,10 @@ export const team = {
     safeInvoke('add_team_member', { token: getTokenOrThrow(), email, name, roleId, password }),
 
   updateRole: (memberId: string, roleId: string): Promise<void> =>
-    safeInvoke('update_team_member_role', { token: getTokenOrThrow(), memberId, roleId }),
+    safeInvoke('update_team_member_role', { token: getTokenOrThrow(), id: memberId, memberId, roleId }),
 
   remove: (memberId: string): Promise<void> =>
-    safeInvoke('remove_team_member', { token: getTokenOrThrow(), memberId }),
+    safeInvoke('remove_team_member', { token: getTokenOrThrow(), id: memberId, memberId }),
 };
 
 // Super Admin API

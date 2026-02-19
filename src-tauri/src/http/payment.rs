@@ -276,6 +276,8 @@ struct CreateInvoiceForCustomerSubscriptionBody {
 struct VerifyCustomerPackagePaymentBody {
     status: String,
     rejection_reason: Option<String>,
+    #[serde(default, alias = "invoice_id", alias = "id")]
+    invoice_id: Option<String>,
 }
 
 async fn authorize_invoice_access(
@@ -492,6 +494,16 @@ async fn verify_customer_package_payment(
     require_payment_manage_access(&state, &claims).await?;
 
     let invoice = authorize_invoice_access(&state, &claims, &id).await?;
+    if let Some(invoice_id) = body.invoice_id.as_deref() {
+        if invoice_id != id {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: "Invoice ID mismatch".to_string(),
+                }),
+            ));
+        }
+    }
     let is_customer_package = invoice
         .external_id
         .as_deref()

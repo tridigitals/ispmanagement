@@ -26,6 +26,7 @@ pub struct CreateTenantRequest {
     pub custom_domain: Option<String>,
     pub owner_email: String,
     pub owner_password: String,
+    pub plan_id: Option<String>,
 }
 
 // ...

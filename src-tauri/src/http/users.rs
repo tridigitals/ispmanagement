@@ -18,7 +18,7 @@ use std::net::SocketAddr;
 #[serde(deny_unknown_fields)]
 pub struct ListUsersQuery {
     page: Option<u32>,
-    #[serde(rename = "perPage")]
+    #[serde(rename = "perPage", alias = "per_page")]
     per_page: Option<u32>,
 }
 
@@ -118,7 +118,7 @@ pub struct UpdateUserDto2 {
     email: Option<String>,
     name: Option<String>,
     role: Option<String>,
-    #[serde(rename = "isActive")]
+    #[serde(rename = "isActive", alias = "is_active")]
     is_active: Option<bool>,
 }
 
@@ -203,11 +203,17 @@ pub async fn create_my_address(
     State(state): State<AppState>,
     headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    Json(payload): Json<CreateUserAddressDto>,
+    Json(payload): Json<serde_json::Value>,
 ) -> Result<Json<UserAddress>, crate::error::AppError> {
     let token = extract_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
     let ip = extract_ip(&headers, addr);
+    let dto_value = payload
+        .get("dto")
+        .cloned()
+        .unwrap_or_else(|| payload.clone());
+    let payload: CreateUserAddressDto =
+        serde_json::from_value(dto_value).map_err(|e| crate::error::AppError::Validation(e.to_string()))?;
 
     let address = state
         .user_service
@@ -221,11 +227,17 @@ pub async fn update_my_address(
     headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(address_id): Path<String>,
-    Json(payload): Json<UpdateUserAddressDto>,
+    Json(payload): Json<serde_json::Value>,
 ) -> Result<Json<UserAddress>, crate::error::AppError> {
     let token = extract_token(&headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
     let ip = extract_ip(&headers, addr);
+    let dto_value = payload
+        .get("dto")
+        .cloned()
+        .unwrap_or_else(|| payload.clone());
+    let payload: UpdateUserAddressDto =
+        serde_json::from_value(dto_value).map_err(|e| crate::error::AppError::Validation(e.to_string()))?;
 
     let address = state
         .user_service

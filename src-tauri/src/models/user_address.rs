@@ -64,15 +64,20 @@ impl UserAddress {
 #[serde(deny_unknown_fields)]
 pub struct CreateUserAddressDto {
     pub label: Option<String>,
+    #[serde(alias = "recipient_name")]
     pub recipient_name: Option<String>,
     pub phone: Option<String>,
     pub line1: String,
     pub line2: Option<String>,
     pub city: Option<String>,
     pub state: Option<String>,
+    #[serde(alias = "postal_code")]
     pub postal_code: Option<String>,
+    #[serde(alias = "country_code")]
     pub country_code: Option<String>,
+    #[serde(alias = "is_default_shipping")]
     pub is_default_shipping: Option<bool>,
+    #[serde(alias = "is_default_billing")]
     pub is_default_billing: Option<bool>,
 }
 
@@ -81,14 +86,19 @@ pub struct CreateUserAddressDto {
 #[serde(deny_unknown_fields)]
 pub struct UpdateUserAddressDto {
     pub label: Option<String>,
+    #[serde(alias = "recipient_name")]
     pub recipient_name: Option<String>,
     pub phone: Option<String>,
     pub line1: Option<String>,
     pub line2: Option<String>,
     pub city: Option<String>,
     pub state: Option<String>,
+    #[serde(alias = "postal_code")]
     pub postal_code: Option<String>,
+    #[serde(alias = "country_code")]
     pub country_code: Option<String>,
+    #[serde(alias = "is_default_shipping")]
     pub is_default_shipping: Option<bool>,
+    #[serde(alias = "is_default_billing")]
     pub is_default_billing: Option<bool>,
 }

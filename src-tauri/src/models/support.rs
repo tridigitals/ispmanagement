@@ -67,6 +67,7 @@ pub struct CreateSupportTicketDto {
     pub subject: String,
     pub message: String,
     pub priority: Option<String>, // low|normal|high|urgent
+    #[serde(alias = "attachment_ids")]
     pub attachment_ids: Option<Vec<String>>,
 }
 
@@ -75,7 +76,9 @@ pub struct CreateSupportTicketDto {
 #[serde(deny_unknown_fields)]
 pub struct ReplySupportTicketDto {
     pub message: String,
+    #[serde(alias = "is_internal")]
     pub is_internal: Option<bool>,
+    #[serde(alias = "attachment_ids")]
     pub attachment_ids: Option<Vec<String>>,
 }
 
@@ -85,5 +88,6 @@ pub struct ReplySupportTicketDto {
 pub struct UpdateSupportTicketDto {
     pub status: Option<String>,   // open|pending|closed
     pub priority: Option<String>, // low|normal|high|urgent
+    #[serde(alias = "assigned_to")]
     pub assigned_to: Option<String>,
 }

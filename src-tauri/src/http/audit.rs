@@ -10,7 +10,7 @@ use axum::{
 #[serde(deny_unknown_fields)]
 pub struct AuditLogQuery {
     page: Option<u32>,
-    #[serde(rename = "perPage")]
+    #[serde(rename = "perPage", alias = "per_page")]
     per_page: Option<u32>,
     user_id: Option<String>,
     tenant_id: Option<String>,

@@ -307,8 +307,10 @@ async fn delete_feature(
 // ==================== PLAN FEATURES ====================
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
 struct SetPlanFeatureBody {
+    #[serde(alias = "feature_id")]
     feature_id: String,
     value: String,
 }
@@ -429,8 +431,10 @@ async fn get_subscription(
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
 struct AssignPlanBody {
+    #[serde(alias = "plan_id")]
     plan_id: String,
 }
 

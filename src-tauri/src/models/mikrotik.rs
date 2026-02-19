@@ -72,9 +72,12 @@ pub struct CreateMikrotikRouterRequest {
     pub port: Option<i32>,
     pub username: String,
     pub password: String,
+    #[serde(alias = "useTls")]
     pub use_tls: Option<bool>,
     pub enabled: Option<bool>,
+    #[serde(alias = "maintenanceUntil")]
     pub maintenance_until: Option<DateTime<Utc>>,
+    #[serde(alias = "maintenanceReason")]
     pub maintenance_reason: Option<String>,
 }
 
@@ -87,9 +90,12 @@ pub struct UpdateMikrotikRouterRequest {
     pub username: Option<String>,
     /// If omitted, keep existing password.
     pub password: Option<String>,
+    #[serde(alias = "useTls")]
     pub use_tls: Option<bool>,
     pub enabled: Option<bool>,
+    #[serde(alias = "maintenanceUntil")]
     pub maintenance_until: Option<DateTime<Utc>>,
+    #[serde(alias = "maintenanceReason")]
     pub maintenance_reason: Option<String>,
 }
 

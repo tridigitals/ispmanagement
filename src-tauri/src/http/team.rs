@@ -47,6 +47,7 @@ pub async fn list_team_members(
 pub struct AddMemberDto {
     email: String,
     name: String,
+    #[serde(rename = "roleId", alias = "role_id")]
     role_id: String,
     password: Option<String>,
 }
@@ -114,6 +115,7 @@ pub async fn add_team_member(
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UpdateMemberDto {
+    #[serde(rename = "roleId", alias = "role_id")]
     role_id: String,
 }
 
