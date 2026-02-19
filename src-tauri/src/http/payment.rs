@@ -2,7 +2,7 @@
 
 use crate::http::AppState;
 use crate::models::{BankAccount, CreateBankAccountRequest, Invoice};
-use crate::services::Claims;
+use crate::services::{BulkGenerateInvoicesResult, Claims};
 use axum::{
     extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
@@ -19,6 +19,19 @@ pub fn router() -> Router<AppState> {
         .route("/invoices/all", get(list_all_invoices))
         .route("/fx-rate", get(get_fx_rate))
         .route("/invoices/plan", post(create_invoice_for_plan))
+        .route("/invoices/customer-package", get(list_customer_package_invoices))
+        .route(
+            "/invoices/customer-package/create",
+            post(create_invoice_for_customer_subscription),
+        )
+        .route(
+            "/invoices/customer-package/generate-due",
+            post(generate_due_customer_package_invoices),
+        )
+        .route(
+            "/invoices/{id}/customer-package/verify",
+            post(verify_customer_package_payment),
+        )
         .route("/invoices/{id}", get(get_invoice))
         .route("/invoices/{id}/midtrans", post(pay_invoice_midtrans))
         .route("/invoices/{id}/status", get(check_payment_status))
@@ -251,6 +264,20 @@ struct CreateInvoiceForPlanBody {
     billing_cycle: String,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CreateInvoiceForCustomerSubscriptionBody {
+    subscription_id: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+struct VerifyCustomerPackagePaymentBody {
+    status: String,
+    rejection_reason: Option<String>,
+}
+
 async fn authorize_invoice_access(
     state: &AppState,
     claims: &Claims,
@@ -336,7 +363,7 @@ async fn create_invoice_for_plan(
     };
 
     let desc = format!("{} Plan ({} billing)", plan.name, billing_cycle);
-    let ext_id = format!("{}:{}", body.plan_id, billing_cycle);
+    let ext_id = format!("plan:{}:{}", body.plan_id, billing_cycle);
 
     state
         .payment_service
@@ -362,6 +389,136 @@ async fn get_invoice(
     require_payment_read_access(&state, &claims).await?;
     let invoice = authorize_invoice_access(&state, &claims, &id).await?;
     Ok(Json(invoice))
+}
+
+async fn list_customer_package_invoices(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<Invoice>>, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    require_payment_read_access(&state, &claims).await?;
+    let Some(tenant_id) = claims.tenant_id.as_deref() else {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Tenant context required".to_string(),
+            }),
+        ));
+    };
+
+    state
+        .payment_service
+        .list_customer_package_invoices(tenant_id)
+        .await
+        .map(Json)
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
+}
+
+async fn create_invoice_for_customer_subscription(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(body): Json<CreateInvoiceForCustomerSubscriptionBody>,
+) -> Result<Json<Invoice>, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    require_payment_manage_access(&state, &claims).await?;
+    let tenant_id = claims.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "No tenant context".to_string(),
+            }),
+        )
+    })?;
+
+    state
+        .payment_service
+        .create_invoice_for_customer_subscription(&tenant_id, &body.subscription_id)
+        .await
+        .map(Json)
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
+}
+
+async fn generate_due_customer_package_invoices(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<BulkGenerateInvoicesResult>, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    require_payment_manage_access(&state, &claims).await?;
+    let tenant_id = claims.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "No tenant context".to_string(),
+            }),
+        )
+    })?;
+
+    state
+        .payment_service
+        .generate_due_customer_package_invoices(&tenant_id)
+        .await
+        .map(Json)
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
+}
+
+async fn verify_customer_package_payment(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(body): Json<VerifyCustomerPackagePaymentBody>,
+) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    require_payment_manage_access(&state, &claims).await?;
+
+    let invoice = authorize_invoice_access(&state, &claims, &id).await?;
+    let is_customer_package = invoice
+        .external_id
+        .as_deref()
+        .map(|v| v.starts_with("pkgsub:"))
+        .unwrap_or(false);
+    if !is_customer_package {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Only customer package invoices can be verified here".to_string(),
+            }),
+        ));
+    }
+
+    state
+        .payment_service
+        .verify_payment(&id, &body.status, body.rejection_reason)
+        .await
+        .map(|_| StatusCode::NO_CONTENT)
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
 }
 
 async fn pay_invoice_midtrans(

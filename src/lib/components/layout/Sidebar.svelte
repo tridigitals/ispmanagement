@@ -259,6 +259,12 @@
             href: `${tenantPrefix}/admin/subscription`,
             show: true,
           },
+          {
+            label: $t('sidebar.invoices') || 'Invoices',
+            icon: 'file-text',
+            href: `${tenantPrefix}/admin/invoices`,
+            show: true,
+          },
         ]),
       },
       {

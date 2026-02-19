@@ -1742,6 +1742,14 @@
       },
       "payment": {
         "methods_label": "Payment Methods",
+        "customer_invoice_auto_generate_enabled_label": "Enable automatic customer invoice generation",
+        "customer_invoice_auto_generate_enabled_help": "Runs in background and creates due invoices automatically based on lead days.",
+        "invoice_generation_days_before_due_label": "Generate customer invoice (days before due)",
+        "invoice_generation_days_before_due_help": "Invoices will be generated automatically by bulk process when entering this window.",
+        "customer_invoice_scheduler_interval_minutes_label": "Customer invoice scheduler interval (minutes)",
+        "customer_invoice_scheduler_interval_minutes_help": "How often background worker checks for due customer invoices.",
+        "customer_invoice_last_run_at_label": "Last customer invoice generation run",
+        "customer_invoice_last_run_at_help": "Updated when due invoice generation process runs (manual or automatic).",
         "midtrans": {
           "merchant_id": "Merchant ID",
           "client_key": "Client Key",
@@ -2764,6 +2772,93 @@
       },
       "toasts": {
         "load_failed": "Failed to load invoices"
+      }
+    },
+    "package_invoices": {
+      "statuses": {
+        "pending": "Pending",
+        "verification_pending": "Verification pending",
+        "paid": "Paid",
+        "failed": "Failed"
+      },
+      "list": {
+        "title": "Customer Package Invoices",
+        "subtitle": "Generate and manage invoices for customer internet packages.",
+        "search_placeholder": "Search customer package invoices...",
+        "columns": {
+          "invoice_number": "Invoice #",
+          "description": "Description",
+          "amount": "Amount",
+          "status": "Status",
+          "due_date": "Due Date"
+        },
+        "fields": {
+          "select_customer": "Select customer",
+          "select_subscription": "Select subscription"
+        },
+        "actions": {
+          "view_details": "View Details",
+          "generate_invoice": "Generate Invoice",
+          "creating": "Creating...",
+          "generate_due_bulk": "Generate Due Invoices",
+          "bulk_generating": "Generating..."
+        },
+        "filters": {
+          "all_status": "All status",
+          "pending": "Pending",
+          "verification_pending": "Verification pending",
+          "paid": "Paid",
+          "failed": "Failed",
+          "created_from": "Created from",
+          "created_to": "Created to",
+          "clear": "Clear"
+        },
+        "toasts": {
+          "load_failed": "Failed to load customer package invoices",
+          "load_subscriptions_failed": "Failed to load customer subscriptions",
+          "created": "Customer package invoice created",
+          "create_failed": "Failed to create invoice",
+          "bulk_generated": "Bulk generated",
+          "bulk_generate_failed": "Failed to generate due invoices"
+        }
+      },
+      "detail": {
+        "back": "Back to Invoices",
+        "loading": "Loading invoice...",
+        "invoice_prefix": "Invoice #",
+        "labels": {
+          "amount": "Amount",
+          "due_date": "Due Date",
+          "created": "Created",
+          "updated": "Updated"
+        },
+        "actions": {
+          "pay_now": "Pay Now",
+          "check_status": "Check Status",
+          "checking": "Checking...",
+          "processing": "Processing...",
+          "mark_paid": "Mark Paid",
+          "mark_failed": "Mark Failed",
+          "open_payment_page": "Open Payment Page"
+        },
+        "confirm": {
+          "mark_paid_title": "Mark Invoice as Paid",
+          "mark_failed_title": "Mark Invoice as Failed",
+          "mark_paid_message": "This will set the invoice status to paid.",
+          "mark_failed_message": "This will set the invoice status to failed.",
+          "mark_paid_confirm": "Mark Paid",
+          "mark_failed_confirm": "Mark Failed"
+        },
+        "errors": {
+          "not_customer_package": "Invoice is not a customer package invoice",
+          "load_failed": "Failed to load invoice",
+          "check_failed": "Failed to check status",
+          "verify_failed": "Failed to verify invoice"
+        },
+        "toasts": {
+          "status_updated": "Status updated",
+          "marked": "Invoice marked as"
+        }
       }
     },
     "team": {

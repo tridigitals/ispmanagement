@@ -14,6 +14,9 @@ pub struct AuditLogQuery {
     per_page: Option<u32>,
     user_id: Option<String>,
     tenant_id: Option<String>,
+    customer_id: Option<String>,
+    resource: Option<String>,
+    resource_id: Option<String>,
     action: Option<String>,
     date_from: Option<String>, // Query params are strings, we need to parse dates? Axum handles parsing if type is valid, but ISO strings might need handling. better to verify.
     // If we use AuditLogFilter directly, we need to make sure serde parses it correctly from Query.
@@ -44,6 +47,9 @@ impl From<AuditLogQuery> for crate::models::AuditLogFilter {
             per_page: val.per_page,
             user_id: val.user_id,
             tenant_id: val.tenant_id,
+            customer_id: val.customer_id,
+            resource: val.resource,
+            resource_id: val.resource_id,
             action: val.action,
             date_from,
             date_to,

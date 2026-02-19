@@ -4,13 +4,23 @@ use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{BankAccount, CreateBankAccountRequest, Invoice};
 use base64::{engine::general_purpose, Engine as _};
-use chrono::Utc;
+use chrono::{Datelike, Duration, Months, Utc};
 use reqwest::Client;
+use serde::Serialize;
 use serde_json::json;
 use sha2::{Digest, Sha512};
 use uuid::Uuid;
 
 use crate::services::NotificationService;
+
+const CUSTOMER_PACKAGE_INVOICE_PREFIX: &str = "pkgsub:";
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BulkGenerateInvoicesResult {
+    pub created_count: u32,
+    pub skipped_count: u32,
+    pub failed_count: u32,
+}
 
 #[derive(Clone)]
 pub struct PaymentService {
@@ -26,6 +36,23 @@ impl PaymentService {
             http_client: Client::new(),
             notification_service,
         }
+    }
+
+    pub fn start_customer_invoice_scheduler(&self) {
+        let svc = self.clone();
+        tauri::async_runtime::spawn(async move {
+            loop {
+                if let Err(e) = svc
+                    .generate_due_customer_package_invoices_for_all_tenants()
+                    .await
+                {
+                    tracing::warn!("customer invoice scheduler failed: {}", e);
+                }
+                let interval_minutes = svc.resolve_scheduler_interval_minutes().await;
+                let sleep_secs = (interval_minutes.max(5) as u64) * 60;
+                tokio::time::sleep(std::time::Duration::from_secs(sleep_secs)).await;
+            }
+        });
     }
 
     // ==================== INVOICES ====================
@@ -180,7 +207,10 @@ impl PaymentService {
                     currency_code, base_currency_code,
                     COALESCE(fx_rate, 1.0)::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
                     status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
-                FROM invoices WHERE tenant_id = $1 ORDER BY created_at DESC
+                FROM invoices
+                WHERE tenant_id = $1
+                  AND (external_id IS NULL OR external_id NOT LIKE 'pkgsub:%')
+                ORDER BY created_at DESC
                 "#
             )
             .bind(tid)
@@ -194,7 +224,9 @@ impl PaymentService {
                     currency_code, base_currency_code,
                     COALESCE(fx_rate, 1.0)::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
                     status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
-                FROM invoices ORDER BY created_at DESC
+                FROM invoices
+                WHERE external_id IS NULL OR external_id NOT LIKE 'pkgsub:%'
+                ORDER BY created_at DESC
                 "#
             )
             .fetch_all(&self.pool).await
@@ -203,19 +235,502 @@ impl PaymentService {
         #[cfg(feature = "sqlite")]
         let invoices = if let Some(tid) = tenant_id {
             sqlx::query_as::<_, Invoice>(
-                "SELECT * FROM invoices WHERE tenant_id = ? ORDER BY created_at DESC",
+                "SELECT * FROM invoices WHERE tenant_id = ? AND (external_id IS NULL OR external_id NOT LIKE 'pkgsub:%') ORDER BY created_at DESC",
             )
             .bind(tid)
             .fetch_all(&self.pool)
             .await
         } else {
-            sqlx::query_as::<_, Invoice>("SELECT * FROM invoices ORDER BY created_at DESC")
-                .fetch_all(&self.pool)
-                .await
+            sqlx::query_as::<_, Invoice>(
+                "SELECT * FROM invoices WHERE external_id IS NULL OR external_id NOT LIKE 'pkgsub:%' ORDER BY created_at DESC",
+            )
+            .fetch_all(&self.pool)
+            .await
         }
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
         Ok(invoices)
+    }
+
+    pub async fn list_customer_package_invoices(&self, tenant_id: &str) -> AppResult<Vec<Invoice>> {
+        #[cfg(feature = "postgres")]
+        let invoices = sqlx::query_as::<_, Invoice>(
+            r#"
+            SELECT
+                id, tenant_id, invoice_number,
+                amount::FLOAT8 as amount,
+                currency_code, base_currency_code,
+                COALESCE(fx_rate, 1.0)::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
+                status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
+            FROM invoices
+            WHERE tenant_id = $1 AND external_id LIKE $2
+            ORDER BY created_at DESC
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(format!("{}%", CUSTOMER_PACKAGE_INVOICE_PREFIX))
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let invoices = sqlx::query_as::<_, Invoice>(
+            "SELECT * FROM invoices WHERE tenant_id = ? AND external_id LIKE ? ORDER BY created_at DESC",
+        )
+        .bind(tenant_id)
+        .bind(format!("{}%", CUSTOMER_PACKAGE_INVOICE_PREFIX))
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(invoices)
+    }
+
+    pub async fn create_invoice_for_customer_subscription(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+    ) -> AppResult<Invoice> {
+        self.create_invoice_for_customer_subscription_at(tenant_id, subscription_id, Utc::now())
+            .await
+    }
+
+    async fn create_invoice_for_customer_subscription_at(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        period_ref: chrono::DateTime<chrono::Utc>,
+    ) -> AppResult<Invoice> {
+        #[cfg(feature = "postgres")]
+        let row: Option<(
+            String,
+            String,
+            String,
+            f64,
+            Option<chrono::DateTime<chrono::Utc>>,
+            Option<chrono::DateTime<chrono::Utc>>,
+        )> =
+            sqlx::query_as(
+            r#"
+            SELECT
+                c.name AS customer_name,
+                COALESCE(p.name, 'Package') AS package_name,
+                cs.billing_cycle,
+                cs.price::FLOAT8 AS price,
+                cs.starts_at,
+                cs.ends_at
+            FROM customer_subscriptions cs
+            INNER JOIN customers c ON c.id = cs.customer_id AND c.tenant_id = cs.tenant_id
+            LEFT JOIN isp_packages p ON p.id = cs.package_id AND p.tenant_id = cs.tenant_id
+            WHERE cs.id = $1 AND cs.tenant_id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(subscription_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let row: Option<(
+            String,
+            String,
+            String,
+            f64,
+            Option<chrono::DateTime<chrono::Utc>>,
+            Option<chrono::DateTime<chrono::Utc>>,
+        )> =
+            sqlx::query_as(
+            r#"
+            SELECT
+                c.name AS customer_name,
+                COALESCE(p.name, 'Package') AS package_name,
+                cs.billing_cycle,
+                cs.price AS price,
+                cs.starts_at,
+                cs.ends_at
+            FROM customer_subscriptions cs
+            INNER JOIN customers c ON c.id = cs.customer_id AND c.tenant_id = cs.tenant_id
+            LEFT JOIN isp_packages p ON p.id = cs.package_id AND p.tenant_id = cs.tenant_id
+            WHERE cs.id = ? AND cs.tenant_id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(subscription_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let (customer_name, package_name, billing_cycle, price, starts_at, ends_at) = row
+            .ok_or_else(|| AppError::NotFound("Customer subscription not found".to_string()))?;
+        if let Some(ends) = ends_at {
+            if period_ref > ends {
+                return Err(AppError::Validation("Subscription already ended".to_string()));
+            }
+        }
+
+        let period_key =
+            Self::billing_period_key(&billing_cycle, starts_at.as_ref(), period_ref)?;
+        let external_id = format!(
+            "{}{}:{}",
+            CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id, period_key
+        );
+
+        #[cfg(feature = "postgres")]
+        let exists_current_period: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+                SELECT 1
+                FROM invoices
+                WHERE tenant_id = $1
+                  AND external_id = $2
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&external_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let exists_current_period: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+                SELECT 1
+                FROM invoices
+                WHERE tenant_id = ?
+                  AND external_id = ?
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&external_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        if exists_current_period {
+            return Err(AppError::Validation(
+                "Invoice for current billing period already exists".to_string(),
+            ));
+        }
+
+        let description = format!(
+            "Customer {} - {} ({} billing, period {})",
+            customer_name, package_name, billing_cycle, period_key
+        );
+
+        self.create_invoice(tenant_id, price, Some(description), Some(external_id))
+            .await
+    }
+
+    pub async fn generate_due_customer_package_invoices(
+        &self,
+        tenant_id: &str,
+    ) -> AppResult<BulkGenerateInvoicesResult> {
+        let lead_raw = match self
+            .get_setting_value(Some(tenant_id), "customer_invoice_generate_days_before_due")
+            .await
+        {
+            Some(v) => Some(v),
+            None => self
+                .get_setting_value(None, "customer_invoice_generate_days_before_due")
+                .await,
+        };
+        let lead_days = lead_raw
+            .and_then(|v| v.parse::<i64>().ok())
+            .map(|v| v.clamp(0, 60))
+            .unwrap_or(7);
+        let lead_duration = Duration::days(lead_days);
+        let now = Utc::now();
+
+        #[cfg(feature = "postgres")]
+        let subscriptions: Vec<(
+            String,
+            String,
+            Option<chrono::DateTime<chrono::Utc>>,
+            Option<chrono::DateTime<chrono::Utc>>,
+        )> = sqlx::query_as(
+            r#"
+            SELECT cs.id, cs.billing_cycle, cs.starts_at, cs.ends_at
+            FROM customer_subscriptions cs
+            WHERE cs.tenant_id = $1
+              AND cs.status = 'active'
+              AND (cs.starts_at IS NULL OR cs.starts_at <= NOW())
+              AND (cs.ends_at IS NULL OR cs.ends_at >= NOW())
+            ORDER BY cs.created_at ASC
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let subscriptions: Vec<(
+            String,
+            String,
+            Option<chrono::DateTime<chrono::Utc>>,
+            Option<chrono::DateTime<chrono::Utc>>,
+        )> = sqlx::query_as(
+            r#"
+            SELECT cs.id, cs.billing_cycle, cs.starts_at, cs.ends_at
+            FROM customer_subscriptions cs
+            WHERE cs.tenant_id = ?
+              AND cs.status = 'active'
+              AND (cs.starts_at IS NULL OR cs.starts_at <= ?)
+              AND (cs.ends_at IS NULL OR cs.ends_at >= ?)
+            ORDER BY cs.created_at ASC
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(now.to_rfc3339())
+        .bind(now.to_rfc3339())
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let mut created_count = 0_u32;
+        let mut skipped_count = 0_u32;
+        let mut failed_count = 0_u32;
+
+        for (subscription_id, billing_cycle, starts_at, ends_at) in subscriptions {
+            if let Some(next_renewal) = Self::next_renewal_at(&billing_cycle, starts_at.as_ref(), now)? {
+                if now < (next_renewal - lead_duration) {
+                    skipped_count += 1;
+                    continue;
+                }
+                if let Some(ends) = ends_at {
+                    if next_renewal > ends {
+                        skipped_count += 1;
+                        continue;
+                    }
+                }
+                match self
+                    .create_invoice_for_customer_subscription_at(tenant_id, &subscription_id, next_renewal)
+                    .await
+                {
+                    Ok(_) => created_count += 1,
+                    Err(AppError::Validation(_)) => skipped_count += 1,
+                    Err(_) => failed_count += 1,
+                }
+                continue;
+            }
+
+            match self
+                .create_invoice_for_customer_subscription_at(tenant_id, &subscription_id, now)
+                .await
+            {
+                Ok(_) => created_count += 1,
+                Err(AppError::Validation(_)) => skipped_count += 1,
+                Err(_) => failed_count += 1,
+            }
+        }
+
+        let _ = self
+            .upsert_tenant_setting(
+                tenant_id,
+                "customer_invoice_last_run_at",
+                &now.to_rfc3339(),
+                "Last customer invoice generation run timestamp (UTC)",
+            )
+            .await;
+
+        Ok(BulkGenerateInvoicesResult {
+            created_count,
+            skipped_count,
+            failed_count,
+        })
+    }
+
+    pub async fn generate_due_customer_package_invoices_for_all_tenants(
+        &self,
+    ) -> AppResult<BulkGenerateInvoicesResult> {
+        #[cfg(feature = "postgres")]
+        let tenant_ids: Vec<String> =
+            sqlx::query_scalar("SELECT id FROM tenants WHERE is_active = true")
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let tenant_ids: Vec<String> =
+            sqlx::query_scalar("SELECT id FROM tenants WHERE is_active = 1")
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let mut created_count = 0_u32;
+        let mut skipped_count = 0_u32;
+        let mut failed_count = 0_u32;
+
+        for tenant_id in tenant_ids {
+            let enabled = match self
+                .get_setting_value(Some(&tenant_id), "customer_invoice_auto_generate_enabled")
+                .await
+            {
+                Some(v) => v == "true",
+                None => self
+                    .get_setting_value(None, "customer_invoice_auto_generate_enabled")
+                    .await
+                    .map(|v| v == "true")
+                    .unwrap_or(true),
+            };
+            if !enabled {
+                continue;
+            }
+
+            match self.generate_due_customer_package_invoices(&tenant_id).await {
+                Ok(res) => {
+                    created_count += res.created_count;
+                    skipped_count += res.skipped_count;
+                    failed_count += res.failed_count;
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "customer invoice scheduler tenant {} failed: {}",
+                        tenant_id,
+                        e
+                    );
+                    failed_count += 1;
+                }
+            }
+        }
+
+        Ok(BulkGenerateInvoicesResult {
+            created_count,
+            skipped_count,
+            failed_count,
+        })
+    }
+
+    async fn resolve_scheduler_interval_minutes(&self) -> i64 {
+        let default_global = self
+            .get_setting_value(None, "customer_invoice_scheduler_interval_minutes")
+            .await
+            .and_then(|v| v.parse::<i64>().ok())
+            .map(|v| v.clamp(5, 1440))
+            .unwrap_or(60);
+
+        #[cfg(feature = "postgres")]
+        let tenant_values: Vec<String> = sqlx::query_scalar(
+            r#"
+            SELECT s.value
+            FROM settings s
+            INNER JOIN tenants t ON t.id = s.tenant_id
+            WHERE s.key = 'customer_invoice_scheduler_interval_minutes'
+              AND t.is_active = true
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .unwrap_or_default();
+
+        #[cfg(feature = "sqlite")]
+        let tenant_values: Vec<String> = sqlx::query_scalar(
+            r#"
+            SELECT s.value
+            FROM settings s
+            INNER JOIN tenants t ON t.id = s.tenant_id
+            WHERE s.key = 'customer_invoice_scheduler_interval_minutes'
+              AND t.is_active = 1
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .unwrap_or_default();
+
+        tenant_values
+            .into_iter()
+            .filter_map(|v| v.parse::<i64>().ok())
+            .map(|v| v.clamp(5, 1440))
+            .min()
+            .unwrap_or(default_global)
+    }
+
+    async fn upsert_tenant_setting(
+        &self,
+        tenant_id: &str,
+        key: &str,
+        value: &str,
+        description: &str,
+    ) -> AppResult<()> {
+        let now = Utc::now();
+
+        #[cfg(feature = "postgres")]
+        {
+            let rows = sqlx::query(
+                "UPDATE settings SET value = $1, description = $2, updated_at = $3 WHERE tenant_id = $4 AND key = $5",
+            )
+            .bind(value)
+            .bind(description)
+            .bind(now)
+            .bind(tenant_id)
+            .bind(key)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .rows_affected();
+
+            if rows == 0 {
+                sqlx::query(
+                    r#"
+                    INSERT INTO settings (id, tenant_id, key, value, description, created_at, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, $6)
+                    "#,
+                )
+                .bind(Uuid::new_v4().to_string())
+                .bind(tenant_id)
+                .bind(key)
+                .bind(value)
+                .bind(description)
+                .bind(now)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+            }
+        }
+
+        #[cfg(feature = "sqlite")]
+        {
+            let now_s = now.to_rfc3339();
+            let rows = sqlx::query(
+                "UPDATE settings SET value = ?, description = ?, updated_at = ? WHERE tenant_id = ? AND key = ?",
+            )
+            .bind(value)
+            .bind(description)
+            .bind(&now_s)
+            .bind(tenant_id)
+            .bind(key)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .rows_affected();
+
+            if rows == 0 {
+                sqlx::query(
+                    r#"
+                    INSERT INTO settings (id, tenant_id, key, value, description, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    "#,
+                )
+                .bind(Uuid::new_v4().to_string())
+                .bind(tenant_id)
+                .bind(key)
+                .bind(value)
+                .bind(description)
+                .bind(&now_s)
+                .bind(&now_s)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+            }
+        }
+
+        Ok(())
     }
 
     /// Initiate Midtrans Payment (Get Snap Token)
@@ -628,23 +1143,48 @@ impl PaymentService {
                 "DEBUG: Invoice {} is PAID. External ID: {:?}",
                 invoice.invoice_number, invoice.external_id
             );
-            // external_id stores `plan_id:billing_cycle`
+            // external_id stores either:
+            // - "pkgsub:{subscription_id}" for customer package invoices
+            // - "plan:{plan_id}:{billing_cycle}" for SaaS plan invoices
+            // - legacy "{plan_id}:{billing_cycle}" for old SaaS plan invoices
             if let Some(ext_id) = &invoice.external_id {
-                let parts: Vec<&str> = ext_id.split(':').collect();
-                if parts.len() == 2 {
-                    let plan_id = parts[0];
-                    let cycle = parts[1];
+                if ext_id.starts_with(CUSTOMER_PACKAGE_INVOICE_PREFIX) {
                     println!(
-                        "DEBUG: Activating subscription for Tenant {}: Plan={}, Cycle={}",
-                        invoice.tenant_id, plan_id, cycle
+                        "DEBUG: Skipping SaaS subscription activation for customer package invoice {}",
+                        invoice.invoice_number
                     );
-                    self.activate_subscription(&invoice.tenant_id, plan_id, cycle)
-                        .await?;
+                } else if let Some(rest) = ext_id.strip_prefix("plan:") {
+                    let parts: Vec<&str> = rest.split(':').collect();
+                    if parts.len() == 2 {
+                        let plan_id = parts[0];
+                        let cycle = parts[1];
+                        println!(
+                            "DEBUG: Activating subscription for Tenant {}: Plan={}, Cycle={}",
+                            invoice.tenant_id, plan_id, cycle
+                        );
+                        self.activate_subscription(&invoice.tenant_id, plan_id, cycle)
+                            .await?;
+                    }
                 } else {
-                    println!("DEBUG: Activating subscription (fallback) for Tenant {}: Plan={}, Cycle=monthly", invoice.tenant_id, ext_id);
-                    // Fallback for legacy records
-                    self.activate_subscription(&invoice.tenant_id, ext_id, "monthly")
-                        .await?;
+                    let parts: Vec<&str> = ext_id.split(':').collect();
+                    if parts.len() == 2 {
+                        let plan_id = parts[0];
+                        let cycle = parts[1];
+                        println!(
+                            "DEBUG: Activating subscription for Tenant {}: Plan={}, Cycle={}",
+                            invoice.tenant_id, plan_id, cycle
+                        );
+                        self.activate_subscription(&invoice.tenant_id, plan_id, cycle)
+                            .await?;
+                    } else {
+                        println!(
+                            "DEBUG: Activating subscription (fallback) for Tenant {}: Plan={}, Cycle=monthly",
+                            invoice.tenant_id, ext_id
+                        );
+                        // Fallback for legacy records
+                        self.activate_subscription(&invoice.tenant_id, ext_id, "monthly")
+                            .await?;
+                    }
                 }
             } else {
                 println!(
@@ -1036,6 +1576,80 @@ impl PaymentService {
         let d = self.currency_decimals(currency);
         let factor = 10_f64.powi(d);
         (amount * factor).round() / factor
+    }
+
+    fn billing_period_key(
+        billing_cycle: &str,
+        starts_at: Option<&chrono::DateTime<chrono::Utc>>,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> AppResult<String> {
+        let start_day = starts_at.map(|d| d.day()).unwrap_or(1);
+        let start_month = starts_at.map(|d| d.month()).unwrap_or(1);
+        let cycle = billing_cycle.trim().to_ascii_lowercase();
+
+        if cycle == "monthly" {
+            let mut year = now.year();
+            let mut month = now.month();
+            if now.day() < start_day {
+                if month == 1 {
+                    month = 12;
+                    year -= 1;
+                } else {
+                    month -= 1;
+                }
+            }
+            return Ok(format!("{:04}-{:02}", year, month));
+        }
+
+        if cycle == "yearly" {
+            let mut year = now.year();
+            if now.month() < start_month || (now.month() == start_month && now.day() < start_day) {
+                year -= 1;
+            }
+            return Ok(format!("{:04}", year));
+        }
+
+        Err(AppError::Validation(
+            "billing_cycle must be monthly or yearly".to_string(),
+        ))
+    }
+
+    fn next_renewal_at(
+        billing_cycle: &str,
+        starts_at: Option<&chrono::DateTime<chrono::Utc>>,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> AppResult<Option<chrono::DateTime<chrono::Utc>>> {
+        let Some(anchor) = starts_at.copied() else {
+            return Ok(None);
+        };
+        if now < anchor {
+            return Ok(Some(anchor));
+        }
+
+        let cycle = billing_cycle.trim().to_ascii_lowercase();
+        let mut cursor = anchor;
+
+        if cycle == "monthly" {
+            while cursor <= now {
+                cursor = cursor
+                    .checked_add_months(Months::new(1))
+                    .ok_or_else(|| AppError::Internal("Failed to compute monthly renewal".to_string()))?;
+            }
+            return Ok(Some(cursor));
+        }
+
+        if cycle == "yearly" {
+            while cursor <= now {
+                cursor = cursor
+                    .checked_add_months(Months::new(12))
+                    .ok_or_else(|| AppError::Internal("Failed to compute yearly renewal".to_string()))?;
+            }
+            return Ok(Some(cursor));
+        }
+
+        Err(AppError::Validation(
+            "billing_cycle must be monthly or yearly".to_string(),
+        ))
     }
 
     pub async fn get_fx_rate(

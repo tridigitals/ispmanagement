@@ -8,9 +8,9 @@
   import { can } from '$lib/stores/auth';
   import {
     api,
+    type AuditLog,
     type Customer,
     type CustomerLocation,
-    type CustomerPortalUser,
     type CustomerSubscriptionView,
     type IspPackageRouterMappingView,
   } from '$lib/api/client';
@@ -26,7 +26,7 @@
 
   const customerId = $derived(String($page.params.id || ''));
 
-  let activeTab = $state<'overview' | 'locations' | 'portal' | 'subscriptions' | 'pppoe'>('overview');
+  let activeTab = $state<'overview' | 'locations' | 'subscriptions' | 'timeline' | 'pppoe'>('overview');
 
   let customer = $state<Customer | null>(null);
   let loadingCustomer = $state(true);
@@ -34,17 +34,18 @@
   let locations = $state<CustomerLocation[]>([]);
   let loadingLocations = $state(false);
 
-  let portalUsers = $state<CustomerPortalUser[]>([]);
-  let loadingPortalUsers = $state(false);
-
   // Subscriptions
   let subscriptions = $state<CustomerSubscriptionView[]>([]);
   let loadingSubscriptions = $state(false);
+  let timelineLogs = $state<AuditLog[]>([]);
+  let timelineType = $state<'all' | 'customer' | 'location' | 'subscription'>('all');
+  let loadingTimeline = $state(false);
   let showAddSubscription = $state(false);
   let showEditSubscription = $state(false);
   let editingSubscription = $state<CustomerSubscriptionView | null>(null);
   let savingSubscription = $state(false);
   let deletingSubscription = $state<string | null>(null);
+  let togglingSubscription = $state<string | null>(null);
   let subscriptionPackages = $state<any[]>([]);
 
   let subLocationId = $state('');
@@ -127,10 +128,17 @@
   let notes = $state('');
   let isActive = $state(true);
   let saving = $state(false);
+  let togglingCustomerStatus = $state(false);
 
   // Location modal
   let showAddLocation = $state(false);
+  let showEditLocation = $state(false);
   let creatingLocation = $state(false);
+  let updatingLocation = $state(false);
+  let deletingLocation = $state(false);
+  let editingLocation = $state<CustomerLocation | null>(null);
+  let locationToDelete = $state<CustomerLocation | null>(null);
+  let showDeleteLocation = $state(false);
   let locLabel = $state('');
   let locAddress1 = $state('');
   let locAddress2 = $state('');
@@ -140,31 +148,14 @@
   let locCountry = $state('');
   let locNotes = $state('');
 
-  // Portal user modal
-  let showAddPortalUser = $state(false);
-  let creatingPortalUser = $state(false);
-  let puEmail = $state('');
-  let puName = $state('');
-  let puPassword = $state('');
-
   // Deletes
   let showDeleteCustomer = $state(false);
   let deletingCustomer = $state(false);
-
-  let showRemovePortalUser = $state(false);
-  let removingPortalUser = $state(false);
-  let portalUserToRemove = $state<CustomerPortalUser | null>(null);
 
   const locColumns = $derived.by(() => [
     { key: 'label', label: $t('admin.customers.locations.columns.label') || 'Label' },
     { key: 'address', label: $t('admin.customers.locations.columns.address') || 'Address' },
     { key: 'updated_at', label: $t('admin.customers.locations.columns.updated') || 'Updated' },
-    { key: 'actions', label: '', align: 'right' as const },
-  ]);
-
-  const portalColumns = $derived.by(() => [
-    { key: 'user', label: $t('admin.customers.portal.columns.user') || 'User' },
-    { key: 'created_at', label: $t('admin.customers.portal.columns.added') || 'Added' },
     { key: 'actions', label: '', align: 'right' as const },
   ]);
 
@@ -201,6 +192,15 @@
       .filter((p: any) => p?.is_active !== false)
       .map((p: any) => ({ label: p.name, value: p.id })),
   );
+  const canReadAudit = $derived($can('read', 'audit_logs'));
+  const timelineFilteredLogs = $derived.by(() => {
+    if (timelineType === 'all') return timelineLogs;
+    if (timelineType === 'customer') return timelineLogs.filter((l) => l.resource === 'customers');
+    if (timelineType === 'location') return timelineLogs.filter((l) => l.resource === 'customer_locations');
+    if (timelineType === 'subscription')
+      return timelineLogs.filter((l) => l.resource === 'customer_subscriptions');
+    return timelineLogs;
+  });
 
   onMount(async () => {
     if (!$can('read', 'customers') && !$can('manage', 'customers')) {
@@ -208,16 +208,7 @@
       return;
     }
     await loadCustomer();
-    await Promise.all([loadLocations(), loadPortalUsers()]);
-    if ($can('read', 'pppoe') || $can('manage', 'pppoe')) {
-      await loadPppoeRouters();
-    }
-  });
-
-  $effect(() => {
-    if (activeTab !== 'pppoe') return;
-    if (!$can('read', 'pppoe') && !$can('manage', 'pppoe')) return;
-    void loadPppoeAccounts();
+    await loadLocations();
   });
 
   $effect(() => {
@@ -227,6 +218,12 @@
     if (subscriptionPackages.length === 0) {
       void loadSubscriptionPackages();
     }
+  });
+
+  $effect(() => {
+    if (activeTab !== 'timeline') return;
+    if (!canReadAudit) return;
+    void loadTimeline();
   });
 
   async function loadPppoeInventory(routerId: string, opts?: { silent?: boolean }) {
@@ -347,21 +344,6 @@
     }
   }
 
-  async function loadPortalUsers() {
-    if (!$can('read', 'customers') && !$can('manage', 'customers')) return;
-    loadingPortalUsers = true;
-    try {
-      portalUsers = await api.customers.portalUsers.list(customerId);
-    } catch (e: any) {
-      toast.error(
-        get(t)('admin.customers.portal.toasts.load_failed') ||
-          `Failed to load portal users: ${e?.message || e}`,
-      );
-    } finally {
-      loadingPortalUsers = false;
-    }
-  }
-
   async function loadSubscriptionPackages() {
     try {
       const res = await api.ispPackages.packages.list({ page: 1, per_page: 500, q: '' });
@@ -381,6 +363,82 @@
     } finally {
       loadingSubscriptions = false;
     }
+  }
+
+  async function loadTimeline() {
+    if (!canReadAudit) return;
+    loadingTimeline = true;
+    try {
+      const [res, locRows, subRes] = await Promise.all([
+        api.audit.listTenant(1, 100, { customer_id: customerId }),
+        api.customers.locations.list(customerId).catch(() => [] as CustomerLocation[]),
+        api.customers.subscriptions
+          .list(customerId, { page: 1, per_page: 500 })
+          .catch(() => ({ data: [] as CustomerSubscriptionView[] } as any)),
+      ]);
+
+      const allowedLocationIds = new Set((locRows || []).map((l) => l.id));
+      const allowedSubscriptionIds = new Set(((subRes?.data as CustomerSubscriptionView[]) || []).map((s) => s.id));
+
+      timelineLogs = (res.data || []).filter((log) => {
+        if (log.resource === 'customers') {
+          return log.resource_id === customerId;
+        }
+        if (log.resource === 'customer_locations') {
+          return !!log.resource_id && allowedLocationIds.has(log.resource_id);
+        }
+        if (log.resource === 'customer_subscriptions') {
+          return !!log.resource_id && allowedSubscriptionIds.has(log.resource_id);
+        }
+        return false;
+      });
+      timelineType = 'all';
+    } catch (e: any) {
+      toast.error(`Failed to load timeline: ${e?.message || e}`);
+    } finally {
+      loadingTimeline = false;
+    }
+  }
+
+  function timelineActionLabel(action: string): string {
+    const map: Record<string, string> = {
+      CUSTOMER_CREATE: 'Customer created',
+      CUSTOMER_UPDATE: 'Customer updated',
+      CUSTOMER_DELETE: 'Customer deleted',
+      CUSTOMER_LOCATION_CREATE: 'Location added',
+      CUSTOMER_LOCATION_UPDATE: 'Location updated',
+      CUSTOMER_LOCATION_DELETE: 'Location deleted',
+      CUSTOMER_SUBSCRIPTION_CREATE: 'Subscription created',
+      CUSTOMER_SUBSCRIPTION_UPDATE: 'Subscription updated',
+      CUSTOMER_SUBSCRIPTION_DELETE: 'Subscription deleted',
+      CUSTOMER_PORTAL_USER_CREATE: 'Portal user created',
+      CUSTOMER_PORTAL_USER_ADD: 'Portal user linked',
+      CUSTOMER_PORTAL_USER_REMOVE: 'Portal user removed',
+    };
+    return map[action] || action.replaceAll('_', ' ').toLowerCase().replace(/^./, (m) => m.toUpperCase());
+  }
+
+  function timelineResourceLabel(resource: string): string {
+    const map: Record<string, string> = {
+      customers: 'Customer',
+      customer_locations: 'Location',
+      customer_subscriptions: 'Subscription',
+      customer_users: 'Portal user',
+    };
+    return map[resource] || resource;
+  }
+
+  function timelineActorLabel(log: AuditLog): string {
+    return log.user_name || log.user_email || 'System';
+  }
+
+  async function refreshCurrent() {
+    await Promise.all([
+      loadCustomer(),
+      loadLocations(),
+      activeTab === 'subscriptions' ? loadSubscriptions() : Promise.resolve(),
+      activeTab === 'timeline' && canReadAudit ? loadTimeline() : Promise.resolve(),
+    ]);
   }
 
   function resetSubscriptionForm() {
@@ -486,6 +544,22 @@
       toast.error(`Failed to delete subscription: ${e?.message || e}`);
     } finally {
       deletingSubscription = null;
+    }
+  }
+
+  async function setSubscriptionStatus(
+    row: CustomerSubscriptionView,
+    nextStatus: 'active' | 'suspended',
+  ) {
+    togglingSubscription = row.id;
+    try {
+      await api.customers.subscriptions.update(row.id, { status: nextStatus });
+      toast.success(nextStatus === 'suspended' ? 'Subscription suspended' : 'Subscription resumed');
+      await loadSubscriptions();
+    } catch (e: any) {
+      toast.error(`Failed to update status: ${e?.message || e}`);
+    } finally {
+      togglingSubscription = null;
     }
   }
 
@@ -718,54 +792,88 @@
     }
   }
 
-  async function createPortalUser() {
-    if (!puEmail.trim() || !puName.trim() || !puPassword) return;
-    creatingPortalUser = true;
+  async function setCustomerActive(next: boolean) {
+    if (!customer) return;
+    togglingCustomerStatus = true;
     try {
-      await api.customers.portalUsers.createNew({
-        customer_id: customerId,
-        email: puEmail.trim(),
-        name: puName.trim(),
-        password: puPassword,
-      });
-      showAddPortalUser = false;
-      puEmail = '';
-      puName = '';
-      puPassword = '';
-      await loadPortalUsers();
-      toast.success(get(t)('admin.customers.portal.toasts.created') || 'Portal user added');
+      const updated = await api.customers.update(customer.id, { is_active: next });
+      customer = updated;
+      isActive = !!updated.is_active;
+      toast.success(next ? 'Customer activated' : 'Customer suspended');
     } catch (e: any) {
-      toast.error(
-        get(t)('admin.customers.portal.toasts.create_failed', { values: { message: e?.message || e } }) ||
-          `Failed: ${e?.message || e}`,
-      );
+      toast.error(`Failed to update status: ${e?.message || e}`);
     } finally {
-      creatingPortalUser = false;
+      togglingCustomerStatus = false;
     }
   }
 
-  function confirmRemovePortalUser(row: CustomerPortalUser) {
-    portalUserToRemove = row;
-    showRemovePortalUser = true;
+  function resetLocationForm(row?: CustomerLocation) {
+    locLabel = row?.label || '';
+    locAddress1 = row?.address_line1 || '';
+    locAddress2 = row?.address_line2 || '';
+    locCity = row?.city || '';
+    locState = row?.state || '';
+    locPostal = row?.postal_code || '';
+    locCountry = row?.country || '';
+    locNotes = row?.notes || '';
   }
 
-  async function doRemovePortalUser() {
-    const row = portalUserToRemove;
-    if (!row) return;
-    removingPortalUser = true;
+  function openCreateLocation() {
+    editingLocation = null;
+    resetLocationForm();
+    showAddLocation = true;
+  }
+
+  function openEditLocation(row: CustomerLocation) {
+    editingLocation = row;
+    resetLocationForm(row);
+    showEditLocation = true;
+  }
+
+  async function submitUpdateLocation() {
+    if (!editingLocation || !locLabel.trim()) return;
+    updatingLocation = true;
     try {
-      await api.customers.portalUsers.remove(row.customer_user_id);
-      showRemovePortalUser = false;
-      portalUserToRemove = null;
-      await loadPortalUsers();
-      toast.success(get(t)('admin.customers.portal.toasts.removed') || 'Portal user removed');
+      await api.customers.locations.update(editingLocation.id, {
+        label: locLabel.trim(),
+        address_line1: locAddress1.trim() || null,
+        address_line2: locAddress2.trim() || null,
+        city: locCity.trim() || null,
+        state: locState.trim() || null,
+        postal_code: locPostal.trim() || null,
+        country: locCountry.trim() || null,
+        notes: locNotes.trim() || null,
+      });
+      showEditLocation = false;
+      editingLocation = null;
+      toast.success('Location updated');
+      await loadLocations();
     } catch (e: any) {
-      toast.error(
-        get(t)('admin.customers.portal.toasts.remove_failed', { values: { message: e?.message || e } }) ||
-          `Failed: ${e?.message || e}`,
-      );
+      toast.error(`Failed to update location: ${e?.message || e}`);
     } finally {
-      removingPortalUser = false;
+      updatingLocation = false;
+    }
+  }
+
+  function confirmDeleteLocation(row: CustomerLocation) {
+    locationToDelete = row;
+    showDeleteLocation = true;
+  }
+
+  async function doDeleteLocation() {
+    const row = locationToDelete;
+    if (!row) return;
+    deletingLocation = true;
+    try {
+      await api.customers.locations.delete(row.id);
+      showDeleteLocation = false;
+      locationToDelete = null;
+      toast.success('Location deleted');
+      await loadLocations();
+    } catch (e: any) {
+      toast.error(`Failed to delete location: ${e?.message || e}`);
+    } finally {
+      deletingLocation = false;
     }
   }
 
@@ -789,34 +897,77 @@
 </script>
 
 <div class="page-content fade-in">
-  <div class="page-header">
-    <div class="title">
+  <div class="customer-hero card">
+    <div class="hero-top">
       <button class="btn btn-secondary" onclick={() => goto('..')}>
         <Icon name="arrow-left" size={16} />
         {$t('common.back') || 'Back'}
       </button>
+      <div class="header-actions">
+        {#if $can('manage', 'customers') && customer}
+          {#if customer.is_active}
+            <button
+              class="btn btn-warning"
+              onclick={() => setCustomerActive(false)}
+              disabled={togglingCustomerStatus}
+            >
+              <Icon name="pause" size={16} />
+              Suspend
+            </button>
+          {:else}
+            <button
+              class="btn btn-primary"
+              onclick={() => setCustomerActive(true)}
+              disabled={togglingCustomerStatus}
+            >
+              <Icon name="play" size={16} />
+              Activate
+            </button>
+          {/if}
+        {/if}
+        <button
+          class="btn btn-secondary"
+          onclick={refreshCurrent}
+        >
+          <Icon name="refresh-cw" size={16} />
+          {$t('common.refresh') || 'Refresh'}
+        </button>
+        {#if $can('manage', 'customers')}
+          <button class="btn btn-danger" onclick={() => (showDeleteCustomer = true)}>
+            <Icon name="trash-2" size={16} />
+            {$t('common.delete') || 'Delete'}
+          </button>
+        {/if}
+      </div>
+    </div>
+
+    <div class="hero-main">
+      <div class="avatar">
+        {(customer?.name || '?')
+          .split(' ')
+          .filter(Boolean)
+          .slice(0, 2)
+          .map((s) => s[0]?.toUpperCase() || '')
+          .join('')}
+      </div>
       <div class="meta">
         <h1>{customer?.name || $t('admin.customers.detail.title') || 'Customer'}</h1>
         <p class="subtitle">
           {customer?.email || customer?.phone || ($t('admin.customers.detail.subtitle') || 'Customer details')}
         </p>
+        <div class="hero-badges">
+          <span class={`status-pill ${customer?.is_active ? 'is-active' : 'is-inactive'}`}>
+            <span class="dot"></span>
+            {customer?.is_active ? ($t('common.active') || 'Active') : ($t('common.inactive') || 'Inactive')}
+          </span>
+          <span class="meta-pill">
+            <Icon name="clock" size={14} />
+            {customer?.updated_at ? `Updated ${timeAgo(customer.updated_at)}` : '-'}
+          </span>
+        </div>
       </div>
     </div>
-    <div class="header-actions">
-      <button
-        class="btn btn-secondary"
-        onclick={() => Promise.all([loadCustomer(), loadLocations(), loadPortalUsers()])}
-      >
-        <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Refresh'}
-      </button>
-      {#if $can('manage', 'customers')}
-        <button class="btn btn-danger" onclick={() => (showDeleteCustomer = true)}>
-          <Icon name="trash-2" size={16} />
-          {$t('common.delete') || 'Delete'}
-        </button>
-      {/if}
-    </div>
+
   </div>
 
   <div class="tabs">
@@ -826,15 +977,12 @@
     <button class:active={activeTab === 'locations'} onclick={() => (activeTab = 'locations')}>
       {$t('admin.customers.tabs.locations') || 'Locations'}
     </button>
-    <button class:active={activeTab === 'portal'} onclick={() => (activeTab = 'portal')}>
-      {$t('admin.customers.tabs.portal') || 'Portal users'}
-    </button>
     <button class:active={activeTab === 'subscriptions'} onclick={() => (activeTab = 'subscriptions')}>
       {$t('admin.customers.tabs.subscriptions') || 'Subscriptions'}
     </button>
-    {#if $can('read', 'pppoe') || $can('manage', 'pppoe')}
-      <button class:active={activeTab === 'pppoe'} onclick={() => (activeTab = 'pppoe')}>
-        {$t('admin.customers.tabs.pppoe') || 'PPPoE'}
+    {#if canReadAudit}
+      <button class:active={activeTab === 'timeline'} onclick={() => (activeTab = 'timeline')}>
+        Timeline
       </button>
     {/if}
   </div>
@@ -848,7 +996,10 @@
     {#if activeTab === 'overview'}
       <div class="card section">
         <div class="section-head">
-          <h3>{$t('admin.customers.overview.title') || 'Customer profile'}</h3>
+          <div>
+            <h3>{$t('admin.customers.overview.title') || 'Customer profile'}</h3>
+            <p class="subtitle">Primary identity and contact data used for billing and support.</p>
+          </div>
           {#if $can('manage', 'customers')}
             <button class="btn btn-primary" onclick={saveOverview} disabled={saving || !name.trim()}>
               <Icon name="check-circle" size={16} />
@@ -857,34 +1008,55 @@
           {/if}
         </div>
 
-        <div class="form">
-          <label>
-            <span>{$t('admin.customers.fields.name') || 'Name'}</span>
-            <input class="input" bind:value={name} disabled={!$can('manage', 'customers')} />
-          </label>
-          <div class="grid2">
+        <div class="overview-grid">
+          <div class="form">
             <label>
-              <span>{$t('admin.customers.fields.email') || 'Email'}</span>
-              <input class="input" bind:value={email} disabled={!$can('manage', 'customers')} />
+              <span>{$t('admin.customers.fields.name') || 'Name'}</span>
+              <input class="input" bind:value={name} disabled={!$can('manage', 'customers')} />
             </label>
+            <div class="grid2">
+              <label>
+                <span>{$t('admin.customers.fields.email') || 'Email'}</span>
+                <input class="input" bind:value={email} disabled={!$can('manage', 'customers')} />
+              </label>
+              <label>
+                <span>{$t('admin.customers.fields.phone') || 'Phone'}</span>
+                <input class="input" bind:value={phone} disabled={!$can('manage', 'customers')} />
+              </label>
+            </div>
             <label>
-              <span>{$t('admin.customers.fields.phone') || 'Phone'}</span>
-              <input class="input" bind:value={phone} disabled={!$can('manage', 'customers')} />
+              <span>{$t('admin.customers.fields.notes') || 'Notes'}</span>
+              <textarea
+                class="input"
+                rows="5"
+                bind:value={notes}
+                disabled={!$can('manage', 'customers')}
+              ></textarea>
             </label>
           </div>
-          <label>
-            <span>{$t('admin.customers.fields.notes') || 'Notes'}</span>
-            <textarea
-              class="input"
-              rows="4"
-              bind:value={notes}
-              disabled={!$can('manage', 'customers')}
-            ></textarea>
-          </label>
-          <label class="row">
-            <input type="checkbox" bind:checked={isActive} disabled={!$can('manage', 'customers')} />
-            <span>{$t('admin.customers.fields.active') || 'Active'}</span>
-          </label>
+          <aside class="overview-side">
+            <div class="side-title">Profile quality</div>
+            <div class="side-item">
+              <span>Name</span>
+              <strong>{name.trim() ? 'Complete' : 'Missing'}</strong>
+            </div>
+            <div class="side-item">
+              <span>Email</span>
+              <strong>{email.trim() ? 'Complete' : 'Missing'}</strong>
+            </div>
+            <div class="side-item">
+              <span>Phone</span>
+              <strong>{phone.trim() ? 'Complete' : 'Missing'}</strong>
+            </div>
+            <div class="side-item">
+              <span>Status</span>
+              <strong>{isActive ? 'Active' : 'Inactive'}</strong>
+            </div>
+            <div class="side-divider"></div>
+            <p class="side-note">
+              Keep customer identity and contacts accurate to avoid billing and support issues.
+            </p>
+          </aside>
         </div>
       </div>
     {:else if activeTab === 'locations'}
@@ -897,7 +1069,7 @@
             </p>
           </div>
           {#if $can('manage', 'customer_locations')}
-            <button class="btn btn-primary" onclick={() => (showAddLocation = true)}>
+            <button class="btn btn-primary" onclick={openCreateLocation}>
               <Icon name="plus" size={16} />
               {$t('admin.customers.locations.actions.add') || 'Add location'}
             </button>
@@ -928,49 +1100,12 @@
                 <button class="btn-icon" title={$t('common.refresh') || 'Refresh'} onclick={loadLocations}>
                   <Icon name="refresh-cw" size={16} />
                 </button>
-              </div>
-            {:else}
-              {item[key] ?? ''}
-            {/if}
-          {/snippet}
-        </Table>
-      </div>
-    {:else if activeTab === 'portal'}
-      <div class="card section">
-        <div class="section-head">
-          <div>
-            <h3>{$t('admin.customers.portal.title') || 'Portal users'}</h3>
-            <p class="subtitle">
-              {$t('admin.customers.portal.subtitle') || 'Users who can login to the customer portal.'}
-            </p>
-          </div>
-          {#if $can('manage', 'customers')}
-            <button class="btn btn-primary" onclick={() => (showAddPortalUser = true)}>
-              <Icon name="plus" size={16} />
-              {$t('admin.customers.portal.actions.add') || 'Add user'}
-            </button>
-          {/if}
-        </div>
-
-        <Table
-          columns={portalColumns}
-          data={portalUsers}
-          loading={loadingPortalUsers}
-          emptyText={$t('admin.customers.portal.empty') || 'No portal users yet.'}
-          pagination
-        >
-          {#snippet cell({ item, key })}
-            {@const row = item as CustomerPortalUser}
-            {#if key === 'user'}
-              <div class="name">{row.name}</div>
-              <div class="sub">{row.email}</div>
-            {:else if key === 'created_at'}
-              <span class="mono">{new Date(row.created_at).toLocaleString()}</span>
-            {:else if key === 'actions'}
-              <div class="row-actions">
-                {#if $can('manage', 'customers')}
-                  <button class="btn-icon danger" title={$t('common.remove') || 'Remove'} onclick={() => confirmRemovePortalUser(row)}>
-                    <Icon name="x" size={16} />
+                {#if $can('manage', 'customer_locations')}
+                  <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => openEditLocation(loc)}>
+                    <Icon name="edit-3" size={16} />
+                  </button>
+                  <button class="btn-icon danger" title={$t('common.delete') || 'Delete'} onclick={() => confirmDeleteLocation(loc)}>
+                    <Icon name="trash-2" size={16} />
                   </button>
                 {/if}
               </div>
@@ -1029,6 +1164,25 @@
             {:else if key === 'actions'}
               <div class="row-actions">
                 {#if $can('manage', 'customers')}
+                  {#if row.status === 'active'}
+                    <button
+                      class="btn-icon"
+                      title="Suspend"
+                      onclick={() => setSubscriptionStatus(row, 'suspended')}
+                      disabled={togglingSubscription === row.id || deletingSubscription === row.id}
+                    >
+                      <Icon name="pause" size={16} />
+                    </button>
+                  {:else if row.status === 'suspended'}
+                    <button
+                      class="btn-icon"
+                      title="Resume"
+                      onclick={() => setSubscriptionStatus(row, 'active')}
+                      disabled={togglingSubscription === row.id || deletingSubscription === row.id}
+                    >
+                      <Icon name="play" size={16} />
+                    </button>
+                  {/if}
                   <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => openEditSubscription(row)}>
                     <Icon name="edit-3" size={16} />
                   </button>
@@ -1148,6 +1302,52 @@
             {/if}
           {/snippet}
         </Table>
+      </div>
+    {:else if activeTab === 'timeline'}
+      <div class="card section">
+        <div class="section-head">
+          <div>
+            <h3>Timeline</h3>
+            <p class="subtitle">Recent customer activity and audit history.</p>
+          </div>
+          <button class="btn btn-secondary" onclick={loadTimeline} disabled={loadingTimeline}>
+            <Icon name="refresh-cw" size={16} />
+            {$t('common.refresh') || 'Refresh'}
+          </button>
+        </div>
+        <div class="timeline-filters">
+          <button class:active={timelineType === 'all'} onclick={() => (timelineType = 'all')}>All</button>
+          <button class:active={timelineType === 'customer'} onclick={() => (timelineType = 'customer')}>Profile</button>
+          <button class:active={timelineType === 'location'} onclick={() => (timelineType = 'location')}>Location</button>
+          <button class:active={timelineType === 'subscription'} onclick={() => (timelineType = 'subscription')}>Subscription</button>
+        </div>
+        {#if loadingTimeline}
+          <div class="loading-card">
+            <div class="spinner"></div>
+            <p>{$t('common.loading') || 'Loading...'}</p>
+          </div>
+        {:else if timelineFilteredLogs.length === 0}
+          <div class="sub">No timeline yet.</div>
+        {:else}
+          <div class="timeline-list">
+            {#each timelineFilteredLogs as log (log.id)}
+              <div class="timeline-item">
+                <div class="timeline-main">
+                  <div class="name">{timelineActionLabel(log.action)}</div>
+                  <div class="sub">
+                    {timelineActorLabel(log)} · {new Date(log.created_at).toLocaleString()}
+                  </div>
+                </div>
+                <div class="timeline-meta">
+                  <span class="pill">{timelineResourceLabel(log.resource)}</span>
+                </div>
+                {#if log.details}
+                  <div class="timeline-details">{log.details}</div>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        {/if}
       </div>
     {/if}
   {/if}
@@ -1678,43 +1878,58 @@
 </Modal>
 
 <Modal
-  show={showAddPortalUser}
-  title={$t('admin.customers.portal.new.title') || 'Add portal user'}
-  onclose={() => (showAddPortalUser = false)}
+  show={showEditLocation}
+  title={$t('admin.customers.locations.edit.title') || 'Edit location'}
+  onclose={() => (showEditLocation = false)}
 >
   <div class="form">
-    <div class="callout">
-      <Icon name="info" size={18} />
-      <span>
-        {$t('admin.customers.portal.new.hint') ||
-          'This user will be linked to the customer and can login to the dashboard.'}
-      </span>
+    <label>
+      <span>{$t('admin.customers.locations.fields.label') || 'Label'}</span>
+      <input class="input" bind:value={locLabel} placeholder="Site A / Rumah / Kantor" />
+    </label>
+    <label>
+      <span>{$t('admin.customers.locations.fields.address1') || 'Address line 1'}</span>
+      <input class="input" bind:value={locAddress1} />
+    </label>
+    <label>
+      <span>{$t('admin.customers.locations.fields.address2') || 'Address line 2'}</span>
+      <input class="input" bind:value={locAddress2} />
+    </label>
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.locations.fields.city') || 'City'}</span>
+        <input class="input" bind:value={locCity} />
+      </label>
+      <label>
+        <span>{$t('admin.customers.locations.fields.state') || 'State'}</span>
+        <input class="input" bind:value={locState} />
+      </label>
     </div>
     <div class="grid2">
       <label>
-        <span>{$t('admin.customers.portal.fields.email') || 'Email'}</span>
-        <input class="input" bind:value={puEmail} placeholder="customer.user@example.com" />
+        <span>{$t('admin.customers.locations.fields.postal') || 'Postal code'}</span>
+        <input class="input" bind:value={locPostal} />
       </label>
       <label>
-        <span>{$t('admin.customers.portal.fields.name') || 'Name'}</span>
-        <input class="input" bind:value={puName} placeholder="Customer User" />
+        <span>{$t('admin.customers.locations.fields.country') || 'Country'}</span>
+        <input class="input" bind:value={locCountry} />
       </label>
     </div>
     <label>
-      <span>{$t('admin.customers.portal.fields.password') || 'Password'}</span>
-      <input class="input" type="password" bind:value={puPassword} />
+      <span>{$t('admin.customers.locations.fields.notes') || 'Notes'}</span>
+      <textarea class="input" rows="3" bind:value={locNotes}></textarea>
     </label>
     <div class="actions">
-      <button class="btn btn-secondary" onclick={() => (showAddPortalUser = false)}>
+      <button class="btn btn-secondary" onclick={() => (showEditLocation = false)}>
         {$t('common.cancel') || 'Cancel'}
       </button>
       <button
         class="btn btn-primary"
-        onclick={createPortalUser}
-        disabled={creatingPortalUser || !puEmail.trim() || !puName.trim() || !puPassword}
+        onclick={submitUpdateLocation}
+        disabled={updatingLocation || !locLabel.trim()}
       >
-        <Icon name="plus" size={16} />
-        {$t('common.create') || 'Create'}
+        <Icon name="check-circle" size={16} />
+        {$t('common.save') || 'Save'}
       </button>
     </div>
   </div>
@@ -1732,17 +1947,103 @@
 />
 
 <ConfirmDialog
-  show={showRemovePortalUser}
-  title={$t('admin.customers.portal.remove.title') || 'Remove portal user'}
-  message={$t('admin.customers.portal.remove.message') || 'This will unlink the user from the customer.'}
-  confirmText={$t('common.remove') || 'Remove'}
+  show={showDeleteLocation}
+  title={$t('admin.customers.locations.delete.title') || 'Delete location'}
+  message={$t('admin.customers.locations.delete.message') || 'This location will be removed.'}
+  confirmText={$t('common.delete') || 'Delete'}
   cancelText={$t('common.cancel') || 'Cancel'}
-  loading={removingPortalUser}
-  onconfirm={doRemovePortalUser}
-  oncancel={() => (showRemovePortalUser = false)}
+  loading={deletingLocation}
+  onconfirm={doDeleteLocation}
+  oncancel={() => (showDeleteLocation = false)}
 />
 
 <style>
+  .page-content {
+    padding: 1.25rem 1.5rem 1.5rem;
+  }
+
+  .customer-hero {
+    margin-bottom: 1rem;
+    padding: 1rem 1.05rem;
+    background: var(--bg-surface);
+  }
+
+  .hero-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .hero-main {
+    display: flex;
+    align-items: center;
+    gap: 0.95rem;
+  }
+
+  .avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    color: #e0e7ff;
+    background:
+      linear-gradient(145deg, rgba(79, 70, 229, 0.95), rgba(99, 102, 241, 0.6)),
+      rgba(79, 70, 229, 0.5);
+    border: 1px solid rgba(129, 140, 248, 0.45);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  }
+
+  .meta h1 {
+    margin: 0;
+    font-size: 1.65rem;
+    letter-spacing: -0.02em;
+  }
+
+  .hero-badges {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .status-pill,
+  .meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.28rem 0.62rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    border: none;
+    background: color-mix(in srgb, var(--bg-surface), transparent 12%);
+    color: var(--text-secondary);
+  }
+
+  .status-pill.is-active {
+    border-color: rgba(16, 185, 129, 0.35);
+    color: rgb(52, 211, 153);
+    background: rgba(16, 185, 129, 0.1);
+  }
+
+  .status-pill.is-inactive {
+    border-color: rgba(251, 191, 36, 0.35);
+    color: rgb(252, 211, 77);
+    background: rgba(234, 179, 8, 0.1);
+  }
+
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
   .page-header {
     display: flex;
     justify-content: space-between;
@@ -1755,10 +2056,6 @@
     display: flex;
     gap: 0.9rem;
     align-items: flex-start;
-  }
-
-  .meta h1 {
-    margin: 0;
   }
 
   .subtitle {
@@ -1827,6 +2124,16 @@
     background: rgba(239, 68, 68, 0.14);
   }
 
+  .btn-warning {
+    border-color: rgba(245, 158, 11, 0.35);
+    background: rgba(245, 158, 11, 0.14);
+    color: rgb(251, 191, 36);
+  }
+
+  .btn-warning:hover {
+    background: rgba(245, 158, 11, 0.2);
+  }
+
   .tabs {
     display: flex;
     gap: 0.5rem;
@@ -1851,7 +2158,8 @@
   }
 
   .section {
-    padding: 1.25rem;
+    padding: 1.1rem;
+    background: var(--bg-surface);
   }
 
   .section-head {
@@ -1865,6 +2173,50 @@
   .form {
     display: grid;
     gap: 0.9rem;
+  }
+
+  .overview-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 0.9rem;
+  }
+
+  .overview-side {
+    border-radius: 14px;
+    padding: 0.88rem 0.9rem;
+    background: color-mix(in srgb, var(--bg-surface), transparent 10%);
+    height: fit-content;
+  }
+
+  .side-title {
+    font-weight: 760;
+    margin-bottom: 0.65rem;
+  }
+
+  .side-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.7rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+  }
+
+  .side-item strong {
+    color: var(--text-primary);
+    font-size: 0.86rem;
+  }
+
+  .side-divider {
+    border-top: 1px solid color-mix(in srgb, var(--border-color), transparent 35%);
+    margin: 0.75rem 0;
+  }
+
+  .side-note {
+    margin: 0;
+    font-size: 0.84rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
   }
 
   label > span {
@@ -2011,6 +2363,58 @@
     color: var(--text-primary);
   }
 
+  .timeline-list {
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  .timeline-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .timeline-filters button {
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    border-radius: 999px;
+    padding: 0.28rem 0.65rem;
+    font-size: 0.82rem;
+    font-weight: 650;
+    cursor: pointer;
+  }
+
+  .timeline-filters button.active {
+    color: var(--text-primary);
+    border-color: rgba(99, 102, 241, 0.45);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+  }
+
+  .timeline-item {
+    border-radius: 12px;
+    padding: 0.8rem 0.9rem;
+    background: color-mix(in srgb, var(--bg-surface), transparent 8%);
+  }
+
+  .timeline-main {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.6rem;
+  }
+
+  .timeline-meta {
+    margin-top: 0.3rem;
+  }
+
+  .timeline-details {
+    margin-top: 0.45rem;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+  }
+
   @keyframes spin {
     from {
       transform: rotate(0);
@@ -2021,12 +2425,25 @@
   }
 
   @media (max-width: 900px) {
+    .page-content {
+      padding: 1rem;
+    }
+    .hero-top {
+      align-items: stretch;
+      flex-direction: column;
+    }
+    .hero-main {
+      align-items: flex-start;
+    }
     .page-header {
       flex-direction: column;
       align-items: stretch;
     }
     .header-actions {
       justify-content: stretch;
+    }
+    .overview-grid {
+      grid-template-columns: 1fr;
     }
     .grid2 {
       grid-template-columns: 1fr;

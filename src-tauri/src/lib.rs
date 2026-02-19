@@ -226,6 +226,7 @@ pub fn run() {
                     email_outbox_service.clone(),
                 );
                 let payment_service = PaymentService::new(pool.clone(), notification_service.clone());
+                payment_service.start_customer_invoice_scheduler();
 
                 // MikroTik monitoring (tenant-scoped)
                 let mikrotik_service =
@@ -423,14 +424,18 @@ pub fn run() {
                                     create_bank_account,
                                     delete_bank_account,
                                     create_invoice_for_plan,
+                                    create_invoice_for_customer_subscription,
+                                    generate_due_customer_package_invoices,
                                     get_fx_rate,
                                     get_invoice,
                                     pay_invoice_midtrans,
                                     check_payment_status,
                                     list_invoices,
+                                    list_customer_package_invoices,
                                     list_all_invoices,
                                     submit_payment_proof,
                                     verify_payment,
+                                    verify_customer_package_payment,
                                     // Tenant Self-Management
                                     get_current_tenant,
                                     update_current_tenant,

@@ -2600,6 +2600,93 @@
         "load_failed": "Gagal memuat invoice"
       }
     },
+    "package_invoices": {
+      "statuses": {
+        "pending": "Menunggu",
+        "verification_pending": "Menunggu verifikasi",
+        "paid": "Lunas",
+        "failed": "Gagal"
+      },
+      "list": {
+        "title": "Invoice Paket Pelanggan",
+        "subtitle": "Buat dan kelola invoice untuk paket internet pelanggan.",
+        "search_placeholder": "Cari invoice paket pelanggan...",
+        "columns": {
+          "invoice_number": "Invoice #",
+          "description": "Deskripsi",
+          "amount": "Jumlah",
+          "status": "Status",
+          "due_date": "Jatuh Tempo"
+        },
+        "fields": {
+          "select_customer": "Pilih pelanggan",
+          "select_subscription": "Pilih langganan"
+        },
+        "actions": {
+          "view_details": "Lihat detail",
+          "generate_invoice": "Buat Invoice",
+          "creating": "Membuat...",
+          "generate_due_bulk": "Generate Invoice Jatuh Tempo",
+          "bulk_generating": "Memproses..."
+        },
+        "filters": {
+          "all_status": "Semua status",
+          "pending": "Menunggu",
+          "verification_pending": "Menunggu verifikasi",
+          "paid": "Lunas",
+          "failed": "Gagal",
+          "created_from": "Dibuat dari",
+          "created_to": "Dibuat sampai",
+          "clear": "Reset"
+        },
+        "toasts": {
+          "load_failed": "Gagal memuat invoice paket pelanggan",
+          "load_subscriptions_failed": "Gagal memuat langganan pelanggan",
+          "created": "Invoice paket pelanggan berhasil dibuat",
+          "create_failed": "Gagal membuat invoice",
+          "bulk_generated": "Generate massal selesai",
+          "bulk_generate_failed": "Gagal generate invoice jatuh tempo"
+        }
+      },
+      "detail": {
+        "back": "Kembali ke Invoice",
+        "loading": "Memuat invoice...",
+        "invoice_prefix": "Invoice #",
+        "labels": {
+          "amount": "Jumlah",
+          "due_date": "Jatuh Tempo",
+          "created": "Dibuat",
+          "updated": "Diperbarui"
+        },
+        "actions": {
+          "pay_now": "Bayar Sekarang",
+          "check_status": "Cek Status",
+          "checking": "Mengecek...",
+          "processing": "Memproses...",
+          "mark_paid": "Tandai Lunas",
+          "mark_failed": "Tandai Gagal",
+          "open_payment_page": "Buka Halaman Pembayaran"
+        },
+        "confirm": {
+          "mark_paid_title": "Tandai Invoice sebagai Lunas",
+          "mark_failed_title": "Tandai Invoice sebagai Gagal",
+          "mark_paid_message": "Ini akan mengubah status invoice menjadi lunas.",
+          "mark_failed_message": "Ini akan mengubah status invoice menjadi gagal.",
+          "mark_paid_confirm": "Tandai Lunas",
+          "mark_failed_confirm": "Tandai Gagal"
+        },
+        "errors": {
+          "not_customer_package": "Invoice ini bukan invoice paket pelanggan",
+          "load_failed": "Gagal memuat invoice",
+          "check_failed": "Gagal mengecek status",
+          "verify_failed": "Gagal memverifikasi invoice"
+        },
+        "toasts": {
+          "status_updated": "Status diperbarui",
+          "marked": "Invoice ditandai sebagai"
+        }
+      }
+    },
     "settings": {
       "title": "Pengaturan Global",
       "subtitle": "Kelola konfigurasi aplikasi, keamanan, dan integrasi.",
@@ -2667,6 +2754,14 @@
       },
       "payment": {
         "methods_label": "Metode Pembayaran",
+        "customer_invoice_auto_generate_enabled_label": "Aktifkan generate invoice pelanggan otomatis",
+        "customer_invoice_auto_generate_enabled_help": "Berjalan di background dan membuat invoice jatuh tempo otomatis sesuai lead days.",
+        "invoice_generation_days_before_due_label": "Generate invoice pelanggan (hari sebelum jatuh tempo)",
+        "invoice_generation_days_before_due_help": "Invoice akan tergenerate otomatis oleh proses bulk saat masuk jendela ini.",
+        "customer_invoice_scheduler_interval_minutes_label": "Interval scheduler invoice pelanggan (menit)",
+        "customer_invoice_scheduler_interval_minutes_help": "Seberapa sering worker background mengecek invoice pelanggan yang jatuh tempo.",
+        "customer_invoice_last_run_at_label": "Waktu terakhir proses generate invoice pelanggan",
+        "customer_invoice_last_run_at_help": "Diperbarui saat proses generate invoice jatuh tempo dijalankan (manual atau otomatis).",
         "midtrans": {
           "merchant_id": "Merchant ID",
           "client_key": "Client Key",

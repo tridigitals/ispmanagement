@@ -150,6 +150,33 @@ impl AuditService {
                 qb.push_bind(tid);
             }
 
+            if let Some(customer_id) = &filter.customer_id {
+                qb.push(" AND (");
+                qb.push(" (l.resource = 'customers' AND l.resource_id = ");
+                qb.push_bind(customer_id);
+                qb.push(")");
+                qb.push(" OR (l.resource = 'customer_locations' AND EXISTS (SELECT 1 FROM customer_locations cl WHERE cl.id::text = l.resource_id AND cl.customer_id::text = ");
+                qb.push_bind(customer_id);
+                qb.push("))");
+                qb.push(" OR (l.resource = 'customer_subscriptions' AND EXISTS (SELECT 1 FROM customer_subscriptions cs WHERE cs.id::text = l.resource_id AND cs.customer_id::text = ");
+                qb.push_bind(customer_id);
+                qb.push("))");
+                qb.push(" OR (l.resource = 'customer_users' AND EXISTS (SELECT 1 FROM customer_users cu WHERE cu.id::text = l.resource_id AND cu.customer_id::text = ");
+                qb.push_bind(customer_id);
+                qb.push("))");
+                qb.push(")");
+            }
+
+            if let Some(resource) = &filter.resource {
+                qb.push(" AND l.resource = ");
+                qb.push_bind(resource);
+            }
+
+            if let Some(resource_id) = &filter.resource_id {
+                qb.push(" AND l.resource_id = ");
+                qb.push_bind(resource_id);
+            }
+
             if let Some(action) = &filter.action {
                 qb.push(" AND l.action = ");
                 qb.push_bind(action);
@@ -168,6 +195,8 @@ impl AuditService {
             if let Some(search) = &filter.search {
                 let pattern = format!("%{}%", search);
                 qb.push(" AND (l.resource ILIKE ");
+                qb.push_bind(pattern.clone());
+                qb.push(" OR l.resource_id ILIKE ");
                 qb.push_bind(pattern.clone());
                 qb.push(" OR l.details ILIKE ");
                 qb.push_bind(pattern.clone());
@@ -190,6 +219,30 @@ impl AuditService {
                 count_qb.push(" AND l.tenant_id::text = ");
                 count_qb.push_bind(tid);
             }
+            if let Some(customer_id) = &filter.customer_id {
+                count_qb.push(" AND (");
+                count_qb.push(" (l.resource = 'customers' AND l.resource_id = ");
+                count_qb.push_bind(customer_id);
+                count_qb.push(")");
+                count_qb.push(" OR (l.resource = 'customer_locations' AND EXISTS (SELECT 1 FROM customer_locations cl WHERE cl.id::text = l.resource_id AND cl.customer_id::text = ");
+                count_qb.push_bind(customer_id);
+                count_qb.push("))");
+                count_qb.push(" OR (l.resource = 'customer_subscriptions' AND EXISTS (SELECT 1 FROM customer_subscriptions cs WHERE cs.id::text = l.resource_id AND cs.customer_id::text = ");
+                count_qb.push_bind(customer_id);
+                count_qb.push("))");
+                count_qb.push(" OR (l.resource = 'customer_users' AND EXISTS (SELECT 1 FROM customer_users cu WHERE cu.id::text = l.resource_id AND cu.customer_id::text = ");
+                count_qb.push_bind(customer_id);
+                count_qb.push("))");
+                count_qb.push(")");
+            }
+            if let Some(resource) = &filter.resource {
+                count_qb.push(" AND l.resource = ");
+                count_qb.push_bind(resource);
+            }
+            if let Some(resource_id) = &filter.resource_id {
+                count_qb.push(" AND l.resource_id = ");
+                count_qb.push_bind(resource_id);
+            }
             if let Some(action) = &filter.action {
                 count_qb.push(" AND l.action = ");
                 count_qb.push_bind(action);
@@ -205,6 +258,8 @@ impl AuditService {
             if let Some(search) = &filter.search {
                 let pattern = format!("%{}%", search);
                 count_qb.push(" AND (l.resource ILIKE ");
+                count_qb.push_bind(pattern.clone());
+                count_qb.push(" OR l.resource_id ILIKE ");
                 count_qb.push_bind(pattern.clone());
                 count_qb.push(" OR l.details ILIKE ");
                 count_qb.push_bind(pattern.clone());
@@ -267,6 +322,30 @@ impl AuditService {
                 qb.push(" AND l.tenant_id = ");
                 qb.push_bind(tid);
             }
+            if let Some(customer_id) = &filter.customer_id {
+                qb.push(" AND (");
+                qb.push(" (l.resource = 'customers' AND l.resource_id = ");
+                qb.push_bind(customer_id);
+                qb.push(")");
+                qb.push(" OR (l.resource = 'customer_locations' AND EXISTS (SELECT 1 FROM customer_locations cl WHERE cl.id = l.resource_id AND cl.customer_id = ");
+                qb.push_bind(customer_id);
+                qb.push("))");
+                qb.push(" OR (l.resource = 'customer_subscriptions' AND EXISTS (SELECT 1 FROM customer_subscriptions cs WHERE cs.id = l.resource_id AND cs.customer_id = ");
+                qb.push_bind(customer_id);
+                qb.push("))");
+                qb.push(" OR (l.resource = 'customer_users' AND EXISTS (SELECT 1 FROM customer_users cu WHERE cu.id = l.resource_id AND cu.customer_id = ");
+                qb.push_bind(customer_id);
+                qb.push("))");
+                qb.push(")");
+            }
+            if let Some(resource) = &filter.resource {
+                qb.push(" AND l.resource = ");
+                qb.push_bind(resource);
+            }
+            if let Some(resource_id) = &filter.resource_id {
+                qb.push(" AND l.resource_id = ");
+                qb.push_bind(resource_id);
+            }
             if let Some(action) = &filter.action {
                 qb.push(" AND l.action = ");
                 qb.push_bind(action);
@@ -282,6 +361,8 @@ impl AuditService {
             if let Some(search) = &filter.search {
                 let pattern = format!("%{}%", search);
                 qb.push(" AND (l.resource LIKE ");
+                qb.push_bind(pattern.clone());
+                qb.push(" OR l.resource_id LIKE ");
                 qb.push_bind(pattern.clone());
                 qb.push(" OR l.details LIKE ");
                 qb.push_bind(pattern.clone());
@@ -300,6 +381,30 @@ impl AuditService {
                 count_qb.push(" AND l.tenant_id = ");
                 count_qb.push_bind(tid);
             }
+            if let Some(customer_id) = &filter.customer_id {
+                count_qb.push(" AND (");
+                count_qb.push(" (l.resource = 'customers' AND l.resource_id = ");
+                count_qb.push_bind(customer_id);
+                count_qb.push(")");
+                count_qb.push(" OR (l.resource = 'customer_locations' AND EXISTS (SELECT 1 FROM customer_locations cl WHERE cl.id = l.resource_id AND cl.customer_id = ");
+                count_qb.push_bind(customer_id);
+                count_qb.push("))");
+                count_qb.push(" OR (l.resource = 'customer_subscriptions' AND EXISTS (SELECT 1 FROM customer_subscriptions cs WHERE cs.id = l.resource_id AND cs.customer_id = ");
+                count_qb.push_bind(customer_id);
+                count_qb.push("))");
+                count_qb.push(" OR (l.resource = 'customer_users' AND EXISTS (SELECT 1 FROM customer_users cu WHERE cu.id = l.resource_id AND cu.customer_id = ");
+                count_qb.push_bind(customer_id);
+                count_qb.push("))");
+                count_qb.push(")");
+            }
+            if let Some(resource) = &filter.resource {
+                count_qb.push(" AND l.resource = ");
+                count_qb.push_bind(resource);
+            }
+            if let Some(resource_id) = &filter.resource_id {
+                count_qb.push(" AND l.resource_id = ");
+                count_qb.push_bind(resource_id);
+            }
             if let Some(action) = &filter.action {
                 count_qb.push(" AND l.action = ");
                 count_qb.push_bind(action);
@@ -315,6 +420,8 @@ impl AuditService {
             if let Some(search) = &filter.search {
                 let pattern = format!("%{}%", search);
                 count_qb.push(" AND (l.resource LIKE ");
+                count_qb.push_bind(pattern.clone());
+                count_qb.push(" OR l.resource_id LIKE ");
                 count_qb.push_bind(pattern.clone());
                 count_qb.push(" OR l.details LIKE ");
                 count_qb.push_bind(pattern.clone());

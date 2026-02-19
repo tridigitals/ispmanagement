@@ -114,6 +114,10 @@
         'payment_manual_enabled',
         'payment_manual_instructions',
         'payment_manual_accounts',
+        'customer_invoice_auto_generate_enabled',
+        'customer_invoice_generate_days_before_due',
+        'customer_invoice_scheduler_interval_minutes',
+        'customer_invoice_last_run_at',
       ],
     },
   }));
@@ -333,6 +337,21 @@
 
     localSettings = { ...localSettings };
     recomputeHasChanges();
+  }
+
+  function formatLastRunAt(value?: string) {
+    if (!value) return '-';
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return value;
+    return new Intl.DateTimeFormat($locale || undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZone: $appSettings.app_timezone || 'UTC',
+    }).format(dt);
   }
 
   async function handleFileUpload(e: Event) {
@@ -1143,6 +1162,88 @@
                   >{$t('admin.settings.payment.methods_label') || 'Payment Methods'}</span
                 >
 
+                <div class="setting-item full-width mb-4">
+                  <label class="checkbox-label" for="customer-invoice-auto-generate-enabled">
+                    <input
+                      id="customer-invoice-auto-generate-enabled"
+                      type="checkbox"
+                      checked={localSettings['customer_invoice_auto_generate_enabled'] !== 'false'}
+                      onchange={(e: any) =>
+                        handleChange('customer_invoice_auto_generate_enabled', e.currentTarget.checked)}
+                    />
+                    <span>
+                      {$t('admin.settings.payment.customer_invoice_auto_generate_enabled_label') ||
+                        'Enable automatic customer invoice generation'}
+                    </span>
+                  </label>
+                  <p class="help-text">
+                    {$t('admin.settings.payment.customer_invoice_auto_generate_enabled_help') ||
+                      'Runs in background and creates due invoices automatically based on lead days.'}
+                  </p>
+                </div>
+
+                <div class="setting-item full-width mb-4">
+                  <label for="customer-invoice-days-before-due">
+                    {$t('admin.settings.payment.invoice_generation_days_before_due_label') ||
+                      'Generate customer invoice (days before due)'}
+                  </label>
+                  <Input
+                    id="customer-invoice-days-before-due"
+                    type="number"
+                    min="0"
+                    max="60"
+                    value={localSettings['customer_invoice_generate_days_before_due'] || '7'}
+                    oninput={(e: any) =>
+                      handleChange(
+                        'customer_invoice_generate_days_before_due',
+                        Math.max(0, Math.min(60, Number(e.target.value || 0))),
+                      )}
+                    placeholder="7"
+                  />
+                  <p class="help-text">
+                    {$t('admin.settings.payment.invoice_generation_days_before_due_help') ||
+                      'Invoices will be generated automatically by bulk process when entering this window.'}
+                  </p>
+                </div>
+
+                <div class="setting-item full-width mb-4">
+                  <label for="customer-invoice-scheduler-interval-minutes">
+                    {$t('admin.settings.payment.customer_invoice_scheduler_interval_minutes_label') ||
+                      'Customer invoice scheduler interval (minutes)'}
+                  </label>
+                  <Input
+                    id="customer-invoice-scheduler-interval-minutes"
+                    type="number"
+                    min="5"
+                    max="1440"
+                    value={localSettings['customer_invoice_scheduler_interval_minutes'] || '60'}
+                    oninput={(e: any) =>
+                      handleChange(
+                        'customer_invoice_scheduler_interval_minutes',
+                        Math.max(5, Math.min(1440, Number(e.target.value || 60))),
+                      )}
+                    placeholder="60"
+                  />
+                  <p class="help-text">
+                    {$t('admin.settings.payment.customer_invoice_scheduler_interval_minutes_help') ||
+                      'How often background worker checks for due customer invoices.'}
+                  </p>
+                </div>
+
+                <div class="setting-item full-width mb-4">
+                  <span class="inline-label">
+                    {$t('admin.settings.payment.customer_invoice_last_run_at_label') ||
+                      'Last customer invoice generation run'}
+                  </span>
+                  <div class="readonly-value">
+                    {formatLastRunAt(localSettings['customer_invoice_last_run_at'])}
+                  </div>
+                  <p class="help-text">
+                    {$t('admin.settings.payment.customer_invoice_last_run_at_help') ||
+                      'Updated when due invoice generation process runs (manual or automatic).'}
+                  </p>
+                </div>
+
                 <!-- Midtrans Card -->
                 <div class="method-card">
                   <div class="method-header">
@@ -1666,6 +1767,24 @@
     font-size: 0.85rem;
     color: var(--text-secondary);
     margin-top: 0.25rem;
+  }
+  .readonly-value {
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-weight: 500;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+  }
+  .inline-label {
+    font-weight: 650;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    display: inline-block;
+    margin-bottom: 0.35rem;
   }
   code {
     background: var(--code-bg);

@@ -13,69 +13,246 @@
 
   let invoices = $state<Invoice[]>([]);
   let loading = $state(true);
+  let creating = $state(false);
+  let bulkGenerating = $state(false);
   let error = $state('');
+  let statusFilter = $state<'all' | 'pending' | 'verification_pending' | 'paid' | 'failed'>('all');
+  let dateFrom = $state('');
+  let dateTo = $state('');
+  let selectedCustomerId = $state('');
+  let selectedSubscriptionId = $state('');
+  let subscriptionOptions = $state<
+    Array<{ id: string; customerId: string; label: string; status: string }>
+  >([]);
+  let customers = $state<Array<{ id: string; name: string }>>([]);
 
   const columns = $derived.by(() => [
     {
       key: 'invoice_number',
-      label: $t('admin.invoices.columns.invoice_number') || 'Invoice #',
+      label: $t('admin.package_invoices.list.columns.invoice_number') || 'Invoice #',
       sortable: true,
     },
     {
       key: 'description',
-      label: $t('admin.invoices.columns.description') || 'Description',
+      label: $t('admin.package_invoices.list.columns.description') || 'Description',
       sortable: true,
     },
     {
       key: 'amount',
-      label: $t('admin.invoices.columns.amount') || 'Amount',
+      label: $t('admin.package_invoices.list.columns.amount') || 'Amount',
       sortable: true,
     },
     {
       key: 'status',
-      label: $t('admin.invoices.columns.status') || 'Status',
+      label: $t('admin.package_invoices.list.columns.status') || 'Status',
       sortable: true,
     },
     {
       key: 'due_date',
-      label: $t('admin.invoices.columns.due_date') || 'Due Date',
+      label: $t('admin.package_invoices.list.columns.due_date') || 'Due Date',
       sortable: true,
     },
     { key: 'actions', label: '', align: 'right' as const },
   ]);
 
+  const filteredSubscriptions = $derived(
+    subscriptionOptions.filter((s) => s.customerId === selectedCustomerId),
+  );
+
+  const filteredInvoices = $derived.by(() => {
+    return invoices.filter((inv) => {
+      if (statusFilter !== 'all' && inv.status !== statusFilter) return false;
+      const refDateRaw = inv.created_at || inv.due_date;
+      const refDate = new Date(refDateRaw);
+      if (Number.isNaN(refDate.getTime())) return false;
+
+      if (dateFrom) {
+        const from = new Date(`${dateFrom}T00:00:00`);
+        if (refDate < from) return false;
+      }
+      if (dateTo) {
+        const to = new Date(`${dateTo}T23:59:59`);
+        if (refDate > to) return false;
+      }
+      return true;
+    });
+  });
+
   onMount(() => {
-    loadInvoices();
+    Promise.all([loadInvoices(), loadSubscriptionOptions()]);
   });
 
   async function loadInvoices() {
     loading = true;
     try {
-      invoices = await api.payment.listInvoices();
+      invoices = await api.payment.listCustomerPackageInvoices();
     } catch (e: any) {
       error = e.toString();
-      toast.error(get(t)('admin.invoices.toasts.load_failed') || 'Failed to load invoices');
+      toast.error(
+        get(t)('admin.package_invoices.list.toasts.load_failed') ||
+          'Failed to load customer package invoices',
+      );
     } finally {
       loading = false;
     }
   }
 
+  async function loadSubscriptionOptions() {
+    try {
+      const customerRes = await api.customers.list({ page: 1, perPage: 200 });
+      customers = (customerRes.data || []).map((c) => ({ id: c.id, name: c.name }));
+
+      const subResults = await Promise.all(
+        customers.map(async (customer) => {
+          const subRes = await api.customers.subscriptions.list(customer.id, { page: 1, per_page: 200 });
+          return (subRes.data || []).map((sub) => ({
+            id: sub.id,
+            customerId: customer.id,
+            status: sub.status,
+            label: `${customer.name} - ${sub.package_name || 'Package'} (${sub.billing_cycle})`,
+          }));
+        }),
+      );
+
+      subscriptionOptions = subResults.flat();
+    } catch (e: any) {
+      toast.error(
+        e?.message ||
+          get(t)('admin.package_invoices.list.toasts.load_subscriptions_failed') ||
+          'Failed to load customer subscriptions',
+      );
+    }
+  }
+
+  async function createInvoiceFromSubscription() {
+    if (!selectedSubscriptionId || creating) return;
+    creating = true;
+    try {
+      const inv = await api.payment.createInvoiceForCustomerSubscription(selectedSubscriptionId);
+      toast.success(
+        get(t)('admin.package_invoices.list.toasts.created') || 'Customer package invoice created',
+      );
+      selectedSubscriptionId = '';
+      await loadInvoices();
+      await goto(`/pay/${inv.id}`);
+    } catch (e: any) {
+      toast.error(
+        e?.message ||
+          get(t)('admin.package_invoices.list.toasts.create_failed') ||
+          'Failed to create invoice',
+      );
+    } finally {
+      creating = false;
+    }
+  }
+
+  async function generateDueInvoicesBulk() {
+    if (bulkGenerating) return;
+    bulkGenerating = true;
+    try {
+      const res = await api.payment.generateDueCustomerPackageInvoices();
+      toast.success(
+        (get(t)('admin.package_invoices.list.toasts.bulk_generated') || 'Bulk generated') +
+          `: ${res.created_count} created, ${res.skipped_count} skipped, ${res.failed_count} failed`,
+      );
+      await loadInvoices();
+    } catch (e: any) {
+      toast.error(
+        e?.message ||
+          get(t)('admin.package_invoices.list.toasts.bulk_generate_failed') ||
+          'Failed to generate due invoices',
+      );
+    } finally {
+      bulkGenerating = false;
+    }
+  }
+
+  function openInvoiceDetail(id: string) {
+    const basePath =
+      typeof window !== 'undefined'
+        ? window.location.pathname.replace(/\/$/, '')
+        : '/admin/invoices';
+    void goto(`${basePath}/${id}`);
+  }
+
   function formatCurrency(amount: number, currency?: string) {
     return formatMoney(amount, { currency });
+  }
+
+  function statusLabel(status: string) {
+    const map: Record<string, string> = {
+      pending: get(t)('admin.package_invoices.statuses.pending') || 'Pending',
+      verification_pending:
+        get(t)('admin.package_invoices.statuses.verification_pending') || 'Verification pending',
+      paid: get(t)('admin.package_invoices.statuses.paid') || 'Paid',
+      failed: get(t)('admin.package_invoices.statuses.failed') || 'Failed',
+    };
+    return map[status] || status;
+  }
+
+  function clearFilters() {
+    statusFilter = 'all';
+    dateFrom = '';
+    dateTo = '';
   }
 </script>
 
 <div class="page-container fade-in">
   <div class="page-header">
     <div class="header-content">
-      <h1>{$t('admin.invoices.title') || 'Billing & Invoices'}</h1>
+      <h1>{$t('admin.package_invoices.list.title') || 'Customer Package Invoices'}</h1>
       <p class="subtitle">
-        {$t('admin.invoices.subtitle') || 'View and manage your subscription payments'}
+        {$t('admin.package_invoices.list.subtitle') ||
+          'Generate and manage invoices for customer internet packages.'}
       </p>
     </div>
-    <button class="btn btn-secondary" onclick={loadInvoices}>
-      <Icon name="refresh-cw" size={18} />
-      <span>{$t('common.refresh') || 'Refresh'}</span>
+    <div class="header-actions">
+      <button class="btn btn-primary" onclick={generateDueInvoicesBulk} disabled={bulkGenerating}>
+        <Icon name="layers" size={16} />
+        <span
+          >{bulkGenerating
+            ? $t('admin.package_invoices.list.actions.bulk_generating') || 'Generating...'
+            : $t('admin.package_invoices.list.actions.generate_due_bulk') ||
+              'Generate Due Invoices'}</span
+        >
+      </button>
+      <button class="btn btn-secondary" onclick={loadInvoices}>
+        <Icon name="refresh-cw" size={18} />
+        <span>{$t('common.refresh') || 'Refresh'}</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="create-row">
+    <select bind:value={selectedCustomerId} class="select-input">
+      <option value="">
+        {$t('admin.package_invoices.list.fields.select_customer') || 'Select customer'}
+      </option>
+      {#each customers as customer}
+        <option value={customer.id}>{customer.name}</option>
+      {/each}
+    </select>
+
+    <select bind:value={selectedSubscriptionId} class="select-input" disabled={!selectedCustomerId}>
+      <option value="">
+        {$t('admin.package_invoices.list.fields.select_subscription') || 'Select subscription'}
+      </option>
+      {#each filteredSubscriptions as sub}
+        <option value={sub.id}>{sub.label} - {sub.status}</option>
+      {/each}
+    </select>
+
+    <button
+      class="btn btn-primary"
+      onclick={createInvoiceFromSubscription}
+      disabled={!selectedSubscriptionId || creating}
+    >
+      <Icon name="plus" size={16} />
+      <span
+        >{creating
+          ? $t('admin.package_invoices.list.actions.creating') || 'Creating...'
+          : $t('admin.package_invoices.list.actions.generate_invoice') || 'Generate Invoice'}</span
+      >
     </button>
   </div>
 
@@ -84,42 +261,63 @@
       <div class="alert alert-error">{error}</div>
     {/if}
 
+    <div class="filter-row">
+      <select bind:value={statusFilter} class="select-input">
+        <option value="all">
+          {$t('admin.package_invoices.list.filters.all_status') || 'All status'}
+        </option>
+        <option value="pending">{$t('admin.package_invoices.list.filters.pending') || 'Pending'}</option>
+        <option value="verification_pending">
+          {$t('admin.package_invoices.list.filters.verification_pending') || 'Verification pending'}
+        </option>
+        <option value="paid">{$t('admin.package_invoices.list.filters.paid') || 'Paid'}</option>
+        <option value="failed">{$t('admin.package_invoices.list.filters.failed') || 'Failed'}</option>
+      </select>
+
+      <input
+        class="select-input"
+        type="date"
+        bind:value={dateFrom}
+        title={$t('admin.package_invoices.list.filters.created_from') || 'Created from'}
+      />
+      <input
+        class="select-input"
+        type="date"
+        bind:value={dateTo}
+        title={$t('admin.package_invoices.list.filters.created_to') || 'Created to'}
+      />
+
+      <button class="btn btn-secondary btn-sm" onclick={clearFilters}>
+        {$t('admin.package_invoices.list.filters.clear') || 'Clear'}
+      </button>
+    </div>
+
     <Table
       {loading}
-      data={invoices}
+      data={filteredInvoices}
       {columns}
       searchable={true}
-      searchPlaceholder={$t('admin.invoices.search_placeholder') || 'Search invoices...'}
+      searchPlaceholder={$t('admin.package_invoices.list.search_placeholder') ||
+        'Search customer package invoices...'}
     >
       {#snippet cell({ item, column })}
         {#if column.key === 'amount'}
           {formatCurrency(item.amount, item.currency_code)}
         {:else if column.key === 'status'}
-          <span class="status-pill {item.status}">{item.status}</span>
+          <span class="status-pill {item.status}">{statusLabel(item.status)}</span>
         {:else if column.key === 'due_date'}
           {formatDate(item[column.key], { timeZone: $appSettings.app_timezone })}
         {:else if column.key === 'actions'}
           <div class="actions">
-            {#if item.status === 'pending'}
-              <button
-                type="button"
-                class="btn btn-primary btn-sm"
-                onclick={() => goto(`/pay/${item.id}`)}
-              >
-                <Icon name="credit-card" size={14} />
-                {$t('admin.invoices.pay_now') || 'Pay Now'}
-              </button>
-            {:else}
-              <button
-                type="button"
-                class="action-btn"
-                title={$t('admin.invoices.view_details') || 'View Details'}
-                aria-label={$t('admin.invoices.view_details') || 'View Details'}
-                onclick={() => goto(`/pay/${item.id}`)}
-              >
-                <Icon name="eye" size={18} />
-              </button>
-            {/if}
+            <button
+              type="button"
+              class="action-btn"
+              title={$t('admin.package_invoices.list.actions.view_details') || 'View Details'}
+              aria-label={$t('admin.package_invoices.list.actions.view_details') || 'View Details'}
+              onclick={() => openInvoiceDetail(item.id)}
+            >
+              <Icon name="eye" size={18} />
+            </button>
           </div>
         {:else}
           {item[column.key]}
@@ -143,10 +341,36 @@
     gap: 1rem;
     flex-wrap: wrap;
   }
+  .header-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  .create-row {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr auto;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .select-input {
+    min-height: 40px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 0 0.75rem;
+  }
   .header-content h1 {
     font-size: 1.8rem;
     font-weight: 700;
     margin: 0 0 0.5rem;
+  }
+  .filter-row {
+    display: grid;
+    grid-template-columns: 1fr 160px 160px auto;
+    gap: 0.75rem;
+    padding: 0.85rem;
+    border-bottom: 1px solid var(--border-color);
   }
   .subtitle {
     color: var(--text-secondary);
@@ -243,6 +467,12 @@
     .page-header {
       flex-direction: column;
       align-items: stretch;
+    }
+    .create-row {
+      grid-template-columns: 1fr;
+    }
+    .filter-row {
+      grid-template-columns: 1fr;
     }
 
     .btn.btn-secondary {

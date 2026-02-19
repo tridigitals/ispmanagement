@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { page as pageStore } from '$app/stores';
   import { goto } from '$app/navigation';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
@@ -78,7 +79,8 @@
   }
 
   function openCustomer(c: Customer) {
-    goto(`./${c.id}`);
+    const base = $pageStore.url.pathname.replace(/\/$/, '');
+    goto(`${base}/${c.id}`);
   }
 
   async function createCustomer() {

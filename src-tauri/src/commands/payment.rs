@@ -1,7 +1,7 @@
 //! Payment Commands
 
 use crate::models::{BankAccount, CreateBankAccountRequest, Invoice};
-use crate::services::{AuthService, Claims, PaymentService, PlanService};
+use crate::services::{AuthService, BulkGenerateInvoicesResult, Claims, PaymentService, PlanService};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use tauri::State;
@@ -71,6 +71,14 @@ async fn authorize_invoice_access(
     Ok(invoice)
 }
 
+fn is_customer_package_invoice(invoice: &Invoice) -> bool {
+    invoice
+        .external_id
+        .as_deref()
+        .map(|v| v.starts_with("pkgsub:"))
+        .unwrap_or(false)
+}
+
 #[tauri::command]
 pub async fn get_fx_rate(
     token: String,
@@ -135,8 +143,8 @@ pub async fn create_invoice_for_plan(
 
     let desc = format!("{} Plan ({} billing)", plan.name, billing_cycle);
 
-    // Store as "plan_id:billing_cycle" in external_id
-    let ext_id = format!("{}:{}", plan_id, billing_cycle);
+    // Store as "plan:plan_id:billing_cycle" in external_id
+    let ext_id = format!("plan:{}:{}", plan_id, billing_cycle);
 
     payment_service
         .create_invoice(&tenant_id, amount, Some(desc), Some(ext_id))
@@ -173,6 +181,64 @@ pub async fn list_invoices(
     let tenant_id = claims.tenant_id.ok_or("No tenant context")?;
     payment_service
         .list_invoices(Some(&tenant_id))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_customer_package_invoices(
+    token: String,
+    auth_service: State<'_, AuthService>,
+    payment_service: State<'_, PaymentService>,
+) -> Result<Vec<Invoice>, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    require_payment_read_access(&auth_service, &claims).await?;
+    let tenant_id = claims.tenant_id.ok_or("No tenant context")?;
+
+    payment_service
+        .list_customer_package_invoices(&tenant_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn create_invoice_for_customer_subscription(
+    token: String,
+    subscription_id: String,
+    auth_service: State<'_, AuthService>,
+    payment_service: State<'_, PaymentService>,
+) -> Result<Invoice, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    require_payment_manage_access(&auth_service, &claims).await?;
+    let tenant_id = claims.tenant_id.ok_or("No tenant context")?;
+
+    payment_service
+        .create_invoice_for_customer_subscription(&tenant_id, &subscription_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn generate_due_customer_package_invoices(
+    token: String,
+    auth_service: State<'_, AuthService>,
+    payment_service: State<'_, PaymentService>,
+) -> Result<BulkGenerateInvoicesResult, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    require_payment_manage_access(&auth_service, &claims).await?;
+    let tenant_id = claims.tenant_id.ok_or("No tenant context")?;
+
+    payment_service
+        .generate_due_customer_package_invoices(&tenant_id)
         .await
         .map_err(|e| e.to_string())
 }
@@ -338,6 +404,31 @@ pub async fn verify_payment(
         .map_err(|e| e.to_string())?;
     if !claims.is_super_admin {
         return Err("Unauthorized".to_string());
+    }
+
+    payment_service
+        .verify_payment(&invoice_id, &status, rejection_reason)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn verify_customer_package_payment(
+    token: String,
+    invoice_id: String,
+    status: String,
+    rejection_reason: Option<String>,
+    auth_service: State<'_, AuthService>,
+    payment_service: State<'_, PaymentService>,
+) -> Result<(), String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    require_payment_manage_access(&auth_service, &claims).await?;
+    let invoice = authorize_invoice_access(&claims, &payment_service, &invoice_id).await?;
+    if !is_customer_package_invoice(&invoice) {
+        return Err("Only customer package invoices can be verified here".to_string());
     }
 
     payment_service

@@ -35,7 +35,7 @@ pub use backup::BackupService;
 pub use email_outbox_service::EmailOutboxService;
 pub use email_service::EmailService;
 pub use notification_service::NotificationService;
-pub use payment_service::PaymentService;
+pub use payment_service::{BulkGenerateInvoicesResult, PaymentService};
 pub use plan_service::PlanService;
 pub use role_service::RoleService;
 pub use settings_service::SettingsService;

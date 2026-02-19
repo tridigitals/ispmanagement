@@ -178,8 +178,21 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       create_bank_account: { method: 'POST', path: '/payment/banks' },
       delete_bank_account: { method: 'DELETE', path: '/payment/banks/:id' },
       create_invoice_for_plan: { method: 'POST', path: '/payment/invoices/plan' },
+      create_invoice_for_customer_subscription: {
+        method: 'POST',
+        path: '/payment/invoices/customer-package/create',
+      },
+      generate_due_customer_package_invoices: {
+        method: 'POST',
+        path: '/payment/invoices/customer-package/generate-due',
+      },
       get_invoice: { method: 'GET', path: '/payment/invoices/:id' },
       list_invoices: { method: 'GET', path: '/payment/invoices' },
+      list_customer_package_invoices: { method: 'GET', path: '/payment/invoices/customer-package' },
+      verify_customer_package_payment: {
+        method: 'POST',
+        path: '/payment/invoices/:id/customer-package/verify',
+      },
       list_all_invoices: { method: 'GET', path: '/payment/invoices/all' },
       get_fx_rate: { method: 'GET', path: '/payment/fx-rate' },
       pay_invoice_midtrans: { method: 'POST', path: '/payment/invoices/:id/midtrans' },
@@ -1101,6 +1114,9 @@ export const superadmin = {
     filters?: {
       user_id?: string;
       tenant_id?: string;
+      customer_id?: string;
+      resource?: string;
+      resource_id?: string;
       action?: string;
       date_from?: string;
       date_to?: string;
@@ -1122,6 +1138,9 @@ export const audit = {
     perPage?: number,
     filters?: {
       user_id?: string;
+      customer_id?: string;
+      resource?: string;
+      resource_id?: string;
       action?: string;
       date_from?: string;
       date_to?: string;
@@ -2141,6 +2160,12 @@ export interface FxRate {
   fetched_at: string;
 }
 
+export interface BulkGenerateInvoicesResult {
+  created_count: number;
+  skipped_count: number;
+  failed_count: number;
+}
+
 export const payment = {
   listBanks: (): Promise<BankAccount[]> =>
     safeInvoke('list_bank_accounts', { token: getTokenOrThrow() }),
@@ -2164,10 +2189,23 @@ export const payment = {
   createInvoiceForPlan: (planId: string, billingCycle: 'monthly' | 'yearly'): Promise<Invoice> =>
     safeInvoke('create_invoice_for_plan', { token: getTokenOrThrow(), planId, billingCycle }),
 
+  createInvoiceForCustomerSubscription: (subscriptionId: string): Promise<Invoice> =>
+    safeInvoke('create_invoice_for_customer_subscription', {
+      token: getTokenOrThrow(),
+      subscriptionId,
+      subscription_id: subscriptionId,
+    }),
+
   getInvoice: (id: string): Promise<Invoice> =>
     safeInvoke('get_invoice', { token: getTokenOrThrow(), id }),
 
   listInvoices: (): Promise<Invoice[]> => safeInvoke('list_invoices', { token: getTokenOrThrow() }),
+
+  listCustomerPackageInvoices: (): Promise<Invoice[]> =>
+    safeInvoke('list_customer_package_invoices', { token: getTokenOrThrow() }),
+
+  generateDueCustomerPackageInvoices: (): Promise<BulkGenerateInvoicesResult> =>
+    safeInvoke('generate_due_customer_package_invoices', { token: getTokenOrThrow() }),
 
   listAllInvoices: (): Promise<Invoice[]> =>
     safeInvoke('list_all_invoices', { token: getTokenOrThrow() }),
@@ -2191,6 +2229,21 @@ export const payment = {
     rejectionReason?: string,
   ): Promise<void> =>
     safeInvoke('verify_payment', { token: getTokenOrThrow(), invoiceId, status, rejectionReason }),
+
+  verifyCustomerPackagePayment: (
+    invoiceId: string,
+    status: 'paid' | 'failed',
+    rejectionReason?: string,
+  ): Promise<void> =>
+    safeInvoke('verify_customer_package_payment', {
+      token: getTokenOrThrow(),
+      id: invoiceId,
+      invoiceId,
+      invoice_id: invoiceId,
+      status,
+      rejectionReason,
+      rejection_reason: rejectionReason,
+    }),
 };
 
 export const storage = {

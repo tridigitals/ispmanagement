@@ -784,6 +784,9 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
         ("payment_midtrans_is_production", "false", "Use Midtrans Production Environment"),
         ("payment_manual_enabled", "true", "Enable Manual Bank Transfer"),
         ("payment_manual_instructions", "Please transfer the total amount to one of the bank accounts listed below and upload your proof of payment.", "Instructions for manual bank transfer"),
+        ("customer_invoice_auto_generate_enabled", "true", "Enable automatic background generation for customer package invoices"),
+        ("customer_invoice_generate_days_before_due", "7", "How many days before renewal to generate customer package invoice"),
+        ("customer_invoice_scheduler_interval_minutes", "60", "How often background scheduler checks due customer invoices (minutes)"),
         // Alerting Settings
         ("alerting_enabled", "false", "Enable error alerting via email"),
         ("alerting_email", "", "Email address to receive alerts"),
