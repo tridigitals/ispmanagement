@@ -200,9 +200,25 @@ pub struct ValidateTokenDto {
 
 pub async fn validate_token(
     State(state): State<AppState>,
-    Json(payload): Json<ValidateTokenDto>,
+    headers: HeaderMap,
+    payload: Result<Json<ValidateTokenDto>, axum::extract::rejection::JsonRejection>,
 ) -> Result<Json<serde_json::Value>, crate::error::AppError> {
-    state.auth_service.validate_token(&payload.token).await?;
+    let token_from_header = headers
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+        .map(|s| s.to_string());
+
+    let token_from_body = match payload {
+        Ok(Json(body)) => Some(body.token),
+        Err(_) => None,
+    };
+
+    let token = token_from_header
+        .or(token_from_body)
+        .ok_or(crate::error::AppError::Unauthorized)?;
+
+    state.auth_service.validate_token(&token).await?;
     Ok(Json(json!({"valid": true})))
 }
 
