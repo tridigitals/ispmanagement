@@ -239,7 +239,6 @@ pub async fn get_setting_value(
 }
 
 #[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct UpsertSettingRequest {
     key: String,
     value: String,

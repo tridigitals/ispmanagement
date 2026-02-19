@@ -3,7 +3,6 @@
 //! This is the core library for the Tauri application.
 //! It wires together all modules: database, services, and commands.
 
-pub mod commands;
 pub mod db;
 pub mod error;
 pub mod http;
@@ -11,22 +10,29 @@ pub mod models;
 pub mod security;
 pub mod services;
 
-use commands::audit::{list_audit_logs, list_tenant_audit_logs};
-use commands::*;
+#[cfg(feature = "desktop")]
+pub mod commands;
+
+#[cfg(feature = "desktop")]
 use db::connection::{init_db, seed_defaults};
+#[cfg(feature = "desktop")]
 use services::backup::BackupScheduler;
+#[cfg(feature = "desktop")]
 use services::metrics_service::MetricsService;
+#[cfg(feature = "desktop")]
 use services::{
     AnnouncementScheduler, AuditService, AuthService, BackupService, EmailOutboxService,
     EmailService, NotificationService, PaymentService, PlanService, RoleService, SettingsService,
-    SystemService, TeamService, UserService, MikrotikService, CustomerService,
-    PppoeService, IspPackageService,
+    SystemService, TeamService, UserService, MikrotikService, CustomerService, PppoeService,
+    IspPackageService,
 };
-use tauri::Manager;
+#[cfg(feature = "desktop")]
 use tracing::info;
+#[cfg(feature = "desktop")]
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Initialize logging
+#[cfg(feature = "desktop")]
 fn init_logging() {
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())
@@ -37,10 +43,15 @@ fn init_logging() {
         .init();
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
+#[cfg_attr(all(feature = "desktop", mobile), tauri::mobile_entry_point)]
 #[allow(unknown_lints)]
 #[allow(clippy::all)]
+#[cfg(feature = "desktop")]
 pub fn run() {
+    use commands::audit::{list_audit_logs, list_tenant_audit_logs};
+    use commands::*;
+    use tauri::Manager;
+
     // Load `.env` for local development (desktop Tauri).
     // In production, prefer real environment variables.
     dotenvy::dotenv().ok();

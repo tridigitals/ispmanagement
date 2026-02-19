@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "ISP Management",
+  "productName": "Tri Digital Solution",
   "version": "0.1.0",
   "identifier": "com.tridigitals.ispmanagement",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "ISP Management",
+        "title": "Tri Digital Solution",
         "width": 1280,
         "height": 800,
         "minWidth": 800,
@@ -23,7 +23,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: asset: https:; connect-src 'self' ipc: http://ipc.localhost http://localhost:3000 ws://localhost:3000 https: wss://apisaas.tridigitals.com;"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: asset: https:; connect-src 'self' ipc: http://ipc.localhost http://localhost:3000 ws://localhost:3000 https: wss://api-isp-management.tridigitals.com;"
     }
   },
   "bundle": {

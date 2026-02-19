@@ -370,10 +370,22 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
 
       let response: Response;
       try {
+        // `token` must only be sent via Authorization header.
+        // Some endpoints use strict payload validation (`deny_unknown_fields`)
+        // and will reject unexpected fields like `token`.
+        const bodyPayload =
+          route.method !== 'GET'
+            ? Object.fromEntries(
+                Object.entries(args || {}).filter(
+                  ([key, value]) => key !== 'token' && value !== undefined,
+                ),
+              )
+            : undefined;
+
         response = await fetch(`${API_BASE}${path}${queryString}`, {
           method: route.method,
           headers,
-          body: route.method !== 'GET' ? JSON.stringify(args || {}) : undefined,
+          body: bodyPayload ? JSON.stringify(bodyPayload) : undefined,
           signal: controller?.signal,
         });
       } catch (e: any) {

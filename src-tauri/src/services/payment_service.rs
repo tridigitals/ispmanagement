@@ -40,7 +40,7 @@ impl PaymentService {
 
     pub fn start_customer_invoice_scheduler(&self) {
         let svc = self.clone();
-        tauri::async_runtime::spawn(async move {
+        tokio::spawn(async move {
             loop {
                 if let Err(e) = svc
                     .generate_due_customer_package_invoices_for_all_tenants()

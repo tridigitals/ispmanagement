@@ -256,7 +256,7 @@ pub async fn start_server(
 
     // Initial static origins from env
     let env_origins_str = env::var("CORS_ALLOWED_ORIGINS").unwrap_or_else(|_| {
-        "http://localhost:5173,http://localhost:3000,http://localhost:1420,tauri://localhost,https://tauri.localhost,https://saas.tridigitals.com".to_string()
+        "http://localhost:5173,http://localhost:3000,http://localhost:1420,tauri://localhost,http://tauri.localhost,https://tauri.localhost,https://saas.tridigitals.com".to_string()
     });
 
     let mut initial_set = HashSet::new();

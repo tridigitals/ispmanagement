@@ -38,7 +38,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // If Postgres is used, the path argument to init_db might be ignored for the DB connection itself,
     // but it might be used for other file storage?
     // Let's check init_db implementation later if needed. For now, we pass current dir.
-    let app_data_dir = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let app_data_dir = env::var("APP_DATA_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+    std::fs::create_dir_all(&app_data_dir)?;
 
     info!("Initializing database connection...");
     let pool = init_db(app_data_dir.clone()).await?;

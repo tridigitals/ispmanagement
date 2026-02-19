@@ -1,0 +1,37 @@
+[Unit]
+Description=ISP Management Rust API Server
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+
+# Create a dedicated user on the server:
+#   sudo useradd --system --user-group --home-dir /opt/isp-management --shell /usr/sbin/nologin ispmanagement
+User=ispmanagement
+Group=ispmanagement
+
+WorkingDirectory=/opt/isp-management
+ExecStart=/opt/isp-management/server
+
+# Load env vars (DB, secrets, CORS, etc.)
+EnvironmentFile=-/etc/isp-management/server.env
+
+# Persistent app data (uploads, backups, sqlite if enabled, etc.)
+StateDirectory=isp-management
+StateDirectoryMode=0750
+Environment=APP_DATA_DIR=/var/lib/isp-management
+
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=30
+
+# Basic hardening (keep conservative for compatibility)
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target
