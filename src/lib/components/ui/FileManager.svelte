@@ -26,6 +26,7 @@
 
   // API URL
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+  const AUTH_PARAM = $derived($token ? `?token=${encodeURIComponent($token)}` : '');
 
   // Modal State
   let showDeleteModal = $state(false);
@@ -597,7 +598,7 @@
                 {#if file.content_type.startsWith('image/')}
                   <div class="file-preview-image">
                     <img
-                      src={`${API_BASE}/storage/files/${file.id}/content`}
+                      src={`${API_BASE}/storage/files/${file.id}/content${AUTH_PARAM}`}
                       alt={file.original_name}
                       loading="lazy"
                       onerror={(e) => {
@@ -707,7 +708,7 @@
                       <div class="file-cell">
                         {#if file.content_type.startsWith('image/')}
                           <img
-                            src={`${API_BASE}/storage/files/${file.id}/content`}
+                            src={`${API_BASE}/storage/files/${file.id}/content${AUTH_PARAM}`}
                             alt={file.original_name}
                             class="list-thumbnail"
                             loading="lazy"

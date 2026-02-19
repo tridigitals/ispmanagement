@@ -15,24 +15,41 @@ use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 use tokio_util::io::ReaderStream;
 use tracing::{error, info, warn};
 
-fn extract_bearer_token(headers: &HeaderMap) -> Result<String, Response> {
-    headers
+#[derive(serde::Deserialize, Default)]
+pub struct FileAccessQuery {
+    /// Optional token for cases where the browser can't set `Authorization` header
+    /// (e.g. `<img src>`, `<video src>`, `<a href>`).
+    pub token: Option<String>,
+}
+
+fn extract_auth_token(headers: &HeaderMap, query_token: Option<&str>) -> Result<String, Response> {
+    if let Some(token) = headers
         .get(header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
         .filter(|h| h.starts_with("Bearer "))
         .map(|h| h[7..].to_string())
-        .ok_or_else(|| (StatusCode::UNAUTHORIZED, "Missing Token").into_response())
+    {
+        return Ok(token);
+    }
+
+    if let Some(t) = query_token {
+        let trimmed = t.trim();
+        if !trimmed.is_empty() {
+            return Ok(trimmed.to_string());
+        }
+    }
+
+    Err((StatusCode::UNAUTHORIZED, "Missing Token").into_response())
 }
 
 async fn authorize_file_access(
     state: &AppState,
-    headers: &HeaderMap,
+    token: &str,
     file_id: &str,
 ) -> Result<(), Response> {
-    let token = extract_bearer_token(headers)?;
     let claims = state
         .auth_service
-        .validate_token(&token)
+        .validate_token(token)
         .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid Token").into_response())?;
 
@@ -255,8 +272,14 @@ pub async fn serve_file(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(id): Path<String>,
+    Query(q): Query<FileAccessQuery>,
 ) -> Response {
-    if let Err(resp) = authorize_file_access(&state, &headers, &id).await {
+    let token = match extract_auth_token(&headers, q.token.as_deref()) {
+        Ok(t) => t,
+        Err(resp) => return resp,
+    };
+
+    if let Err(resp) = authorize_file_access(&state, &token, &id).await {
         return resp;
     }
 
@@ -348,8 +371,14 @@ pub async fn download_file(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(id): Path<String>,
+    Query(q): Query<FileAccessQuery>,
 ) -> Response {
-    if let Err(resp) = authorize_file_access(&state, &headers, &id).await {
+    let token = match extract_auth_token(&headers, q.token.as_deref()) {
+        Ok(t) => t,
+        Err(resp) => return resp,
+    };
+
+    if let Err(resp) = authorize_file_access(&state, &token, &id).await {
         return resp;
     }
 

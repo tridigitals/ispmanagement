@@ -8,6 +8,7 @@
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
   import { appSettings } from '$lib/stores/settings';
+  import { token } from '$lib/stores/auth';
   import { formatDateTime } from '$lib/utils/date';
 
   let { index = $bindable(0), files = [], onclose } = $props();
@@ -45,11 +46,15 @@
       ].includes(currentFile?.content_type || ''),
   );
 
+  let authParam = $derived($token ? `?token=${encodeURIComponent($token)}` : '');
+
   // Use HTTP API endpoint for serving files
-  let fileSrc = $derived(currentFile ? `${API_BASE}/storage/files/${currentFile.id}/content` : '');
+  let fileSrc = $derived(
+    currentFile ? `${API_BASE}/storage/files/${currentFile.id}/content${authParam}` : '',
+  );
   // Note: for native download we can use the content URL directly as we fetch the blob manually
   let downloadUrl = $derived(
-    currentFile ? `${API_BASE}/storage/files/${currentFile.id}/download` : '',
+    currentFile ? `${API_BASE}/storage/files/${currentFile.id}/download${authParam}` : '',
   );
 
   let textContent = $state('');
