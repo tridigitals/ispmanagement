@@ -79,17 +79,51 @@ impl AnnouncementScheduler {
                 #[cfg(feature = "postgres")]
                 {
                     // Prevent duplicate processing when running multiple instances.
+                    let mut advisory_conn = match pool.acquire().await {
+                        Ok(c) => c,
+                        Err(e) => {
+                            warn!("Announcement scheduler skipped: failed to acquire DB connection: {}", e);
+                            continue;
+                        }
+                    };
+
                     let locked: bool =
                         sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
                             .bind("announcement_scheduler")
-                            .fetch_one(&pool)
+                            .fetch_one(&mut *advisory_conn)
                             .await
                             .unwrap_or(false);
                     if !locked {
                         continue;
                     }
+
+                    if let Err(e) =
+                        Self::process_due(&pool, &notification_service, &audit_service).await
+                    {
+                        if e.contains("relation \"announcements\" does not exist")
+                            || e.contains("relation \"announcement_dismissals\" does not exist")
+                            || e.contains("relation \"users\" does not exist")
+                        {
+                            if !warned_missing_schema {
+                                warned_missing_schema = true;
+                                warn!(
+                                    "Announcement scheduler paused: database schema not migrated yet (missing announcements tables)."
+                                );
+                            }
+                        } else {
+                            error!("Announcement scheduler failed: {}", e);
+                        }
+                    }
+
+                    let _ =
+                        sqlx::query_scalar::<_, bool>("SELECT pg_advisory_unlock(hashtext($1))")
+                            .bind("announcement_scheduler")
+                            .fetch_one(&mut *advisory_conn)
+                            .await;
+                    continue;
                 }
 
+                #[cfg(not(feature = "postgres"))]
                 if let Err(e) =
                     Self::process_due(&pool, &notification_service, &audit_service).await
                 {
@@ -106,15 +140,6 @@ impl AnnouncementScheduler {
                     } else {
                         error!("Announcement scheduler failed: {}", e);
                     }
-                }
-
-                #[cfg(feature = "postgres")]
-                {
-                    let _ =
-                        sqlx::query_scalar::<_, bool>("SELECT pg_advisory_unlock(hashtext($1))")
-                            .bind("announcement_scheduler")
-                            .fetch_one(&pool)
-                            .await;
                 }
             }
         });

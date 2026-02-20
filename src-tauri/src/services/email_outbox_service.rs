@@ -68,33 +68,6 @@ impl EmailOutboxService {
             .clamp(5, 3600)
     }
 
-    #[cfg(feature = "postgres")]
-    async fn try_advisory_lock(&self, key: &str) -> bool {
-        // Hash a string to a stable i64 lock id. This prevents collisions in typical setups.
-        let locked: Result<bool, _> =
-            sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
-                .bind(key)
-                .fetch_one(&self.pool)
-                .await;
-        locked.unwrap_or(false)
-    }
-
-    #[cfg(feature = "postgres")]
-    async fn advisory_unlock(&self, key: &str) {
-        let _ = sqlx::query_scalar::<_, bool>("SELECT pg_advisory_unlock(hashtext($1))")
-            .bind(key)
-            .fetch_one(&self.pool)
-            .await;
-    }
-
-    #[cfg(not(feature = "postgres"))]
-    async fn try_advisory_lock(&self, _key: &str) -> bool {
-        true
-    }
-
-    #[cfg(not(feature = "postgres"))]
-    async fn advisory_unlock(&self, _key: &str) {}
-
     #[allow(clippy::too_many_arguments)]
     pub async fn enqueue(
         &self,
@@ -282,14 +255,48 @@ impl EmailOutboxService {
                     continue;
                 }
 
-                if !svc.try_advisory_lock(lock_key).await {
+                #[cfg(feature = "postgres")]
+                {
+                    let mut advisory_conn = match svc.pool.acquire().await {
+                        Ok(c) => c,
+                        Err(e) => {
+                            warn!("Email outbox skipped: failed to acquire DB connection: {}", e);
+                            continue;
+                        }
+                    };
+
+                    let locked: bool = sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
+                        .bind(lock_key)
+                        .fetch_one(&mut *advisory_conn)
+                        .await
+                        .unwrap_or(false);
+                    if !locked {
+                        continue;
+                    }
+
+                    let res = svc.process_batch().await;
+
+                    let _ = sqlx::query_scalar::<_, bool>("SELECT pg_advisory_unlock(hashtext($1))")
+                        .bind(lock_key)
+                        .fetch_one(&mut *advisory_conn)
+                        .await;
+
+                    if let Err(e) = res {
+                        let msg = e.to_string();
+                        if msg.contains("relation \"email_outbox\" does not exist") {
+                            if !warned_missing_schema {
+                                warned_missing_schema = true;
+                                warn!("Email outbox paused: database schema not migrated yet (missing email_outbox table).");
+                            }
+                        } else {
+                            error!("Email outbox sender failed: {}", msg);
+                        }
+                    }
                     continue;
                 }
 
-                let res = svc.process_batch().await;
-                svc.advisory_unlock(lock_key).await;
-
-                if let Err(e) = res {
+                #[cfg(not(feature = "postgres"))]
+                if let Err(e) = svc.process_batch().await {
                     let msg = e.to_string();
                     if msg.contains("relation \"email_outbox\" does not exist") {
                         if !warned_missing_schema {

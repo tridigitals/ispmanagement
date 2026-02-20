@@ -718,30 +718,51 @@ impl MikrotikService {
             return Err(AppError::Forbidden("No access to router".into()));
         }
 
-        // Portable approach: order by interface_name + ts desc, then de-dupe in Rust.
-        let mut rows = sqlx::query_as::<_, MikrotikInterfaceMetric>(
-            r#"
-            SELECT * FROM mikrotik_interface_metrics
-            WHERE router_id = $1
-            ORDER BY interface_name ASC, ts DESC
-            "#,
-        )
-        .bind(router_id)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
-
-        let mut out: Vec<MikrotikInterfaceMetric> = vec![];
-        let mut last: Option<String> = None;
-        for r in rows.drain(..) {
-            if last.as_deref() == Some(r.interface_name.as_str()) {
-                continue;
-            }
-            last = Some(r.interface_name.clone());
-            out.push(r);
+        #[cfg(feature = "postgres")]
+        {
+            // Fetch only the latest sample per interface directly in SQL.
+            let rows = sqlx::query_as::<_, MikrotikInterfaceMetric>(
+                r#"
+                SELECT DISTINCT ON (interface_name) *
+                FROM mikrotik_interface_metrics
+                WHERE router_id = $1
+                ORDER BY interface_name ASC, ts DESC
+                "#,
+            )
+            .bind(router_id)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
+            return Ok(rows);
         }
 
-        Ok(out)
+        #[cfg(not(feature = "postgres"))]
+        {
+            // Portable fallback for SQLite builds.
+            let mut rows = sqlx::query_as::<_, MikrotikInterfaceMetric>(
+                r#"
+                SELECT * FROM mikrotik_interface_metrics
+                WHERE router_id = $1
+                ORDER BY interface_name ASC, ts DESC
+                "#,
+            )
+            .bind(router_id)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
+
+            let mut out: Vec<MikrotikInterfaceMetric> = vec![];
+            let mut last: Option<String> = None;
+            for r in rows.drain(..) {
+                if last.as_deref() == Some(r.interface_name.as_str()) {
+                    continue;
+                }
+                last = Some(r.interface_name.clone());
+                out.push(r);
+            }
+
+            Ok(out)
+        }
     }
 
     /// Live per-interface counters (best-effort) used for realtime UI polling.
@@ -1774,7 +1795,45 @@ impl MikrotikService {
 
         let interfaces = self.fetch_interfaces_snapshot(&dev).await?;
 
-        // Fetch last metrics for all interfaces in one shot.
+        // Fetch last metrics per interface in one shot.
+        #[cfg(feature = "postgres")]
+        let mut prev_rows = {
+            let interface_names: Vec<String> = interfaces
+                .iter()
+                .map(|i| i.name.clone())
+                .collect::<std::collections::BTreeSet<_>>()
+                .into_iter()
+                .collect();
+
+            if interface_names.is_empty() {
+                Vec::<PrevIfaceRow>::new()
+            } else {
+                sqlx::query_as::<_, PrevIfaceRow>(
+                    r#"
+                    WITH names AS (
+                        SELECT DISTINCT unnest($2::text[]) AS interface_name
+                    )
+                    SELECT m.interface_name, m.ts, m.rx_byte, m.tx_byte
+                    FROM names n
+                    JOIN LATERAL (
+                        SELECT interface_name, ts, rx_byte, tx_byte
+                        FROM mikrotik_interface_metrics
+                        WHERE router_id = $1
+                          AND interface_name = n.interface_name
+                        ORDER BY ts DESC
+                        LIMIT 1
+                    ) m ON true
+                    "#,
+                )
+                .bind(&router.id)
+                .bind(&interface_names)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| anyhow::anyhow!(e.to_string()))?
+            }
+        };
+
+        #[cfg(not(feature = "postgres"))]
         let mut prev_rows = sqlx::query_as::<_, PrevIfaceRow>(
             r#"
             SELECT interface_name, ts, rx_byte, tx_byte

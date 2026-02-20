@@ -68,6 +68,12 @@ async fn rate_limit_key_for_request(
 }
 
 fn policy_for_path(path: &str, default_limit: u32) -> (u32, u64) {
+    // Wallboard live traffic is intentionally high-frequency.
+    // Keep it isolated with a dedicated key scope and higher budget.
+    if is_wallboard_live_path(path) {
+        return (1800, 60);
+    }
+
     // Keep these strict and predictable: they are abuse magnets.
     // Window is seconds.
     if path == "/api/auth/login" {
@@ -90,6 +96,18 @@ fn policy_for_path(path: &str, default_limit: u32) -> (u32, u64) {
     }
 
     (default_limit.max(10), 60)
+}
+
+fn is_wallboard_live_path(path: &str) -> bool {
+    path.starts_with("/api/admin/mikrotik/routers/") && path.ends_with("/interfaces/live")
+}
+
+fn rate_limit_scope(path: &str) -> &'static str {
+    if is_wallboard_live_path(path) {
+        "wallboard_live"
+    } else {
+        "api"
+    }
 }
 
 fn should_bypass_rate_limit(path: &str) -> bool {
@@ -160,8 +178,9 @@ pub async fn security_enforcer_middleware(
     let key = rate_limit_key_for_request(&state, &client_ip, request.headers(), &path)
         .await
         .unwrap_or_else(|| format!("ip:{client_ip}"));
+    let scoped_key = format!("{}:{}", rate_limit_scope(&path), key);
 
-    match state.rate_limiter.check(&key, limit, window) {
+    match state.rate_limiter.check(&scoped_key, limit, window) {
         Ok(info) => {
             let mut response = next.run(request).await;
             let headers = response.headers_mut();

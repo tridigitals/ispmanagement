@@ -1491,59 +1491,103 @@ impl BackupScheduler {
                 #[cfg(feature = "postgres")]
                 {
                     // Prevent duplicate processing when running multiple instances.
+                    let mut advisory_conn = match pool.acquire().await {
+                        Ok(c) => c,
+                        Err(e) => {
+                            warn!("Backup scheduler skipped: failed to acquire DB connection: {}", e);
+                            continue;
+                        }
+                    };
+
                     let locked: bool =
                         sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
                             .bind("backup_scheduler")
-                            .fetch_one(&pool)
+                            .fetch_one(&mut *advisory_conn)
                             .await
                             .unwrap_or(false);
                     if !locked {
                         continue;
                     }
-                }
 
-                // 1. Check Global Schedule
-                if let Err(e) = Self::check_and_run_global(&pool, &service, &settings_service).await
-                {
-                    if e.contains("relation \"settings\" does not exist")
-                        || e.contains("relation \"tenants\" does not exist")
+                    // 1. Check Global Schedule
+                    if let Err(e) = Self::check_and_run_global(&pool, &service, &settings_service).await
                     {
-                        if !warned_missing_schema {
-                            warned_missing_schema = true;
-                            warn!(
-                                "Backup scheduler paused: database schema not migrated yet (missing settings/tenants tables)."
-                            );
+                        if e.contains("relation \"settings\" does not exist")
+                            || e.contains("relation \"tenants\" does not exist")
+                        {
+                            if !warned_missing_schema {
+                                warned_missing_schema = true;
+                                warn!(
+                                    "Backup scheduler paused: database schema not migrated yet (missing settings/tenants tables)."
+                                );
+                            }
+                        } else {
+                            error!("Global backup schedule check failed: {}", e);
                         }
-                    } else {
-                        error!("Global backup schedule check failed: {}", e);
                     }
-                }
 
-                // 2. Check Tenant Schedules
-                if let Err(e) =
-                    Self::check_and_run_tenants(&pool, &service, &settings_service).await
-                {
-                    if e.contains("relation \"settings\" does not exist")
-                        || e.contains("relation \"tenants\" does not exist")
+                    // 2. Check Tenant Schedules
+                    if let Err(e) =
+                        Self::check_and_run_tenants(&pool, &service, &settings_service).await
                     {
-                        if !warned_missing_schema {
-                            warned_missing_schema = true;
-                            warn!(
-                                "Backup scheduler paused: database schema not migrated yet (missing settings/tenants tables)."
-                            );
+                        if e.contains("relation \"settings\" does not exist")
+                            || e.contains("relation \"tenants\" does not exist")
+                        {
+                            if !warned_missing_schema {
+                                warned_missing_schema = true;
+                                warn!(
+                                    "Backup scheduler paused: database schema not migrated yet (missing settings/tenants tables)."
+                                );
+                            }
+                        } else {
+                            error!("Tenant backup schedule check failed: {}", e);
                         }
-                    } else {
-                        error!("Tenant backup schedule check failed: {}", e);
                     }
-                }
 
-                #[cfg(feature = "postgres")]
-                {
                     let _ =
                         sqlx::query_scalar::<_, bool>("SELECT pg_advisory_unlock(hashtext($1))")
                             .bind("backup_scheduler")
-                            .fetch_one(&pool)
+                            .fetch_one(&mut *advisory_conn)
                             .await;
+                    continue;
+                }
+
+                #[cfg(not(feature = "postgres"))]
+                {
+                    // 1. Check Global Schedule
+                    if let Err(e) = Self::check_and_run_global(&pool, &service, &settings_service).await
+                    {
+                        if e.contains("relation \"settings\" does not exist")
+                            || e.contains("relation \"tenants\" does not exist")
+                        {
+                            if !warned_missing_schema {
+                                warned_missing_schema = true;
+                                warn!(
+                                    "Backup scheduler paused: database schema not migrated yet (missing settings/tenants tables)."
+                                );
+                            }
+                        } else {
+                            error!("Global backup schedule check failed: {}", e);
+                        }
+                    }
+
+                    // 2. Check Tenant Schedules
+                    if let Err(e) =
+                        Self::check_and_run_tenants(&pool, &service, &settings_service).await
+                    {
+                        if e.contains("relation \"settings\" does not exist")
+                            || e.contains("relation \"tenants\" does not exist")
+                        {
+                            if !warned_missing_schema {
+                                warned_missing_schema = true;
+                                warn!(
+                                    "Backup scheduler paused: database schema not migrated yet (missing settings/tenants tables)."
+                                );
+                            }
+                        } else {
+                            error!("Tenant backup schedule check failed: {}", e);
+                        }
+                    }
                 }
             }
         });
