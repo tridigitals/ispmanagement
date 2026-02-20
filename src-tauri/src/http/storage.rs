@@ -232,6 +232,12 @@ pub async fn delete_file(
                 }
                 StatusCode::OK.into_response()
             }
+            Err(crate::error::AppError::NotFound(msg)) => {
+                (StatusCode::NOT_FOUND, msg).into_response()
+            }
+            Err(crate::error::AppError::Forbidden(msg)) => {
+                (StatusCode::FORBIDDEN, msg).into_response()
+            }
             Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
         }
     } else if claims.is_super_admin {

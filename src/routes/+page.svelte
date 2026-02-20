@@ -16,6 +16,7 @@
   let error = '';
   let loading = false;
   let activeField = '';
+  let isTauriApp = false;
 
   let showPassword = false;
 
@@ -28,6 +29,8 @@
   const allowRegistration = derived(appSettings, ($s) => $s.auth?.allow_registration === true);
 
   onMount(async () => {
+    // @ts-ignore
+    isTauriApp = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
     await Promise.all([appSettings.init(), appLogo.init()]);
 
     if ($isAuthenticated) {
@@ -159,7 +162,7 @@
         </button>
       </form>
 
-      {#if $allowRegistration}
+      {#if $allowRegistration && !isTauriApp}
         <p class="footer-text">
           {$t('auth.login.footer_text')}
           <a href="/register">{$t('auth.login.register_link')}</a>

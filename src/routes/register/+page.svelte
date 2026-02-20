@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { register as registerUser, isAuthenticated } from '$lib/stores/auth';
+  import { register as registerUser, isAuthenticated, user, logout } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import { appLogo } from '$lib/stores/logo';
   import { goto } from '$app/navigation';
@@ -17,6 +17,7 @@
   let error = '';
   let loading = false;
   let activeField = '';
+  let isTauriApp = false;
 
   // Visibility states
   let showPassword = false;
@@ -43,8 +44,22 @@
   }
 
   onMount(async () => {
+    // @ts-ignore
+    isTauriApp = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
+    if (isTauriApp) {
+      goto('/login');
+      return;
+    }
+
     if ($isAuthenticated) {
-      goto('/dashboard');
+      if ($user?.is_super_admin) {
+        goto('/superadmin');
+      } else if ($user?.tenant_slug) {
+        goto(`/${$user.tenant_slug}/dashboard`);
+      } else {
+        // Prevent auth redirect loop for users without tenant context
+        logout();
+      }
     }
     await Promise.all([appSettings.init(), appLogo.init()]);
   });
@@ -87,17 +102,22 @@
     try {
       const response = await registerUser(email, password, name);
       if (response.token) {
-        // Redirect to scoped dashboard
-        const slug = response.user?.tenant_slug;
+        if (response.user?.is_super_admin) {
+          goto('/superadmin');
+          return;
+        }
+
+        const slug = response.user?.tenant_slug || response.tenant?.slug;
         if (slug) {
-          if ($page.url.hostname.includes(slug)) {
-            goto(`/dashboard`);
-          } else {
-            goto(`/${slug}/dashboard`);
-          }
+          if ($page.url.hostname.includes(slug)) goto(`/dashboard`);
+          else goto(`/${slug}/dashboard`);
+          return;
         } else {
-          // Fallback
-          goto('/dashboard');
+          // User is authenticated but has no tenant scope yet -> avoid dashboard/login loop.
+          logout();
+          error = 'Akun berhasil dibuat, tapi belum terhubung ke tenant/workspace. Silakan login setelah di-assign admin.';
+          goto('/login');
+          return;
         }
       } else if (response.message) {
         toast.error(response.message);

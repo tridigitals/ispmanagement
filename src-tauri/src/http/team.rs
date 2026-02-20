@@ -11,6 +11,14 @@ use axum::{
 use serde::Deserialize;
 use std::net::SocketAddr;
 
+fn map_team_service_error(msg: String) -> crate::error::AppError {
+    if msg.to_lowercase().contains("not found") {
+        crate::error::AppError::NotFound(msg)
+    } else {
+        crate::error::AppError::Internal(msg)
+    }
+}
+
 // Helper to extract token from headers
 fn extract_token(headers: &HeaderMap) -> Result<String, crate::error::AppError> {
     headers
@@ -150,7 +158,7 @@ pub async fn update_team_member(
             Some(&ip),
         )
         .await
-        .map_err(crate::error::AppError::Internal)?;
+        .map_err(map_team_service_error)?;
 
     // Broadcast member updated event - permissions may have changed
     state.ws_hub.broadcast(WsEvent::PermissionsChanged);
@@ -182,7 +190,7 @@ pub async fn remove_team_member(
         .team_service
         .remove_member(&tenant_id, &id, Some(&claims.sub), Some(&ip))
         .await
-        .map_err(crate::error::AppError::Internal)?;
+        .map_err(map_team_service_error)?;
 
     // Broadcast member removed event
     state.ws_hub.broadcast(WsEvent::PermissionsChanged);

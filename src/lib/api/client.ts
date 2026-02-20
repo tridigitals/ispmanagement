@@ -9,17 +9,27 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
   try {
     // Check if we should force remote API usage (for secure client-server deployment)
     const forceRemote = import.meta.env.VITE_USE_REMOTE_API === 'true';
+    let looksLikeTauri = false;
 
-    // Prefer Tauri IPC when available (prevents hanging HTTP fetch when no server is running)
-    if (!forceRemote && typeof window !== 'undefined') {
+    if (typeof window !== 'undefined') {
       const w = window as any;
-      const looksLikeTauri =
+      looksLikeTauri =
         !!w.__TAURI_INTERNALS__ ||
         !!w.__TAURI__ ||
         (typeof navigator !== 'undefined' &&
           typeof navigator.userAgent === 'string' &&
           navigator.userAgent.toLowerCase().includes('tauri'));
+    }
 
+    // Registration must happen in web browser only (tenant/domain-aware flow).
+    if (looksLikeTauri && command === 'register') {
+      throw new Error(
+        'Pendaftaran akun hanya tersedia melalui web browser pada domain/workspace tenant yang benar.',
+      );
+    }
+
+    // Prefer Tauri IPC when available (prevents hanging HTTP fetch when no server is running)
+    if (!forceRemote && typeof window !== 'undefined') {
       if (looksLikeTauri) {
         try {
           return await invoke(command, args);
@@ -136,8 +146,9 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       // Team
       list_team_members: { method: 'GET', path: '/team' },
       add_team_member: { method: 'POST', path: '/team' },
-      update_team_member_role: { method: 'PUT', path: '/team/:id' },
-      remove_team_member: { method: 'DELETE', path: '/team/:id' },
+      // Use :memberId so old payloads that only send `memberId` still resolve correctly.
+      update_team_member_role: { method: 'PUT', path: '/team/:memberId' },
+      remove_team_member: { method: 'DELETE', path: '/team/:memberId' },
       // Roles
       get_roles: { method: 'GET', path: '/roles' },
       get_role: { method: 'GET', path: '/roles/:id' },
@@ -398,12 +409,27 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         clearTimeout(timeout);
       }
 
+      const contentType = response.headers.get('content-type') || '';
+      const isJson = contentType.toLowerCase().includes('application/json');
+
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        throw new Error(errorBody.error || `HTTP Error ${response.status}`);
+        if (isJson) {
+          const errorBody = await response.json().catch(() => ({}));
+          throw new Error(errorBody.error || `HTTP Error ${response.status}`);
+        }
+        const errorText = (await response.text().catch(() => '')).trim();
+        throw new Error(errorText || `HTTP Error ${response.status}`);
       }
 
-      return await response.json();
+      // Some endpoints (e.g. DELETE /storage/files/:id) return empty 200/204 body.
+      if (response.status === 204) return undefined as T;
+
+      const raw = await response.text();
+      if (!raw || !raw.trim()) return undefined as T;
+      if (isJson) return JSON.parse(raw) as T;
+
+      // For non-JSON success payloads, return raw text.
+      return raw as T;
     }
 
     console.warn(`[Mock] Calling ${command} with`, args);

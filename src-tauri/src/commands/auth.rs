@@ -14,6 +14,15 @@ pub async fn register(
     name: String,
     auth_service: State<'_, AuthService>,
 ) -> Result<AuthResponse, String> {
+    let _ = (&email, &password, &name, &auth_service);
+    // Registration is intentionally disabled for desktop app flow.
+    // New users must register from web browser on the correct tenant domain/workspace.
+    return Err(
+        "Pendaftaran akun hanya tersedia melalui web browser pada domain/workspace tenant yang benar."
+            .to_string(),
+    );
+
+    #[allow(unreachable_code)]
     let dto = RegisterDto {
         email,
         password,

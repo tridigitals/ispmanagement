@@ -894,7 +894,9 @@ impl StorageService {
             .begin()
             .await
             .map_err(|e| AppError::Internal(format!("Failed to begin transaction: {}", e)))?;
-        Self::apply_rls_context_tx_values(&mut tx, Some(tenant_id), false).await?;
+        // We still scope all SQL by explicit tenant_id in this method, but use superadmin RLS
+        // context so quota bookkeeping updates on `tenants` are not blocked by row policies.
+        Self::apply_rls_context_tx_values(&mut tx, Some(tenant_id), true).await?;
 
         #[cfg(feature = "postgres")]
         let record: Option<crate::models::FileRecord> =

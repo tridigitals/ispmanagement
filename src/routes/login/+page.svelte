@@ -27,6 +27,7 @@
   let selected2FAMethod = '';
   let emailOtpSent = false;
   let emailOtpSending = false;
+  let isTauriApp = false;
 
   let showPassword = false;
 
@@ -39,6 +40,8 @@
   const allowRegistration = derived(appSettings, ($s) => $s.auth?.allow_registration === true);
 
   onMount(async () => {
+    // @ts-ignore
+    isTauriApp = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
     await Promise.all([appSettings.init(), appLogo.init()]);
 
     if ($isAuthenticated) {
@@ -109,8 +112,11 @@
         }
       }
     } else {
-      // Fallback for users without tenant (shouldn't happen usually)
-      goto('/dashboard');
+      // Prevent dashboard<->login redirect loop for users without tenant scope.
+      const { logout } = await import('$lib/stores/auth');
+      logout();
+      error = 'Akun Anda belum terhubung ke tenant/workspace.';
+      return;
     }
   }
 
@@ -515,7 +521,7 @@
         </form>
       {/if}
 
-      {#if $allowRegistration}
+      {#if $allowRegistration && !isTauriApp}
         <p class="footer-text">
           {$t('auth.login.footer_text')}
           <a href="/register">{$t('auth.login.register_link')}</a>
