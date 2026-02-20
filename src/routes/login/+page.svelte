@@ -10,6 +10,7 @@
   import { get, derived } from 'svelte/store';
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import { isPlatformDomain } from '$lib/utils/domain';
 
   let email = '';
   let password = '';
@@ -77,12 +78,32 @@
     // Skip domain check for localhost (development), main domain, or if no custom domain set
     const isLocalhost = currentHost === 'localhost' || currentHost === '127.0.0.1';
     const mainDomain = $appSettings.auth?.main_domain;
-    const isMainDomain = mainDomain && currentHost === mainDomain;
+    const isMainDomain =
+      (mainDomain && currentHost === mainDomain) ||
+      currentHost === 'billing.tridigitals.com' ||
+      isPlatformDomain(currentHost);
     if (!isTauri && !isLocalhost && !isMainDomain && customDomain && currentHost !== customDomain) {
       // Domain mismatch -> Logout and show error instead of redirecting
       const { logout } = await import('$lib/stores/auth');
       logout();
       error = 'Invalid login credentials or unauthorized domain.';
+      return;
+    }
+
+    // If user logs in from the tenant custom domain, use root tenant routes
+    // and cache domain->slug mapping for reroute consistency.
+    if (customDomain && currentHost === customDomain && slug) {
+      try {
+        const { cacheDomainMapping } = await import('$lib/utils/domain');
+        cacheDomainMapping(currentHost, slug);
+      } catch {
+        // ignore cache failures
+      }
+      if (u.role === 'admin') {
+        goto('/admin');
+      } else {
+        goto('/dashboard');
+      }
       return;
     }
 
@@ -96,7 +117,7 @@
       // we should probably redirect to the subdomain if that's the architecture.
       // For now, let's stick to the existing path-based logic but make it robust.
 
-      if ($page.url.hostname.includes(slug)) {
+      if ($page.url.hostname.includes(slug) || isMainDomain) {
         // We are on the correct subdomain (presumably)
         if (u.role === 'admin') {
           goto(`/admin`); // Root of subdomain

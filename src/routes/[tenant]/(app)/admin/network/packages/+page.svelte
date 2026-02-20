@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { t } from 'svelte-i18n';
-  import { can } from '$lib/stores/auth';
+  import { can, user, tenant } from '$lib/stores/auth';
   import { api, type IspPackage, type IspPackageRouterMappingView } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
 import { formatMoney } from '$lib/utils/money';
@@ -14,15 +14,20 @@ import { appSettings } from '$lib/stores/settings';
   import Toggle from '$lib/components/ui/Toggle.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
+  import { getSlugFromDomain } from '$lib/utils/domain';
 
   type RouterRow = { id: string; name: string };
   type ProfileSuggestion = { id: string; name: string };
   type PoolSuggestion = { id: string; name: string };
 
-  const tenantPrefix = $derived.by(() => {
-    const tid = String($page.params.tenant || '');
-    return tid ? `/${tid}` : '';
-  });
+  const domainSlug = $derived(getSlugFromDomain($page.url.hostname));
+  const effectiveTenantSlug = $derived(
+    ($tenant?.slug || $user?.tenant_slug || String($page.params.tenant || '')).trim(),
+  );
+  const isCustomDomain = $derived(domainSlug && domainSlug === effectiveTenantSlug);
+  const tenantPrefix = $derived(
+    effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
+  );
 
   let loading = $state(true);
   let saving = $state(false);
@@ -1240,4 +1245,3 @@ import { appSettings } from '$lib/stores/settings';
     }
   }
 </style>
-

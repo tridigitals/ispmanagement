@@ -14,15 +14,27 @@
   import { refreshUnreadCount } from '$lib/stores/notifications';
   import { Toaster } from 'svelte-sonner';
   import GlobalUploads from '$lib/components/layout/GlobalUploads.svelte';
-  import { getSlugFromDomain } from '$lib/utils/domain';
+  import { getSlugFromDomain, isPlatformDomain } from '$lib/utils/domain';
   import { browser } from '$app/environment';
   import { getApiBaseUrl } from '$lib/utils/apiUrl';
 
   let loading = true;
   let i18nReady = false;
 
+  function isDebugEnabled() {
+    if (typeof window === 'undefined') return false;
+    const qs = new URLSearchParams(window.location.search);
+    return qs.get('debug') === '1' || localStorage.getItem('debug_routing') === '1';
+  }
+
+  function debugLog(message: string, meta?: Record<string, unknown>) {
+    if (!isDebugEnabled()) return;
+    console.log(`[root-layout] ${message}`, meta || {});
+  }
+
   onMount(async () => {
     try {
+      debugLog('boot-start', { path: $page.url.pathname, host: window.location.hostname });
       // 1. Validate Auth & Session first
       // This ensures we have the correct tenant context before fetching data
       await checkAuth();
@@ -49,6 +61,8 @@
         hostname.includes('localhost') ||
         hostname.includes('127.0.0.1') ||
         hostname.includes('tauri');
+      const isMainPlatformDomain = isPlatformDomain(hostname);
+      debugLog('domain-check', { hostname, knownSlug, isMainPlatformDomain });
 
       // Service Worker Registration
       if ('serviceWorker' in navigator) {
@@ -59,29 +73,38 @@
         }
       }
 
-      if (!knownSlug && !isLocal) {
+      if (!knownSlug && !isLocal && !isMainPlatformDomain) {
         try {
           // We use fetch directly here to avoid auth store dependencies loop if possible
           // or use the 'api' client but it might not be ready? 'api.public' is stateless usually.
           // Let's use fetch for safety and simplicity on this "boot" phase.
           const apiUrl = getApiBaseUrl();
-          const res = await fetch(`${apiUrl}/public/tenant-lookup?domain=${hostname}`);
+          // Support both new and legacy public lookup endpoints.
+          // Newer backend: /public/domains/:domain
+          // Older backend: /public/tenant-lookup?domain=...
+          let res = await fetch(`${apiUrl}/public/domains/${encodeURIComponent(hostname)}`);
+          if (res.status === 404) {
+            res = await fetch(`${apiUrl}/public/tenant-lookup?domain=${encodeURIComponent(hostname)}`);
+          }
 
-          if (res.ok) {
-            const tenant = await res.json();
-            if (tenant && tenant.slug) {
-              console.log(
-                `[Domain] Found tenant '${tenant.slug}' for '${hostname}'. Caching and reloading...`,
-              );
-              // Cache it
-              await import('$lib/utils/domain').then((m) =>
-                m.cacheDomainMapping(hostname, tenant.slug),
-              );
+          if (!res.ok) return;
+          const tenant = await res.json();
+          if (tenant && tenant.slug) {
+            debugLog('domain-lookup-success-reload', {
+              hostname,
+              slug: tenant.slug,
+            });
+            console.log(
+              `[Domain] Found tenant '${tenant.slug}' for '${hostname}'. Caching and reloading...`,
+            );
+            // Cache it
+            await import('$lib/utils/domain').then((m) =>
+              m.cacheDomainMapping(hostname, tenant.slug),
+            );
 
-              // RELOAD to let hooks.ts reroute handle it
-              window.location.reload();
-              return; // Stop initialization
-            }
+            // RELOAD to let hooks.ts reroute handle it
+            window.location.reload();
+            return; // Stop initialization
           }
         } catch (e) {
           console.warn('[Domain] Failed to lookup custom domain:', e);
@@ -94,11 +117,13 @@
       const currentPath = $page.url.pathname;
 
       if (!isInstalled) {
+        debugLog('install-state', { isInstalled, path: currentPath });
         if (currentPath !== '/install') {
           // console.log("App not installed, redirecting to /install");
           goto('/install');
         }
       } else {
+        debugLog('app-installed-check-auth', { path: currentPath });
         if (currentPath === '/install') {
           console.log('App installed, leaving /install page for /login');
           goto('/login');
@@ -113,12 +138,14 @@
         const isAllowedPath = allowedPaths.some((p) => currentPath.startsWith(p));
 
         if (isMaintenanceMode && !$isSuperAdmin && !isAllowedPath) {
+          debugLog('maintenance-redirect', { path: currentPath });
           goto('/maintenance');
           return;
         }
 
         // Connect to WebSocket for real-time updates (only if authenticated)
         if ($isAuthenticated) {
+          debugLog('ws-connect', { isAuthenticated: $isAuthenticated });
           connectWebSocket();
           refreshUnreadCount();
         }

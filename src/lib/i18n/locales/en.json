@@ -2349,8 +2349,11 @@
         "insights": "Insights",
         "settings": "Settings",
         "stale": "Stale",
+        "poll_error": "Poll error",
         "alerts_ack_visible": "Ack visible",
         "maintenance": "Maintenance",
+        "unmute": "Unmute",
+        "unmuted": "Maintenance cleared",
         "drag": "Drag to reorder",
         "show_controls": "Show controls",
         "exit": "Exit wallboard",
@@ -2433,6 +2436,11 @@
           "mute_30m": "Mute 30m",
           "mute_for": "Mute duration",
           "apply_mute": "Mute"
+        },
+        "timeline": {
+          "title": "Incident Timeline",
+          "subtitle": "Latest 20 wallboard events",
+          "empty": "No recent events yet."
         },
         "trend": {
           "up": "Rising",

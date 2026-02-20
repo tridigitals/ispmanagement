@@ -9,6 +9,7 @@
   import { get, derived } from 'svelte/store';
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import { isPlatformDomain } from '$lib/utils/domain';
 
   let email = '';
   let password = '';
@@ -36,12 +37,20 @@
     if ($isAuthenticated) {
       const u = get(user);
       const slug = u?.tenant_slug;
+      const currentHost = window.location.hostname;
+      const mainDomain = get(appSettings).auth?.main_domain;
+      const isMainDomain =
+        (mainDomain && currentHost === mainDomain) ||
+        currentHost === 'billing.tridigitals.com' ||
+        isPlatformDomain(currentHost);
 
       if (slug) {
-        if (get(isAdmin)) {
-          goto(`/${slug}/admin`);
+        if (currentHost.includes(slug) || isMainDomain) {
+          if (get(isAdmin)) goto('/admin');
+          else goto('/dashboard');
         } else {
-          goto(`/${slug}/dashboard`);
+          if (get(isAdmin)) goto(`/${slug}/admin`);
+          else goto(`/${slug}/dashboard`);
         }
       } else {
         goto('/dashboard');
@@ -57,13 +66,15 @@
     try {
       const response = await login(email, password, rememberMe);
       const slug = response.user?.tenant_slug;
+      const currentHost = window.location.hostname;
+      const mainDomain = $appSettings.auth?.main_domain;
+      const isMainDomain =
+        (mainDomain && currentHost === mainDomain) ||
+        currentHost === 'billing.tridigitals.com' ||
+        isPlatformDomain(currentHost);
 
       if (slug) {
-        // If the current domain already matches the user's tenant slug, avoid adding it to the path
-        const currentSlug = $page.url.pathname.split('/')[1] || '';
-        // OR better yet, check against domain map if we had one client side
-        // For now, simpler check:
-        if ($page.url.hostname.includes(slug)) {
+        if (currentHost.includes(slug) || isMainDomain) {
           // Check if we are ALREADY on the tenant domain
           if (response.user.role === 'admin') {
             goto(`/admin`);

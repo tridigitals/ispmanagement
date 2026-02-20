@@ -17,6 +17,7 @@ const TENANT_KEY = 'auth_tenant';
 
 // Auth version counter - increments on each refresh to force reactivity
 export const authVersion = writable(0);
+const ACTIVE_TENANT_SLUG_KEY = 'active_tenant_slug';
 
 // Get stored values (check local then session)
 function getStoredToken(): string | null {
@@ -159,8 +160,15 @@ export function setAuthData(
   remember: boolean,
   newTenant?: Tenant,
 ) {
+  const mergedUser: User = {
+    ...newUser,
+    tenant_slug: newUser.tenant_slug || newTenant?.slug || undefined,
+    tenant_custom_domain:
+      newUser.tenant_custom_domain || newTenant?.custom_domain || undefined,
+  };
+
   token.set(newToken);
-  user.set(newUser);
+  user.set(mergedUser);
   if (newTenant) tenant.set(newTenant);
 
   if (typeof window === 'undefined') return;
@@ -176,9 +184,13 @@ export function setAuthData(
   const storage = remember ? localStorage : sessionStorage;
 
   storage.setItem(TOKEN_KEY, newToken);
-  storage.setItem(USER_KEY, JSON.stringify(newUser));
+  storage.setItem(USER_KEY, JSON.stringify(mergedUser));
   if (newTenant) {
     storage.setItem(TENANT_KEY, JSON.stringify(newTenant));
+  }
+  const activeSlug = String(mergedUser.tenant_slug || newTenant?.slug || '').trim();
+  if (activeSlug) {
+    storage.setItem(ACTIVE_TENANT_SLUG_KEY, activeSlug);
   }
 }
 
@@ -191,9 +203,11 @@ export function logout(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem(TENANT_KEY);
+  localStorage.removeItem(ACTIVE_TENANT_SLUG_KEY);
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(USER_KEY);
   sessionStorage.removeItem(TENANT_KEY);
+  sessionStorage.removeItem(ACTIVE_TENANT_SLUG_KEY);
 }
 
 export async function checkAuth(): Promise<boolean> {
@@ -237,7 +251,14 @@ export async function checkAuth(): Promise<boolean> {
     // Refresh user data from backend
     try {
       const currentUser = await auth.getCurrentUser(currentToken);
-      user.set(currentUser);
+      const previousUser = getStoredUser();
+      const normalizedUser: User = {
+        ...currentUser,
+        tenant_slug: currentUser.tenant_slug || previousUser?.tenant_slug || undefined,
+        tenant_custom_domain:
+          currentUser.tenant_custom_domain || previousUser?.tenant_custom_domain || undefined,
+      };
+      user.set(normalizedUser);
     } catch (e) {
       if (isUnauthorizedError(e)) {
         logout();
@@ -252,6 +273,14 @@ export async function checkAuth(): Promise<boolean> {
     try {
       const currentTenant = await api.tenant.getSelf();
       tenant.set(currentTenant);
+      const curr = get(user);
+      if (curr && !curr.tenant_slug && currentTenant?.slug) {
+        user.set({
+          ...curr,
+          tenant_slug: currentTenant.slug,
+          tenant_custom_domain: curr.tenant_custom_domain || currentTenant.custom_domain,
+        });
+      }
     } catch (e) {
       // Ignore if tenant fetch fails (e.g. no tenant assigned yet)
     }
@@ -266,6 +295,10 @@ export async function checkAuth(): Promise<boolean> {
     const $tenant = get(tenant);
     if ($tenant) {
       storage.setItem(TENANT_KEY, JSON.stringify($tenant));
+    }
+    const activeSlug = String(refreshedUser?.tenant_slug || $tenant?.slug || '').trim();
+    if (activeSlug) {
+      storage.setItem(ACTIVE_TENANT_SLUG_KEY, activeSlug);
     }
 
     return true;

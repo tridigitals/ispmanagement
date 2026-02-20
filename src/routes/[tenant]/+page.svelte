@@ -9,6 +9,7 @@
   import { get, derived } from 'svelte/store';
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import { isPlatformDomain } from '$lib/utils/domain';
 
   import { api } from '$lib/api/client';
 
@@ -40,6 +41,18 @@
   const allowRegistration = derived(appSettings, ($s) => $s.auth?.allow_registration === true);
 
   onMount(async () => {
+    const currentHost = window.location.hostname;
+    const currentPath = $page.url.pathname;
+    const urlTenant = $page.params.tenant;
+    const isMainPlatformDomain = isPlatformDomain(currentHost);
+
+    // Canonicalize main domain URLs: /:tenant/... -> /...
+    if (isMainPlatformDomain && urlTenant && currentPath.startsWith(`/${urlTenant}`)) {
+      const cleanPath = currentPath.replace(/^\/[^/]+/, '') || '/';
+      goto(cleanPath);
+      return;
+    }
+
     // @ts-ignore
     isTauriApp = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
     await Promise.all([appSettings.init(), appLogo.init()]);
@@ -47,7 +60,6 @@
     if ($isAuthenticated) {
       const u = get(user);
       const slug = u?.tenant_slug;
-      const urlTenant = $page.params.tenant;
 
       // Tenant Isolation Check
       if (urlTenant && slug && slug.toLowerCase() !== urlTenant.toLowerCase()) {

@@ -3,11 +3,12 @@
   import { goto } from '$app/navigation';
   import { page as pageStore } from '$app/stores';
   import { t } from 'svelte-i18n';
-  import { can } from '$lib/stores/auth';
+  import { can, user, tenant } from '$lib/stores/auth';
   import { api } from '$lib/api/client';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { toast } from '$lib/stores/toast';
   import { isSidebarCollapsed } from '$lib/stores/ui';
+  import { getSlugFromDomain } from '$lib/utils/domain';
 
   type NocRow = {
     id: string;
@@ -74,6 +75,27 @@
     critical: number;
     warning: number;
     lastSeenMs: number;
+  };
+  type IncidentKind =
+    | 'critical'
+    | 'warning'
+    | 'ack'
+    | 'mute'
+    | 'unmute'
+    | 'poll_error'
+    | 'recovered';
+  type IncidentEvent = {
+    id: number;
+    ts: number;
+    kind: IncidentKind;
+    message: string;
+    router_id?: string;
+  };
+  type RouterPollState = {
+    fails: number;
+    nextRetryAt: number;
+    lastErrorAt: number | null;
+    lastSuccessAt: number | null;
   };
 
   let loading = $state(true);
@@ -170,11 +192,20 @@
 
   let hoverBar = $state<HoverBar>(null);
   let topIssueMuteMinutes = $state<Record<string, number>>({});
+  let incidentEvents = $state<IncidentEvent[]>([]);
+  let incidentSeq = $state(0);
+  // Keep previous alert ids/severity in a non-reactive snapshot to avoid effect loops.
+  let alertSnapshot: Record<string, string> = {};
+  let routerPollState = $state<Record<string, RouterPollState>>({});
 
-  const tenantPrefix = $derived.by(() => {
-    const tid = String($pageStore.params.tenant || '');
-    return tid ? `/${tid}` : '';
-  });
+  const domainSlug = $derived(getSlugFromDomain($pageStore.url.hostname));
+  const effectiveTenantSlug = $derived(
+    ($tenant?.slug || $user?.tenant_slug || String($pageStore.params.tenant || '')).trim(),
+  );
+  const isCustomDomain = $derived(domainSlug && domainSlug === effectiveTenantSlug);
+  const tenantPrefix = $derived(
+    effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
+  );
 
   // Auto-hide toolbar for NOC display friendly behavior.
   let lastActivityAt = $state(Date.now());
@@ -456,6 +487,7 @@
         await api.mikrotik.alerts.ack(id);
       }
       toast.success($t('admin.network.alerts.toasts.acked') || 'Alert acknowledged');
+      pushIncident('ack', `Ack ${Math.min(ids.length, 50)} alert(s)`, routerId);
       await loadAlerts(false);
     } catch (e: any) {
       toast.error(e?.message || e);
@@ -479,6 +511,7 @@
       toast.success(
         `${$t('admin.network.alerts.toasts.acked') || 'Alert acknowledged'} (${Math.min(ids.length, 80)})`,
       );
+      pushIncident('ack', `Ack visible ${Math.min(ids.length, 80)} alert(s)`);
       await loadAlerts(false);
     } catch (e: any) {
       toast.error(e?.message || e);
@@ -494,6 +527,22 @@
         maintenance_reason: `Snoozed from wallboard for ${minutes}m`,
       });
       toast.success($t('admin.network.alerts.toasts.snoozed') || 'Router snoozed');
+      pushIncident('mute', `Mute ${minutes}m`, routerId);
+      await refresh();
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    }
+  }
+
+  async function unmuteRouter(routerId: string) {
+    if (!$can('manage', 'network_routers')) return;
+    try {
+      await api.mikrotik.routers.update(routerId, {
+        maintenance_until: null,
+        maintenance_reason: null,
+      });
+      pushIncident('unmute', 'Maintenance cleared', routerId);
+      toast.success($t('admin.network.wallboard.unmuted') || 'Maintenance cleared');
       await refresh();
     } catch (e: any) {
       toast.error(e?.message || e);
@@ -563,6 +612,42 @@
 
   function routerById(id: string) {
     return rows.find((r) => r.id === id) || null;
+  }
+
+  function routerLabel(routerId: string) {
+    const rr = routerById(routerId);
+    return rr?.identity || rr?.name || routerId;
+  }
+
+  function pushIncident(kind: IncidentKind, message: string, routerId?: string) {
+    const ev: IncidentEvent = {
+      id: ++incidentSeq,
+      ts: Date.now(),
+      kind,
+      message,
+      router_id: routerId,
+    };
+    incidentEvents = [ev, ...incidentEvents].slice(0, 20);
+  }
+
+  function formatIncidentTs(ms: number) {
+    return new Date(ms).toLocaleString();
+  }
+
+  function kindClass(kind: IncidentKind) {
+    if (kind === 'critical' || kind === 'poll_error') return 'critical';
+    if (kind === 'warning' || kind === 'mute') return 'warning';
+    return 'ok';
+  }
+
+  function kindLabel(kind: IncidentKind) {
+    if (kind === 'critical') return 'Critical';
+    if (kind === 'warning') return 'Warning';
+    if (kind === 'ack') return 'Ack';
+    if (kind === 'mute') return 'Mute';
+    if (kind === 'unmute') return 'Unmute';
+    if (kind === 'poll_error') return 'Poll Error';
+    return 'Recovered';
   }
 
   function openPicker(idx: number) {
@@ -1266,6 +1351,9 @@
     for (const routerId of routerIds) {
       const names = Array.from(byRouter.get(routerId) || []).filter(Boolean).slice(0, 12);
       if (!names.length) continue;
+      const now = Date.now();
+      const ps = routerPollState[routerId];
+      if (ps && ps.nextRetryAt > now) continue;
 
       try {
         const counters = (await api.mikrotik.routers.interfaceLive(routerId, names)) as any as LiveCounter[];
@@ -1297,8 +1385,42 @@
           if (buf.rx.length > 60) buf.rx.splice(0, buf.rx.length - 60);
           if (buf.tx.length > 60) buf.tx.splice(0, buf.tx.length - 60);
         }
+        if (ps && ps.fails >= 3) {
+          pushIncident('recovered', 'Polling recovered', routerId);
+        }
+        if (ps && ps.fails > 0) {
+          routerPollState = {
+            ...routerPollState,
+            [routerId]: {
+              fails: 0,
+              nextRetryAt: 0,
+              lastErrorAt: ps.lastErrorAt,
+              lastSuccessAt: now,
+            },
+          };
+        }
       } catch {
-        // quiet: wallboard should not spam toasts every second
+        const prev = routerPollState[routerId] || {
+          fails: 0,
+          nextRetryAt: 0,
+          lastErrorAt: null,
+          lastSuccessAt: null,
+        };
+        const fails = prev.fails + 1;
+        const backoffMs = Math.min(30_000, 1000 * 2 ** Math.min(fails, 5));
+        const nextRetryAt = Date.now() + backoffMs;
+        routerPollState = {
+          ...routerPollState,
+          [routerId]: {
+            fails,
+            nextRetryAt,
+            lastErrorAt: Date.now(),
+            lastSuccessAt: prev.lastSuccessAt,
+          },
+        };
+        if (fails === 3 || fails === 5 || fails % 10 === 0) {
+          pushIncident('poll_error', `Polling failed (${fails}x)`, routerId);
+        }
       }
     }
 
@@ -1665,6 +1787,33 @@
     }
     lastCriticalSignature = sig;
   });
+
+  $effect(() => {
+    const current: Record<string, string> = {};
+    for (const a of sortedAlerts) {
+      const sev = String(a.severity || '').toLowerCase();
+      current[a.id] = sev;
+    }
+
+    const prevKeys = Object.keys(alertSnapshot);
+    if (prevKeys.length === 0) {
+      alertSnapshot = current;
+      return;
+    }
+
+    for (const a of sortedAlerts) {
+      if (alertSnapshot[a.id]) continue;
+      const sev = String(a.severity || '').toLowerCase();
+      if (sev === 'critical' || sev === 'warning') {
+        pushIncident(
+          sev as 'critical' | 'warning',
+          `${a.title || 'Alert'} · ${a.message || ''}`.trim(),
+          a.router_id,
+        );
+      }
+    }
+    alertSnapshot = current;
+  });
 </script>
 
 <div class="wallboard-viewport">
@@ -1859,6 +2008,17 @@
                 {/if}
                 {#if $can('manage', 'network_routers')}
                   <div class="top-issue-actions">
+                    {#if maintLeft}
+                      <button
+                        type="button"
+                        class="btn-mini ghost"
+                        onclick={() => void unmuteRouter(it.router_id)}
+                        title={$t('admin.network.wallboard.unmute') || 'Unmute'}
+                      >
+                        <Icon name="x-circle" size={14} />
+                        {$t('admin.network.wallboard.unmute') || 'Unmute'}
+                      </button>
+                    {/if}
                     <select
                       value={String(muteMins)}
                       onchange={(e) => {
@@ -1885,6 +2045,38 @@
                     </button>
                   </div>
                 {/if}
+              </div>
+            {/each}
+          {/if}
+        </div>
+      </div>
+
+      <div class="timeline-strip">
+        <div class="top-issues-head">
+          <span class="title">{$t('admin.network.wallboard.timeline.title') || 'Incident Timeline'}</span>
+          <span class="muted">
+            {$t('admin.network.wallboard.timeline.subtitle') || 'Latest 20 wallboard events'}
+          </span>
+        </div>
+        <div class="timeline-list">
+          {#if incidentEvents.length === 0}
+            <span class="top-issue-empty">
+              {$t('admin.network.wallboard.timeline.empty') || 'No recent events yet.'}
+            </span>
+          {:else}
+            {#each incidentEvents as ev (ev.id)}
+              <div class="timeline-item">
+                <span class={`timeline-kind ${kindClass(ev.kind)}`}>{kindLabel(ev.kind)}</span>
+                <div class="timeline-content">
+                  <div class="timeline-msg">
+                    {#if ev.router_id}
+                      <span class="mono">{routerLabel(ev.router_id)}</span>
+                      <span class="muted">·</span>
+                    {/if}
+                    <span>{ev.message}</span>
+                  </div>
+                  <span class="muted mono">{formatIncidentTs(ev.ts)}</span>
+                </div>
               </div>
             {/each}
           {/if}
@@ -2014,6 +2206,10 @@
             txNow >= 0 &&
             txNow < slot.warn_below_tx_bps}
           {@const maintLeft = maintenanceRemaining(r?.maintenance_until)}
+          {@const pollFails = routerPollState[slot.routerId]?.fails ?? 0}
+          {@const pollRetryAt = routerPollState[slot.routerId]?.nextRetryAt ?? 0}
+          {@const pollRetrySec = pollRetryAt > Date.now() ? Math.ceil((pollRetryAt - Date.now()) / 1000) : 0}
+          {@const pollDegraded = pollFails >= 3}
           {@const rxTrend = calcTrend(rx)}
           {@const txTrend = calcTrend(tx)}
           {@const ra = routerAlertMap[slot.routerId]}
@@ -2140,6 +2336,18 @@
                   >
                     <Icon name="clock" size={13} />
                     {$t('admin.network.wallboard.maintenance') || 'Maintenance'} {maintLeft}
+                  </span>
+                {/if}
+                {#if pollDegraded}
+                  <span
+                    class="badge poll-err"
+                    title={`${$t('admin.network.wallboard.poll_error') || 'Poll error'} (${pollFails}x)`}
+                  >
+                    <Icon name="wifi-off" size={13} />
+                    {($t('admin.network.wallboard.poll_error') || 'Poll error') + ` ${pollFails}x`}
+                    {#if pollRetrySec > 0}
+                      <span class="mono">({pollRetrySec}s)</span>
+                    {/if}
                   </span>
                 {/if}
                 <span
@@ -3051,6 +3259,14 @@
     gap: 8px;
     min-height: 0;
   }
+  .timeline-strip {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 9px 10px;
+    background: color-mix(in srgb, var(--bg-surface) 74%, transparent);
+    display: grid;
+    gap: 8px;
+  }
   .top-issues-head {
     display: inline-flex;
     align-items: center;
@@ -3148,6 +3364,64 @@
     font-size: 12px;
     font-weight: 700;
     outline: none;
+  }
+  .timeline-list {
+    display: grid;
+    gap: 7px;
+  }
+  .timeline-item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 7px 8px;
+    background: color-mix(in srgb, var(--bg-surface) 68%, transparent);
+  }
+  .timeline-kind {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    padding: 3px 7px;
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    align-self: start;
+  }
+  .timeline-kind.critical {
+    border-color: color-mix(in srgb, #ef4444 55%, var(--border-color));
+    color: color-mix(in srgb, #ef4444 90%, var(--text-primary));
+    background: color-mix(in srgb, #ef4444 15%, transparent);
+  }
+  .timeline-kind.warning {
+    border-color: color-mix(in srgb, #f59e0b 55%, var(--border-color));
+    color: color-mix(in srgb, #f59e0b 90%, var(--text-primary));
+    background: color-mix(in srgb, #f59e0b 14%, transparent);
+  }
+  .timeline-kind.ok {
+    border-color: color-mix(in srgb, #22c55e 40%, var(--border-color));
+    color: color-mix(in srgb, #22c55e 85%, var(--text-primary));
+    background: color-mix(in srgb, #22c55e 12%, transparent);
+  }
+  .timeline-content {
+    min-width: 0;
+    display: grid;
+    gap: 4px;
+  }
+  .timeline-msg {
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 12px;
+    color: var(--text-primary);
   }
 
   .dot {
@@ -3759,6 +4033,12 @@
     background: color-mix(in srgb, #f59e0b 14%, transparent);
     gap: 6px;
   }
+  .badge.poll-err {
+    border-color: color-mix(in srgb, #ef4444 50%, var(--border-color));
+    color: color-mix(in srgb, #ef4444 90%, var(--text-primary));
+    background: color-mix(in srgb, #ef4444 14%, transparent);
+    gap: 6px;
+  }
 
   .tile-body {
     padding: 14px;
@@ -4077,6 +4357,9 @@
     .top-issue-actions {
       width: 100%;
       justify-content: flex-end;
+    }
+    .timeline-item {
+      grid-template-columns: 1fr;
     }
     .alert-strip.floating-alert-panel {
       right: 10px;

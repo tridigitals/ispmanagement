@@ -3,11 +3,12 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { t } from 'svelte-i18n';
-  import { can } from '$lib/stores/auth';
+  import { can, user, tenant } from '$lib/stores/auth';
   import { api } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
+  import { getSlugFromDomain } from '$lib/utils/domain';
 
   type RouterRow = { id: string; name: string };
   type CustomerRow = { id: string; name: string };
@@ -25,10 +26,14 @@
     existing_account_id?: string | null;
   };
 
-  const tenantPrefix = $derived.by(() => {
-    const tid = String($page.params.tenant || '');
-    return tid ? `/${tid}` : '';
-  });
+  const domainSlug = $derived(getSlugFromDomain($page.url.hostname));
+  const effectiveTenantSlug = $derived(
+    ($tenant?.slug || $user?.tenant_slug || String($page.params.tenant || '')).trim(),
+  );
+  const isCustomDomain = $derived(domainSlug && domainSlug === effectiveTenantSlug);
+  const tenantPrefix = $derived(
+    effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
+  );
 
   let step = $state<1 | 2 | 3>(1);
   let loading = $state(false);

@@ -18,6 +18,17 @@
   // Props (Svelte 5)
   let { mode = 'admin', showHeader = true } = $props();
 
+  function isDebugEnabled() {
+    if (typeof window === 'undefined') return false;
+    const qs = new URLSearchParams(window.location.search);
+    return qs.get('debug') === '1' || localStorage.getItem('debug_routing') === '1';
+  }
+
+  function debugLog(message: string, meta?: Record<string, unknown>) {
+    if (!isDebugEnabled()) return;
+    console.log(`[file-manager] ${message}`, meta || {});
+  }
+
   // State
   let files = $state<FileRecord[]>([]);
   let loading = $state(true);
@@ -231,6 +242,14 @@
 
     loading = true;
     try {
+      debugLog('load-files-start', {
+        mode,
+        page,
+        perPage,
+        searchQuery,
+        reset,
+        hasToken: !!$token,
+      });
       if (reset) {
         page = 1;
         files = [];
@@ -246,6 +265,13 @@
         res = await api.storage.listFilesTenant(page, perPage, searchQuery);
       }
 
+      debugLog('load-files-success', {
+        mode,
+        page,
+        received: res.data?.length || 0,
+        total: res.total || 0,
+      });
+
       if (page === 1) {
         files = res.data;
       } else {
@@ -260,6 +286,10 @@
       // Recalculate size from ALL loaded files
       if (files.length > 0) totalSize = files.reduce((acc, curr) => acc + curr.size, 0);
     } catch (e: any) {
+      debugLog('load-files-error', {
+        mode,
+        message: e?.message || String(e),
+      });
       toast.error(
         get(t)('components.file_manager.toasts.load_failed', {
           values: { message: e.message },
@@ -369,6 +399,11 @@
   }
 
   onMount(() => {
+    debugLog('mount', {
+      mode,
+      path: typeof window !== 'undefined' ? window.location.pathname : '',
+      hasToken: !!$token,
+    });
     loadFiles(true);
   });
 </script>

@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { t } from 'svelte-i18n';
-  import { can } from '$lib/stores/auth';
+  import { can, user, tenant } from '$lib/stores/auth';
   import { api, type IspPackageRouterMappingView, type PppoeAccountPublic } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
@@ -14,6 +14,7 @@
   import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
   import StatsCard from '$lib/components/dashboard/StatsCard.svelte';
   import { timeAgo } from '$lib/utils/date';
+  import { getSlugFromDomain } from '$lib/utils/domain';
 
   type RouterRow = { id: string; name: string; host?: string; port?: number };
   type CustomerRow = { id: string; name: string };
@@ -84,10 +85,14 @@
     return out;
   });
 
-  const tenantPrefix = $derived.by(() => {
-    const tid = String($page.params.tenant || '');
-    return tid ? `/${tid}` : '';
-  });
+  const domainSlug = $derived(getSlugFromDomain($page.url.hostname));
+  const effectiveTenantSlug = $derived(
+    ($tenant?.slug || $user?.tenant_slug || String($page.params.tenant || '')).trim(),
+  );
+  const isCustomDomain = $derived(domainSlug && domainSlug === effectiveTenantSlug);
+  const tenantPrefix = $derived(
+    effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
+  );
 
   const routerName = (id: string) => routers.find((r) => r.id === id)?.name || '-';
   const customerName = (id: string) => customers.find((c) => c.id === id)?.name || '-';

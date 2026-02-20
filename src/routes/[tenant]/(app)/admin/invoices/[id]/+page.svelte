@@ -11,6 +11,8 @@
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
+  import { user, tenant } from '$lib/stores/auth';
+  import { getSlugFromDomain } from '$lib/utils/domain';
 
   let invoice = $state<Invoice | null>(null);
   let loading = $state(true);
@@ -20,9 +22,16 @@
   let showConfirm = $state(false);
   let pendingVerifyStatus = $state<'paid' | 'failed'>('paid');
 
-  const tenantSlug = $derived($page.params.tenant ?? '');
+  const domainSlug = $derived(getSlugFromDomain($page.url.hostname));
+  const effectiveTenantSlug = $derived(
+    ($tenant?.slug || $user?.tenant_slug || $page.params.tenant || '').trim(),
+  );
+  const isCustomDomain = $derived(domainSlug && domainSlug === effectiveTenantSlug);
   const invoiceId = $derived($page.params.id ?? '');
-  const backPath = $derived(tenantSlug ? `/${tenantSlug}/admin/invoices` : '/admin/invoices');
+  const tenantPrefix = $derived(
+    effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
+  );
+  const backPath = $derived(`${tenantPrefix}/admin/invoices`);
 
   onMount(() => {
     void loadInvoice();

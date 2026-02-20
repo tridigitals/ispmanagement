@@ -3,11 +3,12 @@
   import { goto } from '$app/navigation';
   import { page as pageStore } from '$app/stores';
   import { t } from 'svelte-i18n';
-  import { can } from '$lib/stores/auth';
+  import { can, user, tenant } from '$lib/stores/auth';
   import MiniSelect from '$lib/components/ui/MiniSelect.svelte';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { api } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
+  import { getSlugFromDomain } from '$lib/utils/domain';
 
   type LayoutPreset = '2x2' | '3x2' | '3x3' | '4x3';
   type RotateMode = 'manual' | 'auto';
@@ -30,10 +31,14 @@
   let focusMode = $state(false);
   let saving = $state(false);
 
-  const tenantPrefix = $derived.by(() => {
-    const tid = String($pageStore.params.tenant || '');
-    return tid ? `/${tid}` : '';
-  });
+  const domainSlug = $derived(getSlugFromDomain($pageStore.url.hostname));
+  const effectiveTenantSlug = $derived(
+    ($tenant?.slug || $user?.tenant_slug || String($pageStore.params.tenant || '')).trim(),
+  );
+  const isCustomDomain = $derived(domainSlug && domainSlug === effectiveTenantSlug);
+  const tenantPrefix = $derived(
+    effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
+  );
 
   function loadLocal() {
     try {
