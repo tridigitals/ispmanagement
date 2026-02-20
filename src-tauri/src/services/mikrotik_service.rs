@@ -1153,14 +1153,140 @@ impl MikrotikService {
                 .filter(|v| *v >= 30 && *v <= 3600)
                 .unwrap_or(300);
 
+            let cleanup_interval_secs = std::env::var("MIKROTIK_METRICS_CLEANUP_INTERVAL_SECS")
+                .ok()
+                .and_then(|v| v.parse::<u64>().ok())
+                .filter(|v| *v >= 60 && *v <= 86400)
+                .unwrap_or(3600);
+
             let mut interval = tokio::time::interval(Duration::from_secs(interval_secs));
+            let mut last_cleanup = std::time::Instant::now()
+                .checked_sub(Duration::from_secs(cleanup_interval_secs))
+                .unwrap_or_else(std::time::Instant::now);
             loop {
                 interval.tick().await;
                 if let Err(e) = self.poll_once().await {
                     warn!("[MikrotikPoller] Poll failed: {}", e);
                 }
+                if last_cleanup.elapsed().as_secs() >= cleanup_interval_secs {
+                    if let Err(e) = self.cleanup_old_metrics().await {
+                        warn!("[MikrotikPoller] Metrics cleanup failed: {}", e);
+                    }
+                    last_cleanup = std::time::Instant::now();
+                }
             }
         });
+    }
+
+    async fn metrics_retention_days(&self) -> i64 {
+        if let Ok(Some(v)) = self
+            .settings_service
+            .get_value(None, "mikrotik_metrics_retention_days")
+            .await
+        {
+            if let Ok(days) = v.trim().parse::<i64>() {
+                // 0 means disabled cleanup.
+                return days.clamp(0, 3650);
+            }
+        }
+        14
+    }
+
+    async fn cleanup_old_metrics(&self) -> AppResult<()> {
+        let retention_days = self.metrics_retention_days().await;
+        if retention_days <= 0 {
+            return Ok(());
+        }
+
+        let cutoff = Utc::now() - ChronoDuration::days(retention_days);
+
+        #[cfg(feature = "postgres")]
+        async fn prune_table(
+            pool: &DbPool,
+            table: &str,
+            cutoff: DateTime<Utc>,
+            batch_size: i64,
+        ) -> Result<u64, sqlx::Error> {
+            let mut total = 0u64;
+            loop {
+                let sql = format!(
+                    r#"
+                    DELETE FROM {table}
+                    WHERE ctid IN (
+                        SELECT ctid FROM {table}
+                        WHERE ts < $1
+                        LIMIT $2
+                    )
+                    "#
+                );
+
+                let affected = sqlx::query(&sql)
+                    .bind(cutoff)
+                    .bind(batch_size)
+                    .execute(pool)
+                    .await?
+                    .rows_affected();
+
+                total = total.saturating_add(affected);
+                if affected == 0 {
+                    break;
+                }
+            }
+            Ok(total)
+        }
+
+        #[cfg(feature = "sqlite")]
+        async fn prune_table(
+            pool: &DbPool,
+            table: &str,
+            cutoff: DateTime<Utc>,
+            batch_size: i64,
+        ) -> Result<u64, sqlx::Error> {
+            let mut total = 0u64;
+            loop {
+                let sql = format!(
+                    r#"
+                    DELETE FROM {table}
+                    WHERE rowid IN (
+                        SELECT rowid FROM {table}
+                        WHERE ts < $1
+                        LIMIT $2
+                    )
+                    "#
+                );
+
+                let affected = sqlx::query(&sql)
+                    .bind(cutoff)
+                    .bind(batch_size)
+                    .execute(pool)
+                    .await?
+                    .rows_affected();
+
+                total = total.saturating_add(affected);
+                if affected == 0 {
+                    break;
+                }
+            }
+            Ok(total)
+        }
+
+        let batch_size = 5_000i64;
+        let deleted_iface =
+            prune_table(&self.pool, "mikrotik_interface_metrics", cutoff, batch_size)
+                .await
+                .map_err(AppError::Database)?;
+        let deleted_router = prune_table(&self.pool, "mikrotik_router_metrics", cutoff, batch_size)
+            .await
+            .map_err(AppError::Database)?;
+
+        if deleted_iface > 0 || deleted_router > 0 {
+            info!(
+                "[MikrotikPoller] Metrics cleanup done: deleted interface={} router={} (retention={}d)",
+                deleted_iface, deleted_router, retention_days
+            );
+        }
+
+        Ok(())
     }
 
     async fn poll_once(&self) -> AppResult<()> {

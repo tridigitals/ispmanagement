@@ -794,6 +794,8 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
         ("alerting_rate_limit_threshold", "50", "Rate limit count threshold to trigger alert"),
         ("alerting_response_time_threshold", "3000.0", "P95 response time threshold in ms"),
         ("alerting_cooldown_minutes", "15", "Minutes to wait before sending same alert type again"),
+        // MikroTik Metrics Retention
+        ("mikrotik_metrics_retention_days", "14", "Retention days for mikrotik_router_metrics and mikrotik_interface_metrics (0 = disable cleanup)"),
         // Timezone (IANA TZ database name, e.g. Asia/Jakarta). Used for schedules shown in the UI.
         ("app_timezone", "UTC", "Application timezone for schedules (IANA, e.g. Asia/Jakarta)"),
         // Backup Scheduler
