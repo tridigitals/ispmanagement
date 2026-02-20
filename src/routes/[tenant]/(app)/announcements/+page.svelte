@@ -9,11 +9,9 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { stripHtmlToText } from '$lib/utils/sanitizeHtml';
+  import { getApiBaseUrl } from '$lib/utils/apiUrl';
 
-  const forceRemote = import.meta.env.VITE_USE_REMOTE_API === 'true';
-  const API_BASE = forceRemote
-    ? import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-    : 'http://localhost:3000/api';
+  const API_BASE = getApiBaseUrl();
 
   let rows = $state<Announcement[]>([]);
   let total = $state(0);

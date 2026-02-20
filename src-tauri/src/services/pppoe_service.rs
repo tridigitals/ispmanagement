@@ -1,4 +1,3 @@
-
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
@@ -47,14 +46,13 @@ impl PppoeService {
     }
 
     async fn ensure_router_access(&self, tenant_id: &str, router_id: &str) -> AppResult<()> {
-        let exists: Option<String> = sqlx::query_scalar(
-            "SELECT id FROM mikrotik_routers WHERE id = $1 AND tenant_id = $2",
-        )
-        .bind(router_id)
-        .bind(tenant_id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
+        let exists: Option<String> =
+            sqlx::query_scalar("SELECT id FROM mikrotik_routers WHERE id = $1 AND tenant_id = $2")
+                .bind(router_id)
+                .bind(tenant_id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
 
         if exists.is_none() {
             return Err(AppError::Forbidden("No access to router".into()));
@@ -195,10 +193,7 @@ impl PppoeService {
                     None
                 };
                 let pw_avail = Self::password_available(
-                    reply
-                        .attributes
-                        .get("password")
-                        .and_then(|v| v.as_deref()),
+                    reply.attributes.get("password").and_then(|v| v.as_deref()),
                 );
 
                 out.push(RouterSecretRow {
@@ -207,7 +202,10 @@ impl PppoeService {
                     password: pw,
                     password_available: pw_avail,
                     profile_name: reply.attributes.get("profile").and_then(|v| v.clone()),
-                    remote_address: reply.attributes.get("remote-address").and_then(|v| v.clone()),
+                    remote_address: reply
+                        .attributes
+                        .get("remote-address")
+                        .and_then(|v| v.clone()),
                     disabled,
                     comment: reply.attributes.get("comment").and_then(|v| v.clone()),
                 });
@@ -217,20 +215,16 @@ impl PppoeService {
         Ok(out)
     }
 
-    async fn ensure_import_placeholder(
-        &self,
-        tenant_id: &str,
-    ) -> AppResult<(String, String)> {
+    async fn ensure_import_placeholder(&self, tenant_id: &str) -> AppResult<(String, String)> {
         let now = Utc::now();
 
-        let existing_customer: Option<String> = sqlx::query_scalar(
-            "SELECT id FROM customers WHERE tenant_id = $1 AND name = $2",
-        )
-        .bind(tenant_id)
-        .bind(IMPORT_PLACEHOLDER_CUSTOMER_NAME)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
+        let existing_customer: Option<String> =
+            sqlx::query_scalar("SELECT id FROM customers WHERE tenant_id = $1 AND name = $2")
+                .bind(tenant_id)
+                .bind(IMPORT_PLACEHOLDER_CUSTOMER_NAME)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
 
         let customer_id = if let Some(id) = existing_customer {
             id
@@ -315,7 +309,10 @@ impl PppoeService {
             ("name".into(), username.to_string()),
             ("password".into(), password.to_string()),
             ("service".into(), "pppoe".to_string()),
-            ("disabled".into(), if disabled { "yes" } else { "no" }.to_string()),
+            (
+                "disabled".into(),
+                if disabled { "yes" } else { "no" }.to_string(),
+            ),
         ];
         if let Some(p) = profile_name.filter(|s| !s.trim().is_empty()) {
             args.push(("profile".into(), p.to_string()));
@@ -459,7 +456,11 @@ impl PppoeService {
                     disabled: s.disabled,
                     comment: s.comment,
                     password_available: s.password_available,
-                    action: if same { PppoeImportAction::Same } else { PppoeImportAction::Update },
+                    action: if same {
+                        PppoeImportAction::Same
+                    } else {
+                        PppoeImportAction::Update
+                    },
                     existing_account_id: Some(ex.id.clone()),
                 });
             } else {
@@ -485,7 +486,11 @@ impl PppoeService {
                 PppoeImportAction::Same => 2,
             }
         }
-        out.sort_by(|a, b| rank(&a.action).cmp(&rank(&b.action)).then(a.username.cmp(&b.username)));
+        out.sort_by(|a, b| {
+            rank(&a.action)
+                .cmp(&rank(&b.action))
+                .then(a.username.cmp(&b.username))
+        });
 
         Ok(out)
     }
@@ -511,14 +516,13 @@ impl PppoeService {
             ));
         }
 
-        let (customer_id, location_id) = if let (Some(cid), Some(lid)) =
-            (req.customer_id.clone(), req.location_id.clone())
-        {
-            self.ensure_location_access(tenant_id, &cid, &lid).await?;
-            (cid, lid)
-        } else {
-            self.ensure_import_placeholder(tenant_id).await?
-        };
+        let (customer_id, location_id) =
+            if let (Some(cid), Some(lid)) = (req.customer_id.clone(), req.location_id.clone()) {
+                self.ensure_location_access(tenant_id, &cid, &lid).await?;
+                (cid, lid)
+            } else {
+                self.ensure_import_placeholder(tenant_id).await?
+            };
 
         if req.usernames.is_empty() {
             return Ok(PppoeImportResult {
@@ -532,8 +536,12 @@ impl PppoeService {
             });
         }
 
-        let want: std::collections::HashSet<String> =
-            req.usernames.into_iter().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+        let want: std::collections::HashSet<String> = req
+            .usernames
+            .into_iter()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
 
         let dev = self.connect_router(tenant_id, router_id).await?;
         let secrets = self
@@ -641,7 +649,11 @@ impl PppoeService {
                 .bind(&comment)
                 .bind(&router_secret_id)
                 .bind(now)
-                .bind(if password_ok { None::<String> } else { Some("Password not available from router; please set manually.".to_string()) })
+                .bind(if password_ok {
+                    None::<String>
+                } else {
+                    Some("Password not available from router; please set manually.".to_string())
+                })
                 .bind(now)
                 .bind(tenant_id)
                 .bind(&ex.id)
@@ -801,15 +813,14 @@ impl PppoeService {
             .check_permission(actor_id, tenant_id, "pppoe", "read")
             .await?;
 
-        let account: PppoeAccount = sqlx::query_as(
-            "SELECT * FROM pppoe_accounts WHERE tenant_id = $1 AND id = $2",
-        )
-        .bind(tenant_id)
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(AppError::Database)?
-        .ok_or_else(|| AppError::NotFound("PPPoE account not found".into()))?;
+        let account: PppoeAccount =
+            sqlx::query_as("SELECT * FROM pppoe_accounts WHERE tenant_id = $1 AND id = $2")
+                .bind(tenant_id)
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(AppError::Database)?
+                .ok_or_else(|| AppError::NotFound("PPPoE account not found".into()))?;
 
         Ok(account.into())
     }
@@ -903,7 +914,9 @@ impl PppoeService {
         })?;
 
         // Apply to router (best-effort; if it fails we keep record with error)
-        let _ = self.apply_account_internal(tenant_id, account.id.as_str()).await;
+        let _ = self
+            .apply_account_internal(tenant_id, account.id.as_str())
+            .await;
 
         self.audit_service
             .log(
@@ -918,14 +931,13 @@ impl PppoeService {
             .await;
 
         // Reload updated row to return public view
-        let updated: PppoeAccount = sqlx::query_as(
-            "SELECT * FROM pppoe_accounts WHERE tenant_id = $1 AND id = $2",
-        )
-        .bind(tenant_id)
-        .bind(&account.id)
-        .fetch_one(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
+        let updated: PppoeAccount =
+            sqlx::query_as("SELECT * FROM pppoe_accounts WHERE tenant_id = $1 AND id = $2")
+                .bind(tenant_id)
+                .bind(&account.id)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
         Ok(updated.into())
     }
 
@@ -941,15 +953,14 @@ impl PppoeService {
             .check_permission(actor_id, tenant_id, "pppoe", "manage")
             .await?;
 
-        let mut account: PppoeAccount = sqlx::query_as(
-            "SELECT * FROM pppoe_accounts WHERE tenant_id = $1 AND id = $2",
-        )
-        .bind(tenant_id)
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(AppError::Database)?
-        .ok_or_else(|| AppError::NotFound("PPPoE account not found".into()))?;
+        let mut account: PppoeAccount =
+            sqlx::query_as("SELECT * FROM pppoe_accounts WHERE tenant_id = $1 AND id = $2")
+                .bind(tenant_id)
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(AppError::Database)?
+                .ok_or_else(|| AppError::NotFound("PPPoE account not found".into()))?;
 
         if let Some(u) = dto.username {
             let v = u.trim().to_string();
@@ -1039,14 +1050,13 @@ impl PppoeService {
             )
             .await;
 
-        let updated: PppoeAccount = sqlx::query_as(
-            "SELECT * FROM pppoe_accounts WHERE tenant_id = $1 AND id = $2",
-        )
-        .bind(tenant_id)
-        .bind(id)
-        .fetch_one(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
+        let updated: PppoeAccount =
+            sqlx::query_as("SELECT * FROM pppoe_accounts WHERE tenant_id = $1 AND id = $2")
+                .bind(tenant_id)
+                .bind(id)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
         Ok(updated.into())
     }
 
@@ -1062,18 +1072,20 @@ impl PppoeService {
             .await?;
 
         // Load row before delete for router cleanup
-        let account: PppoeAccount = sqlx::query_as(
-            "SELECT * FROM pppoe_accounts WHERE tenant_id = $1 AND id = $2",
-        )
-        .bind(tenant_id)
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(AppError::Database)?
-        .ok_or_else(|| AppError::NotFound("PPPoE account not found".into()))?;
+        let account: PppoeAccount =
+            sqlx::query_as("SELECT * FROM pppoe_accounts WHERE tenant_id = $1 AND id = $2")
+                .bind(tenant_id)
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(AppError::Database)?
+                .ok_or_else(|| AppError::NotFound("PPPoE account not found".into()))?;
 
         // Best-effort remove from router
-        if let Ok(dev) = self.connect_router(tenant_id, account.router_id.as_str()).await {
+        if let Ok(dev) = self
+            .connect_router(tenant_id, account.router_id.as_str())
+            .await
+        {
             if let Ok(Some(rid)) = self
                 .router_find_secret_id_by_name(&dev, account.username.as_str())
                 .await
@@ -1141,19 +1153,20 @@ impl PppoeService {
         tenant_id: &str,
         id: &str,
     ) -> AppResult<PppoeAccountPublic> {
-        let mut account: PppoeAccount = sqlx::query_as(
-            "SELECT * FROM pppoe_accounts WHERE tenant_id = $1 AND id = $2",
-        )
-        .bind(tenant_id)
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(AppError::Database)?
-        .ok_or_else(|| AppError::NotFound("PPPoE account not found".into()))?;
+        let mut account: PppoeAccount =
+            sqlx::query_as("SELECT * FROM pppoe_accounts WHERE tenant_id = $1 AND id = $2")
+                .bind(tenant_id)
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(AppError::Database)?
+                .ok_or_else(|| AppError::NotFound("PPPoE account not found".into()))?;
 
         let started = Instant::now();
 
-        let dev = self.connect_router(tenant_id, account.router_id.as_str()).await?;
+        let dev = self
+            .connect_router(tenant_id, account.router_id.as_str())
+            .await?;
 
         let password = decrypt_secret_opt_for(PURPOSE_PPPOE, account.password_enc.as_str())?
             .ok_or_else(|| AppError::Internal("Missing PPPoE password".into()))?;
@@ -1246,14 +1259,13 @@ impl PppoeService {
         // Small perf log (debug) without spamming by default
         let _elapsed_ms = started.elapsed().as_millis();
 
-        let updated: PppoeAccount = sqlx::query_as(
-            "SELECT * FROM pppoe_accounts WHERE tenant_id = $1 AND id = $2",
-        )
-        .bind(tenant_id)
-        .bind(id)
-        .fetch_one(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
+        let updated: PppoeAccount =
+            sqlx::query_as("SELECT * FROM pppoe_accounts WHERE tenant_id = $1 AND id = $2")
+                .bind(tenant_id)
+                .bind(id)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
 
         Ok(updated.into())
     }
@@ -1334,7 +1346,10 @@ impl PppoeService {
                 "PPPOE_RECONCILE_ROUTER",
                 "pppoe",
                 Some(router_id),
-                Some(&format!("Reconciled router PPPoE secrets: present={}, missing={}", present, missing)),
+                Some(&format!(
+                    "Reconciled router PPPoE secrets: present={}, missing={}",
+                    present, missing
+                )),
                 ip_address,
             )
             .await;

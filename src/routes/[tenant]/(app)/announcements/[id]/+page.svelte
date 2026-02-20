@@ -11,6 +11,7 @@
   import { formatDateTime } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
   import { sanitizeHtml } from '$lib/utils/sanitizeHtml';
+  import { getApiBaseUrl } from '$lib/utils/apiUrl';
 
   let loading = $state(true);
   let ann = $state<Announcement | null>(null);
@@ -24,10 +25,7 @@
     effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
   );
 
-  const forceRemote = import.meta.env.VITE_USE_REMOTE_API === 'true';
-  const API_BASE = forceRemote
-    ? import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-    : 'http://localhost:3000/api';
+  const API_BASE = getApiBaseUrl();
 
   function iconForSeverity(sev: string) {
     switch (sev) {

@@ -50,7 +50,8 @@ pub fn encrypt_secret_for(purpose: &str, plaintext: &str) -> AppResult<String> {
     }
 
     let key = derive_key_for(purpose)?;
-    let cipher = Aes256Gcm::new_from_slice(&key).map_err(|_| AppError::Internal("Invalid key".into()))?;
+    let cipher =
+        Aes256Gcm::new_from_slice(&key).map_err(|_| AppError::Internal("Invalid key".into()))?;
 
     let mut nonce_bytes = [0u8; 12];
     OsRng.fill_bytes(&mut nonce_bytes);
@@ -86,7 +87,8 @@ pub fn decrypt_secret_for(purpose: &str, stored: &str) -> AppResult<String> {
     }
 
     let key = derive_key_for(purpose)?;
-    let cipher = Aes256Gcm::new_from_slice(&key).map_err(|_| AppError::Internal("Invalid key".into()))?;
+    let cipher =
+        Aes256Gcm::new_from_slice(&key).map_err(|_| AppError::Internal("Invalid key".into()))?;
 
     let b64 = &stored[PREFIX.len()..];
     let blob = general_purpose::STANDARD_NO_PAD

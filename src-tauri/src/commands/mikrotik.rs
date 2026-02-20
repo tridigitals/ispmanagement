@@ -15,7 +15,10 @@ pub async fn list_mikrotik_routers(
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
 ) -> Result<Vec<MikrotikRouter>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -36,7 +39,10 @@ pub async fn list_mikrotik_noc(
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
 ) -> Result<Vec<MikrotikRouterNocRow>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -45,7 +51,10 @@ pub async fn list_mikrotik_noc(
         .await
         .map_err(|e| e.to_string())?;
 
-    mikrotik.list_noc(&tenant_id).await.map_err(|e| e.to_string())
+    mikrotik
+        .list_noc(&tenant_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -56,7 +65,10 @@ pub async fn list_mikrotik_alerts(
     active_only: Option<bool>,
     limit: Option<u32>,
 ) -> Result<Vec<MikrotikAlert>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -66,7 +78,11 @@ pub async fn list_mikrotik_alerts(
         .map_err(|e| e.to_string())?;
 
     mikrotik
-        .list_alerts(&tenant_id, active_only.unwrap_or(true), limit.unwrap_or(200))
+        .list_alerts(
+            &tenant_id,
+            active_only.unwrap_or(true),
+            limit.unwrap_or(200),
+        )
         .await
         .map_err(|e| e.to_string())
 }
@@ -84,7 +100,10 @@ pub async fn list_mikrotik_logs(
     per_page: Option<u32>,
     include_total: Option<bool>,
 ) -> Result<PaginatedResponse<MikrotikLogEntry>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -116,7 +135,10 @@ pub async fn sync_mikrotik_logs(
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
 ) -> Result<MikrotikLogSyncResult, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -142,7 +164,10 @@ pub async fn ack_mikrotik_alert(
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
 ) -> Result<(), String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -164,7 +189,10 @@ pub async fn resolve_mikrotik_alert(
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
 ) -> Result<(), String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -186,7 +214,10 @@ pub async fn get_mikrotik_router(
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
 ) -> Result<MikrotikRouter, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -209,7 +240,10 @@ pub async fn get_mikrotik_router_snapshot(
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
 ) -> Result<crate::models::MikrotikRouterSnapshot, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -231,7 +265,10 @@ pub async fn list_mikrotik_ppp_profiles(
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
 ) -> Result<Vec<MikrotikPppProfile>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -253,7 +290,10 @@ pub async fn sync_mikrotik_ppp_profiles(
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
 ) -> Result<Vec<MikrotikPppProfile>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -275,7 +315,10 @@ pub async fn list_mikrotik_ip_pools(
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
 ) -> Result<Vec<MikrotikIpPool>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -297,7 +340,10 @@ pub async fn sync_mikrotik_ip_pools(
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
 ) -> Result<Vec<MikrotikIpPool>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -328,7 +374,10 @@ pub async fn create_mikrotik_router(
     mikrotik: State<'_, MikrotikService>,
     audit: State<'_, AuditService>,
 ) -> Result<MikrotikRouter, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -365,7 +414,10 @@ pub async fn create_mikrotik_router(
             "create",
             "mikrotik_router",
             Some(&router.id),
-            Some(&format!("Created router '{}' ({})", router.name, router.host)),
+            Some(&format!(
+                "Created router '{}' ({})",
+                router.name, router.host
+            )),
             None,
         )
         .await;
@@ -390,7 +442,10 @@ pub async fn update_mikrotik_router(
     mikrotik: State<'_, MikrotikService>,
     audit: State<'_, AuditService>,
 ) -> Result<MikrotikRouter, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -428,7 +483,10 @@ pub async fn update_mikrotik_router(
             "update",
             "mikrotik_router",
             Some(&router.id),
-            Some(&format!("Updated router '{}' ({})", router.name, router.host)),
+            Some(&format!(
+                "Updated router '{}' ({})",
+                router.name, router.host
+            )),
             None,
         )
         .await;
@@ -444,7 +502,10 @@ pub async fn delete_mikrotik_router(
     mikrotik: State<'_, MikrotikService>,
     audit: State<'_, AuditService>,
 ) -> Result<(), String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -489,7 +550,10 @@ pub async fn test_mikrotik_router(
     mikrotik: State<'_, MikrotikService>,
     audit: State<'_, AuditService>,
 ) -> Result<MikrotikTestResult, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -530,13 +594,15 @@ pub async fn test_mikrotik_router(
 pub async fn list_mikrotik_router_metrics(
     token: String,
     router_id: Option<String>,
-    #[allow(non_snake_case)]
-    routerId: Option<String>,
+    #[allow(non_snake_case)] routerId: Option<String>,
     limit: Option<u32>,
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
 ) -> Result<Vec<MikrotikRouterMetric>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -545,7 +611,9 @@ pub async fn list_mikrotik_router_metrics(
         .await
         .map_err(|e| e.to_string())?;
 
-    let rid = router_id.or(routerId).ok_or_else(|| "Missing routerId".to_string())?;
+    let rid = router_id
+        .or(routerId)
+        .ok_or_else(|| "Missing routerId".to_string())?;
 
     mikrotik
         .list_metrics(&tenant_id, &rid, limit.unwrap_or(120))
@@ -557,14 +625,16 @@ pub async fn list_mikrotik_router_metrics(
 pub async fn list_mikrotik_interface_metrics(
     token: String,
     router_id: Option<String>,
-    #[allow(non_snake_case)]
-    routerId: Option<String>,
+    #[allow(non_snake_case)] routerId: Option<String>,
     interface: Option<String>,
     limit: Option<u32>,
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
 ) -> Result<Vec<MikrotikInterfaceMetric>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -573,7 +643,9 @@ pub async fn list_mikrotik_interface_metrics(
         .await
         .map_err(|e| e.to_string())?;
 
-    let rid = router_id.or(routerId).ok_or_else(|| "Missing routerId".to_string())?;
+    let rid = router_id
+        .or(routerId)
+        .ok_or_else(|| "Missing routerId".to_string())?;
 
     mikrotik
         .list_interface_metrics(&tenant_id, &rid, interface.as_deref(), limit.unwrap_or(120))
@@ -585,12 +657,14 @@ pub async fn list_mikrotik_interface_metrics(
 pub async fn list_mikrotik_interface_latest(
     token: String,
     router_id: Option<String>,
-    #[allow(non_snake_case)]
-    routerId: Option<String>,
+    #[allow(non_snake_case)] routerId: Option<String>,
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
 ) -> Result<Vec<MikrotikInterfaceMetric>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -599,7 +673,9 @@ pub async fn list_mikrotik_interface_latest(
         .await
         .map_err(|e| e.to_string())?;
 
-    let rid = router_id.or(routerId).ok_or_else(|| "Missing routerId".to_string())?;
+    let rid = router_id
+        .or(routerId)
+        .ok_or_else(|| "Missing routerId".to_string())?;
 
     mikrotik
         .list_latest_interface_metrics(&tenant_id, &rid)
@@ -615,7 +691,10 @@ pub async fn get_mikrotik_live_interface_counters(
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
 ) -> Result<Vec<MikrotikInterfaceCounter>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;

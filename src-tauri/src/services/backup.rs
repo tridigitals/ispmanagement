@@ -1494,7 +1494,10 @@ impl BackupScheduler {
                     let mut advisory_conn = match pool.acquire().await {
                         Ok(c) => c,
                         Err(e) => {
-                            warn!("Backup scheduler skipped: failed to acquire DB connection: {}", e);
+                            warn!(
+                                "Backup scheduler skipped: failed to acquire DB connection: {}",
+                                e
+                            );
                             continue;
                         }
                     };
@@ -1510,7 +1513,8 @@ impl BackupScheduler {
                     }
 
                     // 1. Check Global Schedule
-                    if let Err(e) = Self::check_and_run_global(&pool, &service, &settings_service).await
+                    if let Err(e) =
+                        Self::check_and_run_global(&pool, &service, &settings_service).await
                     {
                         if e.contains("relation \"settings\" does not exist")
                             || e.contains("relation \"tenants\" does not exist")
@@ -1555,7 +1559,8 @@ impl BackupScheduler {
                 #[cfg(not(feature = "postgres"))]
                 {
                     // 1. Check Global Schedule
-                    if let Err(e) = Self::check_and_run_global(&pool, &service, &settings_service).await
+                    if let Err(e) =
+                        Self::check_and_run_global(&pool, &service, &settings_service).await
                     {
                         if e.contains("relation \"settings\" does not exist")
                             || e.contains("relation \"tenants\" does not exist")

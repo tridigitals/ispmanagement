@@ -1,6 +1,7 @@
 import { writable, derived, get } from 'svelte/store';
 import { toast } from 'svelte-sonner';
 import { appSettings } from '$lib/stores/settings';
+import { getApiBaseUrl } from '$lib/utils/apiUrl';
 
 export interface UploadItem {
   id: string;
@@ -41,7 +42,7 @@ function createUploadStore() {
       }
 
       const id = Math.random().toString(36).substring(7);
-      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const API_BASE = getApiBaseUrl();
       const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB Chunks (Safe for CF/Nginx)
 
       const item: UploadItem = {

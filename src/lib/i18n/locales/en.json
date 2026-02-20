@@ -2343,7 +2343,14 @@
         "fit": "Fit",
         "pause": "Pause",
         "resume": "Resume",
+        "sound_on": "Sound On",
+        "sound_off": "Sound Off",
+        "sound_toggle": "Toggle critical alert sound",
+        "insights": "Insights",
+        "settings": "Settings",
         "stale": "Stale",
+        "alerts_ack_visible": "Ack visible",
+        "maintenance": "Maintenance",
         "drag": "Drag to reorder",
         "show_controls": "Show controls",
         "exit": "Exit wallboard",
@@ -2411,6 +2418,26 @@
           "avg": "RX Avg",
           "peak_tx": "TX Peak",
           "avg_tx": "TX Avg"
+        },
+        "slo": {
+          "availability": "Availability",
+          "routers_online": "Routers Online",
+          "critical": "Critical Alerts",
+          "warning": "Warning Alerts",
+          "avg_latency": "Avg Latency"
+        },
+        "top_issues": {
+          "title": "Top Issues (1h)",
+          "subtitle": "Most frequent unresolved issues",
+          "empty": "No repeated issues in the last hour.",
+          "mute_30m": "Mute 30m",
+          "mute_for": "Mute duration",
+          "apply_mute": "Mute"
+        },
+        "trend": {
+          "up": "Rising",
+          "down": "Falling",
+          "stable": "Stable"
         },
         "metrics_agg_label": "Aggregation",
         "metrics_agg_title": "Aggregation level used for this range",

@@ -2169,7 +2169,14 @@
         "fit": "Pas",
         "pause": "Jeda",
         "resume": "Lanjut",
+        "sound_on": "Suara Aktif",
+        "sound_off": "Suara Mati",
+        "sound_toggle": "Aktif/nonaktif suara alert kritis",
+        "insights": "Ringkasan",
+        "settings": "Pengaturan",
         "stale": "Tertunda",
+        "alerts_ack_visible": "Ack terlihat",
+        "maintenance": "Maintenance",
         "drag": "Geser untuk urutkan",
         "show_controls": "Tampilkan kontrol",
         "exit": "Keluar wallboard",
@@ -2237,6 +2244,26 @@
           "avg": "Rata-rata RX",
           "peak_tx": "Puncak TX",
           "avg_tx": "Rata-rata TX"
+        },
+        "slo": {
+          "availability": "Ketersediaan",
+          "routers_online": "Router Online",
+          "critical": "Alert Kritis",
+          "warning": "Alert Peringatan",
+          "avg_latency": "Rata-rata Latensi"
+        },
+        "top_issues": {
+          "title": "Masalah Teratas (1j)",
+          "subtitle": "Masalah aktif paling sering muncul",
+          "empty": "Tidak ada masalah berulang dalam 1 jam terakhir.",
+          "mute_30m": "Mute 30m",
+          "mute_for": "Durasi mute",
+          "apply_mute": "Mute"
+        },
+        "trend": {
+          "up": "Naik",
+          "down": "Turun",
+          "stable": "Stabil"
         },
         "metrics_agg_label": "Agregasi",
         "metrics_agg_title": "Level agregasi yang dipakai untuk rentang ini",

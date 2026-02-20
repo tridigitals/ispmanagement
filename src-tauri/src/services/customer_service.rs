@@ -1,12 +1,10 @@
-
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
     CreateCustomerRequest, CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
-    Customer, CustomerLocation,
-    CustomerPortalUser, CustomerSubscription, CustomerSubscriptionView, CustomerUser,
-    PaginatedResponse, UpdateCustomerLocationRequest, UpdateCustomerRequest,
+    Customer, CustomerLocation, CustomerPortalUser, CustomerSubscription, CustomerSubscriptionView,
+    CustomerUser, PaginatedResponse, UpdateCustomerLocationRequest, UpdateCustomerRequest,
     UpdateCustomerSubscriptionRequest,
 };
 use crate::services::{AuditService, AuthService, UserService};
@@ -407,10 +405,11 @@ impl CustomerService {
 
         #[cfg(feature = "postgres")]
         {
-            let existing: Option<String> = sqlx::query_scalar("SELECT id FROM users WHERE email = $1")
-                .bind(&portal_email)
-                .fetch_optional(&mut *tx)
-                .await?;
+            let existing: Option<String> =
+                sqlx::query_scalar("SELECT id FROM users WHERE email = $1")
+                    .bind(&portal_email)
+                    .fetch_optional(&mut *tx)
+                    .await?;
             if existing.is_some() {
                 return Err(AppError::UserAlreadyExists);
             }
@@ -479,10 +478,11 @@ impl CustomerService {
 
         #[cfg(feature = "sqlite")]
         {
-            let existing: Option<String> = sqlx::query_scalar("SELECT id FROM users WHERE email = ?")
-                .bind(&portal_email)
-                .fetch_optional(&mut *tx)
-                .await?;
+            let existing: Option<String> =
+                sqlx::query_scalar("SELECT id FROM users WHERE email = ?")
+                    .bind(&portal_email)
+                    .fetch_optional(&mut *tx)
+                    .await?;
             if existing.is_some() {
                 return Err(AppError::UserAlreadyExists);
             }
@@ -756,7 +756,9 @@ impl CustomerService {
             .check_permission(actor_id, tenant_id, "customer_locations", "manage")
             .await?;
 
-        let _ = self.get_customer(actor_id, tenant_id, &dto.customer_id).await?;
+        let _ = self
+            .get_customer(actor_id, tenant_id, &dto.customer_id)
+            .await?;
 
         let loc = CustomerLocation::new(
             tenant_id.to_string(),
@@ -855,24 +857,22 @@ impl CustomerService {
             .await?;
 
         #[cfg(feature = "postgres")]
-        let mut loc: CustomerLocation = sqlx::query_as(
-            "SELECT * FROM customer_locations WHERE tenant_id = $1 AND id = $2",
-        )
-        .bind(tenant_id)
-        .bind(location_id)
-        .fetch_optional(&self.pool)
-        .await?
-        .ok_or_else(|| AppError::NotFound("Location not found".to_string()))?;
+        let mut loc: CustomerLocation =
+            sqlx::query_as("SELECT * FROM customer_locations WHERE tenant_id = $1 AND id = $2")
+                .bind(tenant_id)
+                .bind(location_id)
+                .fetch_optional(&self.pool)
+                .await?
+                .ok_or_else(|| AppError::NotFound("Location not found".to_string()))?;
 
         #[cfg(feature = "sqlite")]
-        let mut loc: CustomerLocation = sqlx::query_as(
-            "SELECT * FROM customer_locations WHERE tenant_id = ? AND id = ?",
-        )
-        .bind(tenant_id)
-        .bind(location_id)
-        .fetch_optional(&self.pool)
-        .await?
-        .ok_or_else(|| AppError::NotFound("Location not found".to_string()))?;
+        let mut loc: CustomerLocation =
+            sqlx::query_as("SELECT * FROM customer_locations WHERE tenant_id = ? AND id = ?")
+                .bind(tenant_id)
+                .bind(location_id)
+                .fetch_optional(&self.pool)
+                .await?
+                .ok_or_else(|| AppError::NotFound("Location not found".to_string()))?;
 
         if let Some(v) = dto.label {
             let vv = v.trim().to_string();
@@ -1089,7 +1089,9 @@ impl CustomerService {
             .check_permission(actor_id, tenant_id, "customers", "manage")
             .await?;
 
-        let _ = self.get_customer(actor_id, tenant_id, &dto.customer_id).await?;
+        let _ = self
+            .get_customer(actor_id, tenant_id, &dto.customer_id)
+            .await?;
 
         let cu = CustomerUser::new(tenant_id.to_string(), dto.customer_id, dto.user_id);
 
@@ -1203,7 +1205,9 @@ impl CustomerService {
             .check_permission(actor_id, tenant_id, "customers", "manage")
             .await?;
 
-        let _ = self.get_customer(actor_id, tenant_id, &dto.customer_id).await?;
+        let _ = self
+            .get_customer(actor_id, tenant_id, &dto.customer_id)
+            .await?;
 
         let user = self
             .user_service
@@ -1259,7 +1263,9 @@ impl CustomerService {
             .await?;
 
         if res.rows_affected() == 0 {
-            return Err(AppError::NotFound("Portal user mapping not found".to_string()));
+            return Err(AppError::NotFound(
+                "Portal user mapping not found".to_string(),
+            ));
         }
 
         self.audit_service
@@ -1408,13 +1414,14 @@ impl CustomerService {
             .await?;
 
         if dto.price <= 0.0 {
-            return Err(AppError::Validation("price must be greater than 0".to_string()));
+            return Err(AppError::Validation(
+                "price must be greater than 0".to_string(),
+            ));
         }
 
         let billing_cycle = Self::normalize_billing_cycle(&dto.billing_cycle)?;
-        let status = Self::normalize_subscription_status(
-            dto.status.as_deref().unwrap_or("active"),
-        )?;
+        let status =
+            Self::normalize_subscription_status(dto.status.as_deref().unwrap_or("active"))?;
         let starts_at = Self::parse_optional_datetime(dto.starts_at)?;
         let ends_at = Self::parse_optional_datetime(dto.ends_at)?;
 
@@ -1641,7 +1648,9 @@ impl CustomerService {
 
         if let Some(price) = dto.price {
             if price <= 0.0 {
-                return Err(AppError::Validation("price must be greater than 0".to_string()));
+                return Err(AppError::Validation(
+                    "price must be greater than 0".to_string(),
+                ));
             }
             row.price = price;
         }
@@ -1775,22 +1784,19 @@ impl CustomerService {
             .await?;
 
         #[cfg(feature = "postgres")]
-        let res = sqlx::query(
-            "DELETE FROM customer_subscriptions WHERE id = $1 AND tenant_id = $2",
-        )
-        .bind(subscription_id)
-        .bind(tenant_id)
-        .execute(&self.pool)
-        .await?;
+        let res =
+            sqlx::query("DELETE FROM customer_subscriptions WHERE id = $1 AND tenant_id = $2")
+                .bind(subscription_id)
+                .bind(tenant_id)
+                .execute(&self.pool)
+                .await?;
 
         #[cfg(feature = "sqlite")]
-        let res = sqlx::query(
-            "DELETE FROM customer_subscriptions WHERE id = ? AND tenant_id = ?",
-        )
-        .bind(subscription_id)
-        .bind(tenant_id)
-        .execute(&self.pool)
-        .await?;
+        let res = sqlx::query("DELETE FROM customer_subscriptions WHERE id = ? AND tenant_id = ?")
+            .bind(subscription_id)
+            .bind(tenant_id)
+            .execute(&self.pool)
+            .await?;
 
         if res.rows_affected() == 0 {
             return Err(AppError::NotFound("Subscription not found".to_string()));
@@ -1843,9 +1849,8 @@ impl CustomerService {
         .fetch_optional(&self.pool)
         .await?;
 
-        let customer_id = customer_id.ok_or_else(|| {
-            AppError::Forbidden("You are not linked to any customer".to_string())
-        })?;
+        let customer_id = customer_id
+            .ok_or_else(|| AppError::Forbidden("You are not linked to any customer".to_string()))?;
 
         #[cfg(feature = "postgres")]
         let rows: Vec<CustomerLocation> = sqlx::query_as(

@@ -1,10 +1,9 @@
-
 use crate::models::{
     AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
     CreateCustomerRequest, CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
-    Customer, CustomerLocation,
-    CustomerPortalUser, CustomerSubscription, CustomerSubscriptionView, PaginatedResponse,
-    UpdateCustomerLocationRequest, UpdateCustomerRequest, UpdateCustomerSubscriptionRequest,
+    Customer, CustomerLocation, CustomerPortalUser, CustomerSubscription, CustomerSubscriptionView,
+    PaginatedResponse, UpdateCustomerLocationRequest, UpdateCustomerRequest,
+    UpdateCustomerSubscriptionRequest,
 };
 use crate::services::{AuthService, CustomerService};
 use tauri::State;
@@ -18,13 +17,22 @@ pub async fn list_customers(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<PaginatedResponse<Customer>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     customers
-        .list_customers(&claims.sub, &tenant_id, q, page.unwrap_or(1), per_page.unwrap_or(25))
+        .list_customers(
+            &claims.sub,
+            &tenant_id,
+            q,
+            page.unwrap_or(1),
+            per_page.unwrap_or(25),
+        )
         .await
         .map_err(|e| e.to_string())
 }
@@ -36,7 +44,10 @@ pub async fn get_customer(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<Customer, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -54,7 +65,10 @@ pub async fn create_customer(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<Customer, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -72,7 +86,10 @@ pub async fn create_customer_with_portal(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<Customer, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -91,7 +108,10 @@ pub async fn update_customer(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<Customer, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -115,7 +135,10 @@ pub async fn delete_customer(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<(), String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -133,7 +156,10 @@ pub async fn list_customer_locations(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<Vec<CustomerLocation>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -151,7 +177,10 @@ pub async fn create_customer_location(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<CustomerLocation, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -170,7 +199,10 @@ pub async fn update_customer_location(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<CustomerLocation, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -194,7 +226,10 @@ pub async fn delete_customer_location(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<(), String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -212,7 +247,10 @@ pub async fn list_customer_portal_users(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<Vec<CustomerPortalUser>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -230,7 +268,10 @@ pub async fn add_customer_portal_user(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<CustomerPortalUser, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -248,7 +289,10 @@ pub async fn create_customer_portal_user(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<CustomerPortalUser, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -266,13 +310,21 @@ pub async fn remove_customer_portal_user(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<(), String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     customers
-        .remove_portal_user(&claims.sub, &tenant_id, &customer_user_id, Some("127.0.0.1"))
+        .remove_portal_user(
+            &claims.sub,
+            &tenant_id,
+            &customer_user_id,
+            Some("127.0.0.1"),
+        )
         .await
         .map_err(|e| e.to_string())
 }
@@ -283,7 +335,10 @@ pub async fn list_my_customer_locations(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<Vec<CustomerLocation>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -303,7 +358,10 @@ pub async fn list_customer_subscriptions(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<PaginatedResponse<CustomerSubscriptionView>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -327,7 +385,10 @@ pub async fn create_customer_subscription(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<CustomerSubscription, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -346,7 +407,10 @@ pub async fn update_customer_subscription(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<CustomerSubscription, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -370,18 +434,16 @@ pub async fn delete_customer_subscription(
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<(), String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     customers
-        .delete_customer_subscription(
-            &claims.sub,
-            &tenant_id,
-            &subscription_id,
-            Some("127.0.0.1"),
-        )
+        .delete_customer_subscription(&claims.sub, &tenant_id, &subscription_id, Some("127.0.0.1"))
         .await
         .map_err(|e| e.to_string())
 }

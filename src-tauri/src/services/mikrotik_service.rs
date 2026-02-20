@@ -12,21 +12,22 @@
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    CreateMikrotikRouterRequest, MikrotikHealthSnapshot, MikrotikInterfaceSnapshot,
-    MikrotikInterfaceCounter, MikrotikInterfaceMetric, MikrotikIpAddressSnapshot, MikrotikAlert,
+    CreateMikrotikRouterRequest, MikrotikAlert, MikrotikHealthSnapshot, MikrotikInterfaceCounter,
+    MikrotikInterfaceMetric, MikrotikInterfaceSnapshot, MikrotikIpAddressSnapshot,
     MikrotikLogEntry, MikrotikLogSyncResult, MikrotikRouter, MikrotikRouterMetric,
     MikrotikRouterNocRow, MikrotikRouterSnapshot, MikrotikTestResult, PaginatedResponse,
     UpdateMikrotikRouterRequest,
 };
 use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
 use crate::services::{AuditService, NotificationService, SettingsService};
+use chrono::DateTime;
 use chrono::{Duration as ChronoDuration, Utc};
 use mikrotik_rs::{protocol::command::CommandBuilder, protocol::CommandResponse, MikrotikDevice};
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::time::{timeout, Duration};
 use tracing::{info, warn};
-use chrono::DateTime;
 
 // Default thresholds (kept in sync with UI "risk" filters).
 // TODO: make configurable per tenant via Settings.
@@ -35,6 +36,8 @@ const CPU_HOT: i32 = 85;
 const LATENCY_RISK_MS: i32 = 200;
 const LATENCY_HOT_MS: i32 = 400;
 const OFFLINE_AFTER_SECS: i64 = 60;
+const WALLBOARD_SLOTS_SETTING_KEY: &str = "mikrotik_wallboard_slots_json";
+const WALLBOARD_TRACK_CACHE_TTL_SECS: u64 = 60;
 
 #[derive(Clone, Copy)]
 struct Thresholds {
@@ -52,6 +55,8 @@ pub struct MikrotikService {
     notification_service: NotificationService,
     audit_service: AuditService,
     settings_service: SettingsService,
+    wallboard_track_cache:
+        Arc<std::sync::RwLock<HashMap<String, (Instant, HashMap<String, HashSet<String>>)>>>,
 }
 
 impl MikrotikService {
@@ -83,6 +88,7 @@ impl MikrotikService {
             notification_service,
             audit_service,
             settings_service,
+            wallboard_track_cache: Arc::new(std::sync::RwLock::new(HashMap::new())),
         }
     }
 
@@ -263,7 +269,8 @@ impl MikrotikService {
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        let mut raw_rows: Vec<(Option<String>, Option<String>, Option<String>, String)> = Vec::new();
+        let mut raw_rows: Vec<(Option<String>, Option<String>, Option<String>, String)> =
+            Vec::new();
         while let Some(res) = rx.recv().await {
             let r = res.map_err(|e| AppError::Internal(e.to_string()))?;
             if let CommandResponse::Reply(reply) = r {
@@ -614,14 +621,13 @@ impl MikrotikService {
         limit: u32,
     ) -> AppResult<Vec<MikrotikRouterMetric>> {
         // Ensure router belongs to tenant
-        let exists: Option<String> = sqlx::query_scalar(
-            "SELECT id FROM mikrotik_routers WHERE id = $1 AND tenant_id = $2",
-        )
-        .bind(router_id)
-        .bind(tenant_id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
+        let exists: Option<String> =
+            sqlx::query_scalar("SELECT id FROM mikrotik_routers WHERE id = $1 AND tenant_id = $2")
+                .bind(router_id)
+                .bind(tenant_id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
 
         if exists.is_none() {
             return Err(AppError::Forbidden("No access to router".into()));
@@ -652,14 +658,13 @@ impl MikrotikService {
         limit: u32,
     ) -> AppResult<Vec<MikrotikInterfaceMetric>> {
         // Ensure router belongs to tenant
-        let exists: Option<String> = sqlx::query_scalar(
-            "SELECT id FROM mikrotik_routers WHERE id = $1 AND tenant_id = $2",
-        )
-        .bind(router_id)
-        .bind(tenant_id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
+        let exists: Option<String> =
+            sqlx::query_scalar("SELECT id FROM mikrotik_routers WHERE id = $1 AND tenant_id = $2")
+                .bind(router_id)
+                .bind(tenant_id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
 
         if exists.is_none() {
             return Err(AppError::Forbidden("No access to router".into()));
@@ -705,14 +710,13 @@ impl MikrotikService {
         router_id: &str,
     ) -> AppResult<Vec<MikrotikInterfaceMetric>> {
         // Ensure router belongs to tenant
-        let exists: Option<String> = sqlx::query_scalar(
-            "SELECT id FROM mikrotik_routers WHERE id = $1 AND tenant_id = $2",
-        )
-        .bind(router_id)
-        .bind(tenant_id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
+        let exists: Option<String> =
+            sqlx::query_scalar("SELECT id FROM mikrotik_routers WHERE id = $1 AND tenant_id = $2")
+                .bind(router_id)
+                .bind(tenant_id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
 
         if exists.is_none() {
             return Err(AppError::Forbidden("No access to router".into()));
@@ -797,7 +801,10 @@ impl MikrotikService {
 
         // Fetch all interface snapshots and filter. RouterOS doesn't reliably support
         // "IN" queries across all versions; we keep it portable.
-        let snaps = self.fetch_interfaces_snapshot(&dev).await.unwrap_or_default();
+        let snaps = self
+            .fetch_interfaces_snapshot(&dev)
+            .await
+            .unwrap_or_default();
         let set: std::collections::HashSet<String> = names.into_iter().collect();
 
         let mut out: Vec<MikrotikInterfaceCounter> = vec![];
@@ -821,7 +828,11 @@ impl MikrotikService {
     ///
     /// This is used by the admin detail UI to show richer data without forcing
     /// the background poller to store huge payloads.
-    pub async fn get_snapshot(&self, tenant_id: &str, id: &str) -> AppResult<MikrotikRouterSnapshot> {
+    pub async fn get_snapshot(
+        &self,
+        tenant_id: &str,
+        id: &str,
+    ) -> AppResult<MikrotikRouterSnapshot> {
         let mut router = self
             .get_router(tenant_id, id)
             .await?
@@ -951,10 +962,16 @@ impl MikrotikService {
         ) = self.fetch_resource_snapshot(&dev).await.unwrap_or_default();
 
         // Interfaces
-        let interfaces = self.fetch_interfaces_snapshot(&dev).await.unwrap_or_default();
+        let interfaces = self
+            .fetch_interfaces_snapshot(&dev)
+            .await
+            .unwrap_or_default();
 
         // IP addresses
-        let ip_addresses = self.fetch_ip_addresses_snapshot(&dev).await.unwrap_or_default();
+        let ip_addresses = self
+            .fetch_ip_addresses_snapshot(&dev)
+            .await
+            .unwrap_or_default();
 
         // Health (optional on some devices)
         let health = match self.fetch_health_snapshot(&dev).await {
@@ -1013,7 +1030,11 @@ impl MikrotikService {
         })
     }
 
-    pub async fn test_connection(&self, tenant_id: &str, id: &str) -> AppResult<MikrotikTestResult> {
+    pub async fn test_connection(
+        &self,
+        tenant_id: &str,
+        id: &str,
+    ) -> AppResult<MikrotikTestResult> {
         let router = self
             .get_router(tenant_id, id)
             .await?
@@ -1301,13 +1322,32 @@ impl MikrotikService {
         .await
         .map_err(AppError::Database)?;
 
+        let mut tracked_by_tenant: HashMap<String, HashMap<String, HashSet<String>>> =
+            HashMap::new();
+
         for router in routers {
-            let _ = self.poll_router(router).await;
+            let tenant_id = router.tenant_id.clone();
+            if !tracked_by_tenant.contains_key(&tenant_id) {
+                let tracked = self
+                    .wallboard_tracked_interfaces_by_router_cached(&tenant_id)
+                    .await;
+                tracked_by_tenant.insert(tenant_id.clone(), tracked);
+            }
+
+            let tracked_for_router = tracked_by_tenant
+                .get(&tenant_id)
+                .and_then(|m| m.get(&router.id).cloned());
+
+            let _ = self.poll_router(router, tracked_for_router).await;
         }
         Ok(())
     }
 
-    async fn poll_router(&self, router: MikrotikRouter) -> AppResult<()> {
+    async fn poll_router(
+        &self,
+        router: MikrotikRouter,
+        tracked_ifaces: Option<std::collections::HashSet<String>>,
+    ) -> AppResult<()> {
         let started = Instant::now();
         let prev_online = router.is_online;
         let tenant_id = router.tenant_id.clone();
@@ -1316,19 +1356,19 @@ impl MikrotikService {
         let now = Utc::now();
         let latency_ms = Some(started.elapsed().as_millis().min(i32::MAX as u128) as i32);
 
-        let in_maintenance = router
-            .maintenance_until
-            .map(|u| u > now)
-            .unwrap_or(false);
+        let in_maintenance = router.maintenance_until.map(|u| u > now).unwrap_or(false);
 
         match probe {
             Ok((identity, version)) => {
                 // Basic resource snapshot
-                let metric = self.fetch_resource_metric(&router).await.unwrap_or_else(|_| {
-                    let mut m = MikrotikRouterMetric::new(router.id.clone());
-                    m.ts = now;
-                    m
-                });
+                let metric = self
+                    .fetch_resource_metric(&router)
+                    .await
+                    .unwrap_or_else(|_| {
+                        let mut m = MikrotikRouterMetric::new(router.id.clone());
+                        m.ts = now;
+                        m
+                    });
 
                 // Update router status
                 sqlx::query(
@@ -1379,7 +1419,10 @@ impl MikrotikService {
                 .await;
 
                 // Per-interface metrics (best-effort). Also compute aggregate rx/tx bps.
-                if let Ok((rx_bps, tx_bps)) = self.poll_interface_metrics(&router, now).await {
+                if let Ok((rx_bps, tx_bps)) = self
+                    .poll_interface_metrics(&router, now, tracked_ifaces.as_ref())
+                    .await
+                {
                     if rx_bps.is_some() || tx_bps.is_some() {
                         let _ = sqlx::query(
                             r#"
@@ -1426,8 +1469,12 @@ impl MikrotikService {
                     let _ = self.resolve_all_router_alerts(&tenant_id, &router.id).await;
                 } else {
                     let _ = self.resolve_alert(&tenant_id, &router.id, "offline").await;
-                    let _ = self.eval_cpu_alert(&tenant_id, &router, metric.cpu_load, now).await;
-                    let _ = self.eval_latency_alert(&tenant_id, &router, latency_ms, now).await;
+                    let _ = self
+                        .eval_cpu_alert(&tenant_id, &router, metric.cpu_load, now)
+                        .await;
+                    let _ = self
+                        .eval_latency_alert(&tenant_id, &router, latency_ms, now)
+                        .await;
                 }
 
                 if !prev_online {
@@ -1587,9 +1634,16 @@ impl MikrotikService {
                         tenant_id,
                         router,
                         "cpu",
-                        if cpu >= th.cpu_hot { "critical" } else { "warning" },
+                        if cpu >= th.cpu_hot {
+                            "critical"
+                        } else {
+                            "warning"
+                        },
                         "High CPU",
-                        format!("{} CPU is {}% (threshold: {}%).", router.name, cpu, th.cpu_risk),
+                        format!(
+                            "{} CPU is {}% (threshold: {}%).",
+                            router.name, cpu, th.cpu_risk
+                        ),
                         Some(cpu as f64),
                         Some(th.cpu_risk as f64),
                         now,
@@ -1647,7 +1701,11 @@ impl MikrotikService {
                         tenant_id,
                         router,
                         "latency",
-                        if lat >= th.latency_hot_ms { "critical" } else { "warning" },
+                        if lat >= th.latency_hot_ms {
+                            "critical"
+                        } else {
+                            "warning"
+                        },
                         "High latency",
                         format!(
                             "{} latency is {}ms (threshold: {}ms).",
@@ -1795,7 +1853,12 @@ impl MikrotikService {
         Ok(true)
     }
 
-    async fn resolve_alert(&self, tenant_id: &str, router_id: &str, alert_type: &str) -> AppResult<()> {
+    async fn resolve_alert(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        alert_type: &str,
+    ) -> AppResult<()> {
         let now = Utc::now();
         let _ = sqlx::query(
             r#"
@@ -1824,12 +1887,7 @@ impl MikrotikService {
     }
 
     async fn get_thresholds(&self, tenant_id: &str) -> Thresholds {
-        async fn get_i32(
-            svc: &SettingsService,
-            tenant_id: &str,
-            key: &str,
-            default: i32,
-        ) -> i32 {
+        async fn get_i32(svc: &SettingsService, tenant_id: &str, key: &str, default: i32) -> i32 {
             match svc.get_value(Some(tenant_id), key).await {
                 Ok(Some(v)) => v.trim().parse::<i32>().ok().unwrap_or(default),
                 _ => default,
@@ -1843,26 +1901,42 @@ impl MikrotikService {
             default: bool,
         ) -> bool {
             match svc.get_value(Some(tenant_id), key).await {
-                Ok(Some(v)) => matches!(v.trim().to_lowercase().as_str(), "true" | "1" | "yes" | "on"),
+                Ok(Some(v)) => matches!(
+                    v.trim().to_lowercase().as_str(),
+                    "true" | "1" | "yes" | "on"
+                ),
                 _ => default,
             }
         }
 
-        async fn get_i64(
-            svc: &SettingsService,
-            tenant_id: &str,
-            key: &str,
-            default: i64,
-        ) -> i64 {
+        async fn get_i64(svc: &SettingsService, tenant_id: &str, key: &str, default: i64) -> i64 {
             match svc.get_value(Some(tenant_id), key).await {
                 Ok(Some(v)) => v.trim().parse::<i64>().ok().unwrap_or(default),
                 _ => default,
             }
         }
 
-        let enabled = get_bool(&self.settings_service, tenant_id, "mikrotik_alerting_enabled", true).await;
-        let cpu_risk = get_i32(&self.settings_service, tenant_id, "mikrotik_alert_cpu_risk", CPU_RISK).await;
-        let cpu_hot = get_i32(&self.settings_service, tenant_id, "mikrotik_alert_cpu_hot", CPU_HOT).await;
+        let enabled = get_bool(
+            &self.settings_service,
+            tenant_id,
+            "mikrotik_alerting_enabled",
+            true,
+        )
+        .await;
+        let cpu_risk = get_i32(
+            &self.settings_service,
+            tenant_id,
+            "mikrotik_alert_cpu_risk",
+            CPU_RISK,
+        )
+        .await;
+        let cpu_hot = get_i32(
+            &self.settings_service,
+            tenant_id,
+            "mikrotik_alert_cpu_hot",
+            CPU_HOT,
+        )
+        .await;
         let latency_risk_ms = get_i32(
             &self.settings_service,
             tenant_id,
@@ -1900,6 +1974,7 @@ impl MikrotikService {
         &self,
         router: &MikrotikRouter,
         ts: DateTime<Utc>,
+        tracked_ifaces: Option<&std::collections::HashSet<String>>,
     ) -> Result<(Option<i64>, Option<i64>), anyhow::Error> {
         #[derive(sqlx::FromRow, Debug)]
         struct PrevIfaceRow {
@@ -1920,6 +1995,18 @@ impl MikrotikService {
         .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
         let interfaces = self.fetch_interfaces_snapshot(&dev).await?;
+        let interfaces: Vec<MikrotikInterfaceSnapshot> = match tracked_ifaces {
+            // Persist only interfaces selected on wallboard.
+            Some(allowed) if !allowed.is_empty() => interfaces
+                .into_iter()
+                .filter(|i| allowed.contains(&i.name))
+                .collect(),
+            _ => Vec::new(),
+        };
+
+        if interfaces.is_empty() {
+            return Ok((None, None));
+        }
 
         // Fetch last metrics per interface in one shot.
         #[cfg(feature = "postgres")]
@@ -1973,7 +2060,8 @@ impl MikrotikService {
         .await
         .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
-        let mut prev_map: std::collections::HashMap<String, PrevIfaceRow> = std::collections::HashMap::new();
+        let mut prev_map: std::collections::HashMap<String, PrevIfaceRow> =
+            std::collections::HashMap::new();
         for r in prev_rows.drain(..) {
             if prev_map.contains_key(&r.interface_name) {
                 continue;
@@ -1994,7 +2082,9 @@ impl MikrotikService {
             m.disabled = it.disabled;
             m.link_downs = it.link_downs;
 
-            if let (Some(prev_row), Some(cur_rx), Some(prev_rx)) = (prev, it.rx_byte, prev.and_then(|p| p.rx_byte)) {
+            if let (Some(prev_row), Some(cur_rx), Some(prev_rx)) =
+                (prev, it.rx_byte, prev.and_then(|p| p.rx_byte))
+            {
                 let dt = (ts - prev_row.ts).num_milliseconds() as f64 / 1000.0;
                 if dt > 0.0 {
                     let delta = cur_rx - prev_rx;
@@ -2006,7 +2096,9 @@ impl MikrotikService {
                 }
             }
 
-            if let (Some(prev_row), Some(cur_tx), Some(prev_tx)) = (prev, it.tx_byte, prev.and_then(|p| p.tx_byte)) {
+            if let (Some(prev_row), Some(cur_tx), Some(prev_tx)) =
+                (prev, it.tx_byte, prev.and_then(|p| p.tx_byte))
+            {
                 let dt = (ts - prev_row.ts).num_milliseconds() as f64 / 1000.0;
                 if dt > 0.0 {
                     let delta = cur_tx - prev_tx;
@@ -2042,6 +2134,91 @@ impl MikrotikService {
         }
 
         Ok((sum_rx, sum_tx))
+    }
+
+    async fn wallboard_tracked_interfaces_by_router_cached(
+        &self,
+        tenant_id: &str,
+    ) -> HashMap<String, HashSet<String>> {
+        let now = Instant::now();
+        if let Ok(cache) = self.wallboard_track_cache.read() {
+            if let Some((loaded_at, data)) = cache.get(tenant_id) {
+                if now.duration_since(*loaded_at).as_secs() < WALLBOARD_TRACK_CACHE_TTL_SECS {
+                    return data.clone();
+                }
+            }
+        }
+
+        let fresh = self.wallboard_tracked_interfaces_by_router(tenant_id).await;
+        if let Ok(mut cache) = self.wallboard_track_cache.write() {
+            cache.insert(tenant_id.to_string(), (now, fresh.clone()));
+        }
+        fresh
+    }
+
+    async fn wallboard_tracked_interfaces_by_router(
+        &self,
+        tenant_id: &str,
+    ) -> HashMap<String, HashSet<String>> {
+        let raw = match self
+            .settings_service
+            .get_value(Some(tenant_id), WALLBOARD_SLOTS_SETTING_KEY)
+            .await
+        {
+            Ok(v) => v,
+            Err(_) => return HashMap::new(),
+        };
+
+        let mut out: HashMap<String, HashSet<String>> = HashMap::new();
+        let Some(value) = raw else {
+            return out;
+        };
+
+        let parsed: serde_json::Value = match serde_json::from_str(&value) {
+            Ok(v) => v,
+            Err(_) => return out,
+        };
+
+        let Some(items) = parsed.as_array() else {
+            return out;
+        };
+
+        for it in items {
+            if it.is_null() {
+                continue;
+            }
+
+            // Back-compat with old format: ["router-id-1", ...] => default iface ether1
+            if let Some(router_id) = it.as_str().map(str::trim).filter(|s| !s.is_empty()) {
+                out.entry(router_id.to_string())
+                    .or_default()
+                    .insert("ether1".to_string());
+                continue;
+            }
+
+            let Some(obj) = it.as_object() else {
+                continue;
+            };
+
+            let router_id = obj
+                .get("routerId")
+                .and_then(|v| v.as_str())
+                .map(str::trim)
+                .filter(|s| !s.is_empty());
+            let iface = obj
+                .get("iface")
+                .and_then(|v| v.as_str())
+                .map(str::trim)
+                .filter(|s| !s.is_empty());
+
+            if let (Some(router_id), Some(iface)) = (router_id, iface) {
+                out.entry(router_id.to_string())
+                    .or_default()
+                    .insert(iface.to_string());
+            }
+        }
+
+        out
     }
 
     async fn fetch_resource_metric(
@@ -2220,9 +2397,7 @@ impl MikrotikService {
         &self,
         dev: &MikrotikDevice,
     ) -> Result<Vec<MikrotikInterfaceSnapshot>, anyhow::Error> {
-        let cmd = CommandBuilder::new()
-            .command("/interface/print")
-            .build();
+        let cmd = CommandBuilder::new().command("/interface/print").build();
         let mut rx = dev
             .send_command(cmd)
             .await
@@ -2250,6 +2425,18 @@ impl MikrotikService {
                     .attributes
                     .get("mtu")
                     .and_then(|v| v.as_ref().and_then(|s| s.parse::<i32>().ok()));
+                let mac_address = reply
+                    .attributes
+                    .get("mac-address")
+                    .and_then(|v| v.clone())
+                    .filter(|s| !s.trim().is_empty())
+                    .or_else(|| {
+                        reply
+                            .attributes
+                            .get("actual-mac-address")
+                            .and_then(|v| v.clone())
+                            .filter(|s| !s.trim().is_empty())
+                    });
 
                 out.push(MikrotikInterfaceSnapshot {
                     name,
@@ -2257,10 +2444,7 @@ impl MikrotikService {
                     running,
                     disabled,
                     mtu,
-                    mac_address: reply
-                        .attributes
-                        .get("mac-address")
-                        .and_then(|v| v.clone()),
+                    mac_address,
                     rx_byte: reply
                         .attributes
                         .get("rx-byte")
@@ -2294,9 +2478,7 @@ impl MikrotikService {
         &self,
         dev: &MikrotikDevice,
     ) -> Result<Vec<MikrotikIpAddressSnapshot>, anyhow::Error> {
-        let cmd = CommandBuilder::new()
-            .command("/ip/address/print")
-            .build();
+        let cmd = CommandBuilder::new().command("/ip/address/print").build();
         let mut rx = dev
             .send_command(cmd)
             .await
@@ -2333,7 +2515,10 @@ impl MikrotikService {
         Ok(out)
     }
 
-    async fn fetch_health_snapshot(&self, dev: &MikrotikDevice) -> Result<MikrotikHealthSnapshot, anyhow::Error> {
+    async fn fetch_health_snapshot(
+        &self,
+        dev: &MikrotikDevice,
+    ) -> Result<MikrotikHealthSnapshot, anyhow::Error> {
         let cmd = CommandBuilder::new()
             .command("/system/health/print")
             .build();
@@ -2400,7 +2585,10 @@ impl MikrotikService {
         })
     }
 
-    async fn connect_device(&self, router: &MikrotikRouter) -> Result<MikrotikDevice, anyhow::Error> {
+    async fn connect_device(
+        &self,
+        router: &MikrotikRouter,
+    ) -> Result<MikrotikDevice, anyhow::Error> {
         let addr = format!("{}:{}", router.host, router.port);
         let password = decrypt_secret_opt(router.password.as_str())
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
@@ -2497,25 +2685,49 @@ impl MikrotikService {
         while let Some(res) = rx.recv().await {
             let r = res.map_err(|e| AppError::Internal(e.to_string()))?;
             if let CommandResponse::Reply(reply) = r {
-                let name = reply.attributes.get("name").and_then(|v| v.clone()).unwrap_or_default();
+                let name = reply
+                    .attributes
+                    .get("name")
+                    .and_then(|v| v.clone())
+                    .unwrap_or_default();
                 if name.trim().is_empty() {
                     continue;
                 }
                 seen.insert(name.clone());
 
-                let local_address = reply.attributes.get("local-address").and_then(|v| v.clone());
-                let remote_address = reply.attributes.get("remote-address").and_then(|v| v.clone());
+                let local_address = reply
+                    .attributes
+                    .get("local-address")
+                    .and_then(|v| v.clone());
+                let remote_address = reply
+                    .attributes
+                    .get("remote-address")
+                    .and_then(|v| v.clone());
                 let rate_limit = reply.attributes.get("rate-limit").and_then(|v| v.clone());
                 let dns_server = reply.attributes.get("dns-server").and_then(|v| v.clone());
 
-                let only_one = Self::parse_bool_opt(reply.attributes.get("only-one").and_then(|v| v.as_ref()));
-                let change_tcp_mss =
-                    Self::parse_bool_opt(reply.attributes.get("change-tcp-mss").and_then(|v| v.as_ref()));
-                let use_compression =
-                    Self::parse_bool_opt(reply.attributes.get("use-compression").and_then(|v| v.as_ref()));
-                let use_encryption =
-                    Self::parse_bool_opt(reply.attributes.get("use-encryption").and_then(|v| v.as_ref()));
-                let use_ipv6 = Self::parse_bool_opt(reply.attributes.get("use-ipv6").and_then(|v| v.as_ref()));
+                let only_one =
+                    Self::parse_bool_opt(reply.attributes.get("only-one").and_then(|v| v.as_ref()));
+                let change_tcp_mss = Self::parse_bool_opt(
+                    reply
+                        .attributes
+                        .get("change-tcp-mss")
+                        .and_then(|v| v.as_ref()),
+                );
+                let use_compression = Self::parse_bool_opt(
+                    reply
+                        .attributes
+                        .get("use-compression")
+                        .and_then(|v| v.as_ref()),
+                );
+                let use_encryption = Self::parse_bool_opt(
+                    reply
+                        .attributes
+                        .get("use-encryption")
+                        .and_then(|v| v.as_ref()),
+                );
+                let use_ipv6 =
+                    Self::parse_bool_opt(reply.attributes.get("use-ipv6").and_then(|v| v.as_ref()));
                 let bridge = reply.attributes.get("bridge").and_then(|v| v.clone());
                 let comment = reply.attributes.get("comment").and_then(|v| v.clone());
 
@@ -2621,7 +2833,11 @@ impl MikrotikService {
         while let Some(res) = rx.recv().await {
             let r = res.map_err(|e| AppError::Internal(e.to_string()))?;
             if let CommandResponse::Reply(reply) = r {
-                let name = reply.attributes.get("name").and_then(|v| v.clone()).unwrap_or_default();
+                let name = reply
+                    .attributes
+                    .get("name")
+                    .and_then(|v| v.clone())
+                    .unwrap_or_default();
                 if name.trim().is_empty() {
                     continue;
                 }
@@ -2725,7 +2941,10 @@ impl MikrotikService {
             .get_value(Some(tenant_id), "mikrotik_alert_email_enabled")
             .await
         {
-            Ok(Some(v)) => matches!(v.trim().to_lowercase().as_str(), "true" | "1" | "yes" | "on"),
+            Ok(Some(v)) => matches!(
+                v.trim().to_lowercase().as_str(),
+                "true" | "1" | "yes" | "on"
+            ),
             _ => false,
         };
 

@@ -21,10 +21,10 @@ use services::backup::BackupScheduler;
 use services::metrics_service::MetricsService;
 #[cfg(feature = "desktop")]
 use services::{
-    AnnouncementScheduler, AuditService, AuthService, BackupService, EmailOutboxService,
-    EmailService, NotificationService, PaymentService, PlanService, RoleService, SettingsService,
-    SystemService, TeamService, UserService, MikrotikService, CustomerService, PppoeService,
-    IspPackageService,
+    AnnouncementScheduler, AuditService, AuthService, BackupService, CustomerService,
+    EmailOutboxService, EmailService, IspPackageService, MikrotikService, NotificationService,
+    PaymentService, PlanService, PppoeService, RoleService, SettingsService, SystemService,
+    TeamService, UserService,
 };
 #[cfg(feature = "desktop")]
 use tracing::info;

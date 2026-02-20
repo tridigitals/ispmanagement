@@ -4,9 +4,9 @@ use saas_tauri_lib::{
     services::backup::BackupScheduler,
     services::{
         metrics_service::MetricsService, AnnouncementScheduler, AuditService, AuthService,
-        BackupService, EmailOutboxService, EmailService, NotificationService, PaymentService,
-        PlanService, RoleService, SettingsService, StorageService, SystemService, TeamService,
-        UserService, MikrotikService, CustomerService, PppoeService, IspPackageService,
+        BackupService, CustomerService, EmailOutboxService, EmailService, IspPackageService,
+        MikrotikService, NotificationService, PaymentService, PlanService, PppoeService,
+        RoleService, SettingsService, StorageService, SystemService, TeamService, UserService,
     },
 };
 use std::env;
@@ -83,8 +83,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         audit_service.clone(),
         user_service.clone(),
     );
-    let pppoe_service = PppoeService::new(pool.clone(), auth_service.clone(), audit_service.clone());
-    let isp_package_service = IspPackageService::new(pool.clone(), auth_service.clone(), audit_service.clone());
+    let pppoe_service =
+        PppoeService::new(pool.clone(), auth_service.clone(), audit_service.clone());
+    let isp_package_service =
+        IspPackageService::new(pool.clone(), auth_service.clone(), audit_service.clone());
     let team_service = TeamService::new(
         pool.clone(),
         auth_service.clone(),
@@ -113,12 +115,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let backup_service = BackupService::new(pool.clone(), app_data_dir.clone());
 
     // MikroTik monitoring (tenant-scoped)
-        let mikrotik_service = MikrotikService::new(
-            pool.clone(),
-            notification_service.clone(),
-            audit_service.clone(),
-            settings_service.clone(),
-        );
+    let mikrotik_service = MikrotikService::new(
+        pool.clone(),
+        notification_service.clone(),
+        audit_service.clone(),
+        settings_service.clone(),
+    );
     Arc::new(mikrotik_service.clone()).start_poller();
 
     // Scheduled broadcasts -> notifications

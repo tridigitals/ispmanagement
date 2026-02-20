@@ -1,6 +1,6 @@
 use crate::models::{
     CreateIspPackageRequest, IspPackage, IspPackageRouterMapping, IspPackageRouterMappingView,
-    PaginatedResponse, UpsertIspPackageRouterMappingRequest, UpdateIspPackageRequest,
+    PaginatedResponse, UpdateIspPackageRequest, UpsertIspPackageRouterMappingRequest,
 };
 use crate::services::{AuthService, IspPackageService};
 use tauri::State;
@@ -14,7 +14,10 @@ pub async fn list_isp_packages(
     auth: State<'_, AuthService>,
     svc: State<'_, IspPackageService>,
 ) -> Result<PaginatedResponse<IspPackage>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -42,7 +45,10 @@ pub async fn create_isp_package(
     auth: State<'_, AuthService>,
     svc: State<'_, IspPackageService>,
 ) -> Result<IspPackage, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -73,7 +79,10 @@ pub async fn update_isp_package(
     auth: State<'_, AuthService>,
     svc: State<'_, IspPackageService>,
 ) -> Result<IspPackage, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -99,7 +108,10 @@ pub async fn delete_isp_package(
     auth: State<'_, AuthService>,
     svc: State<'_, IspPackageService>,
 ) -> Result<(), String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -116,7 +128,10 @@ pub async fn list_isp_package_router_mappings(
     auth: State<'_, AuthService>,
     svc: State<'_, IspPackageService>,
 ) -> Result<Vec<IspPackageRouterMappingView>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -136,7 +151,10 @@ pub async fn upsert_isp_package_router_mapping(
     auth: State<'_, AuthService>,
     svc: State<'_, IspPackageService>,
 ) -> Result<IspPackageRouterMapping, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
@@ -152,4 +170,3 @@ pub async fn upsert_isp_package_router_mapping(
         .await
         .map_err(|e| e.to_string())
 }
-

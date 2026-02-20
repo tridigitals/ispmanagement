@@ -9,6 +9,7 @@
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
+  import Modal from '$lib/components/ui/Modal.svelte';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
 
   type RouterRow = {
@@ -95,6 +96,7 @@
   let mqCleanup: (() => void) | null = null;
 
   let selectedInterface = $state<string | null>(null);
+  let showInterfaceTrafficModal = $state(false);
   let ifaceHistoryLoading = $state(false);
   let ifaceHistory = $state<any[]>([]);
 
@@ -153,6 +155,11 @@
     if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
       goto('/unauthorized');
       return;
+    }
+
+    const tab = ($page.url.searchParams.get('tab') || '').toLowerCase();
+    if (tab === 'overview' || tab === 'interfaces' || tab === 'ip' || tab === 'metrics') {
+      activeTab = tab;
     }
 
     if (typeof window !== 'undefined') {
@@ -477,6 +484,7 @@
   async function openInterface(name: string) {
     if (!router) return;
     selectedInterface = name;
+    showInterfaceTrafficModal = true;
     ifaceHistoryLoading = true;
     try {
       ifaceHistory = (await api.mikrotik.routers.interfaceMetrics(router.id, {
@@ -488,6 +496,12 @@
     } finally {
       ifaceHistoryLoading = false;
     }
+  }
+
+  function closeInterfaceTrafficModal() {
+    showInterfaceTrafficModal = false;
+    selectedInterface = null;
+    ifaceHistory = [];
   }
 
   type InterfaceRow = InterfaceSnap & {
@@ -545,7 +559,6 @@
     { key: 'rx', label: 'RX', class: 'mono', align: 'right' as const, width: '120px' },
     { key: 'tx', label: 'TX', class: 'mono', align: 'right' as const, width: '120px' },
     { key: 'downs', label: 'Downs', class: 'mono', align: 'right' as const, width: '90px' },
-    { key: 'actions', label: '', align: 'right' as const, width: '60px' },
   ]);
 
   const ipRows = $derived.by(() => snapshot?.ip_addresses || []);
@@ -990,7 +1003,12 @@
           >
             {#snippet cell({ item, key }: any)}
               {#if key === 'name'}
-                <button class="link" type="button" onclick={() => openInterface(item.name)}>
+                <button
+                  class="link"
+                  type="button"
+                  ondblclick={() => openInterface(item.name)}
+                  title="Double click to open"
+                >
                   <span class="mono">{item.name}</span>
                 </button>
               {:else if key === 'status'}
@@ -1001,15 +1019,6 @@
                 {:else}
                   <span class="pill warn">Down</span>
                 {/if}
-              {:else if key === 'actions'}
-                <button
-                  class="icon-btn"
-                  type="button"
-                  onclick={() => openInterface(item.name)}
-                  title="Open"
-                >
-                  <Icon name="arrow-right" size={16} />
-                </button>
               {:else}
                 {item[key] ?? ''}
               {/if}
@@ -1018,66 +1027,6 @@
         </div>
       </div>
 
-      {#if selectedInterface}
-        <div class="card full">
-          <div class="card-head">
-            <h2>Traffic History</h2>
-            <span class="muted mono">{selectedInterface}</span>
-          </div>
-          {#if ifaceHistoryLoading}
-            <div class="muted">{$t('common.loading') || 'Loading...'}</div>
-          {:else if ifaceHistory.length === 0}
-            <div class="muted">No history yet (wait for poller).</div>
-          {:else}
-            {@const rxSeries = ifaceHistory
-              .slice()
-              .reverse()
-              .map((x) => (typeof x.rx_bps === 'number' ? x.rx_bps : null))
-              .filter((v) => v != null) as number[]}
-            {@const txSeries = ifaceHistory
-              .slice()
-              .reverse()
-              .map((x) => (typeof x.tx_bps === 'number' ? x.tx_bps : null))
-              .filter((v) => v != null) as number[]}
-
-            <div class="traffic-grid">
-              <div class="traffic-card">
-                <div class="traffic-top">
-                  <span class="muted">RX</span>
-                  <span class="mono">{formatBps(ifaceRates[selectedInterface]?.rx_bps ?? null)}</span>
-                </div>
-                <div class="spark small">
-                  {#if rxSeries.length === 0}
-                    <div class="muted">No RX samples.</div>
-                  {:else}
-                    {@const max = Math.max(...rxSeries, 1)}
-                    {#each rxSeries as v}
-                      <div class="bar rx" style={`height:${Math.round((v / max) * 100)}%;`} title={formatBps(v)}></div>
-                    {/each}
-                  {/if}
-                </div>
-              </div>
-
-              <div class="traffic-card">
-                <div class="traffic-top">
-                  <span class="muted">TX</span>
-                  <span class="mono">{formatBps(ifaceRates[selectedInterface]?.tx_bps ?? null)}</span>
-                </div>
-                <div class="spark small">
-                  {#if txSeries.length === 0}
-                    <div class="muted">No TX samples.</div>
-                  {:else}
-                    {@const max = Math.max(...txSeries, 1)}
-                    {#each txSeries as v}
-                      <div class="bar tx" style={`height:${Math.round((v / max) * 100)}%;`} title={formatBps(v)}></div>
-                    {/each}
-                  {/if}
-                </div>
-              </div>
-            </div>
-          {/if}
-        </div>
-      {/if}
     {:else if activeTab === 'ip'}
       <div class="card full">
         <div class="card-head">
@@ -1142,6 +1091,73 @@
     </div>
   {/if}
 </div>
+
+<Modal
+  show={showInterfaceTrafficModal}
+  title="Interface Traffic"
+  width="980px"
+  onclose={closeInterfaceTrafficModal}
+>
+  {#if selectedInterface}
+    <div class="traffic-modal-head">
+      <span class="muted">Interface</span>
+      <span class="mono">{selectedInterface}</span>
+    </div>
+
+    {#if ifaceHistoryLoading}
+      <div class="muted">{$t('common.loading') || 'Loading...'}</div>
+    {:else if ifaceHistory.length === 0}
+      <div class="muted">No history yet (wait for poller).</div>
+    {:else}
+      {@const rxSeries = ifaceHistory
+        .slice()
+        .reverse()
+        .map((x) => (typeof x.rx_bps === 'number' ? x.rx_bps : null))
+        .filter((v) => v != null) as number[]}
+      {@const txSeries = ifaceHistory
+        .slice()
+        .reverse()
+        .map((x) => (typeof x.tx_bps === 'number' ? x.tx_bps : null))
+        .filter((v) => v != null) as number[]}
+
+      <div class="traffic-grid">
+        <div class="traffic-card">
+          <div class="traffic-top">
+            <span class="muted">RX</span>
+            <span class="mono">{formatBps(ifaceRates[selectedInterface]?.rx_bps ?? null)}</span>
+          </div>
+          <div class="spark small">
+            {#if rxSeries.length === 0}
+              <div class="muted">No RX samples.</div>
+            {:else}
+              {@const max = Math.max(...rxSeries, 1)}
+              {#each rxSeries as v}
+                <div class="bar rx" style={`height:${Math.round((v / max) * 100)}%;`} title={formatBps(v)}></div>
+              {/each}
+            {/if}
+          </div>
+        </div>
+
+        <div class="traffic-card">
+          <div class="traffic-top">
+            <span class="muted">TX</span>
+            <span class="mono">{formatBps(ifaceRates[selectedInterface]?.tx_bps ?? null)}</span>
+          </div>
+          <div class="spark small">
+            {#if txSeries.length === 0}
+              <div class="muted">No TX samples.</div>
+            {:else}
+              {@const max = Math.max(...txSeries, 1)}
+              {#each txSeries as v}
+                <div class="bar tx" style={`height:${Math.round((v / max) * 100)}%;`} title={formatBps(v)}></div>
+              {/each}
+            {/if}
+          </div>
+        </div>
+      </div>
+    {/if}
+  {/if}
+</Modal>
 
 <style>
   .page-content {
@@ -1693,6 +1709,18 @@
     gap: 12px;
   }
 
+  .traffic-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg-card), transparent 12%);
+  }
+
   .traffic-card {
     border: 1px solid var(--border-color);
     background: color-mix(in srgb, var(--bg-card), transparent 8%);
@@ -1731,21 +1759,6 @@
 
   .link:hover {
     text-decoration: underline;
-  }
-
-  .icon-btn {
-    border: 1px solid var(--border-color);
-    background: transparent;
-    color: var(--text-primary);
-    border-radius: 12px;
-    padding: 8px;
-    cursor: pointer;
-    display: grid;
-    place-items: center;
-  }
-
-  .icon-btn:hover {
-    background: var(--bg-hover);
   }
 
   @media (max-width: 900px) {

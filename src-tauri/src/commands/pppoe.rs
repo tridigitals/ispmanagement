@@ -1,4 +1,3 @@
-
 use crate::models::{
     CreatePppoeAccountRequest, PaginatedResponse, PppoeAccountPublic, PppoeImportCandidate,
     PppoeImportFromRouterRequest, PppoeImportResult, UpdatePppoeAccountRequest,
@@ -18,8 +17,13 @@ pub async fn list_pppoe_accounts(
     auth: State<'_, AuthService>,
     pppoe: State<'_, PppoeService>,
 ) -> Result<PaginatedResponse<PppoeAccountPublic>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
-    let tenant_id = claims.tenant_id.ok_or_else(|| "No tenant ID in token".to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     pppoe
         .list_accounts(
@@ -43,8 +47,13 @@ pub async fn get_pppoe_account(
     auth: State<'_, AuthService>,
     pppoe: State<'_, PppoeService>,
 ) -> Result<PppoeAccountPublic, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
-    let tenant_id = claims.tenant_id.ok_or_else(|| "No tenant ID in token".to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     pppoe
         .get_account(&claims.sub, &tenant_id, &id)
@@ -70,8 +79,13 @@ pub async fn create_pppoe_account(
     auth: State<'_, AuthService>,
     pppoe: State<'_, PppoeService>,
 ) -> Result<PppoeAccountPublic, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
-    let tenant_id = claims.tenant_id.ok_or_else(|| "No tenant ID in token".to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     let dto = CreatePppoeAccountRequest {
         router_id,
@@ -110,8 +124,13 @@ pub async fn update_pppoe_account(
     auth: State<'_, AuthService>,
     pppoe: State<'_, PppoeService>,
 ) -> Result<PppoeAccountPublic, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
-    let tenant_id = claims.tenant_id.ok_or_else(|| "No tenant ID in token".to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     let dto = UpdatePppoeAccountRequest {
         username,
@@ -138,8 +157,13 @@ pub async fn delete_pppoe_account(
     auth: State<'_, AuthService>,
     pppoe: State<'_, PppoeService>,
 ) -> Result<(), String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
-    let tenant_id = claims.tenant_id.ok_or_else(|| "No tenant ID in token".to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     pppoe
         .delete_account(&claims.sub, &tenant_id, &id, Some("127.0.0.1"))
@@ -154,8 +178,13 @@ pub async fn apply_pppoe_account(
     auth: State<'_, AuthService>,
     pppoe: State<'_, PppoeService>,
 ) -> Result<PppoeAccountPublic, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
-    let tenant_id = claims.tenant_id.ok_or_else(|| "No tenant ID in token".to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     pppoe
         .apply_account(&claims.sub, &tenant_id, &id, Some("127.0.0.1"))
@@ -170,8 +199,13 @@ pub async fn reconcile_pppoe_router(
     auth: State<'_, AuthService>,
     pppoe: State<'_, PppoeService>,
 ) -> Result<serde_json::Value, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
-    let tenant_id = claims.tenant_id.ok_or_else(|| "No tenant ID in token".to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     pppoe
         .reconcile_router(&claims.sub, &tenant_id, &router_id, Some("127.0.0.1"))
@@ -187,11 +221,21 @@ pub async fn preview_pppoe_import_from_router(
     auth: State<'_, AuthService>,
     pppoe: State<'_, PppoeService>,
 ) -> Result<Vec<PppoeImportCandidate>, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
-    let tenant_id = claims.tenant_id.ok_or_else(|| "No tenant ID in token".to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     pppoe
-        .preview_import_from_router(&claims.sub, &tenant_id, &router_id, include_disabled.unwrap_or(false))
+        .preview_import_from_router(
+            &claims.sub,
+            &tenant_id,
+            &router_id,
+            include_disabled.unwrap_or(false),
+        )
         .await
         .map_err(|e| e.to_string())
 }
@@ -206,8 +250,13 @@ pub async fn import_pppoe_from_router(
     auth: State<'_, AuthService>,
     pppoe: State<'_, PppoeService>,
 ) -> Result<PppoeImportResult, String> {
-    let claims = auth.validate_token(&token).await.map_err(|e| e.to_string())?;
-    let tenant_id = claims.tenant_id.ok_or_else(|| "No tenant ID in token".to_string())?;
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     let req = PppoeImportFromRouterRequest {
         usernames,

@@ -10,16 +10,12 @@
   import { appSettings } from '$lib/stores/settings';
   import { token } from '$lib/stores/auth';
   import { formatDateTime } from '$lib/utils/date';
+  import { getApiBaseUrl } from '$lib/utils/apiUrl';
 
   let { index = $bindable(0), files = [], onclose } = $props();
 
   // API URL
-  // When running in Tauri (IPC-first), we still serve file bytes via the local HTTP server.
-  // So we only use VITE_API_URL when remote mode is explicitly enabled.
-  const forceRemote = import.meta.env.VITE_USE_REMOTE_API === 'true';
-  const API_BASE = forceRemote
-    ? import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-    : 'http://localhost:3000/api';
+  const API_BASE = getApiBaseUrl();
 
   let currentFile = $derived(files[index]);
   let isImage = $derived(currentFile?.content_type.startsWith('image/'));

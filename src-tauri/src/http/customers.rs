@@ -4,9 +4,9 @@ use crate::http::AppState;
 use crate::models::{
     AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
     CreateCustomerRequest, CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
-    Customer, CustomerLocation,
-    CustomerPortalUser, CustomerSubscription, CustomerSubscriptionView, PaginatedResponse,
-    UpdateCustomerLocationRequest, UpdateCustomerRequest, UpdateCustomerSubscriptionRequest,
+    Customer, CustomerLocation, CustomerPortalUser, CustomerSubscription, CustomerSubscriptionView,
+    PaginatedResponse, UpdateCustomerLocationRequest, UpdateCustomerRequest,
+    UpdateCustomerSubscriptionRequest,
 };
 use axum::{
     extract::{ConnectInfo, Path, Query, State},
@@ -24,11 +24,16 @@ pub fn router() -> Router<AppState> {
         .route("/with-portal", post(create_customer_with_portal))
         .route(
             "/{id}",
-            get(get_customer).put(update_customer).delete(delete_customer),
+            get(get_customer)
+                .put(update_customer)
+                .delete(delete_customer),
         )
         .route("/{id}/locations", get(list_locations))
         .route("/{id}/portal-users", get(list_portal_users))
-        .route("/{id}/subscriptions", get(list_subscriptions).post(create_subscription))
+        .route(
+            "/{id}/subscriptions",
+            get(list_subscriptions).post(create_subscription),
+        )
         // Locations (write)
         .route("/locations", post(create_location))
         .route(
@@ -38,7 +43,10 @@ pub fn router() -> Router<AppState> {
         // Portal users (write)
         .route("/portal-users/add", post(add_portal_user))
         .route("/portal-users/create", post(create_portal_user))
-        .route("/portal-users/{customer_user_id}", delete(remove_portal_user))
+        .route(
+            "/portal-users/{customer_user_id}",
+            delete(remove_portal_user),
+        )
         .route(
             "/subscriptions/{subscription_id}",
             axum::routing::put(update_subscription).delete(delete_subscription),

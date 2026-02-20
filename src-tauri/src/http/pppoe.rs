@@ -189,7 +189,12 @@ async fn preview_import(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     let rows = state
         .pppoe_service
-        .preview_import_from_router(&claims.sub, &tenant_id, &router_id, q.include_disabled.unwrap_or(false))
+        .preview_import_from_router(
+            &claims.sub,
+            &tenant_id,
+            &router_id,
+            q.include_disabled.unwrap_or(false),
+        )
         .await?;
     Ok(Json(rows))
 }

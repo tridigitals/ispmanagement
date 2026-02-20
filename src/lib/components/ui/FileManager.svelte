@@ -13,6 +13,7 @@
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
   import { formatDate } from '$lib/utils/date';
+  import { getApiBaseUrl } from '$lib/utils/apiUrl';
 
   // Props (Svelte 5)
   let { mode = 'admin', showHeader = true } = $props();
@@ -25,7 +26,7 @@
   let selectedFileIndex = $state(-1); // -1 means lightbox closed
 
   // API URL
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+  const API_BASE = getApiBaseUrl();
   const AUTH_PARAM = $derived($token ? `?token=${encodeURIComponent($token)}` : '');
 
   // Modal State

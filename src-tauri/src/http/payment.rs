@@ -19,7 +19,10 @@ pub fn router() -> Router<AppState> {
         .route("/invoices/all", get(list_all_invoices))
         .route("/fx-rate", get(get_fx_rate))
         .route("/invoices/plan", post(create_invoice_for_plan))
-        .route("/invoices/customer-package", get(list_customer_package_invoices))
+        .route(
+            "/invoices/customer-package",
+            get(list_customer_package_invoices),
+        )
         .route(
             "/invoices/customer-package/create",
             post(create_invoice_for_customer_subscription),
@@ -285,14 +288,18 @@ async fn authorize_invoice_access(
     claims: &Claims,
     invoice_id: &str,
 ) -> Result<Invoice, (StatusCode, Json<ErrorResponse>)> {
-    let invoice = state.payment_service.get_invoice(invoice_id).await.map_err(|e| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                error: e.to_string(),
-            }),
-        )
-    })?;
+    let invoice = state
+        .payment_service
+        .get_invoice(invoice_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })?;
 
     if claims.is_super_admin {
         return Ok(invoice);

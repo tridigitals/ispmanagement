@@ -3,6 +3,7 @@
  * Wrapper for all backend commands
  */
 import { invoke } from '@tauri-apps/api/core';
+import { getApiBaseUrl } from '$lib/utils/apiUrl';
 
 // Safe invoke wrapper for browser environment
 async function safeInvoke<T>(command: string, args?: any): Promise<T> {
@@ -50,7 +51,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
     }
 
     // Web Environment (HTTP)
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    const API_BASE = getApiBaseUrl();
 
     // Map commands to API endpoints
     const commandMap: Record<string, { method: string; path: string }> = {
@@ -2309,7 +2310,7 @@ export const storage = {
     safeInvoke('delete_file_tenant', { token: getTokenOrThrow(), fileId }),
 
   uploadFile: async (file: File): Promise<FileRecord> => {
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    const API_BASE = getApiBaseUrl();
     const formData = new FormData();
     formData.append('file', file);
 
@@ -2447,7 +2448,7 @@ export const backup = {
     // @ts-ignore
     const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
     const token = getTokenOrThrow();
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    const API_BASE = getApiBaseUrl();
     const url = `${API_BASE}/backups/${filename}/download`;
 
     try {
@@ -2524,7 +2525,7 @@ export const backup = {
       throw new Error('No file selected');
     } else if (file) {
       // Web path: upload via HTTP multipart
-      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const API_BASE = getApiBaseUrl();
       const formData = new FormData();
       formData.append('file', file);
 

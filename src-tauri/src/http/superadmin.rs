@@ -57,7 +57,10 @@ pub async fn list_tenants(
 ) -> Result<Json<TenantListResponse>, crate::error::AppError> {
     let claims = check_super_admin(&state, &headers).await?;
     let mut tx = state.auth_service.pool.begin().await?;
-    state.auth_service.apply_rls_context_tx(&mut tx, &claims).await?;
+    state
+        .auth_service
+        .apply_rls_context_tx(&mut tx, &claims)
+        .await?;
 
     let tenants: Vec<Tenant> = sqlx::query_as("SELECT * FROM tenants ORDER BY created_at DESC")
         .fetch_all(&mut *tx)
@@ -79,7 +82,10 @@ pub async fn delete_tenant(
 ) -> Result<Json<serde_json::Value>, crate::error::AppError> {
     let claims = check_super_admin(&state, &headers).await?;
     let mut tx = state.auth_service.pool.begin().await?;
-    state.auth_service.apply_rls_context_tx(&mut tx, &claims).await?;
+    state
+        .auth_service
+        .apply_rls_context_tx(&mut tx, &claims)
+        .await?;
 
     sqlx::query("DELETE FROM tenants WHERE id = $1")
         .bind(id)
@@ -131,7 +137,10 @@ pub async fn create_tenant(
 
     // 3. Start Transaction
     let mut tx = state.auth_service.pool.begin().await?;
-    state.auth_service.apply_rls_context_tx(&mut tx, &claims).await?;
+    state
+        .auth_service
+        .apply_rls_context_tx(&mut tx, &claims)
+        .await?;
 
     // Insert Tenant
     sqlx::query(
@@ -233,7 +242,10 @@ pub async fn update_tenant(
 
     // Update
     let mut tx = state.auth_service.pool.begin().await?;
-    state.auth_service.apply_rls_context_tx(&mut tx, &claims).await?;
+    state
+        .auth_service
+        .apply_rls_context_tx(&mut tx, &claims)
+        .await?;
 
     let tenant: Tenant = sqlx::query_as(
         "UPDATE tenants SET name = $1, slug = $2, custom_domain = $3, is_active = $4, updated_at = $5 WHERE id = $6 RETURNING *"

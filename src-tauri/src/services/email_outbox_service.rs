@@ -260,26 +260,31 @@ impl EmailOutboxService {
                     let mut advisory_conn = match svc.pool.acquire().await {
                         Ok(c) => c,
                         Err(e) => {
-                            warn!("Email outbox skipped: failed to acquire DB connection: {}", e);
+                            warn!(
+                                "Email outbox skipped: failed to acquire DB connection: {}",
+                                e
+                            );
                             continue;
                         }
                     };
 
-                    let locked: bool = sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
-                        .bind(lock_key)
-                        .fetch_one(&mut *advisory_conn)
-                        .await
-                        .unwrap_or(false);
+                    let locked: bool =
+                        sqlx::query_scalar("SELECT pg_try_advisory_lock(hashtext($1))")
+                            .bind(lock_key)
+                            .fetch_one(&mut *advisory_conn)
+                            .await
+                            .unwrap_or(false);
                     if !locked {
                         continue;
                     }
 
                     let res = svc.process_batch().await;
 
-                    let _ = sqlx::query_scalar::<_, bool>("SELECT pg_advisory_unlock(hashtext($1))")
-                        .bind(lock_key)
-                        .fetch_one(&mut *advisory_conn)
-                        .await;
+                    let _ =
+                        sqlx::query_scalar::<_, bool>("SELECT pg_advisory_unlock(hashtext($1))")
+                            .bind(lock_key)
+                            .fetch_one(&mut *advisory_conn)
+                            .await;
 
                     if let Err(e) = res {
                         let msg = e.to_string();

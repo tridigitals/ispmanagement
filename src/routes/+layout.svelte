@@ -16,6 +16,7 @@
   import GlobalUploads from '$lib/components/layout/GlobalUploads.svelte';
   import { getSlugFromDomain } from '$lib/utils/domain';
   import { browser } from '$app/environment';
+  import { getApiBaseUrl } from '$lib/utils/apiUrl';
 
   let loading = true;
   let i18nReady = false;
@@ -63,7 +64,7 @@
           // We use fetch directly here to avoid auth store dependencies loop if possible
           // or use the 'api' client but it might not be ready? 'api.public' is stateless usually.
           // Let's use fetch for safety and simplicity on this "boot" phase.
-          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+          const apiUrl = getApiBaseUrl();
           const res = await fetch(`${apiUrl}/public/tenant-lookup?domain=${hostname}`);
 
           if (res.ok) {

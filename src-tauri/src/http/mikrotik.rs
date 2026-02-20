@@ -32,8 +32,14 @@ pub fn router() -> Router<AppState> {
         .route("/routers/{id}/ip-pools/sync", post(sync_ip_pools))
         .route("/routers/{id}/test", post(test_router))
         .route("/routers/{id}/metrics", get(list_metrics))
-        .route("/routers/{id}/interfaces/metrics", get(list_interface_metrics))
-        .route("/routers/{id}/interfaces/latest", get(list_interface_latest))
+        .route(
+            "/routers/{id}/interfaces/metrics",
+            get(list_interface_metrics),
+        )
+        .route(
+            "/routers/{id}/interfaces/latest",
+            get(list_interface_latest),
+        )
         .route("/routers/{id}/interfaces/live", get(get_interface_live))
         .route("/routers/{id}/snapshot", get(get_snapshot))
 }
@@ -47,7 +53,10 @@ fn bearer_token(headers: &HeaderMap) -> AppResult<String> {
         .ok_or(AppError::Unauthorized)
 }
 
-async fn tenant_and_claims(state: &AppState, headers: &HeaderMap) -> AppResult<(String, crate::services::auth_service::Claims)> {
+async fn tenant_and_claims(
+    state: &AppState,
+    headers: &HeaderMap,
+) -> AppResult<(String, crate::services::auth_service::Claims)> {
     let token = bearer_token(headers)?;
     let claims = state.auth_service.validate_token(&token).await?;
     let tenant_id = claims.tenant_id.clone().ok_or(AppError::Unauthorized)?;
@@ -90,7 +99,11 @@ async fn list_alerts(
 
     let rows = state
         .mikrotik_service
-        .list_alerts(&tenant_id, q.active_only.unwrap_or(true), q.limit.unwrap_or(200))
+        .list_alerts(
+            &tenant_id,
+            q.active_only.unwrap_or(true),
+            q.limit.unwrap_or(200),
+        )
         .await?;
     Ok(Json(rows))
 }
@@ -340,7 +353,10 @@ async fn create_router(
             "create",
             "mikrotik_router",
             Some(&router.id),
-            Some(&format!("Created router '{}' ({})", router.name, router.host)),
+            Some(&format!(
+                "Created router '{}' ({})",
+                router.name, router.host
+            )),
             None,
         )
         .await;
@@ -373,7 +389,10 @@ async fn update_router(
             "update",
             "mikrotik_router",
             Some(&router.id),
-            Some(&format!("Updated router '{}' ({})", router.name, router.host)),
+            Some(&format!(
+                "Updated router '{}' ({})",
+                router.name, router.host
+            )),
             None,
         )
         .await;
@@ -393,7 +412,10 @@ async fn delete_router(
         .await?;
 
     let existing = state.mikrotik_service.get_router(&tenant_id, &id).await?;
-    state.mikrotik_service.delete_router(&tenant_id, &id).await?;
+    state
+        .mikrotik_service
+        .delete_router(&tenant_id, &id)
+        .await?;
 
     let details = existing
         .as_ref()
@@ -425,7 +447,10 @@ async fn test_router(
         .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
         .await?;
 
-    let res = state.mikrotik_service.test_connection(&tenant_id, &id).await?;
+    let res = state
+        .mikrotik_service
+        .test_connection(&tenant_id, &id)
+        .await?;
 
     let details = if res.ok {
         format!(
@@ -496,7 +521,12 @@ async fn list_interface_metrics(
 
     let rows = state
         .mikrotik_service
-        .list_interface_metrics(&tenant_id, &id, q.interface.as_deref(), q.limit.unwrap_or(120))
+        .list_interface_metrics(
+            &tenant_id,
+            &id,
+            q.interface.as_deref(),
+            q.limit.unwrap_or(120),
+        )
         .await?;
     Ok(Json(rows))
 }

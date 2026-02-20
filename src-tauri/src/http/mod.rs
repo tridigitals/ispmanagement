@@ -1,7 +1,7 @@
 use crate::services::{
-    AuditService, AuthService, EmailService, NotificationService, PaymentService, PlanService,
-    RoleService, SettingsService, StorageService, SystemService, TeamService, UserService,
-    MikrotikService, CustomerService, PppoeService, IspPackageService,
+    AuditService, AuthService, CustomerService, EmailService, IspPackageService, MikrotikService,
+    NotificationService, PaymentService, PlanService, PppoeService, RoleService, SettingsService,
+    StorageService, SystemService, TeamService, UserService,
 };
 use axum::{
     extract::DefaultBodyLimit,
@@ -27,12 +27,16 @@ pub mod announcements;
 pub mod audit;
 pub mod auth;
 pub mod backup;
+pub mod customers;
 pub mod email_outbox;
 pub mod install;
+pub mod isp_packages;
 pub mod middleware;
+pub mod mikrotik;
 pub mod notifications;
 pub mod payment;
 pub mod plans;
+pub mod pppoe;
 pub mod public;
 pub mod roles;
 pub mod settings;
@@ -44,10 +48,6 @@ pub mod team;
 pub mod tenant;
 pub mod users;
 pub mod websocket;
-pub mod mikrotik;
-pub mod customers;
-pub mod pppoe;
-pub mod isp_packages;
 
 pub use websocket::{WsEvent, WsHub};
 

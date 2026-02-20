@@ -61,11 +61,26 @@
     tileKey: string;
     idx: number;
   } | null;
+  type TrendInfo = {
+    dir: 'up' | 'down' | 'flat';
+    deltaPct: number;
+  };
+  type TopIssue = {
+    key: string;
+    router_id: string;
+    router_name: string;
+    title: string;
+    count: number;
+    critical: number;
+    warning: number;
+    lastSeenMs: number;
+  };
 
   let loading = $state(true);
   let refreshing = $state(false);
   let rows = $state<NocRow[]>([]);
   let alerts = $state<AlertRow[]>([]);
+  let alertSeverityFilter = $state<'all' | 'critical' | 'warning'>('all');
 
   let statusFilter = $state<'all' | 'offline' | 'online'>('all');
 
@@ -144,6 +159,7 @@
   let paused = $state(false);
   let focusMode = $state(true);
   let alertsOpen = $state(false);
+  let insightsOpen = $state(false);
   let renderNow = $state(Date.now());
   let uninstallAutoHide: (() => void) | null = null;
 
@@ -153,6 +169,7 @@
   let tileMenuIndex = $state<number | null>(null);
 
   let hoverBar = $state<HoverBar>(null);
+  let topIssueMuteMinutes = $state<Record<string, number>>({});
 
   const tenantPrefix = $derived.by(() => {
     const tid = String($pageStore.params.tenant || '');
@@ -164,6 +181,10 @@
   let hideHandle: any = null;
   let isFullscreen = $state(false);
   let controlsHidden = $state(false);
+  let criticalSoundEnabled = $state(true);
+  let lastCriticalSignature = $state('');
+  let lastCriticalBeepAt = $state(0);
+  let audioCtx: AudioContext | null = null;
 
   const SETTINGS_LAYOUT_KEY = 'mikrotik_wallboard_layout';
   const SETTINGS_SLOTS_KEY = 'mikrotik_wallboard_slots_json';
@@ -172,6 +193,7 @@
   const FOCUS_MODE_KEY = 'mikrotik_wallboard_focus_mode';
   const STATUS_FILTER_KEY = 'mikrotik_wallboard_status_filter';
   const POLL_MS_KEY = 'mikrotik_wallboard_poll_ms';
+  const ALERT_SOUND_KEY = 'mikrotik_wallboard_alert_sound';
   const KEEP_AWAKE_KEY = 'mikrotik_wallboard_keep_awake';
   const TOOLBAR_HIDE_MS = 10_000;
 
@@ -191,6 +213,27 @@
     }
     const s = `${v >= 10 || u === 0 ? v.toFixed(0) : v.toFixed(1)} ${units[u]}`;
     return bps < 0 ? `-${s}` : s;
+  }
+
+  function formatLatency(ms?: number | null) {
+    if (ms == null || !Number.isFinite(ms)) return $t('common.na') || '—';
+    const v = Number(ms);
+    if (v < 1000) return `${Math.round(v)} ms`;
+    return `${(v / 1000).toFixed(2)} s`;
+  }
+
+  function maintenanceRemaining(until?: string | null) {
+    const raw = String(until || '').trim();
+    if (!raw) return null;
+    const end = Date.parse(raw);
+    if (!Number.isFinite(end)) return null;
+    const diffMs = (end as number) - Date.now();
+    if (diffMs <= 0) return null;
+    const totalMin = Math.ceil(diffMs / 60_000);
+    if (totalMin < 60) return `${totalMin}m`;
+    const hh = Math.floor(totalMin / 60);
+    const mm = totalMin % 60;
+    return mm > 0 ? `${hh}h ${mm}m` : `${hh}h`;
   }
 
   function parseMetricTs(ts?: string | null): number | null {
@@ -273,6 +316,129 @@
     return map;
   });
 
+  const alertStats = $derived.by(() => {
+    let critical = 0;
+    let warning = 0;
+    for (const a of sortedAlerts) {
+      const sev = String(a.severity || '').toLowerCase();
+      if (sev === 'critical') critical += 1;
+      else if (sev === 'warning') warning += 1;
+    }
+    return { total: sortedAlerts.length, critical, warning };
+  });
+
+  const visibleAlerts = $derived.by(() => {
+    if (alertSeverityFilter === 'all') return sortedAlerts;
+    return sortedAlerts.filter((a) => String(a.severity || '').toLowerCase() === alertSeverityFilter);
+  });
+
+  const globalSummary = $derived.by(() => {
+    const total = rows.length;
+    const online = rows.filter((r) => !!r.is_online).length;
+    const offline = Math.max(0, total - online);
+    const availability = total > 0 ? (online / total) * 100 : 0;
+    const latencies = rows
+      .filter((r) => !!r.is_online && Number.isFinite(r.latency_ms))
+      .map((r) => Number(r.latency_ms));
+    const avgLatencyMs = latencies.length
+      ? latencies.reduce((a, b) => a + b, 0) / latencies.length
+      : null;
+
+    return {
+      total,
+      online,
+      offline,
+      availability,
+      critical: alertStats.critical,
+      warning: alertStats.warning,
+      avgLatencyMs,
+    };
+  });
+
+  const topIssues = $derived.by(() => {
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    const map = new Map<string, TopIssue>();
+    for (const a of sortedAlerts) {
+      const tsRaw = a.last_seen_at || a.updated_at || '';
+      const ts = Date.parse(tsRaw);
+      if (!Number.isFinite(ts) || (ts as number) < oneHourAgo) continue;
+      const routerId = String(a.router_id || '');
+      if (!routerId) continue;
+      const title = String(a.title || '').trim() || 'Alert';
+      const key = `${routerId}::${title.toLowerCase()}`;
+      const sev = String(a.severity || '').toLowerCase();
+
+      if (!map.has(key)) {
+        const rr = routerById(routerId);
+        map.set(key, {
+          key,
+          router_id: routerId,
+          router_name: rr?.identity || rr?.name || routerId,
+          title,
+          count: 0,
+          critical: 0,
+          warning: 0,
+          lastSeenMs: ts as number,
+        });
+      }
+      const cur = map.get(key)!;
+      cur.count += 1;
+      if (sev === 'critical') cur.critical += 1;
+      else if (sev === 'warning') cur.warning += 1;
+      cur.lastSeenMs = Math.max(cur.lastSeenMs, ts as number);
+    }
+
+    return Array.from(map.values())
+      .sort((a, b) => {
+        if (b.critical !== a.critical) return b.critical - a.critical;
+        if (b.count !== a.count) return b.count - a.count;
+        return b.lastSeenMs - a.lastSeenMs;
+      })
+      .slice(0, 5);
+  });
+
+  const insightsBadge = $derived.by(() => {
+    const critical = alertStats.critical;
+    const warning = alertStats.warning;
+    const total = critical + warning;
+    return {
+      total,
+      level: critical > 0 ? 'critical' : warning > 0 ? 'warning' : 'ok',
+    } as const;
+  });
+
+  function calcTrend(list: number[]): TrendInfo {
+    const points = list.filter((v) => Number.isFinite(v));
+    if (points.length < 10) return { dir: 'flat', deltaPct: 0 };
+
+    const win = Math.max(3, Math.min(6, Math.floor(points.length / 2)));
+    const cur = points.slice(-win);
+    const prev = points.slice(-(win * 2), -win);
+    if (!cur.length || !prev.length) return { dir: 'flat', deltaPct: 0 };
+
+    const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / Math.max(1, arr.length);
+    const curAvg = avg(cur);
+    const prevAvg = avg(prev);
+    const base = Math.max(1, prevAvg);
+    const deltaPct = ((curAvg - prevAvg) / base) * 100;
+
+    if (Math.abs(deltaPct) < 5) return { dir: 'flat', deltaPct: 0 };
+    return { dir: deltaPct > 0 ? 'up' : 'down', deltaPct };
+  }
+
+  function trendBadgeText(ti: TrendInfo) {
+    if (ti.dir === 'flat') return $t('admin.network.wallboard.trend.stable') || 'Stable';
+    const pct = Math.abs(ti.deltaPct);
+    const num = pct >= 10 ? Math.round(pct).toString() : pct.toFixed(1);
+    return `${ti.dir === 'up' ? '↑' : '↓'} ${num}%`;
+  }
+
+  function trendLabel(ti: TrendInfo) {
+    if (ti.dir === 'up') return $t('admin.network.wallboard.trend.up') || 'Rising';
+    if (ti.dir === 'down') return $t('admin.network.wallboard.trend.down') || 'Falling';
+    return $t('admin.network.wallboard.trend.stable') || 'Stable';
+  }
+
   async function loadAlerts(silent = true) {
     try {
       alerts = (await api.mikrotik.alerts.list({ activeOnly: true, limit: 300 })) as any;
@@ -294,6 +460,49 @@
     } catch (e: any) {
       toast.error(e?.message || e);
     }
+  }
+
+  async function ackVisibleAlerts() {
+    if (!$can('manage', 'network_routers')) return;
+    const ids = visibleAlerts
+      .filter((a) => {
+        const st = String(a.status || '').toLowerCase();
+        return st !== 'ack' && st !== 'resolved';
+      })
+      .map((a) => a.id);
+    if (!ids.length) return;
+
+    try {
+      for (const id of ids.slice(0, 80)) {
+        await api.mikrotik.alerts.ack(id);
+      }
+      toast.success(
+        `${$t('admin.network.alerts.toasts.acked') || 'Alert acknowledged'} (${Math.min(ids.length, 80)})`,
+      );
+      await loadAlerts(false);
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    }
+  }
+
+  async function muteRouterAlerts(routerId: string, minutes: number) {
+    if (!$can('manage', 'network_routers')) return;
+    try {
+      const until = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+      await api.mikrotik.routers.update(routerId, {
+        maintenance_until: until,
+        maintenance_reason: `Snoozed from wallboard for ${minutes}m`,
+      });
+      toast.success($t('admin.network.alerts.toasts.snoozed') || 'Router snoozed');
+      await refresh();
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    }
+  }
+
+  function selectedMuteMinutes(routerId: string) {
+    const v = topIssueMuteMinutes[routerId];
+    return v === 60 || v === 240 ? v : 30;
   }
 
   function slotCountForLayout(p: LayoutPreset) {
@@ -901,6 +1110,7 @@
       localStorage.setItem(FOCUS_MODE_KEY, focusMode ? '1' : '0');
       localStorage.setItem(STATUS_FILTER_KEY, statusFilter);
       localStorage.setItem(POLL_MS_KEY, String(pollMs));
+      localStorage.setItem(ALERT_SOUND_KEY, criticalSoundEnabled ? '1' : '0');
       localStorage.setItem(KEEP_AWAKE_KEY, '1');
     } catch {
       // ignore
@@ -919,6 +1129,8 @@
       if (sf === 'all' || sf === 'online' || sf === 'offline') statusFilter = sf;
       const pm = Number(localStorage.getItem(POLL_MS_KEY) || 1000);
       if ([1000, 2000, 5000].includes(pm)) pollMs = pm;
+      const sd = localStorage.getItem(ALERT_SOUND_KEY);
+      if (sd === '0' || sd === '1') criticalSoundEnabled = sd === '1';
       const s = localStorage.getItem('mikrotik_wallboard_slots');
       if (s) {
         const parsed = JSON.parse(s);
@@ -1245,6 +1457,42 @@
     }
   }
 
+  async function playCriticalBeep() {
+    if (!criticalSoundEnabled || typeof window === 'undefined') return;
+    const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!AC) return;
+    if (!audioCtx) {
+      audioCtx = new AC();
+    }
+    const ctx = audioCtx;
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      try {
+        await ctx.resume();
+      } catch {
+        return;
+      }
+    }
+
+    const base = ctx.currentTime;
+    const pulse = (start: number, freq: number, gainValue: number, dur = 0.12) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(gainValue, start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + dur + 0.02);
+    };
+
+    pulse(base, 740, 0.028, 0.14);
+    pulse(base + 0.18, 660, 0.03, 0.16);
+  }
+
   async function applyWakeLock(on: boolean) {
     if (typeof navigator === 'undefined') return;
     // @ts-ignore
@@ -1332,6 +1580,9 @@
     if (typeof document !== 'undefined') document.body.classList.remove('kiosk-wallboard');
     if (hideHandle) clearTimeout(hideHandle);
     try {
+      audioCtx?.close?.();
+    } catch {}
+    try {
       uninstallAutoHide?.();
     } catch {}
   });
@@ -1385,6 +1636,35 @@
     focusMode;
     persistConfig();
   });
+
+  $effect(() => {
+    const criticalIds = sortedAlerts
+      .filter((a) => String(a.severity || '').toLowerCase() === 'critical')
+      .map((a) => a.id)
+      .sort();
+    const sig = criticalIds.join(',');
+
+    if (!sig) {
+      lastCriticalSignature = '';
+      return;
+    }
+    if (!criticalSoundEnabled || paused) {
+      lastCriticalSignature = sig;
+      return;
+    }
+    if (!lastCriticalSignature) {
+      lastCriticalSignature = sig;
+      return;
+    }
+    if (sig !== lastCriticalSignature) {
+      const now = Date.now();
+      if (now - lastCriticalBeepAt >= 8000) {
+        lastCriticalBeepAt = now;
+        void playCriticalBeep();
+      }
+    }
+    lastCriticalSignature = sig;
+  });
 </script>
 
 <div class="wallboard-viewport">
@@ -1392,33 +1672,45 @@
   <div class="wb-top" class:hidden={controlsHidden}>
     <div class="controls wall-actions">
       <div class="toolbar-left">
-        {#if pageCount > 1}
-          <div class="pager" aria-label={$t('admin.network.wallboard.pager.aria') || 'Pages'}>
-            <button
-              class="pager-btn"
-              type="button"
-              onclick={() => (page = Math.max(0, page - 1))}
-              disabled={page === 0}
-              aria-label={$t('admin.network.wallboard.pager.prev') || 'Previous page'}
-            >
-              <Icon name="chevron-left" size={16} />
-            </button>
-            <span class="pager-label">
-              {($t('common.page') || 'Page') + ' ' + (page + 1) + '/' + pageCount}
+        <button
+          class="settings-btn"
+          class:has-critical={insightsBadge.level === 'critical'}
+          class:has-warning={insightsBadge.level === 'warning'}
+          onclick={() => {
+            insightsOpen = !insightsOpen;
+          }}
+          title={$t('admin.network.wallboard.controls.open') || 'Open settings'}
+        >
+          <Icon name="settings" size={16} />
+          {$t('admin.network.wallboard.settings') || 'Settings'}
+          {#if insightsBadge.total > 0}
+            <span class="insights-badge">
+              {insightsBadge.total > 99 ? '99+' : insightsBadge.total}
             </span>
-            <button
-              class="pager-btn"
-              type="button"
-              onclick={() => (page = Math.min(pageCount - 1, page + 1))}
-              disabled={page >= pageCount - 1}
-              aria-label={$t('admin.network.wallboard.pager.next') || 'Next page'}
-            >
-              <Icon name="chevron-right" size={16} />
-            </button>
-          </div>
-        {/if}
+          {/if}
+        </button>
+      </div>
 
-        <div class="seg">
+    </div>
+  </div>
+
+  {#if insightsOpen}
+    <button
+      class="insights-backdrop"
+      type="button"
+      onclick={() => (insightsOpen = false)}
+      aria-label={$t('common.close') || 'Close'}
+    ></button>
+    <aside class="wall-insights" aria-label={$t('admin.network.wallboard.settings') || 'Settings'}>
+      <div class="insights-head">
+        <span class="title">{$t('admin.network.wallboard.settings') || 'Settings'}</span>
+        <button class="icon-x" type="button" onclick={() => (insightsOpen = false)} title={$t('common.close') || 'Close'}>
+          <Icon name="x" size={16} />
+        </button>
+      </div>
+      <div class="panel-section">
+        <div class="panel-kicker">{$t('admin.network.wallboard.controls.open') || 'Controls'}</div>
+        <div class="seg panel-actions">
           <button onclick={() => void refresh()} disabled={refreshing}>
             <Icon name="refresh-cw" size={16} />
             {$t('common.refresh') || 'Refresh'}
@@ -1436,9 +1728,23 @@
               ? $t('admin.network.wallboard.exit_fullscreen') || 'Exit Fullscreen'
               : $t('admin.network.wallboard.fullscreen') || 'Fullscreen'}
           </button>
+          <button
+            onclick={() => {
+              criticalSoundEnabled = !criticalSoundEnabled;
+            }}
+            title={$t('admin.network.wallboard.sound_toggle') || 'Toggle critical alert sound'}
+          >
+            <Icon name="alert-triangle" size={16} />
+            {criticalSoundEnabled
+              ? $t('admin.network.wallboard.sound_on') || 'Sound On'
+              : $t('admin.network.wallboard.sound_off') || 'Sound Off'}
+          </button>
+          <button onclick={exitWallboard} title={$t('admin.network.wallboard.exit') || $t('sidebar.exit') || 'Exit'}>
+            <Icon name="arrow-left" size={16} />
+            {$t('admin.network.wallboard.exit') || $t('sidebar.exit') || 'Exit'}
+          </button>
         </div>
-
-        <div class="toolbar-selects">
+        <div class="toolbar-selects panel-selects">
           <label class="toolbar-field">
             <span class="muted">{$t('admin.network.wallboard.poll') || 'Poll'}</span>
             <select
@@ -1469,14 +1775,123 @@
             </select>
           </label>
         </div>
+        {#if pageCount > 1}
+          <div class="pager" aria-label={$t('admin.network.wallboard.pager.aria') || 'Pages'}>
+            <button
+              class="pager-btn"
+              type="button"
+              onclick={() => (page = Math.max(0, page - 1))}
+              disabled={page === 0}
+              aria-label={$t('admin.network.wallboard.pager.prev') || 'Previous page'}
+            >
+              <Icon name="chevron-left" size={16} />
+            </button>
+            <span class="pager-label">
+              {($t('common.page') || 'Page') + ' ' + (page + 1) + '/' + pageCount}
+            </span>
+            <button
+              class="pager-btn"
+              type="button"
+              onclick={() => (page = Math.min(pageCount - 1, page + 1))}
+              disabled={page >= pageCount - 1}
+              aria-label={$t('admin.network.wallboard.pager.next') || 'Next page'}
+            >
+              <Icon name="chevron-right" size={16} />
+            </button>
+          </div>
+        {/if}
+      </div>
+      <div class="slo-strip">
+        <div class="slo-card">
+          <span class="k">{$t('admin.network.wallboard.slo.availability') || 'Availability'}</span>
+          <span class="v mono">{globalSummary.availability.toFixed(1)}%</span>
+        </div>
+        <div class="slo-card">
+          <span class="k">{$t('admin.network.wallboard.slo.routers_online') || 'Routers Online'}</span>
+          <span class="v mono">{globalSummary.online}/{globalSummary.total}</span>
+        </div>
+        <div class="slo-card">
+          <span class="k">{$t('admin.network.wallboard.slo.critical') || 'Critical Alerts'}</span>
+          <span class="v mono">{globalSummary.critical}</span>
+        </div>
+        <div class="slo-card">
+          <span class="k">{$t('admin.network.wallboard.slo.warning') || 'Warning Alerts'}</span>
+          <span class="v mono">{globalSummary.warning}</span>
+        </div>
+        <div class="slo-card">
+          <span class="k">{$t('admin.network.wallboard.slo.avg_latency') || 'Avg Latency'}</span>
+          <span class="v mono">{formatLatency(globalSummary.avgLatencyMs)}</span>
+        </div>
       </div>
 
-      <button class="exit-btn" onclick={exitWallboard} title={$t('admin.network.wallboard.exit') || $t('sidebar.exit') || 'Exit'}>
-        <Icon name="arrow-left" size={16} />
-        {$t('admin.network.wallboard.exit') || $t('sidebar.exit') || 'Exit'}
-      </button>
-    </div>
-  </div>
+      <div class="top-issues-strip">
+        <div class="top-issues-head">
+          <span class="title">{$t('admin.network.wallboard.top_issues.title') || 'Top Issues (1h)'}</span>
+          <span class="muted">
+            {$t('admin.network.wallboard.top_issues.subtitle') || 'Most frequent unresolved issues'}
+          </span>
+        </div>
+        <div class="top-issues-list">
+          {#if topIssues.length === 0}
+            <span class="top-issue-empty">
+              {$t('admin.network.wallboard.top_issues.empty') || 'No repeated issues in the last hour.'}
+            </span>
+          {:else}
+            {#each topIssues as it (it.key)}
+              {@const muteMins = selectedMuteMinutes(it.router_id)}
+              {@const maintLeft = maintenanceRemaining(routerById(it.router_id)?.maintenance_until)}
+              <div class="top-issue-item">
+                <button
+                  type="button"
+                  class="top-issue-main"
+                  onclick={() => goto(`${tenantPrefix}/admin/network/alerts`)}
+                  title={it.title}
+                >
+                  <span class="mono router">{it.router_name}</span>
+                  <span class="issue-title">{it.title}</span>
+                  <span class="issue-count mono">x{it.count}</span>
+                </button>
+                {#if maintLeft}
+                  <span class="top-issue-maint" title={$t('admin.network.wallboard.maintenance') || 'Maintenance'}>
+                    <Icon name="clock" size={13} />
+                    {$t('admin.network.wallboard.maintenance') || 'Maintenance'} {maintLeft}
+                  </span>
+                {/if}
+                {#if $can('manage', 'network_routers')}
+                  <div class="top-issue-actions">
+                    <select
+                      value={String(muteMins)}
+                      onchange={(e) => {
+                        const v = Number((e.currentTarget as HTMLSelectElement).value);
+                        topIssueMuteMinutes = {
+                          ...topIssueMuteMinutes,
+                          [it.router_id]: v === 60 || v === 240 ? v : 30,
+                        };
+                      }}
+                      aria-label={$t('admin.network.wallboard.top_issues.mute_for') || 'Mute duration'}
+                    >
+                      <option value="30">30m</option>
+                      <option value="60">1h</option>
+                      <option value="240">4h</option>
+                    </select>
+                    <button
+                      type="button"
+                      class="btn-mini ghost"
+                      onclick={() => void muteRouterAlerts(it.router_id, muteMins)}
+                      title={$t('admin.network.wallboard.top_issues.apply_mute') || 'Apply mute'}
+                    >
+                      <Icon name="clock" size={14} />
+                      {$t('admin.network.wallboard.top_issues.apply_mute') || 'Mute'}
+                    </button>
+                  </div>
+                {/if}
+              </div>
+            {/each}
+          {/if}
+        </div>
+      </div>
+    </aside>
+  {/if}
 
   {#if sortedAlerts.length > 0 && alertsOpen}
     <div id="wallboard-alert-panel" class="alert-strip floating-alert-panel">
@@ -1485,10 +1900,41 @@
         <span class="alert-strip-title">
           {$t('admin.network.wallboard.alerts_open') || 'Open alerts'}
         </span>
-        <span class="alert-strip-count">{sortedAlerts.length}</span>
+        <span class="alert-strip-count">{visibleAlerts.length}</span>
+      </div>
+      {#if $can('manage', 'network_routers')}
+        <div class="alert-strip-actions">
+          <button class="btn-mini ghost" type="button" onclick={() => void ackVisibleAlerts()}>
+            <Icon name="check" size={14} />
+            {$t('admin.network.wallboard.alerts_ack_visible') || 'Ack visible'}
+          </button>
+        </div>
+      {/if}
+      <div class="alert-filter-seg">
+        <button
+          class:active={alertSeverityFilter === 'all'}
+          type="button"
+          onclick={() => (alertSeverityFilter = 'all')}
+        >
+          {$t('admin.network.wallboard.filters.all') || 'All'} ({alertStats.total})
+        </button>
+        <button
+          class:active={alertSeverityFilter === 'critical'}
+          type="button"
+          onclick={() => (alertSeverityFilter = 'critical')}
+        >
+          {$t('admin.network.alerts.severity.critical') || 'Critical'} ({alertStats.critical})
+        </button>
+        <button
+          class:active={alertSeverityFilter === 'warning'}
+          type="button"
+          onclick={() => (alertSeverityFilter = 'warning')}
+        >
+          {$t('admin.network.alerts.severity.warning') || 'Warning'} ({alertStats.warning})
+        </button>
       </div>
       <div class="alert-strip-list">
-        {#each sortedAlerts.slice(0, 8) as a (a.id)}
+        {#each visibleAlerts.slice(0, 8) as a (a.id)}
           <button
             type="button"
             class="alert-chip"
@@ -1502,6 +1948,13 @@
           </button>
         {/each}
       </div>
+    </div>
+  {/if}
+
+  {#if paused}
+    <div class="pause-indicator">
+      <Icon name="pause" size={16} />
+      <span>{$t('admin.network.wallboard.pause') || 'Pause'}</span>
     </div>
   {/if}
 
@@ -1560,6 +2013,9 @@
             txNow != null &&
             txNow >= 0 &&
             txNow < slot.warn_below_tx_bps}
+          {@const maintLeft = maintenanceRemaining(r?.maintenance_until)}
+          {@const rxTrend = calcTrend(rx)}
+          {@const txTrend = calcTrend(tx)}
           {@const ra = routerAlertMap[slot.routerId]}
           {@const tileKey = `${slot.routerId}:${iface}:${gidx}`}
           {@const hoverIdx =
@@ -1677,6 +2133,15 @@
                     {$t('admin.network.wallboard.stale') || 'Stale'}
                   </span>
                 {/if}
+                {#if maintLeft}
+                  <span
+                    class="badge maintenance"
+                    title={($t('admin.network.wallboard.maintenance') || 'Maintenance') + ` ${maintLeft}`}
+                  >
+                    <Icon name="clock" size={13} />
+                    {$t('admin.network.wallboard.maintenance') || 'Maintenance'} {maintLeft}
+                  </span>
+                {/if}
                 <span
                   class="badge status-dot"
                   class:ok={r?.is_online}
@@ -1698,7 +2163,18 @@
                 <div class="bars" class:warn={warnRx}>
                   <div class="spark-panel-title">
                     <span class="spark-chip">RX</span>
-                    <span class="mono rate" class:warn={warnRx}>{formatBps(rxNow)}</span>
+                    <div class="spark-rate">
+                      <span class="mono rate" class:warn={warnRx}>{formatBps(rxNow)}</span>
+                      <span
+                        class="trend-chip"
+                        class:up={rxTrend.dir === 'up'}
+                        class:down={rxTrend.dir === 'down'}
+                        class:flat={rxTrend.dir === 'flat'}
+                        title={trendLabel(rxTrend)}
+                      >
+                        {trendBadgeText(rxTrend)}
+                      </span>
+                    </div>
                   </div>
                   {#if hoverIdx != null}
                     <div class="spark-crosshair" style={`--x:${((hoverIdx + 0.5) / Math.max(1, rx.length)) * 100}%`}></div>
@@ -1715,7 +2191,18 @@
                 <div class="bars" class:warn={warnTx}>
                   <div class="spark-panel-title">
                     <span class="spark-chip">TX</span>
-                    <span class="mono rate" class:warn={warnTx}>{formatBps(txNow)}</span>
+                    <div class="spark-rate">
+                      <span class="mono rate" class:warn={warnTx}>{formatBps(txNow)}</span>
+                      <span
+                        class="trend-chip"
+                        class:up={txTrend.dir === 'up'}
+                        class:down={txTrend.dir === 'down'}
+                        class:flat={txTrend.dir === 'flat'}
+                        title={trendLabel(txTrend)}
+                      >
+                        {trendBadgeText(txTrend)}
+                      </span>
+                    </div>
                   </div>
                   {#if hoverIdx != null}
                     <div class="spark-crosshair" style={`--x:${((hoverIdx + 0.5) / Math.max(1, tx.length)) * 100}%`}></div>
@@ -2463,6 +2950,205 @@
     transform: translateY(-8px);
     pointer-events: none;
   }
+  .insights-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 68;
+    border: none;
+    background: rgba(0, 0, 0, 0.35);
+  }
+  .wall-insights {
+    position: fixed;
+    top: 82px;
+    right: 18px;
+    bottom: 18px;
+    width: min(440px, calc(100vw - 36px));
+    z-index: 69;
+    display: grid;
+    grid-template-rows: auto auto auto 1fr;
+    gap: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 10px;
+    background: color-mix(in srgb, var(--bg-surface) 90%, transparent);
+    box-shadow: var(--shadow-lg);
+    overflow: auto;
+  }
+  .insights-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .insights-head .title {
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-primary);
+  }
+  .panel-section {
+    display: grid;
+    gap: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 8px;
+    background: color-mix(in srgb, var(--bg-surface) 78%, transparent);
+  }
+  .panel-kicker {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 900;
+    color: var(--text-muted);
+  }
+  .panel-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    border-radius: 12px;
+  }
+  .panel-actions button {
+    flex: 1 1 45%;
+    justify-content: center;
+  }
+  .panel-selects {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .slo-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .slo-card {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 8px 10px;
+    background: color-mix(in srgb, var(--bg-surface) 70%, transparent);
+    display: grid;
+    gap: 3px;
+    min-height: 54px;
+  }
+  .slo-card .k {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 900;
+    color: var(--text-muted);
+  }
+  .slo-card .v {
+    font-size: 15px;
+    font-weight: 900;
+    color: var(--text-primary);
+    line-height: 1.1;
+  }
+  .top-issues-strip {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 9px 10px;
+    background: color-mix(in srgb, var(--bg-surface) 74%, transparent);
+    display: grid;
+    gap: 8px;
+    min-height: 0;
+  }
+  .top-issues-head {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .top-issues-head .title {
+    font-size: 12px;
+    font-weight: 900;
+    color: var(--text-primary);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .top-issues-list {
+    display: grid;
+    gap: 7px;
+    align-content: start;
+  }
+  .top-issue-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 7px 8px;
+    background: color-mix(in srgb, var(--bg-surface) 68%, transparent);
+  }
+  .top-issue-main {
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    padding: 0;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    min-width: 0;
+    flex: 1;
+    text-align: left;
+  }
+  .top-issue-main .router {
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 800;
+  }
+  .top-issue-main .issue-title {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .top-issue-main .issue-count {
+    font-weight: 900;
+    color: var(--text-primary);
+  }
+  .top-issue-empty {
+    border: 1px dashed var(--border-color);
+    border-radius: 10px;
+    padding: 8px 10px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .top-issue-maint {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid color-mix(in srgb, #f59e0b 45%, var(--border-color));
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 800;
+    color: color-mix(in srgb, #f59e0b 86%, var(--text-primary));
+    background: color-mix(in srgb, #f59e0b 14%, transparent);
+    white-space: nowrap;
+  }
+  .top-issue-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .top-issue-actions select {
+    height: 32px;
+    min-width: 72px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
+    color: var(--text-primary);
+    padding: 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+    outline: none;
+  }
 
   .dot {
     width: 8px;
@@ -2520,22 +3206,6 @@
     height: 34px;
     outline: none;
   }
-  .exit-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
-    color: var(--text-primary);
-    cursor: pointer;
-    font-weight: 700;
-    font-size: 13px;
-  }
-  .exit-btn:hover {
-    background: color-mix(in srgb, var(--bg-surface) 50%, transparent);
-  }
 
   .pill {
     display: inline-flex;
@@ -2582,6 +3252,50 @@
   .seg button:disabled {
     opacity: 0.6;
     cursor: default;
+  }
+  .settings-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 13px;
+    position: relative;
+    padding-right: 30px;
+  }
+  .settings-btn.has-warning {
+    color: color-mix(in srgb, #f59e0b 85%, var(--text-primary));
+  }
+  .settings-btn.has-critical {
+    color: color-mix(in srgb, #ef4444 88%, var(--text-primary));
+  }
+  .insights-badge {
+    position: absolute;
+    top: 5px;
+    right: 7px;
+    min-width: 17px;
+    height: 17px;
+    border-radius: 999px;
+    padding: 0 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 1;
+    color: #fff;
+    background: #f59e0b;
+    border: 1px solid color-mix(in srgb, #f59e0b 65%, var(--border-color));
+  }
+  .settings-btn.has-critical .insights-badge {
+    background: #ef4444;
+    border-color: color-mix(in srgb, #ef4444 65%, var(--border-color));
   }
   .pager {
     display: inline-flex;
@@ -2691,6 +3405,11 @@
     font-weight: 800;
     color: var(--text-primary);
   }
+  .alert-strip-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
 
   .alert-strip-title {
     font-size: 0.86rem;
@@ -2714,6 +3433,31 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+  }
+  .alert-filter-seg {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 3px;
+    width: fit-content;
+    background: color-mix(in srgb, var(--bg-surface) 78%, transparent);
+  }
+  .alert-filter-seg button {
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 5px 8px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .alert-filter-seg button.active {
+    color: var(--text-primary);
+    border-color: color-mix(in srgb, var(--color-warning) 40%, var(--border-color));
+    background: color-mix(in srgb, var(--color-warning) 14%, transparent);
   }
 
   .alert-chip {
@@ -2748,6 +3492,25 @@
     gap: 10px;
     background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
     color: var(--text-muted);
+  }
+  .pause-indicator {
+    position: fixed;
+    left: 18px;
+    bottom: 18px;
+    z-index: 75;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 10px;
+    border-radius: 11px;
+    border: 1px solid color-mix(in srgb, #f59e0b 45%, var(--border-color));
+    background: color-mix(in srgb, #f59e0b 16%, var(--bg-surface));
+    color: color-mix(in srgb, #f59e0b 88%, var(--text-primary));
+    box-shadow: var(--shadow-md);
+    font-weight: 900;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
   }
 
   .grid {
@@ -2990,6 +3753,12 @@
     color: color-mix(in srgb, var(--color-warning) 85%, var(--text-primary));
     background: color-mix(in srgb, var(--color-warning) 12%, transparent);
   }
+  .badge.maintenance {
+    border-color: color-mix(in srgb, #f59e0b 50%, var(--border-color));
+    color: color-mix(in srgb, #f59e0b 88%, var(--text-primary));
+    background: color-mix(in srgb, #f59e0b 14%, transparent);
+    gap: 6px;
+  }
 
   .tile-body {
     padding: 14px;
@@ -3036,6 +3805,39 @@
   .mono {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
       monospace;
+  }
+  .spark-rate {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .trend-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    min-height: 20px;
+    padding: 2px 7px;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    color: var(--text-muted);
+    background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
+    white-space: nowrap;
+  }
+  .trend-chip.up {
+    border-color: color-mix(in srgb, #22c55e 48%, var(--border-color));
+    color: #22c55e;
+    background: color-mix(in srgb, #22c55e 14%, transparent);
+  }
+  .trend-chip.down {
+    border-color: color-mix(in srgb, #f97316 48%, var(--border-color));
+    color: #f97316;
+    background: color-mix(in srgb, #f97316 14%, transparent);
+  }
+  .trend-chip.flat {
+    color: var(--text-muted);
   }
 
   .rate.warn {
@@ -3225,6 +4027,11 @@
     gap: 4px 8px;
     font-size: 10px;
   }
+  .grid.compact .trend-chip {
+    min-height: 18px;
+    padding: 1px 6px;
+    font-size: 9px;
+  }
   .grid.compact .add-inner {
     padding: 10px;
   }
@@ -3254,6 +4061,23 @@
     }
   }
   @media (max-width: 920px) {
+    .wall-insights {
+      top: 62px;
+      right: 10px;
+      bottom: 10px;
+      width: calc(100vw - 20px);
+      padding: 8px;
+    }
+    .top-issue-item {
+      flex-wrap: wrap;
+    }
+    .top-issue-main .router {
+      max-width: 140px;
+    }
+    .top-issue-actions {
+      width: 100%;
+      justify-content: flex-end;
+    }
     .alert-strip.floating-alert-panel {
       right: 10px;
       bottom: 58px;
@@ -3286,6 +4110,10 @@
     .toolbar-field {
       min-width: 120px;
       flex: 1;
+    }
+    .pause-indicator {
+      left: 10px;
+      bottom: 10px;
     }
     .grid {
       grid-template-columns: 1fr;

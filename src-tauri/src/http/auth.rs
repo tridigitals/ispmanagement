@@ -433,12 +433,15 @@ pub async fn reset_user_2fa(
         .ok_or_else(|| crate::error::AppError::Unauthorized)?;
 
     let claims = state.auth_service.validate_token(auth_header).await?;
-    let target_is_super_admin: bool = sqlx::query_scalar("SELECT is_super_admin FROM users WHERE id = $1")
-        .bind(&user_id)
-        .fetch_optional(&state.auth_service.pool)
-        .await
-        .map_err(crate::error::AppError::Database)?
-        .ok_or(crate::error::AppError::NotFound("User not found".to_string()))?;
+    let target_is_super_admin: bool =
+        sqlx::query_scalar("SELECT is_super_admin FROM users WHERE id = $1")
+            .bind(&user_id)
+            .fetch_optional(&state.auth_service.pool)
+            .await
+            .map_err(crate::error::AppError::Database)?
+            .ok_or(crate::error::AppError::NotFound(
+                "User not found".to_string(),
+            ))?;
 
     if !claims.is_super_admin {
         let tenant_id = claims

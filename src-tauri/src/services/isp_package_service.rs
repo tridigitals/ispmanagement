@@ -2,7 +2,7 @@ use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     CreateIspPackageRequest, IspPackage, IspPackageRouterMapping, IspPackageRouterMappingView,
-    PaginatedResponse, UpsertIspPackageRouterMappingRequest, UpdateIspPackageRequest,
+    PaginatedResponse, UpdateIspPackageRequest, UpsertIspPackageRouterMappingRequest,
 };
 use crate::services::{AuditService, AuthService};
 use chrono::Utc;
@@ -499,11 +499,14 @@ impl IspPackageService {
             .await?;
 
         self.ensure_router_access(tenant_id, &dto.router_id).await?;
-        self.ensure_package_access(tenant_id, &dto.package_id).await?;
+        self.ensure_package_access(tenant_id, &dto.package_id)
+            .await?;
 
         let profile = dto.router_profile_name.trim().to_string();
         if profile.is_empty() {
-            return Err(AppError::Validation("router_profile_name is required".into()));
+            return Err(AppError::Validation(
+                "router_profile_name is required".into(),
+            ));
         }
 
         let addr_pool = dto.address_pool.and_then(|v| {
@@ -571,4 +574,3 @@ impl IspPackageService {
         Ok(mapping)
     }
 }
-

@@ -309,8 +309,7 @@ impl PaymentService {
             f64,
             Option<chrono::DateTime<chrono::Utc>>,
             Option<chrono::DateTime<chrono::Utc>>,
-        )> =
-            sqlx::query_as(
+        )> = sqlx::query_as(
             r#"
             SELECT
                 c.name AS customer_name,
@@ -340,8 +339,7 @@ impl PaymentService {
             f64,
             Option<chrono::DateTime<chrono::Utc>>,
             Option<chrono::DateTime<chrono::Utc>>,
-        )> =
-            sqlx::query_as(
+        )> = sqlx::query_as(
             r#"
             SELECT
                 c.name AS customer_name,
@@ -363,16 +361,17 @@ impl PaymentService {
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        let (customer_name, package_name, billing_cycle, price, starts_at, ends_at) = row
-            .ok_or_else(|| AppError::NotFound("Customer subscription not found".to_string()))?;
+        let (customer_name, package_name, billing_cycle, price, starts_at, ends_at) =
+            row.ok_or_else(|| AppError::NotFound("Customer subscription not found".to_string()))?;
         if let Some(ends) = ends_at {
             if period_ref > ends {
-                return Err(AppError::Validation("Subscription already ended".to_string()));
+                return Err(AppError::Validation(
+                    "Subscription already ended".to_string(),
+                ));
             }
         }
 
-        let period_key =
-            Self::billing_period_key(&billing_cycle, starts_at.as_ref(), period_ref)?;
+        let period_key = Self::billing_period_key(&billing_cycle, starts_at.as_ref(), period_ref)?;
         let external_id = format!(
             "{}{}:{}",
             CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id, period_key
@@ -436,9 +435,10 @@ impl PaymentService {
             .await
         {
             Some(v) => Some(v),
-            None => self
-                .get_setting_value(None, "customer_invoice_generate_days_before_due")
-                .await,
+            None => {
+                self.get_setting_value(None, "customer_invoice_generate_days_before_due")
+                    .await
+            }
         };
         let lead_days = lead_raw
             .and_then(|v| v.parse::<i64>().ok())
@@ -498,7 +498,9 @@ impl PaymentService {
         let mut failed_count = 0_u32;
 
         for (subscription_id, billing_cycle, starts_at, ends_at) in subscriptions {
-            if let Some(next_renewal) = Self::next_renewal_at(&billing_cycle, starts_at.as_ref(), now)? {
+            if let Some(next_renewal) =
+                Self::next_renewal_at(&billing_cycle, starts_at.as_ref(), now)?
+            {
                 if now < (next_renewal - lead_duration) {
                     skipped_count += 1;
                     continue;
@@ -510,7 +512,11 @@ impl PaymentService {
                     }
                 }
                 match self
-                    .create_invoice_for_customer_subscription_at(tenant_id, &subscription_id, next_renewal)
+                    .create_invoice_for_customer_subscription_at(
+                        tenant_id,
+                        &subscription_id,
+                        next_renewal,
+                    )
                     .await
                 {
                     Ok(_) => created_count += 1,
@@ -583,7 +589,10 @@ impl PaymentService {
                 continue;
             }
 
-            match self.generate_due_customer_package_invoices(&tenant_id).await {
+            match self
+                .generate_due_customer_package_invoices(&tenant_id)
+                .await
+            {
                 Ok(res) => {
                     created_count += res.created_count;
                     skipped_count += res.skipped_count;
@@ -1631,18 +1640,18 @@ impl PaymentService {
 
         if cycle == "monthly" {
             while cursor <= now {
-                cursor = cursor
-                    .checked_add_months(Months::new(1))
-                    .ok_or_else(|| AppError::Internal("Failed to compute monthly renewal".to_string()))?;
+                cursor = cursor.checked_add_months(Months::new(1)).ok_or_else(|| {
+                    AppError::Internal("Failed to compute monthly renewal".to_string())
+                })?;
             }
             return Ok(Some(cursor));
         }
 
         if cycle == "yearly" {
             while cursor <= now {
-                cursor = cursor
-                    .checked_add_months(Months::new(12))
-                    .ok_or_else(|| AppError::Internal("Failed to compute yearly renewal".to_string()))?;
+                cursor = cursor.checked_add_months(Months::new(12)).ok_or_else(|| {
+                    AppError::Internal("Failed to compute yearly renewal".to_string())
+                })?;
             }
             return Ok(Some(cursor));
         }

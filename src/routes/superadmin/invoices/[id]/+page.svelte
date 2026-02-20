@@ -12,6 +12,7 @@
   import { t } from 'svelte-i18n';
   import { getTenantsCached } from '$lib/stores/superadminTenantsCache';
   import { appSettings } from '$lib/stores/settings';
+  import { getApiBaseUrl } from '$lib/utils/apiUrl';
 
   let invoiceId = $state('');
   let invoice = $state<Invoice | null>(null);
@@ -126,7 +127,7 @@
   }
 
   function getProofUrl(fileId: string) {
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    const API_BASE = getApiBaseUrl();
     return `${API_BASE}/storage/files/${fileId}/content`;
   }
 

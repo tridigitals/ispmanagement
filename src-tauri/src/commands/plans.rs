@@ -7,7 +7,10 @@ use crate::models::{
 use crate::services::{AuthService, Claims, PlanService};
 use tauri::State;
 
-async fn require_plan_read_access(auth_service: &AuthService, claims: &Claims) -> Result<(), String> {
+async fn require_plan_read_access(
+    auth_service: &AuthService,
+    claims: &Claims,
+) -> Result<(), String> {
     if claims.is_super_admin {
         return Ok(());
     }

@@ -212,8 +212,8 @@ pub async fn create_my_address(
         .get("dto")
         .cloned()
         .unwrap_or_else(|| payload.clone());
-    let payload: CreateUserAddressDto =
-        serde_json::from_value(dto_value).map_err(|e| crate::error::AppError::Validation(e.to_string()))?;
+    let payload: CreateUserAddressDto = serde_json::from_value(dto_value)
+        .map_err(|e| crate::error::AppError::Validation(e.to_string()))?;
 
     let address = state
         .user_service
@@ -236,8 +236,8 @@ pub async fn update_my_address(
         .get("dto")
         .cloned()
         .unwrap_or_else(|| payload.clone());
-    let payload: UpdateUserAddressDto =
-        serde_json::from_value(dto_value).map_err(|e| crate::error::AppError::Validation(e.to_string()))?;
+    let payload: UpdateUserAddressDto = serde_json::from_value(dto_value)
+        .map_err(|e| crate::error::AppError::Validation(e.to_string()))?;
 
     let address = state
         .user_service

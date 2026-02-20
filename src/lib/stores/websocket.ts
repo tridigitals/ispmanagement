@@ -15,6 +15,7 @@ import {
   markAllAsRead,
   loadNotifications,
 } from './notifications';
+import { getApiBaseUrl } from '$lib/utils/apiUrl';
 
 // WebSocket connection state
 export const wsConnected = writable(false);
@@ -131,7 +132,7 @@ export function connectWebSocket() {
   // Determine WebSocket URL based on API_BASE
   // Prefer configured API base (works in DEV when backend is remote),
   // otherwise default to local embedded server in Tauri dev.
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+  const apiBase = getApiBaseUrl();
   let wsUrl = apiBase;
 
   // Replace protocol

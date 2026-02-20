@@ -1,7 +1,9 @@
 //! Payment Commands
 
 use crate::models::{BankAccount, CreateBankAccountRequest, Invoice};
-use crate::services::{AuthService, BulkGenerateInvoicesResult, Claims, PaymentService, PlanService};
+use crate::services::{
+    AuthService, BulkGenerateInvoicesResult, Claims, PaymentService, PlanService,
+};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use tauri::State;

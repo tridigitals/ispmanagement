@@ -498,7 +498,10 @@ pub async fn create_support_ticket(
     };
 
     let mut tx = state.auth_service.pool.begin().await?;
-    state.auth_service.apply_rls_context_tx(&mut tx, &claims).await?;
+    state
+        .auth_service
+        .apply_rls_context_tx(&mut tx, &claims)
+        .await?;
 
     sqlx::query(
         r#"
@@ -775,7 +778,10 @@ pub async fn reply_support_ticket(
     let msg_id = Uuid::new_v4().to_string();
 
     let mut tx = state.auth_service.pool.begin().await?;
-    state.auth_service.apply_rls_context_tx(&mut tx, &claims).await?;
+    state
+        .auth_service
+        .apply_rls_context_tx(&mut tx, &claims)
+        .await?;
 
     sqlx::query(
         r#"

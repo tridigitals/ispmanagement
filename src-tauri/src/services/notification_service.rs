@@ -514,9 +514,7 @@ impl NotificationService {
                     if response.status().is_success() {
                         tracing::info!("Push sent to {}", sub.endpoint);
                     } else if response.status() == 410 {
-                        let _ = self
-                            .unsubscribe_push_for_user(&sub.endpoint, user_id)
-                            .await;
+                        let _ = self.unsubscribe_push_for_user(&sub.endpoint, user_id).await;
                         tracing::info!("Removed expired subscription: {}", sub.endpoint);
                     } else {
                         tracing::warn!(
