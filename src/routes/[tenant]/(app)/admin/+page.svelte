@@ -6,7 +6,7 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { page } from '$app/stores';
-  import { getSlugFromDomain } from '$lib/utils/domain';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { t } from 'svelte-i18n';
 
@@ -15,10 +15,14 @@
   let subscription = $state<TenantSubscriptionDetails | null>(null);
   let loading = $state(true);
 
-  // Dynamic Link Logic
-  let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
-  let isCustomDomain = $derived(domainSlug && domainSlug === $user?.tenant_slug);
-  let tenantPrefix = $derived($user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : '');
+  let tenantCtx = $derived.by(() =>
+    resolveTenantContext({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
+  );
+  let tenantPrefix = $derived(tenantCtx.tenantPrefix);
 
   onMount(() => {
     initData();

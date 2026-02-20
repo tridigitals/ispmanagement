@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { user, isAdmin, can } from '$lib/stores/auth';
+  import { user, isAdmin } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
-  import { getSlugFromDomain } from '$lib/utils/domain';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { formatDate, timeAgo } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
   import { api, type Announcement, type PaginatedResponse } from '$lib/api/client';
@@ -30,10 +30,14 @@
     return $t('dashboard.greeting.evening');
   };
 
-  // Tenant prefix helper (supports custom domain mode)
-  let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
-  let isCustomDomain = $derived(domainSlug && domainSlug === $user?.tenant_slug);
-  let tenantPrefix = $derived($user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : '');
+  let tenantCtx = $derived.by(() =>
+    resolveTenantContext({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
+  );
+  let tenantPrefix = $derived(tenantCtx.tenantPrefix);
 
   let recent = $derived($notifications.slice(0, 6));
 
@@ -93,14 +97,6 @@
     <div class="welcome-text">
       <h1>{greeting()}, {$user?.name}!</h1>
       <p>{$t('dashboard.greeting.welcome_message')}</p>
-    </div>
-    <div class="header-actions">
-      {#if $can('upload', 'storage')}
-        <button class="btn btn-primary" onclick={() => goto(`${tenantPrefix}/storage`)}>
-          <Icon name="hard-drive" size={16} />
-          {$t('dashboard.manage_files') || 'Manage Files'}
-        </button>
-      {/if}
     </div>
   </header>
 
@@ -338,14 +334,6 @@
       gap: 1rem;
     }
 
-    .header-actions {
-      width: 100%;
-    }
-
-    .header-actions .btn {
-      width: 100%;
-      justify-content: center;
-    }
   }
 
   /* Header */

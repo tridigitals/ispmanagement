@@ -6,32 +6,22 @@
   import { appSettings } from '$lib/stores/settings';
   import { page } from '$app/stores';
   import { user } from '$lib/stores/auth';
-  import { getSlugFromDomain, isPlatformDomain } from '$lib/utils/domain';
+  import { resolveTenantContext, APP_ROOT_SEGMENTS } from '$lib/utils/tenantRouting';
+  import { isPlatformDomain } from '$lib/utils/domain';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
 
   let { children } = $props();
 
-  // Determine if we are on a custom domain that matches the current tenant
-  let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
-  let isCustomDomain = $derived(domainSlug && domainSlug === $user?.tenant_slug);
-  let onPlatformDomainForPrefix = $derived(isPlatformDomain($page.url.hostname));
-
-  // If on custom domain, prefix is empty. Otherwise, use slug.
-  let tenantPrefix = $derived(
-    $user?.tenant_slug && !isCustomDomain && !onPlatformDomainForPrefix
-      ? `/${$user.tenant_slug}`
-      : '',
+  let tenantCtx = $derived.by(() =>
+    resolveTenantContext({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
   );
-  const RESERVED_APP_SEGMENTS = new Set([
-    'admin',
-    'dashboard',
-    'profile',
-    'support',
-    'notifications',
-    'announcements',
-    'storage',
-  ]);
+  let tenantPrefix = $derived(tenantCtx.tenantPrefix);
+  const RESERVED_APP_SEGMENTS = new Set<string>(APP_ROOT_SEGMENTS as readonly string[]);
 
   function isDebugEnabled() {
     if (typeof window === 'undefined') return false;
@@ -62,7 +52,7 @@
       currentSlug,
       userSlug,
       onPlatformDomain,
-      tenantPrefix,
+      tenantPrefix: tenantCtx.tenantPrefix,
     });
 
     // Keep main domain URL clean: never expose /:tenant/... in browser URL.

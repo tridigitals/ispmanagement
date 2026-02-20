@@ -14,7 +14,7 @@
   import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
   import StatsCard from '$lib/components/dashboard/StatsCard.svelte';
   import { timeAgo } from '$lib/utils/date';
-  import { getSlugFromDomain } from '$lib/utils/domain';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
 
   type RouterRow = { id: string; name: string; host?: string; port?: number };
   type CustomerRow = { id: string; name: string };
@@ -85,14 +85,15 @@
     return out;
   });
 
-  const domainSlug = $derived(getSlugFromDomain($page.url.hostname));
-  const effectiveTenantSlug = $derived(
-    ($tenant?.slug || $user?.tenant_slug || String($page.params.tenant || '')).trim(),
+  const tenantCtx = $derived.by(() =>
+    resolveTenantContext({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      tenantSlug: $tenant?.slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
   );
-  const isCustomDomain = $derived(domainSlug && domainSlug === effectiveTenantSlug);
-  const tenantPrefix = $derived(
-    effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
-  );
+  const tenantPrefix = $derived(tenantCtx.tenantPrefix);
 
   const routerName = (id: string) => routers.find((r) => r.id === id)?.name || '-';
   const customerName = (id: string) => customers.find((c) => c.id === id)?.name || '-';

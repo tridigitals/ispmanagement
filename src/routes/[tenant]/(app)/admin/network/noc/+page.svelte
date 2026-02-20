@@ -10,7 +10,7 @@
   import Table from '$lib/components/ui/Table.svelte';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
   import { toast } from '$lib/stores/toast';
-  import { getSlugFromDomain } from '$lib/utils/domain';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { user, tenant } from '$lib/stores/auth';
 
   type NocRow = {
@@ -56,13 +56,15 @@
 
   let refreshHandle: any = null;
 
-  // For custom domains, tenantPrefix should be empty (same logic as Sidebar).
-  let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
-  let effectiveTenantSlug = $derived($tenant?.slug || $user?.tenant_slug || '');
-  let isCustomDomain = $derived(domainSlug && domainSlug === effectiveTenantSlug);
-  let tenantPrefix = $derived(
-    effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
+  let tenantCtx = $derived.by(() =>
+    resolveTenantContext({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      tenantSlug: $tenant?.slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
   );
+  let tenantPrefix = $derived(tenantCtx.tenantPrefix);
 
   onMount(() => {
     if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {

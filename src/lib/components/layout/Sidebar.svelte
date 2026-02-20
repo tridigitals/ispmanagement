@@ -6,21 +6,20 @@
   import { isSidebarCollapsed } from '$lib/stores/ui';
   import { goto } from '$app/navigation';
   import { t } from 'svelte-i18n';
-  import { getSlugFromDomain, isPlatformDomain } from '$lib/utils/domain';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import Icon from '../ui/Icon.svelte';
 
   let { isMobileOpen = $bindable(false) } = $props();
 
-  // Determine if we are on a custom domain that matches the current tenant
-  let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
-  let effectiveTenantSlug = $derived($tenant?.slug || $user?.tenant_slug || '');
-  let isCustomDomain = $derived(domainSlug && domainSlug === effectiveTenantSlug);
-  let onPlatformDomain = $derived(isPlatformDomain($page.url.hostname));
-
-  // If on custom domain, prefix is empty. Otherwise, use slug.
-  let tenantPrefix = $derived(
-    effectiveTenantSlug && !isCustomDomain && !onPlatformDomain ? `/${effectiveTenantSlug}` : '',
+  let tenantCtx = $derived.by(() =>
+    resolveTenantContext({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      tenantSlug: $tenant?.slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
   );
+  let tenantPrefix = $derived(tenantCtx.tenantPrefix);
 
   type NavItem = {
     label: string;

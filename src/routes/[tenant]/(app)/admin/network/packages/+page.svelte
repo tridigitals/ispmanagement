@@ -14,20 +14,21 @@ import { appSettings } from '$lib/stores/settings';
   import Toggle from '$lib/components/ui/Toggle.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
-  import { getSlugFromDomain } from '$lib/utils/domain';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
 
   type RouterRow = { id: string; name: string };
   type ProfileSuggestion = { id: string; name: string };
   type PoolSuggestion = { id: string; name: string };
 
-  const domainSlug = $derived(getSlugFromDomain($page.url.hostname));
-  const effectiveTenantSlug = $derived(
-    ($tenant?.slug || $user?.tenant_slug || String($page.params.tenant || '')).trim(),
+  const tenantCtx = $derived.by(() =>
+    resolveTenantContext({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      tenantSlug: $tenant?.slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
   );
-  const isCustomDomain = $derived(domainSlug && domainSlug === effectiveTenantSlug);
-  const tenantPrefix = $derived(
-    effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
-  );
+  const tenantPrefix = $derived(tenantCtx.tenantPrefix);
 
   let loading = $state(true);
   let saving = $state(false);

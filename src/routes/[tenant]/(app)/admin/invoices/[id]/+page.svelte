@@ -12,7 +12,7 @@
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
   import { user, tenant } from '$lib/stores/auth';
-  import { getSlugFromDomain } from '$lib/utils/domain';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
 
   let invoice = $state<Invoice | null>(null);
   let loading = $state(true);
@@ -22,15 +22,16 @@
   let showConfirm = $state(false);
   let pendingVerifyStatus = $state<'paid' | 'failed'>('paid');
 
-  const domainSlug = $derived(getSlugFromDomain($page.url.hostname));
-  const effectiveTenantSlug = $derived(
-    ($tenant?.slug || $user?.tenant_slug || $page.params.tenant || '').trim(),
+  const tenantCtx = $derived.by(() =>
+    resolveTenantContext({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      tenantSlug: $tenant?.slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
   );
-  const isCustomDomain = $derived(domainSlug && domainSlug === effectiveTenantSlug);
   const invoiceId = $derived($page.params.id ?? '');
-  const tenantPrefix = $derived(
-    effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
-  );
+  const tenantPrefix = $derived(tenantCtx.tenantPrefix);
   const backPath = $derived(`${tenantPrefix}/admin/invoices`);
 
   onMount(() => {

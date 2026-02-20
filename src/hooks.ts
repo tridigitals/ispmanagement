@@ -1,5 +1,6 @@
 import type { Reroute } from '@sveltejs/kit';
 import { getSlugFromDomain, isPlatformDomain } from '$lib/utils/domain';
+import { APP_ROOT_SEGMENTS } from '$lib/utils/tenantRouting';
 
 // SvelteKit may import this optional export in some builds.
 // Keeping it defined avoids Rollup "missing export" warnings.
@@ -14,16 +15,6 @@ const PUBLIC_PATHS = [
   '/forgot-password',
   '/reset-password',
   '/superadmin',
-];
-
-const APP_ROOT_SEGMENTS = [
-  'admin',
-  'dashboard',
-  'profile',
-  'support',
-  'notifications',
-  'announcements',
-  'storage',
 ];
 
 /**
@@ -48,7 +39,7 @@ export const reroute: Reroute = ({ url }) => {
     const m = url.pathname.match(/^\/([^/]+)\/(admin|dashboard|profile|support|notifications|announcements|storage)(\/.*)?$/);
     if (m) {
       const firstSegment = m[1];
-      if (APP_ROOT_SEGMENTS.includes(firstSegment)) {
+      if ((APP_ROOT_SEGMENTS as readonly string[]).includes(firstSegment)) {
         return undefined;
       }
       const appRoot = m[2];

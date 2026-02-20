@@ -15,16 +15,22 @@
   } from '$lib/stores/notifications';
   import { timeAgo } from '$lib/utils/date';
   import { goto } from '$app/navigation';
-  import { user } from '$lib/stores/auth';
-  import { getSlugFromDomain } from '$lib/utils/domain';
+  import { user, tenant } from '$lib/stores/auth';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
 
   let isOpen = $state(false);
   const OPEN_REFRESH_MIN_INTERVAL_MS = 10_000;
   let lastOpenRefreshAt = 0;
 
-  let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
-  let isCustomDomain = $derived(domainSlug && domainSlug === $user?.tenant_slug);
-  let tenantPrefix = $derived($user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : '');
+  let tenantCtx = $derived.by(() =>
+    resolveTenantContext({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      tenantSlug: $tenant?.slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
+  );
+  let tenantPrefix = $derived(tenantCtx.tenantPrefix);
   let isSuperadminUrl = $derived($page.url.pathname.startsWith('/superadmin'));
 
   async function open() {

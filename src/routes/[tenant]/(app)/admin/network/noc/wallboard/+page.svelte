@@ -8,7 +8,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import { toast } from '$lib/stores/toast';
   import { isSidebarCollapsed } from '$lib/stores/ui';
-  import { getSlugFromDomain } from '$lib/utils/domain';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
 
   type NocRow = {
     id: string;
@@ -198,14 +198,15 @@
   let alertSnapshot: Record<string, string> = {};
   let routerPollState = $state<Record<string, RouterPollState>>({});
 
-  const domainSlug = $derived(getSlugFromDomain($pageStore.url.hostname));
-  const effectiveTenantSlug = $derived(
-    ($tenant?.slug || $user?.tenant_slug || String($pageStore.params.tenant || '')).trim(),
+  const tenantCtx = $derived.by(() =>
+    resolveTenantContext({
+      hostname: $pageStore.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      tenantSlug: $tenant?.slug,
+      routeTenantSlug: $pageStore.params.tenant,
+    }),
   );
-  const isCustomDomain = $derived(domainSlug && domainSlug === effectiveTenantSlug);
-  const tenantPrefix = $derived(
-    effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
-  );
+  const tenantPrefix = $derived(tenantCtx.tenantPrefix);
 
   // Auto-hide toolbar for NOC display friendly behavior.
   let lastActivityAt = $state(Date.now());

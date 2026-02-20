@@ -8,7 +8,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import { api } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
-  import { getSlugFromDomain } from '$lib/utils/domain';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
 
   type LayoutPreset = '2x2' | '3x2' | '3x3' | '4x3';
   type RotateMode = 'manual' | 'auto';
@@ -31,14 +31,15 @@
   let focusMode = $state(false);
   let saving = $state(false);
 
-  const domainSlug = $derived(getSlugFromDomain($pageStore.url.hostname));
-  const effectiveTenantSlug = $derived(
-    ($tenant?.slug || $user?.tenant_slug || String($pageStore.params.tenant || '')).trim(),
+  const tenantCtx = $derived.by(() =>
+    resolveTenantContext({
+      hostname: $pageStore.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      tenantSlug: $tenant?.slug,
+      routeTenantSlug: $pageStore.params.tenant,
+    }),
   );
-  const isCustomDomain = $derived(domainSlug && domainSlug === effectiveTenantSlug);
-  const tenantPrefix = $derived(
-    effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
-  );
+  const tenantPrefix = $derived(tenantCtx.tenantPrefix);
 
   function loadLocal() {
     try {

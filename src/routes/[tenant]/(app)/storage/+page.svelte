@@ -1,5 +1,17 @@
 <script lang="ts">
-  import FileManager from '$lib/components/ui/FileManager.svelte';
-</script>
+  import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
+  import { onMount } from 'svelte';
+  import { user, tenant } from '$lib/stores/auth';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
 
-<FileManager mode="tenant" />
+  onMount(() => {
+    const ctx = resolveTenantContext({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      tenantSlug: $tenant?.slug,
+      routeTenantSlug: $page.params.tenant,
+    });
+    goto(`${ctx.tenantPrefix}/dashboard`);
+  });
+</script>

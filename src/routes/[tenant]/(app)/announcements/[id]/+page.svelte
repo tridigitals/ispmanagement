@@ -6,7 +6,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import { toast } from '$lib/stores/toast';
   import { t } from 'svelte-i18n';
-  import { getSlugFromDomain } from '$lib/utils/domain';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { user, tenant } from '$lib/stores/auth';
   import { formatDateTime } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
@@ -18,12 +18,15 @@
 
   const id = $derived($page.params.id || '');
 
-  let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
-  let effectiveTenantSlug = $derived($tenant?.slug || $user?.tenant_slug || '');
-  let isCustomDomain = $derived(domainSlug && domainSlug === effectiveTenantSlug);
-  let tenantPrefix = $derived(
-    effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
+  let tenantCtx = $derived.by(() =>
+    resolveTenantContext({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      tenantSlug: $tenant?.slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
   );
+  let tenantPrefix = $derived(tenantCtx.tenantPrefix);
 
   const API_BASE = getApiBaseUrl();
 

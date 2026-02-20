@@ -4,9 +4,9 @@
   import { goto } from '$app/navigation';
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
-  import { user } from '$lib/stores/auth';
+  import { user, tenant } from '$lib/stores/auth';
   import { timeAgo } from '$lib/utils/date';
-  import { getSlugFromDomain } from '$lib/utils/domain';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import {
     notifications,
@@ -23,9 +23,15 @@
   let filter = $state<'all' | 'unread'>('all');
   let searchQuery = $state('');
 
-  let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
-  let isCustomDomain = $derived(domainSlug && domainSlug === $user?.tenant_slug);
-  let tenantPrefix = $derived($user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : '');
+  let tenantCtx = $derived.by(() =>
+    resolveTenantContext({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      tenantSlug: $tenant?.slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
+  );
+  let tenantPrefix = $derived(tenantCtx.tenantPrefix);
 
   onMount(async () => {
     await loadNotifications(1);

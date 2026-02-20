@@ -8,7 +8,7 @@
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
-  import { getSlugFromDomain } from '$lib/utils/domain';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
 
   type RouterRow = { id: string; name: string };
   type CustomerRow = { id: string; name: string };
@@ -26,14 +26,15 @@
     existing_account_id?: string | null;
   };
 
-  const domainSlug = $derived(getSlugFromDomain($page.url.hostname));
-  const effectiveTenantSlug = $derived(
-    ($tenant?.slug || $user?.tenant_slug || String($page.params.tenant || '')).trim(),
+  const tenantCtx = $derived.by(() =>
+    resolveTenantContext({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      tenantSlug: $tenant?.slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
   );
-  const isCustomDomain = $derived(domainSlug && domainSlug === effectiveTenantSlug);
-  const tenantPrefix = $derived(
-    effectiveTenantSlug && !isCustomDomain ? `/${effectiveTenantSlug}` : '',
-  );
+  const tenantPrefix = $derived(tenantCtx.tenantPrefix);
 
   let step = $state<1 | 2 | 3>(1);
   let loading = $state(false);

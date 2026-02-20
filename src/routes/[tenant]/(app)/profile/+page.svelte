@@ -9,7 +9,7 @@
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
   import MobileFabMenu from '$lib/components/ui/MobileFabMenu.svelte';
-  import { getSlugFromDomain } from '$lib/utils/domain';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import {
     preferences,
     loadPreferences,
@@ -68,10 +68,14 @@
 
   let isDesktop = $state(false);
 
-  // Tenant helper
-  let domainSlug = $derived(getSlugFromDomain($page.url.hostname));
-  let isCustomDomain = $derived(domainSlug && domainSlug === $user?.tenant_slug);
-  let tenantPrefix = $derived($user?.tenant_slug && !isCustomDomain ? `/${$user.tenant_slug}` : '');
+  let tenantCtx = $derived.by(() =>
+    resolveTenantContext({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
+  );
+  let tenantPrefix = $derived(tenantCtx.tenantPrefix);
 
   let notificationCategories = $derived([
     {
