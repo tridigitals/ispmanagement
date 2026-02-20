@@ -2338,6 +2338,7 @@
         "poll": "Poll",
         "kiosk": "Kiosk",
         "fullscreen": "Fullscreen",
+        "exit_fullscreen": "Exit Fullscreen",
         "keep_awake": "Keep awake",
         "fit": "Fit",
         "pause": "Pause",
@@ -2348,11 +2349,17 @@
         "exit": "Exit wallboard",
         "last_seen": "Last seen",
         "watch": "Watch",
+        "view": "View",
         "watch_select": "Select",
         "watch_search": "Search interfaces...",
         "watch_selected": "selected",
         "watch_loading": "Loading interfaces...",
         "watch_none": "No interfaces.",
+        "interface_state": {
+          "disabled": "disabled",
+          "up": "up",
+          "down": "down"
+        },
         "watch_max": "Max 8 interfaces per router.",
         "watch_placeholder": "ether1, ether2, ether3",
         "watch_hint": "Comma-separated. Max 8 per router.",
@@ -2374,15 +2381,65 @@
         "ack_router_alerts": "Acknowledge router alerts",
         "focus_mode": "Focus mode",
         "focus_mode_hint": "Toggle focus mode (F)",
+        "pager": {
+          "aria": "Pages",
+          "prev": "Previous page",
+          "next": "Next page"
+        },
+        "tabs": {
+          "live": "Live",
+          "metrics": "Metrics"
+        },
+        "summary": {
+          "status": "Status",
+          "online": "ONLINE",
+          "offline": "OFFLINE",
+          "rx_now": "RX Now",
+          "tx_now": "TX Now",
+          "samples": "Samples"
+        },
         "thresholds": {
           "title": "Thresholds",
-          "change_interface": "Change interface"
+          "change_interface": "Change interface",
+          "current_rx": "Current RX threshold",
+          "current_tx": "Current TX threshold",
+          "not_set": "Not set",
+          "hint": "Leave empty to disable warning."
         },
         "chart": {
           "peak": "RX Peak",
           "avg": "RX Avg",
           "peak_tx": "TX Peak",
           "avg_tx": "TX Avg"
+        },
+        "metrics_agg_label": "Aggregation",
+        "metrics_agg_title": "Aggregation level used for this range",
+        "metrics_points": "points",
+        "metrics": {
+          "range": "Range",
+          "range_24h": "Last 24 Hours",
+          "range_7d": "Last 7 Days",
+          "range_30d": "Last 30 Days",
+          "range_month": "This Month",
+          "range_custom": "Custom",
+          "export_csv": "Export CSV",
+          "export_empty": "No metrics data to export.",
+          "reset_zoom": "Reset Zoom",
+          "zoomed": "Zoomed",
+          "zoom_area": "Metrics chart zoom area",
+          "peak_marker": "Peak",
+          "historical": "Historical Metrics",
+          "empty_range": "No historical metrics yet for selected date range."
+        },
+        "metrics_agg": {
+          "detail": "Detail",
+          "hourly": "Hourly Average",
+          "daily": "Daily Average"
+        },
+        "metrics_agg_hint": {
+          "detail": "without summarization",
+          "hourly": "summarized per hour",
+          "daily": "summarized per day"
         },
         "layouts": {
           "2x2": "2x2 layout",

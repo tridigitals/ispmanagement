@@ -2164,6 +2164,7 @@
         "poll": "Polling",
         "kiosk": "Kiosk",
         "fullscreen": "Layar penuh",
+        "exit_fullscreen": "Keluar layar penuh",
         "keep_awake": "Jaga layar aktif",
         "fit": "Pas",
         "pause": "Jeda",
@@ -2174,11 +2175,17 @@
         "exit": "Keluar wallboard",
         "last_seen": "Terakhir terlihat",
         "watch": "Pantau",
+        "view": "Lihat",
         "watch_select": "Pilih",
         "watch_search": "Cari interface...",
         "watch_selected": "terpilih",
         "watch_loading": "Memuat interface...",
         "watch_none": "Tidak ada interface.",
+        "interface_state": {
+          "disabled": "nonaktif",
+          "up": "aktif",
+          "down": "down"
+        },
         "watch_max": "Maks 8 interface per router.",
         "watch_placeholder": "ether1, ether2, ether3",
         "watch_hint": "Pisahkan dengan koma. Maks 8 per router.",
@@ -2200,15 +2207,65 @@
         "ack_router_alerts": "Tandai peringatan router",
         "focus_mode": "Mode fokus",
         "focus_mode_hint": "Aktif/nonaktif mode fokus (F)",
+        "pager": {
+          "aria": "Halaman",
+          "prev": "Halaman sebelumnya",
+          "next": "Halaman berikutnya"
+        },
+        "tabs": {
+          "live": "Live",
+          "metrics": "Metrik"
+        },
+        "summary": {
+          "status": "Status",
+          "online": "ONLINE",
+          "offline": "OFFLINE",
+          "rx_now": "RX Saat Ini",
+          "tx_now": "TX Saat Ini",
+          "samples": "Sampel"
+        },
         "thresholds": {
           "title": "Threshold",
-          "change_interface": "Ganti interface"
+          "change_interface": "Ganti interface",
+          "current_rx": "Threshold RX Saat Ini",
+          "current_tx": "Threshold TX Saat Ini",
+          "not_set": "Belum diatur",
+          "hint": "Kosongkan untuk menonaktifkan peringatan."
         },
         "chart": {
           "peak": "Puncak RX",
           "avg": "Rata-rata RX",
           "peak_tx": "Puncak TX",
           "avg_tx": "Rata-rata TX"
+        },
+        "metrics_agg_label": "Agregasi",
+        "metrics_agg_title": "Level agregasi yang dipakai untuk rentang ini",
+        "metrics_points": "titik",
+        "metrics": {
+          "range": "Rentang",
+          "range_24h": "24 Jam Terakhir",
+          "range_7d": "7 Hari Terakhir",
+          "range_30d": "30 Hari Terakhir",
+          "range_month": "Bulan Ini",
+          "range_custom": "Kustom",
+          "export_csv": "Ekspor CSV",
+          "export_empty": "Tidak ada data metrik untuk diekspor.",
+          "reset_zoom": "Reset Zoom",
+          "zoomed": "Diperbesar",
+          "zoom_area": "Area zoom chart metrik",
+          "peak_marker": "Puncak",
+          "historical": "Metrik Historis",
+          "empty_range": "Belum ada metrik historis untuk rentang tanggal terpilih."
+        },
+        "metrics_agg": {
+          "detail": "Detail",
+          "hourly": "Rata-rata per Jam",
+          "daily": "Rata-rata per Hari"
+        },
+        "metrics_agg_hint": {
+          "detail": "tanpa ringkasan",
+          "hourly": "diringkas per jam",
+          "daily": "diringkas per hari"
         },
         "layouts": {
           "2x2": "Layout 2x2",

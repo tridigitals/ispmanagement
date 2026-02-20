@@ -6,7 +6,6 @@
   import { can } from '$lib/stores/auth';
   import { api } from '$lib/api/client';
   import Icon from '$lib/components/ui/Icon.svelte';
-  import MiniSelect from '$lib/components/ui/MiniSelect.svelte';
   import { toast } from '$lib/stores/toast';
   import { isSidebarCollapsed } from '$lib/stores/ui';
 
@@ -72,7 +71,6 @@
 
   let kiosk = $state(true);
   let pollMs = $state(1000);
-  let keepAwake = $state(false);
 
   let ifaceLoading = $state<Record<string, boolean>>({});
   let ifaceCatalog = $state<
@@ -108,16 +106,29 @@
   let pickerIfaceSearch = $state('');
 
   let fullIndex = $state<number | null>(null);
+  let fullTab = $state<'live' | 'metrics'>('live');
+  let metricsRange = $state<'24h' | '7d' | '30d' | 'month' | 'custom'>('24h');
+  let metricsFromLocal = $state('');
+  let metricsToLocal = $state('');
+  let metricsPointIdx = $state<number | null>(null);
+  let metricsTooltipX = $state(0);
+  let metricsTooltipY = $state(0);
+  let metricsZoomFrom = $state<number | null>(null);
+  let metricsZoomTo = $state<number | null>(null);
+  let metricsSelecting = $state(false);
+  let metricsSelStart = $state(0);
+  let metricsSelCurrent = $state(0);
+  let metricsSelWidth = $state(0);
+  let fullMetricsLoading = $state(false);
+  let fullMetricsError = $state<string | null>(null);
+  let fullMetricsRows = $state<any[]>([]);
+  let fullMetricsKey = $state('');
+  let fullMetricsLimit = $state(0);
   let thresholdIndex = $state<number | null>(null);
   let thWarnRxKbps = $state<string>('');
   let thWarnTxKbps = $state<string>('');
   let thWarnRxUnit = $state<'Kbps' | 'Mbps' | 'Gbps'>('Kbps');
   let thWarnTxUnit = $state<'Kbps' | 'Mbps' | 'Gbps'>('Kbps');
-  const thresholdUnitOptions: Array<{ value: 'Kbps' | 'Mbps' | 'Gbps'; label: string }> = [
-    { value: 'Kbps', label: 'Kbps' },
-    { value: 'Mbps', label: 'Mbps' },
-    { value: 'Gbps', label: 'Gbps' },
-  ];
 
   // Rate computation
   let liveRates = $state<Record<string, Record<string, LiveRate>>>({});
@@ -131,7 +142,7 @@
   let lastRemotePayload: string | null = null;
   let remoteLoaded = $state(false);
   let paused = $state(false);
-  let focusMode = $state(false);
+  let focusMode = $state(true);
   let alertsOpen = $state(false);
   let renderNow = $state(Date.now());
   let uninstallAutoHide: (() => void) | null = null;
@@ -139,6 +150,7 @@
   let dragFrom = $state<number | null>(null);
   let dragOver = $state<number | null>(null);
   let dragging = $state(false);
+  let tileMenuIndex = $state<number | null>(null);
 
   let hoverBar = $state<HoverBar>(null);
 
@@ -147,19 +159,11 @@
     return tid ? `/${tid}` : '';
   });
 
-  // Fit-to-screen (no scroll): scale and center wallboard content inside a fixed viewport.
-  let fit = $state(false);
-  let fitViewport: HTMLDivElement | null = null;
-  let fitContent: HTMLDivElement | null = null;
-  let fitScale = $state(1);
-  let fitX = $state(0);
-  let fitY = $state(0);
-  let fitObs: ResizeObserver | null = null;
-
-  // Auto-hide toolbar when Fit is enabled (NOC display friendly).
-  let controlsHidden = $state(false);
+  // Auto-hide toolbar for NOC display friendly behavior.
   let lastActivityAt = $state(Date.now());
   let hideHandle: any = null;
+  let isFullscreen = $state(false);
+  let controlsHidden = $state(false);
 
   const SETTINGS_LAYOUT_KEY = 'mikrotik_wallboard_layout';
   const SETTINGS_SLOTS_KEY = 'mikrotik_wallboard_slots_json';
@@ -169,7 +173,7 @@
   const STATUS_FILTER_KEY = 'mikrotik_wallboard_status_filter';
   const POLL_MS_KEY = 'mikrotik_wallboard_poll_ms';
   const KEEP_AWAKE_KEY = 'mikrotik_wallboard_keep_awake';
-  const FIT_TARGET_ASPECT = 16 / 9;
+  const TOOLBAR_HIDE_MS = 10_000;
 
   function isLayoutPreset(v: string | null): v is LayoutPreset {
     return v === '2x2' || v === '3x2' || v === '3x3' || v === '4x3';
@@ -187,6 +191,37 @@
     }
     const s = `${v >= 10 || u === 0 ? v.toFixed(0) : v.toFixed(1)} ${units[u]}`;
     return bps < 0 ? `-${s}` : s;
+  }
+
+  function parseMetricTs(ts?: string | null): number | null {
+    const raw = String(ts || '').trim();
+    if (!raw) return null;
+
+    let ms = Date.parse(raw);
+    if (Number.isFinite(ms)) return ms;
+
+    // Fallback parser for timestamps with long fractional seconds or space separator.
+    let normalized = raw.includes(' ') && !raw.includes('T') ? raw.replace(' ', 'T') : raw;
+    normalized = normalized.replace(
+      /\.(\d{3})\d+(Z|[+-]\d{2}:?\d{2})$/,
+      '.$1$2',
+    );
+    normalized = normalized.replace(/\.(\d{3})\d+$/, '.$1');
+    ms = Date.parse(normalized);
+    if (Number.isFinite(ms)) return ms;
+
+    // Last fallback: if no timezone suffix, treat as UTC.
+    if (!/[zZ]|[+-]\d{2}:?\d{2}$/.test(normalized)) {
+      ms = Date.parse(`${normalized}Z`);
+      if (Number.isFinite(ms)) return ms;
+    }
+    return null;
+  }
+
+  function formatMetricTs(ts?: string | null) {
+    const ms = parseMetricTs(ts);
+    if (!Number.isFinite(ms)) return '—';
+    return new Date(ms as number).toLocaleString();
   }
 
   function peakBps(list: number[]) {
@@ -338,10 +373,412 @@
 
   function openFull(idx: number) {
     fullIndex = idx;
+    fullTab = 'live';
+    clearMetricsZoom();
+    setMetricsRange('24h');
+    void loadFullMetrics(idx, requiredMetricLimit(metricsRange, metricsFromLocal, metricsToLocal));
   }
 
   function closeFull() {
     fullIndex = null;
+    fullMetricsLoading = false;
+    fullMetricsError = null;
+    fullMetricsRows = [];
+    fullMetricsKey = '';
+    fullMetricsLimit = 0;
+    metricsFromLocal = '';
+    metricsToLocal = '';
+    metricsPointIdx = null;
+    clearMetricsZoom();
+    metricsSelecting = false;
+  }
+
+  function toLocalInput(date: Date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
+    return `${y}-${m}-${d}T${hh}:${mm}`;
+  }
+
+  function requiredMetricLimit(
+    range: '24h' | '7d' | '30d' | 'month' | 'custom',
+    fromLocal: string,
+    toLocal: string,
+  ) {
+    if (range === '24h') return 400;
+    if (range === '7d') return 2500;
+    if (range === '30d') return 10000;
+    if (range === 'month') return 10000;
+    const fromMs = parseLocalDate(fromLocal);
+    const toMs = parseLocalDate(toLocal);
+    if (fromMs != null && toMs != null && toMs > fromMs) {
+      const days = Math.ceil((toMs - fromMs) / (24 * 60 * 60 * 1000));
+      if (days <= 2) return 800;
+      if (days <= 8) return 3000;
+      return 10000;
+    }
+    return 10000;
+  }
+
+  async function refreshMetricsForCurrentRange() {
+    if (fullIndex == null) return;
+    const limit = requiredMetricLimit(metricsRange, metricsFromLocal, metricsToLocal);
+    await loadFullMetrics(fullIndex, limit);
+  }
+
+  function setMetricsRange(next: '24h' | '7d' | '30d' | 'month' | 'custom') {
+    metricsRange = next;
+    metricsPointIdx = null;
+    clearMetricsZoom();
+    if (next === 'custom') return;
+
+    const now = new Date();
+    let from = new Date(now);
+    if (next === '24h') from.setHours(from.getHours() - 24);
+    else if (next === '7d') from.setDate(from.getDate() - 7);
+    else if (next === '30d') from.setDate(from.getDate() - 30);
+    else if (next === 'month') from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+
+    metricsFromLocal = toLocalInput(from);
+    metricsToLocal = toLocalInput(now);
+    void refreshMetricsForCurrentRange();
+  }
+
+  function parseLocalDate(v: string): number | null {
+    if (!v) return null;
+    const ms = Date.parse(v);
+    return Number.isFinite(ms) ? ms : null;
+  }
+
+  function filteredFullMetricsRows() {
+    const fromMs = parseLocalDate(metricsFromLocal);
+    const toMs = parseLocalDate(metricsToLocal);
+    if (fromMs == null && toMs == null) return fullMetricsRows;
+
+    const filtered = fullMetricsRows.filter((row) => {
+      const ts = parseMetricTs(row?.ts);
+      if (ts == null) return false;
+      if (fromMs != null && ts < fromMs) return false;
+      if (toMs != null && ts > toMs) return false;
+      return true;
+    });
+
+    // If filtering unexpectedly yields nothing while data exists, show raw rows
+    // so chart is still visible and user can adjust date range.
+    if (filtered.length === 0 && fullMetricsRows.length > 0) return fullMetricsRows;
+    return filtered;
+  }
+
+  function buildHistPoints(rows: any[]) {
+    const asc = rows.slice().reverse();
+    const out: { ts: string; rx_bps: number; tx_bps: number }[] = [];
+
+    let prevTs: number | null = null;
+    let prevRxByte: number | null = null;
+    let prevTxByte: number | null = null;
+
+    for (const row of asc) {
+      const ts = String(row?.ts || '');
+      const tsMs = parseMetricTs(ts);
+      if (tsMs == null) continue;
+
+      const directRx = typeof row?.rx_bps === 'number' ? Math.max(0, row.rx_bps) : null;
+      const directTx = typeof row?.tx_bps === 'number' ? Math.max(0, row.tx_bps) : null;
+
+      let rx = directRx;
+      let tx = directTx;
+
+      const curRxByte = typeof row?.rx_byte === 'number' ? row.rx_byte : null;
+      const curTxByte = typeof row?.tx_byte === 'number' ? row.tx_byte : null;
+
+      if (rx == null && curRxByte != null && prevRxByte != null && prevTs != null && tsMs > prevTs) {
+        const delta = curRxByte - prevRxByte;
+        if (delta >= 0) rx = Math.round((delta * 8 * 1000) / (tsMs - prevTs));
+      }
+      if (tx == null && curTxByte != null && prevTxByte != null && prevTs != null && tsMs > prevTs) {
+        const delta = curTxByte - prevTxByte;
+        if (delta >= 0) tx = Math.round((delta * 8 * 1000) / (tsMs - prevTs));
+      }
+
+      if (rx != null || tx != null) {
+        out.push({ ts, rx_bps: rx ?? 0, tx_bps: tx ?? 0 });
+      }
+
+      if (curRxByte != null) prevRxByte = curRxByte;
+      if (curTxByte != null) prevTxByte = curTxByte;
+      prevTs = tsMs;
+    }
+
+    return out;
+  }
+
+  function downsampleHistPoints(
+    rows: { ts: string; rx_bps: number; tx_bps: number }[],
+    maxPoints: number = 120,
+  ) {
+    if (rows.length <= maxPoints) return rows;
+    const step = rows.length / maxPoints;
+    const out: { ts: string; rx_bps: number; tx_bps: number }[] = [];
+
+    for (let i = 0; i < maxPoints; i++) {
+      const start = Math.floor(i * step);
+      const end = Math.max(start + 1, Math.floor((i + 1) * step));
+      const chunk = rows.slice(start, end);
+      if (!chunk.length) continue;
+
+      const rx = Math.round(chunk.reduce((acc, r) => acc + (r.rx_bps || 0), 0) / chunk.length);
+      const tx = Math.round(chunk.reduce((acc, r) => acc + (r.tx_bps || 0), 0) / chunk.length);
+      const ts = chunk[chunk.length - 1]?.ts || chunk[0]?.ts || '';
+      out.push({ ts, rx_bps: rx, tx_bps: tx });
+    }
+
+    return out;
+  }
+
+  function applyMetricsZoom(
+    rows: { ts: string; rx_bps: number; tx_bps: number }[],
+    fromMs: number | null,
+    toMs: number | null,
+  ) {
+    if (fromMs == null || toMs == null) return rows;
+    const min = Math.min(fromMs, toMs);
+    const max = Math.max(fromMs, toMs);
+    const filtered = rows.filter((r) => {
+      const ts = parseMetricTs(r.ts);
+      return ts != null && ts >= min && ts <= max;
+    });
+    return filtered.length ? filtered : rows;
+  }
+
+  function clearMetricsZoom() {
+    metricsZoomFrom = null;
+    metricsZoomTo = null;
+    metricsPointIdx = null;
+  }
+
+  function beginMetricsSelection(e: PointerEvent) {
+    if (e.button !== 0) return;
+    const el = e.currentTarget as HTMLElement | null;
+    const rect = el?.getBoundingClientRect();
+    if (!rect || rect.width <= 0) return;
+    metricsSelecting = true;
+    metricsSelWidth = rect.width;
+    metricsSelStart = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+    metricsSelCurrent = metricsSelStart;
+    metricsPointIdx = null;
+    try {
+      el?.setPointerCapture?.(e.pointerId);
+    } catch {
+      // no-op
+    }
+  }
+
+  function moveMetricsSelection(e: PointerEvent) {
+    if (!metricsSelecting) return;
+    const el = e.currentTarget as HTMLElement | null;
+    const rect = el?.getBoundingClientRect();
+    if (!rect || rect.width <= 0) return;
+    metricsSelWidth = rect.width;
+    metricsSelCurrent = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+  }
+
+  function endMetricsSelection(
+    e: PointerEvent,
+    rows: { ts: string; rx_bps: number; tx_bps: number }[],
+  ) {
+    if (!metricsSelecting) return;
+    const el = e.currentTarget as HTMLElement | null;
+    try {
+      el?.releasePointerCapture?.(e.pointerId);
+    } catch {
+      // no-op
+    }
+    metricsSelecting = false;
+    const from = Math.min(metricsSelStart, metricsSelCurrent);
+    const to = Math.max(metricsSelStart, metricsSelCurrent);
+    if (!rows.length || metricsSelWidth <= 0 || to - from < 8) return;
+
+    const len = rows.length;
+    const fromIdx = Math.max(0, Math.min(len - 1, Math.floor((from / metricsSelWidth) * (len - 1))));
+    const toIdx = Math.max(0, Math.min(len - 1, Math.ceil((to / metricsSelWidth) * (len - 1))));
+    const fromTs = parseMetricTs(rows[fromIdx]?.ts);
+    const toTs = parseMetricTs(rows[toIdx]?.ts);
+    if (fromTs == null || toTs == null) return;
+
+    metricsZoomFrom = Math.min(fromTs, toTs);
+    metricsZoomTo = Math.max(fromTs, toTs);
+    metricsPointIdx = null;
+  }
+
+  function resolveMetricsBucket(
+    range: '24h' | '7d' | '30d' | 'month' | 'custom',
+    fromLocal: string,
+    toLocal: string,
+  ): 'raw' | 'hour' | 'day' {
+    if (range === '24h') return 'raw';
+    if (range === '7d') return 'hour';
+    if (range === '30d' || range === 'month') return 'day';
+
+    const fromMs = parseLocalDate(fromLocal);
+    const toMs = parseLocalDate(toLocal);
+    if (fromMs != null && toMs != null && toMs > fromMs) {
+      const days = (toMs - fromMs) / (24 * 60 * 60 * 1000);
+      if (days <= 2) return 'raw';
+      if (days <= 14) return 'hour';
+      return 'day';
+    }
+    return 'hour';
+  }
+
+  function aggregateHistPoints(
+    rows: { ts: string; rx_bps: number; tx_bps: number }[],
+    bucket: 'raw' | 'hour' | 'day',
+  ) {
+    if (bucket === 'raw') return rows;
+
+    const byKey = new Map<string, { ts: string; rxSum: number; txSum: number; count: number }>();
+    for (const row of rows) {
+      const ms = parseMetricTs(row.ts);
+      if (ms == null) continue;
+      const d = new Date(ms);
+      let key = '';
+      if (bucket === 'hour') {
+        key = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}-${d.getUTCHours()}`;
+      } else {
+        key = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+      }
+
+      const cur = byKey.get(key);
+      if (!cur) {
+        byKey.set(key, {
+          ts: row.ts,
+          rxSum: row.rx_bps,
+          txSum: row.tx_bps,
+          count: 1,
+        });
+      } else {
+        cur.rxSum += row.rx_bps;
+        cur.txSum += row.tx_bps;
+        cur.count += 1;
+        cur.ts = row.ts;
+      }
+    }
+
+    return Array.from(byKey.values()).map((x) => ({
+      ts: x.ts,
+      rx_bps: Math.round(x.rxSum / Math.max(1, x.count)),
+      tx_bps: Math.round(x.txSum / Math.max(1, x.count)),
+    }));
+  }
+
+  function bucketLabel(bucket: 'raw' | 'hour' | 'day') {
+    if (bucket === 'raw')
+      return $t('admin.network.wallboard.metrics_agg.detail') || 'Detail';
+    if (bucket === 'hour')
+      return $t('admin.network.wallboard.metrics_agg.hourly') || 'Hourly Average';
+    return $t('admin.network.wallboard.metrics_agg.daily') || 'Daily Average';
+  }
+
+  function bucketHint(bucket: 'raw' | 'hour' | 'day') {
+    if (bucket === 'raw')
+      return $t('admin.network.wallboard.metrics_agg_hint.detail') || 'without summarization';
+    if (bucket === 'hour')
+      return $t('admin.network.wallboard.metrics_agg_hint.hourly') || 'summarized per hour';
+    return $t('admin.network.wallboard.metrics_agg_hint.daily') || 'summarized per day';
+  }
+
+  function exportMetricsCsv(
+    rows: { ts: string; rx_bps: number; tx_bps: number }[],
+    iface: string,
+    routerName: string,
+    bucket: 'raw' | 'hour' | 'day',
+  ) {
+    if (!rows.length) {
+      toast.error($t('admin.network.wallboard.metrics.export_empty') || 'No metrics data to export.');
+      return;
+    }
+
+    const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+    const header = ['timestamp', 'router', 'interface', 'bucket', 'rx_bps', 'tx_bps'].join(',');
+    const lines = rows.map((r) =>
+      [
+        esc(r.ts),
+        esc(routerName),
+        esc(iface),
+        esc(bucket),
+        String(r.rx_bps ?? 0),
+        String(r.tx_bps ?? 0),
+      ].join(','),
+    );
+
+    const csv = [header, ...lines].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    a.href = url;
+    a.setAttribute('download', `metrics-${iface || 'interface'}-${bucket}-${stamp}.csv`);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function openFullTab(tab: 'live' | 'metrics') {
+    fullTab = tab;
+    metricsPointIdx = null;
+    metricsSelecting = false;
+    if (tab === 'metrics') void refreshMetricsForCurrentRange();
+  }
+
+  function setMetricsHoverFromMouse(i: number, e: MouseEvent) {
+    metricsPointIdx = i;
+    metricsTooltipX = e.clientX + 14;
+    metricsTooltipY = e.clientY + 14;
+  }
+
+  function setMetricsHoverFromFocus(i: number, e: FocusEvent) {
+    metricsPointIdx = i;
+    const el = e.currentTarget as HTMLElement | null;
+    const r = el?.getBoundingClientRect();
+    if (!r) return;
+    metricsTooltipX = r.left + r.width / 2 + 10;
+    metricsTooltipY = r.top + 10;
+  }
+
+  async function loadFullMetrics(idx: number, minLimit: number = 240) {
+    const s = slotsAll[idx];
+    if (!s) return;
+
+    const key = `${s.routerId}:${s.iface}`;
+    if (
+      fullMetricsKey === key &&
+      fullMetricsRows.length > 0 &&
+      fullMetricsLimit >= minLimit
+    )
+      return;
+
+    fullMetricsKey = key;
+    fullMetricsLoading = true;
+    fullMetricsError = null;
+
+    try {
+      const rows = (await api.mikrotik.routers.interfaceMetrics(s.routerId, {
+        interface: s.iface,
+        limit: minLimit,
+      })) as any[];
+      if (fullMetricsKey !== key) return;
+      fullMetricsRows = Array.isArray(rows) ? rows : [];
+      fullMetricsLimit = minLimit;
+    } catch (e: any) {
+      if (fullMetricsKey !== key) return;
+      fullMetricsRows = [];
+      fullMetricsError = e?.message || String(e);
+    } finally {
+      if (fullMetricsKey === key) fullMetricsLoading = false;
+    }
   }
 
   function openThreshold(idx: number) {
@@ -464,7 +901,7 @@
       localStorage.setItem(FOCUS_MODE_KEY, focusMode ? '1' : '0');
       localStorage.setItem(STATUS_FILTER_KEY, statusFilter);
       localStorage.setItem(POLL_MS_KEY, String(pollMs));
-      localStorage.setItem(KEEP_AWAKE_KEY, keepAwake ? '1' : '0');
+      localStorage.setItem(KEEP_AWAKE_KEY, '1');
     } catch {
       // ignore
     }
@@ -478,14 +915,10 @@
       if (rm === 'manual' || rm === 'auto') rotateMode = rm;
       const rms = Number(localStorage.getItem(ROTATE_MS_KEY) || 10000);
       if ([5000, 10000, 15000, 30000, 60000].includes(rms)) rotateMs = rms;
-      const fm = localStorage.getItem(FOCUS_MODE_KEY);
-      if (fm != null) focusMode = fm === '1' || fm === 'true';
       const sf = localStorage.getItem(STATUS_FILTER_KEY);
       if (sf === 'all' || sf === 'online' || sf === 'offline') statusFilter = sf;
       const pm = Number(localStorage.getItem(POLL_MS_KEY) || 1000);
       if ([1000, 2000, 5000].includes(pm)) pollMs = pm;
-      const ka = localStorage.getItem(KEEP_AWAKE_KEY);
-      if (ka != null) keepAwake = ka === '1' || ka === 'true';
       const s = localStorage.getItem('mikrotik_wallboard_slots');
       if (s) {
         const parsed = JSON.parse(s);
@@ -738,43 +1171,20 @@
     window.addEventListener('pointercancel', onDragCancel as any);
   }
 
-  function recomputeFit() {
-    if (!fit || !fitViewport || !fitContent) {
-      fitScale = 1;
-      fitX = 0;
-      fitY = 0;
-      return;
-    }
-
-    const viewportW = fitViewport.clientWidth;
-    const viewportH = fitViewport.clientHeight;
-    const contentW = fitContent.offsetWidth;
-    const contentH = fitContent.offsetHeight;
-    if (!viewportW || !viewportH || !contentW || !contentH) return;
-
-    // Fit into a fixed 16:9 stage (letterbox on non-16:9 screens), then center content inside it.
-    let stageW = viewportW;
-    let stageH = Math.round(stageW / FIT_TARGET_ASPECT);
-    if (stageH > viewportH) {
-      stageH = viewportH;
-      stageW = Math.round(stageH * FIT_TARGET_ASPECT);
-    }
-
-    const stageX = Math.floor((viewportW - stageW) / 2);
-    const stageY = Math.floor((viewportH - stageH) / 2);
-
-    const pad = 12; // breathing room to avoid edge clipping
-    const s = Math.min(1, (stageW - pad * 2) / contentW, (stageH - pad * 2) / contentH);
-    fitScale = Math.max(0.25, s);
-    fitX = stageX + Math.max(0, Math.floor((stageW - contentW * fitScale) / 2));
-    fitY = stageY + Math.max(0, Math.floor((stageH - contentH * fitScale) / 2));
+  function startDragFromTile(e: PointerEvent, idx: number) {
+    const target = e.target as HTMLElement | null;
+    if (!target) return;
+    if (target.closest('button, a, input, select, textarea, [role="menu"], .tile-menu')) return;
+    startDrag(e, idx);
   }
 
   function showControls() {
     controlsHidden = false;
     lastActivityAt = Date.now();
     if (hideHandle) clearTimeout(hideHandle);
-    hideHandle = null;
+    hideHandle = setTimeout(() => {
+      controlsHidden = true;
+    }, TOOLBAR_HIDE_MS);
   }
 
   function toggleAlertsPanel() {
@@ -785,6 +1195,11 @@
     if (typeof window === 'undefined') return;
 
     const onAny = () => showControls();
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target?.closest?.('.tile-actions')) tileMenuIndex = null;
+      showControls();
+    };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (alertsOpen) {
@@ -806,6 +1221,7 @@
 
     window.addEventListener('mousemove', onAny, { passive: true });
     window.addEventListener('pointermove', onAny, { passive: true });
+    window.addEventListener('pointerdown', onPointerDown, { passive: true });
     window.addEventListener('wheel', onAny, { passive: true });
     window.addEventListener('touchstart', onAny, { passive: true });
     window.addEventListener('keydown', onKey);
@@ -813,6 +1229,7 @@
     return () => {
       window.removeEventListener('mousemove', onAny as any);
       window.removeEventListener('pointermove', onAny as any);
+      window.removeEventListener('pointerdown', onPointerDown as any);
       window.removeEventListener('wheel', onAny as any);
       window.removeEventListener('touchstart', onAny as any);
       window.removeEventListener('keydown', onKey as any);
@@ -861,19 +1278,6 @@
     goto(`${tenantPrefix}/admin/network/noc`);
   }
 
-  async function navigateWithTransition(path: string) {
-    try {
-      const start = (document as any).startViewTransition;
-      if (typeof start === 'function') {
-        await start(() => goto(path)).finished;
-        return;
-      }
-    } catch {
-      // fallback
-    }
-    await goto(path);
-  }
-
   onMount(() => {
     if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
       goto('/unauthorized');
@@ -887,17 +1291,16 @@
     applyKiosk(true);
     void loadRemoteConfig();
 
-    // Fit-to-screen setup (avoid scrollbars).
-    if (typeof window !== 'undefined') window.addEventListener('resize', recomputeFit);
-    if (typeof ResizeObserver !== 'undefined') {
-      fitObs = new ResizeObserver(() => recomputeFit());
-      if (fitViewport) fitObs.observe(fitViewport);
-      if (fitContent) fitObs.observe(fitContent);
-    }
-    setTimeout(recomputeFit, 0);
-
     uninstallAutoHide = installAutoHideListeners() ?? null;
     showControls();
+    isFullscreen = typeof document !== 'undefined' && !!document.fullscreenElement;
+
+    const onFullscreenChange = () => {
+      isFullscreen = !!document.fullscreenElement;
+    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('fullscreenchange', onFullscreenChange);
+    }
 
     void (async () => {
       loading = true;
@@ -911,6 +1314,12 @@
 
     tick = setInterval(() => void pollLiveOnce(), pollMs);
     alertTick = setInterval(() => void loadAlerts(true), 10000);
+
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('fullscreenchange', onFullscreenChange);
+      }
+    };
   });
 
   onDestroy(() => {
@@ -921,12 +1330,6 @@
     void persistRemoteNow();
     void applyWakeLock(false);
     if (typeof document !== 'undefined') document.body.classList.remove('kiosk-wallboard');
-    if (typeof window !== 'undefined') window.removeEventListener('resize', recomputeFit);
-    try {
-      fitObs?.disconnect?.();
-    } catch {
-      // ignore
-    }
     if (hideHandle) clearTimeout(hideHandle);
     try {
       uninstallAutoHide?.();
@@ -972,113 +1375,106 @@
 
     persistConfig();
     schedulePersistRemote();
-    setTimeout(recomputeFit, 0);
   });
 
   $effect(() => {
-    void applyWakeLock(keepAwake);
-  });
-
-  $effect(() => {
-    if (typeof document === 'undefined') return;
-    document.body.classList.toggle('wallboard-fit', fit);
-    controlsHidden = false;
-    if (hideHandle) clearTimeout(hideHandle);
-    hideHandle = null;
-    setTimeout(recomputeFit, 0);
+    void applyWakeLock(true);
   });
 
   $effect(() => {
     focusMode;
     persistConfig();
-    setTimeout(recomputeFit, 0);
   });
 </script>
 
-<div class="wallboard-viewport" class:fit bind:this={fitViewport}>
-  <div
-    class="wallboard"
-    class:focus={focusMode}
-    bind:this={fitContent}
-    style={fit
-      ? `transform: translate(${fitX}px, ${fitY}px) scale(${fitScale}); transform-origin: top left;`
-      : ''}
-  >
-  <div class="wb-top">
+<div class="wallboard-viewport">
+  <div class="wallboard" class:focus={focusMode}>
+  <div class="wb-top" class:hidden={controlsHidden}>
     <div class="controls wall-actions">
-      {#if pageCount > 1}
-        <div class="pager" aria-label="Pages">
-          <button
-            class="pager-btn"
-            type="button"
-            onclick={() => (page = Math.max(0, page - 1))}
-            disabled={page === 0}
-            aria-label="Previous page"
-          >
-            <Icon name="chevron-left" size={16} />
+      <div class="toolbar-left">
+        {#if pageCount > 1}
+          <div class="pager" aria-label={$t('admin.network.wallboard.pager.aria') || 'Pages'}>
+            <button
+              class="pager-btn"
+              type="button"
+              onclick={() => (page = Math.max(0, page - 1))}
+              disabled={page === 0}
+              aria-label={$t('admin.network.wallboard.pager.prev') || 'Previous page'}
+            >
+              <Icon name="chevron-left" size={16} />
+            </button>
+            <span class="pager-label">
+              {($t('common.page') || 'Page') + ' ' + (page + 1) + '/' + pageCount}
+            </span>
+            <button
+              class="pager-btn"
+              type="button"
+              onclick={() => (page = Math.min(pageCount - 1, page + 1))}
+              disabled={page >= pageCount - 1}
+              aria-label={$t('admin.network.wallboard.pager.next') || 'Next page'}
+            >
+              <Icon name="chevron-right" size={16} />
+            </button>
+          </div>
+        {/if}
+
+        <div class="seg">
+          <button onclick={() => void refresh()} disabled={refreshing}>
+            <Icon name="refresh-cw" size={16} />
+            {$t('common.refresh') || 'Refresh'}
           </button>
-          <span class="pager-label">
-            {($t('common.page') || 'Page') + ' ' + (page + 1) + '/' + pageCount}
-          </span>
           <button
-            class="pager-btn"
-            type="button"
-            onclick={() => (page = Math.min(pageCount - 1, page + 1))}
-            disabled={page >= pageCount - 1}
-            aria-label="Next page"
+            onclick={() => setPaused(!paused)}
+            title={paused ? $t('admin.network.wallboard.resume') || 'Resume' : $t('admin.network.wallboard.pause') || 'Pause'}
           >
-            <Icon name="chevron-right" size={16} />
+            <Icon name={paused ? 'play' : 'pause'} size={16} />
+            {paused ? $t('admin.network.wallboard.resume') || 'Resume' : $t('admin.network.wallboard.pause') || 'Pause'}
+          </button>
+          <button onclick={() => void toggleFullscreen()}>
+            <Icon name="monitor" size={16} />
+            {isFullscreen
+              ? $t('admin.network.wallboard.exit_fullscreen') || 'Exit Fullscreen'
+              : $t('admin.network.wallboard.fullscreen') || 'Fullscreen'}
           </button>
         </div>
-      {/if}
 
-      <div class="seg">
-        <button onclick={() => void refresh()} disabled={refreshing}>
-          <Icon name="refresh-cw" size={16} />
-          {$t('common.refresh') || 'Refresh'}
-        </button>
-        <button
-          onclick={() => setPaused(!paused)}
-          title={paused ? $t('admin.network.wallboard.resume') || 'Resume' : $t('admin.network.wallboard.pause') || 'Pause'}
-        >
-          <Icon name={paused ? 'play' : 'pause'} size={16} />
-          {paused ? $t('admin.network.wallboard.resume') || 'Resume' : $t('admin.network.wallboard.pause') || 'Pause'}
-        </button>
-        <button onclick={() => void toggleFullscreen()}>
-          <Icon name="monitor" size={16} />
-          {$t('admin.network.wallboard.fullscreen') || 'Fullscreen'}
-        </button>
-        <button
-          class:active={focusMode}
-          onclick={() => (focusMode = !focusMode)}
-          title={$t('admin.network.wallboard.focus_mode_hint') || 'Focus mode (F)'}
-        >
-          <Icon name="target" size={16} />
-          {$t('admin.network.wallboard.focus_mode') || 'Focus'}
-        </button>
-      </div>
-
-      <div class="seg">
-        <button onclick={() => void navigateWithTransition(`${tenantPrefix}/admin/network/noc/wallboard/settings`)}>
-          <Icon name="settings" size={16} />
-          {$t('admin.network.wallboard.controls.open') || 'Settings'}
-        </button>
-        <button onclick={exitWallboard} title={$t('admin.network.wallboard.exit') || $t('sidebar.exit') || 'Exit'}>
-          <Icon name="arrow-left" size={16} />
-          {$t('admin.network.wallboard.exit') || $t('sidebar.exit') || 'Exit'}
-        </button>
-      </div>
-
-      <div class="poll">
-        <span class="muted">{$t('admin.network.wallboard.poll') || 'Poll'}</span>
-        <strong class="mono">{Math.round(pollMs / 1000)}s</strong>
-      </div>
-      {#if rotateMode === 'auto'}
-        <div class="poll">
-          <span class="muted">{$t('admin.network.wallboard.controls.auto_rotate') || 'Auto rotate'}</span>
-          <strong class="mono">{Math.round(rotateMs / 1000)}s</strong>
+        <div class="toolbar-selects">
+          <label class="toolbar-field">
+            <span class="muted">{$t('admin.network.wallboard.poll') || 'Poll'}</span>
+            <select
+              value={String(pollMs)}
+              onchange={(e) => {
+                const v = Number((e.currentTarget as HTMLSelectElement).value);
+                if ([1000, 2000, 5000].includes(v)) pollMs = v;
+              }}
+            >
+              <option value="1000">1s</option>
+              <option value="2000">2s</option>
+              <option value="5000">5s</option>
+            </select>
+          </label>
+          <label class="toolbar-field">
+            <span class="muted">{$t('admin.network.wallboard.controls.layout') || 'Layout'}</span>
+            <select
+              value={layout}
+              onchange={(e) => {
+                const v = (e.currentTarget as HTMLSelectElement).value as LayoutPreset;
+                if (isLayoutPreset(v)) layout = v;
+              }}
+            >
+              <option value="2x2">{$t('admin.network.wallboard.layouts.2x2') || '2x2'}</option>
+              <option value="3x2">{$t('admin.network.wallboard.layouts.3x2') || '3x2'}</option>
+              <option value="3x3">{$t('admin.network.wallboard.layouts.3x3') || '3x3'}</option>
+              <option value="4x3">{$t('admin.network.wallboard.layouts.4x3') || '4x3'}</option>
+            </select>
+          </label>
         </div>
-      {/if}
+      </div>
+
+      <button class="exit-btn" onclick={exitWallboard} title={$t('admin.network.wallboard.exit') || $t('sidebar.exit') || 'Exit'}>
+        <Icon name="arrow-left" size={16} />
+        {$t('admin.network.wallboard.exit') || $t('sidebar.exit') || 'Exit'}
+      </button>
     </div>
   </div>
 
@@ -1179,6 +1575,7 @@
             data-wall-slot={gidx}
             role="button"
             tabindex="0"
+            onpointerdown={(e) => startDragFromTile(e, gidx)}
             ondblclick={() => openFull(gidx)}
             onkeydown={(e) => e.key === 'Enter' && openFull(gidx)}
           >
@@ -1220,48 +1617,78 @@
             </button>
           {/if}
         {/if}
-        <button
-          class="icon-x drag"
-          type="button"
-          onclick={(e) => e.stopPropagation()}
-          onpointerdown={(e) => startDrag(e, gidx)}
-          title={$t('admin.network.wallboard.drag') || 'Drag to reorder'}
-        >
-          <Icon name="grip-vertical" size={16} />
-        </button>
-        <button
-          class="icon-x"
-          type="button"
-          onclick={(e) => {
-            e.stopPropagation();
-            openThreshold(gidx);
-          }}
-          title={$t('common.edit') || 'Edit'}
-        >
-          <Icon name="edit" size={16} />
-        </button>
-                <button
-                  class="icon-x"
-                  type="button"
-                  onclick={(e) => {
-                    e.stopPropagation();
-                    clearSlot(gidx);
-                  }}
-                  title={$t('common.remove') || 'Remove'}
-                >
-                  <Icon name="x" size={16} />
-                </button>
+        <div class="tile-actions">
+          <button
+            class="icon-x"
+            type="button"
+            onclick={(e) => {
+              e.stopPropagation();
+              tileMenuIndex = tileMenuIndex === gidx ? null : gidx;
+            }}
+            title={$t('common.actions') || 'Actions'}
+          >
+            <Icon name="list" size={16} />
+          </button>
+          {#if tileMenuIndex === gidx}
+            <div class="tile-menu" role="menu" tabindex="-1">
+              <button
+                type="button"
+                role="menuitem"
+                onclick={(e) => {
+                  e.stopPropagation();
+                  tileMenuIndex = null;
+                  openFull(gidx);
+                }}
+              >
+                <Icon name="monitor" size={15} />
+                {$t('admin.network.wallboard.view') || 'View'}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onclick={(e) => {
+                  e.stopPropagation();
+                  tileMenuIndex = null;
+                  openThreshold(gidx);
+                }}
+              >
+                <Icon name="edit" size={15} />
+                {$t('common.edit') || 'Edit'}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                class="danger"
+                onclick={(e) => {
+                  e.stopPropagation();
+                  tileMenuIndex = null;
+                  clearSlot(gidx);
+                }}
+              >
+                <Icon name="x" size={15} />
+                {$t('common.remove') || 'Remove'}
+              </button>
+            </div>
+          {/if}
+        </div>
                 {#if stale}
                   <span class="badge warn" title={$t('admin.network.wallboard.stale') || 'Data stale'}>
                     <Icon name="alert-triangle" size={14} />
                     {$t('admin.network.wallboard.stale') || 'Stale'}
                   </span>
                 {/if}
-                <span class="badge" class:ok={r?.is_online} class:bad={!r?.is_online}>
-                  <span class="dot"></span>
-                  {r?.is_online
+                <span
+                  class="badge status-dot"
+                  class:ok={r?.is_online}
+                  class:bad={!r?.is_online}
+                  title={r?.is_online
                     ? $t('admin.network.routers.badges.online') || 'Online'
                     : $t('admin.network.routers.badges.offline') || 'Offline'}
+                  aria-label={r?.is_online
+                    ? $t('admin.network.routers.badges.online') || 'Online'
+                    : $t('admin.network.routers.badges.offline') || 'Offline'}
+                >
+                  <span class="dot"></span>
                 </span>
               </div>
             </div>
@@ -1362,6 +1789,7 @@
 
 {#if pickerIndex !== null}
   {@const isEditing = !!slotsAll[pickerIndex]}
+  {@const curSlot = slotsAll[pickerIndex]}
   <div class="picker-overlay" role="dialog" aria-modal="true">
     <button class="picker-backdrop" type="button" onclick={closePicker} aria-label={$t('common.close') || 'Close'}></button>
     <div class="picker">
@@ -1375,26 +1803,15 @@
           <Icon name="x" size={18} />
         </button>
       </div>
-      <div class="picker-tools">
-        <div class="pill small">
-          <Icon name="search" size={16} />
-          <input
-            value={pickerRouterSearch}
-            oninput={(e) => (pickerRouterSearch = (e.currentTarget as HTMLInputElement).value)}
-            placeholder={$t('admin.network.wallboard.pick_search') || 'Search routers...'}
-          />
-        </div>
-        <div class="seg">
-          <button class:active={statusFilter === 'all'} onclick={() => (statusFilter = 'all')}>
-            {$t('admin.network.wallboard.filters.all') || 'All'}
-          </button>
-          <button class:active={statusFilter === 'online'} onclick={() => (statusFilter = 'online')}>
-            {$t('admin.network.wallboard.filters.online') || 'Online'}
-          </button>
-          <button class:active={statusFilter === 'offline'} onclick={() => (statusFilter = 'offline')}>
-            {$t('admin.network.wallboard.filters.offline') || 'Offline'}
-          </button>
-        </div>
+      <div class="picker-summary">
+        <span class="picker-chip">
+          <span class="k">Router</span>
+          <span class="v mono">{pickerRouterId ? (routerById(pickerRouterId)?.identity || routerById(pickerRouterId)?.name || pickerRouterId) : '—'}</span>
+        </span>
+        <span class="picker-chip">
+          <span class="k">Interface</span>
+          <span class="v mono">{curSlot?.iface || '—'}</span>
+        </span>
       </div>
       {#if true}
         {@const q = pickerRouterSearch.trim().toLowerCase()}
@@ -1408,6 +1825,14 @@
             <div class="col-head">
               <span class="col-title">{$t('admin.network.wallboard.pick_router') || 'Router'}</span>
               <span class="muted">{routerList.length}</span>
+            </div>
+            <div class="pill small">
+              <Icon name="search" size={16} />
+              <input
+                value={pickerRouterSearch}
+                oninput={(e) => (pickerRouterSearch = (e.currentTarget as HTMLInputElement).value)}
+                placeholder={$t('admin.network.wallboard.pick_search') || 'Search routers...'}
+              />
             </div>
             <div class="picker-list">
               {#if routerList.length === 0}
@@ -1506,11 +1931,11 @@
                         <span class="muted">{it.interface_type || ''}</span>
                         <span class="spacer"></span>
                         {#if it.disabled}
-                          <span class="tag">disabled</span>
+                          <span class="tag">{$t('admin.network.wallboard.interface_state.disabled') || 'disabled'}</span>
                         {:else if it.running}
-                          <span class="tag ok">up</span>
+                          <span class="tag ok">{$t('admin.network.wallboard.interface_state.up') || 'up'}</span>
                         {:else}
-                          <span class="tag">down</span>
+                          <span class="tag">{$t('admin.network.wallboard.interface_state.down') || 'down'}</span>
                         {/if}
                       </button>
                     {/each}
@@ -1536,6 +1961,30 @@
   {@const txPeak = peakBps(tx)}
   {@const rxAvg = avgBps(rx)}
   {@const txAvg = avgBps(tx)}
+  {@const filteredMetricsRows = filteredFullMetricsRows()}
+  {@const histRawRows = buildHistPoints(filteredMetricsRows)}
+  {@const metricsBucket = resolveMetricsBucket(metricsRange, metricsFromLocal, metricsToLocal)}
+  {@const histRows = aggregateHistPoints(histRawRows, metricsBucket)}
+  {@const zoomedHistRows = applyMetricsZoom(histRows, metricsZoomFrom, metricsZoomTo)}
+  {@const chartRows = downsampleHistPoints(zoomedHistRows, 120)}
+  {@const hasMetricsZoom = metricsZoomFrom != null && metricsZoomTo != null}
+  {@const histRx = zoomedHistRows.map((x) => x.rx_bps)}
+  {@const histTx = zoomedHistRows.map((x) => x.tx_bps)}
+  {@const histMax = Math.max(1, ...histRx, ...histTx)}
+  {@const histRxPeak = peakBps(histRx)}
+  {@const histTxPeak = peakBps(histTx)}
+  {@const histRxAvg = avgBps(histRx)}
+  {@const histTxAvg = avgBps(histTx)}
+  {@const chartRx = chartRows.map((x) => x.rx_bps)}
+  {@const chartTx = chartRows.map((x) => x.tx_bps)}
+  {@const chartMax = Math.max(1, ...chartRx, ...chartTx)}
+  {@const peakRxIdx = chartRx.length ? chartRx.indexOf(Math.max(...chartRx)) : -1}
+  {@const peakTxIdx = chartTx.length ? chartTx.indexOf(Math.max(...chartTx)) : -1}
+  {@const pointIdx =
+    metricsPointIdx != null
+      ? Math.min(chartRows.length - 1, Math.max(0, metricsPointIdx))
+      : null}
+  {@const pointRow = pointIdx != null ? chartRows[pointIdx] : null}
   {@const rxNow = s ? liveRates[s.routerId]?.[iface]?.rx_bps ?? null : null}
   {@const txNow = s ? liveRates[s.routerId]?.[iface]?.tx_bps ?? null : null}
   {@const warnRx =
@@ -1575,35 +2024,264 @@
       </div>
 
       <div class="full-body">
-        <div class="full-stats">
-          <div class="stat-big">
-            <div class="k">RX</div>
-            <div class="v mono" class:warn={warnRx}>{formatBps(rxNow)}</div>
-          </div>
-          <div class="stat-big">
-            <div class="k">TX</div>
-            <div class="v mono" class:warn={warnTx}>{formatBps(txNow)}</div>
+        <div class="full-summary-sticky">
+          <div class="full-summary-grid">
+            <div class="full-summary-item">
+              <span class="k">{$t('admin.network.wallboard.summary.status') || 'Status'}</span>
+              <span class="v mono">{r?.is_online
+                ? $t('admin.network.wallboard.summary.online') || 'ONLINE'
+                : $t('admin.network.wallboard.summary.offline') || 'OFFLINE'}</span>
+            </div>
+            <div class="full-summary-item">
+              <span class="k">{$t('admin.network.wallboard.summary.rx_now') || 'RX Now'}</span>
+              <span class="v mono" class:warn={warnRx}>{formatBps(rxNow)}</span>
+            </div>
+            <div class="full-summary-item">
+              <span class="k">{$t('admin.network.wallboard.summary.tx_now') || 'TX Now'}</span>
+              <span class="v mono" class:warn={warnTx}>{formatBps(txNow)}</span>
+            </div>
+            <div class="full-summary-item">
+              <span class="k">{$t('admin.network.wallboard.chart.peak') || 'RX Peak'}</span>
+              <span class="v mono">{formatBps(fullTab === 'metrics' ? histRxPeak : rxPeak)}</span>
+            </div>
+            <div class="full-summary-item">
+              <span class="k">{$t('admin.network.wallboard.chart.peak_tx') || 'TX Peak'}</span>
+              <span class="v mono">{formatBps(fullTab === 'metrics' ? histTxPeak : txPeak)}</span>
+            </div>
+            <div class="full-summary-item">
+              <span class="k">{fullTab === 'metrics'
+                ? $t('admin.network.wallboard.metrics_points') || 'Points'
+                : $t('admin.network.wallboard.summary.samples') || 'Samples'}</span>
+              <span class="v mono">{fullTab === 'metrics' ? zoomedHistRows.length : rx.length}</span>
+            </div>
           </div>
         </div>
 
-        <div class="spark huge">
-          <div class="bars" class:warn={warnRx}>
-            {#each rx as v, i (i)}
-              <div class="bar rx" style={`height:${Math.round((v / max) * 100)}%;`}></div>
-            {/each}
-          </div>
-          <div class="bars" class:warn={warnTx}>
-            {#each tx as v, i (i)}
-              <div class="bar tx" style={`height:${Math.round((v / max) * 100)}%;`}></div>
-            {/each}
-          </div>
+        <div class="full-tabs">
+          <button
+            class="full-tab {fullTab === 'live' ? 'active' : ''}"
+            type="button"
+            onclick={() => openFullTab('live')}
+          >
+            {$t('admin.network.wallboard.tabs.live') || 'Live'}
+          </button>
+          <button
+            class="full-tab {fullTab === 'metrics' ? 'active' : ''}"
+            type="button"
+            onclick={() => openFullTab('metrics')}
+          >
+            {$t('admin.network.wallboard.tabs.metrics') || 'Metrics'}
+          </button>
         </div>
-        <div class="chart-meta chart-meta-big muted">
-          <span>{($t('admin.network.wallboard.chart.peak') || 'Peak') + ': ' + formatBps(rxPeak)}</span>
-          <span>{($t('admin.network.wallboard.chart.avg') || 'Avg') + ': ' + formatBps(rxAvg)}</span>
-          <span>{($t('admin.network.wallboard.chart.peak_tx') || 'TX Peak') + ': ' + formatBps(txPeak)}</span>
-          <span>{($t('admin.network.wallboard.chart.avg_tx') || 'TX Avg') + ': ' + formatBps(txAvg)}</span>
-        </div>
+
+        {#if fullTab === 'live'}
+          <div class="full-stats">
+            <div class="stat-big">
+              <div class="k">RX</div>
+              <div class="v mono" class:warn={warnRx}>{formatBps(rxNow)}</div>
+            </div>
+            <div class="stat-big">
+              <div class="k">TX</div>
+              <div class="v mono" class:warn={warnTx}>{formatBps(txNow)}</div>
+            </div>
+          </div>
+
+          <div class="spark huge">
+            <div class="bars" class:warn={warnRx}>
+              {#each rx as v, i (i)}
+                <div class="bar rx" style={`height:${Math.round((v / max) * 100)}%;`}></div>
+              {/each}
+            </div>
+            <div class="bars" class:warn={warnTx}>
+              {#each tx as v, i (i)}
+                <div class="bar tx" style={`height:${Math.round((v / max) * 100)}%;`}></div>
+              {/each}
+            </div>
+          </div>
+          <div class="chart-meta chart-meta-big muted">
+            <span>{($t('admin.network.wallboard.chart.peak') || 'Peak') + ': ' + formatBps(rxPeak)}</span>
+            <span>{($t('admin.network.wallboard.chart.avg') || 'Avg') + ': ' + formatBps(rxAvg)}</span>
+            <span>{($t('admin.network.wallboard.chart.peak_tx') || 'TX Peak') + ': ' + formatBps(txPeak)}</span>
+            <span>{($t('admin.network.wallboard.chart.avg_tx') || 'TX Avg') + ': ' + formatBps(txAvg)}</span>
+          </div>
+        {:else}
+          <div class="metrics-filters">
+            <div class="metrics-toolbar">
+              <div class="metrics-range-select">
+                <label for="metrics-range" class="muted">{$t('admin.network.wallboard.metrics.range') || 'Range'}</label>
+                <select
+                  id="metrics-range"
+                  value={metricsRange}
+                  onchange={(e) =>
+                    setMetricsRange((e.currentTarget as HTMLSelectElement).value as typeof metricsRange)}
+                >
+                  <option value="24h">{$t('admin.network.wallboard.metrics.range_24h') || 'Last 24 Hours'}</option>
+                  <option value="7d">{$t('admin.network.wallboard.metrics.range_7d') || 'Last 7 Days'}</option>
+                  <option value="30d">{$t('admin.network.wallboard.metrics.range_30d') || 'Last 30 Days'}</option>
+                  <option value="month">{$t('admin.network.wallboard.metrics.range_month') || 'This Month'}</option>
+                  <option value="custom">{$t('admin.network.wallboard.metrics.range_custom') || 'Custom'}</option>
+                </select>
+              </div>
+              <div
+                class="metrics-bucket-chip"
+                title={$t('admin.network.wallboard.metrics_agg_title') || 'Aggregation level used for this range'}
+              >
+                <span class="k">{$t('admin.network.wallboard.metrics_agg_label') || 'Aggregation'}</span>
+                <span class="v mono">{bucketLabel(metricsBucket)} ({bucketHint(metricsBucket)})</span>
+              </div>
+              <button
+                class="btn-mini"
+                type="button"
+                onclick={() =>
+                  exportMetricsCsv(
+                    zoomedHistRows,
+                    iface,
+                    r ? (r.identity || r.name) : s?.routerId || '',
+                    metricsBucket,
+                  )}
+              >
+                <Icon name="download" size={16} />
+                {$t('admin.network.wallboard.metrics.export_csv') || 'Export CSV'}
+              </button>
+              {#if hasMetricsZoom}
+                <button class="btn-mini" type="button" onclick={() => clearMetricsZoom()}>
+                  <Icon name="refresh-cw" size={16} />
+                  {$t('admin.network.wallboard.metrics.reset_zoom') || 'Reset Zoom'}
+                </button>
+              {/if}
+            </div>
+            {#if metricsRange === 'custom'}
+              <div class="metrics-dates">
+                <label>
+                  <span class="muted">{$t('common.from') || 'From'}</span>
+                  <input
+                    type="datetime-local"
+                    value={metricsFromLocal}
+                    oninput={(e) => {
+                      metricsFromLocal = (e.currentTarget as HTMLInputElement).value;
+                      metricsPointIdx = null;
+                      clearMetricsZoom();
+                      void refreshMetricsForCurrentRange();
+                    }}
+                  />
+                </label>
+                <label>
+                  <span class="muted">{$t('common.to') || 'To'}</span>
+                  <input
+                    type="datetime-local"
+                    value={metricsToLocal}
+                    oninput={(e) => {
+                      metricsToLocal = (e.currentTarget as HTMLInputElement).value;
+                      metricsPointIdx = null;
+                      clearMetricsZoom();
+                      void refreshMetricsForCurrentRange();
+                    }}
+                  />
+                </label>
+              </div>
+            {/if}
+          </div>
+
+          <div class="full-historical">
+            <div class="full-historical-head">
+              <div class="full-kicker">{$t('admin.network.wallboard.metrics.historical') || 'Historical Metrics'}</div>
+              <span class="muted mono">
+                {zoomedHistRows.length} {$t('admin.network.wallboard.metrics_points') || 'points'} ({bucketLabel(metricsBucket)})
+                {#if hasMetricsZoom}
+                  · {$t('admin.network.wallboard.metrics.zoomed') || 'Zoomed'}
+                {/if}
+              </span>
+            </div>
+
+            {#if fullMetricsLoading}
+              <div class="muted">{$t('common.loading') || 'Loading...'}</div>
+            {:else if fullMetricsError}
+              <div class="muted">{fullMetricsError}</div>
+            {:else if chartRx.length === 0 && chartTx.length === 0}
+              <div class="muted">{$t('admin.network.wallboard.metrics.empty_range') || 'No historical metrics yet for selected date range.'}</div>
+            {:else}
+              <div
+                class="spark huge historical"
+                role="application"
+                aria-label={$t('admin.network.wallboard.metrics.zoom_area') || 'Metrics chart zoom area'}
+                onpointerdown={beginMetricsSelection}
+                onpointermove={moveMetricsSelection}
+                onpointerup={(e) => endMetricsSelection(e, chartRows)}
+                onpointercancel={(e) => endMetricsSelection(e, chartRows)}
+              >
+                {#if metricsSelecting}
+                  {@const left = Math.min(metricsSelStart, metricsSelCurrent)}
+                  {@const width = Math.max(0, Math.abs(metricsSelCurrent - metricsSelStart))}
+                  <div class="metrics-selection" style={`left:${left}px; width:${width}px;`}></div>
+                {/if}
+                <div class="bars">
+                  {#if pointIdx != null}
+                    <div class="spark-crosshair" style={`--x:${((pointIdx + 0.5) / Math.max(1, chartRx.length)) * 100}%`}></div>
+                  {/if}
+                  {#each chartRx as v, i (i)}
+                    <div
+                      class="bar rx"
+                      class:active={pointIdx === i}
+                      class:peak={peakRxIdx === i}
+                      title={peakRxIdx === i ? (($t('admin.network.wallboard.metrics.peak_marker') || 'Peak') + ' RX') : ''}
+                      style={`height:${Math.round((v / chartMax) * 100)}%;`}
+                      role="button"
+                      tabindex="0"
+                      onmouseenter={(e) => setMetricsHoverFromMouse(i, e)}
+                      onmousemove={(e) => setMetricsHoverFromMouse(i, e)}
+                      onmouseleave={() => (metricsPointIdx = null)}
+                      onfocus={(e) => setMetricsHoverFromFocus(i, e)}
+                      onblur={() => (metricsPointIdx = null)}
+                      onkeydown={(e) =>
+                        (e.key === 'Enter' || e.key === ' ') && (metricsPointIdx = i)}
+                    ></div>
+                  {/each}
+                </div>
+                <div class="bars">
+                  {#if pointIdx != null}
+                    <div class="spark-crosshair" style={`--x:${((pointIdx + 0.5) / Math.max(1, chartTx.length)) * 100}%`}></div>
+                  {/if}
+                  {#each chartTx as v, i (i)}
+                    <div
+                      class="bar tx"
+                      class:active={pointIdx === i}
+                      class:peak={peakTxIdx === i}
+                      title={peakTxIdx === i ? (($t('admin.network.wallboard.metrics.peak_marker') || 'Peak') + ' TX') : ''}
+                      style={`height:${Math.round((v / chartMax) * 100)}%;`}
+                      role="button"
+                      tabindex="0"
+                      onmouseenter={(e) => setMetricsHoverFromMouse(i, e)}
+                      onmousemove={(e) => setMetricsHoverFromMouse(i, e)}
+                      onmouseleave={() => (metricsPointIdx = null)}
+                      onfocus={(e) => setMetricsHoverFromFocus(i, e)}
+                      onblur={() => (metricsPointIdx = null)}
+                      onkeydown={(e) =>
+                        (e.key === 'Enter' || e.key === ' ') && (metricsPointIdx = i)}
+                    ></div>
+                  {/each}
+                </div>
+              </div>
+              {#if pointRow}
+                <div
+                  class="metrics-tooltip floating"
+                  style={`left:${metricsTooltipX}px; top:${metricsTooltipY}px;`}
+                >
+                  <span class="mono">{formatMetricTs(pointRow.ts)}</span>
+                  <span class="spark-sep">·</span>
+                  <span>RX: <strong class="mono">{formatBps(pointRow.rx_bps)}</strong></span>
+                  <span class="spark-sep">·</span>
+                  <span>TX: <strong class="mono">{formatBps(pointRow.tx_bps)}</strong></span>
+                </div>
+              {/if}
+              <div class="chart-meta chart-meta-big muted">
+                <span>{($t('admin.network.wallboard.chart.peak') || 'Peak') + ': ' + formatBps(histRxPeak)}</span>
+                <span>{($t('admin.network.wallboard.chart.avg') || 'Avg') + ': ' + formatBps(histRxAvg)}</span>
+                <span>{($t('admin.network.wallboard.chart.peak_tx') || 'TX Peak') + ': ' + formatBps(histTxPeak)}</span>
+                <span>{($t('admin.network.wallboard.chart.avg_tx') || 'TX Avg') + ': ' + formatBps(histTxAvg)}</span>
+              </div>
+            {/if}
+          </div>
+        {/if}
       </div>
     </div>
   </div>
@@ -1649,6 +2327,21 @@
         </div>
       </div>
 
+      <div class="threshold-summary">
+        <div class="threshold-chip">
+          <span class="k">{$t('admin.network.wallboard.thresholds.current_rx') || 'Current RX threshold'}</span>
+          <span class="v mono">{s?.warn_below_rx_bps != null
+            ? formatBps(s.warn_below_rx_bps)
+            : $t('admin.network.wallboard.thresholds.not_set') || 'Not set'}</span>
+        </div>
+        <div class="threshold-chip">
+          <span class="k">{$t('admin.network.wallboard.thresholds.current_tx') || 'Current TX threshold'}</span>
+          <span class="v mono">{s?.warn_below_tx_bps != null
+            ? formatBps(s.warn_below_tx_bps)
+            : $t('admin.network.wallboard.thresholds.not_set') || 'Not set'}</span>
+        </div>
+      </div>
+
       <div class="tile-settings">
         <div class="settings-grid">
           <label class="field">
@@ -1660,13 +2353,13 @@
                 oninput={(e) => (thWarnRxKbps = (e.currentTarget as HTMLInputElement).value)}
                 placeholder="0"
               />
-              <MiniSelect
-                minWidth={88}
-                ariaLabel="Unit"
-                bind:value={thWarnRxUnit}
-                options={thresholdUnitOptions}
-              />
+              <select class="unit-select" value={thWarnRxUnit} onchange={(e) => (thWarnRxUnit = (e.currentTarget as HTMLSelectElement).value as typeof thWarnRxUnit)}>
+                <option value="Kbps">Kbps</option>
+                <option value="Mbps">Mbps</option>
+                <option value="Gbps">Gbps</option>
+              </select>
             </div>
+            <span class="hint">{$t('admin.network.wallboard.thresholds.hint') || 'Leave empty to disable warning.'}</span>
           </label>
           <label class="field">
             <span class="k">{$t('admin.network.wallboard.warn_below_tx') || 'Warn if TX below'}</span>
@@ -1677,21 +2370,17 @@
                 oninput={(e) => (thWarnTxKbps = (e.currentTarget as HTMLInputElement).value)}
                 placeholder="0"
               />
-              <MiniSelect
-                minWidth={88}
-                ariaLabel="Unit"
-                bind:value={thWarnTxUnit}
-                options={thresholdUnitOptions}
-              />
+              <select class="unit-select" value={thWarnTxUnit} onchange={(e) => (thWarnTxUnit = (e.currentTarget as HTMLSelectElement).value as typeof thWarnTxUnit)}>
+                <option value="Kbps">Kbps</option>
+                <option value="Mbps">Mbps</option>
+                <option value="Gbps">Gbps</option>
+              </select>
             </div>
+            <span class="hint">{$t('admin.network.wallboard.thresholds.hint') || 'Leave empty to disable warning.'}</span>
           </label>
         </div>
 
         <div class="settings-actions">
-          <button class="btn-mini primary" type="button" onclick={saveThreshold}>
-            <Icon name="save" size={16} />
-            {$t('common.save') || 'Save'}
-          </button>
           <button
             class="btn-mini ghost"
             type="button"
@@ -1703,6 +2392,10 @@
             }}
           >
             {$t('common.clear') || 'Clear'}
+          </button>
+          <button class="btn-mini primary" type="button" onclick={saveThreshold}>
+            <Icon name="save" size={16} />
+            {$t('common.save') || 'Save'}
           </button>
         </div>
       </div>
@@ -1718,9 +2411,6 @@
 
   :global(body.kiosk-wallboard header.topbar) {
     display: none;
-  }
-  :global(body.wallboard-fit) {
-    overflow: hidden;
   }
   :global(body.wall-dragging),
   :global(body.wall-dragging *) {
@@ -1738,14 +2428,6 @@
     padding-left: clamp(6px, 1vw, 12px);
   }
 
-  .wallboard-viewport.fit {
-    position: fixed;
-    inset: 0;
-    overflow: hidden;
-    z-index: 60;
-    background: color-mix(in srgb, var(--bg-base, #000) 85%, transparent);
-  }
-
 .wallboard {
     height: 100dvh;
     box-sizing: border-box;
@@ -1755,7 +2437,7 @@
   .wallboard.focus .wb-top {
     margin-bottom: 10px;
   }
-  .wallboard.focus .controls {
+  .wallboard.focus .controls:not(.wall-actions) {
     width: 100%;
     justify-content: space-between;
   }
@@ -1772,6 +2454,14 @@
     justify-content: space-between;
     gap: 18px;
     margin-bottom: 8px;
+    transition:
+      opacity 180ms ease,
+      transform 180ms ease;
+  }
+  .wb-top.hidden {
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
   }
 
   .dot {
@@ -1791,7 +2481,60 @@
   }
   .controls.wall-actions {
     width: 100%;
-    justify-content: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .toolbar-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .toolbar-selects {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
+  }
+  .toolbar-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .toolbar-field select {
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-surface) 75%, transparent);
+    color: var(--text-primary);
+    border-radius: 9px;
+    padding: 5px 7px;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.2;
+    height: 34px;
+    outline: none;
+  }
+  .exit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .exit-btn:hover {
+    background: color-mix(in srgb, var(--bg-surface) 50%, transparent);
   }
 
   .pill {
@@ -1840,10 +2583,6 @@
     opacity: 0.6;
     cursor: default;
   }
-  .seg button.active {
-    background: color-mix(in srgb, var(--accent) 22%, transparent);
-  }
-
   .pager {
     display: inline-flex;
     align-items: center;
@@ -1879,16 +2618,6 @@
     opacity: 0.55;
     cursor: default;
   }
-  .poll {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
-  }
-
   .muted {
     color: var(--text-muted);
   }
@@ -2114,12 +2843,6 @@
     border-color: color-mix(in srgb, var(--accent) 35%, var(--border-color));
     background: color-mix(in srgb, var(--accent) 10%, var(--bg-surface));
   }
-  .icon-x.drag {
-    cursor: grab;
-  }
-  .icon-x.drag:active {
-    cursor: grabbing;
-  }
 
   .btn-mini {
     display: inline-flex;
@@ -2165,6 +2888,43 @@
     align-items: center;
     gap: 8px;
   }
+  .tile-actions {
+    position: relative;
+  }
+  .tile-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 140px;
+    padding: 6px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
+    box-shadow: var(--shadow-md);
+    display: grid;
+    gap: 4px;
+    z-index: 20;
+  }
+  .tile-menu button {
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    border-radius: 9px;
+    padding: 8px 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: left;
+  }
+  .tile-menu button:hover {
+    background: color-mix(in srgb, var(--bg-surface) 60%, var(--accent) 10%);
+  }
+  .tile-menu button.danger {
+    color: color-mix(in srgb, var(--color-danger) 82%, var(--text-primary));
+  }
 
   .tile-head {
     padding: 14px 14px 10px;
@@ -2180,6 +2940,16 @@
     font-size: 16px;
     line-height: 1.2;
     color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .name .mono {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .meta {
     margin-top: 4px;
@@ -2209,6 +2979,11 @@
   }
   .badge.bad .dot {
     background: #ff6b6b;
+  }
+  .badge.status-dot {
+    padding: 6px;
+    min-width: 0;
+    gap: 0;
   }
   .badge.warn {
     border-color: color-mix(in srgb, var(--color-warning) 55%, var(--border-color));
@@ -2371,6 +3146,22 @@
     outline: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
     outline-offset: 1px;
   }
+  .spark.huge.historical .bar {
+    cursor: pointer;
+  }
+  .spark.huge.historical {
+    cursor: crosshair;
+  }
+  .metrics-selection {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-left: 1px solid color-mix(in srgb, var(--accent) 85%, transparent);
+    border-right: 1px solid color-mix(in srgb, var(--accent) 85%, transparent);
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    pointer-events: none;
+    z-index: 3;
+  }
   .bars.warn .bar {
     background: linear-gradient(180deg, #ff8a8a, var(--color-danger));
   }
@@ -2379,6 +3170,23 @@
   }
   .bar.tx {
     background: linear-gradient(180deg, #7bffb2, #22c55e);
+  }
+  .bar.peak {
+    outline: 1px solid color-mix(in srgb, #ffd166 75%, transparent);
+    outline-offset: 1px;
+    filter: brightness(1.16);
+  }
+  .bar.peak::after {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: 50%;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    transform: translateX(-50%);
+    background: #ffd166;
+    box-shadow: 0 0 0 2px color-mix(in srgb, #ffd166 30%, transparent);
   }
 
   .chart-meta {
@@ -2465,6 +3273,20 @@
     .controls {
       justify-content: flex-start;
     }
+    .controls.wall-actions {
+      justify-content: flex-start;
+    }
+    .toolbar-left {
+      width: 100%;
+    }
+    .toolbar-selects {
+      width: 100%;
+      flex-wrap: wrap;
+    }
+    .toolbar-field {
+      min-width: 120px;
+      flex: 1;
+    }
     .grid {
       grid-template-columns: 1fr;
       grid-template-rows: none;
@@ -2509,14 +3331,34 @@
   }
   .picker-head h3 {
     margin: 0;
+    font-size: 20px;
+    font-weight: 900;
   }
-  .picker-tools {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    flex-wrap: wrap;
+  .picker-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
     margin-bottom: 10px;
+  }
+  .picker-chip {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 8px 10px;
+    display: grid;
+    gap: 2px;
+    background: color-mix(in srgb, var(--bg-surface) 74%, transparent);
+  }
+  .picker-chip .k {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 800;
+    color: var(--text-muted);
+  }
+  .picker-chip .v {
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--text-primary);
   }
   .picker-body {
     display: grid;
@@ -2528,16 +3370,23 @@
     border-radius: 16px;
     padding: 10px;
     background: color-mix(in srgb, var(--bg-surface) 80%, transparent);
-    min-height: 360px;
+    min-height: 380px;
+    max-height: min(56vh, 520px);
     display: flex;
     flex-direction: column;
     gap: 10px;
+    overflow: hidden;
   }
   .col-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+    padding-bottom: 6px;
   }
   .col-title {
     font-weight: 900;
@@ -2545,6 +3394,8 @@
   .picker-list {
     display: grid;
     gap: 8px;
+    overflow: auto;
+    padding-right: 2px;
   }
   .pick {
     display: flex;
@@ -2564,16 +3415,26 @@
   }
 
   .tile-settings {
-    margin-top: 10px;
     border: 1px solid var(--border-color);
     border-radius: 16px;
-    padding: 10px;
-    background: color-mix(in srgb, var(--bg-surface) 70%, transparent);
+    padding: 12px;
+    background:
+      linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--bg-surface) 82%, transparent),
+        color-mix(in srgb, var(--bg-surface) 68%, transparent)
+      );
   }
   .settings-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 12px;
+  }
+  .field {
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 10px;
+    background: color-mix(in srgb, var(--bg-surface) 74%, transparent);
   }
   .field .k {
     display: block;
@@ -2583,6 +3444,12 @@
     color: var(--text-muted);
     text-transform: uppercase;
     margin-bottom: 8px;
+  }
+  .field .hint {
+    display: block;
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--text-muted);
   }
   .field .row {
     display: flex;
@@ -2597,16 +3464,45 @@
     background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
     color: var(--text-primary);
     outline: none;
+    transition:
+      border-color 120ms ease,
+      box-shadow 120ms ease;
+  }
+  .field input:focus {
+    border-color: color-mix(in srgb, var(--accent) 52%, var(--border-color));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+  .unit-select {
+    width: 92px;
+    min-width: 92px;
+    max-width: 92px;
+    padding: 10px 8px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 700;
+    outline: none;
+  }
+  .unit-select:focus {
+    border-color: color-mix(in srgb, var(--accent) 52%, var(--border-color));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
   }
   .settings-actions {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     gap: 10px;
-    margin-top: 12px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 85%, transparent);
   }
 
   @media (max-width: 920px) {
+    .threshold-summary {
+      grid-template-columns: 1fr;
+    }
     .settings-grid {
       grid-template-columns: 1fr;
     }
@@ -2616,6 +3512,9 @@
   }
 
   @media (max-width: 920px) {
+    .picker-summary {
+      grid-template-columns: 1fr;
+    }
     .picker-body {
       grid-template-columns: 1fr;
     }
@@ -2678,7 +3577,32 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
+  }
+  .threshold-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .threshold-chip {
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--bg-surface) 74%, transparent);
+    padding: 10px 12px;
+    display: grid;
+    gap: 4px;
+  }
+  .threshold-chip .k {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 900;
+    color: var(--text-muted);
+  }
+  .threshold-chip .v {
+    font-size: 14px;
+    font-weight: 900;
   }
   .full-head {
     display: flex;
@@ -2711,6 +3635,193 @@
     display: grid;
     gap: 12px;
   }
+  .full-summary-sticky {
+    position: sticky;
+    top: -2px;
+    z-index: 6;
+    padding: 2px 0 8px;
+    background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--bg-surface) 96%, transparent),
+      color-mix(in srgb, var(--bg-surface) 88%, transparent)
+    );
+    backdrop-filter: blur(4px);
+  }
+  .full-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .full-summary-item {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 9px 10px;
+    background: color-mix(in srgb, var(--bg-surface) 74%, transparent);
+    display: grid;
+    gap: 4px;
+  }
+  .full-summary-item .k {
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .full-summary-item .v {
+    font-size: 14px;
+    font-weight: 900;
+    color: var(--text-primary);
+  }
+  .full-summary-item .v.warn {
+    color: var(--color-danger);
+  }
+  .full-tabs {
+    display: inline-flex;
+    gap: 6px;
+    padding: 4px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    width: fit-content;
+    background: color-mix(in srgb, var(--bg-surface) 80%, transparent);
+  }
+  .full-tab {
+    position: relative;
+    border: none;
+    background: transparent;
+    color: color-mix(in srgb, var(--text-primary) 78%, var(--text-muted));
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 800;
+    cursor: pointer;
+    transition:
+      background 120ms ease,
+      color 120ms ease,
+      box-shadow 120ms ease,
+      transform 120ms ease;
+  }
+  .full-tab:hover {
+    background: color-mix(in srgb, var(--bg-surface) 45%, var(--accent) 10%);
+    color: var(--text-primary);
+  }
+  .full-tab.active {
+    background: color-mix(in srgb, var(--accent) 65%, var(--bg-surface));
+    color: var(--text-primary);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--accent) 85%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent);
+    transform: translateY(-1px);
+  }
+  .full-tab.active::after {
+    content: '';
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 3px;
+    height: 3px;
+    border-radius: 999px;
+    background: color-mix(in srgb, #ffffff 75%, var(--accent));
+  }
+  .metrics-filters {
+    display: grid;
+    gap: 10px;
+  }
+  .metrics-toolbar {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .metrics-range-select {
+    display: grid;
+    gap: 6px;
+    max-width: 280px;
+  }
+  .metrics-bucket-chip {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 8px 10px;
+    min-width: 250px;
+    background: color-mix(in srgb, var(--bg-surface) 74%, transparent);
+    display: grid;
+    gap: 2px;
+  }
+  .metrics-bucket-chip .k {
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .metrics-bucket-chip .v {
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--text-primary);
+  }
+  .metrics-range-select select {
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-surface) 70%, transparent);
+    color: var(--text-primary);
+    padding: 9px 10px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 800;
+    outline: none;
+  }
+  .metrics-dates {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .metrics-dates label {
+    display: grid;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .metrics-dates input {
+    width: 100%;
+    padding: 9px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
+    color: var(--text-primary);
+    outline: none;
+  }
+  .metrics-tooltip {
+    margin-top: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-surface) 82%, transparent);
+    font-size: 12px;
+    color: var(--text-primary);
+  }
+  .metrics-tooltip.floating {
+    position: fixed;
+    margin-top: 0;
+    z-index: 120;
+    pointer-events: none;
+    transform: translate(0, 0);
+    box-shadow: var(--shadow-md);
+  }
+  .full-historical {
+    border-top: 1px solid var(--border-color);
+    padding-top: 12px;
+  }
+  .full-historical-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .spark.huge.historical {
+    height: min(34dvh, 300px);
+  }
   .full-stats {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2740,6 +3851,19 @@
   }
 
   @media (max-width: 920px) {
+    .full-summary-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .metrics-toolbar {
+      align-items: stretch;
+    }
+    .metrics-bucket-chip {
+      min-width: 0;
+      width: 100%;
+    }
+    .metrics-dates {
+      grid-template-columns: 1fr;
+    }
     .full-stats {
       grid-template-columns: 1fr;
     }
