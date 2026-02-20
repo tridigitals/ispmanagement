@@ -340,6 +340,10 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       // Handle path parameters (e.g. :key, :id)
       let path = route.path;
       const queryParams: Record<string, string> = {};
+      const consumedPathKeys = new Set<string>();
+
+      const toCamelCase = (str: string) =>
+        str.replace(/_([a-z])/g, (_m, c: string) => c.toUpperCase());
 
       if (args) {
         for (const [key, value] of Object.entries(args)) {
@@ -350,8 +354,14 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
           const snakeKey = toSnakeCase(key);
           if (path.includes(`:${key}`)) {
             path = path.replace(`:${key}`, String(value));
+            consumedPathKeys.add(key);
+            consumedPathKeys.add(snakeKey);
+            consumedPathKeys.add(toCamelCase(key));
           } else if (path.includes(`:${snakeKey}`)) {
             path = path.replace(`:${snakeKey}`, String(value));
+            consumedPathKeys.add(key);
+            consumedPathKeys.add(snakeKey);
+            consumedPathKeys.add(toCamelCase(key));
           } else if (route.method === 'GET' && key !== 'token') {
             // Add non-path params as query params for GET requests (use snake_case for HTTP)
             queryParams[snakeKey] = String(value);
@@ -386,11 +396,24 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         // and will reject unexpected fields like `token`.
         const bodyPayload =
           route.method !== 'GET'
-            ? Object.fromEntries(
-                Object.entries(args || {}).filter(
-                  ([key, value]) => key !== 'token' && value !== undefined,
-                ),
-              )
+            ? (() => {
+                const rawEntries = Object.entries(args || {}).filter(
+                  ([key, value]) =>
+                    key !== 'token' &&
+                    value !== undefined &&
+                    !consumedPathKeys.has(key),
+                );
+
+                // If both camelCase and snake_case variants exist, keep camelCase only.
+                const keySet = new Set(rawEntries.map(([key]) => key));
+                const deduped = rawEntries.filter(([key]) => {
+                  if (!key.includes('_')) return true;
+                  const camelKey = toCamelCase(key);
+                  return !keySet.has(camelKey);
+                });
+
+                return Object.fromEntries(deduped);
+              })()
             : undefined;
 
         response = await fetch(`${API_BASE}${path}${queryString}`, {
@@ -970,20 +993,6 @@ export const users = {
       is_default_shipping: data.isDefaultShipping,
       isDefaultBilling: data.isDefaultBilling,
       is_default_billing: data.isDefaultBilling,
-      dto: {
-        // Tauri command signature uses `dto`
-        label: data.label,
-        recipientName: data.recipientName,
-        phone: data.phone,
-        line1: data.line1,
-        line2: data.line2,
-        city: data.city,
-        state: data.state,
-        postalCode: data.postalCode,
-        countryCode: data.countryCode,
-        isDefaultShipping: data.isDefaultShipping,
-        isDefaultBilling: data.isDefaultBilling,
-      },
     }),
 
   updateMyAddress: (
@@ -1022,19 +1031,6 @@ export const users = {
       is_default_shipping: data.isDefaultShipping,
       isDefaultBilling: data.isDefaultBilling,
       is_default_billing: data.isDefaultBilling,
-      dto: {
-        label: data.label,
-        recipientName: data.recipientName,
-        phone: data.phone,
-        line1: data.line1,
-        line2: data.line2,
-        city: data.city,
-        state: data.state,
-        postalCode: data.postalCode,
-        countryCode: data.countryCode,
-        isDefaultShipping: data.isDefaultShipping,
-        isDefaultBilling: data.isDefaultBilling,
-      },
     }),
 
   deleteMyAddress: (addressId: string): Promise<void> =>
@@ -1466,7 +1462,7 @@ export const customers = {
   }): Promise<Customer> =>
     safeInvoke('create_customer_with_portal', {
       token: getTokenOrThrow(),
-      dto,
+      ...dto,
     }),
 
   update: (
@@ -1610,10 +1606,7 @@ export const customers = {
         token: getTokenOrThrow(),
         customerId,
         customer_id: customerId,
-        dto: {
-          customer_id: customerId,
-          ...dto,
-        },
+        ...dto,
       }),
     update: (
       subscriptionId: string,
@@ -1634,7 +1627,7 @@ export const customers = {
         token: getTokenOrThrow(),
         subscriptionId,
         subscription_id: subscriptionId,
-        dto,
+        ...dto,
       }),
     delete: (subscriptionId: string): Promise<void> =>
       safeInvoke('delete_customer_subscription', {
@@ -1839,9 +1832,9 @@ export const announcements = {
   }): Promise<PaginatedResponse<Announcement>> =>
     safeInvoke('list_announcements_admin', { token: getTokenOrThrow(), ...(params || {}) }),
   createAdmin: (dto: CreateAnnouncementDto): Promise<Announcement> =>
-    safeInvoke('create_announcement_admin', { token: getTokenOrThrow(), dto }),
+    safeInvoke('create_announcement_admin', { token: getTokenOrThrow(), ...dto }),
   updateAdmin: (id: string, dto: UpdateAnnouncementDto): Promise<Announcement> =>
-    safeInvoke('update_announcement_admin', { token: getTokenOrThrow(), id, dto }),
+    safeInvoke('update_announcement_admin', { token: getTokenOrThrow(), id, ...dto }),
   deleteAdmin: (id: string): Promise<void> =>
     safeInvoke('delete_announcement_admin', { token: getTokenOrThrow(), id }),
 };
