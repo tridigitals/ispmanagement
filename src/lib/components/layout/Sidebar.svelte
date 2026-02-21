@@ -168,6 +168,12 @@
             show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
           },
           {
+            label: $t('sidebar.incidents') || 'Incidents',
+            icon: 'alert-triangle',
+            href: `${tenantPrefix}/admin/network/incidents`,
+            show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+          },
+          {
             label: $t('sidebar.logs') || 'Logs',
             icon: 'file-text',
             href: `${tenantPrefix}/admin/network/logs`,

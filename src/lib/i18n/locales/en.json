@@ -104,6 +104,7 @@
     "validation_error": "Validation error",
     "status": "Status",
     "action": "Action",
+    "actions": "Actions",
     "open": "Open",
     "download": "Download",
     "load_more": "Load more",
@@ -126,6 +127,7 @@
     "inactive": "Inactive",
     "all": "All",
     "add": "Add",
+    "create": "Create",
     "global": "Global",
     "na": "—",
     "per_month_short": "/mo",
@@ -135,13 +137,19 @@
     "yes": "Yes",
     "no": "No",
     "save": "Save",
+    "saved": "Saved",
     "save_changes": "Save Changes",
     "saving": "Saving...",
     "loading": "Loading...",
     "updated": "Updated",
     "deleted": "Deleted",
+    "disabled": "Disabled",
     "forbidden": "Forbidden",
+    "confirm_delete": "Are you sure you want to delete this item?",
+    "from": "From",
+    "to": "To",
     "no_permission": "You do not have permission to view this page.",
+    "no_results": "No results",
     "empty": {
       "no_results": "No results"
     },
@@ -387,6 +395,7 @@
     "noc": "NOC",
     "wallboard": "Wallboard",
     "alerts": "Alerts",
+    "incidents": "Incidents",
     "logs": "Logs",
     "pppoe": "PPPoE",
     "ppp_profiles": "PPP Profiles",
@@ -1787,7 +1796,9 @@
       "network": {
         "alerting": {
           "title": "Router Alerting",
-          "desc": "Enable incidents and notifications derived from MikroTik polling."
+          "desc": "Enable incidents and notifications derived from MikroTik polling.",
+          "email_title": "Email alerts",
+          "email_desc": "Also send alert emails to team members who can access Network Routers."
         },
         "thresholds": {
           "title": "Thresholds",
@@ -1795,7 +1806,8 @@
           "cpu_risk": "CPU risk (%)",
           "cpu_hot": "CPU hot (%)",
           "latency_risk": "Latency risk (ms)",
-          "latency_hot": "Latency hot (ms)"
+          "latency_hot": "Latency hot (ms)",
+          "offline_after_secs": "Offline incident after (seconds)"
         }
       },
       "keys": {
@@ -1927,6 +1939,13 @@
         },
         "new": {
           "title": "Add location"
+        },
+        "edit": {
+          "title": "Edit location"
+        },
+        "delete": {
+          "title": "Delete location",
+          "message": "This location will be removed."
         },
         "fields": {
           "label": "Label",
@@ -2437,6 +2456,11 @@
           "mute_for": "Mute duration",
           "apply_mute": "Mute"
         },
+        "incidents": {
+          "title": "Open Incidents",
+          "subtitle": "Latest active incidents from monitoring engine",
+          "empty": "No active incidents."
+        },
         "timeline": {
           "title": "Incident Timeline",
           "subtitle": "Latest 20 wallboard events",
@@ -2569,7 +2593,34 @@
           "critical": "Critical"
         },
         "toasts": {
-          "acked": "Alert acknowledged"
+          "acked": "Alert acknowledged",
+          "resolved": "Alert resolved",
+          "snoozed": "Router snoozed"
+        }
+      },
+      "incidents": {
+        "title": "Network Incidents",
+        "subtitle": "Operational incident records deduplicated from alerts.",
+        "search": "Search incidents...",
+        "empty": "No incidents",
+        "actions": {
+          "toggle": "Toggle active/resolved",
+          "active": "Active",
+          "all": "All"
+        },
+        "columns": {
+          "incident": "Incident",
+          "type": "Type",
+          "severity": "Severity",
+          "status": "Status",
+          "seen": "Last Seen"
+        },
+        "drawer": {
+          "assignee": "Assignee",
+          "unassigned": "Unassigned",
+          "notes": "Notes",
+          "notes_placeholder": "Add operator notes, handover context, and actions...",
+          "save": "Save Notes"
         }
       },
       "logs": {

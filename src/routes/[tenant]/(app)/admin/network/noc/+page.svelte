@@ -12,6 +12,7 @@
   import { toast } from '$lib/stores/toast';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { user, tenant } from '$lib/stores/auth';
+  import AlertsIncidentsSwitch from '$lib/components/network/AlertsIncidentsSwitch.svelte';
 
   type NocRow = {
     id: string;
@@ -266,6 +267,10 @@
   function openRouter(id: string) {
     goto($page.url.pathname.replace(/\/admin\/network\/noc\/?$/, `/admin/network/routers/${id}`));
   }
+
+  function networkRoute(to: 'noc' | 'alerts' | 'incidents') {
+    return `${tenantPrefix}/admin/network/${to}`;
+  }
 </script>
 
 <div class="page-content fade-in">
@@ -279,10 +284,12 @@
     </div>
 
     <div class="head-actions">
-      <button class="btn ghost" type="button" onclick={load} title={$t('common.refresh') || 'Refresh'}>
-        <Icon name="refresh-cw" size={16} />
-        {$t('common.refresh') || 'Refresh'}
-      </button>
+      <AlertsIncidentsSwitch
+        current="noc"
+        nocHref={networkRoute('noc')}
+        alertsHref={networkRoute('alerts')}
+        incidentsHref={networkRoute('incidents')}
+      />
       <button
         class="btn ghost"
         type="button"
@@ -292,14 +299,6 @@
         <Icon name="monitor" size={16} />
         {$t('sidebar.wallboard') || 'Wallboard'}
       </button>
-      <div class="hint">
-        {#if refreshing}
-          <span class="spin"><Icon name="refresh-cw" size={14} /></span>
-          <span class="muted">{$t('common.loading') || 'Loading...'}</span>
-        {:else}
-          <span class="muted">{$t('common.updated') || 'Updated'}</span>
-        {/if}
-      </div>
     </div>
   </div>
 
@@ -535,27 +534,6 @@
   .btn.ghost {
     background: transparent;
     color: var(--text-primary);
-  }
-
-  .hint {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
-    border-radius: 999px;
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-card), transparent 10%);
-  }
-
-  .spin {
-    display: inline-flex;
-    animation: spin 1.1s linear infinite;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
   }
 
   .stats {

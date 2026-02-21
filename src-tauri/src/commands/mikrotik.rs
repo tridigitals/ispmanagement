@@ -1,9 +1,10 @@
 //! MikroTik router inventory + monitoring commands (tenant admin).
 
 use crate::models::{
-    CreateMikrotikRouterRequest, MikrotikAlert, MikrotikInterfaceCounter, MikrotikInterfaceMetric,
-    MikrotikIpPool, MikrotikLogEntry, MikrotikLogSyncResult, MikrotikPppProfile, MikrotikRouter,
-    MikrotikRouterMetric, MikrotikRouterNocRow, MikrotikTestResult, PaginatedResponse,
+    CreateMikrotikRouterRequest, MikrotikAlert, MikrotikIncident, MikrotikInterfaceCounter,
+    MikrotikInterfaceMetric, MikrotikIpPool, MikrotikLogEntry, MikrotikLogSyncResult,
+    MikrotikPppProfile, MikrotikRouter, MikrotikRouterMetric, MikrotikRouterNocRow,
+    MikrotikTestResult, PaginatedResponse, UpdateMikrotikIncidentRequest,
     UpdateMikrotikRouterRequest,
 };
 use crate::services::{AuditService, AuthService, MikrotikService};
@@ -79,6 +80,36 @@ pub async fn list_mikrotik_alerts(
 
     mikrotik
         .list_alerts(
+            &tenant_id,
+            active_only.unwrap_or(true),
+            limit.unwrap_or(200),
+        )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_mikrotik_incidents(
+    token: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+    active_only: Option<bool>,
+    limit: Option<u32>,
+) -> Result<Vec<MikrotikIncident>, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    mikrotik
+        .list_incidents(
             &tenant_id,
             active_only.unwrap_or(true),
             limit.unwrap_or(200),
@@ -203,6 +234,88 @@ pub async fn resolve_mikrotik_alert(
 
     mikrotik
         .resolve_alert_by_id(&tenant_id, &id, &claims.sub)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn ack_mikrotik_incident(
+    token: String,
+    id: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<(), String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    mikrotik
+        .ack_incident(&tenant_id, &id, &claims.sub)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn resolve_mikrotik_incident(
+    token: String,
+    id: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<(), String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    mikrotik
+        .resolve_incident_by_id(&tenant_id, &id, &claims.sub)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn update_mikrotik_incident(
+    token: String,
+    id: String,
+    owner_user_id: Option<String>,
+    notes: Option<String>,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<MikrotikIncident, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let req = UpdateMikrotikIncidentRequest {
+        owner_user_id,
+        notes,
+    };
+
+    mikrotik
+        .update_incident(&tenant_id, &id, req.owner_user_id, req.notes, &claims.sub)
         .await
         .map_err(|e| e.to_string())
 }

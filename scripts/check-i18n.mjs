@@ -50,9 +50,17 @@ function extractKeys(text) {
   return keys;
 }
 
-const sourceFiles = walk(path.join(repoRoot, 'src')).filter((p) =>
-  /\.(svelte|ts|js)$/.test(p),
-);
+function parseArgs(argv) {
+  const args = new Set(argv);
+  return {
+    json: args.has('--json'),
+    failOnMissing: !args.has('--no-fail'),
+    showUnused: args.has('--show-unused'),
+  };
+}
+
+const opts = parseArgs(process.argv.slice(2));
+const sourceFiles = walk(path.join(repoRoot, 'src')).filter((p) => /\.(svelte|ts|js)$/.test(p));
 
 const usedKeys = new Set();
 for (const file of sourceFiles) {
@@ -75,12 +83,33 @@ for (const loc of LOCALES) {
 }
 
 // Also find orphan keys (present but unused) - optional, keep for info.
-const unusedByLocale = [];
-for (const loc of LOCALES) {
-  const have = localeKeysets.get(loc.code);
-  const unused = [...have].filter((k) => !usedKeys.has(k)).sort();
-  unusedByLocale.push({ locale: loc.code, unusedCount: unused.length });
+const totalMissing = results.reduce((n, r) => n + r.missing.length, 0);
+
+if (opts.json) {
+  const unusedByLocale = [];
+  for (const loc of LOCALES) {
+    const have = localeKeysets.get(loc.code);
+    const unused = [...have].filter((k) => !usedKeys.has(k)).sort();
+    unusedByLocale.push({ locale: loc.code, unusedCount: unused.length });
+  }
+  console.log(JSON.stringify({ usedCount: usedKeys.size, results, unusedByLocale }, null, 2));
+} else {
+  console.log(`i18n keys used in source: ${usedKeys.size}`);
+  for (const r of results) {
+    console.log(`- ${r.locale}: ${r.missing.length} missing key(s)`);
+    for (const k of r.missing.slice(0, 40)) console.log(`  • ${k}`);
+    if (r.missing.length > 40) console.log(`  ... and ${r.missing.length - 40} more`);
+  }
+
+  if (opts.showUnused) {
+    for (const loc of LOCALES) {
+      const have = localeKeysets.get(loc.code);
+      const unused = [...have].filter((k) => !usedKeys.has(k)).sort();
+      console.log(`- ${loc.code}: ${unused.length} unused key(s)`);
+    }
+  }
 }
 
-console.log(JSON.stringify({ usedCount: usedKeys.size, results, unusedByLocale }, null, 2));
-
+if (opts.failOnMissing && totalMissing > 0) {
+  process.exitCode = 1;
+}

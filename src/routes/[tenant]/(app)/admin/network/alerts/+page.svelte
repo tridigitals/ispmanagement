@@ -9,7 +9,10 @@
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
+  import AlertsIncidentsSwitch from '$lib/components/network/AlertsIncidentsSwitch.svelte';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
+  import { user, tenant } from '$lib/stores/auth';
 
   type AlertRow = {
     id: string;
@@ -38,6 +41,15 @@
   let isMobile = $state(false);
 
   let refreshHandle: any = null;
+  let tenantCtx = $derived.by(() =>
+    resolveTenantContext({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      tenantSlug: $tenant?.slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
+  );
+  let tenantPrefix = $derived(tenantCtx.tenantPrefix);
 
   const columns = $derived.by(() => [
     { key: 'title', label: $t('admin.network.alerts.columns.alert') || 'Alert' },
@@ -147,6 +159,10 @@
   function openRouter(routerId: string) {
     goto($page.url.pathname.replace(/\/admin\/network\/alerts\/?$/, `/admin/network/routers/${routerId}`));
   }
+
+  function networkRoute(to: 'noc' | 'alerts' | 'incidents') {
+    return `${tenantPrefix}/admin/network/${to}`;
+  }
 </script>
 
 <div class="page-content fade-in">
@@ -159,6 +175,13 @@
     </div>
 
     <div class="head-actions">
+      <AlertsIncidentsSwitch
+        current="alerts"
+        nocHref={networkRoute('noc')}
+        alertsHref={networkRoute('alerts')}
+        incidentsHref={networkRoute('incidents')}
+      />
+
       <button
         class="btn ghost"
         type="button"

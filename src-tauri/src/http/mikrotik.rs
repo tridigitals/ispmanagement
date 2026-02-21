@@ -1,14 +1,15 @@
 use crate::error::{AppError, AppResult};
 use crate::http::AppState;
 use crate::models::{
-    CreateMikrotikRouterRequest, MikrotikAlert, MikrotikInterfaceCounter, MikrotikInterfaceMetric,
-    MikrotikIpPool, MikrotikLogEntry, MikrotikLogSyncResult, MikrotikPppProfile, MikrotikRouter,
-    MikrotikRouterMetric, MikrotikTestResult, PaginatedResponse, UpdateMikrotikRouterRequest,
+    CreateMikrotikRouterRequest, MikrotikAlert, MikrotikIncident, MikrotikInterfaceCounter,
+    MikrotikInterfaceMetric, MikrotikIpPool, MikrotikLogEntry, MikrotikLogSyncResult,
+    MikrotikPppProfile, MikrotikRouter, MikrotikRouterMetric, MikrotikTestResult,
+    PaginatedResponse, UpdateMikrotikIncidentRequest, UpdateMikrotikRouterRequest,
 };
 use axum::{
     extract::{Path, Query, State},
     http::HeaderMap,
-    routing::{get, post},
+    routing::{get, post, put},
     Json, Router,
 };
 use serde::Deserialize;
@@ -19,6 +20,10 @@ pub fn router() -> Router<AppState> {
         .route("/alerts", get(list_alerts))
         .route("/alerts/{id}/ack", post(ack_alert))
         .route("/alerts/{id}/resolve", post(resolve_alert))
+        .route("/incidents", get(list_incidents))
+        .route("/incidents/{id}", put(update_incident))
+        .route("/incidents/{id}/ack", post(ack_incident))
+        .route("/incidents/{id}/resolve", post(resolve_incident))
         .route("/logs", get(list_logs))
         .route("/routers", get(list_routers).post(create_router))
         .route(
@@ -143,6 +148,90 @@ async fn resolve_alert(
     state
         .mikrotik_service
         .resolve_alert_by_id(&tenant_id, &id, &claims.sub)
+        .await?;
+
+    Ok(Json(serde_json::json!({ "ok": true })))
+}
+
+// GET /api/admin/mikrotik/incidents?active_only=true&limit=200
+async fn list_incidents(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<AlertsQuery>,
+) -> AppResult<Json<Vec<MikrotikIncident>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await?;
+
+    let rows = state
+        .mikrotik_service
+        .list_incidents(
+            &tenant_id,
+            q.active_only.unwrap_or(true),
+            q.limit.unwrap_or(200),
+        )
+        .await?;
+    Ok(Json(rows))
+}
+
+// PUT /api/admin/mikrotik/incidents/{id}
+async fn update_incident(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(req): Json<UpdateMikrotikIncidentRequest>,
+) -> AppResult<Json<MikrotikIncident>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    let row = state
+        .mikrotik_service
+        .update_incident(&tenant_id, &id, req.owner_user_id, req.notes, &claims.sub)
+        .await?;
+
+    Ok(Json(row))
+}
+
+// POST /api/admin/mikrotik/incidents/{id}/ack
+async fn ack_incident(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<serde_json::Value>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    state
+        .mikrotik_service
+        .ack_incident(&tenant_id, &id, &claims.sub)
+        .await?;
+
+    Ok(Json(serde_json::json!({ "ok": true })))
+}
+
+// POST /api/admin/mikrotik/incidents/{id}/resolve
+async fn resolve_incident(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<serde_json::Value>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    state
+        .mikrotik_service
+        .resolve_incident_by_id(&tenant_id, &id, &claims.sub)
         .await?;
 
     Ok(Json(serde_json::json!({ "ok": true })))

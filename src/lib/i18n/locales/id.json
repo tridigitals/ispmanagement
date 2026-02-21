@@ -104,6 +104,7 @@
     "validation_error": "Validasi gagal",
     "status": "Status",
     "action": "Aksi",
+    "actions": "Aksi",
     "open": "Buka",
     "download": "Unduh",
     "load_more": "Muat lagi",
@@ -126,6 +127,7 @@
     "inactive": "Nonaktif",
     "all": "Semua",
     "add": "Tambah",
+    "create": "Buat",
     "global": "Global",
     "na": "—",
     "per_month_short": "/bln",
@@ -135,13 +137,19 @@
     "yes": "Ya",
     "no": "Tidak",
     "save": "Simpan",
+    "saved": "Tersimpan",
     "save_changes": "Simpan Perubahan",
     "saving": "Menyimpan...",
     "loading": "Memuat...",
     "updated": "Diperbarui",
     "deleted": "Dihapus",
+    "disabled": "Nonaktif",
     "forbidden": "Akses Ditolak",
+    "confirm_delete": "Yakin ingin menghapus item ini?",
+    "from": "Dari",
+    "to": "Sampai",
     "no_permission": "Anda tidak memiliki izin untuk melihat halaman ini.",
+    "no_results": "Tidak ada hasil",
     "empty": {
       "no_results": "Tidak ada hasil"
     },
@@ -387,6 +395,7 @@
     "noc": "NOC",
     "wallboard": "Wallboard",
     "alerts": "Alert",
+    "incidents": "Insiden",
     "logs": "Log",
     "pppoe": "PPPoE",
     "ppp_profiles": "Profil PPP",
@@ -1754,6 +1763,13 @@
         "new": {
           "title": "Tambah lokasi"
         },
+        "edit": {
+          "title": "Edit lokasi"
+        },
+        "delete": {
+          "title": "Hapus lokasi",
+          "message": "Lokasi ini akan dihapus."
+        },
         "fields": {
           "label": "Label",
           "address1": "Alamat baris 1",
@@ -2263,6 +2279,11 @@
           "mute_for": "Durasi mute",
           "apply_mute": "Mute"
         },
+        "incidents": {
+          "title": "Insiden Aktif",
+          "subtitle": "Insiden aktif terbaru dari mesin monitoring",
+          "empty": "Tidak ada insiden aktif."
+        },
         "timeline": {
           "title": "Timeline Insiden",
           "subtitle": "20 event wallboard terbaru",
@@ -2395,7 +2416,34 @@
           "critical": "Kritis"
         },
         "toasts": {
-          "acked": "Alert di-acknowledge"
+          "acked": "Alert di-acknowledge",
+          "resolved": "Alert diselesaikan",
+          "snoozed": "Router dimute"
+        }
+      },
+      "incidents": {
+        "title": "Insiden Jaringan",
+        "subtitle": "Catatan insiden operasional hasil deduplikasi dari alert.",
+        "search": "Cari insiden...",
+        "empty": "Tidak ada insiden",
+        "actions": {
+          "toggle": "Tampilkan aktif/selesai",
+          "active": "Aktif",
+          "all": "Semua"
+        },
+        "columns": {
+          "incident": "Insiden",
+          "type": "Tipe",
+          "severity": "Severity",
+          "status": "Status",
+          "seen": "Terakhir Terlihat"
+        },
+        "drawer": {
+          "assignee": "Penanggung Jawab",
+          "unassigned": "Belum ditugaskan",
+          "notes": "Catatan",
+          "notes_placeholder": "Tambahkan catatan operator, konteks handover, dan tindakan...",
+          "save": "Simpan Catatan"
         }
       },
       "logs": {

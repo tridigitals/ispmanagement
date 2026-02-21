@@ -57,6 +57,19 @@
     last_seen_at?: string | null;
     updated_at?: string | null;
   };
+  type IncidentRow = {
+    id: string;
+    router_id: string;
+    interface_name?: string | null;
+    incident_type: string;
+    severity: string;
+    status: string;
+    title: string;
+    message: string;
+    last_seen_at?: string | null;
+    updated_at?: string | null;
+    resolved_at?: string | null;
+  };
 
   type HoverBar = {
     tileKey: string;
@@ -102,6 +115,7 @@
   let refreshing = $state(false);
   let rows = $state<NocRow[]>([]);
   let alerts = $state<AlertRow[]>([]);
+  let incidents = $state<IncidentRow[]>([]);
   let alertSeverityFilter = $state<'all' | 'critical' | 'warning'>('all');
 
   let statusFilter = $state<'all' | 'offline' | 'online'>('all');
@@ -359,6 +373,44 @@
     return { total: sortedAlerts.length, critical, warning };
   });
 
+  const activeIncidents = $derived.by(() =>
+    incidents.filter((i) => {
+      const status = String(i.status || '').toLowerCase();
+      const resolvedAt = String(i.resolved_at || '').trim();
+      return status !== 'resolved' && !resolvedAt;
+    }),
+  );
+
+  function severityScore(s?: string) {
+    const sev = String(s || '').toLowerCase();
+    if (sev === 'critical') return 3;
+    if (sev === 'warning') return 2;
+    return 1;
+  }
+
+  const sortedActiveIncidents = $derived.by(() =>
+    [...activeIncidents].sort((a, b) => {
+      const sev = severityScore(b.severity) - severityScore(a.severity);
+      if (sev !== 0) return sev;
+      const ta = Date.parse(a.last_seen_at || a.updated_at || '');
+      const tb = Date.parse(b.last_seen_at || b.updated_at || '');
+      return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
+    }),
+  );
+
+  const openIncidentItems = $derived.by(() => sortedActiveIncidents.slice(0, 8));
+
+  const incidentStats = $derived.by(() => {
+    let critical = 0;
+    let warning = 0;
+    for (const i of activeIncidents) {
+      const sev = String(i.severity || '').toLowerCase();
+      if (sev === 'critical') critical += 1;
+      else if (sev === 'warning') warning += 1;
+    }
+    return { total: activeIncidents.length, critical, warning };
+  });
+
   const visibleAlerts = $derived.by(() => {
     if (alertSeverityFilter === 'all') return sortedAlerts;
     return sortedAlerts.filter((a) => String(a.severity || '').toLowerCase() === alertSeverityFilter);
@@ -381,8 +433,8 @@
       online,
       offline,
       availability,
-      critical: alertStats.critical,
-      warning: alertStats.warning,
+      critical: incidentStats.critical,
+      warning: incidentStats.warning,
       avgLatencyMs,
     };
   });
@@ -390,15 +442,15 @@
   const topIssues = $derived.by(() => {
     const oneHourAgo = Date.now() - 60 * 60 * 1000;
     const map = new Map<string, TopIssue>();
-    for (const a of sortedAlerts) {
-      const tsRaw = a.last_seen_at || a.updated_at || '';
+    for (const i of activeIncidents) {
+      const tsRaw = i.last_seen_at || i.updated_at || '';
       const ts = Date.parse(tsRaw);
       if (!Number.isFinite(ts) || (ts as number) < oneHourAgo) continue;
-      const routerId = String(a.router_id || '');
+      const routerId = String(i.router_id || '');
       if (!routerId) continue;
-      const title = String(a.title || '').trim() || 'Alert';
+      const title = String(i.title || '').trim() || 'Incident';
       const key = `${routerId}::${title.toLowerCase()}`;
-      const sev = String(a.severity || '').toLowerCase();
+      const sev = String(i.severity || '').toLowerCase();
 
       if (!map.has(key)) {
         const rr = routerById(routerId);
@@ -430,8 +482,8 @@
   });
 
   const insightsBadge = $derived.by(() => {
-    const critical = alertStats.critical;
-    const warning = alertStats.warning;
+    const critical = incidentStats.critical;
+    const warning = incidentStats.warning;
     const total = critical + warning;
     return {
       total,
@@ -479,6 +531,38 @@
     }
   }
 
+  async function loadIncidents(silent = true) {
+    try {
+      incidents = (await api.mikrotik.incidents.list({ activeOnly: false, limit: 500 })) as any;
+    } catch (e: any) {
+      if (!silent) toast.error(e?.message || e);
+    }
+  }
+
+  async function ackIncident(id: string) {
+    if (!$can('manage', 'network_routers')) return;
+    try {
+      await api.mikrotik.incidents.ack(id);
+      toast.success($t('admin.network.alerts.toasts.acked') || 'Alert acknowledged');
+      pushIncident('ack', 'Incident acknowledged');
+      await Promise.all([loadAlerts(true), loadIncidents(true)]);
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    }
+  }
+
+  async function resolveIncident(id: string) {
+    if (!$can('manage', 'network_routers')) return;
+    try {
+      await api.mikrotik.incidents.resolve(id);
+      toast.success($t('admin.network.alerts.toasts.resolved') || 'Alert resolved');
+      pushIncident('recovered', 'Incident resolved');
+      await Promise.all([loadAlerts(true), loadIncidents(true)]);
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    }
+  }
+
   async function ackRouterAlerts(routerId: string) {
     if (!$can('manage', 'network_routers')) return;
     const ids = routerAlertMap[routerId]?.ids || [];
@@ -489,7 +573,7 @@
       }
       toast.success($t('admin.network.alerts.toasts.acked') || 'Alert acknowledged');
       pushIncident('ack', `Ack ${Math.min(ids.length, 50)} alert(s)`, routerId);
-      await loadAlerts(false);
+      await Promise.all([loadAlerts(false), loadIncidents(false)]);
     } catch (e: any) {
       toast.error(e?.message || e);
     }
@@ -513,7 +597,7 @@
         `${$t('admin.network.alerts.toasts.acked') || 'Alert acknowledged'} (${Math.min(ids.length, 80)})`,
       );
       pushIncident('ack', `Ack visible ${Math.min(ids.length, 80)} alert(s)`);
-      await loadAlerts(false);
+      await Promise.all([loadAlerts(false), loadIncidents(false)]);
     } catch (e: any) {
       toast.error(e?.message || e);
     }
@@ -618,6 +702,17 @@
   function routerLabel(routerId: string) {
     const rr = routerById(routerId);
     return rr?.identity || rr?.name || routerId;
+  }
+
+  function incidentHrefById(id?: string | null) {
+    const rid = String(id || '').trim();
+    if (!rid) return `${tenantPrefix}/admin/network/incidents`;
+    return `${tenantPrefix}/admin/network/incidents?incident=${encodeURIComponent(rid)}`;
+  }
+
+  function incidentHrefForTopIssue(routerId: string, title: string) {
+    const match = incidents.find((x) => x.router_id === routerId && x.title === title);
+    return incidentHrefById(match?.id);
   }
 
   function pushIncident(kind: IncidentKind, message: string, routerId?: string) {
@@ -1315,7 +1410,7 @@
     } finally {
       refreshing = false;
     }
-    await loadAlerts(true);
+    await Promise.all([loadAlerts(true), loadIncidents(true)]);
   }
 
   function filterRows(list: NocRow[]) {
@@ -1684,7 +1779,9 @@
     })();
 
     tick = setInterval(() => void pollLiveOnce(), pollMs);
-    alertTick = setInterval(() => void loadAlerts(true), 10000);
+    alertTick = setInterval(() => {
+      void Promise.all([loadAlerts(true), loadIncidents(true)]);
+    }, 10000);
 
     return () => {
       if (typeof document !== 'undefined') {
@@ -1994,7 +2091,7 @@
                 <button
                   type="button"
                   class="top-issue-main"
-                  onclick={() => goto(`${tenantPrefix}/admin/network/alerts`)}
+                  onclick={() => goto(incidentHrefForTopIssue(it.router_id, it.title))}
                   title={it.title}
                 >
                   <span class="mono router">{it.router_name}</span>
@@ -2043,6 +2140,60 @@
                     >
                       <Icon name="clock" size={14} />
                       {$t('admin.network.wallboard.top_issues.apply_mute') || 'Mute'}
+                    </button>
+                  </div>
+                {/if}
+              </div>
+            {/each}
+          {/if}
+        </div>
+      </div>
+
+      <div class="top-issues-strip">
+        <div class="top-issues-head">
+          <span class="title">{$t('admin.network.wallboard.incidents.title') || 'Open Incidents'}</span>
+          <span class="muted">
+            {$t('admin.network.wallboard.incidents.subtitle') || 'Latest active incidents from monitoring engine'}
+          </span>
+        </div>
+        <div class="top-issues-list">
+          {#if openIncidentItems.length === 0}
+            <span class="top-issue-empty">
+              {$t('admin.network.wallboard.incidents.empty') || 'No active incidents.'}
+            </span>
+          {:else}
+            {#each openIncidentItems as it (it.id)}
+              <div class="top-issue-item">
+                <button
+                  type="button"
+                  class="top-issue-main"
+                  onclick={() => goto(incidentHrefById(it.id))}
+                  title={it.message || it.title}
+                >
+                  <span class="mono router">{routerLabel(it.router_id)}</span>
+                  <span class="issue-title">{it.title}</span>
+                  <span class="issue-count mono">{String(it.severity || 'info').toUpperCase()}</span>
+                </button>
+                <span class="muted mono">{formatMetricTs(it.last_seen_at || it.updated_at)}</span>
+                {#if $can('manage', 'network_routers')}
+                  <div class="top-issue-actions">
+                    <button
+                      type="button"
+                      class="btn-mini ghost"
+                      onclick={() => void ackIncident(it.id)}
+                      title={$t('admin.network.alerts.actions.ack') || 'Acknowledge'}
+                    >
+                      <Icon name="check" size={14} />
+                      {$t('admin.network.alerts.actions.ack') || 'Acknowledge'}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-mini ghost danger"
+                      onclick={() => void resolveIncident(it.id)}
+                      title={$t('admin.network.alerts.actions.resolve') || 'Resolve'}
+                    >
+                      <Icon name="check-circle" size={14} />
+                      {$t('admin.network.alerts.actions.resolve') || 'Resolve'}
                     </button>
                   </div>
                 {/if}
@@ -3442,7 +3593,7 @@
   }
   .controls.wall-actions {
     width: 100%;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 12px;
   }
   .toolbar-left {
@@ -3450,6 +3601,7 @@
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
+    margin-left: auto;
   }
   .toolbar-selects {
     display: inline-flex;
@@ -3921,6 +4073,14 @@
   .btn-mini.ghost {
     background: transparent;
   }
+  .btn-mini.danger {
+    border-color: color-mix(in srgb, var(--color-danger) 40%, var(--border-color));
+    color: var(--color-danger);
+  }
+  .btn-mini.danger:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+    border-color: color-mix(in srgb, var(--color-danger) 60%, var(--border-color));
+  }
   .right {
     display: inline-flex;
     align-items: center;
@@ -4382,10 +4542,11 @@
       justify-content: flex-start;
     }
     .controls.wall-actions {
-      justify-content: flex-start;
+      justify-content: flex-end;
     }
     .toolbar-left {
-      width: 100%;
+      width: auto;
+      margin-left: auto;
     }
     .toolbar-selects {
       width: 100%;

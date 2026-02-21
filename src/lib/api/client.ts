@@ -252,9 +252,13 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       list_mikrotik_routers: { method: 'GET', path: '/admin/mikrotik/routers' },
       list_mikrotik_noc: { method: 'GET', path: '/admin/mikrotik/noc' },
       list_mikrotik_alerts: { method: 'GET', path: '/admin/mikrotik/alerts' },
+      list_mikrotik_incidents: { method: 'GET', path: '/admin/mikrotik/incidents' },
       list_mikrotik_logs: { method: 'GET', path: '/admin/mikrotik/logs' },
       ack_mikrotik_alert: { method: 'POST', path: '/admin/mikrotik/alerts/:id/ack' },
       resolve_mikrotik_alert: { method: 'POST', path: '/admin/mikrotik/alerts/:id/resolve' },
+      ack_mikrotik_incident: { method: 'POST', path: '/admin/mikrotik/incidents/:id/ack' },
+      resolve_mikrotik_incident: { method: 'POST', path: '/admin/mikrotik/incidents/:id/resolve' },
+      update_mikrotik_incident: { method: 'PUT', path: '/admin/mikrotik/incidents/:id' },
       create_mikrotik_router: { method: 'POST', path: '/admin/mikrotik/routers' },
       update_mikrotik_router: { method: 'PUT', path: '/admin/mikrotik/routers/:id' },
       delete_mikrotik_router: { method: 'DELETE', path: '/admin/mikrotik/routers/:id' },
@@ -1319,6 +1323,27 @@ export const mikrotik = {
       safeInvoke('ack_mikrotik_alert', { token: getTokenOrThrow(), id }),
     resolve: (id: string): Promise<any> =>
       safeInvoke('resolve_mikrotik_alert', { token: getTokenOrThrow(), id }),
+  },
+  incidents: {
+    list: (params?: { activeOnly?: boolean; limit?: number }): Promise<any[]> =>
+      safeInvoke('list_mikrotik_incidents', {
+        token: getTokenOrThrow(),
+        active_only: params?.activeOnly,
+        activeOnly: params?.activeOnly,
+        limit: params?.limit,
+      }),
+    ack: (id: string): Promise<any> =>
+      safeInvoke('ack_mikrotik_incident', { token: getTokenOrThrow(), id }),
+    resolve: (id: string): Promise<any> =>
+      safeInvoke('resolve_mikrotik_incident', { token: getTokenOrThrow(), id }),
+    update: (id: string, payload: { ownerUserId?: string | null; notes?: string | null }): Promise<any> =>
+      safeInvoke('update_mikrotik_incident', {
+        token: getTokenOrThrow(),
+        id,
+        owner_user_id: payload.ownerUserId ?? null,
+        ownerUserId: payload.ownerUserId ?? null,
+        notes: payload.notes ?? null,
+      }),
   },
   logs: {
     list: (params?: {

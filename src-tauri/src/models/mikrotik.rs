@@ -100,6 +100,13 @@ pub struct UpdateMikrotikRouterRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateMikrotikIncidentRequest {
+    pub owner_user_id: Option<String>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MikrotikTestResult {
     pub ok: bool,
     pub identity: Option<String>,
@@ -323,6 +330,31 @@ pub struct MikrotikAlert {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct MikrotikIncident {
+    pub id: String,
+    pub tenant_id: String,
+    pub router_id: String,
+    pub interface_name: Option<String>,
+    pub incident_type: String,
+    pub dedup_key: String,
+    pub severity: String,
+    pub status: String,
+    pub title: String,
+    pub message: String,
+    pub value_num: Option<f64>,
+    pub threshold_num: Option<f64>,
+    pub first_seen_at: DateTime<Utc>,
+    pub last_seen_at: DateTime<Utc>,
+    pub resolved_at: Option<DateTime<Utc>>,
+    pub acked_at: Option<DateTime<Utc>>,
+    pub acked_by: Option<String>,
+    pub owner_user_id: Option<String>,
+    pub notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct MikrotikLogEntry {
     pub id: String,
     pub tenant_id: String,
@@ -371,6 +403,55 @@ impl MikrotikAlert {
             resolved_at: None,
             acked_at: None,
             acked_by: None,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+}
+
+impl MikrotikIncident {
+    pub fn dedup_key(router_id: &str, interface_name: Option<&str>, incident_type: &str) -> String {
+        match interface_name {
+            Some(name) if !name.trim().is_empty() => {
+                format!("{router_id}::{incident_type}::iface:{}", name.trim())
+            }
+            _ => format!("{router_id}::{incident_type}"),
+        }
+    }
+
+    pub fn new(
+        tenant_id: String,
+        router_id: String,
+        interface_name: Option<String>,
+        incident_type: String,
+        severity: String,
+        title: String,
+        message: String,
+        value_num: Option<f64>,
+        threshold_num: Option<f64>,
+    ) -> Self {
+        let now = Utc::now();
+        let dedup_key = Self::dedup_key(&router_id, interface_name.as_deref(), &incident_type);
+        Self {
+            id: Uuid::new_v4().to_string(),
+            tenant_id,
+            router_id,
+            interface_name,
+            incident_type,
+            dedup_key,
+            severity,
+            status: "open".to_string(),
+            title,
+            message,
+            value_num,
+            threshold_num,
+            first_seen_at: now,
+            last_seen_at: now,
+            resolved_at: None,
+            acked_at: None,
+            acked_by: None,
+            owner_user_id: None,
+            notes: None,
             created_at: now,
             updated_at: now,
         }

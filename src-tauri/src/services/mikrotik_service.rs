@@ -12,11 +12,11 @@
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    CreateMikrotikRouterRequest, MikrotikAlert, MikrotikHealthSnapshot, MikrotikInterfaceCounter,
-    MikrotikInterfaceMetric, MikrotikInterfaceSnapshot, MikrotikIpAddressSnapshot,
-    MikrotikLogEntry, MikrotikLogSyncResult, MikrotikRouter, MikrotikRouterMetric,
-    MikrotikRouterNocRow, MikrotikRouterSnapshot, MikrotikTestResult, PaginatedResponse,
-    UpdateMikrotikRouterRequest,
+    CreateMikrotikRouterRequest, MikrotikAlert, MikrotikHealthSnapshot, MikrotikIncident,
+    MikrotikInterfaceCounter, MikrotikInterfaceMetric, MikrotikInterfaceSnapshot,
+    MikrotikIpAddressSnapshot, MikrotikLogEntry, MikrotikLogSyncResult, MikrotikRouter,
+    MikrotikRouterMetric, MikrotikRouterNocRow, MikrotikRouterSnapshot, MikrotikTestResult,
+    PaginatedResponse, UpdateMikrotikRouterRequest,
 };
 use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
 use crate::services::{AuditService, NotificationService, SettingsService};
@@ -176,6 +176,127 @@ impl MikrotikService {
         };
 
         Ok(rows)
+    }
+
+    pub async fn list_incidents(
+        &self,
+        tenant_id: &str,
+        active_only: bool,
+        limit: u32,
+    ) -> AppResult<Vec<MikrotikIncident>> {
+        let rows = if active_only {
+            sqlx::query_as::<_, MikrotikIncident>(
+                r#"
+                SELECT * FROM mikrotik_incidents
+                WHERE tenant_id = $1 AND resolved_at IS NULL
+                ORDER BY updated_at DESC
+                LIMIT $2
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(limit as i64)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(AppError::Database)?
+        } else {
+            sqlx::query_as::<_, MikrotikIncident>(
+                r#"
+                SELECT * FROM mikrotik_incidents
+                WHERE tenant_id = $1
+                ORDER BY updated_at DESC
+                LIMIT $2
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(limit as i64)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(AppError::Database)?
+        };
+
+        Ok(rows)
+    }
+
+    pub async fn update_incident(
+        &self,
+        tenant_id: &str,
+        incident_id: &str,
+        owner_user_id: Option<String>,
+        notes: Option<String>,
+        user_id: &str,
+    ) -> AppResult<MikrotikIncident> {
+        let now = Utc::now();
+        let normalized_owner = owner_user_id.and_then(|v| {
+            let s = v.trim();
+            if s.is_empty() {
+                None
+            } else {
+                Some(s.to_string())
+            }
+        });
+        let normalized_notes = notes.and_then(|v| {
+            let s = v.trim();
+            if s.is_empty() {
+                None
+            } else {
+                Some(s.to_string())
+            }
+        });
+
+        let affected = sqlx::query(
+            r#"
+            UPDATE mikrotik_incidents
+            SET owner_user_id = $1,
+                notes = $2,
+                status = CASE
+                  WHEN resolved_at IS NULL
+                    AND status = 'open'
+                    AND ($1 IS NOT NULL OR $2 IS NOT NULL) THEN 'in_progress'
+                  ELSE status
+                END,
+                updated_at = $3
+            WHERE id = $4 AND tenant_id = $5
+            "#,
+        )
+        .bind(&normalized_owner)
+        .bind(&normalized_notes)
+        .bind(now)
+        .bind(incident_id)
+        .bind(tenant_id)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .rows_affected();
+
+        if affected == 0 {
+            return Err(AppError::NotFound("Incident not found".to_string()));
+        }
+
+        let incident = sqlx::query_as::<_, MikrotikIncident>(
+            r#"
+            SELECT * FROM mikrotik_incidents
+            WHERE id = $1 AND tenant_id = $2
+            "#,
+        )
+        .bind(incident_id)
+        .bind(tenant_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        self.audit_service
+            .log(
+                Some(user_id),
+                Some(tenant_id),
+                "update",
+                "mikrotik_incident",
+                Some(incident_id),
+                Some("Updated incident assignment/notes"),
+                None,
+            )
+            .await;
+
+        Ok(incident)
     }
 
     pub async fn list_logs(
@@ -386,6 +507,18 @@ impl MikrotikService {
 
     pub async fn ack_alert(&self, tenant_id: &str, alert_id: &str, user_id: &str) -> AppResult<()> {
         let now = Utc::now();
+        let target = sqlx::query_as::<_, MikrotikAlert>(
+            r#"
+            SELECT * FROM mikrotik_alerts
+            WHERE id = $1 AND tenant_id = $2
+            "#,
+        )
+        .bind(alert_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
         sqlx::query(
             r#"
             UPDATE mikrotik_alerts
@@ -404,6 +537,91 @@ impl MikrotikService {
         .execute(&self.pool)
         .await
         .map_err(AppError::Database)?;
+
+        if let Some(alert) = target {
+            let dedup_key = MikrotikIncident::dedup_key(&alert.router_id, None, &alert.alert_type);
+            let _ = sqlx::query(
+                r#"
+                UPDATE mikrotik_incidents
+                SET status = 'ack',
+                    acked_at = $1,
+                    acked_by = $2,
+                    updated_at = $3
+                WHERE tenant_id = $4 AND dedup_key = $5 AND resolved_at IS NULL
+                "#,
+            )
+            .bind(now)
+            .bind(user_id)
+            .bind(now)
+            .bind(tenant_id)
+            .bind(dedup_key)
+            .execute(&self.pool)
+            .await;
+        }
+        Ok(())
+    }
+
+    pub async fn ack_incident(
+        &self,
+        tenant_id: &str,
+        incident_id: &str,
+        user_id: &str,
+    ) -> AppResult<()> {
+        let now = Utc::now();
+        let target = sqlx::query_as::<_, MikrotikIncident>(
+            r#"
+            SELECT * FROM mikrotik_incidents
+            WHERE id = $1 AND tenant_id = $2
+            "#,
+        )
+        .bind(incident_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        sqlx::query(
+            r#"
+            UPDATE mikrotik_incidents
+            SET status = 'ack',
+                acked_at = $1,
+                acked_by = $2,
+                updated_at = $3
+            WHERE id = $4 AND tenant_id = $5 AND resolved_at IS NULL
+            "#,
+        )
+        .bind(now)
+        .bind(user_id)
+        .bind(now)
+        .bind(incident_id)
+        .bind(tenant_id)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        if let Some(incident) = target {
+            let _ = sqlx::query(
+                r#"
+                UPDATE mikrotik_alerts
+                SET status = 'ack',
+                    acked_at = $1,
+                    acked_by = $2,
+                    updated_at = $3
+                WHERE tenant_id = $4
+                  AND router_id = $5
+                  AND alert_type = $6
+                  AND resolved_at IS NULL
+                "#,
+            )
+            .bind(now)
+            .bind(user_id)
+            .bind(now)
+            .bind(tenant_id)
+            .bind(&incident.router_id)
+            .bind(&incident.incident_type)
+            .execute(&self.pool)
+            .await;
+        }
         Ok(())
     }
 
@@ -446,6 +664,10 @@ impl MikrotikService {
         .await
         .map_err(AppError::Database)?;
 
+        let _ = self
+            .resolve_incident(tenant_id, &alert.router_id, None, &alert.alert_type)
+            .await;
+
         self.audit_service
             .log(
                 Some(user_id),
@@ -456,6 +678,83 @@ impl MikrotikService {
                 Some(&format!(
                     "Resolved alert {} for router {} (type: {})",
                     alert.title, alert.router_id, alert.alert_type
+                )),
+                None,
+            )
+            .await;
+
+        Ok(())
+    }
+
+    pub async fn resolve_incident_by_id(
+        &self,
+        tenant_id: &str,
+        incident_id: &str,
+        user_id: &str,
+    ) -> AppResult<()> {
+        let now = Utc::now();
+        let incident: Option<MikrotikIncident> = sqlx::query_as::<_, MikrotikIncident>(
+            r#"
+            SELECT * FROM mikrotik_incidents
+            WHERE id = $1 AND tenant_id = $2
+            "#,
+        )
+        .bind(incident_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let incident =
+            incident.ok_or_else(|| AppError::NotFound("Incident not found".to_string()))?;
+
+        sqlx::query(
+            r#"
+            UPDATE mikrotik_incidents
+            SET status = 'resolved',
+                resolved_at = $1,
+                updated_at = $2
+            WHERE id = $3 AND tenant_id = $4 AND resolved_at IS NULL
+            "#,
+        )
+        .bind(now)
+        .bind(now)
+        .bind(incident_id)
+        .bind(tenant_id)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let _ = sqlx::query(
+            r#"
+            UPDATE mikrotik_alerts
+            SET status = 'resolved',
+                resolved_at = $1,
+                updated_at = $2
+            WHERE tenant_id = $3
+              AND router_id = $4
+              AND alert_type = $5
+              AND resolved_at IS NULL
+            "#,
+        )
+        .bind(now)
+        .bind(now)
+        .bind(tenant_id)
+        .bind(&incident.router_id)
+        .bind(&incident.incident_type)
+        .execute(&self.pool)
+        .await;
+
+        self.audit_service
+            .log(
+                Some(user_id),
+                Some(tenant_id),
+                "resolve",
+                "mikrotik_incident",
+                Some(incident_id),
+                Some(&format!(
+                    "Resolved incident {} for router {} (type: {})",
+                    incident.title, incident.router_id, incident.incident_type
                 )),
                 None,
             )
@@ -1799,6 +2098,19 @@ impl MikrotikService {
             .execute(&self.pool)
             .await
             .map_err(AppError::Database)?;
+            self.upsert_incident(
+                tenant_id,
+                &router.id,
+                None,
+                alert_type,
+                severity,
+                title,
+                &message,
+                value_num,
+                threshold_num,
+                now,
+            )
+            .await?;
             return Ok(false);
         }
 
@@ -1850,7 +2162,132 @@ impl MikrotikService {
         .await
         .map_err(AppError::Database)?;
 
+        self.upsert_incident(
+            tenant_id,
+            &router.id,
+            None,
+            alert_type,
+            severity,
+            title,
+            &alert.message,
+            value_num,
+            threshold_num,
+            now,
+        )
+        .await?;
+
         Ok(true)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn upsert_incident(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        interface_name: Option<&str>,
+        incident_type: &str,
+        severity: &str,
+        title: &str,
+        message: &str,
+        value_num: Option<f64>,
+        threshold_num: Option<f64>,
+        now: DateTime<Utc>,
+    ) -> AppResult<()> {
+        let dedup_key = MikrotikIncident::dedup_key(router_id, interface_name, incident_type);
+        let existing: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT id FROM mikrotik_incidents
+            WHERE tenant_id = $1 AND dedup_key = $2 AND resolved_at IS NULL
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&dedup_key)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        if let Some(id) = existing {
+            sqlx::query(
+                r#"
+                UPDATE mikrotik_incidents
+                SET severity = $1,
+                    title = $2,
+                    message = $3,
+                    value_num = $4,
+                    threshold_num = $5,
+                    last_seen_at = $6,
+                    updated_at = $7
+                WHERE id = $8
+                "#,
+            )
+            .bind(severity)
+            .bind(title)
+            .bind(message)
+            .bind(value_num)
+            .bind(threshold_num)
+            .bind(now)
+            .bind(now)
+            .bind(&id)
+            .execute(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
+            return Ok(());
+        }
+
+        let mut incident = MikrotikIncident::new(
+            tenant_id.to_string(),
+            router_id.to_string(),
+            interface_name.map(|s| s.to_string()),
+            incident_type.to_string(),
+            severity.to_string(),
+            title.to_string(),
+            message.to_string(),
+            value_num,
+            threshold_num,
+        );
+        incident.first_seen_at = now;
+        incident.last_seen_at = now;
+        incident.created_at = now;
+        incident.updated_at = now;
+
+        sqlx::query(
+            r#"
+            INSERT INTO mikrotik_incidents
+            (id, tenant_id, router_id, interface_name, incident_type, dedup_key, severity, status,
+             title, message, value_num, threshold_num, first_seen_at, last_seen_at, resolved_at,
+             acked_at, acked_by, owner_user_id, notes, created_at, updated_at)
+            VALUES
+            ($1,$2,$3,$4,$5,$6,$7,$8,
+             $9,$10,$11,$12,$13,$14,$15,
+             $16,$17,$18,$19,$20,$21)
+            "#,
+        )
+        .bind(&incident.id)
+        .bind(&incident.tenant_id)
+        .bind(&incident.router_id)
+        .bind(&incident.interface_name)
+        .bind(&incident.incident_type)
+        .bind(&incident.dedup_key)
+        .bind(&incident.severity)
+        .bind(&incident.status)
+        .bind(&incident.title)
+        .bind(&incident.message)
+        .bind(incident.value_num)
+        .bind(incident.threshold_num)
+        .bind(incident.first_seen_at)
+        .bind(incident.last_seen_at)
+        .bind(incident.resolved_at)
+        .bind(incident.acked_at)
+        .bind(&incident.acked_by)
+        .bind(&incident.owner_user_id)
+        .bind(&incident.notes)
+        .bind(incident.created_at)
+        .bind(incident.updated_at)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        Ok(())
     }
 
     async fn resolve_alert(
@@ -1874,6 +2311,36 @@ impl MikrotikService {
         .bind(tenant_id)
         .bind(router_id)
         .bind(alert_type)
+        .execute(&self.pool)
+        .await;
+        let _ = self
+            .resolve_incident(tenant_id, router_id, None, alert_type)
+            .await;
+        Ok(())
+    }
+
+    async fn resolve_incident(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        interface_name: Option<&str>,
+        incident_type: &str,
+    ) -> AppResult<()> {
+        let now = Utc::now();
+        let dedup_key = MikrotikIncident::dedup_key(router_id, interface_name, incident_type);
+        let _ = sqlx::query(
+            r#"
+            UPDATE mikrotik_incidents
+            SET status = 'resolved',
+                resolved_at = $1,
+                updated_at = $2
+            WHERE tenant_id = $3 AND dedup_key = $4 AND resolved_at IS NULL
+            "#,
+        )
+        .bind(now)
+        .bind(now)
+        .bind(tenant_id)
+        .bind(dedup_key)
         .execute(&self.pool)
         .await;
         Ok(())
