@@ -367,6 +367,32 @@ pub async fn simulate_mikrotik_incident(
 }
 
 #[tauri::command]
+pub async fn run_mikrotik_incident_auto_escalation(
+    token: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<serde_json::Value, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let escalated = mikrotik
+        .trigger_auto_escalation_now(&tenant_id, &claims.sub)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(serde_json::json!({ "ok": true, "escalated": escalated }))
+}
+
+#[tauri::command]
 pub async fn get_mikrotik_router(
     token: String,
     id: String,

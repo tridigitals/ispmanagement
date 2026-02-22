@@ -364,6 +364,12 @@ pub struct MikrotikIncident {
     pub acked_by: Option<String>,
     pub owner_user_id: Option<String>,
     pub notes: Option<String>,
+    #[serde(default)]
+    #[sqlx(default)]
+    pub is_auto_escalated: bool,
+    #[serde(default)]
+    #[sqlx(default)]
+    pub escalated_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -466,6 +472,8 @@ impl MikrotikIncident {
             acked_by: None,
             owner_user_id: None,
             notes: None,
+            is_auto_escalated: false,
+            escalated_at: None,
             created_at: now,
             updated_at: now,
         }

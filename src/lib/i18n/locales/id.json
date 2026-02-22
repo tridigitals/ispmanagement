@@ -2430,7 +2430,14 @@
           "toggle": "Tampilkan aktif/selesai",
           "active": "Aktif",
           "all": "Semua",
-          "simulate": "Simulasi"
+          "simulate": "Simulasi",
+          "run_auto_escalation": "Jalankan Auto Eskalasi"
+        },
+        "labels": {
+          "auto_escalated": "Auto Eskalasi"
+        },
+        "toasts": {
+          "auto_escalation_done": "{{count}} insiden berhasil dieskalasi"
         },
         "simulate": {
           "subtitle": "Buat insiden uji secara manual",
@@ -2489,6 +2496,7 @@
           "first_seen": "Pertama terdeteksi",
           "acked": "Di-acknowledge",
           "assigned": "Ditugaskan",
+          "auto_escalated": "Dieskalasi otomatis menjadi kritis",
           "notes_updated": "Catatan diperbarui",
           "resolved": "Diselesaikan",
           "last_seen": "Terakhir terlihat"

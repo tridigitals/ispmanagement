@@ -2615,7 +2615,14 @@
           "toggle": "Toggle active/resolved",
           "active": "Active",
           "all": "All",
-          "simulate": "Simulate"
+          "simulate": "Simulate",
+          "run_auto_escalation": "Run Auto Escalation"
+        },
+        "labels": {
+          "auto_escalated": "Auto Escalated"
+        },
+        "toasts": {
+          "auto_escalation_done": "{{count}} incident(s) escalated"
         },
         "simulate": {
           "subtitle": "Create test incident manually",
@@ -2674,6 +2681,7 @@
           "first_seen": "First detected",
           "acked": "Acknowledged",
           "assigned": "Assigned",
+          "auto_escalated": "Auto escalated to critical",
           "notes_updated": "Notes updated",
           "resolved": "Resolved",
           "last_seen": "Last seen"

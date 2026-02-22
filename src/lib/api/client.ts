@@ -260,6 +260,10 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       resolve_mikrotik_incident: { method: 'POST', path: '/admin/mikrotik/incidents/:id/resolve' },
       update_mikrotik_incident: { method: 'PUT', path: '/admin/mikrotik/incidents/:id' },
       simulate_mikrotik_incident: { method: 'POST', path: '/admin/mikrotik/incidents/simulate' },
+      run_mikrotik_incident_auto_escalation: {
+        method: 'POST',
+        path: '/admin/mikrotik/incidents/escalate-now',
+      },
       create_mikrotik_router: { method: 'POST', path: '/admin/mikrotik/routers' },
       update_mikrotik_router: { method: 'PUT', path: '/admin/mikrotik/routers/:id' },
       delete_mikrotik_router: { method: 'DELETE', path: '/admin/mikrotik/routers/:id' },
@@ -1363,6 +1367,8 @@ export const mikrotik = {
         interfaceName: payload.interfaceName ?? null,
         message: payload.message ?? null,
       }),
+    runAutoEscalation: (): Promise<{ ok: boolean; escalated: number }> =>
+      safeInvoke('run_mikrotik_incident_auto_escalation', { token: getTokenOrThrow() }),
   },
   logs: {
     list: (params?: {

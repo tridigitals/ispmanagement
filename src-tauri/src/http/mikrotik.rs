@@ -23,6 +23,7 @@ pub fn router() -> Router<AppState> {
         .route("/alerts/{id}/resolve", post(resolve_alert))
         .route("/incidents", get(list_incidents))
         .route("/incidents/simulate", post(simulate_incident))
+        .route("/incidents/escalate-now", post(run_incident_auto_escalation))
         .route("/incidents/{id}", put(update_incident))
         .route("/incidents/{id}/ack", post(ack_incident))
         .route("/incidents/{id}/resolve", post(resolve_incident))
@@ -224,6 +225,24 @@ async fn simulate_incident(
         )
         .await?;
     Ok(Json(row))
+}
+
+// POST /api/admin/mikrotik/incidents/escalate-now
+async fn run_incident_auto_escalation(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> AppResult<Json<serde_json::Value>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    let escalated = state
+        .mikrotik_service
+        .trigger_auto_escalation_now(&tenant_id, &claims.sub)
+        .await?;
+    Ok(Json(serde_json::json!({ "ok": true, "escalated": escalated })))
 }
 
 // POST /api/admin/mikrotik/incidents/{id}/ack

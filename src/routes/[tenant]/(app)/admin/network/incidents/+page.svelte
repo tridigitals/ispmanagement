@@ -28,6 +28,8 @@
     message: string;
     owner_user_id?: string | null;
     notes?: string | null;
+    is_auto_escalated?: boolean;
+    escalated_at?: string | null;
     first_seen_at?: string;
     acked_at?: string | null;
     acked_by?: string | null;
@@ -91,6 +93,7 @@
   let simulateInterface = $state('');
   let simulateMessage = $state('');
   let exportMenuOpen = $state(false);
+  let escalationRunBusy = $state(false);
   let nowMs = $state(Date.now());
   let refreshHandle: any = null;
   let slaTickHandle: any = null;
@@ -346,6 +349,24 @@
     }
   }
 
+  async function runAutoEscalationNow() {
+    if (escalationRunBusy) return;
+    escalationRunBusy = true;
+    try {
+      const res = await api.mikrotik.incidents.runAutoEscalation();
+      const count = Number(res?.escalated ?? 0);
+      toast.success(
+        $t('admin.network.incidents.toasts.auto_escalation_done', { values: { count } }) ||
+          `${count} incident(s) escalated`,
+      );
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    } finally {
+      escalationRunBusy = false;
+    }
+  }
+
   function typeLabel(tpe: string) {
     if (tpe === 'offline') return $t('admin.network.alerts.types.offline') || 'Offline';
     if (tpe === 'cpu') return $t('admin.network.alerts.types.cpu') || 'CPU';
@@ -509,6 +530,13 @@
       items.push({
         ts: incident.updated_at,
         title: $t('admin.network.incidents.activity.notes_updated') || 'Notes updated',
+      });
+    }
+
+    if (incident.is_auto_escalated) {
+      items.push({
+        ts: incident.escalated_at || incident.updated_at,
+        title: $t('admin.network.incidents.activity.auto_escalated') || 'Auto escalated to critical',
       });
     }
 
@@ -744,6 +772,10 @@
       status: row.status || '',
       assignee: ownerLabel(row.owner_user_id),
       interface_name: row.interface_name || '',
+      auto_escalated: row.is_auto_escalated ? 'yes' : 'no',
+      escalated_at: row.escalated_at
+        ? formatDateTime(row.escalated_at, { timeZone: $appSettings.app_timezone })
+        : '',
       router_id: row.router_id || '',
       sla_open_for: formatOpenDuration(incidentOpenMs(row)),
       first_seen_at: row.first_seen_at
@@ -919,6 +951,14 @@
         <Icon name="refresh-cw" size={16} />
         {$t('common.refresh') || 'Refresh'}
       </button>
+      {#if $can('manage', 'network_routers')}
+        <button class="btn ghost" type="button" onclick={runAutoEscalationNow} disabled={escalationRunBusy}>
+          <Icon name="shield-alert" size={16} />
+          {escalationRunBusy
+            ? $t('common.processing') || 'Processing...'
+            : $t('admin.network.incidents.actions.run_auto_escalation') || 'Run Auto Escalation'}
+        </button>
+      {/if}
       <div class="export-wrap">
         <button class="btn ghost" type="button" onclick={toggleExportMenu}>
           <Icon name="download" size={16} />
@@ -1135,9 +1175,14 @@
         {:else if key === 'type'}
           <span class="chip mono">{typeLabel(item.incident_type)}</span>
         {:else if key === 'severity'}
-          <span class="pill" class:critical={item.severity === 'critical'} class:warn={item.severity === 'warning'}>
-            {severityLabel(item.severity)}
-          </span>
+          <div class="severity-cell">
+            <span class="pill" class:critical={item.severity === 'critical'} class:warn={item.severity === 'warning'}>
+              {severityLabel(item.severity)}
+            </span>
+            {#if item.is_auto_escalated}
+              <span class="pill auto-escalated">{$t('admin.network.incidents.labels.auto_escalated') || 'Auto Escalated'}</span>
+            {/if}
+          </div>
         {:else if key === 'status'}
           <div class="status-cell">
             <span class="pill" class:ack={item.status === 'ack'} class:resolved={item.status === 'resolved'}>
@@ -1210,6 +1255,14 @@
           <div class="drow"><span class="muted">{$t('admin.network.incidents.columns.status') || 'Status'}</span><span class="mono">{incident.status}</span></div>
           <div class="drow"><span class="muted">{$t('admin.network.incidents.columns.type') || 'Type'}</span><span class="mono">{typeLabel(incident.incident_type)}</span></div>
           <div class="drow"><span class="muted">{$t('admin.network.incidents.columns.severity') || 'Severity'}</span><span class="mono">{severityLabel(incident.severity)}</span></div>
+          <div class="drow">
+            <span class="muted">{$t('admin.network.incidents.labels.auto_escalated') || 'Auto Escalated'}</span>
+            <span class="mono">
+              {incident.is_auto_escalated
+                ? formatDateTime(incident.escalated_at || incident.updated_at, { timeZone: $appSettings.app_timezone })
+                : ($t('common.no') || 'No')}
+            </span>
+          </div>
           <div class="drow"><span class="muted">{$t('admin.network.incidents.columns.seen') || 'Last Seen'}</span><span class="mono">{formatDateTime(incident.last_seen_at, { timeZone: $appSettings.app_timezone })}</span></div>
           <div class="drow">
             <span class="muted">{$t('admin.network.incidents.drawer.email_notify') || 'Email notify'}</span>
@@ -1704,6 +1757,18 @@
   }
   .pill.resolved {
     opacity: 0.75;
+  }
+  .severity-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .pill.auto-escalated {
+    border-color: color-mix(in srgb, var(--color-danger) 60%, var(--border-color));
+    color: color-mix(in srgb, var(--color-danger) 90%, #fff 10%);
+    background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+    text-transform: none;
   }
   .status-cell {
     display: grid;

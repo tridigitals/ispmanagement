@@ -187,9 +187,25 @@ impl MikrotikService {
         let rows = if active_only {
             sqlx::query_as::<_, MikrotikIncident>(
                 r#"
-                SELECT * FROM mikrotik_incidents
-                WHERE tenant_id = $1 AND resolved_at IS NULL
-                ORDER BY updated_at DESC
+                SELECT
+                  i.*,
+                  EXISTS(
+                    SELECT 1 FROM audit_logs a
+                    WHERE a.tenant_id = i.tenant_id
+                      AND a.resource = 'mikrotik_incident'
+                      AND a.resource_id = i.id
+                      AND a.action = 'escalate'
+                  ) AS is_auto_escalated,
+                  (
+                    SELECT MAX(a.created_at) FROM audit_logs a
+                    WHERE a.tenant_id = i.tenant_id
+                      AND a.resource = 'mikrotik_incident'
+                      AND a.resource_id = i.id
+                      AND a.action = 'escalate'
+                  ) AS escalated_at
+                FROM mikrotik_incidents i
+                WHERE i.tenant_id = $1 AND i.resolved_at IS NULL
+                ORDER BY i.updated_at DESC
                 LIMIT $2
                 "#,
             )
@@ -201,9 +217,25 @@ impl MikrotikService {
         } else {
             sqlx::query_as::<_, MikrotikIncident>(
                 r#"
-                SELECT * FROM mikrotik_incidents
-                WHERE tenant_id = $1
-                ORDER BY updated_at DESC
+                SELECT
+                  i.*,
+                  EXISTS(
+                    SELECT 1 FROM audit_logs a
+                    WHERE a.tenant_id = i.tenant_id
+                      AND a.resource = 'mikrotik_incident'
+                      AND a.resource_id = i.id
+                      AND a.action = 'escalate'
+                  ) AS is_auto_escalated,
+                  (
+                    SELECT MAX(a.created_at) FROM audit_logs a
+                    WHERE a.tenant_id = i.tenant_id
+                      AND a.resource = 'mikrotik_incident'
+                      AND a.resource_id = i.id
+                      AND a.action = 'escalate'
+                  ) AS escalated_at
+                FROM mikrotik_incidents i
+                WHERE i.tenant_id = $1
+                ORDER BY i.updated_at DESC
                 LIMIT $2
                 "#,
             )
@@ -215,6 +247,26 @@ impl MikrotikService {
         };
 
         Ok(rows)
+    }
+
+    pub async fn trigger_auto_escalation_now(
+        &self,
+        tenant_id: &str,
+        user_id: &str,
+    ) -> AppResult<i64> {
+        let count = self.auto_escalate_incidents(tenant_id).await?;
+        self.audit_service
+            .log(
+                Some(user_id),
+                Some(tenant_id),
+                "run_auto_escalation",
+                "mikrotik_incident",
+                None,
+                Some(&format!("Manual auto escalation run; escalated {} incident(s)", count)),
+                None,
+            )
+            .await;
+        Ok(count)
     }
 
     pub async fn update_incident(
@@ -1868,7 +1920,7 @@ impl MikrotikService {
         Ok(())
     }
 
-    async fn auto_escalate_incidents(&self, tenant_id: &str) -> AppResult<()> {
+    async fn auto_escalate_incidents(&self, tenant_id: &str) -> AppResult<i64> {
         let enabled = match self
             .settings_service
             .get_value(Some(tenant_id), "mikrotik_incident_auto_escalation_enabled")
@@ -1881,7 +1933,7 @@ impl MikrotikService {
             _ => false,
         };
         if !enabled {
-            return Ok(());
+            return Ok(0);
         }
 
         let threshold_minutes = match self
@@ -1903,7 +1955,7 @@ impl MikrotikService {
             WHERE tenant_id = $1
               AND resolved_at IS NULL
               AND acked_at IS NULL
-              AND status = 'open'
+              AND status IN ('open', 'in_progress')
               AND severity <> 'critical'
               AND first_seen_at <= $2
             ORDER BY first_seen_at ASC
@@ -1916,8 +1968,9 @@ impl MikrotikService {
         .await
         .map_err(AppError::Database)?;
 
+        let mut escalated_count: i64 = 0;
         for incident in candidates {
-            let _ = sqlx::query(
+            let affected = sqlx::query(
                 r#"
                 UPDATE mikrotik_incidents
                 SET severity = 'critical',
@@ -1933,7 +1986,14 @@ impl MikrotikService {
             .bind(&incident.id)
             .bind(tenant_id)
             .execute(&self.pool)
-            .await;
+            .await
+            .map_err(AppError::Database)?
+            .rows_affected();
+
+            if affected == 0 {
+                continue;
+            }
+            escalated_count += affected as i64;
 
             self.notify_tenant(
                 tenant_id,
@@ -1963,7 +2023,7 @@ impl MikrotikService {
                 .await;
         }
 
-        Ok(())
+        Ok(escalated_count)
     }
 
     async fn poll_router(
