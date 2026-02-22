@@ -65,6 +65,115 @@ impl SettingsService {
         Ok(setting.map(|s| s.value))
     }
 
+    async fn get_value_fallback(
+        &self,
+        tenant_id: Option<&str>,
+        key: &str,
+    ) -> AppResult<Option<String>> {
+        if let Some(tid) = tenant_id {
+            if let Some(value) = self.get_value(Some(tid), key).await? {
+                if !value.trim().is_empty() {
+                    return Ok(Some(value));
+                }
+            }
+        }
+
+        self.get_value(None, key).await
+    }
+
+    /// Validate prerequisites for enabling email verification.
+    ///
+    /// Checks email provider config in tenant scope with fallback to global scope.
+    pub async fn validate_email_verification_prerequisites(
+        &self,
+        tenant_id: Option<&str>,
+    ) -> AppResult<()> {
+        let provider = self
+            .get_value_fallback(tenant_id, "email_provider")
+            .await?
+            .unwrap_or_else(|| "resend".to_string())
+            .trim()
+            .to_ascii_lowercase();
+
+        let from_address = self
+            .get_value_fallback(tenant_id, "email_from_address")
+            .await?
+            .unwrap_or_default();
+
+        if from_address.trim().is_empty() {
+            return Err(AppError::Validation(
+                "Cannot enable email verification: email from address is not configured"
+                    .to_string(),
+            ));
+        }
+
+        match provider.as_str() {
+            "smtp" => {
+                let smtp_host = self
+                    .get_value_fallback(tenant_id, "email_smtp_host")
+                    .await?
+                    .unwrap_or_default();
+                let smtp_port = self
+                    .get_value_fallback(tenant_id, "email_smtp_port")
+                    .await?
+                    .unwrap_or_default();
+                let smtp_username = self
+                    .get_value_fallback(tenant_id, "email_smtp_username")
+                    .await?
+                    .unwrap_or_default();
+                let smtp_password = self
+                    .get_value_fallback(tenant_id, "email_smtp_password")
+                    .await?
+                    .unwrap_or_default();
+
+                if smtp_host.trim().is_empty()
+                    || smtp_port.trim().is_empty()
+                    || smtp_username.trim().is_empty()
+                    || smtp_password.trim().is_empty()
+                {
+                    return Err(AppError::Validation(
+                        "Cannot enable email verification: SMTP configuration is incomplete"
+                            .to_string(),
+                    ));
+                }
+            }
+            "resend" | "sendgrid" => {
+                let api_key = self
+                    .get_value_fallback(tenant_id, "email_api_key")
+                    .await?
+                    .unwrap_or_default();
+
+                if api_key.trim().is_empty() {
+                    return Err(AppError::Validation(
+                        "Cannot enable email verification: email API key is not configured"
+                            .to_string(),
+                    ));
+                }
+            }
+            "webhook" => {
+                let webhook_url = self
+                    .get_value_fallback(tenant_id, "email_webhook_url")
+                    .await?
+                    .unwrap_or_default();
+
+                if webhook_url.trim().is_empty() {
+                    return Err(AppError::Validation(
+                        "Cannot enable email verification: email webhook URL is not configured"
+                            .to_string(),
+                    ));
+                }
+            }
+            _ => {
+                return Err(AppError::Validation(format!(
+                    "Cannot enable email verification: unknown email provider '{}'",
+                    provider
+                )));
+            }
+        }
+
+        Ok(())
+    }
+
     /// Upsert (insert or update) setting for a tenant
     pub async fn upsert(
         &self,

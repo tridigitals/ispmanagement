@@ -39,6 +39,12 @@ pub struct PublicSettings {
     pub payment_manual_enabled: bool,
 }
 
+#[derive(serde::Serialize)]
+pub struct EmailVerificationReadiness {
+    pub ready: bool,
+    pub reason: Option<String>,
+}
+
 pub async fn get_public_settings(
     State(state): State<AppState>,
 ) -> Result<Json<PublicSettings>, crate::error::AppError> {
@@ -238,6 +244,43 @@ pub async fn get_setting_value(
     Ok(Json(value))
 }
 
+pub async fn get_email_verification_readiness(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<EmailVerificationReadiness>, crate::error::AppError> {
+    let token = get_token(&headers)?;
+    let claims = state.auth_service.validate_token(&token).await?;
+
+    if let Some(ref tenant_id) = claims.tenant_id {
+        state
+            .auth_service
+            .check_permission(&claims.sub, tenant_id, "settings", "read")
+            .await?;
+    }
+
+    let tenant_id = if claims.is_super_admin {
+        None
+    } else {
+        claims.tenant_id.as_deref()
+    };
+
+    match state
+        .settings_service
+        .validate_email_verification_prerequisites(tenant_id)
+        .await
+    {
+        Ok(_) => Ok(Json(EmailVerificationReadiness {
+            ready: true,
+            reason: None,
+        })),
+        Err(crate::error::AppError::Validation(reason)) => Ok(Json(EmailVerificationReadiness {
+            ready: false,
+            reason: Some(reason),
+        })),
+        Err(e) => Err(e),
+    }
+}
+
 #[derive(serde::Deserialize)]
 pub struct UpsertSettingRequest {
     key: String,
@@ -263,18 +306,31 @@ pub async fn upsert_setting(
             .await?;
     }
 
-    let dto = UpsertSettingDto {
-        key: payload.key,
-        value: payload.value,
-        description: payload.description,
-    };
-
     // For superadmin, save settings as GLOBAL (tenant_id = None)
     // This is important for settings like maintenance_mode that need to be accessible via public endpoint
     let tenant_id_for_save = if claims.is_super_admin {
         None
     } else {
         claims.tenant_id
+    };
+
+    let key = payload.key;
+    let value = payload.value;
+    let description = payload.description;
+
+    let enable_email_verification =
+        key == "auth_require_email_verification" && value.trim().eq_ignore_ascii_case("true");
+    if enable_email_verification {
+        state
+            .settings_service
+            .validate_email_verification_prerequisites(tenant_id_for_save.as_deref())
+            .await?;
+    }
+
+    let dto = UpsertSettingDto {
+        key,
+        value,
+        description,
     };
 
     println!(
@@ -309,6 +365,26 @@ pub async fn upsert_setting(
             "DEBUG: [HTTP] Broadcasted MaintenanceModeChanged event (enabled: {})",
             maintenance_enabled
         );
+    }
+
+    if matches!(
+        setting.key.as_str(),
+        "auth_jwt_expiry_hours"
+            | "auth_session_timeout_minutes"
+            | "auth_password_min_length"
+            | "auth_password_require_uppercase"
+            | "auth_password_require_number"
+            | "auth_password_require_special"
+            | "auth_max_login_attempts"
+            | "max_login_attempts"
+            | "auth_lockout_duration_minutes"
+            | "lockout_duration_minutes"
+            | "auth_allow_registration"
+            | "auth_logout_all_on_password_change"
+            | "auth_require_email_verification"
+            | "app_main_domain"
+    ) {
+        state.auth_service.invalidate_auth_settings_cache();
     }
 
     Ok(Json(setting))

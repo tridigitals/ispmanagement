@@ -209,6 +209,31 @@ impl AuthService {
         self.auth_settings_cache.invalidate();
     }
 
+    /// Resolve effective email verification requirement.
+    ///
+    /// Priority:
+    /// 1. Tenant-level `auth_require_email_verification` (if set to true/false)
+    /// 2. Global auth setting fallback
+    pub async fn get_effective_require_email_verification(&self, tenant_id: Option<&str>) -> bool {
+        if let Some(tid) = tenant_id {
+            if let Ok(Some(value)) = self
+                .settings_service
+                .get_value(Some(tid), "auth_require_email_verification")
+                .await
+            {
+                let normalized = value.trim().to_ascii_lowercase();
+                if normalized == "true" {
+                    return true;
+                }
+                if normalized == "false" {
+                    return false;
+                }
+            }
+        }
+
+        self.get_auth_settings().await.require_email_verification
+    }
+
     /// Validate password against policy
     pub fn validate_password(
         &self,
@@ -617,13 +642,66 @@ impl AuthService {
         Ok(())
     }
 
+    async fn get_primary_active_tenant_id(&self, user_id: &str) -> Option<String> {
+        #[cfg(feature = "postgres")]
+        let tenant_id: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT t.id
+            FROM tenants t
+            JOIN tenant_members tm ON t.id = tm.tenant_id
+            WHERE tm.user_id = $1
+              AND t.is_active = true
+            ORDER BY tm.created_at ASC
+            LIMIT 1
+            "#,
+        )
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .unwrap_or(None);
+
+        #[cfg(feature = "sqlite")]
+        let tenant_id: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT t.id
+            FROM tenants t
+            JOIN tenant_members tm ON t.id = tm.tenant_id
+            WHERE tm.user_id = ?1
+              AND t.is_active = 1
+            ORDER BY tm.created_at ASC
+            LIMIT 1
+            "#,
+        )
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .unwrap_or(None);
+
+        tenant_id
+    }
+
     /// Register a new user
     pub async fn register(
         &self,
         dto: RegisterDto,
         ip_address: Option<String>,
     ) -> AppResult<AuthResponse> {
+        self.register_with_email_verification_policy(dto, ip_address, None)
+            .await
+    }
+
+    /// Register a new user with optional email verification policy override.
+    ///
+    /// When override is `None`, the global auth setting is used.
+    pub async fn register_with_email_verification_policy(
+        &self,
+        dto: RegisterDto,
+        ip_address: Option<String>,
+        require_email_verification_override: Option<bool>,
+    ) -> AppResult<AuthResponse> {
         let settings = self.get_auth_settings().await;
+        let require_email_verification =
+            require_email_verification_override.unwrap_or(settings.require_email_verification);
 
         // Check if registration is allowed
         if !settings.allow_registration {
@@ -655,7 +733,7 @@ impl AuthService {
         let mut user = User::new(dto.email, password_hash, dto.name);
 
         // Handle email verification
-        if settings.require_email_verification {
+        if require_email_verification {
             let token = uuid::Uuid::new_v4().to_string();
             user.verification_token = Some(token.clone());
         } else {
@@ -693,7 +771,7 @@ impl AuthService {
 
         info!("New user registered: {}", user.email);
 
-        if settings.require_email_verification {
+        if require_email_verification {
             // ... existing email code ...
             // Send verification email
             if let Some(token) = &user.verification_token {
@@ -1025,8 +1103,17 @@ impl AuthService {
             return Err(AppError::Validation("Account is deactivated".to_string()));
         }
 
-        // Check email verification
-        if settings.require_email_verification && user.email_verified_at.is_none() {
+        // Check email verification using effective scope (tenant override -> global fallback).
+        let tenant_id_for_email_policy = if user.is_super_admin {
+            None
+        } else {
+            self.get_primary_active_tenant_id(&user.id).await
+        };
+        let require_email_verification = self
+            .get_effective_require_email_verification(tenant_id_for_email_policy.as_deref())
+            .await;
+
+        if require_email_verification && user.email_verified_at.is_none() {
             let details = serde_json::json!({
                 "email": user.email,
                 "reason": "email_unverified"

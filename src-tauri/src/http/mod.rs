@@ -477,6 +477,10 @@ pub async fn start_server(
         )
         .route("/api/settings/public", get(settings::get_public_settings))
         .route(
+            "/api/settings/email-verification-readiness",
+            get(settings::get_email_verification_readiness),
+        )
+        .route(
             "/api/settings/logo",
             get(settings::get_logo).post(settings::upload_logo),
         )

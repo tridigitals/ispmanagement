@@ -1132,7 +1132,8 @@
         },
         "require_email_verification": {
           "label": "Wajib Verifikasi Email",
-          "desc": "Pengguna harus verifikasi email sebelum login."
+          "desc": "Pengguna harus verifikasi email sebelum login.",
+          "not_ready": "Konfigurasi email belum siap. Atur provider email terlebih dahulu."
         },
         "jwt_expiry": {
           "label": "Masa berlaku JWT (Jam)",
@@ -3041,6 +3042,9 @@
       },
       "security": {
         "enforce_2fa_desc": "Wajibkan semua anggota organisasi ini mengaktifkan 2FA sebelum mengakses dashboard.",
+        "require_email_verification_title": "Wajib Verifikasi Email",
+        "require_email_verification_desc": "Wajibkan pengguna tenant ini memverifikasi email sebelum login. Hanya bisa diaktifkan setelah provider email dikonfigurasi.",
+        "require_email_verification_not_ready": "Konfigurasi email belum siap. Simpan dulu pengaturan Email yang valid, lalu aktifkan opsi ini.",
         "customer_self_registration_title": "Pendaftaran Mandiri Pelanggan",
         "customer_self_registration_desc": "Izinkan pelanggan mendaftar dari custom domain tenant ini. Default nonaktif."
       },

@@ -74,6 +74,12 @@ pub struct PublicSettings {
     pub payment_manual_enabled: bool,
 }
 
+#[derive(serde::Serialize)]
+pub struct EmailVerificationReadiness {
+    pub ready: bool,
+    pub reason: Option<String>,
+}
+
 #[tauri::command]
 pub async fn get_public_settings(
     settings_service: State<'_, SettingsService>,
@@ -242,6 +248,41 @@ pub async fn get_setting_value(
         .map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub async fn get_email_verification_readiness(
+    token: String,
+    settings_service: State<'_, SettingsService>,
+    auth_service: State<'_, AuthService>,
+) -> Result<EmailVerificationReadiness, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    require_settings_read_access(&auth_service, &claims).await?;
+
+    let tenant_id = if claims.is_super_admin {
+        None
+    } else {
+        claims.tenant_id.as_deref()
+    };
+
+    match settings_service
+        .validate_email_verification_prerequisites(tenant_id)
+        .await
+    {
+        Ok(_) => Ok(EmailVerificationReadiness {
+            ready: true,
+            reason: None,
+        }),
+        Err(crate::error::AppError::Validation(reason)) => Ok(EmailVerificationReadiness {
+            ready: false,
+            reason: Some(reason),
+        }),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 /// Upsert (create or update) setting
 #[tauri::command]
 pub async fn upsert_setting(
@@ -265,6 +306,15 @@ pub async fn upsert_setting(
     } else {
         claims.tenant_id
     };
+
+    let enable_email_verification =
+        key == "auth_require_email_verification" && value.trim().eq_ignore_ascii_case("true");
+    if enable_email_verification {
+        settings_service
+            .validate_email_verification_prerequisites(tenant_id_for_save.as_deref())
+            .await
+            .map_err(|e| e.to_string())?;
+    }
 
     let is_maintenance_mode = key == "maintenance_mode";
     let maintenance_enabled = value == "true";
@@ -301,6 +351,26 @@ pub async fn upsert_setting(
             "DEBUG: [Tauri] Broadcasted MaintenanceModeChanged event (enabled: {})",
             maintenance_enabled
         );
+    }
+
+    if matches!(
+        setting.key.as_str(),
+        "auth_jwt_expiry_hours"
+            | "auth_session_timeout_minutes"
+            | "auth_password_min_length"
+            | "auth_password_require_uppercase"
+            | "auth_password_require_number"
+            | "auth_password_require_special"
+            | "auth_max_login_attempts"
+            | "max_login_attempts"
+            | "auth_lockout_duration_minutes"
+            | "lockout_duration_minutes"
+            | "auth_allow_registration"
+            | "auth_logout_all_on_password_change"
+            | "auth_require_email_verification"
+            | "app_main_domain"
+    ) {
+        auth_service.invalidate_auth_settings_cache();
     }
 
     Ok(setting)

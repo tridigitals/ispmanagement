@@ -175,6 +175,10 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       get_logo: { method: 'GET', path: '/settings/logo' },
       get_all_settings: { method: 'GET', path: '/settings' },
       get_public_settings: { method: 'GET', path: '/settings/public' },
+      get_email_verification_readiness: {
+        method: 'GET',
+        path: '/settings/email-verification-readiness',
+      },
       upsert_setting: { method: 'POST', path: '/settings' },
       get_setting: { method: 'GET', path: '/settings/:key' },
       get_setting_value: { method: 'GET', path: '/settings/:key/value' },
@@ -657,6 +661,11 @@ export interface AuthSettings {
   lockout_duration_minutes: number;
   allow_registration: boolean;
   main_domain?: string;
+}
+
+export interface EmailVerificationReadiness {
+  ready: boolean;
+  reason?: string | null;
 }
 
 export interface Role {
@@ -1984,6 +1993,9 @@ export const settings = {
 
   getValue: (key: string): Promise<string | null> =>
     safeInvoke('get_setting_value', { token: getTokenOrThrow(), key }),
+
+  getEmailVerificationReadiness: (): Promise<EmailVerificationReadiness> =>
+    safeInvoke('get_email_verification_readiness', { token: getTokenOrThrow() }),
 
   upsert: (key: string, value: string, description?: string): Promise<Setting> =>
     safeInvoke('upsert_setting', { token: getTokenOrThrow(), key, value, description }),

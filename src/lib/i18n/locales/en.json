@@ -1132,7 +1132,8 @@
         },
         "require_email_verification": {
           "label": "Require Email Verification",
-          "desc": "Users must verify email before logging in."
+          "desc": "Users must verify email before logging in.",
+          "not_ready": "Email configuration is not ready. Configure email provider first."
         },
         "jwt_expiry": {
           "label": "JWT Expiry (Hours)",
@@ -1713,6 +1714,9 @@
       },
       "security": {
         "enforce_2fa_desc": "Require all members of this organization to enable 2FA before accessing the dashboard.",
+        "require_email_verification_title": "Require Email Verification",
+        "require_email_verification_desc": "Require users in this tenant to verify email before login. Can only be enabled after email provider is configured.",
+        "require_email_verification_not_ready": "Email configuration is not ready. Save valid Email settings first, then enable this option.",
         "customer_self_registration_title": "Customer Self Registration",
         "customer_self_registration_desc": "Allow customer signup from this tenant custom domain. Default is disabled."
       },

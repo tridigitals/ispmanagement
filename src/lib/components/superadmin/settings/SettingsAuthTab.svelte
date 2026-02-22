@@ -4,6 +4,8 @@
 
   export let authAllowRegistration: boolean;
   export let authRequireEmailVerification: boolean;
+  export let emailVerificationReady = true;
+  export let emailVerificationReason = '';
   export let authJwtExpiryHours: number;
   export let authSessionTimeoutMinutes: number;
 
@@ -59,11 +61,19 @@
           type="checkbox"
           id="require-email-verify"
           bind:checked={authRequireEmailVerification}
+          disabled={!emailVerificationReady && !authRequireEmailVerification}
           on:change={handleChange}
         />
         <span class="slider"></span>
       </label>
     </div>
+    {#if !emailVerificationReady}
+      <p class="setting-warning">
+        {emailVerificationReason ||
+          $t('superadmin.settings.auth.require_email_verification.not_ready') ||
+          'Email configuration is not ready. Configure email provider first.'}
+      </p>
+    {/if}
 
     <div class="setting-row">
       <div class="setting-info">
@@ -174,6 +184,13 @@
     line-height: 1.4;
   }
 
+  .setting-warning {
+    margin: 0.5rem 0 0;
+    color: #f59e0b;
+    font-size: 0.82rem;
+    line-height: 1.4;
+  }
+
   .form-input {
     width: 100%;
     max-width: 400px;
@@ -232,6 +249,11 @@
     opacity: 0;
     width: 0;
     height: 0;
+  }
+
+  .toggle input:disabled + .slider {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .slider {

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
-  import type { Setting, BankAccount } from '$lib/api/client';
+  import type { Setting, BankAccount, EmailVerificationReadiness } from '$lib/api/client';
   import { isSuperAdmin } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import Icon from '$lib/components/ui/Icon.svelte';
@@ -48,6 +48,7 @@
   // Authentication Settings
   let authAllowRegistration = false;
   let authRequireEmailVerification = false;
+  let emailVerificationReadiness = { ready: true, reason: null } as EmailVerificationReadiness;
   let authJwtExpiryHours = 24;
   let authSessionTimeoutMinutes = 60;
 
@@ -314,11 +315,17 @@
   async function loadSettings(opts: { silent?: boolean } = {}) {
     if (!opts.silent) loading = true;
     try {
-      const data = await api.settings.getAll();
+      const [data, readiness] = await Promise.all([
+        api.settings.getAll(),
+        api.settings
+          .getEmailVerificationReadiness()
+          .catch(() => ({ ready: true, reason: null }) as EmailVerificationReadiness),
+      ]);
       const settingsMap: Record<string, string> = {};
       data.forEach((s) => {
         settingsMap[s.key] = s.value;
       });
+      emailVerificationReadiness = readiness;
 
       applySettingsMap(settingsMap);
 
@@ -347,6 +354,15 @@
   }
 
   async function saveSettings() {
+    if (authRequireEmailVerification && !emailVerificationReadiness.ready) {
+      toast.error(
+        emailVerificationReadiness.reason ||
+          get(t)('superadmin.settings.auth.require_email_verification.not_ready') ||
+          'Email configuration is not ready. Configure email provider first.',
+      );
+      return;
+    }
+
     saving = true;
     try {
       const updates = [
@@ -847,6 +863,8 @@
           <SettingsAuthTab
             bind:authAllowRegistration
             bind:authRequireEmailVerification
+            emailVerificationReady={emailVerificationReadiness.ready}
+            emailVerificationReason={emailVerificationReadiness.reason || ''}
             bind:authJwtExpiryHours
             bind:authSessionTimeoutMinutes
             on:change={handleChange}

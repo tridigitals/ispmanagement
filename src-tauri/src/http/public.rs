@@ -254,9 +254,17 @@ pub async fn register_customer_by_domain(
     }
 
     let ip = extract_ip(&headers, addr);
+    let require_email_verification = state
+        .auth_service
+        .get_effective_require_email_verification(Some(&tenant.id))
+        .await;
     let registration = state
         .auth_service
-        .register(payload, Some(ip.clone()))
+        .register_with_email_verification_policy(
+            payload,
+            Some(ip.clone()),
+            Some(require_email_verification),
+        )
         .await?;
 
     state

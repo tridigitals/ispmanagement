@@ -10,13 +10,14 @@
   import MobileFabMenu from '$lib/components/ui/MobileFabMenu.svelte';
   import Input from '$lib/components/ui/Input.svelte';
   import Select from '$lib/components/ui/Select.svelte';
-  import type { Setting } from '$lib/api/client';
+  import type { EmailVerificationReadiness, Setting } from '$lib/api/client';
   import { toast } from 'svelte-sonner';
   import { get } from 'svelte/store';
   import { adminSettingsCache } from '$lib/stores/adminSettingsCache';
 
   let loading = $state(true);
   let saving = $state(false);
+  let emailVerificationReadiness = $state<EmailVerificationReadiness>({ ready: true, reason: null });
   let settings = $state<Record<string, Setting>>({});
   let localSettings = $state<Record<string, string>>({});
   let logoBase64 = $state<string | null>(null);
@@ -58,7 +59,7 @@
     security: {
       label: $t('admin.settings.categories.security') || 'Security',
       icon: 'shield',
-      keys: ['customer_self_registration_enabled'],
+      keys: ['auth_require_email_verification', 'customer_self_registration_enabled'],
     },
     network: {
       label: $t('admin.settings.categories.network') || 'Network',
@@ -239,6 +240,7 @@
         if (key === 'mikrotik_alert_email_enabled' && !val) val = 'false';
         if (key === 'mikrotik_incident_assignment_email_enabled' && !val) val = 'false';
         if (key === 'pppoe_auto_apply_on_save_enabled' && !val) val = 'false';
+        if (key === 'auth_require_email_verification' && !val) val = 'false';
         if (key === 'customer_self_registration_enabled' && !val) val = 'false';
         localSettings[key] = val;
       });
@@ -301,10 +303,13 @@
       let logoStoreValue: string | null = null;
       appLogo.subscribe((v) => (logoStoreValue = v))();
 
-      const [_, data, tenant] = await Promise.all([
+      const [_, data, tenant, readiness] = await Promise.all([
         appLogo.refresh(token).catch(() => null),
         api.settings.getAll(),
         api.tenant.getSelf(),
+        api.settings
+          .getEmailVerificationReadiness()
+          .catch(() => ({ ready: true, reason: null }) as EmailVerificationReadiness),
       ]);
 
       const access = await api.plans
@@ -321,6 +326,7 @@
         Boolean(access?.has_access),
         logoAfter || logoStoreValue || null,
       );
+      emailVerificationReadiness = readiness;
 
       const key = String(
         tenant?.id || tenant?.slug || $user?.tenant_id || $user?.tenant_slug || 'default',
@@ -344,6 +350,19 @@
   }
 
   function handleChange(key: string, value: any) {
+    if (
+      key === 'auth_require_email_verification' &&
+      Boolean(value) &&
+      !emailVerificationReadiness.ready
+    ) {
+      toast.error(
+        emailVerificationReadiness.reason ||
+          get(t)('admin.settings.security.require_email_verification_not_ready') ||
+          'Email configuration is not ready. Configure Email settings first.',
+      );
+      return;
+    }
+
     localSettings[key] = String(value);
 
     // Check if tenant setting
@@ -412,6 +431,19 @@
   }
 
   async function saveChanges() {
+    if (
+      activeTab === 'security' &&
+      localSettings['auth_require_email_verification'] === 'true' &&
+      !emailVerificationReadiness.ready
+    ) {
+      toast.error(
+        emailVerificationReadiness.reason ||
+          get(t)('admin.settings.security.require_email_verification_not_ready') ||
+          'Email configuration is not ready. Configure Email settings first.',
+      );
+      return;
+    }
+
     saving = true;
     try {
       // Save Tenant Changes
@@ -706,6 +738,37 @@
                   <span class="slider"></span>
                 </label>
               </div>
+
+              <div class="setting-item setting-item-row mt-6">
+                <div class="setting-info">
+                  <h3>
+                    {$t('admin.settings.security.require_email_verification_title') ||
+                      'Require Email Verification'}
+                  </h3>
+                  <p>
+                    {$t('admin.settings.security.require_email_verification_desc') ||
+                      'Require users in this tenant to verify email before login. Can only be enabled after email provider is configured.'}
+                  </p>
+                </div>
+                <label class="toggle">
+                  <input
+                    type="checkbox"
+                    checked={localSettings['auth_require_email_verification'] === 'true'}
+                    disabled={!emailVerificationReadiness.ready &&
+                      localSettings['auth_require_email_verification'] !== 'true'}
+                    onchange={(e) =>
+                      handleChange('auth_require_email_verification', e.currentTarget.checked)}
+                  />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              {#if !emailVerificationReadiness.ready}
+                <p class="help-text warning-text">
+                  {emailVerificationReadiness.reason ||
+                    $t('admin.settings.security.require_email_verification_not_ready') ||
+                    'Email configuration is not ready. Configure Email settings first.'}
+                </p>
+              {/if}
 
               <div class="setting-item setting-item-row mt-6">
                 <div class="setting-info">
@@ -1981,6 +2044,9 @@
     font-size: 0.85rem;
     color: var(--text-secondary);
     margin-top: 0.25rem;
+  }
+  .warning-text {
+    color: #f59e0b;
   }
   .readonly-value {
     padding: 0.55rem 0.75rem;
