@@ -29,11 +29,14 @@
   let customers = $state<CustomerRow[]>([]);
   let locations = $state<LocationRow[]>([]);
   let refreshing = $state(false);
+  let autoApplyOnSave = $state(false);
+  let retryingIds = $state<string[]>([]);
 
   let q = $state('');
   let routerId = $state('');
   let status = $state<'any' | 'present' | 'missing'>('any');
   let disabled = $state<'any' | 'enabled' | 'disabled'>('any');
+  let provisioning = $state<'any' | 'applied' | 'draft' | 'failed'>('any');
 
   // Create/Edit modal state
   let showCreate = $state(false);
@@ -110,18 +113,20 @@
       if (status === 'missing' && a.router_present) return false;
       if (disabled === 'enabled' && a.disabled) return false;
       if (disabled === 'disabled' && !a.disabled) return false;
+      if (provisioning !== 'any') {
+        const st = provisioningState(a);
+        if (st !== provisioning) return false;
+      }
       return true;
     }),
   );
-
-  const statusChip = (v: 'any' | 'present' | 'missing') => status === v;
-  const stateChip = (v: 'any' | 'enabled' | 'disabled') => disabled === v;
 
   function clearFilters() {
     q = '';
     routerId = '';
     status = 'any';
     disabled = 'any';
+    provisioning = 'any';
     void loadAccounts();
   }
 
@@ -137,6 +142,7 @@
     { key: 'username', label: $t('admin.network.pppoe.columns.username') || 'Username' },
     { key: 'customer', label: $t('admin.network.pppoe.columns.customer') || 'Customer' },
     { key: 'router', label: $t('admin.network.pppoe.columns.router') || 'Router' },
+    { key: 'provisioning', label: $t('admin.network.pppoe.columns.provisioning') || 'Provisioning' },
     { key: 'sync', label: $t('admin.network.pppoe.columns.sync') || 'Sync' },
     { key: 'actions', label: '', align: 'right' as const, width: '300px' },
   ]);
@@ -147,6 +153,7 @@
       return;
     }
     void load();
+    void loadProvisioningSetting();
   });
 
   async function load() {
@@ -158,6 +165,18 @@
       error = String(e?.message || e || '');
     } finally {
       loading = false;
+    }
+  }
+
+  async function loadProvisioningSetting() {
+    try {
+      const raw = await api.settings.getValue('pppoe_auto_apply_on_save_enabled');
+      const val = String(raw || '')
+        .trim()
+        .toLowerCase();
+      autoApplyOnSave = val === 'true' || val === '1' || val === 'yes' || val === 'on';
+    } catch {
+      autoApplyOnSave = false;
     }
   }
 
@@ -323,7 +342,7 @@
 
     saving = true;
     try {
-      await api.pppoe.accounts.create({
+      const created = await api.pppoe.accounts.create({
         router_id: formRouterId,
         customer_id: formCustomerId,
         location_id: formLocationId,
@@ -336,6 +355,20 @@
         disabled: formDisabled,
         comment: formComment.trim() || null,
       });
+      if (autoApplyOnSave && created?.id) {
+        try {
+          await api.pppoe.accounts.apply(created.id);
+          toast.success(
+            $t('admin.network.pppoe.toasts.auto_applied') || 'Saved and automatically applied to router',
+          );
+        } catch (e: any) {
+          toast.error(
+            $t('admin.network.pppoe.toasts.auto_apply_failed', {
+              values: { message: e?.message || e },
+            }) || `Saved, but auto-apply failed: ${e?.message || e}`,
+          );
+        }
+      }
       toast.success($t('admin.customers.pppoe.toasts.created') || 'PPPoE account created');
       showCreate = false;
       await loadAccounts();
@@ -353,7 +386,7 @@
 
     saving = true;
     try {
-      await api.pppoe.accounts.update(editRow.id, {
+      const updated = await api.pppoe.accounts.update(editRow.id, {
         username: formUsername.trim(),
         password: formPassword || undefined,
         package_id: formPackageId || null,
@@ -363,6 +396,20 @@
         disabled: formDisabled,
         comment: formComment.trim() || null,
       });
+      if (autoApplyOnSave && updated?.id) {
+        try {
+          await api.pppoe.accounts.apply(updated.id);
+          toast.success(
+            $t('admin.network.pppoe.toasts.auto_applied') || 'Saved and automatically applied to router',
+          );
+        } catch (e: any) {
+          toast.error(
+            $t('admin.network.pppoe.toasts.auto_apply_failed', {
+              values: { message: e?.message || e },
+            }) || `Saved, but auto-apply failed: ${e?.message || e}`,
+          );
+        }
+      }
       toast.success($t('admin.customers.pppoe.toasts.updated') || 'PPPoE account updated');
       showEdit = false;
       await loadAccounts();
@@ -459,6 +506,61 @@
       );
     }
   }
+
+  function provisioningState(row: PppoeAccountPublic): 'retrying' | 'failed' | 'applied' | 'draft' {
+    if (retryingIds.includes(row.id)) return 'retrying';
+    if (row.last_error && row.last_error.trim()) return 'failed';
+    if (row.router_present && row.router_secret_id) return 'applied';
+    return 'draft';
+  }
+
+  function provisioningLabel(state: 'retrying' | 'failed' | 'applied' | 'draft') {
+    if (state === 'retrying') return $t('admin.network.pppoe.provisioning.retrying') || 'Retrying';
+    if (state === 'failed') return $t('admin.network.pppoe.provisioning.failed') || 'Failed';
+    if (state === 'applied') return $t('admin.network.pppoe.provisioning.applied') || 'Applied';
+    return $t('admin.network.pppoe.provisioning.draft') || 'Draft';
+  }
+
+  const retryCandidates = $derived.by(() =>
+    viewRows.filter((r) => {
+      const st = provisioningState(r);
+      return st === 'failed' || st === 'draft';
+    }),
+  );
+
+  async function retryApplyBatch() {
+    if (!$can('manage', 'pppoe')) return;
+    if (retryCandidates.length === 0) return;
+
+    let ok = 0;
+    let fail = 0;
+
+    for (const row of retryCandidates) {
+      retryingIds = Array.from(new Set([...retryingIds, row.id]));
+      try {
+        await api.pppoe.accounts.apply(row.id);
+        ok += 1;
+      } catch {
+        fail += 1;
+      } finally {
+        retryingIds = retryingIds.filter((id) => id !== row.id);
+      }
+    }
+
+    if (ok > 0) {
+      toast.success(
+        $t('admin.network.pppoe.toasts.retry_batch_ok', { values: { count: ok } }) ||
+          `${ok} account(s) applied`,
+      );
+    }
+    if (fail > 0) {
+      toast.error(
+        $t('admin.network.pppoe.toasts.retry_batch_fail', { values: { count: fail } }) ||
+          `${fail} account(s) failed to apply`,
+      );
+    }
+    await loadAccounts();
+  }
 </script>
 
 <div class="page-content fade-in">
@@ -496,6 +598,9 @@
         </div>
 
         <div class="hero-buttons">
+          {#if $can('manage', 'pppoe') && autoApplyOnSave}
+            <span class="chip active">{$t('admin.network.pppoe.auto_apply_on') || 'Auto-apply ON'}</span>
+          {/if}
           <button class="btn btn-secondary" onclick={loadAccounts} disabled={refreshing}>
             <Icon name="refresh-cw" size={16} />
             {$t('common.refresh') || 'Refresh'}
@@ -527,7 +632,19 @@
               {$t('admin.network.pppoe.actions.reconcile') || 'Reconcile'}
             </button>
           {/if}
-          {#if q.trim() || routerId || status !== 'any' || disabled !== 'any'}
+          {#if $can('manage', 'pppoe')}
+            <button
+              class="btn btn-secondary"
+              onclick={retryApplyBatch}
+              disabled={refreshing || retryCandidates.length === 0}
+              title={$t('admin.network.pppoe.actions.retry_apply_batch') || 'Retry apply'}
+            >
+              <Icon name="rotate-cw" size={16} />
+              {$t('admin.network.pppoe.actions.retry_apply_batch') || 'Retry apply'}
+              <span class="pill mono">{retryCandidates.length}</span>
+            </button>
+          {/if}
+          {#if q.trim() || routerId || status !== 'any' || disabled !== 'any' || provisioning !== 'any'}
             <button class="btn btn-secondary" onclick={clearFilters}>
               <Icon name="eraser" size={16} />
               {$t('common.clear') || 'Clear'}
@@ -571,47 +688,33 @@
     >
       {#snippet filters()}
         <div class="filters">
-          <div class="chips">
-            <button class="chip {statusChip('any') ? 'active' : ''}" type="button" onclick={() => (status = 'any')}>
-              {$t('admin.network.pppoe.filters.any') || 'Any'}
-            </button>
-            <button
-              class="chip {statusChip('present') ? 'active' : ''}"
-              type="button"
-              onclick={() => (status = 'present')}
-              title={$t('admin.network.pppoe.filters.present') || 'On router'}
-            >
-              {$t('admin.network.pppoe.filters.present') || 'On router'}
-            </button>
-            <button
-              class="chip {statusChip('missing') ? 'active' : ''}"
-              type="button"
-              onclick={() => (status = 'missing')}
-              title={$t('admin.network.pppoe.filters.missing') || 'Missing'}
-            >
-              {$t('admin.network.pppoe.filters.missing') || 'Missing'}
-            </button>
-          </div>
+          <label class="router-filter">
+            <span class="label">{$t('admin.network.pppoe.filters.sync') || 'Sync'}</span>
+            <select class="input" bind:value={status}>
+              <option value="any">{$t('admin.network.pppoe.filters.any') || 'Any'}</option>
+              <option value="present">{$t('admin.network.pppoe.filters.present') || 'On router'}</option>
+              <option value="missing">{$t('admin.network.pppoe.filters.missing') || 'Missing'}</option>
+            </select>
+          </label>
 
-          <div class="chips">
-            <button class="chip {stateChip('any') ? 'active' : ''}" type="button" onclick={() => (disabled = 'any')}>
-              {$t('admin.network.pppoe.filters.any') || 'Any'}
-            </button>
-            <button
-              class="chip {stateChip('enabled') ? 'active' : ''}"
-              type="button"
-              onclick={() => (disabled = 'enabled')}
-            >
-              {$t('admin.network.pppoe.filters.enabled') || 'Enabled'}
-            </button>
-            <button
-              class="chip {stateChip('disabled') ? 'active' : ''}"
-              type="button"
-              onclick={() => (disabled = 'disabled')}
-            >
-              {$t('admin.network.pppoe.filters.disabled_only') || 'Disabled'}
-            </button>
-          </div>
+          <label class="router-filter">
+            <span class="label">{$t('admin.network.pppoe.filters.disabled') || 'State'}</span>
+            <select class="input" bind:value={disabled}>
+              <option value="any">{$t('admin.network.pppoe.filters.any') || 'Any'}</option>
+              <option value="enabled">{$t('admin.network.pppoe.filters.enabled') || 'Enabled'}</option>
+              <option value="disabled">{$t('admin.network.pppoe.filters.disabled_only') || 'Disabled'}</option>
+            </select>
+          </label>
+
+          <label class="router-filter">
+            <span class="label">{$t('admin.network.pppoe.filters.provisioning') || 'Provisioning'}</span>
+            <select class="input" bind:value={provisioning}>
+              <option value="any">{$t('admin.network.pppoe.filters.any') || 'Any'}</option>
+              <option value="applied">{$t('admin.network.pppoe.provisioning.applied') || 'Applied'}</option>
+              <option value="draft">{$t('admin.network.pppoe.provisioning.draft') || 'Draft'}</option>
+              <option value="failed">{$t('admin.network.pppoe.provisioning.failed') || 'Failed'}</option>
+            </select>
+          </label>
 
           <label class="router-filter">
             <span class="label">{$t('admin.network.pppoe.filters.router') || 'Router'}</span>
@@ -702,6 +805,21 @@
                 <Icon name="alert-triangle" size={14} />
                 <span class="error-text">{row.last_error}</span>
               </div>
+            {/if}
+          </div>
+        {:else if key === 'provisioning'}
+          {@const state = provisioningState(row)}
+          <div class="stack">
+            <span
+              class="badge"
+              class:ok={state === 'applied'}
+              class:warn={state === 'draft' || state === 'retrying'}
+              class:danger={state === 'failed'}
+            >
+              {provisioningLabel(state)}
+            </span>
+            {#if state === 'failed' && row.last_error}
+              <span class="error-text" title={row.last_error}>{row.last_error}</span>
             {/if}
           </div>
         {:else if key === 'actions'}
@@ -1180,19 +1298,10 @@
   }
 
   .filters {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.8rem;
-    flex-wrap: wrap;
     padding: 0.2rem 0.1rem 0.6rem;
-  }
-
-  .chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
   }
 
   .chip {
@@ -1226,25 +1335,15 @@
   }
 
   .router-filter {
-    display: flex;
-    gap: 0.45rem;
-    align-items: center;
-    flex-wrap: wrap;
+    display: grid;
+    gap: 0.4rem;
+    align-items: stretch;
   }
 
   .label {
     font-size: 12px;
     opacity: 0.75;
     font-weight: 800;
-  }
-
-  .select {
-    padding: 0.55rem 0.7rem;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    color: var(--text-primary);
-    outline: none;
   }
 
   .stack {
@@ -1305,6 +1404,10 @@
   .badge.warn {
     border-color: color-mix(in srgb, #f59e0b 45%, var(--border-color));
     color: #f59e0b;
+  }
+  .badge.danger {
+    border-color: color-mix(in srgb, #ef4444 45%, var(--border-color));
+    color: #ef4444;
   }
   .pill {
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1461,6 +1564,9 @@
     .stats-grid {
       grid-template-columns: 1fr;
     }
+    .filters {
+      grid-template-columns: 1fr;
+    }
 
     .hero-buttons {
       width: 100%;
@@ -1470,9 +1576,6 @@
       justify-content: center;
     }
     .router-filter {
-      width: 100%;
-    }
-    .select {
       width: 100%;
     }
     .error-line {
@@ -1486,6 +1589,9 @@
 
   @media (max-width: 1100px) {
     .stats-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .filters {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }

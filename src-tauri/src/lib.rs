@@ -211,7 +211,12 @@ pub fn run() {
                 let customer_service =
                     CustomerService::new(pool.clone(), auth_service.clone(), audit_service.clone(), user_service.clone());
                 let pppoe_service =
-                    PppoeService::new(pool.clone(), auth_service.clone(), audit_service.clone());
+                    PppoeService::new(
+                        pool.clone(),
+                        auth_service.clone(),
+                        audit_service.clone(),
+                        settings_service.clone(),
+                    );
                 let isp_package_service =
                     IspPackageService::new(pool.clone(), auth_service.clone(), audit_service.clone());
                 let team_service = TeamService::new(pool.clone(), auth_service.clone(), audit_service.clone(), plan_service.clone());

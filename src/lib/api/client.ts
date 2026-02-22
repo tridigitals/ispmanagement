@@ -5,6 +5,44 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getApiBaseUrl } from '$lib/utils/apiUrl';
 
+const AUTH_STORAGE_KEYS = ['auth_token', 'auth_user', 'auth_tenant', 'active_tenant_slug'] as const;
+let authRedirectInProgress = false;
+
+function hasStoredAuthToken(): boolean {
+  if (typeof window === 'undefined') return false;
+  return !!(localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token'));
+}
+
+function clearStoredAuthData() {
+  if (typeof window === 'undefined') return;
+  for (const key of AUTH_STORAGE_KEYS) {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  }
+}
+
+function handleAuthExpired(reason: string) {
+  if (typeof window === 'undefined') return;
+  // Only auto-redirect when there was an active local session.
+  if (!hasStoredAuthToken()) return;
+  if (authRedirectInProgress) return;
+  authRedirectInProgress = true;
+
+  clearStoredAuthData();
+
+  try {
+    window.dispatchEvent(new CustomEvent('app:auth-expired', { detail: { reason } }));
+  } catch {
+    // non-blocking
+  }
+
+  // Give layout/store listeners one tick to handle graceful logout + SPA redirect.
+  setTimeout(() => {
+    if (window.location.pathname.startsWith('/login')) return;
+    window.location.assign('/login?reason=expired');
+  }, 0);
+}
+
 // Safe invoke wrapper for browser environment
 async function safeInvoke<T>(command: string, args?: any): Promise<T> {
   try {
@@ -446,6 +484,9 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       const isJson = contentType.toLowerCase().includes('application/json');
 
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          handleAuthExpired(`HTTP ${response.status} from ${command}`);
+        }
         if (isJson) {
           const errorBody = await response.json().catch(() => ({}));
           throw new Error(errorBody.error || `HTTP Error ${response.status}`);
@@ -475,6 +516,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
     if (command === 'get_auth_settings')
       return {
         jwt_expiry_hours: 24,
+        session_timeout_minutes: 60,
         password_min_length: 8,
         password_require_uppercase: true,
         password_require_number: true,
@@ -493,6 +535,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       error.message?.includes('Unauthorized');
 
     if (isAuthError) {
+      handleAuthExpired(`Auth error from ${command}: ${error.message || error}`);
       console.warn(`API Warning (${command}):`, error.message);
     } else {
       console.error(`API Error (${command}):`, error);
@@ -600,6 +643,7 @@ export interface Setting {
 
 export interface AuthSettings {
   jwt_expiry_hours: number;
+  session_timeout_minutes: number;
   password_min_length: number;
   password_require_uppercase: boolean;
   password_require_number: boolean;

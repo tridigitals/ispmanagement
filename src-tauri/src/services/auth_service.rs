@@ -8,7 +8,7 @@ use argon2::{
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
-use chrono::{Duration, Utc};
+use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
@@ -56,6 +56,7 @@ pub struct PasswordValidationResult {
 #[derive(Debug, Clone, Serialize)]
 pub struct AuthSettings {
     pub jwt_expiry_hours: i64,
+    pub session_timeout_minutes: i64,
     pub password_min_length: usize,
     pub password_require_uppercase: bool,
     pub password_require_number: bool,
@@ -72,6 +73,7 @@ impl Default for AuthSettings {
     fn default() -> Self {
         Self {
             jwt_expiry_hours: 24,
+            session_timeout_minutes: 60,
             password_min_length: 8,
             password_require_uppercase: true,
             password_require_number: true,
@@ -151,6 +153,9 @@ impl AuthService {
         // Apply settings from the map
         if let Some(val) = settings_map.get("auth_jwt_expiry_hours") {
             settings.jwt_expiry_hours = val.parse().unwrap_or(24);
+        }
+        if let Some(val) = settings_map.get("auth_session_timeout_minutes") {
+            settings.session_timeout_minutes = val.parse().unwrap_or(60);
         }
         if let Some(val) = settings_map.get("auth_password_min_length") {
             settings.password_min_length = val.parse().unwrap_or(8);
@@ -269,7 +274,11 @@ impl AuthService {
     ) -> AppResult<(String, String)> {
         let secret = self.jwt_secret.read().await;
         let settings = self.get_auth_settings().await;
-        let expires_at = Utc::now() + Duration::hours(settings.jwt_expiry_hours);
+        let now = Utc::now();
+        let jwt_expiry_hours = settings.jwt_expiry_hours.max(1);
+        let session_timeout_minutes = settings.session_timeout_minutes.max(1);
+        let jwt_expires_at = now + Duration::hours(jwt_expiry_hours);
+        let session_expires_at = now + Duration::minutes(session_timeout_minutes);
 
         let claims = Claims {
             sub: user.id.clone(),
@@ -277,8 +286,8 @@ impl AuthService {
             role: user.role.clone(),
             tenant_id: tenant_id.clone(),
             is_super_admin: user.is_super_admin,
-            exp: expires_at.timestamp() as usize,
-            iat: Utc::now().timestamp() as usize,
+            exp: jwt_expires_at.timestamp() as usize,
+            iat: now.timestamp() as usize,
         };
 
         let token = encode(
@@ -299,45 +308,92 @@ impl AuthService {
         .bind(&token);
 
         #[cfg(feature = "postgres")]
-        let query = query.bind(expires_at).bind(Utc::now());
+        let query = query.bind(session_expires_at).bind(now);
 
         #[cfg(not(feature = "postgres"))]
         let query = query
-            .bind(expires_at.to_rfc3339())
-            .bind(Utc::now().to_rfc3339());
+            .bind(session_expires_at.to_rfc3339())
+            .bind(now.to_rfc3339());
 
         query.execute(&self.pool).await?;
 
-        Ok((token, expires_at.to_rfc3339()))
+        Ok((token, session_expires_at.to_rfc3339()))
     }
 
     /// Validate JWT token and return claims
     pub async fn validate_token(&self, token: &str) -> AppResult<Claims> {
-        // Check if session exists and is valid in database
-        let session_exists: bool =
-            sqlx::query_scalar::<_, i64>("SELECT count(*) FROM sessions WHERE token = $1")
-                .bind(token)
-                .fetch_one(&self.pool)
-                .await
-                .map(|count| count > 0)
-                .unwrap_or(false);
+        // Validate against active session first (sliding inactivity timeout).
+        let now = Utc::now();
+        let settings = self.get_auth_settings().await;
+        let session_timeout_minutes = settings.session_timeout_minutes.max(1);
 
-        if !session_exists {
+        #[cfg(feature = "postgres")]
+        let session_expires_at: Option<DateTime<Utc>> =
+            sqlx::query_scalar("SELECT expires_at FROM sessions WHERE token = $1")
+                .bind(token)
+                .fetch_optional(&self.pool)
+                .await
+                .unwrap_or(None);
+
+        #[cfg(feature = "sqlite")]
+        let session_expires_at: Option<DateTime<Utc>> = {
+            let raw: Option<String> = sqlx::query_scalar("SELECT expires_at FROM sessions WHERE token = $1")
+                .bind(token)
+                .fetch_optional(&self.pool)
+                .await
+                .unwrap_or(None);
+
+            raw.and_then(|v| {
+                chrono::DateTime::parse_from_rfc3339(&v)
+                    .ok()
+                    .map(|dt| dt.with_timezone(&Utc))
+            })
+        };
+
+        let session_expires_at = if let Some(v) = session_expires_at {
+            v
+        } else {
             return Err(AppError::InvalidToken);
+        };
+
+        if session_expires_at <= now {
+            let _ = sqlx::query("DELETE FROM sessions WHERE token = $1")
+                .bind(token)
+                .execute(&self.pool)
+                .await;
+            return Err(AppError::TokenExpired);
         }
 
         let secret = self.jwt_secret.read().await;
+        // JWT `exp` is treated as informational; active session timeout is enforced by DB session.
+        let mut validation = Validation::default();
+        validation.validate_exp = false;
 
         let claims = decode::<Claims>(
             token,
             &DecodingKey::from_secret(secret.as_bytes()),
-            &Validation::default(),
+            &validation,
         )
         .map(|data| data.claims)
         .map_err(|e| match e.kind() {
-            jsonwebtoken::errors::ErrorKind::ExpiredSignature => AppError::TokenExpired,
             _ => AppError::InvalidToken,
         })?;
+
+        // Extend session expiry when user is actively using the app.
+        let refresh_threshold =
+            now + Duration::minutes(std::cmp::max(1, session_timeout_minutes / 2));
+        if session_expires_at <= refresh_threshold {
+            let new_expires_at = now + Duration::minutes(session_timeout_minutes);
+            let query = sqlx::query("UPDATE sessions SET expires_at = $1 WHERE token = $2");
+
+            #[cfg(feature = "postgres")]
+            let query = query.bind(new_expires_at).bind(token);
+
+            #[cfg(not(feature = "postgres"))]
+            let query = query.bind(new_expires_at.to_rfc3339()).bind(token);
+
+            let _ = query.execute(&self.pool).await;
+        }
 
         // Enforce tenant suspension for non-superadmin sessions.
         if !claims.is_super_admin {

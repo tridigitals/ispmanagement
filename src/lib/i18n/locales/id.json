@@ -1970,6 +1970,7 @@
       "pppoe": {
         "title": "PPPoE",
         "subtitle": "Tampilan tenant untuk akun PPPoE di semua router.",
+        "auto_apply_on": "Auto-apply AKTIF",
         "search": "Cari PPPoE...",
         "empty": "Tidak ada akun PPPoE.",
         "import": {
@@ -2034,6 +2035,7 @@
           "all": "Semua",
           "router": "Router",
           "sync": "Sinkron",
+          "provisioning": "Provisioning",
           "disabled": "Status",
           "any": "Semua",
           "present": "Ada di router",
@@ -2045,7 +2047,14 @@
           "username": "Username",
           "customer": "Pelanggan",
           "router": "Router",
+          "provisioning": "Provisioning",
           "sync": "Sinkron"
+        },
+        "provisioning": {
+          "draft": "Draft",
+          "applied": "Applied",
+          "failed": "Gagal",
+          "retrying": "Mencoba ulang"
         },
         "sync": {
           "present": "Ada di router",
@@ -2054,7 +2063,8 @@
         "actions": {
           "reconcile": "Sinkronkan",
           "open_customer": "Buka pelanggan",
-          "apply": "Terapkan ke router"
+          "apply": "Terapkan ke router",
+          "retry_apply_batch": "Ulang apply"
         },
         "form": {
           "package_hint": "Jika memilih paket, profile/pool akan terisi otomatis untuk router yang dipilih (masih bisa diubah).",
@@ -2063,6 +2073,10 @@
         "toasts": {
           "applied": "Berhasil diterapkan ke router",
           "apply_failed": "Gagal menerapkan akun PPPoE: {message}",
+          "auto_applied": "Berhasil disimpan dan diterapkan otomatis ke router",
+          "auto_apply_failed": "Data tersimpan, tetapi auto-apply gagal: {message}",
+          "retry_batch_ok": "{count} akun berhasil diterapkan",
+          "retry_batch_fail": "{count} akun gagal diterapkan",
           "reconciled": "Berhasil sinkron dengan router",
           "reconcile_failed": "Gagal sinkron dengan router: {message}"
         }
@@ -2369,12 +2383,20 @@
           "risk_cpu": "Tampilkan router dengan beban CPU tinggi"
         },
         "filters": {
+          "status": "Status",
+          "risk": "Risiko",
+          "sort": "Urutkan",
           "any": "Semua",
           "online": "Online",
           "offline": "Offline",
           "hot": "Hot",
           "latency": "Latensi",
-          "cpu": "CPU"
+          "cpu": "CPU",
+          "sort_health_desc": "Risiko kesehatan (tertinggi)",
+          "sort_last_seen_desc": "Terakhir terlihat (terbaru)",
+          "sort_latency_desc": "Latensi (tertinggi)",
+          "sort_cpu_desc": "CPU (tertinggi)",
+          "reset": "Reset"
         },
         "columns": {
           "router": "Router",
@@ -2419,6 +2441,18 @@
           "acked": "Alert di-acknowledge",
           "resolved": "Alert diselesaikan",
           "snoozed": "Router dimute"
+        },
+        "filters": {
+          "all_status": "Semua status",
+          "all_severity": "Semua severity",
+          "all_types": "Semua tipe",
+          "sort": "Urutkan",
+          "sort_last_seen_desc": "Terakhir terlihat (terbaru)",
+          "sort_last_seen_asc": "Terakhir terlihat (terlama)",
+          "sort_severity_desc": "Severity (tertinggi)",
+          "from": "Dari",
+          "to": "Sampai",
+          "reset": "Reset"
         }
       },
       "incidents": {
@@ -2469,6 +2503,12 @@
           "unassigned": "Belum ditugaskan",
           "all_status": "Semua status",
           "all_severity": "Semua severity",
+          "all_types": "Semua tipe",
+          "sort": "Urutkan",
+          "sort_last_seen_desc": "Terakhir terlihat (terbaru)",
+          "sort_last_seen_asc": "Terakhir terlihat (terlama)",
+          "sort_severity_desc": "Severity (tertinggi)",
+          "sort_open_duration_desc": "Durasi terbuka (terlama)",
           "from": "Dari",
           "to": "Sampai",
           "reset": "Reset"
@@ -3053,7 +3093,9 @@
           "auto_escalation_title": "Auto eskalasi",
           "auto_escalation_desc": "Eskalasi insiden open yang belum di-ack menjadi critical setelah menit ambang batas.",
           "assignment_email_title": "Email assignment insiden",
-          "assignment_email_desc": "Kirim email ke anggota yang ditugaskan saat assignee insiden berubah."
+          "assignment_email_desc": "Kirim email ke anggota yang ditugaskan saat assignee insiden berubah.",
+          "pppoe_auto_apply_title": "PPPoE auto-apply setelah simpan",
+          "pppoe_auto_apply_desc": "Terapkan perubahan PPPoE create/update ke MikroTik otomatis setelah disimpan."
         },
         "thresholds": {
           "title": "Ambang Batas",

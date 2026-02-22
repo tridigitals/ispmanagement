@@ -6,7 +6,7 @@ use crate::models::{
     PppoeImportResult, UpdatePppoeAccountRequest,
 };
 use crate::security::secret::{decrypt_secret_opt, decrypt_secret_opt_for, encrypt_secret_for};
-use crate::services::{AuditService, AuthService};
+use crate::services::{AuditService, AuthService, SettingsService};
 use chrono::Utc;
 use mikrotik_rs::{protocol::command::CommandBuilder, protocol::CommandResponse, MikrotikDevice};
 use std::time::Instant;
@@ -34,14 +34,35 @@ pub struct PppoeService {
     pool: DbPool,
     auth_service: AuthService,
     audit_service: AuditService,
+    settings_service: SettingsService,
 }
 
 impl PppoeService {
-    pub fn new(pool: DbPool, auth_service: AuthService, audit_service: AuditService) -> Self {
+    pub fn new(
+        pool: DbPool,
+        auth_service: AuthService,
+        audit_service: AuditService,
+        settings_service: SettingsService,
+    ) -> Self {
         Self {
             pool,
             auth_service,
             audit_service,
+            settings_service,
+        }
+    }
+
+    async fn is_auto_apply_enabled(&self, tenant_id: &str) -> bool {
+        match self
+            .settings_service
+            .get_value(Some(tenant_id), "pppoe_auto_apply_on_save_enabled")
+            .await
+        {
+            Ok(Some(v)) => matches!(
+                v.trim().to_ascii_lowercase().as_str(),
+                "true" | "1" | "yes" | "on"
+            ),
+            _ => false,
         }
     }
 
@@ -913,10 +934,12 @@ impl PppoeService {
             }
         })?;
 
-        // Apply to router (best-effort; if it fails we keep record with error)
-        let _ = self
-            .apply_account_internal(tenant_id, account.id.as_str())
-            .await;
+        // Auto-apply is controlled by tenant setting; default disabled.
+        if self.is_auto_apply_enabled(tenant_id).await {
+            let _ = self
+                .apply_account_internal(tenant_id, account.id.as_str())
+                .await;
+        }
 
         self.audit_service
             .log(
@@ -1036,7 +1059,9 @@ impl PppoeService {
         .await
         .map_err(AppError::Database)?;
 
-        let _ = self.apply_account_internal(tenant_id, id).await;
+        if self.is_auto_apply_enabled(tenant_id).await {
+            let _ = self.apply_account_internal(tenant_id, id).await;
+        }
 
         self.audit_service
             .log(

@@ -8,6 +8,7 @@
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
+  import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
 
   type RouterRow = { id: string; name: string; host?: string; port?: number };
@@ -199,14 +200,11 @@
 
 <div class="page-content fade-in logs-page">
   <div class="logs-shell">
-    <div class="head">
-      <div>
-        <h1 class="title">{$t('admin.network.logs.title') || 'Router Logs'}</h1>
-        <p class="sub">
-          {$t('admin.network.logs.subtitle') || 'Read and store MikroTik logs for troubleshooting and audits.'}
-        </p>
-      </div>
-      <div class="head-actions">
+    <NetworkPageHeader
+      title={$t('admin.network.logs.title') || 'Router Logs'}
+      subtitle={$t('admin.network.logs.subtitle') || 'Read and store MikroTik logs for troubleshooting and audits.'}
+    >
+      {#snippet actions()}
         <button class="btn ghost" type="button" onclick={() => void loadRowsPage(1)} title={$t('common.refresh') || 'Refresh'}>
           <Icon name="refresh-cw" size={16} />
           {$t('admin.network.logs.actions.refresh') || 'Refresh'}
@@ -221,8 +219,8 @@
           <Icon name="database" size={16} />
           {$t('admin.network.logs.actions.sync_all') || 'Sync all routers'}
         </button>
-      </div>
-    </div>
+      {/snippet}
+    </NetworkPageHeader>
 
     <div class="filters">
       <label>
@@ -342,16 +340,6 @@
     box-shadow: var(--shadow-md);
     padding: 1rem 1rem 0.8rem;
   }
-  .head {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    align-items: flex-start;
-    margin-bottom: 1.1rem;
-  }
-  .title { font-size: 1.7rem; font-weight: 900; margin: 0; }
-  .sub { color: var(--text-secondary); margin-top: 0.4rem; }
-  .head-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
   .filters {
     display: grid;
     grid-template-columns: repeat(4, minmax(180px, 1fr));

@@ -11,6 +11,7 @@
   import Modal from '$lib/components/ui/Modal.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import DateTimeLocalInput from '$lib/components/ui/DateTimeLocalInput.svelte';
+  import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
 
   type RouterRow = {
@@ -274,13 +275,11 @@
 </script>
 
 <div class="page-content fade-in">
-  <div class="head">
-    <div>
-      <h1 class="title">{$t('admin.network.routers.title') || 'Routers'}</h1>
-      <p class="sub">{$t('admin.network.routers.subtitle') || 'Manage MikroTik routers and monitoring'}</p>
-    </div>
-
-    <div class="head-actions">
+  <NetworkPageHeader
+    title={$t('admin.network.routers.title') || 'Routers'}
+    subtitle={$t('admin.network.routers.subtitle') || 'Manage MikroTik routers and monitoring'}
+  >
+    {#snippet actions()}
       <button class="btn ghost" type="button" onclick={load} title={$t('common.refresh') || 'Refresh'}>
         <Icon name="refresh-cw" size={16} />
         {$t('admin.network.routers.actions.refresh') || $t('common.refresh') || 'Refresh'}
@@ -292,8 +291,8 @@
           {$t('admin.network.routers.actions.add') || 'Add Router'}
         </button>
       {/if}
-    </div>
-  </div>
+    {/snippet}
+  </NetworkPageHeader>
 
   <div class="stats">
     <div class="stat-card">
@@ -490,31 +489,6 @@
 <style>
   .page-content {
     padding: 28px;
-  }
-
-  .head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 18px;
-  }
-
-  .head-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-  }
-
-  .title {
-    margin: 0;
-    font-size: 1.6rem;
-    color: var(--text-primary);
-  }
-
-  .sub {
-    margin: 6px 0 0;
-    color: var(--text-secondary);
   }
 
   .btn {
@@ -775,16 +749,6 @@
   @media (max-width: 900px) {
     .page-content {
       padding: 18px;
-    }
-
-    .head {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .head-actions {
-      justify-content: flex-start;
-      flex-wrap: wrap;
     }
 
     .stats {

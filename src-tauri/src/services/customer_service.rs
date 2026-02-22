@@ -7,9 +7,12 @@ use crate::models::{
     CustomerUser, PaginatedResponse, UpdateCustomerLocationRequest, UpdateCustomerRequest,
     UpdateCustomerSubscriptionRequest,
 };
+use crate::security::secret::encrypt_secret_for;
 use crate::services::{AuditService, AuthService, UserService};
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
+
+const PURPOSE_PPPOE: &str = "pppoe_secrets";
 
 #[derive(Clone)]
 pub struct CustomerService {
@@ -160,6 +163,329 @@ impl CustomerService {
         Err(AppError::Validation(
             "Invalid date format. Use RFC3339 or YYYY-MM-DD".to_string(),
         ))
+    }
+
+    fn build_auto_pppoe_username(customer_name: &str, customer_id: &str, location_id: &str) -> String {
+        let mut slug = String::new();
+        for ch in customer_name.trim().chars() {
+            if ch.is_ascii_alphanumeric() {
+                slug.push(ch.to_ascii_lowercase());
+            } else if (ch.is_ascii_whitespace() || ch == '-' || ch == '_')
+                && !slug.ends_with('-')
+                && !slug.is_empty()
+            {
+                slug.push('-');
+            }
+            if slug.len() >= 14 {
+                break;
+            }
+        }
+        let slug = slug.trim_matches('-');
+        let base = if slug.is_empty() { "cust" } else { slug };
+        let c4 = customer_id.chars().rev().take(4).collect::<String>();
+        let l4 = location_id.chars().rev().take(4).collect::<String>();
+        format!("{}-{}{}", base, c4.chars().rev().collect::<String>(), l4.chars().rev().collect::<String>())
+    }
+
+    async fn auto_provision_pppoe_for_subscription(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        sub: &CustomerSubscription,
+        ip_address: Option<&str>,
+    ) -> AppResult<()> {
+        if sub.status != "active" {
+            return Ok(());
+        }
+        let Some(router_id) = sub.router_id.as_deref() else {
+            return Ok(());
+        };
+        if router_id.trim().is_empty() {
+            return Ok(());
+        }
+
+        #[derive(sqlx::FromRow)]
+        struct MappingRow {
+            router_profile_name: String,
+            address_pool: Option<String>,
+        }
+
+        #[cfg(feature = "postgres")]
+        let mapping: Option<MappingRow> = sqlx::query_as(
+            r#"
+            SELECT router_profile_name, address_pool
+            FROM isp_package_router_mappings
+            WHERE tenant_id = $1 AND router_id = $2 AND package_id = $3
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(&sub.package_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let mapping: Option<MappingRow> = sqlx::query_as(
+            r#"
+            SELECT router_profile_name, address_pool
+            FROM isp_package_router_mappings
+            WHERE tenant_id = ? AND router_id = ? AND package_id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(&sub.package_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let mapping = mapping.ok_or_else(|| {
+            AppError::Validation(
+                "PPPoE auto-provision requires package mapping (router profile) for selected router"
+                    .to_string(),
+            )
+        })?;
+
+        #[cfg(feature = "postgres")]
+        let customer_name: String =
+            sqlx::query_scalar("SELECT name FROM customers WHERE tenant_id = $1 AND id = $2")
+                .bind(tenant_id)
+                .bind(&sub.customer_id)
+                .fetch_optional(&self.pool)
+                .await?
+                .unwrap_or_else(|| "customer".to_string());
+
+        #[cfg(feature = "sqlite")]
+        let customer_name: String =
+            sqlx::query_scalar("SELECT name FROM customers WHERE tenant_id = ? AND id = ?")
+                .bind(tenant_id)
+                .bind(&sub.customer_id)
+                .fetch_optional(&self.pool)
+                .await?
+                .unwrap_or_else(|| "customer".to_string());
+
+        let username =
+            Self::build_auto_pppoe_username(&customer_name, &sub.customer_id, &sub.location_id);
+
+        #[cfg(feature = "postgres")]
+        let username_conflict: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1 FROM pppoe_accounts
+              WHERE tenant_id = $1
+                AND username = $2
+                AND (customer_id <> $3 OR location_id <> $4 OR router_id <> $5)
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&username)
+        .bind(&sub.customer_id)
+        .bind(&sub.location_id)
+        .bind(router_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let username_conflict: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1 FROM pppoe_accounts
+              WHERE tenant_id = ?
+                AND username = ?
+                AND (customer_id <> ? OR location_id <> ? OR router_id <> ?)
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&username)
+        .bind(&sub.customer_id)
+        .bind(&sub.location_id)
+        .bind(router_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        if username_conflict {
+            return Err(AppError::Validation(format!(
+                "PPPoE username conflict detected across tenant routers: {}",
+                username
+            )));
+        }
+
+        #[derive(sqlx::FromRow)]
+        struct ExistingPppoe {
+            id: String,
+        }
+
+        #[cfg(feature = "postgres")]
+        let existing: Option<ExistingPppoe> = sqlx::query_as(
+            r#"
+            SELECT id FROM pppoe_accounts
+            WHERE tenant_id = $1
+              AND customer_id = $2
+              AND location_id = $3
+              AND router_id = $4
+            ORDER BY updated_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&sub.customer_id)
+        .bind(&sub.location_id)
+        .bind(router_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let existing: Option<ExistingPppoe> = sqlx::query_as(
+            r#"
+            SELECT id FROM pppoe_accounts
+            WHERE tenant_id = ?
+              AND customer_id = ?
+              AND location_id = ?
+              AND router_id = ?
+            ORDER BY updated_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&sub.customer_id)
+        .bind(&sub.location_id)
+        .bind(router_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let now = Utc::now();
+        let note = format!(
+            "Auto-provisioned from active subscription {}. Pending apply.",
+            sub.id
+        );
+
+        if let Some(ex) = existing {
+            #[cfg(feature = "postgres")]
+            sqlx::query(
+                r#"
+                UPDATE pppoe_accounts
+                SET username = $1,
+                    package_id = $2,
+                    router_profile_name = $3,
+                    remote_address = NULL,
+                    address_pool = $4,
+                    disabled = true,
+                    comment = $5,
+                    updated_at = $6
+                WHERE tenant_id = $7 AND id = $8
+                "#,
+            )
+            .bind(&username)
+            .bind(&sub.package_id)
+            .bind(&mapping.router_profile_name)
+            .bind(&mapping.address_pool)
+            .bind(&note)
+            .bind(now)
+            .bind(tenant_id)
+            .bind(&ex.id)
+            .execute(&self.pool)
+            .await?;
+
+            #[cfg(feature = "sqlite")]
+            sqlx::query(
+                r#"
+                UPDATE pppoe_accounts
+                SET username = ?,
+                    package_id = ?,
+                    router_profile_name = ?,
+                    remote_address = NULL,
+                    address_pool = ?,
+                    disabled = 1,
+                    comment = ?,
+                    updated_at = ?
+                WHERE tenant_id = ? AND id = ?
+                "#,
+            )
+            .bind(&username)
+            .bind(&sub.package_id)
+            .bind(&mapping.router_profile_name)
+            .bind(&mapping.address_pool)
+            .bind(&note)
+            .bind(now)
+            .bind(tenant_id)
+            .bind(&ex.id)
+            .execute(&self.pool)
+            .await?;
+        } else {
+            let pwd_seed = Uuid::new_v4().simple().to_string();
+            let password_raw = format!("Pppoe#{}", &pwd_seed[..10]);
+            let password_enc = encrypt_secret_for(PURPOSE_PPPOE, &password_raw)?;
+            let id = Uuid::new_v4().to_string();
+
+            #[cfg(feature = "postgres")]
+            sqlx::query(
+                r#"
+                INSERT INTO pppoe_accounts
+                  (id, tenant_id, router_id, customer_id, location_id, username, password_enc, package_id, profile_id, router_profile_name,
+                   remote_address, address_pool, disabled, comment, router_present, router_secret_id, last_sync_at, last_error, created_at, updated_at)
+                VALUES
+                  ($1,$2,$3,$4,$5,$6,$7,$8,NULL,$9,NULL,$10,true,$11,false,NULL,NULL,NULL,$12,$13)
+                "#,
+            )
+            .bind(&id)
+            .bind(tenant_id)
+            .bind(router_id)
+            .bind(&sub.customer_id)
+            .bind(&sub.location_id)
+            .bind(&username)
+            .bind(&password_enc)
+            .bind(&sub.package_id)
+            .bind(&mapping.router_profile_name)
+            .bind(&mapping.address_pool)
+            .bind(&note)
+            .bind(now)
+            .bind(now)
+            .execute(&self.pool)
+            .await?;
+
+            #[cfg(feature = "sqlite")]
+            sqlx::query(
+                r#"
+                INSERT INTO pppoe_accounts
+                  (id, tenant_id, router_id, customer_id, location_id, username, password_enc, package_id, profile_id, router_profile_name,
+                   remote_address, address_pool, disabled, comment, router_present, router_secret_id, last_sync_at, last_error, created_at, updated_at)
+                VALUES
+                  (?,?,?,?,?,?,?,?,NULL,?,NULL,?,1,?,0,NULL,NULL,NULL,?,?)
+                "#,
+            )
+            .bind(&id)
+            .bind(tenant_id)
+            .bind(router_id)
+            .bind(&sub.customer_id)
+            .bind(&sub.location_id)
+            .bind(&username)
+            .bind(&password_enc)
+            .bind(&sub.package_id)
+            .bind(&mapping.router_profile_name)
+            .bind(&mapping.address_pool)
+            .bind(&note)
+            .bind(now)
+            .bind(now)
+            .execute(&self.pool)
+            .await?;
+        }
+
+        self.audit_service
+            .log(
+                Some(actor_id),
+                Some(tenant_id),
+                "PPPOE_AUTO_PROVISION",
+                "pppoe",
+                Some(&sub.id),
+                Some("Auto provisioned PPPoE draft from active subscription"),
+                ip_address,
+            )
+            .await;
+
+        Ok(())
     }
 
     // =========================
@@ -1611,6 +1937,9 @@ impl CustomerService {
             )
             .await;
 
+        self.auto_provision_pppoe_for_subscription(actor_id, tenant_id, &row, ip_address)
+            .await?;
+
         Ok(row)
     }
 
@@ -1768,6 +2097,9 @@ impl CustomerService {
                 ip_address,
             )
             .await;
+
+        self.auto_provision_pppoe_for_subscription(actor_id, tenant_id, &row, ip_address)
+            .await?;
 
         Ok(row)
     }

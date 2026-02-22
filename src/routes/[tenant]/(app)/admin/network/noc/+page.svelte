@@ -13,6 +13,8 @@
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { user, tenant } from '$lib/stores/auth';
   import AlertsIncidentsSwitch from '$lib/components/network/AlertsIncidentsSwitch.svelte';
+  import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
+  import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
 
   type NocRow = {
     id: string;
@@ -46,6 +48,7 @@
 
   let statusFilter = $state<'all' | 'offline' | 'online'>('all');
   let riskFilter = $state<'all' | 'hot' | 'latency' | 'cpu'>('all');
+  let sortFilter = $state<'health_desc' | 'last_seen_desc' | 'latency_desc' | 'cpu_desc'>('health_desc');
 
   // Thresholds for NOC risk filters.
   // "CPU" and "Latency" are meant to be practical daily filters (lower thresholds),
@@ -172,48 +175,16 @@
     return $t('admin.network.routers.badges.offline') || 'Offline';
   }
 
-  function statusTooltip(k: 'all' | 'online' | 'offline') {
-    const key =
-      k === 'all'
-        ? 'admin.network.noc.tooltips.status_all'
-        : k === 'online'
-          ? 'admin.network.noc.tooltips.status_online'
-          : 'admin.network.noc.tooltips.status_offline';
-
-    const fallback =
-      k === 'all'
-        ? 'Show all routers.'
-        : k === 'online'
-          ? 'Show routers that are currently reachable.'
-          : 'Show routers that are currently unreachable.';
-
-    const s = $t(key) as any;
-    return !s || s === key ? fallback : s;
-  }
-
-  function riskTooltip(k: 'all' | 'hot' | 'latency' | 'cpu') {
-    if (k === 'all') {
-      const key = 'admin.network.noc.tooltips.risk_any';
-      const s = $t(key) as any;
-      return !s || s === key ? 'No additional risk filtering.' : s;
-    }
-    if (k === 'hot') {
-      const key = 'admin.network.noc.tooltips.risk_hot';
-      const s = $t(key) as any;
-      const base =
-        !s || s === key ? 'Critical attention: offline, very high CPU, or very high latency.' : s;
-      return `${base} (offline • CPU ≥ ${CPU_HOT}% • latency ≥ ${LATENCY_HOT}ms)`;
-    }
-    if (k === 'latency') {
-      const key = 'admin.network.noc.tooltips.risk_latency';
-      const s = $t(key) as any;
-      const base = !s || s === key ? 'Show routers with high latency.' : s;
-      return `${base} (≥ ${LATENCY_RISK}ms)`;
-    }
-    const key = 'admin.network.noc.tooltips.risk_cpu';
-    const s = $t(key) as any;
-    const base = !s || s === key ? 'Show routers with high CPU load.' : s;
-    return `${base} (≥ ${CPU_RISK}%)`;
+  function healthScore(r: NocRow) {
+    const maintenanceUntil = r.maintenance_until ? new Date(r.maintenance_until).getTime() : NaN;
+    const inMaintenance = Number.isFinite(maintenanceUntil) ? maintenanceUntil > Date.now() : false;
+    if (inMaintenance) return -1;
+    if (!r.is_online) return 1000;
+    const cpu = r.cpu_load ?? 0;
+    const lat = r.latency_ms ?? 0;
+    const cpuScore = Math.max(0, cpu - CPU_RISK);
+    const latScore = Math.max(0, Math.round((lat - LATENCY_RISK) / 10));
+    return cpuScore + latScore;
   }
 
   const filtered = $derived.by(() => {
@@ -237,6 +208,28 @@
         return true;
       });
     }
+    out.sort((a, b) => {
+      if (sortFilter === 'latency_desc') {
+        const av = a.latency_ms ?? -1;
+        const bv = b.latency_ms ?? -1;
+        return bv - av;
+      }
+      if (sortFilter === 'cpu_desc') {
+        const av = a.cpu_load ?? -1;
+        const bv = b.cpu_load ?? -1;
+        return bv - av;
+      }
+      if (sortFilter === 'last_seen_desc') {
+        const av = a.last_seen_at ? new Date(a.last_seen_at).getTime() : 0;
+        const bv = b.last_seen_at ? new Date(b.last_seen_at).getTime() : 0;
+        return bv - av;
+      }
+      const byHealth = healthScore(b) - healthScore(a);
+      if (byHealth !== 0) return byHealth;
+      const av = a.last_seen_at ? new Date(a.last_seen_at).getTime() : 0;
+      const bv = b.last_seen_at ? new Date(b.last_seen_at).getTime() : 0;
+      return bv - av;
+    });
     return out;
   });
 
@@ -271,19 +264,20 @@
   function networkRoute(to: 'noc' | 'alerts' | 'incidents') {
     return `${tenantPrefix}/admin/network/${to}`;
   }
+
+  function resetFilters() {
+    statusFilter = 'all';
+    riskFilter = 'all';
+    sortFilter = 'health_desc';
+  }
 </script>
 
 <div class="page-content fade-in">
-  <div class="head">
-    <div>
-      <h1 class="title">{$t('admin.network.noc.title') || 'Network NOC'}</h1>
-      <p class="sub">
-        {$t('admin.network.noc.subtitle') ||
-          'A quick operational view of all routers: status, health, and traffic.'}
-      </p>
-    </div>
-
-    <div class="head-actions">
+  <NetworkPageHeader
+    title={$t('admin.network.noc.title') || 'Network NOC'}
+    subtitle={$t('admin.network.noc.subtitle') || 'A quick operational view of all routers: status, health, and traffic.'}
+  >
+    {#snippet actions()}
       <AlertsIncidentsSwitch
         current="noc"
         nocHref={networkRoute('noc')}
@@ -299,8 +293,8 @@
         <Icon name="monitor" size={16} />
         {$t('sidebar.wallboard') || 'Wallboard'}
       </button>
-    </div>
-  </div>
+    {/snippet}
+  </NetworkPageHeader>
 
   <div class="stats">
     <div class="stat-card">
@@ -333,68 +327,47 @@
     </div>
   </div>
 
-  <div class="filters">
-    <div class="seg">
-      <button
-        type="button"
-        class="seg-btn {statusFilter === 'all' ? 'active' : ''}"
-        title={statusTooltip('all')}
-        onclick={() => (statusFilter = 'all')}
-      >
-        {$t('common.all') || 'All'}
-      </button>
-      <button
-        type="button"
-        class="seg-btn {statusFilter === 'online' ? 'active' : ''}"
-        title={statusTooltip('online')}
-        onclick={() => (statusFilter = 'online')}
-      >
-        {$t('admin.network.noc.filters.online') || 'Online'}
-      </button>
-      <button
-        type="button"
-        class="seg-btn {statusFilter === 'offline' ? 'active' : ''}"
-        title={statusTooltip('offline')}
-        onclick={() => (statusFilter = 'offline')}
-      >
-        {$t('admin.network.noc.filters.offline') || 'Offline'}
-      </button>
-    </div>
+  <div class="filters-wrap">
+    <NetworkFilterPanel>
+      <div class="control">
+        <label for="noc-filter-status">{$t('admin.network.noc.filters.status') || 'Status'}</label>
+        <select id="noc-filter-status" class="input" bind:value={statusFilter}>
+          <option value="all">{$t('common.all') || 'All'}</option>
+          <option value="online">{$t('admin.network.noc.filters.online') || 'Online'}</option>
+          <option value="offline">{$t('admin.network.noc.filters.offline') || 'Offline'}</option>
+        </select>
+      </div>
 
-    <div class="seg">
-      <button
-        type="button"
-        class="seg-btn {riskFilter === 'all' ? 'active' : ''}"
-        title={riskTooltip('all')}
-        onclick={() => (riskFilter = 'all')}
-      >
-        {$t('admin.network.noc.filters.any') || 'Any'}
-      </button>
-      <button
-        type="button"
-        class="seg-btn {riskFilter === 'hot' ? 'active' : ''}"
-        title={riskTooltip('hot')}
-        onclick={() => (riskFilter = 'hot')}
-      >
-        {$t('admin.network.noc.filters.hot') || 'Hot'}
-      </button>
-      <button
-        type="button"
-        class="seg-btn {riskFilter === 'latency' ? 'active' : ''}"
-        title={riskTooltip('latency')}
-        onclick={() => (riskFilter = 'latency')}
-      >
-        {$t('admin.network.noc.filters.latency') || 'Latency'}
-      </button>
-      <button
-        type="button"
-        class="seg-btn {riskFilter === 'cpu' ? 'active' : ''}"
-        title={riskTooltip('cpu')}
-        onclick={() => (riskFilter = 'cpu')}
-      >
-        {$t('admin.network.noc.filters.cpu') || 'CPU'}
-      </button>
-    </div>
+      <div class="control">
+        <label for="noc-filter-risk">{$t('admin.network.noc.filters.risk') || 'Risk'}</label>
+        <select id="noc-filter-risk" class="input" bind:value={riskFilter}>
+          <option value="all">{$t('admin.network.noc.filters.any') || 'Any'}</option>
+          <option value="hot">{$t('admin.network.noc.filters.hot') || 'Hot'}</option>
+          <option value="latency">{$t('admin.network.noc.filters.latency') || 'Latency'}</option>
+          <option value="cpu">{$t('admin.network.noc.filters.cpu') || 'CPU'}</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label for="noc-filter-sort">{$t('admin.network.noc.filters.sort') || 'Sort'}</label>
+        <select id="noc-filter-sort" class="input" bind:value={sortFilter}>
+          <option value="health_desc">{$t('admin.network.noc.filters.sort_health_desc') || 'Health risk (highest)'}</option>
+          <option value="last_seen_desc">
+            {$t('admin.network.noc.filters.sort_last_seen_desc') || 'Last seen (newest)'}
+          </option>
+          <option value="latency_desc">{$t('admin.network.noc.filters.sort_latency_desc') || 'Latency (highest)'}</option>
+          <option value="cpu_desc">{$t('admin.network.noc.filters.sort_cpu_desc') || 'CPU (highest)'}</option>
+        </select>
+      </div>
+
+      <div class="control control-actions">
+        <div class="control-spacer" aria-hidden="true"></div>
+        <button class="btn ghost" type="button" onclick={resetFilters}>
+          <Icon name="x-circle" size={14} />
+          {$t('admin.network.noc.filters.reset') || 'Reset'}
+        </button>
+      </div>
+    </NetworkFilterPanel>
   </div>
 
   <div class="table-wrap">
@@ -491,33 +464,6 @@
     padding: 28px;
   }
 
-  .head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 14px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-
-  .title {
-    margin: 0;
-    font-size: 1.6rem;
-    font-weight: 950;
-    color: var(--text-primary);
-  }
-
-  .sub {
-    margin: 0.35rem 0 0 0;
-    color: var(--text-secondary);
-  }
-
-  .head-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
   .btn {
     display: inline-flex;
     align-items: center;
@@ -580,39 +526,8 @@
     box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.16) inset;
   }
 
-  .filters {
-    display: flex;
-    justify-content: flex-start;
-    gap: 12px;
-    flex-wrap: wrap;
+  .filters-wrap {
     margin-bottom: 12px;
-  }
-
-  .seg {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .seg-btn {
-    border: 1px solid var(--border-color);
-    background: transparent;
-    color: var(--text-secondary);
-    padding: 8px 10px;
-    border-radius: 999px;
-    font-weight: 900;
-    cursor: pointer;
-  }
-
-  .seg-btn:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-  }
-
-  .seg-btn.active {
-    border-color: rgba(99, 102, 241, 0.35);
-    background: rgba(99, 102, 241, 0.12);
-    color: var(--text-primary);
   }
 
   .table-wrap {

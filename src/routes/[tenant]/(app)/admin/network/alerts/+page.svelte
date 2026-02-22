@@ -10,6 +10,9 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import AlertsIncidentsSwitch from '$lib/components/network/AlertsIncidentsSwitch.svelte';
+  import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
+  import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
+  import RowActionButtons from '$lib/components/network/RowActionButtons.svelte';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { user, tenant } from '$lib/stores/auth';
@@ -39,6 +42,12 @@
   let rows = $state<AlertRow[]>([]);
   let activeOnly = $state(true);
   let isMobile = $state(false);
+  let filterStatus = $state('all');
+  let filterSeverity = $state('all');
+  let filterType = $state('all');
+  let filterFrom = $state('');
+  let filterTo = $state('');
+  let filterSort = $state('last_seen_desc');
 
   let refreshHandle: any = null;
   let tenantCtx = $derived.by(() =>
@@ -59,6 +68,50 @@
     { key: 'seen', label: $t('admin.network.alerts.columns.seen') || 'Last Seen' },
     { key: 'actions', label: '', align: 'right' as const, width: '140px' },
   ]);
+  const alertTypeOptions = $derived.by(() =>
+    Array.from(new Set(rows.map((row) => row.alert_type).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+  );
+  const filteredRows = $derived.by(() => {
+    const severityWeight = (severity: string) => {
+      if (severity === 'critical') return 3;
+      if (severity === 'warning') return 2;
+      if (severity === 'info') return 1;
+      return 0;
+    };
+
+    const list = rows.filter((row) => {
+      if (filterStatus !== 'all' && row.status !== filterStatus) return false;
+      if (filterSeverity !== 'all' && row.severity !== filterSeverity) return false;
+      if (filterType !== 'all' && row.alert_type !== filterType) return false;
+
+      const seenTs = new Date(row.last_seen_at).getTime();
+      if (Number.isNaN(seenTs)) return false;
+
+      if (filterFrom) {
+        const fromTs = new Date(`${filterFrom}T00:00:00`).getTime();
+        if (!Number.isNaN(fromTs) && seenTs < fromTs) return false;
+      }
+      if (filterTo) {
+        const toTs = new Date(`${filterTo}T23:59:59.999`).getTime();
+        if (!Number.isNaN(toTs) && seenTs > toTs) return false;
+      }
+
+      return true;
+    });
+
+    list.sort((a, b) => {
+      const aLastSeen = new Date(a.last_seen_at).getTime() || 0;
+      const bLastSeen = new Date(b.last_seen_at).getTime() || 0;
+      if (filterSort === 'last_seen_asc') return aLastSeen - bLastSeen;
+      if (filterSort === 'severity_desc') {
+        const bySeverity = severityWeight(b.severity) - severityWeight(a.severity);
+        if (bySeverity !== 0) return bySeverity;
+      }
+      return bLastSeen - aLastSeen;
+    });
+
+    return list;
+  });
 
   onMount(() => {
     if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
@@ -163,18 +216,23 @@
   function networkRoute(to: 'noc' | 'alerts' | 'incidents') {
     return `${tenantPrefix}/admin/network/${to}`;
   }
+
+  function resetFilters() {
+    filterStatus = 'all';
+    filterSeverity = 'all';
+    filterType = 'all';
+    filterSort = 'last_seen_desc';
+    filterFrom = '';
+    filterTo = '';
+  }
 </script>
 
 <div class="page-content fade-in">
-  <div class="head">
-    <div>
-      <h1 class="title">{$t('admin.network.alerts.title') || 'Router Alerts'}</h1>
-      <p class="sub">
-        {$t('admin.network.alerts.subtitle') || 'Incidents detected from router polling.'}
-      </p>
-    </div>
-
-    <div class="head-actions">
+  <NetworkPageHeader
+    title={$t('admin.network.alerts.title') || 'Router Alerts'}
+    subtitle={$t('admin.network.alerts.subtitle') || 'Incidents detected from router polling.'}
+  >
+    {#snippet actions()}
       <AlertsIncidentsSwitch
         current="alerts"
         nocHref={networkRoute('noc')}
@@ -199,13 +257,78 @@
         <Icon name="refresh-cw" size={16} />
         {$t('common.refresh') || 'Refresh'}
       </button>
-    </div>
-  </div>
+    {/snippet}
+  </NetworkPageHeader>
 
   <div class="table-wrap">
+    <NetworkFilterPanel>
+      <div class="control">
+        <label for="alert-filter-status">{$t('admin.network.alerts.columns.status') || 'Status'}</label>
+        <select id="alert-filter-status" class="input" bind:value={filterStatus}>
+          <option value="all">{$t('admin.network.alerts.filters.all_status') || 'All status'}</option>
+          <option value="open">open</option>
+          <option value="ack">ack</option>
+          <option value="resolved">resolved</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label for="alert-filter-severity">{$t('admin.network.alerts.columns.severity') || 'Severity'}</label>
+        <select id="alert-filter-severity" class="input" bind:value={filterSeverity}>
+          <option value="all">{$t('admin.network.alerts.filters.all_severity') || 'All severity'}</option>
+          <option value="info">{severityLabel('info')}</option>
+          <option value="warning">{severityLabel('warning')}</option>
+          <option value="critical">{severityLabel('critical')}</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label for="alert-filter-type">{$t('admin.network.alerts.columns.type') || 'Type'}</label>
+        <select id="alert-filter-type" class="input" bind:value={filterType}>
+          <option value="all">{$t('admin.network.alerts.filters.all_types') || 'All types'}</option>
+          {#each alertTypeOptions as typeOption}
+            <option value={typeOption}>{typeLabel(typeOption)}</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="control">
+        <label for="alert-filter-sort">{$t('admin.network.alerts.filters.sort') || 'Sort'}</label>
+        <select id="alert-filter-sort" class="input" bind:value={filterSort}>
+          <option value="last_seen_desc">
+            {$t('admin.network.alerts.filters.sort_last_seen_desc') || 'Last seen (newest)'}
+          </option>
+          <option value="last_seen_asc">
+            {$t('admin.network.alerts.filters.sort_last_seen_asc') || 'Last seen (oldest)'}
+          </option>
+          <option value="severity_desc">
+            {$t('admin.network.alerts.filters.sort_severity_desc') || 'Severity (highest)'}
+          </option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label for="alert-filter-from">{$t('admin.network.alerts.filters.from') || 'From'}</label>
+        <input id="alert-filter-from" class="input" type="date" bind:value={filterFrom} />
+      </div>
+
+      <div class="control">
+        <label for="alert-filter-to">{$t('admin.network.alerts.filters.to') || 'To'}</label>
+        <input id="alert-filter-to" class="input" type="date" bind:value={filterTo} />
+      </div>
+
+      <div class="control control-actions">
+        <div class="control-spacer" aria-hidden="true"></div>
+        <button class="btn ghost" type="button" onclick={resetFilters}>
+          <Icon name="x-circle" size={14} />
+          {$t('admin.network.alerts.filters.reset') || 'Reset'}
+        </button>
+      </div>
+    </NetworkFilterPanel>
+
     <Table
       {columns}
-      data={rows}
+      data={filteredRows}
       keyField="id"
       {loading}
       pagination={true}
@@ -239,46 +362,15 @@
             {timeAgo(item.last_seen_at)}
           </span>
         {:else if key === 'actions'}
-          <div class="actions">
-            <button
-              class="icon-btn"
-              type="button"
-              onclick={() => openRouter(item.router_id)}
-              title={$t('common.open') || 'Open'}
-            >
-              <Icon name="arrow-right" size={16} />
-            </button>
-            {#if item.status !== 'resolved' && ($can('manage', 'network_routers'))}
-              <button
-                class="icon-btn"
-                type="button"
-                onclick={() => snooze(item.router_id, 30)}
-                title={$t('admin.network.alerts.actions.snooze_30m') || 'Snooze 30m'}
-              >
-                <Icon name="clock" size={16} />
-              </button>
-            {/if}
-            {#if item.status !== 'ack' && item.status !== 'resolved' && ($can('manage', 'network_routers'))}
-              <button
-                class="icon-btn"
-                type="button"
-                onclick={() => ack(item.id)}
-                title={$t('admin.network.alerts.actions.ack') || 'Acknowledge'}
-              >
-                <Icon name="check" size={16} />
-              </button>
-            {/if}
-            {#if item.status !== 'resolved' && ($can('manage', 'network_routers'))}
-              <button
-                class="icon-btn"
-                type="button"
-                onclick={() => resolve(item.id)}
-                title={$t('admin.network.alerts.actions.resolve') || 'Resolve'}
-              >
-                <Icon name="check-circle" size={16} />
-              </button>
-            {/if}
-          </div>
+          <RowActionButtons
+            onOpen={() => openRouter(item.router_id)}
+            showSnooze={item.status !== 'resolved' && $can('manage', 'network_routers')}
+            onSnooze={() => snooze(item.router_id, 30)}
+            showAcknowledge={item.status !== 'ack' && item.status !== 'resolved' && $can('manage', 'network_routers')}
+            onAcknowledge={() => ack(item.id)}
+            showResolve={item.status !== 'resolved' && $can('manage', 'network_routers')}
+            onResolve={() => resolve(item.id)}
+          />
         {:else}
           {item[key] ?? ''}
         {/if}
@@ -290,33 +382,6 @@
 <style>
   .page-content {
     padding: 28px;
-  }
-
-  .head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 14px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-
-  .title {
-    margin: 0;
-    font-size: 1.6rem;
-    font-weight: 950;
-    color: var(--text-primary);
-  }
-
-  .sub {
-    margin: 0.35rem 0 0 0;
-    color: var(--text-secondary);
-  }
-
-  .head-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
   }
 
   .btn {
@@ -405,27 +470,6 @@
 
   .pill.resolved {
     opacity: 0.7;
-  }
-
-  .actions {
-    display: inline-flex;
-    gap: 8px;
-    justify-content: flex-end;
-  }
-
-  .icon-btn {
-    border: 1px solid var(--border-color);
-    background: transparent;
-    color: var(--text-primary);
-    border-radius: 12px;
-    padding: 8px;
-    cursor: pointer;
-    display: grid;
-    place-items: center;
-  }
-
-  .icon-btn:hover {
-    background: var(--bg-hover);
   }
 
   @media (max-width: 900px) {

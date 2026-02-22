@@ -10,7 +10,13 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import AlertsIncidentsSwitch from '$lib/components/network/AlertsIncidentsSwitch.svelte';
+  import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
+  import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
+  import RowActionButtons from '$lib/components/network/RowActionButtons.svelte';
+  import IncidentDetailDrawer from '$lib/components/network/IncidentDetailDrawer.svelte';
+  import IncidentSimulateDrawer from '$lib/components/network/IncidentSimulateDrawer.svelte';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
+  import { exportCsvRows, exportExcelRows } from '$lib/utils/tabularExport';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { user, tenant } from '$lib/stores/auth';
   import { get } from 'svelte/store';
@@ -76,6 +82,7 @@
   let filterStatus = $state('all');
   let filterSeverity = $state('all');
   let filterType = $state('all');
+  let filterSort = $state('last_seen_desc');
   let filterFrom = $state('');
   let filterTo = $state('');
   let assignmentEmailEnabled = $state(false);
@@ -116,8 +123,19 @@
     { key: 'seen', label: $t('admin.network.incidents.columns.seen') || 'Last Seen' },
     { key: 'actions', label: '', align: 'right' as const, width: '140px' },
   ]);
-  const filteredRows = $derived.by(() =>
-    rows.filter((row) => {
+  const incidentTypeOptions = $derived.by(() =>
+    Array.from(new Set(rows.map((row) => row.incident_type).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+  );
+
+  const filteredRows = $derived.by(() => {
+    const severityWeight = (severity: string) => {
+      if (severity === 'critical') return 3;
+      if (severity === 'warning') return 2;
+      if (severity === 'info') return 1;
+      return 0;
+    };
+
+    const list = rows.filter((row) => {
       if (filterAssignee === 'unassigned' && row.owner_user_id) return false;
       if (filterAssignee !== 'all' && filterAssignee !== 'unassigned' && row.owner_user_id !== filterAssignee) {
         return false;
@@ -139,8 +157,28 @@
       }
 
       return true;
-    }),
-  );
+    });
+
+    list.sort((a, b) => {
+      const aLastSeen = new Date(a.last_seen_at).getTime() || 0;
+      const bLastSeen = new Date(b.last_seen_at).getTime() || 0;
+
+      if (filterSort === 'last_seen_asc') return aLastSeen - bLastSeen;
+      if (filterSort === 'severity_desc') {
+        const bySeverity = severityWeight(b.severity) - severityWeight(a.severity);
+        if (bySeverity !== 0) return bySeverity;
+        return bLastSeen - aLastSeen;
+      }
+      if (filterSort === 'open_duration_desc') {
+        const byOpenMs = incidentOpenMs(b) - incidentOpenMs(a);
+        if (byOpenMs !== 0) return byOpenMs;
+        return bLastSeen - aLastSeen;
+      }
+      return bLastSeen - aLastSeen;
+    });
+
+    return list;
+  });
   const selectedRows = $derived.by(() => rows.filter((r) => selectedIds.includes(r.id)));
   const selectedCount = $derived(selectedIds.length);
   const filteredIds = $derived.by(() => filteredRows.map((r) => r.id));
@@ -449,6 +487,7 @@
     filterStatus = 'all';
     filterSeverity = 'all';
     filterType = 'all';
+    filterSort = 'last_seen_desc';
     filterFrom = '';
     filterTo = '';
   }
@@ -791,51 +830,13 @@
     }));
   }
 
-  function csvEscape(value: unknown) {
-    const str = String(value ?? '');
-    if (/[",\r\n]/.test(str)) return `"${str.replaceAll('"', '""')}"`;
-    return str;
-  }
-
-  function downloadBlob(filename: string, blob: Blob) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  function buildExportFilename(ext: 'csv' | 'xls') {
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    return `incidents-${stamp}.${ext}`;
-  }
-
   function exportCsv() {
     const rowsData = exportRows();
     if (!rowsData.length) {
       toast.error($t('admin.network.incidents.export.empty') || 'No data to export');
       return;
     }
-    const headers = Object.keys(rowsData[0]);
-    const lines = [headers.join(',')];
-    for (const row of rowsData) {
-      lines.push(headers.map((k) => csvEscape((row as any)[k])).join(','));
-    }
-    const csv = lines.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    downloadBlob(buildExportFilename('csv'), blob);
-  }
-
-  function htmlEscape(value: unknown) {
-    return String(value ?? '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
+    exportCsvRows(rowsData, 'incidents');
   }
 
   function exportExcel() {
@@ -844,14 +845,7 @@
       toast.error($t('admin.network.incidents.export.empty') || 'No data to export');
       return;
     }
-    const headers = Object.keys(rowsData[0]);
-    const headHtml = headers.map((h) => `<th>${htmlEscape(h)}</th>`).join('');
-    const bodyHtml = rowsData
-      .map((row) => `<tr>${headers.map((h) => `<td>${htmlEscape((row as any)[h])}</td>`).join('')}</tr>`)
-      .join('');
-    const html = `<!doctype html><html><head><meta charset="utf-8" /></head><body><table border="1"><thead><tr>${headHtml}</tr></thead><tbody>${bodyHtml}</tbody></table></body></html>`;
-    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-    downloadBlob(buildExportFilename('xls'), blob);
+    exportExcelRows(rowsData, 'incidents');
   }
 
   async function bulkAck() {
@@ -916,15 +910,11 @@
 </script>
 
 <div class="page-content fade-in">
-  <div class="head">
-    <div>
-      <h1 class="title">{$t('admin.network.incidents.title') || 'Network Incidents'}</h1>
-      <p class="sub">
-        {$t('admin.network.incidents.subtitle') || 'Operational incident records deduplicated from alerts.'}
-      </p>
-    </div>
-
-    <div class="head-actions">
+  <NetworkPageHeader
+    title={$t('admin.network.incidents.title') || 'Network Incidents'}
+    subtitle={$t('admin.network.incidents.subtitle') || 'Operational incident records deduplicated from alerts.'}
+  >
+    {#snippet actions()}
       <AlertsIncidentsSwitch
         current="incidents"
         nocHref={networkRoute('noc')}
@@ -1004,8 +994,8 @@
           {$t('admin.network.incidents.actions.simulate') || 'Simulate'}
         </button>
       {/if}
-    </div>
-  </div>
+    {/snippet}
+  </NetworkPageHeader>
 
   <div class="table-wrap">
     <div class="analytics">
@@ -1039,7 +1029,7 @@
       </button>
     </div>
 
-    <div class="filters">
+    <NetworkFilterPanel>
       <div class="control">
         <label for="inc-filter-assignee">{$t('admin.network.incidents.filters.assignee') || 'Assignee'}</label>
         <select id="inc-filter-assignee" class="input" bind:value={filterAssignee}>
@@ -1075,6 +1065,34 @@
       </div>
 
       <div class="control">
+        <label for="inc-filter-type">{$t('admin.network.incidents.columns.type') || 'Type'}</label>
+        <select id="inc-filter-type" class="input" bind:value={filterType}>
+          <option value="all">{$t('admin.network.incidents.filters.all_types') || 'All types'}</option>
+          {#each incidentTypeOptions as typeOption}
+            <option value={typeOption}>{typeLabel(typeOption)}</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="control">
+        <label for="inc-filter-sort">{$t('admin.network.incidents.filters.sort') || 'Sort'}</label>
+        <select id="inc-filter-sort" class="input" bind:value={filterSort}>
+          <option value="last_seen_desc">
+            {$t('admin.network.incidents.filters.sort_last_seen_desc') || 'Last seen (newest)'}
+          </option>
+          <option value="last_seen_asc">
+            {$t('admin.network.incidents.filters.sort_last_seen_asc') || 'Last seen (oldest)'}
+          </option>
+          <option value="severity_desc">
+            {$t('admin.network.incidents.filters.sort_severity_desc') || 'Severity (highest)'}
+          </option>
+          <option value="open_duration_desc">
+            {$t('admin.network.incidents.filters.sort_open_duration_desc') || 'Open duration (longest)'}
+          </option>
+        </select>
+      </div>
+
+      <div class="control">
         <label for="inc-filter-from">{$t('admin.network.incidents.filters.from') || 'From'}</label>
         <input id="inc-filter-from" class="input" type="date" bind:value={filterFrom} />
       </div>
@@ -1091,7 +1109,7 @@
           {$t('admin.network.incidents.filters.reset') || 'Reset'}
         </button>
       </div>
-    </div>
+    </NetworkFilterPanel>
 
     {#if $can('manage', 'network_routers')}
       <div class="bulk-bar">
@@ -1197,34 +1215,16 @@
             {timeAgo(item.last_seen_at)}
           </span>
         {:else if key === 'actions'}
-          <div class="actions">
-            <button class="icon-btn" type="button" onclick={() => openRouter(item.router_id)} title={$t('common.open') || 'Open'}>
-              <Icon name="arrow-right" size={16} />
-            </button>
-            <button class="icon-btn" type="button" onclick={() => void openDetail(item)} title={$t('common.details') || 'Details'}>
-              <Icon name="file-text" size={16} />
-            </button>
-            {#if item.status !== 'ack' && item.status !== 'resolved' && ($can('manage', 'network_routers'))}
-              <button
-                class="icon-btn"
-                type="button"
-                onclick={() => ack(item.id)}
-                title={$t('admin.network.alerts.actions.ack') || 'Acknowledge'}
-              >
-                <Icon name="check" size={16} />
-              </button>
-            {/if}
-            {#if item.status !== 'resolved' && ($can('manage', 'network_routers'))}
-              <button
-                class="icon-btn"
-                type="button"
-                onclick={() => resolve(item.id)}
-                title={$t('admin.network.alerts.actions.resolve') || 'Resolve'}
-              >
-                <Icon name="check-circle" size={16} />
-              </button>
-            {/if}
-          </div>
+          <RowActionButtons
+            fullWidth={true}
+            onOpen={() => openRouter(item.router_id)}
+            showDetail={true}
+            onDetail={() => void openDetail(item)}
+            showAcknowledge={item.status !== 'ack' && item.status !== 'resolved' && $can('manage', 'network_routers')}
+            onAcknowledge={() => ack(item.id)}
+            showResolve={item.status !== 'resolved' && $can('manage', 'network_routers')}
+            onResolve={() => resolve(item.id)}
+          />
         {:else}
           {item[key] ?? ''}
         {/if}
@@ -1232,305 +1232,77 @@
     </Table>
   </div>
 
-  {#if detailOpen && detailIncident}
-    {@const incident = detailIncident}
-    <button class="drawer-backdrop" type="button" onclick={closeDetail} aria-label={$t('common.close') || 'Close'}></button>
-    <aside class="drawer" aria-label={$t('common.details') || 'Details'}>
-      <div class="drawer-head">
-        <div>
-          <div class="drawer-title">{$t('common.details') || 'Details'}</div>
-          <div class="drawer-sub">{incident.title}</div>
-        </div>
-        <button class="icon-btn" type="button" onclick={closeDetail} title={$t('common.close') || 'Close'}>
-          <Icon name="x" size={16} />
-        </button>
-      </div>
+  <IncidentDetailDrawer
+    open={detailOpen}
+    incident={detailIncident}
+    loading={detailLoading}
+    router={detailRouter}
+    metric={detailMetric}
+    teamMembers={teamMembers}
+    selectedOwnerId={selectedOwnerId}
+    draftNotes={draftNotes}
+    saving={detailSaving}
+    canManage={$can('manage', 'network_routers')}
+    emailNotifyEnabled={assignmentEmailEnabled}
+    slaState={detailIncident ? slaLevel(detailIncident) : 'ok'}
+    slaOpenDuration={detailIncident ? formatOpenDuration(incidentOpenMs(detailIncident)) : '—'}
+    appTimezone={$appSettings.app_timezone}
+    runbookSteps={detailIncident ? runbookStepsFor(detailIncident) : []}
+    activityItems={detailIncident ? buildIncidentActivity(detailIncident) : []}
+    {ownerLabel}
+    {typeLabel}
+    {severityLabel}
+    {formatDateTime}
+    {formatBps}
+    {memoryUsePct}
+    onClose={closeDetail}
+    onOpenRouter={openRouter}
+    onAcknowledge={ack}
+    onResolve={resolve}
+    onSave={saveIncidentMeta}
+    onOpenNetworkSettings={openNetworkSettings}
+    onOwnerChange={(value) => {
+      selectedOwnerId = value;
+    }}
+    onNotesChange={(value) => {
+      draftNotes = value;
+    }}
+    onCopyRunbookCommand={copyRunbookCommand}
+    onAddRunbookStep={addRunbookStepToNotes}
+  />
 
-      <div class="drawer-body">
-        {#if detailLoading}
-          <div class="muted">{$t('common.loading') || 'Loading...'}</div>
-        {/if}
-
-        <div class="detail-grid">
-          <div class="drow"><span class="muted">{$t('admin.network.incidents.columns.status') || 'Status'}</span><span class="mono">{incident.status}</span></div>
-          <div class="drow"><span class="muted">{$t('admin.network.incidents.columns.type') || 'Type'}</span><span class="mono">{typeLabel(incident.incident_type)}</span></div>
-          <div class="drow"><span class="muted">{$t('admin.network.incidents.columns.severity') || 'Severity'}</span><span class="mono">{severityLabel(incident.severity)}</span></div>
-          <div class="drow">
-            <span class="muted">{$t('admin.network.incidents.labels.auto_escalated') || 'Auto Escalated'}</span>
-            <span class="mono">
-              {incident.is_auto_escalated
-                ? formatDateTime(incident.escalated_at || incident.updated_at, { timeZone: $appSettings.app_timezone })
-                : ($t('common.no') || 'No')}
-            </span>
-          </div>
-          <div class="drow"><span class="muted">{$t('admin.network.incidents.columns.seen') || 'Last Seen'}</span><span class="mono">{formatDateTime(incident.last_seen_at, { timeZone: $appSettings.app_timezone })}</span></div>
-          <div class="drow">
-            <span class="muted">{$t('admin.network.incidents.drawer.email_notify') || 'Email notify'}</span>
-            <span class="mono">
-              <span class:flag-on={assignmentEmailEnabled} class:flag-off={!assignmentEmailEnabled} class="flag">
-                {assignmentEmailEnabled
-                  ? $t('admin.network.incidents.drawer.on') || 'On'
-                  : $t('admin.network.incidents.drawer.off') || 'Off'}
-              </span>
-            </span>
-          </div>
-          <div class="drow">
-            <span class="muted">{$t('admin.network.incidents.sla.title') || 'SLA Timer'}</span>
-            <span class="mono">
-              <span class="sla-badge" class:warn={slaLevel(incident) === 'warn'} class:breach={slaLevel(incident) === 'breach'}>
-                {formatOpenDuration(incidentOpenMs(incident))}
-              </span>
-            </span>
-          </div>
-          <div class="drow"><span class="muted">{$t('admin.network.incidents.drawer.assignee') || 'Assignee'}</span><span class="mono">{ownerLabel(incident.owner_user_id)}</span></div>
-          <div class="drow"><span class="muted">Router</span><span class="mono">{detailRouter?.identity || detailRouter?.name || incident.router_id}</span></div>
-          <div class="drow"><span class="muted">Interface</span><span class="mono">{incident.interface_name || '-'}</span></div>
-          {#if detailRouter}
-            <div class="drow"><span class="muted">Host</span><span class="mono">{detailRouter.host}:{detailRouter.port}</span></div>
-            <div class="drow"><span class="muted">Latency</span><span class="mono">{detailRouter.latency_ms == null ? '—' : `${detailRouter.latency_ms} ms`}</span></div>
-          {/if}
-          {#if detailMetric}
-            <div class="drow"><span class="muted">CPU</span><span class="mono">{detailMetric.cpu_load == null ? '—' : `${detailMetric.cpu_load}%`}</span></div>
-            <div class="drow"><span class="muted">RX/TX</span><span class="mono">{formatBps(detailMetric.rx_bps)} / {formatBps(detailMetric.tx_bps)}</span></div>
-            <div class="drow"><span class="muted">Memory Use</span><span class="mono">{memoryUsePct(detailMetric.total_memory_bytes, detailMetric.free_memory_bytes) == null ? '—' : `${memoryUsePct(detailMetric.total_memory_bytes, detailMetric.free_memory_bytes)}%`}</span></div>
-          {/if}
-        </div>
-
-        <div class="detail-message">{incident.message}</div>
-
-        <div class="detail-edit">
-          <div class="field">
-            <label for="incident-owner">{$t('admin.network.incidents.drawer.assignee') || 'Assignee'}</label>
-            {#if $can('manage', 'network_routers')}
-              <select id="incident-owner" class="input" bind:value={selectedOwnerId}>
-                <option value="">{($t('admin.network.incidents.drawer.unassigned') || 'Unassigned')}</option>
-                {#each teamMembers as member}
-                  <option value={member.user_id}>{member.name} ({member.email})</option>
-                {/each}
-              </select>
-            {:else}
-              <div class="readonly">{ownerLabel(incident.owner_user_id)}</div>
-            {/if}
-          </div>
-          <div class="field">
-            <label for="incident-notes">{$t('admin.network.incidents.drawer.notes') || 'Notes'}</label>
-            {#if $can('manage', 'network_routers')}
-              <textarea
-                id="incident-notes"
-                class="textarea"
-                rows="4"
-                bind:value={draftNotes}
-                placeholder={$t('admin.network.incidents.drawer.notes_placeholder') || 'Add operator notes, handover context, and actions...'}
-              ></textarea>
-            {:else}
-              <div class="readonly">{incident.notes || ($t('common.na') || '—')}</div>
-            {/if}
-          </div>
-          {#if $can('manage', 'network_routers')}
-            <div class="save-row">
-              <button class="btn ghost" type="button" onclick={saveIncidentMeta} disabled={detailSaving}>
-                <Icon name="save" size={16} />
-                {detailSaving
-                  ? $t('common.saving') || 'Saving...'
-                  : $t('admin.network.incidents.drawer.save') || 'Save Notes'}
-              </button>
-            </div>
-            <div class="save-row">
-              <button class="btn ghost" type="button" onclick={openNetworkSettings}>
-                <Icon name="settings" size={16} />
-                {$t('admin.network.incidents.drawer.open_network_settings') || 'Open Network Settings'}
-              </button>
-            </div>
-          {/if}
-        </div>
-
-        <div class="runbook">
-          <div class="runbook-title">
-            {$t('admin.network.incidents.runbook.title') || 'What to do next'}
-          </div>
-          <div class="runbook-sub">
-            {$t('admin.network.incidents.runbook.subtitle') || 'Operator checklist based on incident type.'}
-          </div>
-          <div class="runbook-list">
-            {#each runbookStepsFor(incident) as step}
-              <div class="runbook-item">
-                <div class="runbook-text">
-                  <div class="runbook-step">{step.title}</div>
-                  {#if step.detail}
-                    <div class="runbook-detail">{step.detail}</div>
-                  {/if}
-                  {#if step.command}
-                    <code class="runbook-command">{step.command}</code>
-                  {/if}
-                </div>
-                <div class="runbook-actions">
-                  {#if step.command}
-                    <button class="icon-btn" type="button" onclick={() => copyRunbookCommand(step.command!)}>
-                      <Icon name="link" size={14} />
-                    </button>
-                  {/if}
-                  {#if $can('manage', 'network_routers')}
-                    <button class="icon-btn" type="button" onclick={() => addRunbookStepToNotes(step)}>
-                      <Icon name="check" size={14} />
-                    </button>
-                  {/if}
-                </div>
-              </div>
-            {/each}
-          </div>
-        </div>
-
-        <div class="timeline">
-          <div class="timeline-title">
-            {$t('admin.network.incidents.activity.title') || 'Activity Timeline'}
-          </div>
-          <div class="timeline-list">
-            {#each buildIncidentActivity(incident) as event}
-              <div class="timeline-item">
-                <span class="dot"></span>
-                <div class="timeline-content">
-                  <div class="timeline-row">
-                    <span class="timeline-event">{event.title}</span>
-                    <span class="timeline-time">{event.ts}</span>
-                  </div>
-                  {#if event.detail}
-                    <div class="timeline-detail">{event.detail}</div>
-                  {/if}
-                </div>
-              </div>
-            {/each}
-          </div>
-        </div>
-      </div>
-
-      <div class="drawer-actions">
-        <button class="btn ghost" type="button" onclick={() => openRouter(incident.router_id)}>
-          <Icon name="arrow-right" size={16} />
-          {$t('common.open') || 'Open'}
-        </button>
-        {#if incident.status !== 'ack' && incident.status !== 'resolved' && ($can('manage', 'network_routers'))}
-          <button class="btn ghost" type="button" onclick={() => ack(incident.id)}>
-            <Icon name="check" size={16} />
-            {$t('admin.network.alerts.actions.ack') || 'Acknowledge'}
-          </button>
-        {/if}
-        {#if incident.status !== 'resolved' && ($can('manage', 'network_routers'))}
-          <button class="btn ghost" type="button" onclick={() => resolve(incident.id)}>
-            <Icon name="check-circle" size={16} />
-            {$t('admin.network.alerts.actions.resolve') || 'Resolve'}
-          </button>
-        {/if}
-      </div>
-    </aside>
-  {/if}
-
-  {#if simulateOpen}
-    <button
-      class="drawer-backdrop"
-      type="button"
-      onclick={closeSimulateDialog}
-      aria-label={$t('common.close') || 'Close'}
-    ></button>
-    <aside class="drawer simulate-drawer" aria-label={$t('admin.network.incidents.actions.simulate') || 'Simulate'}>
-      <div class="drawer-head">
-        <div>
-          <div class="drawer-title">{$t('admin.network.incidents.actions.simulate') || 'Simulate'}</div>
-          <div class="drawer-sub">{$t('admin.network.incidents.simulate.subtitle') || 'Create test incident manually'}</div>
-        </div>
-        <button class="icon-btn" type="button" onclick={closeSimulateDialog} disabled={simulateBusy}>
-          <Icon name="x" size={16} />
-        </button>
-      </div>
-      <div class="drawer-body">
-        <div class="field">
-          <label for="sim-router">{$t('admin.network.incidents.simulate.router') || 'Router'}</label>
-          <select id="sim-router" class="input" bind:value={simulateRouterId} disabled={simulateBusy}>
-            {#each simulateRouters as router}
-              <option value={router.id}>{router.identity || router.name}</option>
-            {/each}
-          </select>
-        </div>
-        <div class="field">
-          <label for="sim-type">{$t('admin.network.incidents.simulate.type') || 'Incident type'}</label>
-          <select id="sim-type" class="input" bind:value={simulateType} disabled={simulateBusy}>
-            <option value="offline">offline</option>
-            <option value="cpu">cpu</option>
-            <option value="latency">latency</option>
-            <option value="interface_down">interface_down</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="sim-sev">{$t('admin.network.incidents.simulate.severity') || 'Severity'}</label>
-          <select id="sim-sev" class="input" bind:value={simulateSeverity} disabled={simulateBusy}>
-            <option value="info">info</option>
-            <option value="warning">warning</option>
-            <option value="critical">critical</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="sim-iface">{$t('admin.network.incidents.simulate.interface') || 'Interface (optional)'}</label>
-          <input
-            id="sim-iface"
-            class="input"
-            type="text"
-            bind:value={simulateInterface}
-            placeholder="ether1"
-            disabled={simulateBusy}
-          />
-        </div>
-        <div class="field">
-          <label for="sim-msg">{$t('admin.network.incidents.simulate.message') || 'Message (optional)'}</label>
-          <textarea
-            id="sim-msg"
-            class="textarea"
-            rows="4"
-            bind:value={simulateMessage}
-            placeholder={$t('admin.network.incidents.simulate.message_placeholder') || 'Optional simulation message'}
-            disabled={simulateBusy}
-          ></textarea>
-        </div>
-      </div>
-      <div class="drawer-actions">
-        <button class="btn ghost" type="button" onclick={closeSimulateDialog} disabled={simulateBusy}>
-          {$t('common.cancel') || 'Cancel'}
-        </button>
-        <button class="btn ghost" type="button" onclick={submitSimulateIncident} disabled={simulateBusy || !simulateRouterId}>
-          <Icon name="activity" size={16} />
-          {simulateBusy
-            ? $t('common.saving') || 'Saving...'
-            : $t('admin.network.incidents.actions.simulate') || 'Simulate'}
-        </button>
-      </div>
-    </aside>
-  {/if}
+  <IncidentSimulateDrawer
+    open={simulateOpen}
+    busy={simulateBusy}
+    routers={simulateRouters}
+    routerId={simulateRouterId}
+    incidentType={simulateType}
+    severity={simulateSeverity}
+    interfaceName={simulateInterface}
+    message={simulateMessage}
+    onClose={closeSimulateDialog}
+    onSubmit={submitSimulateIncident}
+    onRouterChange={(value) => {
+      simulateRouterId = value;
+    }}
+    onTypeChange={(value) => {
+      simulateType = value;
+    }}
+    onSeverityChange={(value) => {
+      simulateSeverity = value;
+    }}
+    onInterfaceChange={(value) => {
+      simulateInterface = value;
+    }}
+    onMessageChange={(value) => {
+      simulateMessage = value;
+    }}
+  />
 </div>
 
 <style>
   .page-content {
     padding: 28px;
-  }
-  .head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 14px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-  .title {
-    margin: 0;
-    font-size: 1.6rem;
-    font-weight: 950;
-    color: var(--text-primary);
-  }
-  .sub {
-    margin: 0.35rem 0 0 0;
-    color: var(--text-secondary);
-  }
-  .head-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
   }
   .export-wrap {
     position: relative;
@@ -1626,44 +1398,6 @@
     font-size: 0.96rem;
     font-weight: 850;
     line-height: 1.2;
-  }
-  .filters {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 10px;
-    padding: 12px;
-    border-bottom: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-surface) 70%, transparent);
-  }
-  .control {
-    display: grid;
-    gap: 6px;
-  }
-  .control label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    font-weight: 700;
-  }
-  .control-spacer {
-    height: 1rem;
-  }
-  .control .input {
-    height: 38px;
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    background: var(--bg-surface);
-    color: var(--text-primary);
-    padding: 0 10px;
-    outline: none;
-  }
-  .control .input:focus {
-    border-color: color-mix(in srgb, var(--accent) 55%, var(--border-color));
-  }
-  .control-actions .btn {
-    width: 100%;
-    justify-content: center;
-    height: 38px;
-    padding: 0 10px;
   }
   .bulk-bar {
     display: flex;
@@ -1794,131 +1528,7 @@
     color: var(--color-danger);
     border-color: color-mix(in srgb, var(--color-danger) 45%, var(--border-color));
   }
-  .actions {
-    display: inline-flex;
-    gap: 6px;
-    justify-content: flex-end;
-    width: 100%;
-  }
-  .icon-btn {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-    border: 1px solid var(--border-color);
-    background: transparent;
-    color: var(--text-primary);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-  }
-  .icon-btn:hover {
-    background: var(--bg-hover);
-  }
-  .drawer-backdrop {
-    position: fixed;
-    inset: 0;
-    border: 0;
-    background: rgba(0, 0, 0, 0.45);
-    z-index: 50;
-  }
-  .drawer {
-    position: fixed;
-    top: 0;
-    right: 0;
-    width: min(560px, 92vw);
-    height: 100vh;
-    background: var(--bg-surface);
-    border-left: 1px solid var(--border-color);
-    z-index: 51;
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-  }
-  .simulate-drawer {
-    width: min(500px, 92vw);
-  }
-  .drawer-head {
-    padding: 16px;
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  .drawer-title {
-    font-size: 0.78rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-  }
-  .drawer-sub {
-    margin-top: 6px;
-    font-size: 1.05rem;
-    font-weight: 900;
-    color: var(--text-primary);
-  }
-  .drawer-body {
-    padding: 16px;
-    display: grid;
-    gap: 14px;
-    overflow: auto;
-  }
-  .detail-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-  .drow {
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 10px;
-    display: grid;
-    gap: 4px;
-  }
-  .flag {
-    display: inline-flex;
-    align-items: center;
-    border-radius: 999px;
-    padding: 3px 9px;
-    font-size: 0.72rem;
-    font-weight: 800;
-    border: 1px solid var(--border-color);
-  }
-  .flag-on {
-    color: var(--color-success);
-    border-color: color-mix(in srgb, var(--color-success) 45%, var(--border-color));
-  }
-  .flag-off {
-    color: var(--text-secondary);
-    border-color: var(--border-color);
-  }
-  .detail-message {
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 12px;
-    color: var(--text-primary);
-    line-height: 1.45;
-    white-space: pre-wrap;
-  }
-  .detail-edit {
-    display: grid;
-    gap: 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 12px;
-    background: color-mix(in srgb, var(--bg-card) 70%, transparent);
-  }
-  .field {
-    display: grid;
-    gap: 6px;
-  }
-  .field label {
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-    font-weight: 700;
-  }
-  .input,
-  .textarea {
+  .input {
     border: 1px solid var(--border-color);
     border-radius: 10px;
     background: var(--bg-surface);
@@ -1926,150 +1536,11 @@
     padding: 10px 12px;
     outline: none;
   }
-  .input:focus,
-  .textarea:focus {
+  .input:focus {
     border-color: color-mix(in srgb, var(--accent) 55%, var(--border-color));
-  }
-  .readonly {
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--bg-surface) 75%, transparent);
-    color: var(--text-primary);
-    padding: 10px 12px;
-    white-space: pre-wrap;
-  }
-  .save-row {
-    display: flex;
-    justify-content: flex-end;
-  }
-  .timeline {
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 12px;
-    background: color-mix(in srgb, var(--bg-card) 70%, transparent);
-    display: grid;
-    gap: 10px;
-  }
-  .timeline-title {
-    font-size: 0.8rem;
-    font-weight: 800;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  .timeline-list {
-    display: grid;
-    gap: 10px;
-  }
-  .timeline-item {
-    display: grid;
-    grid-template-columns: 14px 1fr;
-    gap: 8px;
-    align-items: start;
-  }
-  .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    background: var(--accent);
-    margin-top: 6px;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
-  }
-  .timeline-content {
-    display: grid;
-    gap: 3px;
-  }
-  .timeline-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-  .timeline-event {
-    color: var(--text-primary);
-    font-weight: 700;
-    font-size: 0.88rem;
-  }
-  .timeline-time {
-    color: var(--text-secondary);
-    font-size: 0.78rem;
-    white-space: nowrap;
-  }
-  .timeline-detail {
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-    line-height: 1.4;
-  }
-  .runbook {
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 12px;
-    background: color-mix(in srgb, var(--bg-card) 70%, transparent);
-    display: grid;
-    gap: 8px;
-  }
-  .runbook-title {
-    font-size: 0.82rem;
-    font-weight: 800;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  .runbook-sub {
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-  }
-  .runbook-list {
-    display: grid;
-    gap: 8px;
-  }
-  .runbook-item {
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 10px;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 10px;
-    align-items: start;
-  }
-  .runbook-step {
-    color: var(--text-primary);
-    font-weight: 700;
-    font-size: 0.86rem;
-  }
-  .runbook-detail {
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-    margin-top: 4px;
-  }
-  .runbook-command {
-    display: inline-block;
-    margin-top: 6px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: color-mix(in srgb, var(--bg-surface) 75%, transparent);
-    padding: 4px 8px;
-    color: var(--text-primary);
-    font-size: 0.75rem;
-  }
-  .runbook-actions {
-    display: inline-flex;
-    gap: 6px;
-  }
-  .drawer-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    flex-wrap: wrap;
-    padding: 12px 16px;
-    border-top: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-card) 80%, transparent);
   }
   @media (max-width: 720px) {
     .analytics {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .filters {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .bulk-bar {
@@ -2081,9 +1552,6 @@
     .bulk-assign {
       min-width: 0;
       flex: 1;
-    }
-    .detail-grid {
-      grid-template-columns: 1fr;
     }
   }
 </style>

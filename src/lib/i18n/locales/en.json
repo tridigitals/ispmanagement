@@ -1804,7 +1804,9 @@
           "auto_escalation_title": "Auto escalation",
           "auto_escalation_desc": "Escalate unacknowledged open incidents to critical after threshold minutes.",
           "assignment_email_title": "Incident assignment emails",
-          "assignment_email_desc": "Send email to the assigned member when incident assignee is changed."
+          "assignment_email_desc": "Send email to the assigned member when incident assignee is changed.",
+          "pppoe_auto_apply_title": "PPPoE auto-apply after save",
+          "pppoe_auto_apply_desc": "Automatically apply PPPoE create/update changes to MikroTik right after save."
         },
         "thresholds": {
           "title": "Thresholds",
@@ -2157,6 +2159,7 @@
       "pppoe": {
         "title": "PPPoE",
         "subtitle": "Tenant-wide view of PPPoE accounts across routers.",
+        "auto_apply_on": "Auto-apply ON",
         "search": "Search PPPoE...",
         "empty": "No PPPoE accounts.",
         "import": {
@@ -2221,6 +2224,7 @@
           "all": "All",
           "router": "Router",
           "sync": "Sync",
+          "provisioning": "Provisioning",
           "disabled": "State",
           "any": "Any",
           "present": "On router",
@@ -2232,7 +2236,14 @@
           "username": "Username",
           "customer": "Customer",
           "router": "Router",
+          "provisioning": "Provisioning",
           "sync": "Sync"
+        },
+        "provisioning": {
+          "draft": "Draft",
+          "applied": "Applied",
+          "failed": "Failed",
+          "retrying": "Retrying"
         },
         "sync": {
           "present": "On router",
@@ -2241,7 +2252,8 @@
         "actions": {
           "reconcile": "Reconcile",
           "open_customer": "Open customer",
-          "apply": "Apply to router"
+          "apply": "Apply to router",
+          "retry_apply_batch": "Retry apply"
         },
         "form": {
           "package_hint": "If you select a package, profile/pool will be prefilled for the selected router (you can still override).",
@@ -2250,6 +2262,10 @@
         "toasts": {
           "applied": "Applied to router",
           "apply_failed": "Failed to apply PPPoE account: {message}",
+          "auto_applied": "Saved and automatically applied to router",
+          "auto_apply_failed": "Saved, but auto-apply failed: {message}",
+          "retry_batch_ok": "{count} account(s) applied",
+          "retry_batch_fail": "{count} account(s) failed to apply",
           "reconciled": "Reconciled router state",
           "reconcile_failed": "Failed to reconcile router state: {message}"
         }
@@ -2556,12 +2572,20 @@
           "risk_cpu": "Show routers with high CPU load"
         },
         "filters": {
+          "status": "Status",
+          "risk": "Risk",
+          "sort": "Sort",
           "any": "Any",
           "online": "Online",
           "offline": "Offline",
           "hot": "Hot",
           "latency": "Latency",
-          "cpu": "CPU"
+          "cpu": "CPU",
+          "sort_health_desc": "Health risk (highest)",
+          "sort_last_seen_desc": "Last seen (newest)",
+          "sort_latency_desc": "Latency (highest)",
+          "sort_cpu_desc": "CPU (highest)",
+          "reset": "Reset"
         },
         "columns": {
           "router": "Router",
@@ -2606,6 +2630,18 @@
           "acked": "Alert acknowledged",
           "resolved": "Alert resolved",
           "snoozed": "Router snoozed"
+        },
+        "filters": {
+          "all_status": "All status",
+          "all_severity": "All severity",
+          "all_types": "All types",
+          "sort": "Sort",
+          "sort_last_seen_desc": "Last seen (newest)",
+          "sort_last_seen_asc": "Last seen (oldest)",
+          "sort_severity_desc": "Severity (highest)",
+          "from": "From",
+          "to": "To",
+          "reset": "Reset"
         }
       },
       "incidents": {
@@ -2656,6 +2692,12 @@
           "unassigned": "Unassigned",
           "all_status": "All status",
           "all_severity": "All severity",
+          "all_types": "All types",
+          "sort": "Sort",
+          "sort_last_seen_desc": "Last seen (newest)",
+          "sort_last_seen_asc": "Last seen (oldest)",
+          "sort_severity_desc": "Severity (highest)",
+          "sort_open_duration_desc": "Open duration (longest)",
           "from": "From",
           "to": "To",
           "reset": "Reset"

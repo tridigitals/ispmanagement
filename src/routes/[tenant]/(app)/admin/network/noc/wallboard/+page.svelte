@@ -6,8 +6,28 @@
   import { can, user, tenant } from '$lib/stores/auth';
   import { api } from '$lib/api/client';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import WallboardAlertsPanel from '$lib/components/network/WallboardAlertsPanel.svelte';
+  import WallboardInsightsControls from '$lib/components/network/WallboardInsightsControls.svelte';
+  import WallboardInsightsSummary from '$lib/components/network/WallboardInsightsSummary.svelte';
+  import {
+    ALERT_SOUND_KEY,
+    FOCUS_MODE_KEY,
+    KEEP_AWAKE_KEY,
+    POLL_MS_KEY,
+    ROTATE_MODE_KEY,
+    ROTATE_MS_KEY,
+    SETTINGS_LAYOUT_KEY,
+    SETTINGS_SLOTS_KEY,
+    STATUS_FILTER_KEY,
+    WALLBOARD_ROTATE_MS_OPTIONS,
+    WALLBOARD_POLL_MS_OPTIONS,
+    isLayoutPreset,
+    type LayoutPreset,
+    type RotateMode,
+  } from '$lib/constants/wallboard';
   import { toast } from '$lib/stores/toast';
   import { isSidebarCollapsed } from '$lib/stores/ui';
+  import { exportCsvRows } from '$lib/utils/tabularExport';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
 
   type NocRow = {
@@ -138,8 +158,6 @@
     warn_below_tx_bps?: number | null;
   };
 
-  type LayoutPreset = '2x2' | '3x2' | '3x3' | '4x3';
-  type RotateMode = 'manual' | 'auto';
   let layout = $state<LayoutPreset>('3x3');
   let lastLayout = $state<LayoutPreset>('3x3');
   let rotateMode = $state<RotateMode>('manual');
@@ -232,20 +250,7 @@
   let lastCriticalBeepAt = $state(0);
   let audioCtx: AudioContext | null = null;
 
-  const SETTINGS_LAYOUT_KEY = 'mikrotik_wallboard_layout';
-  const SETTINGS_SLOTS_KEY = 'mikrotik_wallboard_slots_json';
-  const ROTATE_MODE_KEY = 'mikrotik_wallboard_rotate_mode';
-  const ROTATE_MS_KEY = 'mikrotik_wallboard_rotate_ms';
-  const FOCUS_MODE_KEY = 'mikrotik_wallboard_focus_mode';
-  const STATUS_FILTER_KEY = 'mikrotik_wallboard_status_filter';
-  const POLL_MS_KEY = 'mikrotik_wallboard_poll_ms';
-  const ALERT_SOUND_KEY = 'mikrotik_wallboard_alert_sound';
-  const KEEP_AWAKE_KEY = 'mikrotik_wallboard_keep_awake';
   const TOOLBAR_HIDE_MS = 10_000;
-
-  function isLayoutPreset(v: string | null): v is LayoutPreset {
-    return v === '2x2' || v === '3x2' || v === '3x3' || v === '4x3';
-  }
 
   function formatBps(bps?: number | null) {
     if (bps == null) return $t('common.na') || '—';
@@ -1089,31 +1094,16 @@
       toast.error($t('admin.network.wallboard.metrics.export_empty') || 'No metrics data to export.');
       return;
     }
-
-    const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
-    const header = ['timestamp', 'router', 'interface', 'bucket', 'rx_bps', 'tx_bps'].join(',');
-    const lines = rows.map((r) =>
-      [
-        esc(r.ts),
-        esc(routerName),
-        esc(iface),
-        esc(bucket),
-        String(r.rx_bps ?? 0),
-        String(r.tx_bps ?? 0),
-      ].join(','),
-    );
-
-    const csv = [header, ...lines].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    a.href = url;
-    a.setAttribute('download', `metrics-${iface || 'interface'}-${bucket}-${stamp}.csv`);
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    const csvRows = rows.map((r) => ({
+      timestamp: r.ts,
+      router: routerName,
+      interface: iface,
+      bucket,
+      rx_bps: r.rx_bps ?? 0,
+      tx_bps: r.tx_bps ?? 0,
+    }));
+    const filePrefix = `metrics-${iface || 'interface'}-${bucket}`;
+    exportCsvRows(csvRows, filePrefix);
   }
 
   function openFullTab(tab: 'live' | 'metrics') {
@@ -1305,11 +1295,11 @@
       const rm = localStorage.getItem(ROTATE_MODE_KEY);
       if (rm === 'manual' || rm === 'auto') rotateMode = rm;
       const rms = Number(localStorage.getItem(ROTATE_MS_KEY) || 10000);
-      if ([5000, 10000, 15000, 30000, 60000].includes(rms)) rotateMs = rms;
+      if ((WALLBOARD_ROTATE_MS_OPTIONS as readonly number[]).includes(rms)) rotateMs = rms;
       const sf = localStorage.getItem(STATUS_FILTER_KEY);
       if (sf === 'all' || sf === 'online' || sf === 'offline') statusFilter = sf;
       const pm = Number(localStorage.getItem(POLL_MS_KEY) || 1000);
-      if ([1000, 2000, 5000].includes(pm)) pollMs = pm;
+      if ((WALLBOARD_POLL_MS_OPTIONS as readonly number[]).includes(pm)) pollMs = pm;
       const sd = localStorage.getItem(ALERT_SOUND_KEY);
       if (sd === '0' || sd === '1') criticalSoundEnabled = sd === '1';
       const s = localStorage.getItem('mikrotik_wallboard_slots');
@@ -1955,343 +1945,64 @@
           <Icon name="x" size={16} />
         </button>
       </div>
-      <div class="panel-section">
-        <div class="panel-kicker">{$t('admin.network.wallboard.controls.open') || 'Controls'}</div>
-        <div class="seg panel-actions">
-          <button onclick={() => void refresh()} disabled={refreshing}>
-            <Icon name="refresh-cw" size={16} />
-            {$t('common.refresh') || 'Refresh'}
-          </button>
-          <button
-            onclick={() => setPaused(!paused)}
-            title={paused ? $t('admin.network.wallboard.resume') || 'Resume' : $t('admin.network.wallboard.pause') || 'Pause'}
-          >
-            <Icon name={paused ? 'play' : 'pause'} size={16} />
-            {paused ? $t('admin.network.wallboard.resume') || 'Resume' : $t('admin.network.wallboard.pause') || 'Pause'}
-          </button>
-          <button onclick={() => void toggleFullscreen()}>
-            <Icon name="monitor" size={16} />
-            {isFullscreen
-              ? $t('admin.network.wallboard.exit_fullscreen') || 'Exit Fullscreen'
-              : $t('admin.network.wallboard.fullscreen') || 'Fullscreen'}
-          </button>
-          <button
-            onclick={() => {
-              criticalSoundEnabled = !criticalSoundEnabled;
-            }}
-            title={$t('admin.network.wallboard.sound_toggle') || 'Toggle critical alert sound'}
-          >
-            <Icon name="alert-triangle" size={16} />
-            {criticalSoundEnabled
-              ? $t('admin.network.wallboard.sound_on') || 'Sound On'
-              : $t('admin.network.wallboard.sound_off') || 'Sound Off'}
-          </button>
-          <button onclick={exitWallboard} title={$t('admin.network.wallboard.exit') || $t('sidebar.exit') || 'Exit'}>
-            <Icon name="arrow-left" size={16} />
-            {$t('admin.network.wallboard.exit') || $t('sidebar.exit') || 'Exit'}
-          </button>
-        </div>
-        <div class="toolbar-selects panel-selects">
-          <label class="toolbar-field">
-            <span class="muted">{$t('admin.network.wallboard.poll') || 'Poll'}</span>
-            <select
-              value={String(pollMs)}
-              onchange={(e) => {
-                const v = Number((e.currentTarget as HTMLSelectElement).value);
-                if ([1000, 2000, 5000].includes(v)) pollMs = v;
-              }}
-            >
-              <option value="1000">1s</option>
-              <option value="2000">2s</option>
-              <option value="5000">5s</option>
-            </select>
-          </label>
-          <label class="toolbar-field">
-            <span class="muted">{$t('admin.network.wallboard.controls.layout') || 'Layout'}</span>
-            <select
-              value={layout}
-              onchange={(e) => {
-                const v = (e.currentTarget as HTMLSelectElement).value as LayoutPreset;
-                if (isLayoutPreset(v)) layout = v;
-              }}
-            >
-              <option value="2x2">{$t('admin.network.wallboard.layouts.2x2') || '2x2'}</option>
-              <option value="3x2">{$t('admin.network.wallboard.layouts.3x2') || '3x2'}</option>
-              <option value="3x3">{$t('admin.network.wallboard.layouts.3x3') || '3x3'}</option>
-              <option value="4x3">{$t('admin.network.wallboard.layouts.4x3') || '4x3'}</option>
-            </select>
-          </label>
-        </div>
-        {#if pageCount > 1}
-          <div class="pager" aria-label={$t('admin.network.wallboard.pager.aria') || 'Pages'}>
-            <button
-              class="pager-btn"
-              type="button"
-              onclick={() => (page = Math.max(0, page - 1))}
-              disabled={page === 0}
-              aria-label={$t('admin.network.wallboard.pager.prev') || 'Previous page'}
-            >
-              <Icon name="chevron-left" size={16} />
-            </button>
-            <span class="pager-label">
-              {($t('common.page') || 'Page') + ' ' + (page + 1) + '/' + pageCount}
-            </span>
-            <button
-              class="pager-btn"
-              type="button"
-              onclick={() => (page = Math.min(pageCount - 1, page + 1))}
-              disabled={page >= pageCount - 1}
-              aria-label={$t('admin.network.wallboard.pager.next') || 'Next page'}
-            >
-              <Icon name="chevron-right" size={16} />
-            </button>
-          </div>
-        {/if}
-      </div>
-      <div class="slo-strip">
-        <div class="slo-card">
-          <span class="k">{$t('admin.network.wallboard.slo.availability') || 'Availability'}</span>
-          <span class="v mono">{globalSummary.availability.toFixed(1)}%</span>
-        </div>
-        <div class="slo-card">
-          <span class="k">{$t('admin.network.wallboard.slo.routers_online') || 'Routers Online'}</span>
-          <span class="v mono">{globalSummary.online}/{globalSummary.total}</span>
-        </div>
-        <div class="slo-card">
-          <span class="k">{$t('admin.network.wallboard.slo.critical') || 'Critical Alerts'}</span>
-          <span class="v mono">{globalSummary.critical}</span>
-        </div>
-        <div class="slo-card">
-          <span class="k">{$t('admin.network.wallboard.slo.warning') || 'Warning Alerts'}</span>
-          <span class="v mono">{globalSummary.warning}</span>
-        </div>
-        <div class="slo-card">
-          <span class="k">{$t('admin.network.wallboard.slo.avg_latency') || 'Avg Latency'}</span>
-          <span class="v mono">{formatLatency(globalSummary.avgLatencyMs)}</span>
-        </div>
-      </div>
-
-      <div class="top-issues-strip">
-        <div class="top-issues-head">
-          <span class="title">{$t('admin.network.wallboard.top_issues.title') || 'Top Issues (1h)'}</span>
-          <span class="muted">
-            {$t('admin.network.wallboard.top_issues.subtitle') || 'Most frequent unresolved issues'}
-          </span>
-        </div>
-        <div class="top-issues-list">
-          {#if topIssues.length === 0}
-            <span class="top-issue-empty">
-              {$t('admin.network.wallboard.top_issues.empty') || 'No repeated issues in the last hour.'}
-            </span>
-          {:else}
-            {#each topIssues as it (it.key)}
-              {@const muteMins = selectedMuteMinutes(it.router_id)}
-              {@const maintLeft = maintenanceRemaining(routerById(it.router_id)?.maintenance_until)}
-              <div class="top-issue-item">
-                <button
-                  type="button"
-                  class="top-issue-main"
-                  onclick={() => goto(incidentHrefForTopIssue(it.router_id, it.title))}
-                  title={it.title}
-                >
-                  <span class="mono router">{it.router_name}</span>
-                  <span class="issue-title">{it.title}</span>
-                  <span class="issue-count mono">x{it.count}</span>
-                </button>
-                {#if maintLeft}
-                  <span class="top-issue-maint" title={$t('admin.network.wallboard.maintenance') || 'Maintenance'}>
-                    <Icon name="clock" size={13} />
-                    {$t('admin.network.wallboard.maintenance') || 'Maintenance'} {maintLeft}
-                  </span>
-                {/if}
-                {#if $can('manage', 'network_routers')}
-                  <div class="top-issue-actions">
-                    {#if maintLeft}
-                      <button
-                        type="button"
-                        class="btn-mini ghost"
-                        onclick={() => void unmuteRouter(it.router_id)}
-                        title={$t('admin.network.wallboard.unmute') || 'Unmute'}
-                      >
-                        <Icon name="x-circle" size={14} />
-                        {$t('admin.network.wallboard.unmute') || 'Unmute'}
-                      </button>
-                    {/if}
-                    <select
-                      value={String(muteMins)}
-                      onchange={(e) => {
-                        const v = Number((e.currentTarget as HTMLSelectElement).value);
-                        topIssueMuteMinutes = {
-                          ...topIssueMuteMinutes,
-                          [it.router_id]: v === 60 || v === 240 ? v : 30,
-                        };
-                      }}
-                      aria-label={$t('admin.network.wallboard.top_issues.mute_for') || 'Mute duration'}
-                    >
-                      <option value="30">30m</option>
-                      <option value="60">1h</option>
-                      <option value="240">4h</option>
-                    </select>
-                    <button
-                      type="button"
-                      class="btn-mini ghost"
-                      onclick={() => void muteRouterAlerts(it.router_id, muteMins)}
-                      title={$t('admin.network.wallboard.top_issues.apply_mute') || 'Apply mute'}
-                    >
-                      <Icon name="clock" size={14} />
-                      {$t('admin.network.wallboard.top_issues.apply_mute') || 'Mute'}
-                    </button>
-                  </div>
-                {/if}
-              </div>
-            {/each}
-          {/if}
-        </div>
-      </div>
-
-      <div class="top-issues-strip">
-        <div class="top-issues-head">
-          <span class="title">{$t('admin.network.wallboard.incidents.title') || 'Open Incidents'}</span>
-          <span class="muted">
-            {$t('admin.network.wallboard.incidents.subtitle') || 'Latest active incidents from monitoring engine'}
-          </span>
-        </div>
-        <div class="top-issues-list">
-          {#if openIncidentItems.length === 0}
-            <span class="top-issue-empty">
-              {$t('admin.network.wallboard.incidents.empty') || 'No active incidents.'}
-            </span>
-          {:else}
-            {#each openIncidentItems as it (it.id)}
-              <div class="top-issue-item">
-                <button
-                  type="button"
-                  class="top-issue-main"
-                  onclick={() => goto(incidentHrefById(it.id))}
-                  title={it.message || it.title}
-                >
-                  <span class="mono router">{routerLabel(it.router_id)}</span>
-                  <span class="issue-title">{it.title}</span>
-                  <span class="issue-count mono">{String(it.severity || 'info').toUpperCase()}</span>
-                </button>
-                <span class="muted mono">{formatMetricTs(it.last_seen_at || it.updated_at)}</span>
-                {#if $can('manage', 'network_routers')}
-                  <div class="top-issue-actions">
-                    <button
-                      type="button"
-                      class="btn-mini ghost"
-                      onclick={() => void ackIncident(it.id)}
-                      title={$t('admin.network.alerts.actions.ack') || 'Acknowledge'}
-                    >
-                      <Icon name="check" size={14} />
-                      {$t('admin.network.alerts.actions.ack') || 'Acknowledge'}
-                    </button>
-                    <button
-                      type="button"
-                      class="btn-mini ghost danger"
-                      onclick={() => void resolveIncident(it.id)}
-                      title={$t('admin.network.alerts.actions.resolve') || 'Resolve'}
-                    >
-                      <Icon name="check-circle" size={14} />
-                      {$t('admin.network.alerts.actions.resolve') || 'Resolve'}
-                    </button>
-                  </div>
-                {/if}
-              </div>
-            {/each}
-          {/if}
-        </div>
-      </div>
-
-      <div class="timeline-strip">
-        <div class="top-issues-head">
-          <span class="title">{$t('admin.network.wallboard.timeline.title') || 'Incident Timeline'}</span>
-          <span class="muted">
-            {$t('admin.network.wallboard.timeline.subtitle') || 'Latest 20 wallboard events'}
-          </span>
-        </div>
-        <div class="timeline-list">
-          {#if incidentEvents.length === 0}
-            <span class="top-issue-empty">
-              {$t('admin.network.wallboard.timeline.empty') || 'No recent events yet.'}
-            </span>
-          {:else}
-            {#each incidentEvents as ev (ev.id)}
-              <div class="timeline-item">
-                <span class={`timeline-kind ${kindClass(ev.kind)}`}>{kindLabel(ev.kind)}</span>
-                <div class="timeline-content">
-                  <div class="timeline-msg">
-                    {#if ev.router_id}
-                      <span class="mono">{routerLabel(ev.router_id)}</span>
-                      <span class="muted">·</span>
-                    {/if}
-                    <span>{ev.message}</span>
-                  </div>
-                  <span class="muted mono">{formatIncidentTs(ev.ts)}</span>
-                </div>
-              </div>
-            {/each}
-          {/if}
-        </div>
-      </div>
+      <WallboardInsightsControls
+        bind:pollMs
+        bind:layout
+        bind:page
+        {pageCount}
+        {refreshing}
+        {paused}
+        {isFullscreen}
+        {criticalSoundEnabled}
+        onRefresh={() => void refresh()}
+        onTogglePaused={() => setPaused(!paused)}
+        onToggleFullscreen={() => void toggleFullscreen()}
+        onToggleCriticalSound={() => {
+          criticalSoundEnabled = !criticalSoundEnabled;
+        }}
+        onExit={exitWallboard}
+      />
+      <WallboardInsightsSummary
+        {globalSummary}
+        {topIssues}
+        {openIncidentItems}
+        {incidentEvents}
+        canManage={$can('manage', 'network_routers')}
+        selectedMuteMinutes={selectedMuteMinutes}
+        getMaintenanceRemaining={(routerId) => maintenanceRemaining(routerById(routerId)?.maintenance_until)}
+        onSetTopIssueMuteMinutes={(routerId, mins) => {
+          topIssueMuteMinutes = {
+            ...topIssueMuteMinutes,
+            [routerId]: mins === 60 || mins === 240 ? mins : 30,
+          };
+        }}
+        onGotoTopIssue={(routerId, title) => goto(incidentHrefForTopIssue(routerId, title))}
+        onMuteTopIssue={(routerId, mins) => void muteRouterAlerts(routerId, mins)}
+        onUnmuteTopIssue={(routerId) => void unmuteRouter(routerId)}
+        onOpenIncident={(incidentId) => goto(incidentHrefById(incidentId))}
+        onAckIncident={(incidentId) => void ackIncident(incidentId)}
+        onResolveIncident={(incidentId) => void resolveIncident(incidentId)}
+        {routerLabel}
+        {formatMetricTs}
+        {formatIncidentTs}
+        kindClass={(kind) => kindClass(kind as IncidentKind)}
+        kindLabel={(kind) => kindLabel(kind as IncidentKind)}
+        {formatLatency}
+      />
     </aside>
   {/if}
 
   {#if sortedAlerts.length > 0 && alertsOpen}
     <div id="wallboard-alert-panel" class="alert-strip floating-alert-panel">
-      <div class="alert-strip-head">
-        <Icon name="alert-triangle" size={15} />
-        <span class="alert-strip-title">
-          {$t('admin.network.wallboard.alerts_open') || 'Open alerts'}
-        </span>
-        <span class="alert-strip-count">{visibleAlerts.length}</span>
-      </div>
-      {#if $can('manage', 'network_routers')}
-        <div class="alert-strip-actions">
-          <button class="btn-mini ghost" type="button" onclick={() => void ackVisibleAlerts()}>
-            <Icon name="check" size={14} />
-            {$t('admin.network.wallboard.alerts_ack_visible') || 'Ack visible'}
-          </button>
-        </div>
-      {/if}
-      <div class="alert-filter-seg">
-        <button
-          class:active={alertSeverityFilter === 'all'}
-          type="button"
-          onclick={() => (alertSeverityFilter = 'all')}
-        >
-          {$t('admin.network.wallboard.filters.all') || 'All'} ({alertStats.total})
-        </button>
-        <button
-          class:active={alertSeverityFilter === 'critical'}
-          type="button"
-          onclick={() => (alertSeverityFilter = 'critical')}
-        >
-          {$t('admin.network.alerts.severity.critical') || 'Critical'} ({alertStats.critical})
-        </button>
-        <button
-          class:active={alertSeverityFilter === 'warning'}
-          type="button"
-          onclick={() => (alertSeverityFilter = 'warning')}
-        >
-          {$t('admin.network.alerts.severity.warning') || 'Warning'} ({alertStats.warning})
-        </button>
-      </div>
-      <div class="alert-strip-list">
-        {#each visibleAlerts.slice(0, 8) as a (a.id)}
-          <button
-            type="button"
-            class="alert-chip"
-            class:crit={String(a.severity || '').toLowerCase() === 'critical'}
-            onclick={() => goto(`${tenantPrefix}/admin/network/alerts`)}
-            title={a.message}
-          >
-            <span class="mono">{routerById(a.router_id)?.identity || routerById(a.router_id)?.name || a.router_id}</span>
-            <span class="muted">·</span>
-            <span>{a.title}</span>
-          </button>
-        {/each}
-      </div>
+      <WallboardAlertsPanel
+        bind:alertSeverityFilter
+        {visibleAlerts}
+        {alertStats}
+        canManage={$can('manage', 'network_routers')}
+        onAckVisible={() => void ackVisibleAlerts()}
+        onOpenAlerts={() => goto(`${tenantPrefix}/admin/network/alerts`)}
+        routerLabel={(routerId) => routerById(routerId)?.identity || routerById(routerId)?.name || routerId}
+      />
     </div>
   {/if}
 
@@ -3347,235 +3058,6 @@
     letter-spacing: 0.1em;
     color: var(--text-primary);
   }
-  .panel-section {
-    display: grid;
-    gap: 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 8px;
-    background: color-mix(in srgb, var(--bg-surface) 78%, transparent);
-  }
-  .panel-kicker {
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    font-weight: 900;
-    color: var(--text-muted);
-  }
-  .panel-actions {
-    width: 100%;
-    flex-wrap: wrap;
-    border-radius: 12px;
-  }
-  .panel-actions button {
-    flex: 1 1 45%;
-    justify-content: center;
-  }
-  .panel-selects {
-    width: 100%;
-    justify-content: space-between;
-  }
-  .slo-strip {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-  .slo-card {
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 8px 10px;
-    background: color-mix(in srgb, var(--bg-surface) 70%, transparent);
-    display: grid;
-    gap: 3px;
-    min-height: 54px;
-  }
-  .slo-card .k {
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    font-weight: 900;
-    color: var(--text-muted);
-  }
-  .slo-card .v {
-    font-size: 15px;
-    font-weight: 900;
-    color: var(--text-primary);
-    line-height: 1.1;
-  }
-  .top-issues-strip {
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 9px 10px;
-    background: color-mix(in srgb, var(--bg-surface) 74%, transparent);
-    display: grid;
-    gap: 8px;
-    min-height: 0;
-  }
-  .timeline-strip {
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 9px 10px;
-    background: color-mix(in srgb, var(--bg-surface) 74%, transparent);
-    display: grid;
-    gap: 8px;
-  }
-  .top-issues-head {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .top-issues-head .title {
-    font-size: 12px;
-    font-weight: 900;
-    color: var(--text-primary);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-  .top-issues-list {
-    display: grid;
-    gap: 7px;
-    align-content: start;
-  }
-  .top-issue-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 7px 8px;
-    background: color-mix(in srgb, var(--bg-surface) 68%, transparent);
-  }
-  .top-issue-main {
-    border: none;
-    background: transparent;
-    color: var(--text-primary);
-    padding: 0;
-    margin: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    min-width: 0;
-    flex: 1;
-    text-align: left;
-  }
-  .top-issue-main .router {
-    max-width: 220px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-weight: 800;
-  }
-  .top-issue-main .issue-title {
-    min-width: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 12px;
-    color: var(--text-muted);
-  }
-  .top-issue-main .issue-count {
-    font-weight: 900;
-    color: var(--text-primary);
-  }
-  .top-issue-empty {
-    border: 1px dashed var(--border-color);
-    border-radius: 10px;
-    padding: 8px 10px;
-    color: var(--text-muted);
-    font-size: 12px;
-  }
-  .top-issue-maint {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    border: 1px solid color-mix(in srgb, #f59e0b 45%, var(--border-color));
-    border-radius: 999px;
-    padding: 4px 8px;
-    font-size: 11px;
-    font-weight: 800;
-    color: color-mix(in srgb, #f59e0b 86%, var(--text-primary));
-    background: color-mix(in srgb, #f59e0b 14%, transparent);
-    white-space: nowrap;
-  }
-  .top-issue-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .top-issue-actions select {
-    height: 32px;
-    min-width: 72px;
-    border-radius: 10px;
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
-    color: var(--text-primary);
-    padding: 0 8px;
-    font-size: 12px;
-    font-weight: 700;
-    outline: none;
-  }
-  .timeline-list {
-    display: grid;
-    gap: 7px;
-  }
-  .timeline-item {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 7px 8px;
-    background: color-mix(in srgb, var(--bg-surface) 68%, transparent);
-  }
-  .timeline-kind {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    border: 1px solid var(--border-color);
-    padding: 3px 7px;
-    font-size: 10px;
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-    align-self: start;
-  }
-  .timeline-kind.critical {
-    border-color: color-mix(in srgb, #ef4444 55%, var(--border-color));
-    color: color-mix(in srgb, #ef4444 90%, var(--text-primary));
-    background: color-mix(in srgb, #ef4444 15%, transparent);
-  }
-  .timeline-kind.warning {
-    border-color: color-mix(in srgb, #f59e0b 55%, var(--border-color));
-    color: color-mix(in srgb, #f59e0b 90%, var(--text-primary));
-    background: color-mix(in srgb, #f59e0b 14%, transparent);
-  }
-  .timeline-kind.ok {
-    border-color: color-mix(in srgb, #22c55e 40%, var(--border-color));
-    color: color-mix(in srgb, #22c55e 85%, var(--text-primary));
-    background: color-mix(in srgb, #22c55e 12%, transparent);
-  }
-  .timeline-content {
-    min-width: 0;
-    display: grid;
-    gap: 4px;
-  }
-  .timeline-msg {
-    min-width: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 12px;
-    color: var(--text-primary);
-  }
-
   .dot {
     width: 8px;
     height: 8px;
@@ -3603,36 +3085,6 @@
     flex-wrap: wrap;
     margin-left: auto;
   }
-  .toolbar-selects {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
-  }
-  .toolbar-field {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-    font-size: 11px;
-    font-weight: 700;
-    white-space: nowrap;
-  }
-  .toolbar-field select {
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-surface) 75%, transparent);
-    color: var(--text-primary);
-    border-radius: 9px;
-    padding: 5px 7px;
-    font-size: 11px;
-    font-weight: 800;
-    line-height: 1.2;
-    height: 34px;
-    outline: none;
-  }
 
   .pill {
     display: inline-flex;
@@ -3657,29 +3109,6 @@
     width: 100%;
   }
 
-  .seg {
-    display: inline-flex;
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    overflow: hidden;
-    background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
-  }
-  .seg button {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    border: none;
-    background: transparent;
-    color: var(--text-primary);
-    cursor: pointer;
-    font-weight: 650;
-    font-size: 13px;
-  }
-  .seg button:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
   .settings-btn {
     position: relative;
     display: inline-flex;
@@ -3723,41 +3152,6 @@
   .settings-btn.has-critical .insights-badge {
     background: #ef4444;
     border-color: color-mix(in srgb, #ef4444 65%, var(--border-color));
-  }
-  .pager {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
-  }
-
-  .pager-label {
-    font-weight: 850;
-    font-size: 13px;
-    color: var(--text-muted);
-    min-width: 88px;
-    text-align: center;
-    white-space: nowrap;
-  }
-
-  .pager-btn {
-    width: 34px;
-    height: 34px;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-surface) 80%, transparent);
-    color: var(--text-primary);
-    display: grid;
-    place-items: center;
-    cursor: pointer;
-  }
-
-  .pager-btn:disabled {
-    opacity: 0.55;
-    cursor: default;
   }
   .muted {
     color: var(--text-muted);
@@ -3823,91 +3217,6 @@
     font-size: 10px;
     font-weight: 900;
     line-height: 1;
-  }
-
-  .alert-strip-head {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 800;
-    color: var(--text-primary);
-  }
-  .alert-strip-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .alert-strip-title {
-    font-size: 0.86rem;
-  }
-
-  .alert-strip-count {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 24px;
-    height: 20px;
-    border-radius: 999px;
-    padding: 0 8px;
-    font-size: 0.74rem;
-    font-weight: 900;
-    border: 1px solid color-mix(in srgb, var(--color-warning) 40%, var(--border-color));
-    background: color-mix(in srgb, var(--color-warning) 16%, transparent);
-  }
-
-  .alert-strip-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .alert-filter-seg {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 3px;
-    width: fit-content;
-    background: color-mix(in srgb, var(--bg-surface) 78%, transparent);
-  }
-  .alert-filter-seg button {
-    border: 1px solid transparent;
-    border-radius: 8px;
-    padding: 5px 8px;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 11px;
-    font-weight: 800;
-    cursor: pointer;
-  }
-  .alert-filter-seg button.active {
-    color: var(--text-primary);
-    border-color: color-mix(in srgb, var(--color-warning) 40%, var(--border-color));
-    background: color-mix(in srgb, var(--color-warning) 14%, transparent);
-  }
-
-  .alert-chip {
-    border: 1px solid var(--border-color);
-    border-radius: 999px;
-    padding: 6px 10px;
-    background: color-mix(in srgb, var(--bg-surface) 75%, transparent);
-    color: var(--text-primary);
-    font-size: 0.78rem;
-    font-weight: 700;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    max-width: min(100%, 420px);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .alert-chip.crit {
-    border-color: color-mix(in srgb, var(--color-danger) 45%, var(--border-color));
-    background: color-mix(in srgb, var(--color-danger) 14%, transparent);
   }
 
   .empty {
@@ -4072,14 +3381,6 @@
   }
   .btn-mini.ghost {
     background: transparent;
-  }
-  .btn-mini.danger {
-    border-color: color-mix(in srgb, var(--color-danger) 40%, var(--border-color));
-    color: var(--color-danger);
-  }
-  .btn-mini.danger:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--color-danger) 12%, transparent);
-    border-color: color-mix(in srgb, var(--color-danger) 60%, var(--border-color));
   }
   .right {
     display: inline-flex;
@@ -4509,19 +3810,6 @@
       width: calc(100vw - 20px);
       padding: 8px;
     }
-    .top-issue-item {
-      flex-wrap: wrap;
-    }
-    .top-issue-main .router {
-      max-width: 140px;
-    }
-    .top-issue-actions {
-      width: 100%;
-      justify-content: flex-end;
-    }
-    .timeline-item {
-      grid-template-columns: 1fr;
-    }
     .alert-strip.floating-alert-panel {
       right: 10px;
       bottom: 58px;
@@ -4547,14 +3835,6 @@
     .toolbar-left {
       width: auto;
       margin-left: auto;
-    }
-    .toolbar-selects {
-      width: 100%;
-      flex-wrap: wrap;
-    }
-    .toolbar-field {
-      min-width: 120px;
-      flex: 1;
     }
     .pause-indicator {
       left: 10px;

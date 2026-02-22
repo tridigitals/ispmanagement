@@ -2,7 +2,7 @@
   import '$lib/styles/global.css';
   import '$lib/i18n'; // Init i18n
   import { waitLocale, t } from 'svelte-i18n';
-  import { checkAuth, isAuthenticated, isSuperAdmin } from '$lib/stores/auth';
+  import { checkAuth, isAuthenticated, isSuperAdmin, logout } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import { appLogo } from '$lib/stores/logo';
   import { theme } from '$lib/stores/theme';
@@ -11,7 +11,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { connectWebSocket, disconnectWebSocket } from '$lib/stores/websocket';
-  import { refreshUnreadCount } from '$lib/stores/notifications';
+  import { refreshUnreadCount, resetNotificationsState } from '$lib/stores/notifications';
   import { Toaster } from 'svelte-sonner';
   import GlobalUploads from '$lib/components/layout/GlobalUploads.svelte';
   import { getSlugFromDomain, isPlatformDomain } from '$lib/utils/domain';
@@ -20,6 +20,63 @@
 
   let loading = true;
   let i18nReady = false;
+  let authExpiredHandled = false;
+  let keepAliveHandle: ReturnType<typeof setInterval> | null = null;
+  let lastUserActivityAt = Date.now();
+
+  function markUserActivity() {
+    lastUserActivityAt = Date.now();
+  }
+
+  function resolveSessionTimeoutMs() {
+    const raw = Number(($appSettings as any)?.auth?.session_timeout_minutes ?? 60);
+    const minutes = Number.isFinite(raw) && raw > 0 ? raw : 60;
+    return minutes * 60 * 1000;
+  }
+
+  function isWallboardPath(pathname: string) {
+    return pathname.includes('/admin/network/noc/wallboard');
+  }
+
+  async function keepSessionAliveIfActive() {
+    if (!browser || authExpiredHandled) return;
+    if (!$isAuthenticated) return;
+
+    const isWallboard = isWallboardPath($page.url.pathname);
+    if (document.hidden && !isWallboard) return;
+
+    const timeoutMs = resolveSessionTimeoutMs();
+    const idleMs = Date.now() - lastUserActivityAt;
+    // Outside wallboard, let truly idle sessions expire naturally.
+    if (!isWallboard && idleMs >= timeoutMs) return;
+
+    try {
+      await checkAuth();
+    } catch {
+      // Any auth failure is handled by existing auth-expired flow.
+    }
+  }
+
+  function handleAuthExpired(event: Event) {
+    if (typeof window === 'undefined') return;
+    if (authExpiredHandled) return;
+    authExpiredHandled = true;
+
+    const detail = (event as CustomEvent<{ reason?: string }>)?.detail;
+    debugLog('auth-expired-event', {
+      reason: detail?.reason || null,
+      path: window.location.pathname,
+    });
+
+    // Ensure in-memory state is reset immediately.
+    disconnectWebSocket();
+    resetNotificationsState();
+    logout();
+
+    if (!window.location.pathname.startsWith('/login')) {
+      goto('/login?reason=expired');
+    }
+  }
 
   function isDebugEnabled() {
     if (typeof window === 'undefined') return false;
@@ -33,6 +90,21 @@
   }
 
   onMount(async () => {
+    if (typeof window !== 'undefined') {
+      // Track real user activity, so idle users still expire by server timeout.
+      const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
+      for (const ev of events) {
+        window.addEventListener(ev, markUserActivity, { passive: true });
+      }
+      markUserActivity();
+      keepAliveHandle = setInterval(() => {
+        void keepSessionAliveIfActive();
+      }, 30_000);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('app:auth-expired', handleAuthExpired as EventListener);
+    }
     try {
       debugLog('boot-start', { path: $page.url.pathname, host: window.location.hostname });
       // 1. Validate Auth & Session first
@@ -161,6 +233,19 @@
 
   // Disconnect WebSocket when app unloads
   onDestroy(() => {
+    if (typeof window !== 'undefined') {
+      const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
+      for (const ev of events) {
+        window.removeEventListener(ev, markUserActivity as EventListener);
+      }
+    }
+    if (keepAliveHandle) {
+      clearInterval(keepAliveHandle);
+      keepAliveHandle = null;
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('app:auth-expired', handleAuthExpired as EventListener);
+    }
     disconnectWebSocket();
   });
 

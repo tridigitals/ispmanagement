@@ -7,20 +7,28 @@
   import MiniSelect from '$lib/components/ui/MiniSelect.svelte';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { api } from '$lib/api/client';
+  import {
+    FOCUS_MODE_KEY,
+    KEEP_AWAKE_KEY,
+    POLL_MS_KEY,
+    ROTATE_MODE_KEY,
+    ROTATE_MS_KEY,
+    SETTINGS_LAYOUT_KEY,
+    STATUS_FILTER_KEY,
+    WALLBOARD_LAYOUT_PRESETS,
+    WALLBOARD_POLL_MS_OPTIONS,
+    WALLBOARD_ROTATE_MODES,
+    WALLBOARD_ROTATE_MS_OPTIONS,
+    WALLBOARD_STATUS_FILTERS,
+    isLayoutPreset,
+    isRotateMode,
+    isStatusFilter,
+    type LayoutPreset,
+    type RotateMode,
+    type StatusFilter,
+  } from '$lib/constants/wallboard';
   import { toast } from '$lib/stores/toast';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
-
-  type LayoutPreset = '2x2' | '3x2' | '3x3' | '4x3';
-  type RotateMode = 'manual' | 'auto';
-  type StatusFilter = 'all' | 'online' | 'offline';
-
-  const SETTINGS_LAYOUT_KEY = 'mikrotik_wallboard_layout';
-  const ROTATE_MODE_KEY = 'mikrotik_wallboard_rotate_mode';
-  const ROTATE_MS_KEY = 'mikrotik_wallboard_rotate_ms';
-  const FOCUS_MODE_KEY = 'mikrotik_wallboard_focus_mode';
-  const STATUS_FILTER_KEY = 'mikrotik_wallboard_status_filter';
-  const POLL_MS_KEY = 'mikrotik_wallboard_poll_ms';
-  const KEEP_AWAKE_KEY = 'mikrotik_wallboard_keep_awake';
 
   let layout = $state<LayoutPreset>('3x3');
   let rotateMode = $state<RotateMode>('manual');
@@ -44,15 +52,15 @@
   function loadLocal() {
     try {
       const l = localStorage.getItem(SETTINGS_LAYOUT_KEY);
-      if (l === '2x2' || l === '3x2' || l === '3x3' || l === '4x3') layout = l;
+      if (isLayoutPreset(l)) layout = l;
       const rm = localStorage.getItem(ROTATE_MODE_KEY);
-      if (rm === 'manual' || rm === 'auto') rotateMode = rm;
+      if (isRotateMode(rm)) rotateMode = rm;
       const rms = Number(localStorage.getItem(ROTATE_MS_KEY) || 10000);
-      if ([5000, 10000, 15000, 30000, 60000].includes(rms)) rotateMs = rms;
+      if ((WALLBOARD_ROTATE_MS_OPTIONS as readonly number[]).includes(rms)) rotateMs = rms;
       const sf = localStorage.getItem(STATUS_FILTER_KEY);
-      if (sf === 'all' || sf === 'online' || sf === 'offline') statusFilter = sf;
+      if (isStatusFilter(sf)) statusFilter = sf;
       const pm = Number(localStorage.getItem(POLL_MS_KEY) || 1000);
-      if ([1000, 2000, 5000].includes(pm)) pollMs = pm;
+      if ((WALLBOARD_POLL_MS_OPTIONS as readonly number[]).includes(pm)) pollMs = pm;
       const ka = localStorage.getItem(KEEP_AWAKE_KEY);
       if (ka != null) keepAwake = ka === '1' || ka === 'true';
       const fm = localStorage.getItem(FOCUS_MODE_KEY);
@@ -65,7 +73,7 @@
   async function loadRemoteLayout() {
     try {
       const rl = await api.settings.getValue(SETTINGS_LAYOUT_KEY);
-      if (rl === '2x2' || rl === '3x2' || rl === '3x3' || rl === '4x3') layout = rl;
+      if (isLayoutPreset(rl)) layout = rl;
     } catch {
       // ignore
     }
@@ -157,10 +165,10 @@
         label={$t('admin.network.wallboard.controls.layout') || 'Layout'}
         ariaLabel={$t('admin.network.wallboard.controls.layout') || 'Layout'}
         options={[
-          { value: '2x2', label: '2x2' },
-          { value: '3x2', label: '3x2' },
-          { value: '3x3', label: '3x3' },
-          { value: '4x3', label: '4x3' },
+          ...WALLBOARD_LAYOUT_PRESETS.map((preset) => ({
+            value: preset,
+            label: ($t(`admin.network.wallboard.layouts.${preset}`) as string) || preset,
+          })),
         ]}
       />
     </div>
@@ -171,9 +179,10 @@
         label={$t('admin.network.wallboard.controls.filter') || 'Filter'}
         ariaLabel={$t('admin.network.wallboard.controls.filter') || 'Filter'}
         options={[
-          { value: 'all', label: $t('admin.network.wallboard.filters.all') || 'All' },
-          { value: 'online', label: $t('admin.network.wallboard.filters.online') || 'Online' },
-          { value: 'offline', label: $t('admin.network.wallboard.filters.offline') || 'Offline' },
+          ...WALLBOARD_STATUS_FILTERS.map((value) => ({
+            value,
+            label: ($t(`admin.network.wallboard.filters.${value}`) as string) || value,
+          })),
         ]}
       />
     </div>
@@ -184,8 +193,13 @@
         label={$t('admin.network.wallboard.controls.pager') || 'Pager'}
         ariaLabel={$t('admin.network.wallboard.controls.pager') || 'Pager'}
         options={[
-          { value: 'manual', label: $t('admin.network.wallboard.controls.manual') || 'Manual' },
-          { value: 'auto', label: $t('admin.network.wallboard.controls.auto_rotate') || 'Auto rotate' },
+          ...WALLBOARD_ROTATE_MODES.map((value) => ({
+            value,
+            label:
+              value === 'manual'
+                ? (($t('admin.network.wallboard.controls.manual') as string) || 'Manual')
+                : (($t('admin.network.wallboard.controls.auto_rotate') as string) || 'Auto rotate'),
+          })),
         ]}
       />
     </div>
@@ -196,11 +210,10 @@
         label={$t('admin.network.wallboard.controls.rotate_every') || 'Rotate'}
         ariaLabel={$t('admin.network.wallboard.controls.rotate_every') || 'Rotate'}
         options={[
-          { value: 5000, label: '5s' },
-          { value: 10000, label: '10s' },
-          { value: 15000, label: '15s' },
-          { value: 30000, label: '30s' },
-          { value: 60000, label: '60s' },
+          ...WALLBOARD_ROTATE_MS_OPTIONS.map((value) => ({
+            value,
+            label: `${Math.floor(value / 1000)}s`,
+          })),
         ]}
       />
     </div>
@@ -211,9 +224,10 @@
         label={$t('admin.network.wallboard.poll') || 'Poll'}
         ariaLabel={$t('admin.network.wallboard.poll') || 'Poll'}
         options={[
-          { value: 1000, label: '1s' },
-          { value: 2000, label: '2s' },
-          { value: 5000, label: '5s' },
+          ...WALLBOARD_POLL_MS_OPTIONS.map((value) => ({
+            value,
+            label: `${Math.floor(value / 1000)}s`,
+          })),
         ]}
       />
     </div>

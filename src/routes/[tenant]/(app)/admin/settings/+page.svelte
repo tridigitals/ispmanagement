@@ -77,6 +77,7 @@
         'mikrotik_incident_escalation_minutes',
         'mikrotik_alert_email_enabled',
         'mikrotik_incident_assignment_email_enabled',
+        'pppoe_auto_apply_on_save_enabled',
       ],
     },
     storage: {
@@ -237,6 +238,7 @@
         if (key === 'mikrotik_incident_escalation_minutes' && !val) val = '60';
         if (key === 'mikrotik_alert_email_enabled' && !val) val = 'false';
         if (key === 'mikrotik_incident_assignment_email_enabled' && !val) val = 'false';
+        if (key === 'pppoe_auto_apply_on_save_enabled' && !val) val = 'false';
         localSettings[key] = val;
       });
     });
@@ -968,6 +970,28 @@
                         e.currentTarget.checked,
                       )
                     }
+                  />
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div class="setting-item setting-item-row mt-6">
+                <div class="setting-info">
+                  <h3>
+                    {$t('admin.settings.network.alerting.pppoe_auto_apply_title') ||
+                      'PPPoE auto-apply after save'}
+                  </h3>
+                  <p>
+                    {$t('admin.settings.network.alerting.pppoe_auto_apply_desc') ||
+                      'Automatically apply PPPoE create/update changes to MikroTik right after save.'}
+                  </p>
+                </div>
+                <label class="toggle">
+                  <input
+                    type="checkbox"
+                    checked={localSettings['pppoe_auto_apply_on_save_enabled'] === 'true'}
+                    onchange={(e) =>
+                      handleChange('pppoe_auto_apply_on_save_enabled', e.currentTarget.checked)}
                   />
                   <span class="slider"></span>
                 </label>

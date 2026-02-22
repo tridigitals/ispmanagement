@@ -368,3 +368,18 @@ export function handleNotificationReceived(notification: Notification) {
 export function handleUnreadCountUpdated(count: number) {
   unreadCount.set(count);
 }
+
+export function resetNotificationsState() {
+  notifications.set([]);
+  unreadCount.set(0);
+  loading.set(false);
+  preferences.set([]);
+  pushEnabled.set(false);
+  pagination.set({
+    page: 1,
+    perPage: 20,
+    total: 0,
+    hasMore: false,
+  });
+  lastUnreadRefreshAt = 0;
+}

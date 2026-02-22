@@ -10,6 +10,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
+  import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
 
   type RouterRow = {
@@ -697,17 +698,22 @@
 </script>
 
 <div class="page-content fade-in">
-  <div class="head">
-    <button
-      class="back"
-      type="button"
-      onclick={() => goto($page.url.pathname.replace(/\/[^/]+\/?$/, ''))}
-    >
-      <Icon name="arrow-left" size={16} />
-      {$t('common.back') || 'Back'}
-    </button>
+  <NetworkPageHeader
+    title={$t('admin.network.routers.title') || 'Routers'}
+    subtitle={router
+      ? `${router.name} • ${router.host}:${router.port}`
+      : $t('admin.network.routers.subtitle') || 'Manage MikroTik routers and monitoring'}
+  >
+    {#snippet actions()}
+      <button
+        class="back"
+        type="button"
+        onclick={() => goto($page.url.pathname.replace(/\/[^/]+\/?$/, ''))}
+      >
+        <Icon name="arrow-left" size={16} />
+        {$t('common.back') || 'Back'}
+      </button>
 
-    <div class="head-actions">
       <button
         class="btn ghost"
         type="button"
@@ -721,8 +727,8 @@
         <Icon name="zap" size={16} />
         {$t('admin.network.routers.actions.test') || 'Test Connection'}
       </button>
-    </div>
-  </div>
+    {/snippet}
+  </NetworkPageHeader>
 
   {#if initialLoading}
     <div class="skeleton">
@@ -1164,14 +1170,6 @@
     padding: 28px;
   }
 
-  .head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-    margin-bottom: 16px;
-  }
-
   .back {
     display: inline-flex;
     align-items: center;
@@ -1182,11 +1180,6 @@
     background: transparent;
     color: var(--text-primary);
     cursor: pointer;
-  }
-
-  .head-actions {
-    display: flex;
-    gap: 10px;
   }
 
   .btn {
@@ -1454,93 +1447,6 @@
     gap: 8px;
   }
 
-  .live-grid {
-    grid-template-columns: 0.9fr 1.1fr;
-    align-items: start;
-  }
-
-  .watch-toolbar {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
-  }
-
-  .search.small {
-    padding: 8px 10px;
-    min-width: min(380px, 100%);
-  }
-
-  .watch-list {
-    display: grid;
-    gap: 8px;
-    max-height: 520px;
-    overflow: auto;
-    padding-right: 4px;
-  }
-
-  .watch-item {
-    border: 1px solid var(--border-color);
-    background: transparent;
-    color: var(--text-primary);
-    border-radius: 14px;
-    padding: 10px 12px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-  }
-
-  .watch-item:hover {
-    background: var(--bg-hover);
-  }
-
-  .watch-item.on {
-    border-color: rgba(99, 102, 241, 0.35);
-    background: rgba(99, 102, 241, 0.12);
-  }
-
-  .spacer {
-    flex: 1;
-  }
-
-  .live-cards {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .live-card {
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-card), transparent 6%);
-    border-radius: 18px;
-    padding: 12px;
-  }
-
-  .live-top {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 10px;
-  }
-
-  .chip.small {
-    padding: 2px 8px;
-    font-weight: 900;
-  }
-
-  .bars {
-    height: 48px;
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: 1fr;
-    gap: 2px;
-    align-items: end;
-    opacity: 0.95;
-  }
 
   .seg-btn {
     border: 1px solid var(--border-color);
@@ -1786,12 +1692,5 @@
       grid-template-columns: 1fr;
     }
 
-    .live-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .live-cards {
-      grid-template-columns: 1fr;
-    }
   }
 </style>
