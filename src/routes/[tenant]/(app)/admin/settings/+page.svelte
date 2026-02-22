@@ -72,6 +72,7 @@
         'mikrotik_alert_latency_hot_ms',
         'mikrotik_incident_sla_warn_minutes',
         'mikrotik_incident_sla_breach_minutes',
+        'mikrotik_incident_correlation_enabled',
         'mikrotik_incident_auto_escalation_enabled',
         'mikrotik_incident_escalation_minutes',
         'mikrotik_alert_email_enabled',
@@ -231,6 +232,7 @@
         if (key === 'mikrotik_alert_latency_hot_ms' && !val) val = '400';
         if (key === 'mikrotik_incident_sla_warn_minutes' && !val) val = '30';
         if (key === 'mikrotik_incident_sla_breach_minutes' && !val) val = '120';
+        if (key === 'mikrotik_incident_correlation_enabled' && !val) val = 'true';
         if (key === 'mikrotik_incident_auto_escalation_enabled' && !val) val = 'false';
         if (key === 'mikrotik_incident_escalation_minutes' && !val) val = '60';
         if (key === 'mikrotik_alert_email_enabled' && !val) val = 'false';
@@ -871,6 +873,32 @@
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div class="setting-item setting-item-row mt-6">
+                <div class="setting-info">
+                  <h3>
+                    {$t('admin.settings.network.alerting.correlation_title') ||
+                      'Incident correlation'}
+                  </h3>
+                  <p>
+                    {$t('admin.settings.network.alerting.correlation_desc') ||
+                      'Suppress CPU/latency incidents when offline incident is active as root cause.'}
+                  </p>
+                </div>
+                <label class="toggle">
+                  <input
+                    type="checkbox"
+                    checked={localSettings['mikrotik_incident_correlation_enabled'] === 'true'}
+                    onchange={(e) =>
+                      handleChange(
+                        'mikrotik_incident_correlation_enabled',
+                        e.currentTarget.checked,
+                      )
+                    }
+                  />
+                  <span class="slider"></span>
+                </label>
               </div>
 
               <div class="setting-item setting-item-row mt-6">

@@ -3046,6 +3046,8 @@
         "alerting": {
           "title": "Alert Router",
           "desc": "Aktifkan insiden dan notifikasi yang dihasilkan dari polling MikroTik.",
+          "correlation_title": "Korelasi insiden",
+          "correlation_desc": "Tekan insiden CPU/latensi saat insiden offline aktif sebagai akar masalah.",
           "email_title": "Alert email",
           "email_desc": "Juga kirim email ke anggota yang bisa mengakses Network Routers.",
           "auto_escalation_title": "Auto eskalasi",

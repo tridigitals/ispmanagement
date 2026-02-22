@@ -1797,6 +1797,8 @@
         "alerting": {
           "title": "Router Alerting",
           "desc": "Enable incidents and notifications derived from MikroTik polling.",
+          "correlation_title": "Incident correlation",
+          "correlation_desc": "Suppress CPU/latency incidents when offline incident is active as root cause.",
           "email_title": "Email alerts",
           "email_desc": "Also send alert emails to team members who can access Network Routers.",
           "auto_escalation_title": "Auto escalation",

@@ -2443,6 +2443,13 @@ impl MikrotikService {
         threshold_num: Option<f64>,
         now: DateTime<Utc>,
     ) -> AppResult<bool> {
+        if self
+            .should_suppress_correlated_incident(tenant_id, &router.id, alert_type)
+            .await?
+        {
+            return Ok(false);
+        }
+
         // returns true if created new incident
         let existing: Option<String> = sqlx::query_scalar(
             r#"
@@ -2559,6 +2566,92 @@ impl MikrotikService {
             now,
         )
         .await?;
+
+        Ok(true)
+    }
+
+    async fn should_suppress_correlated_incident(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        incident_type: &str,
+    ) -> AppResult<bool> {
+        let normalized = incident_type.trim().to_ascii_lowercase();
+        if normalized.is_empty() || normalized == "offline" {
+            return Ok(false);
+        }
+
+        let correlation_enabled = match self
+            .settings_service
+            .get_value(Some(tenant_id), "mikrotik_incident_correlation_enabled")
+            .await
+        {
+            Ok(Some(v)) => {
+                let x = v.trim().to_ascii_lowercase();
+                x == "1" || x == "true" || x == "yes" || x == "on"
+            }
+            _ => true,
+        };
+        if !correlation_enabled {
+            return Ok(false);
+        }
+
+        let offline_open: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1 FROM mikrotik_incidents
+              WHERE tenant_id = $1
+                AND router_id = $2
+                AND incident_type = 'offline'
+                AND resolved_at IS NULL
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        if !offline_open {
+            return Ok(false);
+        }
+
+        let had_open_child: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1 FROM mikrotik_incidents
+              WHERE tenant_id = $1
+                AND router_id = $2
+                AND incident_type = $3
+                AND resolved_at IS NULL
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(&normalized)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        if had_open_child {
+            let _ = self.resolve_alert(tenant_id, router_id, &normalized).await;
+            self.audit_service
+                .log(
+                    None,
+                    Some(tenant_id),
+                    "correlate_suppress",
+                    "mikrotik_incident",
+                    Some(router_id),
+                    Some(&format!(
+                        "Suppressed {} incident because offline root-cause is active",
+                        normalized
+                    )),
+                    None,
+                )
+                .await;
+        }
 
         Ok(true)
     }
