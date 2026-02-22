@@ -4,7 +4,8 @@ use crate::models::{
     CreateMikrotikRouterRequest, MikrotikAlert, MikrotikIncident, MikrotikInterfaceCounter,
     MikrotikInterfaceMetric, MikrotikIpPool, MikrotikLogEntry, MikrotikLogSyncResult,
     MikrotikPppProfile, MikrotikRouter, MikrotikRouterMetric, MikrotikRouterNocRow,
-    MikrotikTestResult, PaginatedResponse, UpdateMikrotikIncidentRequest,
+    MikrotikTestResult, PaginatedResponse, SimulateMikrotikIncidentRequest,
+    UpdateMikrotikIncidentRequest,
     UpdateMikrotikRouterRequest,
 };
 use crate::services::{AuditService, AuthService, MikrotikService};
@@ -316,6 +317,51 @@ pub async fn update_mikrotik_incident(
 
     mikrotik
         .update_incident(&tenant_id, &id, req.owner_user_id, req.notes, &claims.sub)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn simulate_mikrotik_incident(
+    token: String,
+    router_id: String,
+    incident_type: String,
+    severity: Option<String>,
+    interface_name: Option<String>,
+    message: Option<String>,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<MikrotikIncident, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let req = SimulateMikrotikIncidentRequest {
+        router_id,
+        incident_type,
+        severity,
+        interface_name,
+        message,
+    };
+
+    mikrotik
+        .simulate_incident(
+            &tenant_id,
+            &claims.sub,
+            &req.router_id,
+            &req.incident_type,
+            req.severity,
+            req.interface_name,
+            req.message,
+        )
         .await
         .map_err(|e| e.to_string())
 }

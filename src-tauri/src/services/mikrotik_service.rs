@@ -226,6 +226,19 @@ impl MikrotikService {
         user_id: &str,
     ) -> AppResult<MikrotikIncident> {
         let now = Utc::now();
+        let previous_owner: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT owner_user_id
+            FROM mikrotik_incidents
+            WHERE id = $1 AND tenant_id = $2
+            "#,
+        )
+        .bind(incident_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .flatten();
         let normalized_owner = owner_user_id.and_then(|v| {
             let s = v.trim();
             if s.is_empty() {
@@ -292,6 +305,215 @@ impl MikrotikService {
                 "mikrotik_incident",
                 Some(incident_id),
                 Some("Updated incident assignment/notes"),
+                None,
+            )
+            .await;
+
+        if normalized_owner != previous_owner {
+            if let Some(assignee_user_id) = normalized_owner.clone() {
+                let is_member: bool = sqlx::query_scalar(
+                    r#"
+                    SELECT EXISTS(
+                      SELECT 1 FROM tenant_members
+                      WHERE tenant_id = $1 AND user_id = $2
+                    )
+                    "#,
+                )
+                .bind(tenant_id)
+                .bind(&assignee_user_id)
+                .fetch_one(&self.pool)
+                .await
+                .unwrap_or(false);
+
+                if is_member {
+                    let router_name: Option<String> = sqlx::query_scalar(
+                        r#"
+                        SELECT name FROM mikrotik_routers
+                        WHERE id = $1 AND tenant_id = $2
+                        "#,
+                    )
+                    .bind(&incident.router_id)
+                    .bind(tenant_id)
+                    .fetch_optional(&self.pool)
+                    .await
+                    .ok()
+                    .flatten();
+
+                    let incident_target = if let Some(iface) = incident.interface_name.as_deref() {
+                        format!("{} ({iface})", router_name.unwrap_or(incident.router_id.clone()))
+                    } else {
+                        router_name.unwrap_or(incident.router_id.clone())
+                    };
+
+                    let _ = self
+                        .notification_service
+                        .create_notification(
+                            assignee_user_id.clone(),
+                            Some(tenant_id.to_string()),
+                            format!("Incident assigned: {}", incident.title),
+                            format!(
+                                "You were assigned to incident on {}. Current status: {}.",
+                                incident_target, incident.status
+                            ),
+                            "warning".to_string(),
+                            "network".to_string(),
+                            Some(format!("/admin/network/incidents?incident={}", incident.id)),
+                        )
+                        .await;
+
+                    let assignment_email_enabled = match self
+                        .settings_service
+                        .get_value(Some(tenant_id), "mikrotik_incident_assignment_email_enabled")
+                        .await
+                    {
+                        Ok(Some(v)) => matches!(
+                            v.trim().to_ascii_lowercase().as_str(),
+                            "true" | "1" | "yes" | "on"
+                        ),
+                        _ => false,
+                    };
+
+                    if assignment_email_enabled {
+                        let assignee_email: Option<String> = sqlx::query_scalar(
+                            r#"
+                            SELECT u.email
+                            FROM users u
+                            JOIN tenant_members tm ON tm.user_id = u.id
+                            WHERE tm.tenant_id = $1 AND u.id = $2
+                            LIMIT 1
+                            "#,
+                        )
+                        .bind(tenant_id)
+                        .bind(&assignee_user_id)
+                        .fetch_optional(&self.pool)
+                        .await
+                        .ok()
+                        .flatten();
+
+                        if let Some(email) = assignee_email {
+                            let subject = format!("Incident Assigned: {}", incident.title);
+                            let body = format!(
+                                "You were assigned to incident:\n{}\n\nTarget: {}\nStatus: {}\nOpen: /admin/network/incidents?incident={}",
+                                incident.message, incident_target, incident.status, incident.id
+                            );
+                            let _ = self
+                                .notification_service
+                                .force_send_email(Some(tenant_id.to_string()), &email, &subject, &body)
+                                .await;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(incident)
+    }
+
+    pub async fn simulate_incident(
+        &self,
+        tenant_id: &str,
+        user_id: &str,
+        router_id: &str,
+        incident_type: &str,
+        severity: Option<String>,
+        interface_name: Option<String>,
+        message: Option<String>,
+    ) -> AppResult<MikrotikIncident> {
+        let router = self
+            .get_router(tenant_id, router_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Router not found".to_string()))?;
+
+        let normalized_type = {
+            let v = incident_type.trim().to_ascii_lowercase();
+            if v.is_empty() {
+                return Err(AppError::Validation("incident_type is required".to_string()));
+            }
+            v
+        };
+
+        let normalized_severity = severity
+            .map(|s| s.trim().to_ascii_lowercase())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "warning".to_string());
+
+        let severity_value = match normalized_severity.as_str() {
+            "info" | "warning" | "critical" => normalized_severity.as_str(),
+            _ => "warning",
+        };
+
+        let normalized_interface = interface_name.and_then(|v| {
+            let s = v.trim();
+            if s.is_empty() {
+                None
+            } else {
+                Some(s.to_string())
+            }
+        });
+
+        let actor_label: String = sqlx::query_scalar(
+            r#"
+            SELECT COALESCE(NULLIF(name, ''), email, id)
+            FROM users
+            WHERE id = $1
+            LIMIT 1
+            "#,
+        )
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| user_id.to_string());
+
+        let message = message
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| format!("Manual simulation triggered by {}", actor_label));
+        let title = format!("Simulated {} incident", normalized_type);
+        let now = Utc::now();
+
+        self.upsert_incident(
+            tenant_id,
+            router_id,
+            normalized_interface.as_deref(),
+            &normalized_type,
+            severity_value,
+            &title,
+            &message,
+            None,
+            None,
+            now,
+        )
+        .await?;
+
+        let dedup_key =
+            MikrotikIncident::dedup_key(router_id, normalized_interface.as_deref(), &normalized_type);
+        let incident = sqlx::query_as::<_, MikrotikIncident>(
+            r#"
+            SELECT * FROM mikrotik_incidents
+            WHERE tenant_id = $1 AND dedup_key = $2 AND resolved_at IS NULL
+            ORDER BY updated_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&dedup_key)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        self.audit_service
+            .log(
+                Some(user_id),
+                Some(tenant_id),
+                "simulate",
+                "mikrotik_incident",
+                Some(&incident.id),
+                Some(&format!(
+                    "Simulated incident type {} on router {}",
+                    normalized_type, router.name
+                )),
                 None,
             )
             .await;
@@ -1639,6 +1861,108 @@ impl MikrotikService {
 
             let _ = self.poll_router(router, tracked_for_router).await;
         }
+
+        for tenant_id in tracked_by_tenant.keys() {
+            let _ = self.auto_escalate_incidents(tenant_id).await;
+        }
+        Ok(())
+    }
+
+    async fn auto_escalate_incidents(&self, tenant_id: &str) -> AppResult<()> {
+        let enabled = match self
+            .settings_service
+            .get_value(Some(tenant_id), "mikrotik_incident_auto_escalation_enabled")
+            .await
+        {
+            Ok(Some(v)) => {
+                let x = v.trim().to_ascii_lowercase();
+                x == "1" || x == "true" || x == "yes" || x == "on"
+            }
+            _ => false,
+        };
+        if !enabled {
+            return Ok(());
+        }
+
+        let threshold_minutes = match self
+            .settings_service
+            .get_value(Some(tenant_id), "mikrotik_incident_escalation_minutes")
+            .await
+        {
+            Ok(Some(v)) => v.trim().parse::<i64>().unwrap_or(60),
+            _ => 60,
+        }
+        .clamp(5, 10_080);
+        let threshold = ChronoDuration::minutes(threshold_minutes);
+        let now = Utc::now();
+
+        let candidates: Vec<MikrotikIncident> = sqlx::query_as(
+            r#"
+            SELECT *
+            FROM mikrotik_incidents
+            WHERE tenant_id = $1
+              AND resolved_at IS NULL
+              AND acked_at IS NULL
+              AND status = 'open'
+              AND severity <> 'critical'
+              AND first_seen_at <= $2
+            ORDER BY first_seen_at ASC
+            LIMIT 200
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(now - threshold)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        for incident in candidates {
+            let _ = sqlx::query(
+                r#"
+                UPDATE mikrotik_incidents
+                SET severity = 'critical',
+                    updated_at = $1
+                WHERE id = $2
+                  AND tenant_id = $3
+                  AND severity <> 'critical'
+                  AND acked_at IS NULL
+                  AND resolved_at IS NULL
+                "#,
+            )
+            .bind(now)
+            .bind(&incident.id)
+            .bind(tenant_id)
+            .execute(&self.pool)
+            .await;
+
+            self.notify_tenant(
+                tenant_id,
+                "Incident escalated",
+                format!(
+                    "{} has exceeded {} minutes without acknowledgement.",
+                    incident.title, threshold_minutes
+                ),
+                Some(format!("/admin/network/incidents?incident={}", incident.id)),
+                "error",
+            )
+            .await;
+
+            self.audit_service
+                .log(
+                    None,
+                    Some(tenant_id),
+                    "escalate",
+                    "mikrotik_incident",
+                    Some(&incident.id),
+                    Some(&format!(
+                        "Auto escalated incident {} after {} minutes",
+                        incident.title, threshold_minutes
+                    )),
+                    None,
+                )
+                .await;
+        }
+
         Ok(())
     }
 

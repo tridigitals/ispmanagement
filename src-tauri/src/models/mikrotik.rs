@@ -102,8 +102,22 @@ pub struct UpdateMikrotikRouterRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UpdateMikrotikIncidentRequest {
+    #[serde(alias = "ownerUserId")]
     pub owner_user_id: Option<String>,
     pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SimulateMikrotikIncidentRequest {
+    #[serde(alias = "routerId")]
+    pub router_id: String,
+    #[serde(alias = "incidentType")]
+    pub incident_type: String,
+    pub severity: Option<String>,
+    #[serde(alias = "interfaceName")]
+    pub interface_name: Option<String>,
+    pub message: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

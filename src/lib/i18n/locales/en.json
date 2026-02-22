@@ -1798,16 +1798,24 @@
           "title": "Router Alerting",
           "desc": "Enable incidents and notifications derived from MikroTik polling.",
           "email_title": "Email alerts",
-          "email_desc": "Also send alert emails to team members who can access Network Routers."
+          "email_desc": "Also send alert emails to team members who can access Network Routers.",
+          "auto_escalation_title": "Auto escalation",
+          "auto_escalation_desc": "Escalate unacknowledged open incidents to critical after threshold minutes.",
+          "assignment_email_title": "Incident assignment emails",
+          "assignment_email_desc": "Send email to the assigned member when incident assignee is changed."
         },
         "thresholds": {
           "title": "Thresholds",
           "desc": "Used by NOC filters and by the background poller to open incidents.",
+          "sla_preview": "Incidents become warning after {{warn}} minutes and breach after {{breach}} minutes.",
           "cpu_risk": "CPU risk (%)",
           "cpu_hot": "CPU hot (%)",
           "latency_risk": "Latency risk (ms)",
           "latency_hot": "Latency hot (ms)",
-          "offline_after_secs": "Offline incident after (seconds)"
+          "offline_after_secs": "Offline incident after (seconds)",
+          "incident_sla_warn_minutes": "Incident SLA warning (minutes)",
+          "incident_sla_breach_minutes": "Incident SLA breach (minutes)",
+          "incident_escalation_minutes": "Incident auto escalation (minutes)"
         }
       },
       "keys": {
@@ -2606,7 +2614,25 @@
         "actions": {
           "toggle": "Toggle active/resolved",
           "active": "Active",
-          "all": "All"
+          "all": "All",
+          "simulate": "Simulate"
+        },
+        "simulate": {
+          "subtitle": "Create test incident manually",
+          "router": "Router",
+          "type": "Incident type",
+          "severity": "Severity",
+          "interface": "Interface (optional)",
+          "message": "Message (optional)",
+          "message_placeholder": "Optional simulation message",
+          "select_router": "Select router first",
+          "created": "Simulated incident created"
+        },
+        "export": {
+          "title": "Export",
+          "csv": "Export CSV",
+          "excel": "Export Excel",
+          "empty": "No data to export"
         },
         "columns": {
           "incident": "Incident",
@@ -2615,12 +2641,92 @@
           "status": "Status",
           "seen": "Last Seen"
         },
+        "filters": {
+          "assignee": "Assignee",
+          "all_assignees": "All assignees",
+          "unassigned": "Unassigned",
+          "all_status": "All status",
+          "all_severity": "All severity",
+          "from": "From",
+          "to": "To",
+          "reset": "Reset"
+        },
+        "bulk": {
+          "select_filtered": "Select filtered",
+          "selected": "{{count}} selected",
+          "ack": "Bulk Ack",
+          "resolve": "Bulk Resolve",
+          "assign": "Bulk Assign",
+          "assign_placeholder": "Assign to...",
+          "clear": "Clear"
+        },
+        "analytics": {
+          "open": "Open",
+          "ack": "Ack",
+          "in_progress": "In Progress",
+          "resolved": "Resolved",
+          "mtta": "MTTA",
+          "mttr": "MTTR",
+          "top_type_24h": "Top Type (24h)"
+        },
+        "activity": {
+          "title": "Activity Timeline",
+          "first_seen": "First detected",
+          "acked": "Acknowledged",
+          "assigned": "Assigned",
+          "notes_updated": "Notes updated",
+          "resolved": "Resolved",
+          "last_seen": "Last seen"
+        },
+        "runbook": {
+          "title": "What to do next",
+          "subtitle": "Operator checklist based on incident type.",
+          "copied": "Command copied",
+          "copy_failed": "Failed to copy command",
+          "offline": {
+            "step1": "Verify power and physical link",
+            "step1_desc": "Check device power source, cable, and upstream connectivity.",
+            "step2": "Test management reachability",
+            "step3": "Validate API service/port"
+          },
+          "cpu": {
+            "step1": "Identify top resource usage",
+            "step2": "Review active traffic/interface load",
+            "step3": "Check recent log spikes"
+          },
+          "latency": {
+            "step1": "Measure packet loss and RTT",
+            "step2": "Inspect WAN interface counters",
+            "step3": "Check upstream path health",
+            "step3_desc": "Validate provider uplink and intermediate hops."
+          },
+          "interface_down": {
+            "step1": "Verify interface state",
+            "step2": "Check link flap/down counter",
+            "step3": "Inspect transceiver/cable",
+            "step3_desc": "Swap cable/SFP if needed and re-check link state."
+          },
+          "generic": {
+            "step1": "Collect context from router",
+            "step1_desc": "Check current status and latest logs.",
+            "step2": "Stabilize service impact",
+            "step2_desc": "Apply mitigation and monitor for recovery."
+          }
+        },
+        "sla": {
+          "title": "SLA Timer",
+          "open_for": "Open for"
+        },
         "drawer": {
           "assignee": "Assignee",
           "unassigned": "Unassigned",
+          "email_notify": "Email notify",
+          "on": "On",
+          "off": "Off",
           "notes": "Notes",
           "notes_placeholder": "Add operator notes, handover context, and actions...",
-          "save": "Save Notes"
+          "save": "Save Notes",
+          "open_network_settings": "Open Network Settings"
         }
       },
       "logs": {

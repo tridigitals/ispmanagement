@@ -259,6 +259,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       ack_mikrotik_incident: { method: 'POST', path: '/admin/mikrotik/incidents/:id/ack' },
       resolve_mikrotik_incident: { method: 'POST', path: '/admin/mikrotik/incidents/:id/resolve' },
       update_mikrotik_incident: { method: 'PUT', path: '/admin/mikrotik/incidents/:id' },
+      simulate_mikrotik_incident: { method: 'POST', path: '/admin/mikrotik/incidents/simulate' },
       create_mikrotik_router: { method: 'POST', path: '/admin/mikrotik/routers' },
       update_mikrotik_router: { method: 'PUT', path: '/admin/mikrotik/routers/:id' },
       delete_mikrotik_router: { method: 'DELETE', path: '/admin/mikrotik/routers/:id' },
@@ -1343,6 +1344,24 @@ export const mikrotik = {
         owner_user_id: payload.ownerUserId ?? null,
         ownerUserId: payload.ownerUserId ?? null,
         notes: payload.notes ?? null,
+      }),
+    simulate: (payload: {
+      routerId: string;
+      incidentType: string;
+      severity?: string;
+      interfaceName?: string | null;
+      message?: string | null;
+    }): Promise<any> =>
+      safeInvoke('simulate_mikrotik_incident', {
+        token: getTokenOrThrow(),
+        router_id: payload.routerId,
+        routerId: payload.routerId,
+        incident_type: payload.incidentType,
+        incidentType: payload.incidentType,
+        severity: payload.severity,
+        interface_name: payload.interfaceName ?? null,
+        interfaceName: payload.interfaceName ?? null,
+        message: payload.message ?? null,
       }),
   },
   logs: {

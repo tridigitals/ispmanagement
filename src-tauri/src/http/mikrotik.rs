@@ -4,7 +4,8 @@ use crate::models::{
     CreateMikrotikRouterRequest, MikrotikAlert, MikrotikIncident, MikrotikInterfaceCounter,
     MikrotikInterfaceMetric, MikrotikIpPool, MikrotikLogEntry, MikrotikLogSyncResult,
     MikrotikPppProfile, MikrotikRouter, MikrotikRouterMetric, MikrotikTestResult,
-    PaginatedResponse, UpdateMikrotikIncidentRequest, UpdateMikrotikRouterRequest,
+    PaginatedResponse, SimulateMikrotikIncidentRequest, UpdateMikrotikIncidentRequest,
+    UpdateMikrotikRouterRequest,
 };
 use axum::{
     extract::{Path, Query, State},
@@ -21,6 +22,7 @@ pub fn router() -> Router<AppState> {
         .route("/alerts/{id}/ack", post(ack_alert))
         .route("/alerts/{id}/resolve", post(resolve_alert))
         .route("/incidents", get(list_incidents))
+        .route("/incidents/simulate", post(simulate_incident))
         .route("/incidents/{id}", put(update_incident))
         .route("/incidents/{id}/ack", post(ack_incident))
         .route("/incidents/{id}/resolve", post(resolve_incident))
@@ -194,6 +196,33 @@ async fn update_incident(
         .update_incident(&tenant_id, &id, req.owner_user_id, req.notes, &claims.sub)
         .await?;
 
+    Ok(Json(row))
+}
+
+// POST /api/admin/mikrotik/incidents/simulate
+async fn simulate_incident(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<SimulateMikrotikIncidentRequest>,
+) -> AppResult<Json<MikrotikIncident>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    let row = state
+        .mikrotik_service
+        .simulate_incident(
+            &tenant_id,
+            &claims.sub,
+            &req.router_id,
+            &req.incident_type,
+            req.severity,
+            req.interface_name,
+            req.message,
+        )
+        .await?;
     Ok(Json(row))
 }
 

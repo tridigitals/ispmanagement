@@ -2429,7 +2429,25 @@
         "actions": {
           "toggle": "Tampilkan aktif/selesai",
           "active": "Aktif",
-          "all": "Semua"
+          "all": "Semua",
+          "simulate": "Simulasi"
+        },
+        "simulate": {
+          "subtitle": "Buat insiden uji secara manual",
+          "router": "Router",
+          "type": "Tipe insiden",
+          "severity": "Severity",
+          "interface": "Interface (opsional)",
+          "message": "Pesan (opsional)",
+          "message_placeholder": "Pesan simulasi opsional",
+          "select_router": "Pilih router terlebih dahulu",
+          "created": "Insiden simulasi berhasil dibuat"
+        },
+        "export": {
+          "title": "Ekspor",
+          "csv": "Ekspor CSV",
+          "excel": "Ekspor Excel",
+          "empty": "Tidak ada data untuk diekspor"
         },
         "columns": {
           "incident": "Insiden",
@@ -2438,12 +2456,92 @@
           "status": "Status",
           "seen": "Terakhir Terlihat"
         },
+        "filters": {
+          "assignee": "Penanggung Jawab",
+          "all_assignees": "Semua penanggung jawab",
+          "unassigned": "Belum ditugaskan",
+          "all_status": "Semua status",
+          "all_severity": "Semua severity",
+          "from": "Dari",
+          "to": "Sampai",
+          "reset": "Reset"
+        },
+        "bulk": {
+          "select_filtered": "Pilih hasil filter",
+          "selected": "{{count}} dipilih",
+          "ack": "Ack Massal",
+          "resolve": "Resolve Massal",
+          "assign": "Assign Massal",
+          "assign_placeholder": "Assign ke...",
+          "clear": "Bersihkan"
+        },
+        "analytics": {
+          "open": "Open",
+          "ack": "Ack",
+          "in_progress": "Dalam Proses",
+          "resolved": "Resolved",
+          "mtta": "MTTA",
+          "mttr": "MTTR",
+          "top_type_24h": "Tipe Teratas (24j)"
+        },
+        "activity": {
+          "title": "Timeline Aktivitas",
+          "first_seen": "Pertama terdeteksi",
+          "acked": "Di-acknowledge",
+          "assigned": "Ditugaskan",
+          "notes_updated": "Catatan diperbarui",
+          "resolved": "Diselesaikan",
+          "last_seen": "Terakhir terlihat"
+        },
+        "runbook": {
+          "title": "Langkah Tindak Lanjut",
+          "subtitle": "Checklist operator berdasarkan tipe insiden.",
+          "copied": "Command berhasil disalin",
+          "copy_failed": "Gagal menyalin command",
+          "offline": {
+            "step1": "Verifikasi power dan link fisik",
+            "step1_desc": "Cek sumber daya perangkat, kabel, dan konektivitas upstream.",
+            "step2": "Uji keterjangkauan manajemen",
+            "step3": "Validasi service/port API"
+          },
+          "cpu": {
+            "step1": "Identifikasi penggunaan resource tertinggi",
+            "step2": "Tinjau trafik aktif/beban interface",
+            "step3": "Cek lonjakan log terbaru"
+          },
+          "latency": {
+            "step1": "Ukur packet loss dan RTT",
+            "step2": "Periksa counter interface WAN",
+            "step3": "Cek kesehatan jalur upstream",
+            "step3_desc": "Validasi uplink provider dan hop perantara."
+          },
+          "interface_down": {
+            "step1": "Verifikasi status interface",
+            "step2": "Cek counter flap/down link",
+            "step3": "Periksa transceiver/kabel",
+            "step3_desc": "Ganti kabel/SFP jika perlu lalu cek ulang status link."
+          },
+          "generic": {
+            "step1": "Kumpulkan konteks dari router",
+            "step1_desc": "Cek status terkini dan log terbaru.",
+            "step2": "Stabilkan dampak layanan",
+            "step2_desc": "Lakukan mitigasi dan monitor pemulihan."
+          }
+        },
+        "sla": {
+          "title": "Timer SLA",
+          "open_for": "Terbuka"
+        },
         "drawer": {
           "assignee": "Penanggung Jawab",
           "unassigned": "Belum ditugaskan",
+          "email_notify": "Notifikasi email",
+          "on": "Aktif",
+          "off": "Nonaktif",
           "notes": "Catatan",
           "notes_placeholder": "Tambahkan catatan operator, konteks handover, dan tindakan...",
-          "save": "Simpan Catatan"
+          "save": "Simpan Catatan",
+          "open_network_settings": "Buka Pengaturan Network"
         }
       },
       "logs": {
@@ -2941,16 +3039,24 @@
           "title": "Alert Router",
           "desc": "Aktifkan insiden dan notifikasi yang dihasilkan dari polling MikroTik.",
           "email_title": "Alert email",
-          "email_desc": "Juga kirim email ke anggota yang bisa mengakses Network Routers."
+          "email_desc": "Juga kirim email ke anggota yang bisa mengakses Network Routers.",
+          "auto_escalation_title": "Auto eskalasi",
+          "auto_escalation_desc": "Eskalasi insiden open yang belum di-ack menjadi critical setelah menit ambang batas.",
+          "assignment_email_title": "Email assignment insiden",
+          "assignment_email_desc": "Kirim email ke anggota yang ditugaskan saat assignee insiden berubah."
         },
         "thresholds": {
           "title": "Ambang Batas",
           "desc": "Dipakai oleh filter NOC dan background poller untuk membuka insiden.",
+          "sla_preview": "Insiden menjadi warning setelah {{warn}} menit dan breach setelah {{breach}} menit.",
           "offline_after_secs": "Insiden offline setelah (detik)",
           "cpu_risk": "CPU risk (%)",
           "cpu_hot": "CPU hot (%)",
           "latency_risk": "Latensi risk (ms)",
-          "latency_hot": "Latensi hot (ms)"
+          "latency_hot": "Latensi hot (ms)",
+          "incident_sla_warn_minutes": "Peringatan SLA insiden (menit)",
+          "incident_sla_breach_minutes": "Pelanggaran SLA insiden (menit)",
+          "incident_escalation_minutes": "Auto eskalasi insiden (menit)"
         }
       },
       "keys": {

@@ -534,6 +534,7 @@ pub fn run() {
                                     ack_mikrotik_incident,
                                     resolve_mikrotik_incident,
                                     update_mikrotik_incident,
+                                    simulate_mikrotik_incident,
                                     create_mikrotik_router,
                                     update_mikrotik_router,
                                     delete_mikrotik_router,

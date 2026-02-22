@@ -70,7 +70,12 @@
         'mikrotik_alert_cpu_hot',
         'mikrotik_alert_latency_risk_ms',
         'mikrotik_alert_latency_hot_ms',
+        'mikrotik_incident_sla_warn_minutes',
+        'mikrotik_incident_sla_breach_minutes',
+        'mikrotik_incident_auto_escalation_enabled',
+        'mikrotik_incident_escalation_minutes',
         'mikrotik_alert_email_enabled',
+        'mikrotik_incident_assignment_email_enabled',
       ],
     },
     storage: {
@@ -137,6 +142,13 @@
     }
 
     if (typeof window !== 'undefined') {
+      const tab = new URLSearchParams(window.location.search).get('tab');
+      if (tab && Object.prototype.hasOwnProperty.call(categories, tab)) {
+        activeTab = tab;
+      }
+    }
+
+    if (typeof window !== 'undefined') {
       const mq = window.matchMedia('(max-width: 900px)');
       const sync = () => {
         isMobile = mq.matches;
@@ -171,6 +183,17 @@
   });
 
   let activeCategory = $derived(categories[activeTab as keyof typeof categories]);
+  let slaWarnPreview = $derived.by(() => {
+    const raw = localSettings['mikrotik_incident_sla_warn_minutes'] || '30';
+    const parsed = Number.parseInt(String(raw), 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 30;
+  });
+  let slaBreachPreview = $derived.by(() => {
+    const raw = localSettings['mikrotik_incident_sla_breach_minutes'] || '120';
+    const parsed = Number.parseInt(String(raw), 10);
+    const val = Number.isFinite(parsed) && parsed > 0 ? parsed : 120;
+    return val > slaWarnPreview ? val : slaWarnPreview * 2;
+  });
 
   function buildLocalSettingsFromData(
     data: Setting[],
@@ -206,7 +229,12 @@
         if (key === 'mikrotik_alert_cpu_hot' && !val) val = '85';
         if (key === 'mikrotik_alert_latency_risk_ms' && !val) val = '200';
         if (key === 'mikrotik_alert_latency_hot_ms' && !val) val = '400';
+        if (key === 'mikrotik_incident_sla_warn_minutes' && !val) val = '30';
+        if (key === 'mikrotik_incident_sla_breach_minutes' && !val) val = '120';
+        if (key === 'mikrotik_incident_auto_escalation_enabled' && !val) val = 'false';
+        if (key === 'mikrotik_incident_escalation_minutes' && !val) val = '60';
         if (key === 'mikrotik_alert_email_enabled' && !val) val = 'false';
+        if (key === 'mikrotik_incident_assignment_email_enabled' && !val) val = 'false';
         localSettings[key] = val;
       });
     });
@@ -700,6 +728,11 @@
                   {$t('admin.settings.network.thresholds.desc') ||
                     'Used by NOC filters and by the background poller to open incidents.'}
                 </p>
+                <p class="help-text">
+                  {$t('admin.settings.network.thresholds.sla_preview', {
+                    values: { warn: slaWarnPreview, breach: slaBreachPreview },
+                  }) || `Incidents become warning after ${slaWarnPreview} minutes and breach after ${slaBreachPreview} minutes.`}
+                </p>
 
                 <div class="config-grid">
                   <div class="setting-item">
@@ -783,7 +816,87 @@
                       />
                     </div>
                   </div>
+
+                  <div class="setting-item">
+                    <label for="mikrotik-sla-warn-minutes">
+                      {$t('admin.settings.network.thresholds.incident_sla_warn_minutes') ||
+                        'Incident SLA warning (minutes)'}
+                    </label>
+                    <div class="setting-control">
+                      <Input
+                        id="mikrotik-sla-warn-minutes"
+                        type="number"
+                        min="1"
+                        value={localSettings['mikrotik_incident_sla_warn_minutes']}
+                        oninput={(e: any) =>
+                          handleChange('mikrotik_incident_sla_warn_minutes', e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div class="setting-item">
+                    <label for="mikrotik-sla-breach-minutes">
+                      {$t('admin.settings.network.thresholds.incident_sla_breach_minutes') ||
+                        'Incident SLA breach (minutes)'}
+                    </label>
+                    <div class="setting-control">
+                      <Input
+                        id="mikrotik-sla-breach-minutes"
+                        type="number"
+                        min="1"
+                        value={localSettings['mikrotik_incident_sla_breach_minutes']}
+                        oninput={(e: any) =>
+                          handleChange('mikrotik_incident_sla_breach_minutes', e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div class="setting-item">
+                    <label for="mikrotik-escalation-minutes">
+                      {$t('admin.settings.network.thresholds.incident_escalation_minutes') ||
+                        'Incident auto escalation (minutes)'}
+                    </label>
+                    <div class="setting-control">
+                      <Input
+                        id="mikrotik-escalation-minutes"
+                        type="number"
+                        min="5"
+                        value={localSettings['mikrotik_incident_escalation_minutes']}
+                        oninput={(e: any) =>
+                          handleChange('mikrotik_incident_escalation_minutes', e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
                 </div>
+              </div>
+
+              <div class="setting-item setting-item-row mt-6">
+                <div class="setting-info">
+                  <h3>
+                    {$t('admin.settings.network.alerting.auto_escalation_title') ||
+                      'Auto escalation'}
+                  </h3>
+                  <p>
+                    {$t('admin.settings.network.alerting.auto_escalation_desc') ||
+                      'Escalate unacknowledged open incidents to critical after threshold minutes.'}
+                  </p>
+                </div>
+                <label class="toggle">
+                  <input
+                    type="checkbox"
+                    checked={localSettings['mikrotik_incident_auto_escalation_enabled'] === 'true'}
+                    onchange={(e) =>
+                      handleChange(
+                        'mikrotik_incident_auto_escalation_enabled',
+                        e.currentTarget.checked,
+                      )
+                    }
+                  />
+                  <span class="slider"></span>
+                </label>
               </div>
 
               <div class="setting-item setting-item-row mt-6">
@@ -800,6 +913,32 @@
                     checked={localSettings['mikrotik_alert_email_enabled'] === 'true'}
                     onchange={(e) =>
                       handleChange('mikrotik_alert_email_enabled', e.currentTarget.checked)
+                    }
+                  />
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div class="setting-item setting-item-row mt-6">
+                <div class="setting-info">
+                  <h3>
+                    {$t('admin.settings.network.alerting.assignment_email_title') ||
+                      'Incident assignment emails'}
+                  </h3>
+                  <p>
+                    {$t('admin.settings.network.alerting.assignment_email_desc') ||
+                      'Send email to the assigned member when incident assignee is changed.'}
+                  </p>
+                </div>
+                <label class="toggle">
+                  <input
+                    type="checkbox"
+                    checked={localSettings['mikrotik_incident_assignment_email_enabled'] === 'true'}
+                    onchange={(e) =>
+                      handleChange(
+                        'mikrotik_incident_assignment_email_enabled',
+                        e.currentTarget.checked,
+                      )
                     }
                   />
                   <span class="slider"></span>
