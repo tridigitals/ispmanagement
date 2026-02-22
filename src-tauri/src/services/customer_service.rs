@@ -903,6 +903,217 @@ impl CustomerService {
         Ok(customer)
     }
 
+    pub async fn create_customer_from_public_registration(
+        &self,
+        tenant_id: &str,
+        user_id: &str,
+        customer_name: &str,
+        customer_email: &str,
+        ip_address: Option<&str>,
+    ) -> AppResult<Customer> {
+        let name = customer_name.trim().to_string();
+        if name.len() < 2 {
+            return Err(AppError::Validation(
+                "Customer name must be at least 2 characters".to_string(),
+            ));
+        }
+        let email = customer_email.trim().to_lowercase();
+        if email.is_empty() {
+            return Err(AppError::Validation("Customer email is required".to_string()));
+        }
+
+        #[cfg(feature = "postgres")]
+        let existing_customer: Option<Customer> = sqlx::query_as(
+            r#"
+            SELECT c.*
+            FROM customers c
+            JOIN customer_users cu ON cu.customer_id = c.id AND cu.tenant_id = c.tenant_id
+            WHERE cu.tenant_id = $1 AND cu.user_id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let existing_customer: Option<Customer> = sqlx::query_as(
+            r#"
+            SELECT c.*
+            FROM customers c
+            JOIN customer_users cu ON cu.customer_id = c.id AND cu.tenant_id = c.tenant_id
+            WHERE cu.tenant_id = ? AND cu.user_id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if let Some(existing) = existing_customer {
+            return Ok(existing);
+        }
+
+        let customer = Customer::new(
+            tenant_id.to_string(),
+            name,
+            Some(email),
+            None,
+            None,
+            Some(true),
+        );
+        let customer_user_id = Uuid::new_v4().to_string();
+        let tenant_member_id = Uuid::new_v4().to_string();
+        let now = Utc::now();
+        let role_id = self.get_system_role_id_by_name("Customer").await?;
+
+        let mut tx = self.pool.begin().await?;
+        self.auth_service
+            .apply_rls_context_tx_values(&mut tx, Some(tenant_id), Some(user_id), false)
+            .await?;
+
+        #[cfg(feature = "postgres")]
+        {
+            sqlx::query(
+                r#"
+                INSERT INTO customers
+                    (id, tenant_id, name, email, phone, notes, is_active, created_at, updated_at)
+                VALUES
+                    ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+                "#,
+            )
+            .bind(&customer.id)
+            .bind(&customer.tenant_id)
+            .bind(&customer.name)
+            .bind(&customer.email)
+            .bind(&customer.phone)
+            .bind(&customer.notes)
+            .bind(customer.is_active)
+            .bind(customer.created_at)
+            .bind(customer.updated_at)
+            .execute(&mut *tx)
+            .await?;
+
+            sqlx::query(
+                "INSERT INTO customer_users (id, tenant_id, customer_id, user_id, created_at) VALUES ($1,$2,$3,$4,$5)",
+            )
+            .bind(&customer_user_id)
+            .bind(tenant_id)
+            .bind(&customer.id)
+            .bind(user_id)
+            .bind(now)
+            .execute(&mut *tx)
+            .await?;
+
+            let member_exists: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM tenant_members WHERE tenant_id = $1 AND user_id = $2)",
+            )
+            .bind(tenant_id)
+            .bind(user_id)
+            .fetch_one(&mut *tx)
+            .await?;
+
+            if !member_exists {
+                sqlx::query(
+                    "INSERT INTO tenant_members (id, tenant_id, user_id, role, role_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
+                )
+                .bind(&tenant_member_id)
+                .bind(tenant_id)
+                .bind(user_id)
+                .bind("customer")
+                .bind(&role_id)
+                .bind(now)
+                .execute(&mut *tx)
+                .await?;
+            }
+        }
+
+        #[cfg(feature = "sqlite")]
+        {
+            sqlx::query(
+                r#"
+                INSERT INTO customers
+                    (id, tenant_id, name, email, phone, notes, is_active, created_at, updated_at)
+                VALUES
+                    (?,?,?,?,?,?,?,?,?)
+                "#,
+            )
+            .bind(&customer.id)
+            .bind(&customer.tenant_id)
+            .bind(&customer.name)
+            .bind(&customer.email)
+            .bind(&customer.phone)
+            .bind(&customer.notes)
+            .bind(customer.is_active)
+            .bind(customer.created_at.to_rfc3339())
+            .bind(customer.updated_at.to_rfc3339())
+            .execute(&mut *tx)
+            .await?;
+
+            sqlx::query(
+                "INSERT INTO customer_users (id, tenant_id, customer_id, user_id, created_at) VALUES (?,?,?,?,?)",
+            )
+            .bind(&customer_user_id)
+            .bind(tenant_id)
+            .bind(&customer.id)
+            .bind(user_id)
+            .bind(now.to_rfc3339())
+            .execute(&mut *tx)
+            .await?;
+
+            let member_exists: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM tenant_members WHERE tenant_id = ? AND user_id = ?)",
+            )
+            .bind(tenant_id)
+            .bind(user_id)
+            .fetch_one(&mut *tx)
+            .await?;
+
+            if !member_exists {
+                sqlx::query(
+                    "INSERT INTO tenant_members (id, tenant_id, user_id, role, role_id, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                )
+                .bind(&tenant_member_id)
+                .bind(tenant_id)
+                .bind(user_id)
+                .bind("customer")
+                .bind(&role_id)
+                .bind(now.to_rfc3339())
+                .execute(&mut *tx)
+                .await?;
+            }
+        }
+
+        tx.commit().await?;
+
+        self.audit_service
+            .log(
+                Some(user_id),
+                Some(tenant_id),
+                "CUSTOMER_SELF_REGISTER",
+                "customers",
+                Some(&customer.id),
+                Some("Created customer via custom-domain public registration"),
+                ip_address,
+            )
+            .await;
+        self.audit_service
+            .log(
+                Some(user_id),
+                Some(tenant_id),
+                "CUSTOMER_PORTAL_USER_CREATE",
+                "customer_users",
+                Some(&customer_user_id),
+                Some("Linked self-registered user as customer portal user"),
+                ip_address,
+            )
+            .await;
+
+        Ok(customer)
+    }
+
     pub async fn update_customer(
         &self,
         actor_id: &str,

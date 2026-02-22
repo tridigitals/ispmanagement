@@ -1,14 +1,20 @@
 <script lang="ts">
-  import { register as registerUser, isAuthenticated, user, logout } from '$lib/stores/auth';
+  import {
+    registerCustomerByDomain,
+    isAuthenticated,
+    user,
+    logout,
+  } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import { appLogo } from '$lib/stores/logo';
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { toast } from '$lib/stores/toast';
+  import { isPlatformDomain } from '$lib/utils/domain';
+  import { publicApi } from '$lib/api/client';
 
   let name = '';
   let email = '';
@@ -18,6 +24,8 @@
   let loading = false;
   let activeField = '';
   let isTauriApp = false;
+  let isCustomDomain = false;
+  let customerRegistrationEnabled = false;
 
   // Visibility states
   let showPassword = false;
@@ -51,17 +59,49 @@
       return;
     }
 
+    await Promise.all([appSettings.init(), appLogo.init()]);
+    const hostname = window.location.hostname || '';
+    const isLocal =
+      hostname.includes('localhost') || hostname.includes('127.0.0.1') || hostname.includes('tauri');
+    const isMainDomain = isPlatformDomain(hostname);
+    isCustomDomain = !isLocal && !isMainDomain;
+
+    if (!isCustomDomain) {
+      toast.error(
+        $t('auth.register.disabled_message') ||
+          'Customer registration is only available from a tenant custom domain.',
+      );
+      goto('/login');
+      return;
+    }
+    customerRegistrationEnabled = false;
+    try {
+      const status = await publicApi.getCustomerRegistrationStatusByDomain(hostname);
+      customerRegistrationEnabled = status?.enabled === true;
+    } catch {
+      customerRegistrationEnabled = false;
+    }
+    if (!customerRegistrationEnabled) {
+      toast.error(
+        $t('auth.register.disabled_message') ||
+          'Customer self registration is disabled for this tenant.',
+      );
+      goto('/login');
+      return;
+    }
+
     if ($isAuthenticated) {
       if ($user?.is_super_admin) {
         goto('/superadmin');
-      } else if ($user?.tenant_slug) {
-        goto(`/${$user.tenant_slug}/dashboard`);
+      } else if ($user?.tenant_slug || isCustomDomain) {
+        goto('/dashboard');
       } else {
         // Prevent auth redirect loop for users without tenant context
         logout();
+        goto('/login');
       }
+      return;
     }
-    await Promise.all([appSettings.init(), appLogo.init()]);
   });
 
   function validatePassword(pwd: string): string | null {
@@ -84,6 +124,12 @@
     e.preventDefault();
     error = '';
 
+    if (!isCustomDomain || !customerRegistrationEnabled) {
+      error =
+        'Customer registration is only available from a tenant custom domain in web browser.';
+      return;
+    }
+
     // Validate passwords match
     if (password !== confirmPassword) {
       error = 'Passwords do not match';
@@ -100,28 +146,21 @@
     loading = true;
 
     try {
-      const response = await registerUser(email, password, name);
+      const response = await registerCustomerByDomain(email, password, name);
       if (response.token) {
         if (response.user?.is_super_admin) {
           goto('/superadmin');
           return;
         }
-
-        const slug = response.user?.tenant_slug || response.tenant?.slug;
-        if (slug) {
-          if ($page.url.hostname.includes(slug)) goto(`/dashboard`);
-          else goto(`/${slug}/dashboard`);
-          return;
-        } else {
-          // User is authenticated but has no tenant scope yet -> avoid dashboard/login loop.
-          logout();
-          error = 'Akun berhasil dibuat, tapi belum terhubung ke tenant/workspace. Silakan login setelah di-assign admin.';
-          goto('/login');
-          return;
-        }
+        goto('/dashboard');
+        return;
       } else if (response.message) {
-        toast.error(response.message);
+        toast.success(response.message);
         goto('/login');
+        return;
+      } else {
+        error =
+          'Registration succeeded, but login session was not created. Please continue via login page.';
       }
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
@@ -131,7 +170,7 @@
   }
 </script>
 
-{#if $appSettings.auth?.allow_registration}
+{#if $appSettings.auth?.allow_registration && isCustomDomain && customerRegistrationEnabled}
   <div class="auth-container">
     <div class="brand-section">
       <div class="brand-content" in:fade={{ duration: 1000 }}>

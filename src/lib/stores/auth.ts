@@ -3,7 +3,7 @@
  * Manages user authentication state
  */
 import { writable, derived, get } from 'svelte/store';
-import { api, auth, type User, type Tenant, type AuthResponse } from '$lib/api/client';
+import { api, auth, publicApi, type User, type Tenant, type AuthResponse } from '$lib/api/client';
 import { appSettings } from './settings';
 import { appLogo } from './logo';
 
@@ -148,6 +148,18 @@ export async function register(
 ): Promise<AuthResponse> {
   const response = await auth.register(email, password, name);
   // Default to remember=true for registration, or could be passed
+  if (response.token) {
+    setAuthData(response.token, response.user, true, response.tenant);
+  }
+  return response;
+}
+
+export async function registerCustomerByDomain(
+  email: string,
+  password: string,
+  name: string,
+): Promise<AuthResponse> {
+  const response = await publicApi.registerCustomerByDomain(email, password, name);
   if (response.token) {
     setAuthData(response.token, response.user, true, response.tenant);
   }

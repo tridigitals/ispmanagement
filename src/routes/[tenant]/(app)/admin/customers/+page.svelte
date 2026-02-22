@@ -15,6 +15,8 @@
   import Modal from '$lib/components/ui/Modal.svelte';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 
+  const IMPORT_PLACEHOLDER_CUSTOMER_NAME = 'Imported (Unassigned)';
+
   const columns = $derived.by(() => [
     { key: 'name', label: $t('admin.customers.columns.customer') || 'Customer' },
     { key: 'contact', label: $t('admin.customers.columns.contact') || 'Contact' },
@@ -76,6 +78,10 @@
     } finally {
       loading = false;
     }
+  }
+
+  function isSystemImportPlaceholder(customer: Customer): boolean {
+    return customer.name === IMPORT_PLACEHOLDER_CUSTOMER_NAME;
   }
 
   function openCustomer(c: Customer) {
@@ -254,10 +260,17 @@
       {#snippet cell({ item, key })}
         {@const c = item as Customer}
         {#if key === 'name'}
-          <button class="linkish" onclick={() => openCustomer(c)}>
-            <div class="name">{c.name}</div>
-            <div class="sub">{c.email || c.phone || ''}</div>
-          </button>
+          {#if isSystemImportPlaceholder(c)}
+            <div>
+              <div class="name">{c.name}</div>
+              <div class="sub">{$t('admin.network.pppoe.import.fields.unassigned') || 'Unassigned'}</div>
+            </div>
+          {:else}
+            <button class="linkish" onclick={() => openCustomer(c)}>
+              <div class="name">{c.name}</div>
+              <div class="sub">{c.email || c.phone || ''}</div>
+            </button>
+          {/if}
         {:else if key === 'contact'}
           <div class="contact">
             <div>{c.email || '—'}</div>
@@ -273,10 +286,12 @@
           <span class="mono">{new Date(c.updated_at).toLocaleString()}</span>
         {:else if key === 'actions'}
           <div class="row-actions">
-            <button class="btn-icon" title={$t('common.open') || 'Open'} onclick={() => openCustomer(c)}>
-              <Icon name="arrow-right" size={16} />
-            </button>
-            {#if $can('manage', 'customers')}
+            {#if !isSystemImportPlaceholder(c)}
+              <button class="btn-icon" title={$t('common.open') || 'Open'} onclick={() => openCustomer(c)}>
+                <Icon name="arrow-right" size={16} />
+              </button>
+            {/if}
+            {#if $can('manage', 'customers') && !isSystemImportPlaceholder(c)}
               <button
                 class="btn-icon danger"
                 title={$t('common.delete') || 'Delete'}
@@ -284,6 +299,8 @@
               >
                 <Icon name="trash-2" size={16} />
               </button>
+            {:else if isSystemImportPlaceholder(c)}
+              <span class="mono">—</span>
             {/if}
           </div>
         {:else}

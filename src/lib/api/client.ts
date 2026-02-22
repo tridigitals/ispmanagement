@@ -198,6 +198,11 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       // Public
       get_tenant_by_slug: { method: 'GET', path: '/public/tenants/:slug' },
       get_tenant_by_domain: { method: 'GET', path: '/public/domains/:domain' },
+      get_customer_registration_status_by_domain: {
+        method: 'GET',
+        path: '/public/customer-registration-status',
+      },
+      register_customer_by_domain: { method: 'POST', path: '/public/customer-register' },
       get_app_version: { method: 'GET', path: '/version' },
       // Plans
       list_plans: { method: 'GET', path: '/plans' },
@@ -1939,6 +1944,18 @@ export const publicApi = {
   getTenant: (slug: string): Promise<any> => safeInvoke('get_tenant_by_slug', { slug }),
   getTenantByDomain: (domain: string): Promise<any> =>
     safeInvoke('get_tenant_by_domain', { domain }),
+  getCustomerRegistrationStatusByDomain: (
+    domain: string,
+  ): Promise<{
+    enabled: boolean;
+    global_registration_enabled: boolean;
+    tenant_self_registration_enabled: boolean;
+  }> => safeInvoke('get_customer_registration_status_by_domain', { domain }),
+  registerCustomerByDomain: (
+    email: string,
+    password: string,
+    name: string,
+  ): Promise<AuthResponse> => safeInvoke('register_customer_by_domain', { email, password, name }),
 };
 
 // Settings API

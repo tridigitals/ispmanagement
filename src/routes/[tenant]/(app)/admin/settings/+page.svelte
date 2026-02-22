@@ -58,7 +58,7 @@
     security: {
       label: $t('admin.settings.categories.security') || 'Security',
       icon: 'shield',
-      keys: [], // Managed manually
+      keys: ['customer_self_registration_enabled'],
     },
     network: {
       label: $t('admin.settings.categories.network') || 'Network',
@@ -239,6 +239,7 @@
         if (key === 'mikrotik_alert_email_enabled' && !val) val = 'false';
         if (key === 'mikrotik_incident_assignment_email_enabled' && !val) val = 'false';
         if (key === 'pppoe_auto_apply_on_save_enabled' && !val) val = 'false';
+        if (key === 'customer_self_registration_enabled' && !val) val = 'false';
         localSettings[key] = val;
       });
     });
@@ -701,6 +702,28 @@
                     type="checkbox"
                     checked={localSettings['enforce_2fa'] === 'true'}
                     onchange={(e) => handleChange('enforce_2fa', e.currentTarget.checked)}
+                  />
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div class="setting-item setting-item-row mt-6">
+                <div class="setting-info">
+                  <h3>
+                    {$t('admin.settings.security.customer_self_registration_title') ||
+                      'Customer Self Registration'}
+                  </h3>
+                  <p>
+                    {$t('admin.settings.security.customer_self_registration_desc') ||
+                      'Allow customer signup from this tenant custom domain. Default is disabled.'}
+                  </p>
+                </div>
+                <label class="toggle">
+                  <input
+                    type="checkbox"
+                    checked={localSettings['customer_self_registration_enabled'] === 'true'}
+                    onchange={(e) =>
+                      handleChange('customer_self_registration_enabled', e.currentTarget.checked)}
                   />
                   <span class="slider"></span>
                 </label>

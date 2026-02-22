@@ -1712,7 +1712,9 @@
         "custom_domain_pro_desc": "Upgrade your plan to use your own domain name."
       },
       "security": {
-        "enforce_2fa_desc": "Require all members of this organization to enable 2FA before accessing the dashboard."
+        "enforce_2fa_desc": "Require all members of this organization to enable 2FA before accessing the dashboard.",
+        "customer_self_registration_title": "Customer Self Registration",
+        "customer_self_registration_desc": "Allow customer signup from this tenant custom domain. Default is disabled."
       },
       "storage": {
         "select_provider": "Select Storage Provider"
@@ -1932,6 +1934,7 @@
         "locations": "Locations",
         "portal": "Portal users",
         "subscriptions": "Subscriptions",
+        "billing": "Billing",
         "pppoe": "PPPoE"
       },
       "overview": {
@@ -2028,6 +2031,43 @@
           "starts_at": "Starts at",
           "ends_at": "Ends at",
           "notes": "Notes"
+        }
+      },
+      "billing": {
+        "title": "Billing",
+        "subtitle": "Invoice history generated from this customer subscriptions.",
+        "empty": "No invoices for this customer yet.",
+        "stats": {
+          "total": "Total invoices",
+          "unpaid": "Unpaid",
+          "paid": "Paid",
+          "overdue": "Overdue"
+        },
+        "filters": {
+          "status": "Status",
+          "all": "All",
+          "today": "Today",
+          "last_7d": "7D",
+          "last_30d": "30D",
+          "this_month": "This Month",
+          "from": "From",
+          "to": "To",
+          "clear": "Clear"
+        },
+        "columns": {
+          "invoice_number": "Invoice #",
+          "subscription": "Subscription",
+          "amount": "Amount",
+          "status": "Status",
+          "due_date": "Due date"
+        },
+        "actions": {
+          "generate_from_subscription": "Generate invoice"
+        },
+        "toasts": {
+          "load_failed": "Failed to load billing invoices: {message}",
+          "generated": "Invoice generated successfully",
+          "generate_failed": "Failed to generate invoice: {message}"
         }
       },
       "pppoe": {
@@ -2198,7 +2238,7 @@
             "customer_optional": "Assign to customer (optional)",
             "location_optional": "Location (optional)",
             "location_hint": "If you pick a customer, you must also pick a location.",
-            "unassigned": "Unassigned (recommended for bulk import)"
+            "unassigned": "Unassigned"
           },
           "actions": {
             "scan": "Scan secrets",
@@ -2252,6 +2292,7 @@
         "actions": {
           "reconcile": "Reconcile",
           "open_customer": "Open customer",
+          "open_customer_billing": "Open customer billing",
           "apply": "Apply to router",
           "retry_apply_batch": "Retry apply"
         },

@@ -49,7 +49,7 @@ async fn rate_limit_key_for_request(
     path: &str,
 ) -> Option<String> {
     // For pre-auth endpoints, we intentionally key by IP.
-    if path.starts_with("/api/auth/") {
+    if path.starts_with("/api/auth/") || path == "/api/public/customer-register" {
         return Some(format!("ip:{client_ip}"));
     }
 
@@ -80,6 +80,9 @@ fn policy_for_path(path: &str, default_limit: u32) -> (u32, u64) {
         return (20, 60);
     }
     if path == "/api/auth/register" {
+        return (10, 60);
+    }
+    if path == "/api/public/customer-register" {
         return (10, 60);
     }
     if path == "/api/auth/forgot-password" {
@@ -114,7 +117,7 @@ fn should_bypass_rate_limit(path: &str) -> bool {
     path == "/"
         || path == "/api/version"
         || path == "/api/ws"
-        || path.starts_with("/api/public/")
+        || (path.starts_with("/api/public/") && path != "/api/public/customer-register")
         || path == "/api/install/check"
 }
 

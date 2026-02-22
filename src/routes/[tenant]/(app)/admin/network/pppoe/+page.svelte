@@ -21,6 +21,7 @@
   type LocationRow = { id: string; label: string };
   type ProfileSuggestion = { id: string; name: string };
   type PoolSuggestion = { id: string; name: string };
+  const IMPORT_PLACEHOLDER_CUSTOMER_NAME = 'Imported (Unassigned)';
 
   let loading = $state(true);
   let error = $state('');
@@ -100,11 +101,20 @@
 
   const routerName = (id: string) => routers.find((r) => r.id === id)?.name || '-';
   const customerName = (id: string) => customers.find((c) => c.id === id)?.name || '-';
+  const isImportPlaceholderCustomer = (id: string) => customerName(id) === IMPORT_PLACEHOLDER_CUSTOMER_NAME;
+  const customerLabel = (id: string) =>
+    isImportPlaceholderCustomer(id)
+      ? ($t('admin.network.pppoe.import.fields.unassigned') || 'Unassigned')
+      : customerName(id);
   const routerHost = (id: string) => routers.find((r) => r.id === id)?.host || '';
   const routerPort = (id: string) => routers.find((r) => r.id === id)?.port || 0;
 
   const routerOptions = $derived.by(() => routers.map((r) => ({ label: r.name, value: r.id })));
-  const customerOptions = $derived.by(() => customers.map((c) => ({ label: c.name, value: c.id })));
+  const customerOptions = $derived.by(() =>
+    customers
+      .filter((c) => c.name !== IMPORT_PLACEHOLDER_CUSTOMER_NAME)
+      .map((c) => ({ label: c.name, value: c.id })),
+  );
   const locationOptions = $derived.by(() => locations.map((l) => ({ label: l.label, value: l.id })));
 
   const viewRows = $derived.by(() =>
@@ -771,14 +781,17 @@
             </div>
           </div>
         {:else if key === 'customer'}
+          {@const isPlaceholderCustomer = isImportPlaceholderCustomer(row.customer_id)}
           <div class="stack">
-            <div class="name">{customerName(row.customer_id)}</div>
-            <div class="meta">
-              <span class="pill mono" title={row.customer_id}>{row.customer_id.slice(0, 8)}…</span>
-              <span class="pill mono" title={row.location_id}>
-                {$t('sidebar.locations') || 'Locations'}: {row.location_id.slice(0, 8)}…
-              </span>
-            </div>
+            <div class="name">{customerLabel(row.customer_id)}</div>
+            {#if !isPlaceholderCustomer}
+              <div class="meta">
+                <span class="pill mono" title={row.customer_id}>{row.customer_id.slice(0, 8)}…</span>
+                <span class="pill mono" title={row.location_id}>
+                  {$t('sidebar.locations') || 'Locations'}: {row.location_id.slice(0, 8)}…
+                </span>
+              </div>
+            {/if}
           </div>
         {:else if key === 'router'}
           <div class="stack">
@@ -823,14 +836,24 @@
             {/if}
           </div>
         {:else if key === 'actions'}
+          {@const isPlaceholderCustomer = isImportPlaceholderCustomer(row.customer_id)}
           <div class="row-actions">
-            <button
-              class="btn-icon"
-              title={$t('admin.network.pppoe.actions.open_customer') || 'Open customer'}
-              onclick={() => row.customer_id && goto(`${tenantPrefix}/admin/customers/${row.customer_id}`)}
-            >
-              <Icon name="external-link" size={16} />
-            </button>
+            {#if !isPlaceholderCustomer}
+              <button
+                class="btn-icon"
+                title={$t('admin.network.pppoe.actions.open_customer') || 'Open customer'}
+                onclick={() => row.customer_id && goto(`${tenantPrefix}/admin/customers/${row.customer_id}`)}
+              >
+                <Icon name="external-link" size={16} />
+              </button>
+              <button
+                class="btn-icon"
+                title={$t('admin.network.pppoe.actions.open_customer_billing') || 'Open customer billing'}
+                onclick={() => row.customer_id && goto(`${tenantPrefix}/admin/customers/${row.customer_id}?tab=billing`)}
+              >
+                <Icon name="file-text" size={16} />
+              </button>
+            {/if}
             {#if $can('manage', 'pppoe')}
               <button
                 class="btn-icon"
@@ -1044,7 +1067,7 @@
       </label>
       <label>
         <span>{$t('admin.customers.pppoe.fields.customer') || 'Customer'}</span>
-        <input class="input" value={customerName(formCustomerId)} disabled />
+        <input class="input" value={customerLabel(formCustomerId)} disabled />
       </label>
     </div>
 

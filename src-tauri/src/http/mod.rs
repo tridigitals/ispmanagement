@@ -543,7 +543,20 @@ pub async fn start_server(
             "/api/public/tenant-lookup",
             get(public::lookup_tenant_by_domain),
         )
+        .route(
+            "/api/public/customer-registration-status",
+            get(public::customer_registration_status_by_domain),
+        )
+        .route(
+            "/api/public/customer-register",
+            post(public::register_customer_by_domain),
+        )
+        .route("/api/public/tenants/{slug}", get(public::get_tenant_by_slug))
         .route("/api/public/tenant/{slug}", get(public::get_tenant_by_slug))
+        .route(
+            "/api/public/domains/{domain}",
+            get(public::get_tenant_by_domain),
+        )
         .route(
             "/api/public/domain/{domain}",
             get(public::get_tenant_by_domain),

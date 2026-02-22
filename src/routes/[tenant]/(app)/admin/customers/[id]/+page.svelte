@@ -12,10 +12,12 @@
     type Customer,
     type CustomerLocation,
     type CustomerSubscriptionView,
+    type Invoice,
     type IspPackageRouterMappingView,
   } from '$lib/api/client';
   import type { PppoeAccountPublic } from '$lib/api/client';
   import { timeAgo } from '$lib/utils/date';
+  import { formatMoney } from '$lib/utils/money';
 
   import Icon from '$lib/components/ui/Icon.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
@@ -24,9 +26,19 @@
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import Table from '$lib/components/ui/Table.svelte';
 
+  const customerDetailTabs = [
+    'overview',
+    'locations',
+    'subscriptions',
+    'billing',
+    'timeline',
+    'pppoe',
+  ] as const;
+  type CustomerDetailTab = (typeof customerDetailTabs)[number];
+
   const customerId = $derived(String($page.params.id || ''));
 
-  let activeTab = $state<'overview' | 'locations' | 'subscriptions' | 'timeline' | 'pppoe'>('overview');
+  let activeTab = $state<CustomerDetailTab>('overview');
 
   let customer = $state<Customer | null>(null);
   let loadingCustomer = $state(true);
@@ -58,6 +70,13 @@
   let subStartsAt = $state('');
   let subEndsAt = $state('');
   let subNotes = $state('');
+  let billingInvoices = $state<Invoice[]>([]);
+  let loadingBilling = $state(false);
+  let billingStatus = $state<'all' | 'pending' | 'verification_pending' | 'paid' | 'failed'>('all');
+  let billingDateFrom = $state('');
+  let billingDateTo = $state('');
+  let billingQuickRange = $state<'' | 'today' | '7d' | '30d' | 'month'>('');
+  let generatingInvoiceFor = $state<string | null>(null);
 
   // PPPoE
   let pppoeAccounts = $state<PppoeAccountPublic[]>([]);
@@ -168,6 +187,15 @@
     { key: 'actions', label: '', align: 'right' as const },
   ]);
 
+  const billingColumns = $derived.by(() => [
+    { key: 'invoice_number', label: $t('admin.customers.billing.columns.invoice_number') || 'Invoice #' },
+    { key: 'subscription', label: $t('admin.customers.billing.columns.subscription') || 'Subscription' },
+    { key: 'amount', label: $t('admin.customers.billing.columns.amount') || 'Amount' },
+    { key: 'status', label: $t('admin.customers.billing.columns.status') || 'Status' },
+    { key: 'due_date', label: $t('admin.customers.billing.columns.due_date') || 'Due date' },
+    { key: 'actions', label: '', align: 'right' as const },
+  ]);
+
   const billingCycleOptions = [
     { label: 'Monthly', value: 'monthly' },
     { label: 'Yearly', value: 'yearly' },
@@ -201,14 +229,61 @@
       return timelineLogs.filter((l) => l.resource === 'customer_subscriptions');
     return timelineLogs;
   });
+  const subscriptionById = $derived.by(
+    () => new Map(subscriptions.map((sub) => [sub.id, sub] as const)),
+  );
+  const billingRows = $derived.by(() => {
+    const rows = billingInvoices.filter((inv) => {
+      const sid = getSubscriptionIdFromInvoice(inv);
+      if (!sid || !subscriptionById.has(sid)) return false;
+      if (billingStatus !== 'all' && inv.status !== billingStatus) return false;
+      const refDate = new Date(inv.created_at || inv.due_date);
+      if (Number.isNaN(refDate.getTime())) return false;
+      if (billingDateFrom) {
+        const from = new Date(`${billingDateFrom}T00:00:00`);
+        if (refDate < from) return false;
+      }
+      if (billingDateTo) {
+        const to = new Date(`${billingDateTo}T23:59:59.999`);
+        if (refDate > to) return false;
+      }
+      return true;
+    });
+
+    return rows.sort(
+      (a, b) => new Date(b.created_at || b.due_date).getTime() - new Date(a.created_at || a.due_date).getTime(),
+    );
+  });
+  const billingStats = $derived.by(() => {
+    const now = Date.now();
+    const overdue = billingRows.filter((inv) => inv.status !== 'paid' && new Date(inv.due_date).getTime() < now)
+      .length;
+    const unpaid = billingRows.filter((inv) => ['pending', 'verification_pending'].includes(inv.status)).length;
+    const paid = billingRows.filter((inv) => inv.status === 'paid').length;
+    return {
+      total: billingRows.length,
+      unpaid,
+      paid,
+      overdue,
+    };
+  });
 
   onMount(async () => {
     if (!$can('read', 'customers') && !$can('manage', 'customers')) {
       goto('/unauthorized');
       return;
     }
+    const fromUrl = readActiveTabFromUrl();
+    if (fromUrl) activeTab = fromUrl;
     await loadCustomer();
     await loadLocations();
+  });
+
+  $effect(() => {
+    const fromUrl = readActiveTabFromUrl();
+    if (fromUrl && fromUrl !== activeTab) {
+      activeTab = fromUrl;
+    }
   });
 
   $effect(() => {
@@ -218,6 +293,13 @@
     if (subscriptionPackages.length === 0) {
       void loadSubscriptionPackages();
     }
+  });
+
+  $effect(() => {
+    if (activeTab !== 'billing') return;
+    if (!$can('read', 'customers') && !$can('manage', 'customers')) return;
+    void loadSubscriptions();
+    void loadBillingInvoices();
   });
 
   $effect(() => {
@@ -365,6 +447,99 @@
     }
   }
 
+  function readActiveTabFromUrl(): CustomerDetailTab | null {
+    const tab = String($page.url.searchParams.get('tab') || '').toLowerCase();
+    return customerDetailTabs.includes(tab as CustomerDetailTab) ? (tab as CustomerDetailTab) : null;
+  }
+
+  function getSubscriptionIdFromInvoice(inv: Invoice): string | null {
+    const ext = inv.external_id || '';
+    if (!ext.startsWith('pkgsub:')) return null;
+    const raw = ext.slice('pkgsub:'.length);
+    const idx = raw.indexOf(':');
+    if (idx <= 0) return null;
+    return raw.slice(0, idx);
+  }
+
+  function billingStatusLabel(status: string): string {
+    const map: Record<string, string> = {
+      pending: get(t)('admin.package_invoices.statuses.pending') || 'Pending',
+      verification_pending:
+        get(t)('admin.package_invoices.statuses.verification_pending') || 'Verification pending',
+      paid: get(t)('admin.package_invoices.statuses.paid') || 'Paid',
+      failed: get(t)('admin.package_invoices.statuses.failed') || 'Failed',
+    };
+    return map[status] || status;
+  }
+
+  async function loadBillingInvoices() {
+    if (loadingBilling) return;
+    loadingBilling = true;
+    try {
+      const invoices = await api.payment.listCustomerPackageInvoices();
+      billingInvoices = invoices;
+    } catch (e: any) {
+      toast.error(
+        get(t)('admin.customers.billing.toasts.load_failed', { values: { message: e?.message || e } }) ||
+          `Failed to load billing invoices: ${e?.message || e}`,
+      );
+    } finally {
+      loadingBilling = false;
+    }
+  }
+
+  async function generateInvoiceForSubscription(subscriptionId: string) {
+    if (!subscriptionId || generatingInvoiceFor) return;
+    generatingInvoiceFor = subscriptionId;
+    try {
+      await api.payment.createInvoiceForCustomerSubscription(subscriptionId);
+      toast.success(
+        get(t)('admin.customers.billing.toasts.generated') || 'Invoice generated successfully',
+      );
+      activeTab = 'billing';
+      await loadBillingInvoices();
+    } catch (e: any) {
+      toast.error(
+        get(t)('admin.customers.billing.toasts.generate_failed', { values: { message: e?.message || e } }) ||
+          `Failed to generate invoice: ${e?.message || e}`,
+      );
+    } finally {
+      generatingInvoiceFor = null;
+    }
+  }
+
+  function openInvoiceDetail(id: string) {
+    const base = $page.url.pathname.replace(/\/admin\/customers\/[^/]+\/?$/, '/admin');
+    void goto(`${base}/invoices/${id}`);
+  }
+
+  function clearBillingFilters() {
+    billingStatus = 'all';
+    billingDateFrom = '';
+    billingDateTo = '';
+    billingQuickRange = '';
+  }
+
+  function formatDateInputValue(d: Date): string {
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000);
+    return local.toISOString().slice(0, 10);
+  }
+
+  function applyBillingQuickRange(range: 'today' | '7d' | '30d' | 'month') {
+    const end = new Date();
+    const start = new Date(end);
+    if (range === '7d') start.setDate(start.getDate() - 6);
+    if (range === '30d') start.setDate(start.getDate() - 29);
+    if (range === 'month') start.setDate(1);
+    billingDateFrom = formatDateInputValue(start);
+    billingDateTo = formatDateInputValue(end);
+    billingQuickRange = range;
+  }
+
+  function onBillingDateChange() {
+    billingQuickRange = '';
+  }
+
   async function loadTimeline() {
     if (!canReadAudit) return;
     loadingTimeline = true;
@@ -437,6 +612,8 @@
       loadCustomer(),
       loadLocations(),
       activeTab === 'subscriptions' ? loadSubscriptions() : Promise.resolve(),
+      activeTab === 'billing' ? loadBillingInvoices() : Promise.resolve(),
+      activeTab === 'pppoe' ? loadPppoeAccounts() : Promise.resolve(),
       activeTab === 'timeline' && canReadAudit ? loadTimeline() : Promise.resolve(),
     ]);
   }
@@ -980,6 +1157,14 @@
     <button class:active={activeTab === 'subscriptions'} onclick={() => (activeTab = 'subscriptions')}>
       {$t('admin.customers.tabs.subscriptions') || 'Subscriptions'}
     </button>
+    <button class:active={activeTab === 'billing'} onclick={() => (activeTab = 'billing')}>
+      {$t('admin.customers.tabs.billing') || 'Billing'}
+    </button>
+    {#if $can('read', 'pppoe') || $can('manage', 'pppoe')}
+      <button class:active={activeTab === 'pppoe'} onclick={() => (activeTab = 'pppoe')}>
+        {$t('admin.customers.tabs.pppoe') || 'PPPoE'}
+      </button>
+    {/if}
     {#if canReadAudit}
       <button class:active={activeTab === 'timeline'} onclick={() => (activeTab = 'timeline')}>
         Timeline
@@ -1164,6 +1349,14 @@
             {:else if key === 'actions'}
               <div class="row-actions">
                 {#if $can('manage', 'customers')}
+                  <button
+                    class="btn-icon"
+                    title={$t('admin.customers.billing.actions.generate_from_subscription') || 'Generate invoice'}
+                    onclick={() => generateInvoiceForSubscription(row.id)}
+                    disabled={generatingInvoiceFor === row.id || deletingSubscription === row.id}
+                  >
+                    <Icon name="file-text" size={16} />
+                  </button>
                   {#if row.status === 'active'}
                     <button
                       class="btn-icon"
@@ -1195,6 +1388,143 @@
                     <Icon name="trash-2" size={16} />
                   </button>
                 {/if}
+              </div>
+            {:else}
+              {item[key] ?? ''}
+            {/if}
+          {/snippet}
+        </Table>
+      </div>
+    {:else if activeTab === 'billing'}
+      <div class="card section">
+        <div class="section-head">
+          <div>
+            <h3>{$t('admin.customers.billing.title') || 'Billing'}</h3>
+            <p class="subtitle">
+              {$t('admin.customers.billing.subtitle') ||
+                'Invoice history generated from this customer subscriptions.'}
+            </p>
+          </div>
+          <div class="header-actions">
+            <label class="inline-filter">
+              <span>{$t('admin.customers.billing.filters.status') || 'Status'}</span>
+              <select class="input" bind:value={billingStatus}>
+                <option value="all">{$t('admin.customers.billing.filters.all') || 'All'}</option>
+                <option value="pending">{$t('admin.package_invoices.statuses.pending') || 'Pending'}</option>
+                <option value="verification_pending">
+                  {$t('admin.package_invoices.statuses.verification_pending') || 'Verification pending'}
+                </option>
+                <option value="paid">{$t('admin.package_invoices.statuses.paid') || 'Paid'}</option>
+                <option value="failed">{$t('admin.package_invoices.statuses.failed') || 'Failed'}</option>
+              </select>
+            </label>
+            <div class="quick-ranges">
+              <button
+                class="btn btn-secondary btn-quick"
+                class:active={billingQuickRange === 'today'}
+                onclick={() => applyBillingQuickRange('today')}
+              >
+                {$t('admin.customers.billing.filters.today') || 'Today'}
+              </button>
+              <button
+                class="btn btn-secondary btn-quick"
+                class:active={billingQuickRange === '7d'}
+                onclick={() => applyBillingQuickRange('7d')}
+              >
+                {$t('admin.customers.billing.filters.last_7d') || '7D'}
+              </button>
+              <button
+                class="btn btn-secondary btn-quick"
+                class:active={billingQuickRange === '30d'}
+                onclick={() => applyBillingQuickRange('30d')}
+              >
+                {$t('admin.customers.billing.filters.last_30d') || '30D'}
+              </button>
+              <button
+                class="btn btn-secondary btn-quick"
+                class:active={billingQuickRange === 'month'}
+                onclick={() => applyBillingQuickRange('month')}
+              >
+                {$t('admin.customers.billing.filters.this_month') || 'This Month'}
+              </button>
+            </div>
+            <label class="inline-filter">
+              <span>{$t('admin.customers.billing.filters.from') || 'From'}</span>
+              <input class="input" type="date" bind:value={billingDateFrom} oninput={onBillingDateChange} />
+            </label>
+            <label class="inline-filter">
+              <span>{$t('admin.customers.billing.filters.to') || 'To'}</span>
+              <input class="input" type="date" bind:value={billingDateTo} oninput={onBillingDateChange} />
+            </label>
+            <button
+              class="btn btn-secondary"
+              onclick={clearBillingFilters}
+              disabled={billingStatus === 'all' && !billingDateFrom && !billingDateTo}
+            >
+              <Icon name="eraser" size={16} />
+              {$t('admin.customers.billing.filters.clear') || 'Clear'}
+            </button>
+            <button class="btn btn-secondary" onclick={loadBillingInvoices} disabled={loadingBilling}>
+              <Icon name="refresh-cw" size={16} />
+              {$t('common.refresh') || 'Refresh'}
+            </button>
+          </div>
+        </div>
+
+        <div class="billing-stats">
+          <div class="billing-stat">
+            <div class="billing-stat-label">{$t('admin.customers.billing.stats.total') || 'Total invoices'}</div>
+            <div class="billing-stat-value">{billingStats.total}</div>
+          </div>
+          <div class="billing-stat">
+            <div class="billing-stat-label">{$t('admin.customers.billing.stats.unpaid') || 'Unpaid'}</div>
+            <div class="billing-stat-value">{billingStats.unpaid}</div>
+          </div>
+          <div class="billing-stat">
+            <div class="billing-stat-label">{$t('admin.customers.billing.stats.paid') || 'Paid'}</div>
+            <div class="billing-stat-value">{billingStats.paid}</div>
+          </div>
+          <div class="billing-stat">
+            <div class="billing-stat-label">{$t('admin.customers.billing.stats.overdue') || 'Overdue'}</div>
+            <div class="billing-stat-value">{billingStats.overdue}</div>
+          </div>
+        </div>
+
+        <Table
+          columns={billingColumns}
+          data={billingRows}
+          loading={loadingBilling}
+          emptyText={$t('admin.customers.billing.empty') || 'No invoices for this customer yet.'}
+          pagination
+        >
+          {#snippet cell({ item, key })}
+            {@const row = item as Invoice}
+            {@const subscriptionId = getSubscriptionIdFromInvoice(row)}
+            {@const subscription = subscriptionId ? subscriptionById.get(subscriptionId) : null}
+            {#if key === 'invoice_number'}
+              <div class="name">#{row.invoice_number}</div>
+              <div class="sub mono">{row.created_at ? new Date(row.created_at).toLocaleString() : '-'}</div>
+            {:else if key === 'subscription'}
+              <div class="name">{subscription?.package_name || subscription?.package_id || '-'}</div>
+              <div class="sub">{subscription?.billing_cycle || '-'}</div>
+            {:else if key === 'amount'}
+              <div class="name">{formatMoney(row.amount, { currency: row.currency_code || undefined })}</div>
+            {:else if key === 'status'}
+              <span class={`badge ${row.status === 'paid' ? 'ok' : row.status === 'failed' ? 'danger' : 'warn'}`}>
+                {billingStatusLabel(row.status)}
+              </span>
+            {:else if key === 'due_date'}
+              <div class="name">{new Date(row.due_date).toLocaleDateString()}</div>
+              <div class="sub mono">{new Date(row.due_date).toLocaleTimeString()}</div>
+            {:else if key === 'actions'}
+              <div class="row-actions">
+                <button
+                  class="btn-icon"
+                  title={$t('admin.package_invoices.list.actions.view_details') || 'View details'}
+                  onclick={() => openInvoiceDetail(row.id)}
+                >
+                  <Icon name="eye" size={16} />
+                </button>
               </div>
             {:else}
               {item[key] ?? ''}
@@ -2288,6 +2618,63 @@
     margin-top: 0.5rem;
   }
 
+  .inline-filter {
+    display: grid;
+    gap: 0.3rem;
+    min-width: 180px;
+  }
+
+  .quick-ranges {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.45rem;
+  }
+
+  .btn-quick {
+    min-height: 40px;
+    padding-inline: 0.7rem;
+    border-radius: 10px;
+  }
+
+  .btn-quick.active {
+    border-color: rgba(99, 102, 241, 0.5);
+    background: rgba(99, 102, 241, 0.14);
+    color: #e0e7ff;
+  }
+
+  .inline-filter span {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+
+  .billing-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .billing-stat {
+    border: 1px solid color-mix(in srgb, var(--border-color), transparent 20%);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg-surface), transparent 9%);
+    padding: 0.65rem 0.75rem;
+  }
+
+  .billing-stat-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.2rem;
+  }
+
+  .billing-stat-value {
+    font-weight: 800;
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+  }
+
   .row-actions {
     display: flex;
     justify-content: flex-end;
@@ -2310,6 +2697,12 @@
   .btn-icon.danger {
     border-color: rgba(239, 68, 68, 0.35);
     color: rgb(239, 68, 68);
+  }
+
+  .badge.danger {
+    border-color: rgba(239, 68, 68, 0.35);
+    color: rgb(239, 68, 68);
+    background: rgba(239, 68, 68, 0.1);
   }
 
   .name {
@@ -2447,6 +2840,14 @@
     }
     .grid2 {
       grid-template-columns: 1fr;
+    }
+    .billing-stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .quick-ranges {
+      width: 100%;
+      justify-content: flex-start;
+      flex-wrap: wrap;
     }
   }
 </style>

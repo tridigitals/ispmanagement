@@ -260,7 +260,7 @@
             disabled={loading}
             onchange={() => void loadLocationsForCustomer(customerId)}
           >
-            <option value="">{$t('admin.network.pppoe.import.fields.unassigned') || 'Unassigned (recommended for bulk import)'}</option>
+            <option value="">{$t('admin.network.pppoe.import.fields.unassigned') || 'Unassigned'}</option>
             {#each customers as c}
               <option value={c.id}>{c.name}</option>
             {/each}

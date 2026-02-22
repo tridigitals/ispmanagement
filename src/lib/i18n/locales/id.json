@@ -1743,6 +1743,7 @@
         "locations": "Lokasi",
         "portal": "User portal",
         "subscriptions": "Langganan",
+        "billing": "Billing",
         "pppoe": "PPPoE"
       },
       "overview": {
@@ -1839,6 +1840,43 @@
           "starts_at": "Mulai",
           "ends_at": "Berakhir",
           "notes": "Catatan"
+        }
+      },
+      "billing": {
+        "title": "Billing",
+        "subtitle": "Riwayat invoice yang terbentuk dari langganan pelanggan ini.",
+        "empty": "Belum ada invoice untuk pelanggan ini.",
+        "stats": {
+          "total": "Total invoice",
+          "unpaid": "Belum lunas",
+          "paid": "Lunas",
+          "overdue": "Lewat jatuh tempo"
+        },
+        "filters": {
+          "status": "Status",
+          "all": "Semua",
+          "today": "Hari ini",
+          "last_7d": "7H",
+          "last_30d": "30H",
+          "this_month": "Bulan ini",
+          "from": "Dari",
+          "to": "Sampai",
+          "clear": "Reset"
+        },
+        "columns": {
+          "invoice_number": "Invoice #",
+          "subscription": "Langganan",
+          "amount": "Jumlah",
+          "status": "Status",
+          "due_date": "Jatuh tempo"
+        },
+        "actions": {
+          "generate_from_subscription": "Generate invoice"
+        },
+        "toasts": {
+          "load_failed": "Gagal memuat invoice billing: {message}",
+          "generated": "Invoice berhasil dibuat",
+          "generate_failed": "Gagal membuat invoice: {message}"
         }
       },
       "pppoe": {
@@ -2009,7 +2047,7 @@
             "customer_optional": "Tetapkan ke pelanggan (opsional)",
             "location_optional": "Lokasi (opsional)",
             "location_hint": "Jika pilih pelanggan, wajib pilih lokasi juga.",
-            "unassigned": "Belum ditetapkan (disarankan untuk import massal)"
+            "unassigned": "Belum ditetapkan"
           },
           "actions": {
             "scan": "Scan secret",
@@ -2063,6 +2101,7 @@
         "actions": {
           "reconcile": "Sinkronkan",
           "open_customer": "Buka pelanggan",
+          "open_customer_billing": "Buka billing pelanggan",
           "apply": "Terapkan ke router",
           "retry_apply_batch": "Ulang apply"
         },
@@ -3001,7 +3040,9 @@
         "custom_domain_pro_desc": "Upgrade paket untuk menggunakan domain sendiri."
       },
       "security": {
-        "enforce_2fa_desc": "Wajibkan semua anggota organisasi ini mengaktifkan 2FA sebelum mengakses dashboard."
+        "enforce_2fa_desc": "Wajibkan semua anggota organisasi ini mengaktifkan 2FA sebelum mengakses dashboard.",
+        "customer_self_registration_title": "Pendaftaran Mandiri Pelanggan",
+        "customer_self_registration_desc": "Izinkan pelanggan mendaftar dari custom domain tenant ini. Default nonaktif."
       },
       "storage": {
         "select_provider": "Pilih Penyedia Storage"

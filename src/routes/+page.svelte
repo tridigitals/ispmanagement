@@ -10,6 +10,7 @@
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { isPlatformDomain } from '$lib/utils/domain';
+  import { publicApi } from '$lib/api/client';
 
   let email = '';
   let password = '';
@@ -18,6 +19,8 @@
   let loading = false;
   let activeField = '';
   let isTauriApp = false;
+  let isCustomDomain = false;
+  let customerRegistrationEnabled = false;
 
   let showPassword = false;
 
@@ -33,11 +36,23 @@
     // @ts-ignore
     isTauriApp = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
     await Promise.all([appSettings.init(), appLogo.init()]);
+    const currentHost = window.location.hostname;
+    const isLocal =
+      currentHost === 'localhost' || currentHost === '127.0.0.1' || currentHost.includes('tauri');
+    isCustomDomain = !isLocal && !isPlatformDomain(currentHost);
+    customerRegistrationEnabled = false;
+    if (isCustomDomain) {
+      try {
+        const status = await publicApi.getCustomerRegistrationStatusByDomain(currentHost);
+        customerRegistrationEnabled = status?.enabled === true;
+      } catch {
+        customerRegistrationEnabled = false;
+      }
+    }
 
     if ($isAuthenticated) {
       const u = get(user);
       const slug = u?.tenant_slug;
-      const currentHost = window.location.hostname;
       const mainDomain = get(appSettings).auth?.main_domain;
       const isMainDomain =
         (mainDomain && currentHost === mainDomain) ||
@@ -173,7 +188,7 @@
         </button>
       </form>
 
-      {#if $allowRegistration && !isTauriApp}
+      {#if $allowRegistration && !isTauriApp && isCustomDomain && customerRegistrationEnabled}
         <p class="footer-text">
           {$t('auth.login.footer_text')}
           <a href="/register">{$t('auth.login.register_link')}</a>
