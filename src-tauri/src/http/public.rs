@@ -11,6 +11,7 @@ use axum::{
 use chrono::Utc;
 use std::net::{IpAddr, SocketAddr};
 use uuid::Uuid;
+use validator::Validate;
 
 pub async fn get_tenant_by_slug(
     State(state): State<AppState>,
@@ -52,6 +53,21 @@ pub struct CustomerRegistrationStatus {
     pub enabled: bool,
     pub global_registration_enabled: bool,
     pub tenant_self_registration_enabled: bool,
+}
+
+#[derive(serde::Deserialize, Validate)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PublicCustomerRegisterDto {
+    #[validate(
+        email(message = "Invalid email format"),
+        length(max = 255, message = "Email too long")
+    )]
+    pub email: String,
+    #[validate(length(min = 8, max = 128, message = "Password must be 8-128 characters"))]
+    pub password: String,
+    #[validate(length(min = 2, max = 100, message = "Name must be 2-100 characters"))]
+    pub name: String,
+    pub invite_token: Option<String>,
 }
 
 async fn get_tenant_self_registration_enabled(
@@ -195,18 +211,22 @@ pub async fn register_customer_by_domain(
     State(state): State<AppState>,
     headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    Json(payload): Json<RegisterDto>,
+    Json(payload): Json<PublicCustomerRegisterDto>,
 ) -> Result<Json<crate::services::AuthResponse>, crate::error::AppError> {
-    use validator::Validate;
     if let Err(e) = payload.validate() {
         return Err(crate::error::AppError::Validation(format!(
             "Validation error: {}",
             e
         )));
     }
+    let invite_token = payload
+        .invite_token
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty());
 
     let auth_settings = state.auth_service.get_auth_settings().await;
-    if !auth_settings.allow_registration {
+    if !auth_settings.allow_registration && invite_token.is_none() {
         return Err(crate::error::AppError::Validation(
             "Public registration is currently disabled".to_string(),
         ));
@@ -245,15 +265,27 @@ pub async fn register_customer_by_domain(
         crate::error::AppError::NotFound("No active tenant matched this custom domain".to_string())
     })?;
 
-    let tenant_self_registration_enabled =
-        get_tenant_self_registration_enabled(&state, &tenant.id).await?;
-    if !tenant_self_registration_enabled {
-        return Err(crate::error::AppError::Validation(
-            "Customer self registration is disabled for this tenant".to_string(),
-        ));
+    if let Some(invite_token) = invite_token {
+        state
+            .customer_service
+            .consume_customer_registration_invite(&tenant.id, invite_token)
+            .await?;
+    } else {
+        let tenant_self_registration_enabled =
+            get_tenant_self_registration_enabled(&state, &tenant.id).await?;
+        if !tenant_self_registration_enabled {
+            return Err(crate::error::AppError::Validation(
+                "Customer self registration is disabled for this tenant".to_string(),
+            ));
+        }
     }
 
     let ip = extract_ip(&headers, addr);
+    let register_dto = RegisterDto {
+        email: payload.email,
+        password: payload.password,
+        name: payload.name,
+    };
     let require_email_verification = state
         .auth_service
         .get_effective_require_email_verification(Some(&tenant.id))
@@ -261,7 +293,7 @@ pub async fn register_customer_by_domain(
     let registration = state
         .auth_service
         .register_with_email_verification_policy(
-            payload,
+            register_dto,
             Some(ip.clone()),
             Some(require_email_verification),
         )

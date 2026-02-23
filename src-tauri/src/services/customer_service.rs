@@ -2,14 +2,17 @@ use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
-    CreateCustomerRequest, CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
-    Customer, CustomerLocation, CustomerPortalUser, CustomerSubscription, CustomerSubscriptionView,
-    CustomerUser, PaginatedResponse, UpdateCustomerLocationRequest, UpdateCustomerRequest,
+    CreateCustomerRegistrationInviteRequest, CreateCustomerRequest, CreateCustomerSubscriptionRequest,
+    CreateCustomerWithPortalRequest, Customer, CustomerLocation, CustomerPortalUser,
+    CustomerRegistrationInviteCreateResponse, CustomerRegistrationInviteView, CustomerSubscription,
+    CustomerSubscriptionView, CustomerUser, IspPackage, PaginatedResponse,
+    PortalCheckoutSubscriptionRequest, UpdateCustomerLocationRequest, UpdateCustomerRequest,
     UpdateCustomerSubscriptionRequest,
 };
 use crate::security::secret::encrypt_secret_for;
 use crate::services::{AuditService, AuthService, UserService};
 use chrono::{DateTime, Utc};
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 const PURPOSE_PPPOE: &str = "pppoe_secrets";
@@ -165,7 +168,25 @@ impl CustomerService {
         ))
     }
 
-    fn build_auto_pppoe_username(customer_name: &str, customer_id: &str, location_id: &str) -> String {
+    fn hash_registration_invite_token(token: &str) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(token.as_bytes());
+        format!("{:x}", hasher.finalize())
+    }
+
+    fn build_registration_invite_token() -> String {
+        format!(
+            "{}{}",
+            Uuid::new_v4().simple(),
+            Uuid::new_v4().simple()
+        )
+    }
+
+    fn build_auto_pppoe_username(
+        customer_name: &str,
+        customer_id: &str,
+        location_id: &str,
+    ) -> String {
         let mut slug = String::new();
         for ch in customer_name.trim().chars() {
             if ch.is_ascii_alphanumeric() {
@@ -184,7 +205,12 @@ impl CustomerService {
         let base = if slug.is_empty() { "cust" } else { slug };
         let c4 = customer_id.chars().rev().take(4).collect::<String>();
         let l4 = location_id.chars().rev().take(4).collect::<String>();
-        format!("{}-{}{}", base, c4.chars().rev().collect::<String>(), l4.chars().rev().collect::<String>())
+        format!(
+            "{}-{}{}",
+            base,
+            c4.chars().rev().collect::<String>(),
+            l4.chars().rev().collect::<String>()
+        )
     }
 
     async fn auto_provision_pppoe_for_subscription(
@@ -919,7 +945,9 @@ impl CustomerService {
         }
         let email = customer_email.trim().to_lowercase();
         if email.is_empty() {
-            return Err(AppError::Validation("Customer email is required".to_string()));
+            return Err(AppError::Validation(
+                "Customer email is required".to_string(),
+            ));
         }
 
         #[cfg(feature = "postgres")]
@@ -1112,6 +1140,350 @@ impl CustomerService {
             .await;
 
         Ok(customer)
+    }
+
+    pub async fn create_customer_registration_invite(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        dto: CreateCustomerRegistrationInviteRequest,
+        ip_address: Option<&str>,
+    ) -> AppResult<CustomerRegistrationInviteCreateResponse> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "customers", "manage")
+            .await?;
+
+        let expires_in_hours = dto.expires_in_hours.unwrap_or(24).clamp(1, 24 * 30);
+        let max_uses = dto.max_uses.unwrap_or(1).clamp(1, 100);
+        let note = dto.note.and_then(|v| {
+            let trimmed = v.trim().to_string();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.chars().take(500).collect::<String>())
+            }
+        });
+
+        #[cfg(feature = "postgres")]
+        let tenant_domain: Option<String> = sqlx::query_scalar(
+            "SELECT custom_domain FROM tenants WHERE id = $1 AND is_active = true",
+        )
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let tenant_domain: Option<String> = sqlx::query_scalar(
+            "SELECT custom_domain FROM tenants WHERE id = ? AND is_active = 1",
+        )
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let domain = tenant_domain
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty())
+            .ok_or_else(|| {
+                AppError::Validation(
+                    "Tenant custom domain is required before generating customer invite link"
+                        .to_string(),
+                )
+            })?;
+
+        let now = Utc::now();
+        let expires_at = now + chrono::Duration::hours(expires_in_hours as i64);
+        let invite_token = Self::build_registration_invite_token();
+        let token_hash = Self::hash_registration_invite_token(&invite_token);
+        let invite_id = Uuid::new_v4().to_string();
+
+        #[cfg(feature = "postgres")]
+        sqlx::query(
+            r#"
+            INSERT INTO customer_registration_invites
+                (id, tenant_id, token_hash, created_by, max_uses, used_count, expires_at, is_revoked, revoked_at, last_used_at, note, created_at)
+            VALUES
+                ($1,$2,$3,$4,$5,0,$6,false,NULL,NULL,$7,$8)
+            "#,
+        )
+        .bind(&invite_id)
+        .bind(tenant_id)
+        .bind(&token_hash)
+        .bind(actor_id)
+        .bind(max_uses as i64)
+        .bind(expires_at)
+        .bind(&note)
+        .bind(now)
+        .execute(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query(
+            r#"
+            INSERT INTO customer_registration_invites
+                (id, tenant_id, token_hash, created_by, max_uses, used_count, expires_at, is_revoked, revoked_at, last_used_at, note, created_at)
+            VALUES
+                (?,?,?,?,?,0,?,0,NULL,NULL,?,?)
+            "#,
+        )
+        .bind(&invite_id)
+        .bind(tenant_id)
+        .bind(&token_hash)
+        .bind(actor_id)
+        .bind(max_uses as i64)
+        .bind(expires_at.to_rfc3339())
+        .bind(&note)
+        .bind(now.to_rfc3339())
+        .execute(&self.pool)
+        .await?;
+
+        let invite = CustomerRegistrationInviteView {
+            id: invite_id.clone(),
+            tenant_id: tenant_id.to_string(),
+            created_by: Some(actor_id.to_string()),
+            max_uses: max_uses as i64,
+            used_count: 0,
+            expires_at,
+            is_revoked: false,
+            revoked_at: None,
+            last_used_at: None,
+            note,
+            created_at: now,
+        };
+        let invite_url = format!("https://{domain}/register?invite={invite_token}");
+
+        self.audit_service
+            .log(
+                Some(actor_id),
+                Some(tenant_id),
+                "CUSTOMER_INVITE_CREATE",
+                "customer_registration_invites",
+                Some(&invite_id),
+                Some(&format!(
+                    "Generated customer registration invite (expires in {}h, max uses {})",
+                    expires_in_hours, max_uses
+                )),
+                ip_address,
+            )
+            .await;
+
+        Ok(CustomerRegistrationInviteCreateResponse {
+            invite,
+            invite_token,
+            invite_url,
+        })
+    }
+
+    pub async fn list_customer_registration_invites(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        include_inactive: bool,
+        limit: u32,
+    ) -> AppResult<Vec<CustomerRegistrationInviteView>> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "customers", "manage")
+            .await?;
+
+        let limit = (limit as i64).clamp(1, 500);
+        let now = Utc::now();
+
+        #[cfg(feature = "postgres")]
+        let rows: Vec<CustomerRegistrationInviteView> = sqlx::query_as(
+            r#"
+            SELECT
+                id,
+                tenant_id,
+                created_by,
+                max_uses,
+                used_count,
+                expires_at,
+                is_revoked,
+                revoked_at,
+                last_used_at,
+                note,
+                created_at
+            FROM customer_registration_invites
+            WHERE tenant_id = $1
+              AND (
+                    $2::bool = true
+                 OR (is_revoked = false AND expires_at > $3 AND used_count < max_uses)
+              )
+            ORDER BY created_at DESC
+            LIMIT $4
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(include_inactive)
+        .bind(now)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let rows: Vec<CustomerRegistrationInviteView> = sqlx::query_as(
+            r#"
+            SELECT
+                id,
+                tenant_id,
+                created_by,
+                max_uses,
+                used_count,
+                expires_at,
+                is_revoked,
+                revoked_at,
+                last_used_at,
+                note,
+                created_at
+            FROM customer_registration_invites
+            WHERE tenant_id = ?
+              AND (
+                    ? = 1
+                 OR (is_revoked = 0 AND expires_at > ? AND used_count < max_uses)
+              )
+            ORDER BY created_at DESC
+            LIMIT ?
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(if include_inactive { 1 } else { 0 })
+        .bind(now.to_rfc3339())
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
+    }
+
+    pub async fn revoke_customer_registration_invite(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        invite_id: &str,
+        ip_address: Option<&str>,
+    ) -> AppResult<()> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "customers", "manage")
+            .await?;
+
+        let now = Utc::now();
+
+        #[cfg(feature = "postgres")]
+        let res = sqlx::query(
+            r#"
+            UPDATE customer_registration_invites
+            SET is_revoked = true, revoked_at = $1
+            WHERE tenant_id = $2 AND id = $3 AND is_revoked = false
+            "#,
+        )
+        .bind(now)
+        .bind(tenant_id)
+        .bind(invite_id)
+        .execute(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let res = sqlx::query(
+            r#"
+            UPDATE customer_registration_invites
+            SET is_revoked = 1, revoked_at = ?
+            WHERE tenant_id = ? AND id = ? AND is_revoked = 0
+            "#,
+        )
+        .bind(now.to_rfc3339())
+        .bind(tenant_id)
+        .bind(invite_id)
+        .execute(&self.pool)
+        .await?;
+
+        if res.rows_affected() == 0 {
+            return Err(AppError::NotFound(
+                "Customer invite link not found or already revoked".to_string(),
+            ));
+        }
+
+        self.audit_service
+            .log(
+                Some(actor_id),
+                Some(tenant_id),
+                "CUSTOMER_INVITE_REVOKE",
+                "customer_registration_invites",
+                Some(invite_id),
+                Some("Revoked customer registration invite"),
+                ip_address,
+            )
+            .await;
+
+        Ok(())
+    }
+
+    pub async fn consume_customer_registration_invite(
+        &self,
+        tenant_id: &str,
+        invite_token: &str,
+    ) -> AppResult<()> {
+        let token = invite_token.trim();
+        if token.len() < 20 {
+            return Err(AppError::Validation(
+                "Invalid customer invite token".to_string(),
+            ));
+        }
+        let token_hash = Self::hash_registration_invite_token(token);
+        let now = Utc::now();
+
+        #[cfg(feature = "postgres")]
+        let row: Option<String> = sqlx::query_scalar(
+            r#"
+            UPDATE customer_registration_invites
+            SET used_count = used_count + 1, last_used_at = $1
+            WHERE tenant_id = $2
+              AND token_hash = $3
+              AND is_revoked = false
+              AND expires_at > $1
+              AND used_count < max_uses
+            RETURNING id
+            "#,
+        )
+        .bind(now)
+        .bind(tenant_id)
+        .bind(&token_hash)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let affected = sqlx::query(
+            r#"
+            UPDATE customer_registration_invites
+            SET used_count = used_count + 1, last_used_at = ?
+            WHERE tenant_id = ?
+              AND token_hash = ?
+              AND is_revoked = 0
+              AND expires_at > ?
+              AND used_count < max_uses
+            "#,
+        )
+        .bind(now.to_rfc3339())
+        .bind(tenant_id)
+        .bind(&token_hash)
+        .bind(now.to_rfc3339())
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+
+        #[cfg(feature = "postgres")]
+        if row.is_none() {
+            return Err(AppError::Validation(
+                "Invite link is invalid, expired, or already used".to_string(),
+            ));
+        }
+
+        #[cfg(feature = "sqlite")]
+        if affected == 0 {
+            return Err(AppError::Validation(
+                "Invite link is invalid, expired, or already used".to_string(),
+            ));
+        }
+
+        Ok(())
     }
 
     pub async fn update_customer(
@@ -2364,12 +2736,11 @@ impl CustomerService {
     // Portal: Self-service
     // =========================
 
-    pub async fn list_my_locations(
+    pub async fn get_portal_customer_id(
         &self,
         actor_id: &str,
         tenant_id: &str,
-    ) -> AppResult<Vec<CustomerLocation>> {
-        // Explicit permission for customer portal.
+    ) -> AppResult<String> {
         self.auth_service
             .check_permission(actor_id, tenant_id, "customers", "read_own")
             .await?;
@@ -2392,8 +2763,16 @@ impl CustomerService {
         .fetch_optional(&self.pool)
         .await?;
 
-        let customer_id = customer_id
-            .ok_or_else(|| AppError::Forbidden("You are not linked to any customer".to_string()))?;
+        customer_id
+            .ok_or_else(|| AppError::Forbidden("You are not linked to any customer".to_string()))
+    }
+
+    pub async fn list_my_locations(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+    ) -> AppResult<Vec<CustomerLocation>> {
+        let customer_id = self.get_portal_customer_id(actor_id, tenant_id).await?;
 
         #[cfg(feature = "postgres")]
         let rows: Vec<CustomerLocation> = sqlx::query_as(
@@ -2414,5 +2793,445 @@ impl CustomerService {
         .await?;
 
         Ok(rows)
+    }
+
+    pub async fn list_my_packages(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+    ) -> AppResult<Vec<IspPackage>> {
+        let _customer_id = self.get_portal_customer_id(actor_id, tenant_id).await?;
+
+        #[cfg(feature = "postgres")]
+        let rows: Vec<IspPackage> = sqlx::query_as(
+            r#"
+            SELECT
+              id,
+              tenant_id,
+              name,
+              description,
+              features,
+              is_active,
+              price_monthly::float8 AS price_monthly,
+              price_yearly::float8 AS price_yearly,
+              created_at,
+              updated_at
+            FROM isp_packages
+            WHERE tenant_id = $1
+              AND is_active = true
+            ORDER BY price_monthly ASC, name ASC
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let rows: Vec<IspPackage> = sqlx::query_as(
+            r#"
+            SELECT
+              id,
+              tenant_id,
+              name,
+              description,
+              features,
+              is_active,
+              price_monthly AS price_monthly,
+              price_yearly AS price_yearly,
+              created_at,
+              updated_at
+            FROM isp_packages
+            WHERE tenant_id = ?
+              AND is_active = 1
+            ORDER BY price_monthly ASC, name ASC
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
+    }
+
+    pub async fn list_my_subscriptions(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        page: u32,
+        per_page: u32,
+    ) -> AppResult<PaginatedResponse<CustomerSubscriptionView>> {
+        let customer_id = self.get_portal_customer_id(actor_id, tenant_id).await?;
+        let offset = (page.saturating_sub(1)) * per_page;
+
+        #[cfg(feature = "postgres")]
+        let total: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM customer_subscriptions WHERE tenant_id = $1 AND customer_id = $2",
+        )
+        .bind(tenant_id)
+        .bind(&customer_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let total: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM customer_subscriptions WHERE tenant_id = ? AND customer_id = ?",
+        )
+        .bind(tenant_id)
+        .bind(&customer_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "postgres")]
+        let rows: Vec<CustomerSubscriptionView> = sqlx::query_as(
+            r#"
+            SELECT
+              cs.id,
+              cs.tenant_id,
+              cs.customer_id,
+              cs.location_id,
+              cs.package_id,
+              cs.router_id,
+              cs.billing_cycle,
+              cs.price::float8 AS price,
+              cs.currency_code,
+              cs.status,
+              cs.starts_at,
+              cs.ends_at,
+              cs.notes,
+              cs.created_at,
+              cs.updated_at,
+              p.name AS package_name,
+              l.label AS location_label,
+              r.name AS router_name
+            FROM customer_subscriptions cs
+            LEFT JOIN isp_packages p ON p.id = cs.package_id
+            LEFT JOIN customer_locations l ON l.id = cs.location_id
+            LEFT JOIN mikrotik_routers r ON r.id = cs.router_id
+            WHERE cs.tenant_id = $1 AND cs.customer_id = $2
+            ORDER BY cs.updated_at DESC
+            LIMIT $3 OFFSET $4
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&customer_id)
+        .bind(per_page as i64)
+        .bind(offset as i64)
+        .fetch_all(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let rows: Vec<CustomerSubscriptionView> = sqlx::query_as(
+            r#"
+            SELECT
+              cs.id,
+              cs.tenant_id,
+              cs.customer_id,
+              cs.location_id,
+              cs.package_id,
+              cs.router_id,
+              cs.billing_cycle,
+              cs.price AS price,
+              cs.currency_code,
+              cs.status,
+              cs.starts_at,
+              cs.ends_at,
+              cs.notes,
+              cs.created_at,
+              cs.updated_at,
+              p.name AS package_name,
+              l.label AS location_label,
+              r.name AS router_name
+            FROM customer_subscriptions cs
+            LEFT JOIN isp_packages p ON p.id = cs.package_id
+            LEFT JOIN customer_locations l ON l.id = cs.location_id
+            LEFT JOIN mikrotik_routers r ON r.id = cs.router_id
+            WHERE cs.tenant_id = ? AND cs.customer_id = ?
+            ORDER BY cs.updated_at DESC
+            LIMIT ? OFFSET ?
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&customer_id)
+        .bind(per_page as i64)
+        .bind(offset as i64)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(PaginatedResponse {
+            data: rows,
+            total,
+            page,
+            per_page,
+        })
+    }
+
+    pub async fn create_my_subscription(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        dto: PortalCheckoutSubscriptionRequest,
+        ip_address: Option<&str>,
+    ) -> AppResult<CustomerSubscription> {
+        let customer_id = self.get_portal_customer_id(actor_id, tenant_id).await?;
+
+        let location_id = dto.location_id.trim().to_string();
+        if location_id.is_empty() {
+            return Err(AppError::Validation("location_id is required".to_string()));
+        }
+
+        let package_id = dto.package_id.trim().to_string();
+        if package_id.is_empty() {
+            return Err(AppError::Validation("package_id is required".to_string()));
+        }
+
+        let billing_cycle = Self::normalize_billing_cycle(&dto.billing_cycle)?;
+        let now = Utc::now();
+
+        #[cfg(feature = "postgres")]
+        let location_ok: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM customer_locations WHERE tenant_id = $1 AND id = $2 AND customer_id = $3)",
+        )
+        .bind(tenant_id)
+        .bind(&location_id)
+        .bind(&customer_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let location_ok: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM customer_locations WHERE tenant_id = ? AND id = ? AND customer_id = ?)",
+        )
+        .bind(tenant_id)
+        .bind(&location_id)
+        .bind(&customer_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        if !location_ok {
+            return Err(AppError::Validation(
+                "Location does not belong to your customer account".to_string(),
+            ));
+        }
+
+        #[cfg(feature = "postgres")]
+        let pkg_row: Option<(f64, f64)> = sqlx::query_as(
+            "SELECT price_monthly::float8, price_yearly::float8 FROM isp_packages WHERE tenant_id = $1 AND id = $2 AND is_active = true LIMIT 1",
+        )
+        .bind(tenant_id)
+        .bind(&package_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let pkg_row: Option<(f64, f64)> = sqlx::query_as(
+            "SELECT price_monthly AS price_monthly, price_yearly AS price_yearly FROM isp_packages WHERE tenant_id = ? AND id = ? AND is_active = 1 LIMIT 1",
+        )
+        .bind(tenant_id)
+        .bind(&package_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let (price_monthly, price_yearly) =
+            pkg_row.ok_or_else(|| AppError::Validation("Package not found".to_string()))?;
+
+        let price = if billing_cycle == "yearly" {
+            if price_yearly <= 0.0 {
+                return Err(AppError::Validation(
+                    "Yearly billing is not available for this package".to_string(),
+                ));
+            }
+            price_yearly
+        } else {
+            if price_monthly <= 0.0 {
+                return Err(AppError::Validation(
+                    "Package monthly price is invalid".to_string(),
+                ));
+            }
+            price_monthly
+        };
+
+        #[cfg(feature = "postgres")]
+        let existing_id: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT id
+            FROM customer_subscriptions
+            WHERE tenant_id = $1
+              AND customer_id = $2
+              AND location_id = $3
+              AND status IN ('active', 'suspended')
+            ORDER BY updated_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&customer_id)
+        .bind(&location_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let existing_id: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT id
+            FROM customer_subscriptions
+            WHERE tenant_id = ?
+              AND customer_id = ?
+              AND location_id = ?
+              AND status IN ('active', 'suspended')
+            ORDER BY updated_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&customer_id)
+        .bind(&location_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let has_existing = existing_id.is_some();
+        let subscription_id = existing_id.unwrap_or_else(|| Uuid::new_v4().to_string());
+        let currency = "IDR".to_string();
+        let notes = Some("Self-service checkout".to_string());
+
+        if has_existing {
+            #[cfg(feature = "postgres")]
+            sqlx::query(
+                r#"
+                UPDATE customer_subscriptions
+                SET package_id = $1,
+                    billing_cycle = $2,
+                    price = $3,
+                    currency_code = $4,
+                    status = 'active',
+                    starts_at = $5,
+                    ends_at = NULL,
+                    notes = $6,
+                    updated_at = $7
+                WHERE id = $8 AND tenant_id = $9
+                "#,
+            )
+            .bind(&package_id)
+            .bind(&billing_cycle)
+            .bind(price)
+            .bind(&currency)
+            .bind(now)
+            .bind(&notes)
+            .bind(now)
+            .bind(&subscription_id)
+            .bind(tenant_id)
+            .execute(&self.pool)
+            .await?;
+
+            #[cfg(feature = "sqlite")]
+            sqlx::query(
+                r#"
+                UPDATE customer_subscriptions
+                SET package_id = ?,
+                    billing_cycle = ?,
+                    price = ?,
+                    currency_code = ?,
+                    status = 'active',
+                    starts_at = ?,
+                    ends_at = NULL,
+                    notes = ?,
+                    updated_at = ?
+                WHERE id = ? AND tenant_id = ?
+                "#,
+            )
+            .bind(&package_id)
+            .bind(&billing_cycle)
+            .bind(price)
+            .bind(&currency)
+            .bind(now)
+            .bind(&notes)
+            .bind(now)
+            .bind(&subscription_id)
+            .bind(tenant_id)
+            .execute(&self.pool)
+            .await?;
+        } else {
+            #[cfg(feature = "postgres")]
+            sqlx::query(
+                r#"
+                INSERT INTO customer_subscriptions
+                  (id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at)
+                VALUES
+                  ($1,$2,$3,$4,$5,NULL,$6,$7,$8,'active',$9,NULL,$10,$11,$12)
+                "#,
+            )
+            .bind(&subscription_id)
+            .bind(tenant_id)
+            .bind(&customer_id)
+            .bind(&location_id)
+            .bind(&package_id)
+            .bind(&billing_cycle)
+            .bind(price)
+            .bind(&currency)
+            .bind(now)
+            .bind(&notes)
+            .bind(now)
+            .bind(now)
+            .execute(&self.pool)
+            .await?;
+
+            #[cfg(feature = "sqlite")]
+            sqlx::query(
+                r#"
+                INSERT INTO customer_subscriptions
+                  (id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at)
+                VALUES
+                  (?,?,?,?,?,NULL,?,?,?,'active',?,NULL,?,?,?)
+                "#,
+            )
+            .bind(&subscription_id)
+            .bind(tenant_id)
+            .bind(&customer_id)
+            .bind(&location_id)
+            .bind(&package_id)
+            .bind(&billing_cycle)
+            .bind(price)
+            .bind(&currency)
+            .bind(now)
+            .bind(&notes)
+            .bind(now)
+            .bind(now)
+            .execute(&self.pool)
+            .await?;
+        }
+
+        #[cfg(feature = "postgres")]
+        let row: CustomerSubscription = sqlx::query_as(
+            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price::float8 as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE id = $1 AND tenant_id = $2",
+        )
+        .bind(&subscription_id)
+        .bind(tenant_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let row: CustomerSubscription = sqlx::query_as(
+            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE id = ? AND tenant_id = ?",
+        )
+        .bind(&subscription_id)
+        .bind(tenant_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        self.audit_service
+            .log(
+                Some(actor_id),
+                Some(tenant_id),
+                "CUSTOMER_PORTAL_SUBSCRIPTION_CHECKOUT",
+                "customer_subscriptions",
+                Some(&subscription_id),
+                Some("Customer portal checkout created/updated a subscription"),
+                ip_address,
+            )
+            .await;
+
+        self.auto_provision_pppoe_for_subscription(actor_id, tenant_id, &row, ip_address)
+            .await?;
+
+        Ok(row)
     }
 }

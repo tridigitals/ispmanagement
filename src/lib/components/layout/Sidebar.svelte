@@ -5,8 +5,10 @@
   import { appLogo } from '$lib/stores/logo';
   import { isSidebarCollapsed } from '$lib/stores/ui';
   import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
+  import { api, type Invoice } from '$lib/api/client';
   import Icon from '../ui/Icon.svelte';
 
   let { isMobileOpen = $bindable(false) } = $props();
@@ -39,6 +41,65 @@
     return items.filter((i) => i.show !== false);
   }
 
+  let packageBillingAlert = $state<'none' | 'pending' | 'overdue'>('none');
+  let packageAlertTicking = false;
+
+  function isPastInvoiceDue(inv: Invoice): boolean {
+    const raw = inv.due_date || inv.created_at;
+    if (!raw) return false;
+    const ms = new Date(raw).getTime();
+    if (!Number.isFinite(ms)) return false;
+    return ms < Date.now();
+  }
+
+  function canShowPackageBillingAlert() {
+    return !$isAdmin && !$isSuperAdmin && $can('read_own', 'customers');
+  }
+
+  async function refreshPackageOverdueAlert() {
+    if (packageAlertTicking) return;
+    if (!canShowPackageBillingAlert()) {
+      packageBillingAlert = 'none';
+      return;
+    }
+
+    packageAlertTicking = true;
+    try {
+      const invoices = await api.payment.listInvoices();
+      const pendingInvoices = (invoices || []).filter((inv) => inv.status === 'pending');
+      if (pendingInvoices.some((inv) => isPastInvoiceDue(inv))) {
+        packageBillingAlert = 'overdue';
+      } else if (pendingInvoices.length > 0) {
+        packageBillingAlert = 'pending';
+      } else {
+        packageBillingAlert = 'none';
+      }
+    } catch {
+      // Non-blocking: keep sidebar responsive even if check fails.
+      packageBillingAlert = 'none';
+    } finally {
+      packageAlertTicking = false;
+    }
+  }
+
+  function shouldShowPackageAlert(item: NavItem) {
+    if (packageBillingAlert === 'none') return false;
+    return item.href === `${tenantPrefix}/dashboard/packages`;
+  }
+
+  function packageAlertLabel() {
+    if (packageBillingAlert === 'overdue') {
+      return (
+        $t('sidebar.packages_overdue_alert') ||
+        'There is an overdue invoice. Please review package billing.'
+      );
+    }
+    return (
+      $t('sidebar.packages_pending_alert') ||
+      'There is a pending invoice. Please review package billing.'
+    );
+  }
+
   let appMenuSections = $derived.by(() => {
     // Access $user to create dependency for permissions changes
     const _ = $user?.permissions;
@@ -59,6 +120,12 @@
             icon: 'map-pin',
             href: `${tenantPrefix}/dashboard/locations`,
             show: true,
+          },
+          {
+            label: $t('sidebar.packages') || 'Packages',
+            icon: 'package',
+            href: `${tenantPrefix}/dashboard/packages`,
+            show: $can('read_own', 'customers'),
           },
           {
             label: $t('sidebar.announcements') || 'Announcements',
@@ -92,7 +159,11 @@
         title: $t('sidebar.sections.platform') || 'Platform',
         items: [
           { label: $t('sidebar.dashboard') || 'Dashboard', icon: 'grid', href: '/superadmin' },
-          { label: $t('sidebar.tenants') || 'Tenants', icon: 'database', href: '/superadmin/tenants' },
+          {
+            label: $t('sidebar.tenants') || 'Tenants',
+            icon: 'database',
+            href: '/superadmin/tenants',
+          },
           { label: $t('sidebar.users') || 'Users', icon: 'users', href: '/superadmin/users' },
         ],
       },
@@ -101,15 +172,27 @@
         title: $t('sidebar.sections.billing') || 'Billing',
         items: [
           { label: $t('sidebar.plans') || 'Plans', icon: 'credit-card', href: '/superadmin/plans' },
-          { label: $t('sidebar.invoices') || 'Invoices', icon: 'file-text', href: '/superadmin/invoices' },
+          {
+            label: $t('sidebar.invoices') || 'Invoices',
+            icon: 'file-text',
+            href: '/superadmin/invoices',
+          },
         ],
       },
       {
         id: 'operations',
         title: $t('sidebar.sections.operations') || 'Operations',
         items: [
-          { label: $t('sidebar.storage') || 'Storage', icon: 'folder', href: '/superadmin/storage' },
-          { label: $t('sidebar.backups') || 'Backups', icon: 'archive', href: '/superadmin/backups' },
+          {
+            label: $t('sidebar.storage') || 'Storage',
+            icon: 'folder',
+            href: '/superadmin/storage',
+          },
+          {
+            label: $t('sidebar.backups') || 'Backups',
+            icon: 'archive',
+            href: '/superadmin/backups',
+          },
           { label: $t('sidebar.system') || 'System', icon: 'server', href: '/superadmin/system' },
         ],
       },
@@ -117,8 +200,16 @@
         id: 'security',
         title: $t('sidebar.sections.security') || 'Security',
         items: [
-          { label: $t('sidebar.audit_logs') || 'Audit Logs', icon: 'activity', href: '/superadmin/audit-logs' },
-          { label: $t('sidebar.settings') || 'Settings', icon: 'settings', href: '/superadmin/settings' },
+          {
+            label: $t('sidebar.audit_logs') || 'Audit Logs',
+            icon: 'activity',
+            href: '/superadmin/audit-logs',
+          },
+          {
+            label: $t('sidebar.settings') || 'Settings',
+            icon: 'settings',
+            href: '/superadmin/settings',
+          },
         ],
       },
     ];
@@ -136,7 +227,12 @@
         id: 'workspace',
         title: $t('sidebar.sections.workspace') || 'Workspace',
         items: visibleItems([
-          { label: $t('sidebar.overview'), icon: 'shield', href: `${tenantPrefix}/admin`, show: true },
+          {
+            label: $t('sidebar.overview'),
+            icon: 'shield',
+            href: `${tenantPrefix}/admin`,
+            show: true,
+          },
           {
             label: $t('sidebar.customers') || 'Customers',
             icon: 'user-check',
@@ -215,8 +311,18 @@
         id: 'access',
         title: $t('sidebar.sections.access') || 'Access',
         items: visibleItems([
-          { label: $t('sidebar.team'), icon: 'users', href: `${tenantPrefix}/admin/team`, show: $can('read', 'team') },
-          { label: $t('sidebar.roles'), icon: 'lock', href: `${tenantPrefix}/admin/roles`, show: $can('read', 'roles') },
+          {
+            label: $t('sidebar.team'),
+            icon: 'users',
+            href: `${tenantPrefix}/admin/team`,
+            show: $can('read', 'team'),
+          },
+          {
+            label: $t('sidebar.roles'),
+            icon: 'lock',
+            href: `${tenantPrefix}/admin/roles`,
+            show: $can('read', 'roles'),
+          },
         ]),
       },
       {
@@ -271,6 +377,12 @@
             href: `${tenantPrefix}/admin/invoices`,
             show: true,
           },
+          {
+            label: $t('sidebar.billing_collection') || 'Billing Logs',
+            icon: 'activity',
+            href: `${tenantPrefix}/admin/invoices/collection`,
+            show: true,
+          },
         ]),
       },
       {
@@ -307,6 +419,30 @@
 
   let openSectionId = $state<string | null>(null);
 
+  onMount(() => {
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const onVisible = () => {
+      if (!document.hidden) void refreshPackageOverdueAlert();
+    };
+
+    void refreshPackageOverdueAlert();
+    timer = setInterval(() => {
+      void refreshPackageOverdueAlert();
+    }, 60_000);
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      if (timer) clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  });
+
+  $effect(() => {
+    const _version = $authVersion;
+    const _path = $page.url.pathname;
+    void refreshPackageOverdueAlert();
+  });
+
   function sectionStorageKey(scope: string) {
     return `sidebar.section_state.${scope}`;
   }
@@ -338,8 +474,7 @@
     const first = currentMenuSections[0]?.id || null;
 
     // Only accept saved section ids that still exist in the current menu.
-    const validSaved =
-      saved && currentMenuSections.some((s) => s.id === saved) ? saved : null;
+    const validSaved = saved && currentMenuSections.some((s) => s.id === saved) ? saved : null;
 
     openSectionId = validSaved || first;
   });
@@ -469,6 +604,20 @@
             >
               <Icon name={item.icon} size={18} />
               <span class="label">{item.label}</span>
+              {#if shouldShowPackageAlert(item)}
+                <span
+                  class="item-alert"
+                  class:pending={packageBillingAlert === 'pending'}
+                  class:overdue={packageBillingAlert === 'overdue'}
+                  title={packageAlertLabel()}
+                  aria-label={packageAlertLabel()}
+                >
+                  <Icon
+                    name={packageBillingAlert === 'pending' ? 'alert-circle' : 'alert-triangle'}
+                    size={12}
+                  />
+                </span>
+              {/if}
             </button>
           {/each}
         {/if}
@@ -549,7 +698,9 @@
               {$user?.name?.charAt(0).toUpperCase() || '?'}
             </div>
             <div class="dropdown-meta">
-              <div class="dropdown-name">{$user?.name || $t('profile.fallback.user') || 'User'}</div>
+              <div class="dropdown-name">
+                {$user?.name || $t('profile.fallback.user') || 'User'}
+              </div>
               <div class="dropdown-sub">
                 {$user?.email || ''}
                 {#if $user?.email && $user?.role}
@@ -732,6 +883,7 @@
   }
 
   .nav-item {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -765,6 +917,34 @@
   .nav-item.active {
     background: var(--bg-active);
     color: var(--text-primary);
+  }
+
+  .item-alert {
+    margin-left: auto;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #d97706;
+    background: rgba(217, 119, 6, 0.14);
+    border: 1px solid rgba(217, 119, 6, 0.3);
+    flex-shrink: 0;
+  }
+
+  .item-alert.overdue {
+    color: #dc2626;
+    background: rgba(220, 38, 38, 0.14);
+    border-color: rgba(220, 38, 38, 0.3);
+  }
+
+  .sidebar.collapsed .item-alert {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 14px;
+    height: 14px;
   }
 
   .nav-section-btn {

@@ -38,7 +38,7 @@ pub use email_service::EmailService;
 pub use isp_package_service::IspPackageService;
 pub use mikrotik_service::MikrotikService;
 pub use notification_service::NotificationService;
-pub use payment_service::{BulkGenerateInvoicesResult, PaymentService};
+pub use payment_service::{BillingCollectionRunResult, BulkGenerateInvoicesResult, PaymentService};
 pub use plan_service::PlanService;
 pub use pppoe_service::PppoeService;
 pub use role_service::RoleService;

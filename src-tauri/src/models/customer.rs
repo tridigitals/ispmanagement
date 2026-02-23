@@ -279,3 +279,41 @@ pub struct UpdateCustomerSubscriptionRequest {
     pub ends_at: Option<String>,
     pub notes: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PortalCheckoutSubscriptionRequest {
+    pub location_id: String,
+    pub package_id: String,
+    pub billing_cycle: String, // monthly | yearly
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CreateCustomerRegistrationInviteRequest {
+    pub expires_in_hours: Option<u32>,
+    pub max_uses: Option<u32>,
+    pub note: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct CustomerRegistrationInviteView {
+    pub id: String,
+    pub tenant_id: String,
+    pub created_by: Option<String>,
+    pub max_uses: i64,
+    pub used_count: i64,
+    pub expires_at: DateTime<Utc>,
+    pub is_revoked: bool,
+    pub revoked_at: Option<DateTime<Utc>>,
+    pub last_used_at: Option<DateTime<Utc>>,
+    pub note: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomerRegistrationInviteCreateResponse {
+    pub invite: CustomerRegistrationInviteView,
+    pub invite_token: String,
+    pub invite_url: String,
+}

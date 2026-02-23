@@ -3,9 +3,11 @@ use crate::http::auth::extract_ip;
 use crate::http::AppState;
 use crate::models::{
     AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
-    CreateCustomerRequest, CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
-    Customer, CustomerLocation, CustomerPortalUser, CustomerSubscription, CustomerSubscriptionView,
-    PaginatedResponse, UpdateCustomerLocationRequest, UpdateCustomerRequest,
+    CreateCustomerRegistrationInviteRequest, CreateCustomerRequest, CreateCustomerSubscriptionRequest,
+    CreateCustomerWithPortalRequest, Customer, CustomerLocation, CustomerPortalUser,
+    CustomerRegistrationInviteCreateResponse, CustomerRegistrationInviteView, CustomerSubscription,
+    CustomerSubscriptionView, Invoice, IspPackage, PaginatedResponse,
+    PortalCheckoutSubscriptionRequest, UpdateCustomerLocationRequest, UpdateCustomerRequest,
     UpdateCustomerSubscriptionRequest,
 };
 use axum::{
@@ -34,6 +36,11 @@ pub fn router() -> Router<AppState> {
             "/{id}/subscriptions",
             get(list_subscriptions).post(create_subscription),
         )
+        .route(
+            "/invites",
+            get(list_customer_registration_invites).post(create_customer_registration_invite),
+        )
+        .route("/invites/{invite_id}", delete(revoke_customer_registration_invite))
         // Locations (write)
         .route("/locations", post(create_location))
         .route(
@@ -53,6 +60,9 @@ pub fn router() -> Router<AppState> {
         )
         // Customer portal
         .route("/portal/my-locations", get(list_my_locations))
+        .route("/portal/my-packages", get(list_my_packages))
+        .route("/portal/my-subscriptions", get(list_my_subscriptions))
+        .route("/portal/checkout", post(portal_checkout_subscription))
 }
 
 fn bearer_token(headers: &HeaderMap) -> AppResult<String> {
@@ -85,6 +95,24 @@ struct ListQuery {
 struct ListSubscriptionQuery {
     page: Option<u32>,
     per_page: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ListMySubscriptionQuery {
+    page: Option<u32>,
+    per_page: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ListCustomerInviteQuery {
+    include_inactive: Option<bool>,
+    limit: Option<u32>,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct PortalCheckoutResponse {
+    subscription: CustomerSubscription,
+    invoice: Invoice,
 }
 
 // GET /api/customers?q=...&page=1&per_page=25
@@ -182,6 +210,57 @@ async fn delete_customer(
     state
         .customer_service
         .delete_customer(&claims.sub, &tenant_id, &id, Some(&ip))
+        .await?;
+    Ok(Json(serde_json::json!({ "ok": true })))
+}
+
+// POST /api/customers/invites
+async fn create_customer_registration_invite(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Json(dto): Json<CreateCustomerRegistrationInviteRequest>,
+) -> AppResult<Json<CustomerRegistrationInviteCreateResponse>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+    let invite = state
+        .customer_service
+        .create_customer_registration_invite(&claims.sub, &tenant_id, dto, Some(&ip))
+        .await?;
+    Ok(Json(invite))
+}
+
+// GET /api/customers/invites?include_inactive=true&limit=50
+async fn list_customer_registration_invites(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<ListCustomerInviteQuery>,
+) -> AppResult<Json<Vec<CustomerRegistrationInviteView>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let rows = state
+        .customer_service
+        .list_customer_registration_invites(
+            &claims.sub,
+            &tenant_id,
+            q.include_inactive.unwrap_or(true),
+            q.limit.unwrap_or(50),
+        )
+        .await?;
+    Ok(Json(rows))
+}
+
+// DELETE /api/customers/invites/{invite_id}
+async fn revoke_customer_registration_invite(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(invite_id): Path<String>,
+) -> AppResult<Json<serde_json::Value>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+    state
+        .customer_service
+        .revoke_customer_registration_invite(&claims.sub, &tenant_id, &invite_id, Some(&ip))
         .await?;
     Ok(Json(serde_json::json!({ "ok": true })))
 }
@@ -322,6 +401,64 @@ async fn list_my_locations(
         .list_my_locations(&claims.sub, &tenant_id)
         .await?;
     Ok(Json(rows))
+}
+
+// GET /api/customers/portal/my-packages
+async fn list_my_packages(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> AppResult<Json<Vec<IspPackage>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let rows = state
+        .customer_service
+        .list_my_packages(&claims.sub, &tenant_id)
+        .await?;
+    Ok(Json(rows))
+}
+
+// GET /api/customers/portal/my-subscriptions
+async fn list_my_subscriptions(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<ListMySubscriptionQuery>,
+) -> AppResult<Json<PaginatedResponse<CustomerSubscriptionView>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let rows = state
+        .customer_service
+        .list_my_subscriptions(
+            &claims.sub,
+            &tenant_id,
+            q.page.unwrap_or(1),
+            q.per_page.unwrap_or(25),
+        )
+        .await?;
+    Ok(Json(rows))
+}
+
+// POST /api/customers/portal/checkout
+async fn portal_checkout_subscription(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Json(dto): Json<PortalCheckoutSubscriptionRequest>,
+) -> AppResult<Json<PortalCheckoutResponse>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+
+    let subscription = state
+        .customer_service
+        .create_my_subscription(&claims.sub, &tenant_id, dto, Some(&ip))
+        .await?;
+
+    let invoice = state
+        .payment_service
+        .create_invoice_for_customer_subscription(&tenant_id, &subscription.id)
+        .await?;
+
+    Ok(Json(PortalCheckoutResponse {
+        subscription,
+        invoice,
+    }))
 }
 
 // GET /api/customers/{id}/subscriptions

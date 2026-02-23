@@ -2,24 +2,68 @@
 
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
-use crate::models::{BankAccount, CreateBankAccountRequest, Invoice};
+use crate::models::{
+    BankAccount, BillingCollectionLogView, CreateBankAccountRequest, Invoice, InvoiceReminderLogView,
+};
 use base64::{engine::general_purpose, Engine as _};
 use chrono::{Datelike, Duration, Months, Utc};
 use reqwest::Client;
 use serde::Serialize;
 use serde_json::json;
 use sha2::{Digest, Sha512};
+use std::collections::HashSet;
 use uuid::Uuid;
 
 use crate::services::NotificationService;
 
 const CUSTOMER_PACKAGE_INVOICE_PREFIX: &str = "pkgsub:";
+const BILLING_AUTO_SUSPEND_ENABLED_KEY: &str = "billing_auto_suspend_enabled";
+const BILLING_AUTO_SUSPEND_GRACE_DAYS_KEY: &str = "billing_auto_suspend_grace_days";
+const BILLING_AUTO_RESUME_ON_PAYMENT_KEY: &str = "billing_auto_resume_on_payment";
+const BILLING_REMINDER_ENABLED_KEY: &str = "billing_reminder_enabled";
+const BILLING_REMINDER_SCHEDULE_KEY: &str = "billing_reminder_schedule";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct BulkGenerateInvoicesResult {
     pub created_count: u32,
     pub skipped_count: u32,
     pub failed_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct BillingCollectionRunResult {
+    pub evaluated_count: u32,
+    pub reminder_sent_count: u32,
+    pub reminder_skipped_count: u32,
+    pub suspended_count: u32,
+    pub resumed_count: u32,
+    pub failed_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BillingCollectionSettings {
+    pub auto_suspend_enabled: bool,
+    pub auto_suspend_grace_days: i64,
+    pub auto_resume_on_payment: bool,
+    pub reminder_enabled: bool,
+    pub reminder_schedule: Vec<String>,
+}
+
+impl Default for BillingCollectionSettings {
+    fn default() -> Self {
+        Self {
+            auto_suspend_enabled: false,
+            auto_suspend_grace_days: 3,
+            auto_resume_on_payment: true,
+            reminder_enabled: true,
+            reminder_schedule: vec![
+                "H-3".to_string(),
+                "H-1".to_string(),
+                "H+1".to_string(),
+                "H+3".to_string(),
+            ],
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -47,6 +91,9 @@ impl PaymentService {
                     .await
                 {
                     tracing::warn!("customer invoice scheduler failed: {}", e);
+                }
+                if let Err(e) = svc.run_billing_collection_for_all_tenants().await {
+                    tracing::warn!("billing collection scheduler failed: {}", e);
                 }
                 let interval_minutes = svc.resolve_scheduler_interval_minutes().await;
                 let sleep_secs = (interval_minutes.max(5) as u64) * 60;
@@ -284,6 +331,122 @@ impl PaymentService {
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
         Ok(invoices)
+    }
+
+    pub async fn list_customer_portal_invoices(
+        &self,
+        tenant_id: &str,
+        customer_id: &str,
+    ) -> AppResult<Vec<Invoice>> {
+        #[cfg(feature = "postgres")]
+        let invoices = sqlx::query_as::<_, Invoice>(
+            r#"
+            SELECT
+                i.id, i.tenant_id, i.invoice_number,
+                i.amount::FLOAT8 as amount,
+                i.currency_code, i.base_currency_code,
+                COALESCE(i.fx_rate, 1.0)::FLOAT8 as fx_rate, i.fx_source, i.fx_fetched_at,
+                i.status, i.description, i.due_date, i.paid_at, i.payment_method, i.proof_attachment, i.external_id, i.merchant_id, i.created_at, i.updated_at
+            FROM invoices i
+            INNER JOIN customer_subscriptions cs
+              ON cs.tenant_id = i.tenant_id
+             AND (
+                i.external_id = 'pkgsub:' || cs.id
+                OR i.external_id LIKE 'pkgsub:' || cs.id || ':%'
+             )
+            WHERE i.tenant_id = $1
+              AND cs.customer_id = $2
+            ORDER BY i.created_at DESC
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(customer_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let invoices = sqlx::query_as::<_, Invoice>(
+            r#"
+            SELECT i.*
+            FROM invoices i
+            INNER JOIN customer_subscriptions cs
+              ON cs.tenant_id = i.tenant_id
+             AND (
+                i.external_id = 'pkgsub:' || cs.id
+                OR i.external_id LIKE 'pkgsub:' || cs.id || ':%'
+             )
+            WHERE i.tenant_id = ?
+              AND cs.customer_id = ?
+            ORDER BY i.created_at DESC
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(customer_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(invoices)
+    }
+
+    pub async fn customer_owns_package_invoice(
+        &self,
+        tenant_id: &str,
+        customer_id: &str,
+        invoice_id: &str,
+    ) -> AppResult<bool> {
+        #[cfg(feature = "postgres")]
+        let owns: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1
+              FROM invoices i
+              INNER JOIN customer_subscriptions cs
+                ON cs.tenant_id = i.tenant_id
+               AND (
+                  i.external_id = 'pkgsub:' || cs.id
+                  OR i.external_id LIKE 'pkgsub:' || cs.id || ':%'
+               )
+              WHERE i.id = $1
+                AND i.tenant_id = $2
+                AND cs.customer_id = $3
+            )
+            "#,
+        )
+        .bind(invoice_id)
+        .bind(tenant_id)
+        .bind(customer_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let owns: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1
+              FROM invoices i
+              INNER JOIN customer_subscriptions cs
+                ON cs.tenant_id = i.tenant_id
+               AND (
+                  i.external_id = 'pkgsub:' || cs.id
+                  OR i.external_id LIKE 'pkgsub:' || cs.id || ':%'
+               )
+              WHERE i.id = ?
+                AND i.tenant_id = ?
+                AND cs.customer_id = ?
+            )
+            "#,
+        )
+        .bind(invoice_id)
+        .bind(tenant_id)
+        .bind(customer_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(owns)
     }
 
     pub async fn create_invoice_for_customer_subscription(
@@ -614,6 +777,572 @@ impl PaymentService {
             skipped_count,
             failed_count,
         })
+    }
+
+    pub async fn run_billing_collection_for_all_tenants(
+        &self,
+    ) -> AppResult<BillingCollectionRunResult> {
+        #[cfg(feature = "postgres")]
+        let tenant_ids: Vec<String> =
+            sqlx::query_scalar("SELECT id FROM tenants WHERE is_active = true")
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let tenant_ids: Vec<String> =
+            sqlx::query_scalar("SELECT id FROM tenants WHERE is_active = 1")
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let mut total = BillingCollectionRunResult::default();
+
+        for tenant_id in tenant_ids {
+            match self.run_billing_collection_for_tenant(&tenant_id).await {
+                Ok(partial) => Self::merge_collection_result(&mut total, &partial),
+                Err(e) => {
+                    tracing::warn!(
+                        "billing collection tenant {} failed: {}",
+                        tenant_id,
+                        e
+                    );
+                    total.failed_count += 1;
+                }
+            }
+        }
+
+        Ok(total)
+    }
+
+    async fn run_billing_collection_for_tenant(
+        &self,
+        tenant_id: &str,
+    ) -> AppResult<BillingCollectionRunResult> {
+        let settings = self
+            .resolve_billing_collection_settings(Some(tenant_id))
+            .await;
+
+        if !settings.reminder_enabled && !settings.auto_suspend_enabled {
+            return Ok(BillingCollectionRunResult::default());
+        }
+
+        let mut result = BillingCollectionRunResult::default();
+        let now = Utc::now();
+        let today = now.date_naive();
+
+        #[cfg(feature = "postgres")]
+        let invoices: Vec<(
+            String,
+            String,
+            chrono::DateTime<chrono::Utc>,
+            String,
+            Option<String>,
+        )> = sqlx::query_as(
+            r#"
+            SELECT id, invoice_number, due_date, status, external_id
+            FROM invoices
+            WHERE tenant_id = $1
+              AND external_id LIKE 'pkgsub:%'
+              AND status IN ('pending', 'verification_pending', 'failed')
+            ORDER BY due_date ASC
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let invoices: Vec<(
+            String,
+            String,
+            chrono::DateTime<chrono::Utc>,
+            String,
+            Option<String>,
+        )> = sqlx::query_as(
+            r#"
+            SELECT id, invoice_number, due_date, status, external_id
+            FROM invoices
+            WHERE tenant_id = ?
+              AND external_id LIKE 'pkgsub:%'
+              AND status IN ('pending', 'verification_pending', 'failed')
+            ORDER BY due_date ASC
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        for (invoice_id, invoice_number, due_date, _status, external_id) in invoices {
+            result.evaluated_count += 1;
+
+            let Some(subscription_id) =
+                Self::parse_customer_subscription_id(external_id.as_deref())
+            else {
+                let _ = self
+                    .insert_billing_collection_log(
+                        tenant_id,
+                        &invoice_id,
+                        None,
+                        "evaluate",
+                        "skipped",
+                        Some("Missing or invalid pkg subscription external_id"),
+                        "system",
+                        None,
+                    )
+                    .await;
+                continue;
+            };
+
+            let due_day = due_date.date_naive();
+            let day_offset = (today - due_day).num_days();
+            let reminder_code = Self::reminder_code_for_day_offset(day_offset);
+
+            if settings.reminder_enabled && settings.reminder_schedule.contains(&reminder_code) {
+                let already_sent = self
+                    .has_sent_invoice_reminder(tenant_id, &invoice_id, &reminder_code)
+                    .await
+                    .unwrap_or(false);
+
+                if already_sent {
+                    result.reminder_skipped_count += 1;
+                    let _ = self
+                        .insert_billing_collection_log(
+                            tenant_id,
+                            &invoice_id,
+                            Some(&subscription_id),
+                            "reminder",
+                            "skipped",
+                            Some("Reminder already sent for this code"),
+                            "system",
+                            None,
+                        )
+                        .await;
+                } else {
+                    match self
+                        .send_invoice_reminder(
+                            tenant_id,
+                            &subscription_id,
+                            &invoice_number,
+                            due_date,
+                            day_offset,
+                        )
+                        .await
+                    {
+                        Ok(recipients) if recipients > 0 => {
+                            result.reminder_sent_count += 1;
+                            let detail = format!("Notified {} user(s)", recipients);
+                            let _ = self
+                                .insert_invoice_reminder_log(
+                                    tenant_id,
+                                    &invoice_id,
+                                    &reminder_code,
+                                    "in_app",
+                                    None,
+                                    "sent",
+                                    Some(&detail),
+                                )
+                                .await;
+                            let _ = self
+                                .insert_billing_collection_log(
+                                    tenant_id,
+                                    &invoice_id,
+                                    Some(&subscription_id),
+                                    "reminder",
+                                    "success",
+                                    Some(&detail),
+                                    "system",
+                                    None,
+                                )
+                                .await;
+                        }
+                        Ok(_) => {
+                            result.reminder_skipped_count += 1;
+                            let _ = self
+                                .insert_invoice_reminder_log(
+                                    tenant_id,
+                                    &invoice_id,
+                                    &reminder_code,
+                                    "in_app",
+                                    None,
+                                    "skipped",
+                                    Some("No recipients found"),
+                                )
+                                .await;
+                            let _ = self
+                                .insert_billing_collection_log(
+                                    tenant_id,
+                                    &invoice_id,
+                                    Some(&subscription_id),
+                                    "reminder",
+                                    "skipped",
+                                    Some("No recipients found"),
+                                    "system",
+                                    None,
+                                )
+                                .await;
+                        }
+                        Err(e) => {
+                            result.failed_count += 1;
+                            let err_text = e.to_string();
+                            let _ = self
+                                .insert_invoice_reminder_log(
+                                    tenant_id,
+                                    &invoice_id,
+                                    &reminder_code,
+                                    "in_app",
+                                    None,
+                                    "failed",
+                                    Some(&err_text),
+                                )
+                                .await;
+                            let _ = self
+                                .insert_billing_collection_log(
+                                    tenant_id,
+                                    &invoice_id,
+                                    Some(&subscription_id),
+                                    "reminder",
+                                    "failed",
+                                    Some(&err_text),
+                                    "system",
+                                    None,
+                                )
+                                .await;
+                        }
+                    }
+                }
+            }
+
+            if settings.auto_suspend_enabled && day_offset >= settings.auto_suspend_grace_days {
+                match self
+                    .update_customer_subscription_status_if(
+                        tenant_id,
+                        &subscription_id,
+                        "active",
+                        "suspended",
+                    )
+                    .await
+                {
+                    Ok(true) => {
+                        result.suspended_count += 1;
+                        let _ = self
+                            .insert_billing_collection_log(
+                                tenant_id,
+                                &invoice_id,
+                                Some(&subscription_id),
+                                "suspend",
+                                "success",
+                                Some("Subscription suspended due to overdue invoice"),
+                                "system",
+                                None,
+                            )
+                            .await;
+                        let _ = self
+                            .notify_subscription_suspension(
+                                tenant_id,
+                                &subscription_id,
+                                &invoice_number,
+                                day_offset,
+                            )
+                            .await;
+                    }
+                    Ok(false) => {
+                        let _ = self
+                            .insert_billing_collection_log(
+                                tenant_id,
+                                &invoice_id,
+                                Some(&subscription_id),
+                                "suspend",
+                                "skipped",
+                                Some("Subscription already not active"),
+                                "system",
+                                None,
+                            )
+                            .await;
+                    }
+                    Err(e) => {
+                        result.failed_count += 1;
+                        let err_text = e.to_string();
+                        let _ = self
+                            .insert_billing_collection_log(
+                                tenant_id,
+                                &invoice_id,
+                                Some(&subscription_id),
+                                "suspend",
+                                "failed",
+                                Some(&err_text),
+                                "system",
+                                None,
+                            )
+                            .await;
+                    }
+                }
+            }
+        }
+
+        Ok(result)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn list_billing_collection_logs(
+        &self,
+        tenant_id: &str,
+        action: Option<&str>,
+        result: Option<&str>,
+        from: Option<chrono::DateTime<chrono::Utc>>,
+        to: Option<chrono::DateTime<chrono::Utc>>,
+        search: Option<&str>,
+        limit: u32,
+    ) -> AppResult<Vec<BillingCollectionLogView>> {
+        let limit = (limit as i64).clamp(1, 1000);
+        let action = action.map(str::trim).filter(|v| !v.is_empty());
+        let result = result.map(str::trim).filter(|v| !v.is_empty());
+        let search = search.map(str::trim).filter(|v| !v.is_empty());
+
+        #[cfg(feature = "postgres")]
+        let rows = sqlx::query_as::<_, BillingCollectionLogView>(
+            r#"
+            SELECT
+                l.id,
+                l.tenant_id,
+                l.invoice_id,
+                l.subscription_id,
+                l.action,
+                l.result,
+                l.reason,
+                l.actor_type,
+                l.actor_id,
+                l.created_at,
+                i.invoice_number,
+                i.status AS invoice_status,
+                i.due_date,
+                cs.status AS subscription_status,
+                c.name AS customer_name
+            FROM billing_collection_logs l
+            LEFT JOIN invoices i ON i.id = l.invoice_id
+            LEFT JOIN customer_subscriptions cs
+              ON cs.id = l.subscription_id
+             AND cs.tenant_id = l.tenant_id
+            LEFT JOIN customers c
+              ON c.id = cs.customer_id
+             AND c.tenant_id = l.tenant_id
+            WHERE l.tenant_id = $1
+              AND ($2::text IS NULL OR l.action = $2)
+              AND ($3::text IS NULL OR l.result = $3)
+              AND ($4::timestamptz IS NULL OR l.created_at >= $4)
+              AND ($5::timestamptz IS NULL OR l.created_at <= $5)
+              AND (
+                    $6::text IS NULL
+                 OR i.invoice_number ILIKE ('%' || $6 || '%')
+                 OR COALESCE(c.name, '') ILIKE ('%' || $6 || '%')
+                 OR COALESCE(l.reason, '') ILIKE ('%' || $6 || '%')
+              )
+            ORDER BY l.created_at DESC
+            LIMIT $7
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(action)
+        .bind(result)
+        .bind(from)
+        .bind(to)
+        .bind(search)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let from_s = from.map(|v| v.to_rfc3339());
+        #[cfg(feature = "sqlite")]
+        let to_s = to.map(|v| v.to_rfc3339());
+
+        #[cfg(feature = "sqlite")]
+        let rows = sqlx::query_as::<_, BillingCollectionLogView>(
+            r#"
+            SELECT
+                l.id,
+                l.tenant_id,
+                l.invoice_id,
+                l.subscription_id,
+                l.action,
+                l.result,
+                l.reason,
+                l.actor_type,
+                l.actor_id,
+                l.created_at,
+                i.invoice_number,
+                i.status AS invoice_status,
+                i.due_date,
+                cs.status AS subscription_status,
+                c.name AS customer_name
+            FROM billing_collection_logs l
+            LEFT JOIN invoices i ON i.id = l.invoice_id
+            LEFT JOIN customer_subscriptions cs
+              ON cs.id = l.subscription_id
+             AND cs.tenant_id = l.tenant_id
+            LEFT JOIN customers c
+              ON c.id = cs.customer_id
+             AND c.tenant_id = l.tenant_id
+            WHERE l.tenant_id = ?
+              AND (? IS NULL OR l.action = ?)
+              AND (? IS NULL OR l.result = ?)
+              AND (? IS NULL OR l.created_at >= ?)
+              AND (? IS NULL OR l.created_at <= ?)
+              AND (
+                    ? IS NULL
+                 OR LOWER(COALESCE(i.invoice_number, '')) LIKE '%' || LOWER(?) || '%'
+                 OR LOWER(COALESCE(c.name, '')) LIKE '%' || LOWER(?) || '%'
+                 OR LOWER(COALESCE(l.reason, '')) LIKE '%' || LOWER(?) || '%'
+              )
+            ORDER BY l.created_at DESC
+            LIMIT ?
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(action)
+        .bind(action)
+        .bind(result)
+        .bind(result)
+        .bind(from_s.clone())
+        .bind(from_s.clone())
+        .bind(to_s.clone())
+        .bind(to_s.clone())
+        .bind(search)
+        .bind(search)
+        .bind(search)
+        .bind(search)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(rows)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn list_invoice_reminder_logs(
+        &self,
+        tenant_id: &str,
+        reminder_code: Option<&str>,
+        status: Option<&str>,
+        from: Option<chrono::DateTime<chrono::Utc>>,
+        to: Option<chrono::DateTime<chrono::Utc>>,
+        search: Option<&str>,
+        limit: u32,
+    ) -> AppResult<Vec<InvoiceReminderLogView>> {
+        let limit = (limit as i64).clamp(1, 1000);
+        let reminder_code = reminder_code.map(str::trim).filter(|v| !v.is_empty());
+        let status = status.map(str::trim).filter(|v| !v.is_empty());
+        let search = search.map(str::trim).filter(|v| !v.is_empty());
+
+        #[cfg(feature = "postgres")]
+        let rows = sqlx::query_as::<_, InvoiceReminderLogView>(
+            r#"
+            SELECT
+                l.id,
+                l.tenant_id,
+                l.invoice_id,
+                l.reminder_code,
+                l.channel,
+                l.recipient,
+                l.status,
+                l.detail,
+                l.created_at,
+                i.invoice_number,
+                i.status AS invoice_status,
+                i.due_date
+            FROM invoice_reminder_logs l
+            LEFT JOIN invoices i ON i.id = l.invoice_id
+            WHERE l.tenant_id = $1
+              AND ($2::text IS NULL OR l.reminder_code = $2)
+              AND ($3::text IS NULL OR l.status = $3)
+              AND ($4::timestamptz IS NULL OR l.created_at >= $4)
+              AND ($5::timestamptz IS NULL OR l.created_at <= $5)
+              AND (
+                    $6::text IS NULL
+                 OR i.invoice_number ILIKE ('%' || $6 || '%')
+                 OR COALESCE(l.detail, '') ILIKE ('%' || $6 || '%')
+              )
+            ORDER BY l.created_at DESC
+            LIMIT $7
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(reminder_code)
+        .bind(status)
+        .bind(from)
+        .bind(to)
+        .bind(search)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let from_s = from.map(|v| v.to_rfc3339());
+        #[cfg(feature = "sqlite")]
+        let to_s = to.map(|v| v.to_rfc3339());
+
+        #[cfg(feature = "sqlite")]
+        let rows = sqlx::query_as::<_, InvoiceReminderLogView>(
+            r#"
+            SELECT
+                l.id,
+                l.tenant_id,
+                l.invoice_id,
+                l.reminder_code,
+                l.channel,
+                l.recipient,
+                l.status,
+                l.detail,
+                l.created_at,
+                i.invoice_number,
+                i.status AS invoice_status,
+                i.due_date
+            FROM invoice_reminder_logs l
+            LEFT JOIN invoices i ON i.id = l.invoice_id
+            WHERE l.tenant_id = ?
+              AND (? IS NULL OR l.reminder_code = ?)
+              AND (? IS NULL OR l.status = ?)
+              AND (? IS NULL OR l.created_at >= ?)
+              AND (? IS NULL OR l.created_at <= ?)
+              AND (
+                    ? IS NULL
+                 OR LOWER(COALESCE(i.invoice_number, '')) LIKE '%' || LOWER(?) || '%'
+                 OR LOWER(COALESCE(l.detail, '')) LIKE '%' || LOWER(?) || '%'
+              )
+            ORDER BY l.created_at DESC
+            LIMIT ?
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(reminder_code)
+        .bind(reminder_code)
+        .bind(status)
+        .bind(status)
+        .bind(from_s.clone())
+        .bind(from_s.clone())
+        .bind(to_s.clone())
+        .bind(to_s.clone())
+        .bind(search)
+        .bind(search)
+        .bind(search)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(rows)
+    }
+
+    pub async fn run_billing_collection_now(
+        &self,
+        tenant_id: &str,
+    ) -> AppResult<BillingCollectionRunResult> {
+        self.run_billing_collection_for_tenant(tenant_id).await
     }
 
     async fn resolve_scheduler_interval_minutes(&self) -> i64 {
@@ -1148,6 +1877,17 @@ impl PaymentService {
 
         // 3. Activate Subscription if Paid
         if status == "paid" {
+            if let Err(e) = self
+                .try_auto_resume_customer_subscription_from_paid_invoice(&invoice)
+                .await
+            {
+                tracing::warn!(
+                    "auto-resume check failed for invoice {}: {}",
+                    invoice.invoice_number,
+                    e
+                );
+            }
+
             println!(
                 "DEBUG: Invoice {} is PAID. External ID: {:?}",
                 invoice.invoice_number, invoice.external_id
@@ -1550,6 +2290,635 @@ impl PaymentService {
         Ok(())
     }
 
+    fn merge_collection_result(
+        total: &mut BillingCollectionRunResult,
+        partial: &BillingCollectionRunResult,
+    ) {
+        total.evaluated_count += partial.evaluated_count;
+        total.reminder_sent_count += partial.reminder_sent_count;
+        total.reminder_skipped_count += partial.reminder_skipped_count;
+        total.suspended_count += partial.suspended_count;
+        total.resumed_count += partial.resumed_count;
+        total.failed_count += partial.failed_count;
+    }
+
+    fn parse_customer_subscription_id(external_id: Option<&str>) -> Option<String> {
+        let rest = external_id?.strip_prefix(CUSTOMER_PACKAGE_INVOICE_PREFIX)?;
+        let id = rest.split(':').next()?.trim();
+        if id.is_empty() {
+            return None;
+        }
+        Some(id.to_string())
+    }
+
+    fn reminder_code_for_day_offset(day_offset: i64) -> String {
+        if day_offset >= 0 {
+            format!("H+{}", day_offset)
+        } else {
+            format!("H{}", day_offset)
+        }
+    }
+
+    async fn try_auto_resume_customer_subscription_from_paid_invoice(
+        &self,
+        invoice: &Invoice,
+    ) -> AppResult<()> {
+        let Some(subscription_id) =
+            Self::parse_customer_subscription_id(invoice.external_id.as_deref())
+        else {
+            return Ok(());
+        };
+
+        let settings = self
+            .resolve_billing_collection_settings(Some(&invoice.tenant_id))
+            .await;
+        if !settings.auto_resume_on_payment {
+            let _ = self
+                .insert_billing_collection_log(
+                    &invoice.tenant_id,
+                    &invoice.id,
+                    Some(&subscription_id),
+                    "resume",
+                    "skipped",
+                    Some("Auto resume disabled by setting"),
+                    "system",
+                    None,
+                )
+                .await;
+            return Ok(());
+        }
+
+        match self
+            .update_customer_subscription_status_if(
+                &invoice.tenant_id,
+                &subscription_id,
+                "suspended",
+                "active",
+            )
+            .await
+        {
+            Ok(true) => {
+                let _ = self
+                    .insert_billing_collection_log(
+                        &invoice.tenant_id,
+                        &invoice.id,
+                        Some(&subscription_id),
+                        "resume",
+                        "success",
+                        Some("Subscription resumed because invoice is paid"),
+                        "system",
+                        None,
+                    )
+                    .await;
+                let _ = self
+                    .notify_subscription_resumed(
+                        &invoice.tenant_id,
+                        &subscription_id,
+                        &invoice.invoice_number,
+                    )
+                    .await;
+            }
+            Ok(false) => {
+                let _ = self
+                    .insert_billing_collection_log(
+                        &invoice.tenant_id,
+                        &invoice.id,
+                        Some(&subscription_id),
+                        "resume",
+                        "skipped",
+                        Some("Subscription is not suspended"),
+                        "system",
+                        None,
+                    )
+                    .await;
+            }
+            Err(e) => {
+                let _ = self
+                    .insert_billing_collection_log(
+                        &invoice.tenant_id,
+                        &invoice.id,
+                        Some(&subscription_id),
+                        "resume",
+                        "failed",
+                        Some(&e.to_string()),
+                        "system",
+                        None,
+                    )
+                    .await;
+                return Err(e);
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn send_invoice_reminder(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        invoice_number: &str,
+        due_date: chrono::DateTime<chrono::Utc>,
+        day_offset: i64,
+    ) -> AppResult<usize> {
+        let user_ids = self
+            .list_notification_user_ids_for_subscription(tenant_id, subscription_id)
+            .await?;
+        if user_ids.is_empty() {
+            return Ok(0);
+        }
+
+        let title = if day_offset < 0 {
+            format!("Invoice due in {} day(s)", day_offset.abs())
+        } else if day_offset == 0 {
+            "Invoice due today".to_string()
+        } else {
+            format!("Invoice overdue by {} day(s)", day_offset)
+        };
+
+        let message = format!(
+            "Invoice {} is due on {}. Please complete payment to keep service active.",
+            invoice_number,
+            due_date.format("%Y-%m-%d %H:%M UTC")
+        );
+
+        let mut sent = 0usize;
+        for user_id in user_ids {
+            if self
+                .notification_service
+                .create_notification(
+                    user_id,
+                    Some(tenant_id.to_string()),
+                    title.clone(),
+                    message.clone(),
+                    "warning".to_string(),
+                    "billing".to_string(),
+                    Some("/dashboard/invoices".to_string()),
+                )
+                .await
+                .is_ok()
+            {
+                sent += 1;
+            }
+        }
+
+        Ok(sent)
+    }
+
+    async fn notify_subscription_suspension(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        invoice_number: &str,
+        overdue_days: i64,
+    ) -> AppResult<usize> {
+        let user_ids = self
+            .list_notification_user_ids_for_subscription(tenant_id, subscription_id)
+            .await?;
+        if user_ids.is_empty() {
+            return Ok(0);
+        }
+
+        let title = "Subscription suspended".to_string();
+        let message = format!(
+            "Your subscription has been suspended (invoice {} overdue {} day(s)).",
+            invoice_number, overdue_days
+        );
+
+        let mut sent = 0usize;
+        for user_id in user_ids {
+            if self
+                .notification_service
+                .create_notification(
+                    user_id,
+                    Some(tenant_id.to_string()),
+                    title.clone(),
+                    message.clone(),
+                    "warning".to_string(),
+                    "billing".to_string(),
+                    Some("/dashboard/invoices".to_string()),
+                )
+                .await
+                .is_ok()
+            {
+                sent += 1;
+            }
+        }
+
+        Ok(sent)
+    }
+
+    async fn notify_subscription_resumed(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        invoice_number: &str,
+    ) -> AppResult<usize> {
+        let user_ids = self
+            .list_notification_user_ids_for_subscription(tenant_id, subscription_id)
+            .await?;
+        if user_ids.is_empty() {
+            return Ok(0);
+        }
+
+        let title = "Subscription resumed".to_string();
+        let message = format!(
+            "Payment received for invoice {}. Your subscription is active again.",
+            invoice_number
+        );
+
+        let mut sent = 0usize;
+        for user_id in user_ids {
+            if self
+                .notification_service
+                .create_notification(
+                    user_id,
+                    Some(tenant_id.to_string()),
+                    title.clone(),
+                    message.clone(),
+                    "success".to_string(),
+                    "billing".to_string(),
+                    Some("/dashboard/invoices".to_string()),
+                )
+                .await
+                .is_ok()
+            {
+                sent += 1;
+            }
+        }
+
+        Ok(sent)
+    }
+
+    async fn list_notification_user_ids_for_subscription(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+    ) -> AppResult<Vec<String>> {
+        #[cfg(feature = "postgres")]
+        let customer_user_ids: Vec<String> = sqlx::query_scalar(
+            r#"
+            SELECT DISTINCT cu.user_id
+            FROM customer_subscriptions cs
+            INNER JOIN customer_users cu
+              ON cu.tenant_id = cs.tenant_id
+             AND cu.customer_id = cs.customer_id
+            WHERE cs.tenant_id = $1
+              AND cs.id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let customer_user_ids: Vec<String> = sqlx::query_scalar(
+            r#"
+            SELECT DISTINCT cu.user_id
+            FROM customer_subscriptions cs
+            INNER JOIN customer_users cu
+              ON cu.tenant_id = cs.tenant_id
+             AND cu.customer_id = cs.customer_id
+            WHERE cs.tenant_id = ?
+              AND cs.id = ?
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let mut merged: HashSet<String> = customer_user_ids.into_iter().collect();
+        if merged.is_empty() {
+            for user_id in self.list_tenant_member_user_ids(tenant_id).await? {
+                merged.insert(user_id);
+            }
+        }
+
+        Ok(merged.into_iter().collect())
+    }
+
+    async fn list_tenant_member_user_ids(&self, tenant_id: &str) -> AppResult<Vec<String>> {
+        #[cfg(feature = "postgres")]
+        let rows: Vec<String> = sqlx::query_scalar("SELECT user_id FROM tenant_members WHERE tenant_id = $1")
+            .bind(tenant_id)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let rows: Vec<String> = sqlx::query_scalar("SELECT user_id FROM tenant_members WHERE tenant_id = ?")
+            .bind(tenant_id)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(rows)
+    }
+
+    async fn has_sent_invoice_reminder(
+        &self,
+        tenant_id: &str,
+        invoice_id: &str,
+        reminder_code: &str,
+    ) -> AppResult<bool> {
+        #[cfg(feature = "postgres")]
+        let exists: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1
+              FROM invoice_reminder_logs
+              WHERE tenant_id = $1
+                AND invoice_id = $2
+                AND reminder_code = $3
+                AND status = 'sent'
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(invoice_id)
+        .bind(reminder_code)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let exists: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1
+              FROM invoice_reminder_logs
+              WHERE tenant_id = ?
+                AND invoice_id = ?
+                AND reminder_code = ?
+                AND status = 'sent'
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(invoice_id)
+        .bind(reminder_code)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(exists)
+    }
+
+    async fn update_customer_subscription_status_if(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        expected_status: &str,
+        new_status: &str,
+    ) -> AppResult<bool> {
+        #[cfg(feature = "postgres")]
+        let current_status: Option<String> = sqlx::query_scalar(
+            "SELECT status FROM customer_subscriptions WHERE tenant_id = $1 AND id = $2",
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let current_status: Option<String> = sqlx::query_scalar(
+            "SELECT status FROM customer_subscriptions WHERE tenant_id = ? AND id = ?",
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let Some(current_status) = current_status else {
+            return Err(AppError::NotFound("Customer subscription not found".to_string()));
+        };
+
+        if current_status != expected_status {
+            return Ok(false);
+        }
+
+        let now = Utc::now();
+        #[cfg(feature = "postgres")]
+        let rows = sqlx::query(
+            "UPDATE customer_subscriptions SET status = $1, updated_at = $2 WHERE tenant_id = $3 AND id = $4",
+        )
+        .bind(new_status)
+        .bind(now)
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .rows_affected();
+
+        #[cfg(feature = "sqlite")]
+        let rows = sqlx::query(
+            "UPDATE customer_subscriptions SET status = ?, updated_at = ? WHERE tenant_id = ? AND id = ?",
+        )
+        .bind(new_status)
+        .bind(now.to_rfc3339())
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .rows_affected();
+
+        Ok(rows > 0)
+    }
+
+    async fn insert_invoice_reminder_log(
+        &self,
+        tenant_id: &str,
+        invoice_id: &str,
+        reminder_code: &str,
+        channel: &str,
+        recipient: Option<&str>,
+        status: &str,
+        detail: Option<&str>,
+    ) -> AppResult<()> {
+        let now = Utc::now();
+        let id = Uuid::new_v4().to_string();
+
+        #[cfg(feature = "postgres")]
+        sqlx::query(
+            r#"
+            INSERT INTO invoice_reminder_logs
+              (id, tenant_id, invoice_id, reminder_code, channel, recipient, status, detail, created_at)
+            VALUES
+              ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+            "#,
+        )
+        .bind(&id)
+        .bind(tenant_id)
+        .bind(invoice_id)
+        .bind(reminder_code)
+        .bind(channel)
+        .bind(recipient)
+        .bind(status)
+        .bind(detail)
+        .bind(now)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query(
+            r#"
+            INSERT INTO invoice_reminder_logs
+              (id, tenant_id, invoice_id, reminder_code, channel, recipient, status, detail, created_at)
+            VALUES
+              (?,?,?,?,?,?,?,?,?)
+            "#,
+        )
+        .bind(&id)
+        .bind(tenant_id)
+        .bind(invoice_id)
+        .bind(reminder_code)
+        .bind(channel)
+        .bind(recipient)
+        .bind(status)
+        .bind(detail)
+        .bind(now.to_rfc3339())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn insert_billing_collection_log(
+        &self,
+        tenant_id: &str,
+        invoice_id: &str,
+        subscription_id: Option<&str>,
+        action: &str,
+        result: &str,
+        reason: Option<&str>,
+        actor_type: &str,
+        actor_id: Option<&str>,
+    ) -> AppResult<()> {
+        let now = Utc::now();
+        let id = Uuid::new_v4().to_string();
+
+        #[cfg(feature = "postgres")]
+        sqlx::query(
+            r#"
+            INSERT INTO billing_collection_logs
+              (id, tenant_id, invoice_id, subscription_id, action, result, reason, actor_type, actor_id, created_at)
+            VALUES
+              ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+            "#,
+        )
+        .bind(&id)
+        .bind(tenant_id)
+        .bind(invoice_id)
+        .bind(subscription_id)
+        .bind(action)
+        .bind(result)
+        .bind(reason)
+        .bind(actor_type)
+        .bind(actor_id)
+        .bind(now)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query(
+            r#"
+            INSERT INTO billing_collection_logs
+              (id, tenant_id, invoice_id, subscription_id, action, result, reason, actor_type, actor_id, created_at)
+            VALUES
+              (?,?,?,?,?,?,?,?,?,?)
+            "#,
+        )
+        .bind(&id)
+        .bind(tenant_id)
+        .bind(invoice_id)
+        .bind(subscription_id)
+        .bind(action)
+        .bind(result)
+        .bind(reason)
+        .bind(actor_type)
+        .bind(actor_id)
+        .bind(now.to_rfc3339())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(())
+    }
+
+    pub async fn resolve_billing_collection_settings(
+        &self,
+        tenant_id: Option<&str>,
+    ) -> BillingCollectionSettings {
+        let defaults = BillingCollectionSettings::default();
+
+        let auto_suspend_enabled = Self::parse_bool_setting(
+            self.get_setting_value_fallback(tenant_id, BILLING_AUTO_SUSPEND_ENABLED_KEY)
+                .await,
+            defaults.auto_suspend_enabled,
+        );
+
+        let auto_suspend_grace_days = Self::parse_i64_setting(
+            self.get_setting_value_fallback(tenant_id, BILLING_AUTO_SUSPEND_GRACE_DAYS_KEY)
+                .await,
+            defaults.auto_suspend_grace_days,
+            0,
+            365,
+        );
+
+        let auto_resume_on_payment = Self::parse_bool_setting(
+            self.get_setting_value_fallback(tenant_id, BILLING_AUTO_RESUME_ON_PAYMENT_KEY)
+                .await,
+            defaults.auto_resume_on_payment,
+        );
+
+        let reminder_enabled = Self::parse_bool_setting(
+            self.get_setting_value_fallback(tenant_id, BILLING_REMINDER_ENABLED_KEY)
+                .await,
+            defaults.reminder_enabled,
+        );
+
+        let reminder_schedule = Self::parse_reminder_schedule(
+            self.get_setting_value_fallback(tenant_id, BILLING_REMINDER_SCHEDULE_KEY)
+                .await,
+            defaults.reminder_schedule.clone(),
+        );
+
+        BillingCollectionSettings {
+            auto_suspend_enabled,
+            auto_suspend_grace_days,
+            auto_resume_on_payment,
+            reminder_enabled,
+            reminder_schedule,
+        }
+    }
+
+    async fn get_setting_value_fallback(
+        &self,
+        tenant_id: Option<&str>,
+        key: &str,
+    ) -> Option<String> {
+        if let Some(tid) = tenant_id {
+            let local = self.get_setting_value(Some(tid), key).await;
+            if let Some(value) = local {
+                if !value.trim().is_empty() {
+                    return Some(value);
+                }
+            }
+        }
+        self.get_setting_value(None, key).await
+    }
+
     async fn get_setting_value(&self, tenant_id: Option<&str>, key: &str) -> Option<String> {
         #[cfg(feature = "postgres")]
         let q = if let Some(tid) = tenant_id {
@@ -1572,6 +2941,43 @@ impl PaymentService {
         };
 
         q.fetch_optional(&self.pool).await.ok().flatten()
+    }
+
+    fn parse_bool_setting(value: Option<String>, default: bool) -> bool {
+        match value
+            .unwrap_or_else(|| default.to_string())
+            .trim()
+            .to_ascii_lowercase()
+            .as_str()
+        {
+            "1" | "true" | "yes" | "on" => true,
+            "0" | "false" | "no" | "off" => false,
+            _ => default,
+        }
+    }
+
+    fn parse_i64_setting(value: Option<String>, default: i64, min: i64, max: i64) -> i64 {
+        value
+            .and_then(|v| v.trim().parse::<i64>().ok())
+            .unwrap_or(default)
+            .clamp(min, max)
+    }
+
+    fn parse_reminder_schedule(value: Option<String>, default: Vec<String>) -> Vec<String> {
+        let mut parsed: Vec<String> = Vec::new();
+        for token in value.unwrap_or_default().split(',') {
+            let item = token.trim().to_ascii_uppercase();
+            if item.is_empty() || parsed.contains(&item) {
+                continue;
+            }
+            parsed.push(item);
+        }
+
+        if parsed.is_empty() {
+            return default;
+        }
+
+        parsed
     }
 
     fn currency_decimals(&self, currency: &str) -> i32 {

@@ -38,6 +38,68 @@ pub struct BankAccount {
     pub updated_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct InvoiceReminderLog {
+    pub id: String,
+    pub tenant_id: String,
+    pub invoice_id: String,
+    pub reminder_code: String,
+    pub channel: String,
+    pub recipient: Option<String>,
+    pub status: String,
+    pub detail: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct BillingCollectionLog {
+    pub id: String,
+    pub tenant_id: String,
+    pub invoice_id: String,
+    pub subscription_id: Option<String>,
+    pub action: String,
+    pub result: String,
+    pub reason: Option<String>,
+    pub actor_type: String,
+    pub actor_id: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct BillingCollectionLogView {
+    pub id: String,
+    pub tenant_id: String,
+    pub invoice_id: String,
+    pub subscription_id: Option<String>,
+    pub action: String,
+    pub result: String,
+    pub reason: Option<String>,
+    pub actor_type: String,
+    pub actor_id: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub invoice_number: Option<String>,
+    pub invoice_status: Option<String>,
+    pub due_date: Option<DateTime<Utc>>,
+    pub subscription_status: Option<String>,
+    pub customer_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct InvoiceReminderLogView {
+    pub id: String,
+    pub tenant_id: String,
+    pub invoice_id: String,
+    pub reminder_code: String,
+    pub channel: String,
+    pub recipient: Option<String>,
+    pub status: String,
+    pub detail: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub invoice_number: Option<String>,
+    pub invoice_status: Option<String>,
+    pub due_date: Option<DateTime<Utc>>,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CreateInvoiceRequest {

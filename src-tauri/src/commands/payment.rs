@@ -1,8 +1,11 @@
 //! Payment Commands
 
-use crate::models::{BankAccount, CreateBankAccountRequest, Invoice};
+use crate::models::{
+    BankAccount, BillingCollectionLogView, CreateBankAccountRequest, Invoice, InvoiceReminderLogView,
+};
 use crate::services::{
-    AuthService, BulkGenerateInvoicesResult, Claims, PaymentService, PlanService,
+    AuthService, BillingCollectionRunResult, BulkGenerateInvoicesResult, Claims, PaymentService,
+    PlanService,
 };
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -79,6 +82,16 @@ fn is_customer_package_invoice(invoice: &Invoice) -> bool {
         .as_deref()
         .map(|v| v.starts_with("pkgsub:"))
         .unwrap_or(false)
+}
+
+fn parse_datetime_opt(input: Option<String>, field: &str) -> Result<Option<DateTime<Utc>>, String> {
+    let Some(raw) = input.map(|v| v.trim().to_string()).filter(|v| !v.is_empty()) else {
+        return Ok(None);
+    };
+
+    chrono::DateTime::parse_from_rfc3339(&raw)
+        .map(|dt| Some(dt.with_timezone(&Utc)))
+        .map_err(|_| format!("{field} must be ISO-8601 datetime (RFC3339)"))
 }
 
 #[tauri::command]
@@ -241,6 +254,95 @@ pub async fn generate_due_customer_package_invoices(
 
     payment_service
         .generate_due_customer_package_invoices(&tenant_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_billing_collection_logs(
+    token: String,
+    action: Option<String>,
+    result: Option<String>,
+    from: Option<String>,
+    to: Option<String>,
+    search: Option<String>,
+    limit: Option<u32>,
+    auth_service: State<'_, AuthService>,
+    payment_service: State<'_, PaymentService>,
+) -> Result<Vec<BillingCollectionLogView>, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    require_payment_read_access(&auth_service, &claims).await?;
+    let tenant_id = claims.tenant_id.ok_or("No tenant context")?;
+    let from = parse_datetime_opt(from, "from")?;
+    let to = parse_datetime_opt(to, "to")?;
+
+    payment_service
+        .list_billing_collection_logs(
+            &tenant_id,
+            action.as_deref(),
+            result.as_deref(),
+            from,
+            to,
+            search.as_deref(),
+            limit.unwrap_or(200),
+        )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_invoice_reminder_logs(
+    token: String,
+    reminder_code: Option<String>,
+    status: Option<String>,
+    from: Option<String>,
+    to: Option<String>,
+    search: Option<String>,
+    limit: Option<u32>,
+    auth_service: State<'_, AuthService>,
+    payment_service: State<'_, PaymentService>,
+) -> Result<Vec<InvoiceReminderLogView>, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    require_payment_read_access(&auth_service, &claims).await?;
+    let tenant_id = claims.tenant_id.ok_or("No tenant context")?;
+    let from = parse_datetime_opt(from, "from")?;
+    let to = parse_datetime_opt(to, "to")?;
+
+    payment_service
+        .list_invoice_reminder_logs(
+            &tenant_id,
+            reminder_code.as_deref(),
+            status.as_deref(),
+            from,
+            to,
+            search.as_deref(),
+            limit.unwrap_or(200),
+        )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn run_billing_collection_now(
+    token: String,
+    auth_service: State<'_, AuthService>,
+    payment_service: State<'_, PaymentService>,
+) -> Result<BillingCollectionRunResult, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    require_payment_manage_access(&auth_service, &claims).await?;
+    let tenant_id = claims.tenant_id.ok_or("No tenant context")?;
+
+    payment_service
+        .run_billing_collection_now(&tenant_id)
         .await
         .map_err(|e| e.to_string())
 }

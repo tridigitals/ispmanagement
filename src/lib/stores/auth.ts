@@ -158,8 +158,9 @@ export async function registerCustomerByDomain(
   email: string,
   password: string,
   name: string,
+  inviteToken?: string | null,
 ): Promise<AuthResponse> {
-  const response = await publicApi.registerCustomerByDomain(email, password, name);
+  const response = await publicApi.registerCustomerByDomain(email, password, name, inviteToken);
   if (response.token) {
     setAuthData(response.token, response.user, true, response.tenant);
   }

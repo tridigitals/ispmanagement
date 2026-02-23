@@ -8,7 +8,13 @@
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { formatDate, timeAgo } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
-  import { api, type Announcement, type PaginatedResponse } from '$lib/api/client';
+  import {
+    api,
+    type Announcement,
+    type CustomerSubscriptionView,
+    type Invoice,
+    type PaginatedResponse,
+  } from '$lib/api/client';
   import { stripHtmlToText } from '$lib/utils/sanitizeHtml';
   import {
     notifications,
@@ -21,6 +27,9 @@
     // Load a small slice of activity without blocking first paint.
     void loadNotifications(1);
     void loadDashboardAnnouncements();
+    if (!$isAdmin) {
+      void loadPortalSummary();
+    }
   });
 
   const greeting = () => {
@@ -43,6 +52,15 @@
 
   let annLoading = $state(false);
   let annPosts = $state<Announcement[]>([]);
+  let portalSummaryLoading = $state(false);
+  let activePortalSubscription = $state<CustomerSubscriptionView | null>(null);
+  let nextPendingInvoice = $state<Invoice | null>(null);
+  let portalHealthStatus = $derived.by(() => {
+    const dueMs = invoiceDueMs(nextPendingInvoice);
+    if (nextPendingInvoice && dueMs !== null && dueMs < Date.now()) return 'overdue' as const;
+    if (nextPendingInvoice) return 'pending' as const;
+    return 'normal' as const;
+  });
 
   async function loadDashboardAnnouncements() {
     annLoading = true;
@@ -58,6 +76,74 @@
     } finally {
       annLoading = false;
     }
+  }
+
+  async function loadPortalSummary() {
+    portalSummaryLoading = true;
+    try {
+      const [subRes, invoiceRows] = await Promise.all([
+        api.customers.portal.mySubscriptions({ page: 1, per_page: 50 }),
+        api.payment.listInvoices(),
+      ]);
+
+      const subs = (subRes?.data || []).filter((s) => s.status === 'active');
+      activePortalSubscription =
+        subs.sort(
+          (a, b) =>
+            new Date(b.updated_at || b.created_at || 0).getTime() -
+            new Date(a.updated_at || a.created_at || 0).getTime(),
+        )[0] || null;
+
+      const pending = (invoiceRows || []).filter((inv) => inv.status === 'pending');
+      nextPendingInvoice =
+        pending.sort(
+          (a, b) =>
+            new Date(a.due_date || a.created_at || 0).getTime() -
+            new Date(b.due_date || b.created_at || 0).getTime(),
+        )[0] || null;
+    } catch (e) {
+      // Keep dashboard resilient for customer portal.
+      console.warn('Failed to load portal summary:', e);
+    } finally {
+      portalSummaryLoading = false;
+    }
+  }
+
+  function formatInvoiceAmount(inv: Invoice | null) {
+    if (!inv) return '-';
+    const locale = ($appSettings as any)?.default_locale || 'id-ID';
+    const currency = inv.currency_code || ($appSettings as any)?.currency_code || 'IDR';
+    try {
+      return new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency,
+      }).format(inv.amount || 0);
+    } catch {
+      return `${currency} ${Number(inv.amount || 0).toLocaleString(locale)}`;
+    }
+  }
+
+  function invoiceDateForDisplay(inv: Invoice | null): string | number | Date {
+    if (!inv) return Date.now();
+    return inv.due_date || inv.created_at || Date.now();
+  }
+
+  function invoiceDueMs(inv: Invoice | null): number | null {
+    if (!inv) return null;
+    const raw = inv.due_date || inv.created_at;
+    if (!raw) return null;
+    const parsed = new Date(raw).getTime();
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function portalStatusLabel(status: 'normal' | 'pending' | 'overdue') {
+    if (status === 'overdue') {
+      return $t('dashboard.portal_summary.status.overdue') || 'Overdue';
+    }
+    if (status === 'pending') {
+      return $t('dashboard.portal_summary.status.pending') || 'Pending invoice';
+    }
+    return $t('dashboard.portal_summary.status.normal') || 'Normal';
   }
 
   function openAnnouncement(id: string) {
@@ -284,6 +370,88 @@
     </section>
 
     <aside class="quick-actions">
+      {#if !$isAdmin}
+        <div class="section-header">
+          <h2>{$t('dashboard.portal_summary.title') || 'Service Overview'}</h2>
+        </div>
+        <div class="portal-summary-card">
+          {#if portalSummaryLoading}
+            <div class="summary-loading">
+              <div class="spinner"></div>
+              <span>{$t('common.loading') || 'Loading...'}</span>
+            </div>
+          {:else}
+            <div class="summary-health-row">
+              <div class="summary-k">{$t('dashboard.portal_summary.health') || 'Status'}</div>
+              <span class="summary-health {portalHealthStatus}">
+                <span class="summary-health-dot"></span>
+                {portalStatusLabel(portalHealthStatus)}
+              </span>
+            </div>
+
+            <div class="summary-row">
+              <div class="summary-k">
+                {$t('dashboard.portal_summary.active_package') || 'Active package'}
+              </div>
+              <div class="summary-v">
+                {#if activePortalSubscription}
+                  {activePortalSubscription.package_name || activePortalSubscription.package_id}
+                {:else}
+                  {$t('dashboard.portal_summary.none') || '-'}
+                {/if}
+              </div>
+              {#if activePortalSubscription}
+                <div class="summary-sub">
+                  {activePortalSubscription.billing_cycle} ·
+                  {activePortalSubscription.location_label || '-'}
+                </div>
+              {/if}
+            </div>
+
+            <div class="summary-row">
+              <div class="summary-k">
+                {$t('dashboard.portal_summary.next_invoice') || 'Next invoice'}
+              </div>
+              <div class="summary-v">
+                {#if nextPendingInvoice}
+                  {nextPendingInvoice.invoice_number}
+                {:else}
+                  {$t('dashboard.portal_summary.no_pending_invoice') || 'No pending invoice'}
+                {/if}
+              </div>
+              {#if nextPendingInvoice}
+                <div class="summary-sub">
+                  {formatInvoiceAmount(nextPendingInvoice)} ·
+                  {$t('dashboard.portal_summary.due') || 'Due'}:
+                  {formatDate(invoiceDateForDisplay(nextPendingInvoice), {
+                    timeZone: $appSettings.app_timezone,
+                  })}
+                </div>
+              {/if}
+            </div>
+
+            <div class="summary-actions">
+              <button
+                class="summary-btn"
+                onclick={() => goto(`${tenantPrefix}/dashboard/packages`)}
+              >
+                <Icon name="package" size={15} />
+                {$t('dashboard.portal_summary.manage_package') || 'Manage package'}
+              </button>
+              {#if nextPendingInvoice}
+                <button
+                  class="summary-btn primary"
+                  onclick={() => goto(`/pay/${nextPendingInvoice!.id}`)}
+                >
+                  <Icon name="credit-card" size={15} />
+                  {$t('dashboard.portal_summary.pay_now') || 'Pay now'}
+                </button>
+              {/if}
+            </div>
+          {/if}
+        </div>
+      {/if}
+
       <div class="section-header">
         <h2>{$t('dashboard.quick_actions.title')}</h2>
       </div>
@@ -333,7 +501,6 @@
       align-items: flex-start;
       gap: 1rem;
     }
-
   }
 
   /* Header */
@@ -834,6 +1001,135 @@
     border-color: var(--color-primary);
     background: var(--bg-hover);
     transform: translateX(4px);
+  }
+
+  .portal-summary-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .summary-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.22rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px dashed var(--border-color);
+  }
+
+  .summary-row:last-of-type {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .summary-health-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px dashed var(--border-color);
+  }
+
+  .summary-health {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.38rem;
+    font-size: 0.76rem;
+    border-radius: 999px;
+    padding: 0.22rem 0.55rem;
+    border: 1px solid transparent;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .summary-health-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  .summary-health.normal {
+    color: #16a34a;
+    background: rgba(22, 163, 74, 0.12);
+    border-color: rgba(22, 163, 74, 0.3);
+  }
+
+  .summary-health.pending {
+    color: #d97706;
+    background: rgba(217, 119, 6, 0.12);
+    border-color: rgba(217, 119, 6, 0.3);
+  }
+
+  .summary-health.overdue {
+    color: #dc2626;
+    background: rgba(220, 38, 38, 0.12);
+    border-color: rgba(220, 38, 38, 0.3);
+  }
+
+  .summary-k {
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+  }
+
+  .summary-v {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.3;
+  }
+
+  .summary-sub {
+    font-size: 0.83rem;
+    color: var(--text-secondary);
+  }
+
+  .summary-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .summary-btn {
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .summary-btn:hover {
+    background: var(--bg-hover);
+  }
+
+  .summary-btn.primary {
+    background: var(--color-primary);
+    border-color: color-mix(in srgb, var(--color-primary) 70%, transparent);
+    color: #fff;
+  }
+
+  .summary-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
   }
 
   /* Buttons */

@@ -97,6 +97,7 @@
     "clear": "Bersihkan",
     "close": "Tutup",
     "copied": "Tersalin",
+    "copy": "Salin",
     "copy_failed": "Gagal menyalin",
     "delete": "Hapus",
     "edit": "Edit",
@@ -140,6 +141,7 @@
     "saved": "Tersimpan",
     "save_changes": "Simpan Perubahan",
     "saving": "Menyimpan...",
+    "processing": "Memproses...",
     "loading": "Memuat...",
     "updated": "Diperbarui",
     "deleted": "Dihapus",
@@ -382,6 +384,7 @@
     "tenants": "Tenant",
     "plans": "Paket",
     "invoices": "Invoice",
+    "billing_collection": "Log Billing",
     "storage": "Penyimpanan",
     "subscription": "Langganan",
     "audit_logs": "Log Audit",
@@ -401,6 +404,8 @@
     "ppp_profiles": "Profil PPP",
     "ip_pools": "Pool IP",
     "packages": "Paket",
+    "packages_pending_alert": "Ada invoice pending. Silakan cek billing paket.",
+    "packages_overdue_alert": "Ada invoice lewat jatuh tempo. Silakan cek billing paket.",
     "expand": "Perluas sidebar",
     "collapse": "Ciutkan sidebar",
     "exit": "Keluar",
@@ -1524,6 +1529,60 @@
         "title": "Belum ada pengumuman",
         "description": "Saat tim mempublikasikan pembaruan, pengumuman akan muncul di sini.",
         "open": "Buka pengumuman"
+      }
+    },
+    "packages": {
+      "title": "Paket Internet",
+      "subtitle": "Pilih paket Anda dan buat invoice pembayaran secara instan.",
+      "fields": {
+        "location": "Lokasi",
+        "billing_cycle": "Siklus tagihan"
+      },
+      "cycles": {
+        "monthly": "Bulanan",
+        "yearly": "Tahunan"
+      },
+      "current": {
+        "title": "Langganan saat ini",
+        "none": "Belum ada paket aktif di lokasi ini"
+      },
+      "actions": {
+        "buy": "Beli paket",
+        "switch": "Ganti paket",
+        "current": "Paket aktif"
+      },
+      "badges": {
+        "active": "Aktif"
+      },
+      "empty": {
+        "no_locations": "Belum ada lokasi",
+        "no_locations_hint": "Minta admin menautkan akun Anda ke lokasi pelanggan terlebih dulu.",
+        "no_packages": "Belum ada paket aktif",
+        "no_packages_hint": "Admin belum mempublikasikan katalog paket."
+      },
+      "toasts": {
+        "load_failed": "Gagal memuat katalog paket",
+        "select_location": "Pilih lokasi terlebih dulu",
+        "yearly_unavailable": "Tagihan tahunan belum tersedia untuk paket ini",
+        "already_active": "Paket ini sudah aktif",
+        "checkout_success": "Invoice berhasil dibuat. Lanjutkan ke pembayaran.",
+        "checkout_failed": "Checkout gagal"
+      }
+    },
+    "portal_summary": {
+      "title": "Ringkasan Layanan",
+      "health": "Status",
+      "active_package": "Paket aktif",
+      "next_invoice": "Tagihan berikutnya",
+      "no_pending_invoice": "Tidak ada tagihan pending",
+      "none": "-",
+      "due": "Jatuh tempo",
+      "manage_package": "Kelola paket",
+      "pay_now": "Bayar sekarang",
+      "status": {
+        "normal": "Aman",
+        "pending": "Tagihan pending",
+        "overdue": "Lewat jatuh tempo"
       }
     },
     "quick_actions": {
@@ -2926,6 +2985,77 @@
         "load_failed": "Gagal memuat invoice"
       }
     },
+    "billing_collection": {
+      "title": "Log Billing Collection",
+      "subtitle": "Pantau pengiriman reminder, aksi suspend/resume, dan jalankan collection manual.",
+      "tabs": {
+        "collection": "Log Collection",
+        "reminders": "Log Reminder"
+      },
+      "columns": {
+        "time": "Waktu",
+        "invoice": "Invoice",
+        "customer": "Pelanggan",
+        "action": "Aksi",
+        "result": "Hasil",
+        "subscription_status": "Langganan",
+        "reason": "Alasan",
+        "reminder_code": "Reminder",
+        "channel": "Channel",
+        "recipient": "Penerima",
+        "status": "Status",
+        "detail": "Detail"
+      },
+      "actions": {
+        "run_now": "Jalankan Sekarang",
+        "running": "Memproses...",
+        "export": "Export",
+        "reminder": "Reminder",
+        "suspend": "Suspend",
+        "resume": "Resume"
+      },
+      "export": {
+        "csv": "Export CSV",
+        "excel": "Export Excel"
+      },
+      "results": {
+        "success": "Berhasil",
+        "failed": "Gagal",
+        "skipped": "Dilewati"
+      },
+      "reminders": {
+        "d7": "H-7",
+        "d3": "H-3",
+        "d0": "H-0"
+      },
+      "filters": {
+        "all_actions": "Semua aksi",
+        "all_results": "Semua hasil",
+        "all_reminders": "Semua reminder",
+        "all_statuses": "Semua status",
+        "search_placeholder": "Cari invoice/pelanggan/alasan...",
+        "search_reminder": "Cari invoice/detail...",
+        "clear": "Reset"
+      },
+      "meta": {
+        "showing": "Menampilkan"
+      },
+      "summary": {
+        "evaluated": "Dievaluasi",
+        "reminders_sent": "Reminder terkirim",
+        "suspended": "Tersuspend",
+        "resumed": "Kembali aktif",
+        "failed": "Gagal"
+      },
+      "toasts": {
+        "load_collection_failed": "Gagal memuat log billing collection",
+        "load_reminders_failed": "Gagal memuat log reminder",
+        "run_ok": "Billing collection selesai dijalankan",
+        "run_failed": "Gagal menjalankan billing collection",
+        "no_data_export": "Tidak ada data untuk diexport",
+        "export_ok": "Export berhasil"
+      }
+    },
     "package_invoices": {
       "statuses": {
         "pending": "Menunggu",
@@ -2952,6 +3082,7 @@
           "view_details": "Lihat detail",
           "generate_invoice": "Buat Invoice",
           "creating": "Membuat...",
+          "billing_logs": "Log Billing",
           "generate_due_bulk": "Generate Invoice Jatuh Tempo",
           "bulk_generating": "Memproses..."
         },

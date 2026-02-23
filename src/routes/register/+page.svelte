@@ -26,6 +26,8 @@
   let isTauriApp = false;
   let isCustomDomain = false;
   let customerRegistrationEnabled = false;
+  let inviteToken = '';
+  let hasInviteToken = false;
 
   // Visibility states
   let showPassword = false;
@@ -60,6 +62,9 @@
     }
 
     await Promise.all([appSettings.init(), appLogo.init()]);
+    const params = new URLSearchParams(window.location.search);
+    inviteToken = (params.get('invite') || '').trim();
+    hasInviteToken = inviteToken.length > 0;
     const hostname = window.location.hostname || '';
     const isLocal =
       hostname.includes('localhost') || hostname.includes('127.0.0.1') || hostname.includes('tauri');
@@ -74,20 +79,22 @@
       goto('/login');
       return;
     }
-    customerRegistrationEnabled = false;
-    try {
-      const status = await publicApi.getCustomerRegistrationStatusByDomain(hostname);
-      customerRegistrationEnabled = status?.enabled === true;
-    } catch {
-      customerRegistrationEnabled = false;
-    }
-    if (!customerRegistrationEnabled) {
-      toast.error(
-        $t('auth.register.disabled_message') ||
-          'Customer self registration is disabled for this tenant.',
-      );
-      goto('/login');
-      return;
+    customerRegistrationEnabled = hasInviteToken;
+    if (!hasInviteToken) {
+      try {
+        const status = await publicApi.getCustomerRegistrationStatusByDomain(hostname);
+        customerRegistrationEnabled = status?.enabled === true;
+      } catch {
+        customerRegistrationEnabled = false;
+      }
+      if (!customerRegistrationEnabled) {
+        toast.error(
+          $t('auth.register.disabled_message') ||
+            'Customer self registration is disabled for this tenant.',
+        );
+        goto('/login');
+        return;
+      }
     }
 
     if ($isAuthenticated) {
@@ -124,7 +131,7 @@
     e.preventDefault();
     error = '';
 
-    if (!isCustomDomain || !customerRegistrationEnabled) {
+    if (!isCustomDomain || (!customerRegistrationEnabled && !hasInviteToken)) {
       error =
         'Customer registration is only available from a tenant custom domain in web browser.';
       return;
@@ -146,7 +153,12 @@
     loading = true;
 
     try {
-      const response = await registerCustomerByDomain(email, password, name);
+      const response = await registerCustomerByDomain(
+        email,
+        password,
+        name,
+        hasInviteToken ? inviteToken : null,
+      );
       if (response.token) {
         if (response.user?.is_super_admin) {
           goto('/superadmin');
@@ -192,6 +204,12 @@
           <h2>{$t('auth.register.title')}</h2>
           <p>{$t('auth.register.subtitle')}</p>
         </div>
+
+        {#if hasInviteToken}
+          <div class="alert" style="margin-bottom: 1rem;">
+            Invite mode enabled. This registration link may expire after use.
+          </div>
+        {/if}
 
         {#if error}
           <div class="alert error" in:fly={{ y: -10 }}>

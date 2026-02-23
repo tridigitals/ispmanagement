@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { api, type Invoice } from '$lib/api/client';
   import Icon from '$lib/components/ui/Icon.svelte';
@@ -10,6 +11,8 @@
   import { goto } from '$app/navigation';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
+  import { user, tenant } from '$lib/stores/auth';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
 
   let invoices = $state<Invoice[]>([]);
   let loading = $state(true);
@@ -25,6 +28,16 @@
     Array<{ id: string; customerId: string; label: string; status: string }>
   >([]);
   let customers = $state<Array<{ id: string; name: string }>>([]);
+  const tenantCtx = $derived.by(() =>
+    resolveTenantContext({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      tenantSlug: $tenant?.slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
+  );
+  const tenantPrefix = $derived(tenantCtx.tenantPrefix);
+  const adminHomePath = $derived(`${tenantPrefix}/admin`);
 
   const columns = $derived.by(() => [
     {
@@ -195,9 +208,25 @@
     dateFrom = '';
     dateTo = '';
   }
+
+  function goToBillingLogs() {
+    const basePath =
+      typeof window !== 'undefined'
+        ? window.location.pathname.replace(/\/$/, '')
+        : '/admin/invoices';
+    void goto(`${basePath}/collection`);
+  }
 </script>
 
 <div class="page-container fade-in">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <button class="crumb-link" type="button" onclick={() => goto(adminHomePath)}>
+      {$t('sidebar.overview') || 'Overview'}
+    </button>
+    <span class="crumb-sep">/</span>
+    <span class="crumb-current">{$t('sidebar.invoices') || 'Invoices'}</span>
+  </nav>
+
   <div class="page-header">
     <div class="header-content">
       <h1>{$t('admin.package_invoices.list.title') || 'Customer Package Invoices'}</h1>
@@ -207,6 +236,10 @@
       </p>
     </div>
     <div class="header-actions">
+      <button class="btn btn-secondary" onclick={goToBillingLogs}>
+        <Icon name="activity" size={16} />
+        <span>{$t('admin.package_invoices.list.actions.billing_logs') || 'Billing Logs'}</span>
+      </button>
       <button class="btn btn-primary" onclick={generateDueInvoicesBulk} disabled={bulkGenerating}>
         <Icon name="layers" size={16} />
         <span
@@ -332,6 +365,33 @@
     padding: clamp(1rem, 3vw, 2rem);
     max-width: 1200px;
     margin: 0 auto;
+  }
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+  }
+  .crumb-link {
+    border: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    padding: 0;
+    cursor: pointer;
+  }
+  .crumb-link:hover {
+    color: var(--text-primary);
+    text-decoration: underline;
+  }
+  .crumb-current {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+  .crumb-sep {
+    color: var(--text-tertiary);
   }
   .page-header {
     display: flex;

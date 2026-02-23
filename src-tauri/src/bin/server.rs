@@ -117,6 +117,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let notification_service =
         NotificationService::new(pool.clone(), ws_hub.clone(), email_outbox_service.clone());
     let payment_service = PaymentService::new(pool.clone(), notification_service.clone());
+    payment_service.start_customer_invoice_scheduler();
     let backup_service = BackupService::new(pool.clone(), app_data_dir.clone());
 
     // MikroTik monitoring (tenant-scoped)

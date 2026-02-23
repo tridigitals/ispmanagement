@@ -1,8 +1,10 @@
 //! Payment HTTP Handlers (Webhooks)
 
 use crate::http::AppState;
-use crate::models::{BankAccount, CreateBankAccountRequest, Invoice};
-use crate::services::{BulkGenerateInvoicesResult, Claims};
+use crate::models::{
+    BankAccount, BillingCollectionLogView, CreateBankAccountRequest, Invoice, InvoiceReminderLogView,
+};
+use crate::services::{BillingCollectionRunResult, BulkGenerateInvoicesResult, Claims};
 use axum::{
     extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
@@ -32,6 +34,18 @@ pub fn router() -> Router<AppState> {
             post(generate_due_customer_package_invoices),
         )
         .route(
+            "/billing-collection/logs",
+            get(list_billing_collection_logs),
+        )
+        .route(
+            "/billing-collection/reminders",
+            get(list_invoice_reminder_logs),
+        )
+        .route(
+            "/billing-collection/run-now",
+            post(run_billing_collection_now),
+        )
+        .route(
             "/invoices/{id}/customer-package/verify",
             post(verify_customer_package_payment),
         )
@@ -46,6 +60,11 @@ pub fn router() -> Router<AppState> {
 #[derive(Serialize)]
 struct ErrorResponse {
     error: String,
+}
+
+enum PaymentReadScope {
+    Billing,
+    CustomerPortal { customer_id: String },
 }
 
 #[derive(Deserialize)]
@@ -108,12 +127,12 @@ fn require_superadmin(claims: &Claims) -> Result<(), (StatusCode, Json<ErrorResp
     Ok(())
 }
 
-async fn require_payment_read_access(
+async fn resolve_payment_read_scope(
     state: &AppState,
     claims: &Claims,
-) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
+) -> Result<PaymentReadScope, (StatusCode, Json<ErrorResponse>)> {
     if claims.is_super_admin {
-        return Ok(());
+        return Ok(PaymentReadScope::Billing);
     }
 
     let tenant_id = claims.tenant_id.as_deref().ok_or_else(|| {
@@ -125,20 +144,42 @@ async fn require_payment_read_access(
         )
     })?;
 
-    state
+    if state
         .auth_service
         .check_permission(&claims.sub, tenant_id, "billing", "read")
         .await
-        .map_err(|e| {
-            (
-                StatusCode::FORBIDDEN,
-                Json(ErrorResponse {
-                    error: e.to_string(),
-                }),
-            )
-        })?;
+        .is_ok()
+    {
+        return Ok(PaymentReadScope::Billing);
+    }
 
-    Ok(())
+    if state
+        .auth_service
+        .check_permission(&claims.sub, tenant_id, "customers", "read_own")
+        .await
+        .is_ok()
+    {
+        let customer_id = state
+            .customer_service
+            .get_portal_customer_id(&claims.sub, tenant_id)
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::FORBIDDEN,
+                    Json(ErrorResponse {
+                        error: e.to_string(),
+                    }),
+                )
+            })?;
+        return Ok(PaymentReadScope::CustomerPortal { customer_id });
+    }
+
+    Err((
+        StatusCode::FORBIDDEN,
+        Json(ErrorResponse {
+            error: "Permission denied: billing read or customer portal access required".to_string(),
+        }),
+    ))
 }
 
 async fn require_payment_manage_access(
@@ -180,7 +221,15 @@ async fn get_fx_rate(
     Query(q): Query<FxRateQuery>,
 ) -> Result<Json<FxRateResponse>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
-    require_payment_read_access(&state, &claims).await?;
+    let scope = resolve_payment_read_scope(&state, &claims).await?;
+    if !matches!(scope, PaymentReadScope::Billing) {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                error: "Billing read access required".to_string(),
+            }),
+        ));
+    }
 
     let base = q.base_currency.trim().to_uppercase();
     let quote = q.quote_currency.trim().to_uppercase();
@@ -212,7 +261,7 @@ async fn list_invoices(
     headers: HeaderMap,
 ) -> Result<Json<Vec<Invoice>>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
-    require_payment_read_access(&state, &claims).await?;
+    let scope = resolve_payment_read_scope(&state, &claims).await?;
     let Some(tenant_id) = claims.tenant_id.as_deref() else {
         return Err((
             StatusCode::BAD_REQUEST,
@@ -222,19 +271,24 @@ async fn list_invoices(
         ));
     };
 
-    state
-        .payment_service
-        .list_invoices(Some(tenant_id))
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    error: e.to_string(),
-                }),
-            )
-        })
+    let result = match scope {
+        PaymentReadScope::Billing => state.payment_service.list_invoices(Some(tenant_id)).await,
+        PaymentReadScope::CustomerPortal { customer_id } => {
+            state
+                .payment_service
+                .list_customer_portal_invoices(tenant_id, &customer_id)
+                .await
+        }
+    };
+
+    result.map(Json).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: e.to_string(),
+            }),
+        )
+    })
 }
 
 async fn list_all_invoices(
@@ -283,9 +337,53 @@ struct VerifyCustomerPackagePaymentBody {
     invoice_id: Option<String>,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+struct BillingCollectionLogsQuery {
+    action: Option<String>,
+    result: Option<String>,
+    from: Option<String>,
+    to: Option<String>,
+    search: Option<String>,
+    limit: Option<u32>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+struct InvoiceReminderLogsQuery {
+    reminder_code: Option<String>,
+    status: Option<String>,
+    from: Option<String>,
+    to: Option<String>,
+    search: Option<String>,
+    limit: Option<u32>,
+}
+
+fn parse_utc_datetime_query(
+    raw: Option<String>,
+    field: &str,
+) -> Result<Option<chrono::DateTime<chrono::Utc>>, (StatusCode, Json<ErrorResponse>)> {
+    let Some(value) = raw.map(|v| v.trim().to_string()).filter(|v| !v.is_empty()) else {
+        return Ok(None);
+    };
+
+    let parsed = chrono::DateTime::parse_from_rfc3339(&value).map_err(|_| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!("{field} must be ISO-8601 datetime (RFC3339)"),
+            }),
+        )
+    })?;
+    Ok(Some(parsed.with_timezone(&chrono::Utc)))
+}
+
 async fn authorize_invoice_access(
     state: &AppState,
     claims: &Claims,
+    scope: &PaymentReadScope,
     invoice_id: &str,
 ) -> Result<Invoice, (StatusCode, Json<ErrorResponse>)> {
     let invoice = state
@@ -321,6 +419,30 @@ async fn authorize_invoice_access(
                 error: "Invoice access denied".to_string(),
             }),
         ));
+    }
+
+    if let PaymentReadScope::CustomerPortal { customer_id } = scope {
+        let owned = state
+            .payment_service
+            .customer_owns_package_invoice(tenant_id, customer_id, invoice_id)
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse {
+                        error: e.to_string(),
+                    }),
+                )
+            })?;
+
+        if !owned {
+            return Err((
+                StatusCode::FORBIDDEN,
+                Json(ErrorResponse {
+                    error: "Invoice access denied".to_string(),
+                }),
+            ));
+        }
     }
 
     Ok(invoice)
@@ -395,8 +517,8 @@ async fn get_invoice(
     Path(id): Path<String>,
 ) -> Result<Json<Invoice>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
-    require_payment_read_access(&state, &claims).await?;
-    let invoice = authorize_invoice_access(&state, &claims, &id).await?;
+    let scope = resolve_payment_read_scope(&state, &claims).await?;
+    let invoice = authorize_invoice_access(&state, &claims, &scope, &id).await?;
     Ok(Json(invoice))
 }
 
@@ -405,7 +527,15 @@ async fn list_customer_package_invoices(
     headers: HeaderMap,
 ) -> Result<Json<Vec<Invoice>>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
-    require_payment_read_access(&state, &claims).await?;
+    let scope = resolve_payment_read_scope(&state, &claims).await?;
+    if !matches!(scope, PaymentReadScope::Billing) {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                error: "Billing read access required".to_string(),
+            }),
+        ));
+    }
     let Some(tenant_id) = claims.tenant_id.as_deref() else {
         return Err((
             StatusCode::BAD_REQUEST,
@@ -491,6 +621,138 @@ async fn generate_due_customer_package_invoices(
         })
 }
 
+async fn list_billing_collection_logs(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<BillingCollectionLogsQuery>,
+) -> Result<Json<Vec<BillingCollectionLogView>>, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    let scope = resolve_payment_read_scope(&state, &claims).await?;
+    if !matches!(scope, PaymentReadScope::Billing) {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                error: "Billing read access required".to_string(),
+            }),
+        ));
+    }
+    let Some(tenant_id) = claims.tenant_id.as_deref() else {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Tenant context required".to_string(),
+            }),
+        ));
+    };
+
+    let from = parse_utc_datetime_query(q.from, "from")?;
+    let to = parse_utc_datetime_query(q.to, "to")?;
+    let limit = q.limit.unwrap_or(200).clamp(1, 1000);
+
+    state
+        .payment_service
+        .list_billing_collection_logs(
+            tenant_id,
+            q.action.as_deref(),
+            q.result.as_deref(),
+            from,
+            to,
+            q.search.as_deref(),
+            limit,
+        )
+        .await
+        .map(Json)
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
+}
+
+async fn list_invoice_reminder_logs(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<InvoiceReminderLogsQuery>,
+) -> Result<Json<Vec<InvoiceReminderLogView>>, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    let scope = resolve_payment_read_scope(&state, &claims).await?;
+    if !matches!(scope, PaymentReadScope::Billing) {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                error: "Billing read access required".to_string(),
+            }),
+        ));
+    }
+    let Some(tenant_id) = claims.tenant_id.as_deref() else {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Tenant context required".to_string(),
+            }),
+        ));
+    };
+
+    let from = parse_utc_datetime_query(q.from, "from")?;
+    let to = parse_utc_datetime_query(q.to, "to")?;
+    let limit = q.limit.unwrap_or(200).clamp(1, 1000);
+
+    state
+        .payment_service
+        .list_invoice_reminder_logs(
+            tenant_id,
+            q.reminder_code.as_deref(),
+            q.status.as_deref(),
+            from,
+            to,
+            q.search.as_deref(),
+            limit,
+        )
+        .await
+        .map(Json)
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
+}
+
+async fn run_billing_collection_now(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<BillingCollectionRunResult>, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    require_payment_manage_access(&state, &claims).await?;
+    let Some(tenant_id) = claims.tenant_id.as_deref() else {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Tenant context required".to_string(),
+            }),
+        ));
+    };
+
+    state
+        .payment_service
+        .run_billing_collection_now(tenant_id)
+        .await
+        .map(Json)
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
+}
+
 async fn verify_customer_package_payment(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -500,7 +762,8 @@ async fn verify_customer_package_payment(
     let claims = authenticate(&state, &headers).await?;
     require_payment_manage_access(&state, &claims).await?;
 
-    let invoice = authorize_invoice_access(&state, &claims, &id).await?;
+    let invoice =
+        authorize_invoice_access(&state, &claims, &PaymentReadScope::Billing, &id).await?;
     if let Some(invoice_id) = body.invoice_id.as_deref() {
         if invoice_id != id {
             return Err((
@@ -546,8 +809,8 @@ async fn pay_invoice_midtrans(
     Path(id): Path<String>,
 ) -> Result<Json<String>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
-    require_payment_manage_access(&state, &claims).await?;
-    let _ = authorize_invoice_access(&state, &claims, &id).await?;
+    let scope = resolve_payment_read_scope(&state, &claims).await?;
+    let _ = authorize_invoice_access(&state, &claims, &scope, &id).await?;
 
     state
         .payment_service
@@ -570,8 +833,8 @@ async fn check_payment_status(
     Path(id): Path<String>,
 ) -> Result<Json<String>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
-    require_payment_read_access(&state, &claims).await?;
-    let _ = authorize_invoice_access(&state, &claims, &id).await?;
+    let scope = resolve_payment_read_scope(&state, &claims).await?;
+    let _ = authorize_invoice_access(&state, &claims, &scope, &id).await?;
 
     state
         .payment_service
@@ -593,7 +856,7 @@ async fn list_bank_accounts(
     headers: HeaderMap,
 ) -> Result<Json<Vec<BankAccount>>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
-    require_payment_read_access(&state, &claims).await?;
+    let _ = resolve_payment_read_scope(&state, &claims).await?;
 
     state
         .payment_service

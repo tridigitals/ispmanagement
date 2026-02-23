@@ -33,6 +33,7 @@
   const invoiceId = $derived($page.params.id ?? '');
   const tenantPrefix = $derived(tenantCtx.tenantPrefix);
   const backPath = $derived(`${tenantPrefix}/admin/invoices`);
+  const billingLogsPath = $derived(`${tenantPrefix}/admin/invoices/collection`);
 
   onMount(() => {
     void loadInvoice();
@@ -127,12 +128,28 @@
 </script>
 
 <div class="page-container fade-in">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <button class="crumb-link" type="button" onclick={() => goto(backPath)}>
+      {$t('sidebar.invoices') || 'Invoices'}
+    </button>
+    <span class="crumb-sep">/</span>
+    <span class="crumb-current">{$t('common.details') || 'Details'}</span>
+    <span class="crumb-sep">/</span>
+    <button class="crumb-link" type="button" onclick={() => goto(billingLogsPath)}>
+      {$t('admin.package_invoices.list.actions.billing_logs') || 'Billing Logs'}
+    </button>
+  </nav>
+
   <div class="page-header">
     <button class="back-btn" onclick={() => goto(backPath)}>
       <Icon name="arrow-left" size={18} />
       <span>{$t('admin.package_invoices.detail.back') || 'Back to Invoices'}</span>
     </button>
     <div class="header-right">
+      <button class="btn btn-secondary" onclick={() => goto(billingLogsPath)}>
+        <Icon name="activity" size={16} />
+        <span>{$t('admin.package_invoices.list.actions.billing_logs') || 'Billing Logs'}</span>
+      </button>
       <button class="btn btn-secondary" onclick={loadInvoice} disabled={loading}>
         <Icon name="refresh-cw" size={16} />
         <span>{$t('common.refresh') || 'Refresh'}</span>
@@ -232,6 +249,33 @@
     padding: clamp(1rem, 3vw, 2rem);
     max-width: 1000px;
     margin: 0 auto;
+  }
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+  }
+  .crumb-link {
+    border: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    padding: 0;
+    cursor: pointer;
+  }
+  .crumb-link:hover {
+    color: var(--text-primary);
+    text-decoration: underline;
+  }
+  .crumb-current {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+  .crumb-sep {
+    color: var(--text-tertiary);
   }
   .page-header {
     display: flex;

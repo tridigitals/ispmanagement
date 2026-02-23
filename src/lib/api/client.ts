@@ -149,6 +149,12 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       create_customer_with_portal: { method: 'POST', path: '/customers/with-portal' },
       update_customer: { method: 'PUT', path: '/customers/:customerId' },
       delete_customer: { method: 'DELETE', path: '/customers/:customerId' },
+      list_customer_registration_invites: { method: 'GET', path: '/customers/invites' },
+      create_customer_registration_invite: { method: 'POST', path: '/customers/invites' },
+      revoke_customer_registration_invite: {
+        method: 'DELETE',
+        path: '/customers/invites/:inviteId',
+      },
       list_customer_locations: { method: 'GET', path: '/customers/:customerId/locations' },
       create_customer_location: { method: 'POST', path: '/customers/locations' },
       update_customer_location: { method: 'PUT', path: '/customers/locations/:locationId' },
@@ -161,7 +167,10 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         path: '/customers/portal-users/:customerUserId',
       },
       list_customer_subscriptions: { method: 'GET', path: '/customers/:customerId/subscriptions' },
-      create_customer_subscription: { method: 'POST', path: '/customers/:customerId/subscriptions' },
+      create_customer_subscription: {
+        method: 'POST',
+        path: '/customers/:customerId/subscriptions',
+      },
       update_customer_subscription: {
         method: 'PUT',
         path: '/customers/subscriptions/:subscriptionId',
@@ -171,6 +180,12 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         path: '/customers/subscriptions/:subscriptionId',
       },
       list_my_customer_locations: { method: 'GET', path: '/customers/portal/my-locations' },
+      list_my_customer_packages: { method: 'GET', path: '/customers/portal/my-packages' },
+      list_my_customer_subscriptions: { method: 'GET', path: '/customers/portal/my-subscriptions' },
+      create_my_customer_subscription_invoice: {
+        method: 'POST',
+        path: '/customers/portal/checkout',
+      },
       // Settings
       get_logo: { method: 'GET', path: '/settings/logo' },
       get_all_settings: { method: 'GET', path: '/settings' },
@@ -245,6 +260,12 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         method: 'POST',
         path: '/payment/invoices/customer-package/generate-due',
       },
+      list_billing_collection_logs: { method: 'GET', path: '/payment/billing-collection/logs' },
+      list_invoice_reminder_logs: {
+        method: 'GET',
+        path: '/payment/billing-collection/reminders',
+      },
+      run_billing_collection_now: { method: 'POST', path: '/payment/billing-collection/run-now' },
       get_invoice: { method: 'GET', path: '/payment/invoices/:id' },
       list_invoices: { method: 'GET', path: '/payment/invoices' },
       list_customer_package_invoices: { method: 'GET', path: '/payment/invoices/customer-package' },
@@ -379,8 +400,14 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       create_isp_package: { method: 'POST', path: '/admin/isp-packages/packages' },
       update_isp_package: { method: 'PUT', path: '/admin/isp-packages/packages/:id' },
       delete_isp_package: { method: 'DELETE', path: '/admin/isp-packages/packages/:id' },
-      list_isp_package_router_mappings: { method: 'GET', path: '/admin/isp-packages/router-mappings' },
-      upsert_isp_package_router_mapping: { method: 'POST', path: '/admin/isp-packages/router-mappings' },
+      list_isp_package_router_mappings: {
+        method: 'GET',
+        path: '/admin/isp-packages/router-mappings',
+      },
+      upsert_isp_package_router_mapping: {
+        method: 'POST',
+        path: '/admin/isp-packages/router-mappings',
+      },
 
       // Backup
       list_backups: { method: 'GET', path: '/backups' },
@@ -456,9 +483,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             ? (() => {
                 const rawEntries = Object.entries(args || {}).filter(
                   ([key, value]) =>
-                    key !== 'token' &&
-                    value !== undefined &&
-                    !consumedPathKeys.has(key),
+                    key !== 'token' && value !== undefined && !consumedPathKeys.has(key),
                 );
 
                 // If both camelCase and snake_case variants exist, keep camelCase only.
@@ -801,6 +826,26 @@ export interface CustomerPortalUser {
   created_at: string;
 }
 
+export interface CustomerRegistrationInviteView {
+  id: string;
+  tenant_id: string;
+  created_by: string | null;
+  max_uses: number;
+  used_count: number;
+  expires_at: string;
+  is_revoked: boolean;
+  revoked_at: string | null;
+  last_used_at: string | null;
+  note: string | null;
+  created_at: string;
+}
+
+export interface CustomerRegistrationInviteCreateResponse {
+  invite: CustomerRegistrationInviteView;
+  invite_token: string;
+  invite_url: string;
+}
+
 export interface CustomerSubscription {
   id: string;
   tenant_id: string;
@@ -823,6 +868,11 @@ export interface CustomerSubscriptionView extends CustomerSubscription {
   package_name: string | null;
   location_label: string | null;
   router_name: string | null;
+}
+
+export interface CustomerPortalCheckoutResponse {
+  subscription: CustomerSubscription;
+  invoice: Invoice;
 }
 
 export interface PppoeAccountPublic {
@@ -1162,7 +1212,12 @@ export const team = {
     safeInvoke('add_team_member', { token: getTokenOrThrow(), email, name, roleId, password }),
 
   updateRole: (memberId: string, roleId: string): Promise<void> =>
-    safeInvoke('update_team_member_role', { token: getTokenOrThrow(), id: memberId, memberId, roleId }),
+    safeInvoke('update_team_member_role', {
+      token: getTokenOrThrow(),
+      id: memberId,
+      memberId,
+      roleId,
+    }),
 
   remove: (memberId: string): Promise<void> =>
     safeInvoke('remove_team_member', { token: getTokenOrThrow(), id: memberId, memberId }),
@@ -1328,7 +1383,10 @@ export const mikrotik = {
         router_id: routerId,
         limit,
       }),
-    interfaceMetrics: (routerId: string, params?: { interface?: string; limit?: number }): Promise<any[]> =>
+    interfaceMetrics: (
+      routerId: string,
+      params?: { interface?: string; limit?: number },
+    ): Promise<any[]> =>
       safeInvoke('list_mikrotik_interface_metrics', {
         token: getTokenOrThrow(),
         routerId,
@@ -1399,7 +1457,10 @@ export const mikrotik = {
       safeInvoke('ack_mikrotik_incident', { token: getTokenOrThrow(), id }),
     resolve: (id: string): Promise<any> =>
       safeInvoke('resolve_mikrotik_incident', { token: getTokenOrThrow(), id }),
-    update: (id: string, payload: { ownerUserId?: string | null; notes?: string | null }): Promise<any> =>
+    update: (
+      id: string,
+      payload: { ownerUserId?: string | null; notes?: string | null },
+    ): Promise<any> =>
       safeInvoke('update_mikrotik_incident', {
         token: getTokenOrThrow(),
         id,
@@ -1598,6 +1659,38 @@ export const customers = {
       customer_id: customerId,
     }),
 
+  invites: {
+    list: (params?: {
+      include_inactive?: boolean;
+      limit?: number;
+    }): Promise<CustomerRegistrationInviteView[]> =>
+      safeInvoke('list_customer_registration_invites', {
+        token: getTokenOrThrow(),
+        include_inactive: params?.include_inactive,
+        includeInactive: params?.include_inactive,
+        limit: params?.limit,
+      }),
+    create: (dto?: {
+      expires_in_hours?: number;
+      max_uses?: number;
+      note?: string | null;
+    }): Promise<CustomerRegistrationInviteCreateResponse> =>
+      safeInvoke('create_customer_registration_invite', {
+        token: getTokenOrThrow(),
+        expires_in_hours: dto?.expires_in_hours,
+        expiresInHours: dto?.expires_in_hours,
+        max_uses: dto?.max_uses,
+        maxUses: dto?.max_uses,
+        note: dto?.note ?? undefined,
+      }),
+    revoke: (inviteId: string): Promise<void> =>
+      safeInvoke('revoke_customer_registration_invite', {
+        token: getTokenOrThrow(),
+        inviteId,
+        invite_id: inviteId,
+      }),
+  },
+
   locations: {
     list: (customerId: string): Promise<CustomerLocation[]> =>
       safeInvoke('list_customer_locations', {
@@ -1749,6 +1842,26 @@ export const customers = {
   portal: {
     myLocations: (): Promise<CustomerLocation[]> =>
       safeInvoke('list_my_customer_locations', { token: getTokenOrThrow() }),
+    myPackages: (): Promise<IspPackage[]> =>
+      safeInvoke('list_my_customer_packages', { token: getTokenOrThrow() }),
+    mySubscriptions: (params?: {
+      page?: number;
+      per_page?: number;
+    }): Promise<PaginatedResponse<CustomerSubscriptionView>> =>
+      safeInvoke('list_my_customer_subscriptions', {
+        token: getTokenOrThrow(),
+        page: params?.page,
+        per_page: params?.per_page,
+      }),
+    checkout: (dto: {
+      location_id: string;
+      package_id: string;
+      billing_cycle: 'monthly' | 'yearly' | string;
+    }): Promise<CustomerPortalCheckoutResponse> =>
+      safeInvoke('create_my_customer_subscription_invoice', {
+        token: getTokenOrThrow(),
+        ...dto,
+      }),
   },
 };
 
@@ -1847,7 +1960,10 @@ export const pppoe = {
         include_disabled: params?.include_disabled,
         includeDisabled: params?.include_disabled,
       }),
-    run: (routerId: string, dto: { usernames: string[]; customer_id?: string; location_id?: string }): Promise<any> =>
+    run: (
+      routerId: string,
+      dto: { usernames: string[]; customer_id?: string; location_id?: string },
+    ): Promise<any> =>
       safeInvoke('import_pppoe_from_router', {
         token: getTokenOrThrow(),
         routerId,
@@ -1861,9 +1977,20 @@ export const pppoe = {
 
 export const ispPackages = {
   packages: {
-    list: (params?: { q?: string; page?: number; per_page?: number }): Promise<PaginatedResponse<IspPackage>> =>
+    list: (params?: {
+      q?: string;
+      page?: number;
+      per_page?: number;
+    }): Promise<PaginatedResponse<IspPackage>> =>
       safeInvoke('list_isp_packages', { token: getTokenOrThrow(), ...(params || {}) }),
-    create: (dto: { name: string; description?: string | null; features?: string[]; is_active?: boolean; price_monthly?: number; price_yearly?: number }): Promise<IspPackage> =>
+    create: (dto: {
+      name: string;
+      description?: string | null;
+      features?: string[];
+      is_active?: boolean;
+      price_monthly?: number;
+      price_yearly?: number;
+    }): Promise<IspPackage> =>
       safeInvoke('create_isp_package', {
         token: getTokenOrThrow(),
         name: dto.name,
@@ -1876,7 +2003,17 @@ export const ispPackages = {
         price_monthly: dto.price_monthly ?? 0,
         price_yearly: dto.price_yearly ?? 0,
       }),
-    update: (id: string, dto: { name?: string; description?: string | null; features?: string[]; is_active?: boolean; price_monthly?: number; price_yearly?: number }): Promise<IspPackage> =>
+    update: (
+      id: string,
+      dto: {
+        name?: string;
+        description?: string | null;
+        features?: string[];
+        is_active?: boolean;
+        price_monthly?: number;
+        price_yearly?: number;
+      },
+    ): Promise<IspPackage> =>
       safeInvoke('update_isp_package', {
         token: getTokenOrThrow(),
         id,
@@ -1890,7 +2027,8 @@ export const ispPackages = {
         price_monthly: dto.price_monthly,
         price_yearly: dto.price_yearly,
       }),
-    delete: (id: string): Promise<void> => safeInvoke('delete_isp_package', { token: getTokenOrThrow(), id }),
+    delete: (id: string): Promise<void> =>
+      safeInvoke('delete_isp_package', { token: getTokenOrThrow(), id }),
   },
   routerMappings: {
     list: (params?: { router_id?: string }): Promise<IspPackageRouterMappingView[]> =>
@@ -1899,7 +2037,12 @@ export const ispPackages = {
         router_id: params?.router_id,
         routerId: params?.router_id,
       }),
-    upsert: (dto: { router_id: string; package_id: string; router_profile_name: string; address_pool?: string | null }): Promise<any> =>
+    upsert: (dto: {
+      router_id: string;
+      package_id: string;
+      router_profile_name: string;
+      address_pool?: string | null;
+    }): Promise<any> =>
       safeInvoke('upsert_isp_package_router_mapping', {
         token: getTokenOrThrow(),
         router_id: dto.router_id,
@@ -1964,7 +2107,15 @@ export const publicApi = {
     email: string,
     password: string,
     name: string,
-  ): Promise<AuthResponse> => safeInvoke('register_customer_by_domain', { email, password, name }),
+    inviteToken?: string | null,
+  ): Promise<AuthResponse> =>
+    safeInvoke('register_customer_by_domain', {
+      email,
+      password,
+      name,
+      inviteToken: inviteToken ?? undefined,
+      invite_token: inviteToken ?? undefined,
+    }),
 };
 
 // Settings API
@@ -2321,6 +2472,48 @@ export interface BulkGenerateInvoicesResult {
   failed_count: number;
 }
 
+export interface BillingCollectionRunResult {
+  evaluated_count: number;
+  reminder_sent_count: number;
+  reminder_skipped_count: number;
+  suspended_count: number;
+  resumed_count: number;
+  failed_count: number;
+}
+
+export interface BillingCollectionLogView {
+  id: string;
+  tenant_id: string;
+  invoice_id: string;
+  subscription_id: string | null;
+  action: string;
+  result: string;
+  reason: string | null;
+  actor_type: string;
+  actor_id: string | null;
+  created_at: string;
+  invoice_number: string | null;
+  invoice_status: string | null;
+  due_date: string | null;
+  subscription_status: string | null;
+  customer_name: string | null;
+}
+
+export interface InvoiceReminderLogView {
+  id: string;
+  tenant_id: string;
+  invoice_id: string;
+  reminder_code: string;
+  channel: string;
+  recipient: string | null;
+  status: string;
+  detail: string | null;
+  created_at: string;
+  invoice_number: string | null;
+  invoice_status: string | null;
+  due_date: string | null;
+}
+
 export const payment = {
   listBanks: (): Promise<BankAccount[]> =>
     safeInvoke('list_bank_accounts', { token: getTokenOrThrow() }),
@@ -2361,6 +2554,46 @@ export const payment = {
 
   generateDueCustomerPackageInvoices: (): Promise<BulkGenerateInvoicesResult> =>
     safeInvoke('generate_due_customer_package_invoices', { token: getTokenOrThrow() }),
+
+  listBillingCollectionLogs: (filters?: {
+    action?: string;
+    result?: string;
+    from?: string;
+    to?: string;
+    search?: string;
+    limit?: number;
+  }): Promise<BillingCollectionLogView[]> =>
+    safeInvoke('list_billing_collection_logs', {
+      token: getTokenOrThrow(),
+      action: filters?.action ?? null,
+      result: filters?.result ?? null,
+      from: filters?.from ?? null,
+      to: filters?.to ?? null,
+      search: filters?.search ?? null,
+      limit: filters?.limit ?? 200,
+    }),
+
+  listInvoiceReminderLogs: (filters?: {
+    reminderCode?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    search?: string;
+    limit?: number;
+  }): Promise<InvoiceReminderLogView[]> =>
+    safeInvoke('list_invoice_reminder_logs', {
+      token: getTokenOrThrow(),
+      reminderCode: filters?.reminderCode ?? null,
+      reminder_code: filters?.reminderCode ?? null,
+      status: filters?.status ?? null,
+      from: filters?.from ?? null,
+      to: filters?.to ?? null,
+      search: filters?.search ?? null,
+      limit: filters?.limit ?? 200,
+    }),
+
+  runBillingCollectionNow: (): Promise<BillingCollectionRunResult> =>
+    safeInvoke('run_billing_collection_now', { token: getTokenOrThrow() }),
 
   listAllInvoices: (): Promise<Invoice[]> =>
     safeInvoke('list_all_invoices', { token: getTokenOrThrow() }),

@@ -6,7 +6,12 @@
   import { get } from 'svelte/store';
   import { toast } from 'svelte-sonner';
   import { can } from '$lib/stores/auth';
-  import { api, type Customer, type PaginatedResponse } from '$lib/api/client';
+  import {
+    api,
+    type Customer,
+    type CustomerRegistrationInviteView,
+    type PaginatedResponse,
+  } from '$lib/api/client';
 
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
@@ -47,6 +52,18 @@
   let deleting = $state(false);
   let deleteTarget = $state<Customer | null>(null);
 
+  let showInviteModal = $state(false);
+  let inviteGenerating = $state(false);
+  let inviteLoading = $state(false);
+  let inviteRevokingId = $state<string | null>(null);
+  let inviteExpiresInHours = $state(24);
+  let inviteMaxUses = $state(1);
+  let inviteNote = $state('');
+  let inviteIncludeInactive = $state(true);
+  let inviteRows = $state<CustomerRegistrationInviteView[]>([]);
+  let generatedInviteUrl = $state('');
+  let generatedInviteExpiresAt = $state('');
+
   let stats = $derived({
     total,
     active: customers.filter((c) => c.is_active).length,
@@ -58,7 +75,7 @@
       goto('/unauthorized');
       return;
     }
-    await load();
+    await Promise.all([$can('manage', 'customers') ? loadInvites() : Promise.resolve(), load()]);
   });
 
   async function load() {
@@ -168,6 +185,100 @@
       deleting = false;
     }
   }
+
+  function isInviteExpired(invite: CustomerRegistrationInviteView) {
+    const ts = new Date(invite.expires_at).getTime();
+    return Number.isFinite(ts) && ts <= Date.now();
+  }
+
+  function isInviteUsedOut(invite: CustomerRegistrationInviteView) {
+    return invite.used_count >= invite.max_uses;
+  }
+
+  function inviteStatus(invite: CustomerRegistrationInviteView) {
+    if (invite.is_revoked) return 'revoked';
+    if (isInviteUsedOut(invite)) return 'used';
+    if (isInviteExpired(invite)) return 'expired';
+    return 'active';
+  }
+
+  function inviteStatusLabel(invite: CustomerRegistrationInviteView) {
+    const s = inviteStatus(invite);
+    if (s === 'revoked') return 'Revoked';
+    if (s === 'used') return 'Used';
+    if (s === 'expired') return 'Expired';
+    return 'Active';
+  }
+
+  async function loadInvites() {
+    if (!$can('manage', 'customers')) return;
+    inviteLoading = true;
+    try {
+      inviteRows = await api.customers.invites.list({
+        include_inactive: inviteIncludeInactive,
+        limit: 50,
+      });
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to load customer invite links');
+    } finally {
+      inviteLoading = false;
+    }
+  }
+
+  function openInviteModal() {
+    showInviteModal = true;
+    generatedInviteUrl = '';
+    generatedInviteExpiresAt = '';
+    inviteExpiresInHours = 24;
+    inviteMaxUses = 1;
+    inviteNote = '';
+    void loadInvites();
+  }
+
+  async function generateInvite() {
+    if (inviteGenerating) return;
+    inviteGenerating = true;
+    try {
+      const res = await api.customers.invites.create({
+        expires_in_hours: inviteExpiresInHours,
+        max_uses: inviteMaxUses,
+        note: inviteNote.trim() || null,
+      });
+      generatedInviteUrl = res.invite_url;
+      generatedInviteExpiresAt = res.invite.expires_at;
+      inviteNote = '';
+      toast.success('Invite link generated');
+      await loadInvites();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to generate invite link');
+    } finally {
+      inviteGenerating = false;
+    }
+  }
+
+  async function revokeInvite(inviteId: string) {
+    if (!inviteId || inviteRevokingId) return;
+    inviteRevokingId = inviteId;
+    try {
+      await api.customers.invites.revoke(inviteId);
+      toast.success('Invite link revoked');
+      await loadInvites();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to revoke invite');
+    } finally {
+      inviteRevokingId = null;
+    }
+  }
+
+  async function copyInviteLink(link: string) {
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success(get(t)('common.copied') || 'Copied');
+    } catch {
+      toast.error(get(t)('common.copy_failed') || 'Copy failed');
+    }
+  }
 </script>
 
 <div class="page-content fade-in">
@@ -184,6 +295,10 @@
         {$t('common.refresh') || 'Refresh'}
       </button>
       {#if $can('manage', 'customers')}
+        <button class="btn btn-secondary" onclick={openInviteModal}>
+          <Icon name="link" size={16} />
+          Invite Link
+        </button>
         <button class="btn btn-primary" onclick={() => (showCreate = true)}>
           <Icon name="plus" size={16} />
           {$t('admin.customers.actions.new') || 'New customer'}
@@ -367,6 +482,109 @@
         {$t('common.create') || 'Create'}
       </button>
     </div>
+  </div>
+</Modal>
+
+<Modal show={showInviteModal} title="Customer Invite Link" onclose={() => (showInviteModal = false)}>
+  <div class="form">
+    <div class="grid2">
+      <label>
+        <span>Expire (hours)</span>
+        <input
+          class="input"
+          type="number"
+          min="1"
+          max="720"
+          bind:value={inviteExpiresInHours}
+        />
+      </label>
+      <label>
+        <span>Max uses</span>
+        <input class="input" type="number" min="1" max="100" bind:value={inviteMaxUses} />
+      </label>
+    </div>
+    <label>
+      <span>Note (optional)</span>
+      <input class="input" bind:value={inviteNote} placeholder="Campaign/remark" />
+    </label>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick={generateInvite} disabled={inviteGenerating}>
+        <Icon name="plus" size={16} />
+        {inviteGenerating ? 'Generating...' : 'Generate Invite Link'}
+      </button>
+    </div>
+
+    {#if generatedInviteUrl}
+      <div class="invite-result">
+        <div class="invite-result-head">
+          <strong>Generated link</strong>
+          <small class="sub">
+            Expires: {new Date(generatedInviteExpiresAt).toLocaleString()}
+          </small>
+        </div>
+        <div class="invite-copy-row">
+          <input class="input mono" readonly value={generatedInviteUrl} />
+          <button class="btn btn-secondary" onclick={() => copyInviteLink(generatedInviteUrl)}>
+            <Icon name="link" size={16} />
+            {$t('common.copy') || 'Copy'}
+          </button>
+        </div>
+      </div>
+    {/if}
+
+    <div class="invite-list-head">
+      <strong>Recent invite links</strong>
+      <label class="inline-check">
+        <input
+          type="checkbox"
+          bind:checked={inviteIncludeInactive}
+          onchange={() => loadInvites()}
+        />
+        <span>Show inactive</span>
+      </label>
+    </div>
+
+    {#if inviteLoading}
+      <div class="muted">{$t('common.loading') || 'Loading...'}</div>
+    {:else if inviteRows.length === 0}
+      <div class="muted">No invite links yet.</div>
+    {:else}
+      <div class="invite-list">
+        {#each inviteRows as invite}
+          <div class="invite-item">
+            <div>
+              <div class="invite-meta">
+                <span class="pill" class:pill-green={inviteStatus(invite) === 'active'}>
+                  {inviteStatusLabel(invite)}
+                </span>
+                <span class="mono">
+                  Uses: {invite.used_count}/{invite.max_uses}
+                </span>
+              </div>
+              <div class="sub">
+                Created: {new Date(invite.created_at).toLocaleString()} · Expires: {new Date(
+                  invite.expires_at,
+                ).toLocaleString()}
+              </div>
+              {#if invite.note}
+                <div class="sub">{invite.note}</div>
+              {/if}
+            </div>
+            {#if inviteStatus(invite) === 'active'}
+              <button
+                class="btn btn-secondary"
+                onclick={() => revokeInvite(invite.id)}
+                disabled={inviteRevokingId === invite.id}
+              >
+                <Icon name="x" size={14} />
+                {inviteRevokingId === invite.id ? 'Revoking...' : 'Revoke'}
+              </button>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    {/if}
   </div>
 </Modal>
 
@@ -591,6 +809,70 @@
     font-size: 0.9rem;
   }
 
+  .invite-result {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0.75rem;
+    background: var(--bg-surface);
+    display: grid;
+    gap: 0.6rem;
+  }
+
+  .invite-result-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .invite-copy-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.6rem;
+    align-items: center;
+  }
+
+  .invite-list-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.4rem;
+  }
+
+  .inline-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+
+  .invite-list {
+    display: grid;
+    gap: 0.65rem;
+    max-height: 280px;
+    overflow: auto;
+    padding-right: 0.25rem;
+  }
+
+  .invite-item {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.7rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .invite-meta {
+    display: inline-flex;
+    gap: 0.55rem;
+    align-items: center;
+    margin-bottom: 0.25rem;
+  }
+
   @media (max-width: 900px) {
     .page-content {
       padding: 1rem;
@@ -608,6 +890,13 @@
     }
     .grid2 {
       grid-template-columns: 1fr;
+    }
+    .invite-copy-row {
+      grid-template-columns: 1fr;
+    }
+    .invite-item {
+      flex-direction: column;
+      align-items: stretch;
     }
   }
 </style>

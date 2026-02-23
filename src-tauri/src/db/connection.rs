@@ -497,6 +497,72 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
 
+    // Billing collection logs (SQLite)
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS invoice_reminder_logs (
+            id TEXT PRIMARY KEY NOT NULL,
+            tenant_id TEXT NOT NULL,
+            invoice_id TEXT NOT NULL,
+            reminder_code TEXT NOT NULL,
+            channel TEXT NOT NULL DEFAULT 'email',
+            recipient TEXT,
+            status TEXT NOT NULL DEFAULT 'sent',
+            detail TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+            FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS billing_collection_logs (
+            id TEXT PRIMARY KEY NOT NULL,
+            tenant_id TEXT NOT NULL,
+            invoice_id TEXT NOT NULL,
+            subscription_id TEXT,
+            action TEXT NOT NULL,
+            result TEXT NOT NULL,
+            reason TEXT,
+            actor_type TEXT NOT NULL DEFAULT 'system',
+            actor_id TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+            FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    // Customer registration invites (SQLite)
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS customer_registration_invites (
+            id TEXT PRIMARY KEY NOT NULL,
+            tenant_id TEXT NOT NULL,
+            token_hash TEXT NOT NULL UNIQUE,
+            created_by TEXT,
+            max_uses INTEGER NOT NULL DEFAULT 1,
+            used_count INTEGER NOT NULL DEFAULT 0,
+            expires_at TEXT NOT NULL,
+            is_revoked INTEGER NOT NULL DEFAULT 0,
+            revoked_at TEXT,
+            last_used_at TEXT,
+            note TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+            FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
     // Create bank_accounts table (SQLite)
     sqlx::query(
         r#"
@@ -584,6 +650,42 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
         .await
         .ok();
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_tenant_subscriptions_tenant ON tenant_subscriptions(tenant_id)").execute(pool).await.ok();
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_invoice_reminder_logs_tenant_created ON invoice_reminder_logs(tenant_id, created_at DESC)",
+    )
+    .execute(pool)
+    .await
+    .ok();
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_invoice_reminder_logs_invoice_created ON invoice_reminder_logs(invoice_id, created_at DESC)",
+    )
+    .execute(pool)
+    .await
+    .ok();
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_billing_collection_logs_tenant_created ON billing_collection_logs(tenant_id, created_at DESC)",
+    )
+    .execute(pool)
+    .await
+    .ok();
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_billing_collection_logs_invoice_created ON billing_collection_logs(invoice_id, created_at DESC)",
+    )
+    .execute(pool)
+    .await
+    .ok();
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_customer_registration_invites_tenant_created ON customer_registration_invites(tenant_id, created_at DESC)",
+    )
+    .execute(pool)
+    .await
+    .ok();
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_customer_registration_invites_tenant_expires ON customer_registration_invites(tenant_id, expires_at DESC)",
+    )
+    .execute(pool)
+    .await
+    .ok();
 
     info!("SQLite migrations completed");
 
@@ -787,6 +889,11 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
         ("customer_invoice_auto_generate_enabled", "true", "Enable automatic background generation for customer package invoices"),
         ("customer_invoice_generate_days_before_due", "7", "How many days before renewal to generate customer package invoice"),
         ("customer_invoice_scheduler_interval_minutes", "60", "How often background scheduler checks due customer invoices (minutes)"),
+        ("billing_auto_suspend_enabled", "false", "Automatically suspend unpaid customer subscriptions after grace period"),
+        ("billing_auto_suspend_grace_days", "3", "Grace period (days) after due date before auto suspend is allowed"),
+        ("billing_auto_resume_on_payment", "true", "Automatically resume suspended customer subscriptions when invoice is paid"),
+        ("billing_reminder_enabled", "true", "Enable automatic invoice reminder notifications"),
+        ("billing_reminder_schedule", "H-3,H-1,H+1,H+3", "Reminder schedule offsets around due date, comma separated"),
         // Alerting Settings
         ("alerting_enabled", "false", "Enable error alerting via email"),
         ("alerting_email", "", "Email address to receive alerts"),

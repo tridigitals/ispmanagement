@@ -97,6 +97,7 @@
     "clear": "Clear",
     "close": "Close",
     "copied": "Copied",
+    "copy": "Copy",
     "copy_failed": "Copy failed",
     "delete": "Delete",
     "edit": "Edit",
@@ -140,6 +141,7 @@
     "saved": "Saved",
     "save_changes": "Save Changes",
     "saving": "Saving...",
+    "processing": "Processing...",
     "loading": "Loading...",
     "updated": "Updated",
     "deleted": "Deleted",
@@ -382,6 +384,7 @@
     "tenants": "Tenants",
     "plans": "Plans",
     "invoices": "Invoices",
+    "billing_collection": "Billing Logs",
     "storage": "Storage",
     "subscription": "Subscription",
     "audit_logs": "Audit Logs",
@@ -401,6 +404,8 @@
     "ppp_profiles": "PPP Profiles",
     "ip_pools": "IP Pools",
     "packages": "Packages",
+    "packages_pending_alert": "There is a pending invoice. Please review package billing.",
+    "packages_overdue_alert": "There is an overdue invoice. Please review package billing.",
     "expand": "Expand sidebar",
     "collapse": "Collapse sidebar",
     "exit": "Exit",
@@ -1524,6 +1529,60 @@
         "title": "No announcements yet",
         "description": "When the team publishes updates, they will show up here.",
         "open": "Open announcements"
+      }
+    },
+    "packages": {
+      "title": "Internet Packages",
+      "subtitle": "Choose your package and generate an invoice instantly for payment.",
+      "fields": {
+        "location": "Location",
+        "billing_cycle": "Billing cycle"
+      },
+      "cycles": {
+        "monthly": "Monthly",
+        "yearly": "Yearly"
+      },
+      "current": {
+        "title": "Current subscription",
+        "none": "No active package on this location"
+      },
+      "actions": {
+        "buy": "Buy package",
+        "switch": "Switch package",
+        "current": "Current package"
+      },
+      "badges": {
+        "active": "Active"
+      },
+      "empty": {
+        "no_locations": "No locations available",
+        "no_locations_hint": "Ask admin to link your account with a customer location first.",
+        "no_packages": "No active packages yet",
+        "no_packages_hint": "Your admin has not published package catalog yet."
+      },
+      "toasts": {
+        "load_failed": "Failed to load package catalog",
+        "select_location": "Select a location first",
+        "yearly_unavailable": "Yearly billing is not available for this package",
+        "already_active": "This package is already active",
+        "checkout_success": "Invoice created. Continue to payment.",
+        "checkout_failed": "Checkout failed"
+      }
+    },
+    "portal_summary": {
+      "title": "Service Overview",
+      "health": "Status",
+      "active_package": "Active package",
+      "next_invoice": "Next invoice",
+      "no_pending_invoice": "No pending invoice",
+      "none": "-",
+      "due": "Due",
+      "manage_package": "Manage package",
+      "pay_now": "Pay now",
+      "status": {
+        "normal": "Normal",
+        "pending": "Pending invoice",
+        "overdue": "Overdue"
       }
     },
     "quick_actions": {
@@ -3120,6 +3179,77 @@
         "load_failed": "Failed to load invoices"
       }
     },
+    "billing_collection": {
+      "title": "Billing Collection Logs",
+      "subtitle": "Monitor reminder delivery, suspend/resume actions, and run collection manually.",
+      "tabs": {
+        "collection": "Collection Logs",
+        "reminders": "Reminder Logs"
+      },
+      "columns": {
+        "time": "Time",
+        "invoice": "Invoice",
+        "customer": "Customer",
+        "action": "Action",
+        "result": "Result",
+        "subscription_status": "Subscription",
+        "reason": "Reason",
+        "reminder_code": "Reminder",
+        "channel": "Channel",
+        "recipient": "Recipient",
+        "status": "Status",
+        "detail": "Detail"
+      },
+      "actions": {
+        "run_now": "Run Now",
+        "running": "Running...",
+        "export": "Export",
+        "reminder": "Reminder",
+        "suspend": "Suspend",
+        "resume": "Resume"
+      },
+      "export": {
+        "csv": "Export CSV",
+        "excel": "Export Excel"
+      },
+      "results": {
+        "success": "Success",
+        "failed": "Failed",
+        "skipped": "Skipped"
+      },
+      "reminders": {
+        "d7": "H-7",
+        "d3": "H-3",
+        "d0": "H-0"
+      },
+      "filters": {
+        "all_actions": "All actions",
+        "all_results": "All results",
+        "all_reminders": "All reminders",
+        "all_statuses": "All statuses",
+        "search_placeholder": "Search invoice/customer/reason...",
+        "search_reminder": "Search invoice/detail...",
+        "clear": "Clear"
+      },
+      "meta": {
+        "showing": "Showing"
+      },
+      "summary": {
+        "evaluated": "Evaluated",
+        "reminders_sent": "Reminders sent",
+        "suspended": "Suspended",
+        "resumed": "Resumed",
+        "failed": "Failed"
+      },
+      "toasts": {
+        "load_collection_failed": "Failed to load billing collection logs",
+        "load_reminders_failed": "Failed to load reminder logs",
+        "run_ok": "Billing collection run completed",
+        "run_failed": "Failed to run billing collection",
+        "no_data_export": "No data to export",
+        "export_ok": "Export completed"
+      }
+    },
     "package_invoices": {
       "statuses": {
         "pending": "Pending",
@@ -3146,6 +3276,7 @@
           "view_details": "View Details",
           "generate_invoice": "Generate Invoice",
           "creating": "Creating...",
+          "billing_logs": "Billing Logs",
           "generate_due_bulk": "Generate Due Invoices",
           "bulk_generating": "Generating..."
         },
