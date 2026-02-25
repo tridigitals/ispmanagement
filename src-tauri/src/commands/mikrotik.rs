@@ -5,8 +5,7 @@ use crate::models::{
     MikrotikInterfaceMetric, MikrotikIpPool, MikrotikLogEntry, MikrotikLogSyncResult,
     MikrotikPppProfile, MikrotikRouter, MikrotikRouterMetric, MikrotikRouterNocRow,
     MikrotikTestResult, PaginatedResponse, SimulateMikrotikIncidentRequest,
-    UpdateMikrotikIncidentRequest,
-    UpdateMikrotikRouterRequest,
+    UpdateMikrotikIncidentRequest, UpdateMikrotikRouterRequest,
 };
 use crate::services::{AuditService, AuthService, MikrotikService};
 use tauri::State;

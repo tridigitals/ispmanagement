@@ -19,6 +19,21 @@ const TENANT_KEY = 'auth_tenant';
 export const authVersion = writable(0);
 const ACTIVE_TENANT_SLUG_KEY = 'active_tenant_slug';
 
+function isAuthDebugEnabled(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const qs = new URLSearchParams(window.location.search);
+    return qs.get('debug_auth') === '1' || localStorage.getItem('debug_auth') === '1';
+  } catch {
+    return false;
+  }
+}
+
+function authDebugLog(message: string, meta?: Record<string, unknown>) {
+  if (!isAuthDebugEnabled()) return;
+  console.log(`[auth] ${message}`, meta || {});
+}
+
 // Get stored values (check local then session)
 function getStoredToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -184,6 +199,21 @@ export function setAuthData(
   user.set(mergedUser);
   if (newTenant) tenant.set(newTenant);
 
+  authDebugLog('set-auth-data', {
+    user_id: (mergedUser as any)?.id,
+    email: mergedUser?.email,
+    role: mergedUser?.role,
+    is_super_admin: (mergedUser as any)?.is_super_admin === true,
+    permissions_count: Array.isArray((mergedUser as any)?.permissions)
+      ? (mergedUser as any).permissions.length
+      : 0,
+    permissions: Array.isArray((mergedUser as any)?.permissions)
+      ? (mergedUser as any).permissions
+      : [],
+    tenant_slug: (mergedUser as any)?.tenant_slug || newTenant?.slug || null,
+    remember,
+  });
+
   if (typeof window === 'undefined') return;
 
   // Clear both first to ensure no duplicates
@@ -272,6 +302,19 @@ export async function checkAuth(): Promise<boolean> {
           currentUser.tenant_custom_domain || previousUser?.tenant_custom_domain || undefined,
       };
       user.set(normalizedUser);
+      authDebugLog('refresh-user', {
+        user_id: (normalizedUser as any)?.id,
+        email: normalizedUser?.email,
+        role: normalizedUser?.role,
+        is_super_admin: (normalizedUser as any)?.is_super_admin === true,
+        permissions_count: Array.isArray((normalizedUser as any)?.permissions)
+          ? (normalizedUser as any).permissions.length
+          : 0,
+        permissions: Array.isArray((normalizedUser as any)?.permissions)
+          ? (normalizedUser as any).permissions
+          : [],
+        tenant_slug: (normalizedUser as any)?.tenant_slug || null,
+      });
     } catch (e) {
       if (isUnauthorizedError(e)) {
         logout();

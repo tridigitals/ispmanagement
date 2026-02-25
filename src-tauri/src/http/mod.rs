@@ -48,6 +48,7 @@ pub mod team;
 pub mod tenant;
 pub mod users;
 pub mod websocket;
+pub mod work_orders;
 
 pub use websocket::{WsEvent, WsHub};
 
@@ -256,7 +257,7 @@ pub async fn start_server(
 
     // Initial static origins from env
     let env_origins_str = env::var("CORS_ALLOWED_ORIGINS").unwrap_or_else(|_| {
-        "http://localhost:5173,http://localhost:3000,http://localhost:1420,tauri://localhost,http://tauri.localhost,https://tauri.localhost,https://saas.tridigitals.com".to_string()
+        "http://localhost:5173,http://localhost:3000,http://localhost:1420,tauri://localhost,http://tauri.localhost,https://tauri.localhost,https://saas.tridigitals.com,https://billing.tridigitals.com".to_string()
     });
 
     let mut initial_set = HashSet::new();
@@ -265,11 +266,13 @@ pub async fn start_server(
         initial_set.insert(clean.to_string());
     }
 
+    let static_origins = initial_set.clone();
     let cors_cache = Arc::new(RwLock::new(initial_set));
 
     // 2. Spawn a background task to refresh the cache from DB every 30 seconds
     let cache_for_task = cors_cache.clone();
     let pool_for_task = pool.clone();
+    let static_origins_for_task = static_origins.clone();
 
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(30));
@@ -285,7 +288,7 @@ pub async fn start_server(
             match rows {
                 Ok(domains) => {
                     warned_missing_schema = false;
-                    let mut new_custom_domains = HashSet::new();
+                    let mut new_custom_domains = static_origins_for_task.clone();
                     for (d,) in domains {
                         let url_str = if d.starts_with("http") {
                             d
@@ -296,11 +299,10 @@ pub async fn start_server(
                         new_custom_domains.insert(clean_url);
                     }
 
-                    // Re-add env origins (so we don't lose them)
-                    // We parse env again or just clone a known set?
-                    // Simpler: Just ensure we keep the env ones.
-                    // Optimization: We could store env ones separately, but simpler to just merge.
-                    let env_origins_refresh = env::var("CORS_ALLOWED_ORIGINS").unwrap_or_default();
+                    // Re-add env origins from runtime value.
+                    // If env is missing, keep using the static fallback origins.
+                    let env_origins_refresh = env::var("CORS_ALLOWED_ORIGINS")
+                        .unwrap_or_else(|_| env_origins_str.clone());
                     for s in env_origins_refresh.split(',') {
                         if !s.trim().is_empty() {
                             let clean = s.trim().trim_end_matches('/');
@@ -466,6 +468,8 @@ pub async fn start_server(
         .nest("/api/announcements", announcements::router())
         // Customers + portal (tenant scoped)
         .nest("/api/customers", customers::router())
+        // Installation work orders (tenant scoped)
+        .nest("/api/admin/work-orders", work_orders::router())
         // PPPoE accounts (tenant scoped)
         .nest("/api/admin/pppoe", pppoe::router())
         // ISP packages + router mapping (tenant scoped)
@@ -552,10 +556,17 @@ pub async fn start_server(
             get(public::customer_registration_status_by_domain),
         )
         .route(
+            "/api/public/customer-invite/validate",
+            get(public::validate_customer_registration_invite_by_domain),
+        )
+        .route(
             "/api/public/customer-register",
             post(public::register_customer_by_domain),
         )
-        .route("/api/public/tenants/{slug}", get(public::get_tenant_by_slug))
+        .route(
+            "/api/public/tenants/{slug}",
+            get(public::get_tenant_by_slug),
+        )
         .route("/api/public/tenant/{slug}", get(public::get_tenant_by_slug))
         .route(
             "/api/public/domains/{domain}",

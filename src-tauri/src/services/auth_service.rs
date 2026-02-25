@@ -362,11 +362,12 @@ impl AuthService {
 
         #[cfg(feature = "sqlite")]
         let session_expires_at: Option<DateTime<Utc>> = {
-            let raw: Option<String> = sqlx::query_scalar("SELECT expires_at FROM sessions WHERE token = $1")
-                .bind(token)
-                .fetch_optional(&self.pool)
-                .await
-                .unwrap_or(None);
+            let raw: Option<String> =
+                sqlx::query_scalar("SELECT expires_at FROM sessions WHERE token = $1")
+                    .bind(token)
+                    .fetch_optional(&self.pool)
+                    .await
+                    .unwrap_or(None);
 
             raw.and_then(|v| {
                 chrono::DateTime::parse_from_rfc3339(&v)
@@ -1512,6 +1513,58 @@ impl AuthService {
             .await?
         {
             Ok(())
+        } else if resource == "customers" && action == "read_own" {
+            // Backward compatibility for legacy tenants:
+            // Some existing databases may have Customer role assignment without
+            // the newer explicit `customers:read_own` role_permission mapping.
+            // Allow this specific portal permission when role name is Customer.
+            #[cfg(feature = "postgres")]
+            let is_customer_role: bool = sqlx::query_scalar(
+                r#"
+                SELECT EXISTS(
+                    SELECT 1
+                    FROM tenant_members tm
+                    JOIN roles r ON tm.role_id = r.id
+                    WHERE tm.user_id = $1
+                      AND tm.tenant_id = $2
+                      AND lower(r.name) = 'customer'
+                )
+                "#,
+            )
+            .bind(user_id)
+            .bind(tenant_id)
+            .fetch_one(&self.pool)
+            .await?;
+
+            #[cfg(feature = "sqlite")]
+            let is_customer_role: bool = {
+                let raw: i64 = sqlx::query_scalar(
+                    r#"
+                    SELECT EXISTS(
+                        SELECT 1
+                        FROM tenant_members tm
+                        JOIN roles r ON tm.role_id = r.id
+                        WHERE tm.user_id = ?
+                          AND tm.tenant_id = ?
+                          AND lower(r.name) = 'customer'
+                    )
+                    "#,
+                )
+                .bind(user_id)
+                .bind(tenant_id)
+                .fetch_one(&self.pool)
+                .await?;
+                raw != 0
+            };
+
+            if is_customer_role {
+                Ok(())
+            } else {
+                Err(AppError::Forbidden(format!(
+                    "Permission denied: {}:{}",
+                    resource, action
+                )))
+            }
         } else {
             Err(AppError::Forbidden(format!(
                 "Permission denied: {}:{}",

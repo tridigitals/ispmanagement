@@ -54,6 +54,9 @@ impl RoleService {
             // ISP Packages (tenant scoped)
             ("isp_packages", "read", "View ISP packages"),
             ("isp_packages", "manage", "Manage ISP packages"),
+            // Installation work orders (tenant scoped)
+            ("work_orders", "read", "View installation work orders"),
+            ("work_orders", "manage", "Manage installation work orders"),
             // Billing / Payments (tenant scoped)
             ("billing", "read", "View billing and subscription data"),
             ("billing", "manage", "Manage billing actions"),
@@ -86,13 +89,14 @@ impl RoleService {
     }
 
     /// Default roles with their permissions
-    pub fn get_default_roles() -> Vec<(&'static str, &'static str, bool, Vec<&'static str>)> {
+    pub fn get_default_roles() -> Vec<(&'static str, &'static str, bool, i32, Vec<&'static str>)> {
         vec![
-            // (name, description, is_system, permissions)
+            // (name, description, is_system, level, permissions)
             (
                 "Owner",
                 "Full access to all features",
                 true,
+                100,
                 vec![
                     "team:create",
                     "team:read",
@@ -115,6 +119,8 @@ impl RoleService {
                     "pppoe:manage",
                     "isp_packages:read",
                     "isp_packages:manage",
+                    "work_orders:read",
+                    "work_orders:manage",
                     "billing:read",
                     "billing:manage",
                     "backups:read",
@@ -140,6 +146,7 @@ impl RoleService {
                 "Admin",
                 "Manage team and settings",
                 true,
+                50,
                 vec![
                     "team:create",
                     "team:read",
@@ -159,6 +166,8 @@ impl RoleService {
                     "pppoe:manage",
                     "isp_packages:read",
                     "isp_packages:manage",
+                    "work_orders:read",
+                    "work_orders:manage",
                     "billing:read",
                     "billing:manage",
                     "backups:read",
@@ -181,9 +190,80 @@ impl RoleService {
                 ],
             ),
             (
+                "NOC",
+                "Network operations center access for monitoring and provisioning",
+                true,
+                35,
+                vec![
+                    "dashboard:read",
+                    "customers:read",
+                    "customer_locations:read",
+                    "network_routers:read",
+                    "network_routers:manage",
+                    "pppoe:read",
+                    "pppoe:manage",
+                    "isp_packages:read",
+                    "work_orders:read",
+                    "work_orders:manage",
+                    "billing:read",
+                    "support:read",
+                    "support:read_all",
+                    "support:reply",
+                    "support:update",
+                    "support:internal",
+                    "announcements:read",
+                ],
+            ),
+            (
+                "Customer Service",
+                "Handle customers, tickets, and billing communication",
+                true,
+                25,
+                vec![
+                    "dashboard:read",
+                    "customers:read",
+                    "customers:manage",
+                    "customer_locations:read",
+                    "customer_locations:manage",
+                    "work_orders:read",
+                    "billing:read",
+                    "support:create",
+                    "support:read",
+                    "support:read_all",
+                    "support:reply",
+                    "support:update",
+                    "support:assign",
+                    "support:internal",
+                    "announcements:read",
+                ],
+            ),
+            (
+                "Technician",
+                "Field technician for installation and service activation tasks",
+                true,
+                20,
+                vec![
+                    "dashboard:read",
+                    "customers:read",
+                    "customer_locations:read",
+                    "network_routers:read",
+                    "pppoe:read",
+                    "pppoe:manage",
+                    "isp_packages:read",
+                    "work_orders:read",
+                    "work_orders:manage",
+                    "support:read",
+                    "support:read_all",
+                    "support:reply",
+                    "support:internal",
+                    "announcements:read",
+                ],
+            ),
+            (
                 "Member",
                 "Standard team member",
                 true,
+                10,
                 vec![
                     "team:read",
                     "dashboard:read",
@@ -193,11 +273,18 @@ impl RoleService {
                     "announcements:read",
                 ],
             ),
-            ("Viewer", "Read-only access", true, vec!["dashboard:read"]),
+            (
+                "Viewer",
+                "Read-only access",
+                true,
+                0,
+                vec!["dashboard:read"],
+            ),
             (
                 "Customer",
                 "Customer portal access (dashboard only)",
                 true,
+                0,
                 vec![
                     "dashboard:read",
                     "announcements:read",
@@ -260,7 +347,7 @@ impl RoleService {
         let now = Utc::now();
         let roles = Self::get_default_roles();
 
-        for (name, description, is_system, permission_keys) in roles {
+        for (name, description, is_system, level, permission_keys) in roles {
             // Check if role already exists
             #[cfg(feature = "postgres")]
             let existing: Option<(String,)> =
@@ -277,7 +364,30 @@ impl RoleService {
                     .await?;
 
             let role_id = if let Some((rid,)) = existing {
-                // Keep existing system roles, but still ensure they receive any newly added default permissions.
+                // Keep existing system roles, but still ensure metadata/level stays consistent.
+                #[cfg(feature = "postgres")]
+                sqlx::query(
+                    "UPDATE roles SET description = $1, is_system = $2, level = $3, updated_at = $4 WHERE id = $5",
+                )
+                .bind(description)
+                .bind(is_system)
+                .bind(level)
+                .bind(now)
+                .bind(&rid)
+                .execute(&self.pool)
+                .await?;
+
+                #[cfg(feature = "sqlite")]
+                sqlx::query(
+                    "UPDATE roles SET description = ?, is_system = ?, level = ?, updated_at = ? WHERE id = ?",
+                )
+                .bind(description)
+                .bind(is_system as i32)
+                .bind(level)
+                .bind(now.to_rfc3339())
+                .bind(&rid)
+                .execute(&self.pool)
+                .await?;
                 rid
             } else {
                 let role_id = Uuid::new_v4().to_string();
@@ -286,13 +396,14 @@ impl RoleService {
                 #[cfg(feature = "postgres")]
                 {
                     sqlx::query(r#"
-                        INSERT INTO roles (id, tenant_id, name, description, is_system, created_at, updated_at)
-                        VALUES ($1, NULL, $2, $3, $4, $5, $6)
+                        INSERT INTO roles (id, tenant_id, name, description, is_system, level, created_at, updated_at)
+                        VALUES ($1, NULL, $2, $3, $4, $5, $6, $7)
                     "#)
                     .bind(&role_id)
                     .bind(name)
                     .bind(description)
                     .bind(is_system)
+                    .bind(level)
                     .bind(now)
                     .bind(now)
                     .execute(&self.pool)
@@ -303,13 +414,14 @@ impl RoleService {
                 {
                     let now_str = now.to_rfc3339();
                     sqlx::query(r#"
-                        INSERT INTO roles (id, tenant_id, name, description, is_system, created_at, updated_at)
-                        VALUES (?, NULL, ?, ?, ?, ?, ?)
+                        INSERT INTO roles (id, tenant_id, name, description, is_system, level, created_at, updated_at)
+                        VALUES (?, NULL, ?, ?, ?, ?, ?, ?)
                     "#)
                     .bind(&role_id)
                     .bind(name)
                     .bind(description)
                     .bind(is_system as i32)
+                    .bind(level)
                     .bind(&now_str)
                     .bind(&now_str)
                     .execute(&self.pool)

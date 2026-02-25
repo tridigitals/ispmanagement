@@ -9,10 +9,12 @@
   import { formatMoney } from '$lib/utils/money';
   import Icon from '$lib/components/ui/Icon.svelte';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+  import Lightbox from '$lib/components/ui/Lightbox.svelte';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
-  import { user, tenant } from '$lib/stores/auth';
+  import { can, user, tenant, token } from '$lib/stores/auth';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
+  import { getApiBaseUrl } from '$lib/utils/apiUrl';
 
   let invoice = $state<Invoice | null>(null);
   let loading = $state(true);
@@ -21,6 +23,21 @@
   let error = $state('');
   let showConfirm = $state(false);
   let pendingVerifyStatus = $state<'paid' | 'failed'>('paid');
+  let showRejectModal = $state(false);
+  let rejectReason = $state('');
+  const rejectReasonOptions = $derived.by(() => [
+    get(t)('admin.package_invoices.detail.reject.options.blurry') || 'Proof image is unclear',
+    get(t)('admin.package_invoices.detail.reject.options.amount_mismatch') ||
+      'Transfer amount does not match invoice total',
+    get(t)('admin.package_invoices.detail.reject.options.wrong_destination') ||
+      'Transfer destination account is incorrect',
+    get(t)('admin.package_invoices.detail.reject.options.invalid_proof') ||
+      'Invalid or unrelated payment proof',
+    get(t)('admin.package_invoices.detail.reject.options.duplicate') ||
+      'Duplicate proof already used',
+  ]);
+  let showLightbox = $state(false);
+  let lightboxFiles = $state<any[]>([]);
 
   const tenantCtx = $derived.by(() =>
     resolveTenantContext({
@@ -36,6 +53,10 @@
   const billingLogsPath = $derived(`${tenantPrefix}/admin/invoices/collection`);
 
   onMount(() => {
+    if (!$can('read', 'billing') && !$can('manage', 'billing')) {
+      goto('/unauthorized');
+      return;
+    }
     void loadInvoice();
   });
 
@@ -96,11 +117,72 @@
     return map[status] || status;
   }
 
-  async function markPayment(status: 'paid' | 'failed') {
+  function isManualPaymentInvoice(row: Invoice | null): boolean {
+    if (!row) return false;
+    const method = String(row.payment_method || '').toLowerCase();
+    return (
+      row.status === 'verification_pending' ||
+      !!row.proof_attachment ||
+      method.includes('bank') ||
+      method.includes('manual')
+    );
+  }
+
+  function isOnlinePaymentInvoice(row: Invoice | null): boolean {
+    if (!row) return false;
+    return !isManualPaymentInvoice(row);
+  }
+
+  function paymentMethodLabel(row: Invoice | null): string {
+    if (!row) return '-';
+    if (isManualPaymentInvoice(row)) {
+      return get(t)('admin.package_invoices.detail.payment_methods.bank_transfer') || 'Bank Transfer';
+    }
+
+    const method = String(row.payment_method || '').toLowerCase();
+    if (method.includes('midtrans')) {
+      return get(t)('admin.package_invoices.detail.payment_methods.online_payment') || 'Online Payment';
+    }
+    if (!method) {
+      return get(t)('admin.package_invoices.detail.payment_methods.online_payment') || 'Online Payment';
+    }
+    return row.payment_method || '-';
+  }
+
+  function getProofUrl(fileId: string) {
+    const API_BASE = getApiBaseUrl();
+    const authParam = $token ? `?token=${encodeURIComponent($token)}` : '';
+    return `${API_BASE}/storage/files/${fileId}/content${authParam}`;
+  }
+
+  function openProofLightbox() {
+    const fileId = invoice?.proof_attachment;
+    if (!fileId) {
+      toast.error(
+        get(t)('admin.package_invoices.detail.errors.proof_not_available') ||
+          'Payment proof is not available yet',
+      );
+      return;
+    }
+
+    lightboxFiles = [
+      {
+        id: fileId,
+        original_name:
+          get(t)('admin.package_invoices.detail.payment_proof.title') || 'Payment Proof',
+        content_type: 'image/jpeg',
+        size: 0,
+        created_at: new Date().toISOString(),
+      },
+    ];
+    showLightbox = true;
+  }
+
+  async function markPayment(status: 'paid' | 'failed', rejectionReason?: string) {
     if (!invoice || processing) return;
     processing = true;
     try {
-      await api.payment.verifyCustomerPackagePayment(invoice.id, status);
+      await api.payment.verifyCustomerPackagePayment(invoice.id, status, rejectionReason);
       await loadInvoice();
       toast.success(
         (get(t)('admin.package_invoices.detail.toasts.marked') || 'Invoice marked as') + ` ${status}`,
@@ -117,6 +199,11 @@
   }
 
   function requestMarkPayment(status: 'paid' | 'failed') {
+    if (status === 'failed') {
+      rejectReason = '';
+      showRejectModal = true;
+      return;
+    }
     pendingVerifyStatus = status;
     showConfirm = true;
   }
@@ -124,6 +211,21 @@
   async function confirmMarkPayment() {
     await markPayment(pendingVerifyStatus);
     showConfirm = false;
+  }
+
+  async function submitRejectPayment() {
+    const reason = rejectReason.trim();
+    if (!reason) {
+      toast.error(
+        get(t)('admin.package_invoices.detail.reject.reason_required') || 'Rejection reason is required',
+      );
+      return;
+    }
+    await markPayment('failed', reason);
+    if (!processing) {
+      showRejectModal = false;
+      rejectReason = '';
+    }
   }
 </script>
 
@@ -202,17 +304,47 @@
               : '-'}</strong
           >
         </div>
+        <div class="field">
+          <span>{$t('admin.package_invoices.detail.labels.payment_method') || 'Payment Method'}</span>
+          <strong>{paymentMethodLabel(invoice)}</strong>
+        </div>
+        {#if invoice.status === 'failed' && invoice.rejection_reason}
+          <div class="field field-wide">
+            <span>{$t('admin.package_invoices.detail.labels.rejection_reason') || 'Rejection Reason'}</span>
+            <strong>{invoice.rejection_reason}</strong>
+          </div>
+        {/if}
       </div>
 
+      {#if invoice.proof_attachment}
+        <div class="proof-section">
+          <div class="proof-head">
+            <h2>{$t('admin.package_invoices.detail.payment_proof.title') || 'Payment Proof'}</h2>
+            <span class="proof-hint"
+              >{$t('admin.package_invoices.detail.payment_proof.hint') || 'Click image to enlarge'}</span
+            >
+          </div>
+          <button class="proof-image-button" type="button" onclick={openProofLightbox}>
+            <img
+              src={getProofUrl(invoice.proof_attachment)}
+              alt={$t('admin.package_invoices.detail.payment_proof.title') || 'Payment Proof'}
+              class="proof-image"
+            />
+          </button>
+        </div>
+      {/if}
+
       <div class="actions">
-        <button class="btn btn-secondary" onclick={checkStatus} disabled={checking}>
-          <Icon name="rotate-cw" size={16} />
-          <span
-            >{checking
-              ? $t('admin.package_invoices.detail.actions.checking') || 'Checking...'
-              : $t('admin.package_invoices.detail.actions.check_status') || 'Check Status'}</span
-          >
-        </button>
+        {#if isOnlinePaymentInvoice(invoice)}
+          <button class="btn btn-secondary" onclick={checkStatus} disabled={checking}>
+            <Icon name="rotate-cw" size={16} />
+            <span
+              >{checking
+                ? $t('admin.package_invoices.detail.actions.checking') || 'Checking...'
+                : $t('admin.package_invoices.detail.actions.check_status') || 'Check Status'}</span
+            >
+          </button>
+        {/if}
         {#if invoice.status === 'pending' || invoice.status === 'verification_pending'}
           <button class="btn btn-success" onclick={() => requestMarkPayment('paid')} disabled={processing}>
             <Icon name="check" size={16} />
@@ -231,14 +363,6 @@
             >
           </button>
         {/if}
-        {#if invoice.status !== 'pending'}
-          <button class="btn btn-secondary" onclick={() => goto(`/pay/${invoice?.id}`)}>
-            <Icon name="eye" size={16} />
-            <span
-              >{$t('admin.package_invoices.detail.actions.open_payment_page') || 'Open Payment Page'}</span
-            >
-          </button>
-        {/if}
       </div>
     </div>
   {/if}
@@ -247,7 +371,7 @@
 <style>
   .page-container {
     padding: clamp(1rem, 3vw, 2rem);
-    max-width: 1000px;
+    max-width: 1360px;
     margin: 0 auto;
   }
   .breadcrumb {
@@ -282,11 +406,15 @@
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.1rem;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color) 85%, transparent 15%);
   }
   .header-right {
     display: flex;
     gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
   .back-btn {
     border: 1px solid var(--border-color);
@@ -304,7 +432,7 @@
     border: 1px solid var(--border-color);
     background: var(--bg-surface);
     border-radius: 14px;
-    padding: 1rem;
+    padding: 1.15rem;
   }
   .state-card.error {
     color: var(--color-danger, #ef4444);
@@ -326,13 +454,16 @@
   }
   .grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.75rem;
   }
   .field {
     border: 1px solid var(--border-color);
     border-radius: 10px;
     padding: 0.7rem;
+  }
+  .field-wide {
+    grid-column: 1 / -1;
   }
   .field span {
     display: block;
@@ -348,6 +479,102 @@
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
+  }
+  .proof-section {
+    margin-top: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0.8rem;
+    background: color-mix(in srgb, var(--bg-surface) 92%, transparent 8%);
+  }
+  .proof-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-bottom: 0.55rem;
+  }
+  .proof-head h2 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+  .proof-hint {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+  }
+  .proof-image-button {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    display: block;
+    width: 100%;
+    cursor: zoom-in;
+  }
+  .proof-image {
+    width: 100%;
+    max-height: 360px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+  }
+  .reject-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    background: rgba(2, 6, 23, 0.62);
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+  }
+  .reject-modal {
+    width: min(560px, 100%);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: var(--bg-surface);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.42);
+    padding: 1rem;
+  }
+  .reject-modal h3 {
+    margin: 0 0 0.35rem;
+    font-size: 1.05rem;
+  }
+  .reject-modal p {
+    margin: 0 0 0.8rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+  .reject-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.6rem;
+  }
+  .reject-chip {
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-radius: 999px;
+    padding: 0.32rem 0.62rem;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+  .reject-reason-input {
+    width: 100%;
+    resize: vertical;
+    min-height: 92px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-radius: 10px;
+    padding: 0.62rem 0.7rem;
+    margin-bottom: 0.7rem;
+  }
+  .reject-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.45rem;
   }
   .status-pill {
     padding: 0.24rem 0.58rem;
@@ -414,6 +641,11 @@
       grid-template-columns: 1fr;
     }
   }
+  @media (max-width: 1200px) {
+    .grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
 </style>
 
 <ConfirmDialog
@@ -433,3 +665,43 @@
   onconfirm={confirmMarkPayment}
   loading={processing}
 />
+
+{#if showLightbox}
+  <Lightbox files={lightboxFiles} onclose={() => (showLightbox = false)} />
+{/if}
+
+{#if showRejectModal}
+  <div class="reject-modal-backdrop">
+    <div class="reject-modal">
+      <h3>{$t('admin.package_invoices.detail.reject.title') || 'Mark Invoice as Failed'}</h3>
+      <p>
+        {$t('admin.package_invoices.detail.reject.description') ||
+          'Provide a clear reason so customer can fix and re-upload payment proof.'}
+      </p>
+      <div class="reject-presets">
+        {#each rejectReasonOptions as opt}
+          <button class="reject-chip" type="button" onclick={() => (rejectReason = opt)}>
+            {opt}
+          </button>
+        {/each}
+      </div>
+      <textarea
+        class="reject-reason-input"
+        bind:value={rejectReason}
+        placeholder={$t('admin.package_invoices.detail.reject.placeholder') || 'Write rejection reason...'}
+      ></textarea>
+      <div class="reject-actions">
+        <button class="btn btn-secondary" type="button" onclick={() => (showRejectModal = false)}>
+          {$t('common.cancel') || 'Cancel'}
+        </button>
+        <button class="btn btn-danger" type="button" onclick={submitRejectPayment} disabled={processing}>
+          {#if processing}
+            {$t('admin.package_invoices.detail.actions.processing') || 'Processing...'}
+          {:else}
+            {$t('admin.package_invoices.detail.actions.mark_failed') || 'Mark Failed'}
+          {/if}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}

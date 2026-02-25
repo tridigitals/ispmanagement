@@ -26,6 +26,7 @@
   const MAX_STATUS_CHECK_ATTEMPTS = 20;
   let manualInstructions = $state('');
   let publicSettings = $state<any>({});
+  let returnPath = $derived($user?.role === 'admin' ? '/admin/subscription' : '/dashboard');
 
   onMount(async () => {
     try {
@@ -254,6 +255,17 @@
       currency,
     }).format(amount);
   }
+
+  function formatDateValue(value?: string | null) {
+    if (!value) return '-';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '-';
+    return new Intl.DateTimeFormat(publicSettings?.default_locale || 'id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(d);
+  }
   let fileInput = $state<HTMLInputElement | null>(null);
   let uploading = $state(false);
 
@@ -276,7 +288,9 @@
       // If this is a public invoice link for non-logged users, we'd need a public upload endpoint.
       // Assuming logged in for now as per `submit_payment_proof` requirement.
 
-      const uploadedFile = await api.storage.uploadFile(file);
+      const uploadedFile = await api.storage.uploadFile(file, {
+        paymentInvoiceId: invoice!.id,
+      });
 
       // 2. Submit proof path/url
       // We'll store the URL or ID. Let's store the URL for easy display.
@@ -312,100 +326,140 @@
 </script>
 
 <div class="checkout-page fade-in">
-  <div class="checkout-card">
+  <div class="invoice-shell">
     {#if loading}
-      <div class="loading">
-        {$t('payment.checkout.loading') || 'Loading invoice...'}
-      </div>
+      <div class="state">{$t('payment.checkout.loading') || 'Loading invoice...'}</div>
     {:else if invoice}
-      <div class="header">
+      <div class="invoice-head">
         <button
           class="back-link"
-          onclick={() =>
-            goto($user?.tenant_slug ? `/${$user.tenant_slug}/admin/subscription` : '/dashboard')}
+          onclick={() => goto(returnPath)}
         >
-          <Icon name="arrow-left" size={18} />
+          <Icon name="arrow-left" size={16} />
           <span>{$t('common.back') || 'Back'}</span>
         </button>
-        <h1>{$t('payment.checkout.title') || 'Checkout'}</h1>
-        <span class="invoice-number">#{invoice.invoice_number}</span>
-      </div>
-
-      <div class="summary-section">
-        <div class="item-row">
-          <span class="label">
-            {$t('payment.checkout.item') || 'Item'}
-          </span>
-          <span class="value">{invoice.description}</span>
+        <div class="head-title">
+          <h1>{$t('payment.checkout.title') || 'Checkout'}</h1>
+          <span class="invoice-number">#{invoice.invoice_number}</span>
         </div>
-        <div class="item-row total">
-          <span class="label">
-            {$t('payment.checkout.total') || 'Total'}
-          </span>
-          <span class="value">{formatCurrency(invoice.amount)}</span>
-        </div>
-        <div class="status-row">
-          <span class="label">
-            {$t('payment.checkout.status') || 'Status'}
-          </span>
+        <div class="head-right">
+          <span class="doc-mark">INVOICE</span>
           <span class="status-pill {invoice.status}">{invoice.status}</span>
         </div>
       </div>
 
-      {#if invoice.status === 'pending'}
-        <div class="payment-tabs">
-          {#if midtransEnabled}
-            <button
-              class="tab {paymentMethod === 'online' ? 'active' : ''}"
-              onclick={() => (paymentMethod = 'online')}
-            >
-              <Icon name="credit-card" size={18} />
-              {$t('payment.checkout.tabs.online') || 'Online Payment'}
-            </button>
-          {/if}
-          {#if manualEnabled}
-            <button
-              class="tab {paymentMethod === 'manual' ? 'active' : ''}"
-              onclick={() => (paymentMethod = 'manual')}
-            >
-              <Icon name="landmark" size={18} />
-              <!-- Bank icon -->
-              {$t('payment.checkout.tabs.manual') || 'Bank Transfer'}
-            </button>
-          {/if}
+      <div class="invoice-body">
+        <div class="party-grid">
+          <div class="party-card">
+            <span class="party-k">From</span>
+            <strong>{publicSettings?.app_name || 'ISP Management'}</strong>
+            <span>{publicSettings?.support_email || '-'}</span>
+            <span>{publicSettings?.company_phone || '-'}</span>
+          </div>
+          <div class="party-card">
+            <span class="party-k">Bill to</span>
+            <strong>{$user?.name || 'Customer'}</strong>
+            <span>{$user?.email || '-'}</span>
+            <span>{publicSettings?.tenant_name || '-'}</span>
+          </div>
         </div>
 
-        <div class="payment-content">
-          {#if paymentMethod === 'online' && midtransEnabled}
-            <div class="online-method">
-              <p>
+        <div class="meta-grid">
+          <div class="meta-item">
+            <span class="k">Invoice #</span>
+            <span class="v">{invoice.invoice_number}</span>
+          </div>
+          <div class="meta-item">
+            <span class="k">Created</span>
+            <span class="v">{formatDateValue(invoice.created_at)}</span>
+          </div>
+          <div class="meta-item">
+            <span class="k">Due date</span>
+            <span class="v">{formatDateValue(invoice.due_date)}</span>
+          </div>
+          <div class="meta-item">
+            <span class="k">{$t('payment.checkout.status') || 'Status'}</span>
+            <span class="status-pill {invoice.status}">{invoice.status}</span>
+          </div>
+        </div>
+
+        <div class="line-items">
+          <table class="invoice-table">
+            <thead>
+              <tr>
+                <th>{$t('payment.checkout.item') || 'Item'}</th>
+                <th>Unit Price</th>
+                <th>Qty</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{invoice.description || '-'}</td>
+                <td>{formatCurrency(invoice.amount)}</td>
+                <td>1</td>
+                <td>{formatCurrency(invoice.amount)}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="totals-box">
+            <div><span>Subtotal</span><strong>{formatCurrency(invoice.amount)}</strong></div>
+            <div><span>Tax</span><strong>{formatCurrency(0)}</strong></div>
+            <div class="grand-total">
+              <span>{$t('payment.checkout.total') || 'Total'}</span>
+              <strong>{formatCurrency(invoice.amount)}</strong>
+            </div>
+          </div>
+        </div>
+
+        {#if invoice.status === 'pending'}
+          <div class="method-tabs">
+            {#if midtransEnabled}
+              <button
+                class="method-tab {paymentMethod === 'online' ? 'active' : ''}"
+                onclick={() => (paymentMethod = 'online')}
+              >
+                <Icon name="credit-card" size={16} />
+                {$t('payment.checkout.tabs.online') || 'Online Payment'}
+              </button>
+            {/if}
+            {#if manualEnabled}
+              <button
+                class="method-tab {paymentMethod === 'manual' ? 'active' : ''}"
+                onclick={() => (paymentMethod = 'manual')}
+              >
+                <Icon name="landmark" size={16} />
+                {$t('payment.checkout.tabs.manual') || 'Bank Transfer'}
+              </button>
+            {/if}
+          </div>
+
+          <div class="payment-block">
+            {#if paymentMethod === 'online' && midtransEnabled}
+              <p class="helper">
                 {$t('payment.checkout.online.description') ||
                   'Pay securely with Credit Card, GoPay, ShopeePay, or Virtual Account via Midtrans.'}
               </p>
-              <button class="btn btn-primary btn-lg w-full" onclick={handlePayOnline}>
+              <button class="btn btn-primary w-full" onclick={handlePayOnline}>
                 {$t('payment.checkout.online.pay_now') || 'Pay Now'}
               </button>
-              <div style="margin-top: 1rem;">
-                <button
-                  class="btn btn-secondary w-full"
-                  onclick={() =>
-                    checkPaymentStatus({
-                      silent: false,
-                      notifyOnChange: true,
-                    })}
-                  disabled={autoChecking}
-                >
-                  {#if autoChecking}
-                    {$t('payment.checkout.online.checking') || 'Checking...'}
-                  {:else}
-                    {$t('payment.checkout.online.check_status') || 'Check Payment Status'}
-                  {/if}
-                </button>
-              </div>
-            </div>
-          {:else if paymentMethod === 'manual' && manualEnabled}
-            <div class="manual-method">
-              <p class="instructions">
+              <button
+                class="btn btn-secondary w-full"
+                onclick={() =>
+                  checkPaymentStatus({
+                    silent: false,
+                    notifyOnChange: true,
+                  })}
+                disabled={autoChecking}
+              >
+                {#if autoChecking}
+                  {$t('payment.checkout.online.checking') || 'Checking...'}
+                {:else}
+                  {$t('payment.checkout.online.check_status') || 'Check Payment Status'}
+                {/if}
+              </button>
+            {:else if paymentMethod === 'manual' && manualEnabled}
+              <p class="helper">
                 {$t('payment.checkout.manual.instructions') ||
                   'Please transfer the exact amount to one of the following accounts:'}
               </p>
@@ -413,18 +467,16 @@
               <div class="bank-list">
                 {#each bankAccounts as bank}
                   <div class="bank-item">
-                    <div class="bank-name">
-                      {bank.bank_name}
-                    </div>
-                    <div class="bank-details">
-                      <span class="number">{bank.account_number}</span>
+                    <div class="bank-left">
+                      <strong>{bank.bank_name}</strong>
                       <span class="holder">{bank.account_holder}</span>
                     </div>
+                    <span class="number">{bank.account_number}</span>
                   </div>
                 {/each}
               </div>
 
-              <div class="upload-section">
+              <div class="upload-card">
                 <p>
                   {$t('payment.checkout.manual.upload_hint') ||
                     'Already transferred? Upload your receipt.'}
@@ -444,60 +496,93 @@
                   {#if uploading}
                     {$t('payment.checkout.manual.uploading') || 'Uploading...'}
                   {:else}
-                    <Icon name="upload" size={18} />
+                    <Icon name="upload" size={16} />
                     {$t('payment.checkout.manual.upload') || 'Upload Proof of Payment'}
                   {/if}
                 </button>
               </div>
+            {/if}
+          </div>
+        {:else if invoice.status === 'verification_pending'}
+          <div class="state-card">
+            <div class="icon-circle pending">
+              <Icon name="clock" size={26} />
             </div>
-          {/if}
-        </div>
-      {:else if invoice.status === 'verification_pending'}
-        <div class="pending-message">
-          <div class="icon-circle pending">
-            <Icon name="clock" size={32} />
+            <h3>{$t('payment.checkout.pending.title') || 'Payment Verification Pending'}</h3>
+            <p>
+              {$t('payment.checkout.pending.message') ||
+                'We have received your payment proof. Our team is verifying it. We will notify you once approved.'}
+            </p>
+            <button
+              class="btn btn-secondary"
+              onclick={() => goto(returnPath)}
+            >
+              {$t('payment.checkout.pending.back') || 'Return to Dashboard'}
+            </button>
           </div>
-          <h3>
-            {$t('payment.checkout.pending.title') || 'Payment Verification Pending'}
-          </h3>
-          <p>
-            {$t('payment.checkout.pending.message') ||
-              'We have received your payment proof. Our team is verifying it. We will notify you once approved.'}
-          </p>
-          <button
-            class="btn btn-secondary"
-            onclick={() =>
-              goto($user?.tenant_slug ? `/${$user.tenant_slug}/admin/subscription` : '/dashboard')}
-          >
-            {$t('payment.checkout.pending.back') || 'Return to Dashboard'}
-          </button>
-          <!-- Allow re-upload in case of mistake? Optional. -->
-        </div>
-      {:else if invoice.status === 'paid'}
-        <div class="success-message">
-          <div class="icon-circle success">
-            <Icon name="check" size={32} />
+        {:else if invoice.status === 'paid'}
+          <div class="state-card">
+            <div class="icon-circle success">
+              <Icon name="check" size={26} />
+            </div>
+            <h3>{$t('payment.checkout.success.title') || 'Payment Successful!'}</h3>
+            <p>
+              {$t('payment.checkout.success.message') ||
+                'Thank you for your payment. Your subscription has been activated.'}
+            </p>
+            <button
+              class="btn btn-primary"
+              onclick={() => goto(returnPath)}
+            >
+              {$t('payment.checkout.success.cta') || 'Go to Subscription'}
+            </button>
           </div>
-          <h3>
-            {$t('payment.checkout.success.title') || 'Payment Successful!'}
-          </h3>
-          <p>
-            {$t('payment.checkout.success.message') ||
-              'Thank you for your payment. Your subscription has been activated.'}
-          </p>
-          <button
-            class="btn btn-primary"
-            onclick={() =>
-              goto($user?.tenant_slug ? `/${$user.tenant_slug}/admin/subscription` : '/dashboard')}
-          >
-            {$t('payment.checkout.success.cta') || 'Go to Subscription'}
-          </button>
-        </div>
-      {/if}
-    {:else}
-      <div class="error">
-        {$t('payment.checkout.not_found') || 'Invoice not found'}
+        {:else if invoice.status === 'failed'}
+          <div class="state-card">
+            <div class="icon-circle failed">
+              <Icon name="circle-alert" size={26} />
+            </div>
+            <h3>{$t('payment.checkout.failed.title') || 'Payment Verification Failed'}</h3>
+            <p>
+              {$t('payment.checkout.failed.message') ||
+                'Your payment proof was rejected. Please check the reason below and upload a new proof.'}
+            </p>
+            {#if invoice.rejection_reason}
+              <div class="failed-reason">
+                <span>{$t('payment.checkout.failed.reason_label') || 'Reason'}</span>
+                <strong>{invoice.rejection_reason}</strong>
+              </div>
+            {/if}
+            <div class="upload-card">
+              <p>
+                {$t('payment.checkout.failed.reupload_hint') ||
+                  'After re-transfering, upload your new payment proof.'}
+              </p>
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                onchange={handleFileUpload}
+                style="display: none;"
+                bind:this={fileInput}
+              />
+              <button
+                class="btn btn-secondary w-full"
+                onclick={() => fileInput?.click()}
+                disabled={uploading}
+              >
+                {#if uploading}
+                  {$t('payment.checkout.manual.uploading') || 'Uploading...'}
+                {:else}
+                  <Icon name="upload" size={16} />
+                  {$t('payment.checkout.failed.upload_again') || 'Upload Proof Again'}
+                {/if}
+              </button>
+            </div>
+          </div>
+        {/if}
       </div>
+    {:else}
+      <div class="state">{$t('payment.checkout.not_found') || 'Invoice not found'}</div>
     {/if}
   </div>
 </div>
@@ -505,47 +590,82 @@
 <style>
   .checkout-page {
     min-height: 100vh;
-    background: var(--bg-app);
+    background:
+      radial-gradient(
+        1200px 600px at 10% -10%,
+        color-mix(in srgb, var(--accent-primary) 14%, transparent),
+        transparent
+      ),
+      radial-gradient(
+        900px 500px at 110% 110%,
+        color-mix(in srgb, var(--accent-primary) 10%, transparent),
+        transparent
+      ),
+      var(--bg-app);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
+    padding: clamp(0.75rem, 2vw, 1.5rem);
   }
 
-  .checkout-card {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
+  .invoice-shell {
     width: 100%;
-    max-width: 480px;
-    box-shadow: var(--shadow-lg);
+    max-width: 820px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 88%, #ffffff12);
+    border-radius: 22px;
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--bg-surface) 95%, #131827 5%) 0%,
+        color-mix(in srgb, var(--bg-surface) 92%, #0f1320 8%) 100%
+      );
+    box-shadow:
+      0 26px 70px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
     overflow: hidden;
-  }
-
-  .header {
-    padding: 1.5rem;
-    border-bottom: 1px solid var(--border-color);
-    background: var(--bg-tertiary);
-    text-align: center;
     position: relative;
   }
 
-  .back-link {
+  .invoice-shell::before {
+    content: '';
     position: absolute;
-    left: 1.5rem;
-    top: 50%;
-    transform: translateY(-50%);
-    display: flex;
+    inset: 0;
+    background:
+      radial-gradient(
+        600px 220px at 85% -15%,
+        color-mix(in srgb, var(--accent-primary) 14%, transparent),
+        transparent
+      ),
+      linear-gradient(transparent, transparent);
+    pointer-events: none;
+  }
+
+  .invoice-head {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
-    gap: 0.5rem;
+    gap: 1rem;
+    padding: 1.15rem 1.2rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color) 82%, transparent);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-tertiary) 88%, transparent),
+      color-mix(in srgb, var(--bg-tertiary) 70%, transparent)
+    );
+    position: relative;
+    z-index: 1;
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
     background: transparent;
-    border: none;
+    border: 1px solid transparent;
     color: var(--text-secondary);
-    font-weight: 500;
     cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 6px;
-    transition: all 0.2s;
+    border-radius: 10px;
+    padding: 0.4rem 0.5rem;
   }
 
   .back-link:hover {
@@ -553,212 +673,442 @@
     color: var(--text-primary);
   }
 
-  .header h1 {
+  .head-title h1 {
     margin: 0;
-    font-size: 1.5rem;
+    line-height: 1.2;
+    font-size: clamp(1.28rem, 2.2vw, 1.64rem);
+    letter-spacing: -0.01em;
   }
+
   .invoice-number {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+      'Courier New', monospace;
     color: var(--text-secondary);
-    font-size: 0.9rem;
-    font-family: monospace;
+    font-size: 0.82rem;
   }
 
-  .summary-section {
-    padding: 1.5rem;
-    background: var(--bg-surface);
+  .head-right {
+    display: grid;
+    justify-items: end;
+    gap: 0.35rem;
   }
 
-  .item-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-    font-size: 0.95rem;
-  }
-
-  .item-row.total {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px dashed var(--border-color);
+  .doc-mark {
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--accent-primary) 70%, var(--text-secondary));
     font-weight: 700;
-    font-size: 1.2rem;
   }
 
-  .status-row {
+  .invoice-body {
+    padding: 1.05rem 1.2rem 1.3rem;
+    display: grid;
+    gap: 1.1rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .party-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem;
+  }
+
+  .party-card {
+    display: grid;
+    gap: 0.2rem;
+    border: 1px dashed color-mix(in srgb, var(--border-color) 88%, #ffffff12);
+    border-radius: 12px;
+    padding: 0.7rem 0.8rem;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-secondary) 58%, transparent),
+      color-mix(in srgb, var(--bg-secondary) 44%, transparent)
+    );
+  }
+
+  .party-k {
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+  }
+
+  .party-card strong {
+    font-size: 1rem;
+  }
+
+  .party-card span {
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+  }
+
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.9rem;
+    border-bottom: 1px dashed color-mix(in srgb, var(--border-color) 85%, #ffffff12);
+    padding-bottom: 0.9rem;
+  }
+
+  .meta-item {
+    display: grid;
+    gap: 0.35rem;
+    border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+    border-radius: 10px;
+    padding: 0.58rem 0.64rem;
+    background: color-mix(in srgb, var(--bg-secondary) 38%, transparent);
+  }
+
+  .meta-item .k {
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+  }
+
+  .meta-item .v {
+    color: var(--text-primary);
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+
+  .line-items {
+    display: grid;
+    gap: 0.82rem;
+  }
+
+  .invoice-table {
+    width: 100%;
+    border-collapse: collapse;
+    overflow: hidden;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+  }
+
+  .invoice-table th {
+    text-align: left;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: color-mix(in srgb, #ffffff 88%, var(--text-secondary));
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--accent-primary) 78%, #22d3ee 22%),
+      color-mix(in srgb, var(--accent-primary) 55%, #0891b2 45%)
+    );
+    padding: 0.72rem 0.75rem;
+  }
+
+  .invoice-table td {
+    padding: 0.72rem 0.75rem;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.92rem;
+  }
+
+  .invoice-table th:nth-child(3),
+  .invoice-table td:nth-child(3) {
+    width: 60px;
+    text-align: center;
+  }
+
+  .invoice-table th:nth-child(2),
+  .invoice-table td:nth-child(2),
+  .invoice-table th:nth-child(4),
+  .invoice-table td:nth-child(4) {
+    width: 160px;
+    text-align: right;
+  }
+
+  .totals-box {
+    margin-left: auto;
+    min-width: min(100%, 340px);
+    border: 1px solid color-mix(in srgb, var(--border-color) 80%, #ffffff12);
+    border-radius: 12px;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-secondary) 58%, transparent),
+      color-mix(in srgb, var(--bg-secondary) 45%, transparent)
+    );
+    padding: 0.72rem 0.8rem;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .totals-box > div {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 1rem;
+    gap: 1rem;
+    font-size: 0.92rem;
+  }
+
+  .totals-box > div > span {
+    color: var(--text-secondary);
+  }
+
+  .grand-total {
+    border-top: 1px dashed var(--border-color);
+    padding-top: 0.5rem;
+    font-size: 1rem;
+  }
+
+  .grand-total strong {
+    font-size: 1.2rem;
   }
 
   .status-pill {
-    padding: 0.2rem 0.6rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
+    padding: 0.28rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
     font-weight: 700;
     text-transform: uppercase;
   }
-  .status-pill.pending {
+
+  .status-pill.pending,
+  .status-pill.verification_pending {
     background: #fef3c7;
     color: #d97706;
   }
+
   .status-pill.paid {
     background: #dcfce7;
     color: #16a34a;
   }
+
   .status-pill.failed {
     background: #fee2e2;
     color: #dc2626;
   }
 
-  /* Tabs */
-  .payment-tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border-color);
+  .method-tabs {
+    display: inline-flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
   }
 
-  .tab {
-    flex: 1;
-    padding: 1rem;
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
+  .method-tab {
+    border: 1px solid color-mix(in srgb, var(--border-color) 86%, #ffffff12);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-radius: 999px;
+    padding: 0.45rem 0.8rem;
     cursor: pointer;
-    font-weight: 500;
-    color: var(--text-secondary);
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    transition: all 0.2s;
+    gap: 0.35rem;
+    font-size: 0.86rem;
+    font-weight: 600;
   }
 
-  .tab.active {
-    color: var(--color-primary);
-    border-bottom-color: var(--color-primary);
-    background: var(--color-primary-subtle);
+  .method-tab.active {
+    color: var(--accent-primary);
+    border-color: color-mix(in srgb, var(--accent-primary) 55%, var(--border-color));
+    background: color-mix(in srgb, var(--accent-primary) 14%, transparent);
   }
 
-  .payment-content {
-    padding: 1.5rem;
+  .payment-block {
+    display: grid;
+    gap: 0.85rem;
+    border: 1px solid color-mix(in srgb, var(--border-color) 80%, #ffffff0f);
+    border-radius: 14px;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-secondary) 68%, transparent),
+      color-mix(in srgb, var(--bg-secondary) 58%, transparent)
+    );
+    padding: 0.95rem;
   }
 
-  .online-method p {
+  .helper {
+    margin: 0;
     color: var(--text-secondary);
-    margin-bottom: 1.5rem;
-    text-align: center;
     font-size: 0.9rem;
+    line-height: 1.45;
   }
 
   .bank-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+    display: grid;
+    gap: 0.65rem;
   }
 
   .bank-item {
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 1rem;
-    background: var(--bg-app);
-  }
-
-  .bank-name {
-    font-weight: 700;
-    margin-bottom: 0.25rem;
-  }
-  .bank-details {
+    border: 1px solid color-mix(in srgb, var(--border-color) 84%, #ffffff10);
+    border-radius: 10px;
+    background: var(--bg-surface);
+    padding: 0.7rem 0.75rem;
     display: flex;
     justify-content: space-between;
-    font-size: 0.9rem;
-    color: var(--text-secondary);
+    gap: 0.8rem;
+    align-items: center;
   }
+
+  .bank-left {
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  .holder {
+    color: var(--text-secondary);
+    font-size: 0.83rem;
+  }
+
   .number {
-    font-family: monospace;
-    font-size: 1rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+      'Courier New', monospace;
+    font-weight: 700;
+    font-size: 0.92rem;
     color: var(--text-primary);
+  }
+
+  .upload-card {
+    border-top: 1px dashed var(--border-color);
+    padding-top: 0.8rem;
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .upload-card p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
   }
 
   .btn {
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 600;
-    border: none;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 0.66rem 0.95rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
+    gap: 0.45rem;
+  }
+
+  .btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
   }
 
   .btn-primary {
-    background: var(--color-primary);
-    color: white;
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-primary) 85%, #22d3ee 15%),
+      var(--color-primary)
+    );
+    color: #fff;
   }
+
   .btn-secondary {
     background: var(--bg-tertiary);
     color: var(--text-primary);
-    border: 1px solid var(--border-color);
+    border-color: var(--border-color);
   }
+
   .w-full {
     width: 100%;
   }
-  .btn-lg {
-    font-size: 1rem;
-    padding: 1rem;
+
+  .state {
+    padding: 2rem 1.25rem;
+    text-align: center;
+    color: var(--text-secondary);
   }
 
-  .loading,
-  .error {
+  .state-card {
+    border: 1px solid color-mix(in srgb, var(--border-color) 82%, #ffffff10);
+    border-radius: 14px;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-secondary) 62%, transparent),
+      color-mix(in srgb, var(--bg-secondary) 50%, transparent)
+    );
+    padding: 1.4rem;
+    display: grid;
+    justify-items: center;
     text-align: center;
-    padding: 2rem;
+    gap: 0.55rem;
   }
 
-  .success-message {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    padding: 2rem;
+  .state-card h3 {
+    margin: 0.1rem 0 0;
   }
-  .icon-circle.success {
-    width: 64px;
-    height: 64px;
-    background: #dcfce7;
-    color: #16a34a;
+
+  .state-card p {
+    margin: 0;
+    color: var(--text-secondary);
+    max-width: 46ch;
+    line-height: 1.45;
+  }
+
+  .icon-circle {
+    width: 58px;
+    height: 58px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 1rem;
   }
 
-  .pending-message {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    padding: 2rem;
+  .icon-circle.success {
+    background: #dcfce7;
+    color: #16a34a;
   }
 
   .icon-circle.pending {
-    width: 64px;
-    height: 64px;
     background: #fef3c7;
     color: #d97706;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 1rem;
   }
 
-  .upload-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-    text-align: center;
+  .icon-circle.failed {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+
+  .failed-reason {
+    width: min(100%, 46ch);
+    border: 1px solid color-mix(in srgb, var(--color-danger) 28%, var(--border-color));
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+    padding: 0.7rem 0.75rem;
+    margin-top: 0.2rem;
+  }
+
+  .failed-reason span {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.2rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .failed-reason strong {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  @media (max-width: 760px) {
+    .invoice-head {
+      grid-template-columns: 1fr;
+      justify-items: flex-start;
+      gap: 0.45rem;
+    }
+
+    .head-right {
+      justify-items: flex-start;
+    }
+
+    .party-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .meta-grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

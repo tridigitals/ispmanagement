@@ -112,6 +112,12 @@
 
     return list;
   });
+  const stats = $derived.by(() => ({
+    total: rows.length,
+    open: rows.filter((r) => r.status === 'open').length,
+    ack: rows.filter((r) => r.status === 'ack').length,
+    critical: rows.filter((r) => r.severity === 'critical').length,
+  }));
 
   onMount(() => {
     if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
@@ -260,6 +266,37 @@
     {/snippet}
   </NetworkPageHeader>
 
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-top">
+        <span>{$t('common.total') || 'Total'}</span>
+        <Icon name="activity" size={16} />
+      </div>
+      <div class="stat-value">{stats.total}</div>
+    </div>
+    <div class="stat-card tone-warn">
+      <div class="stat-top">
+        <span>{$t('admin.network.alerts.filters.all_status') || 'Open'}</span>
+        <Icon name="alert-triangle" size={16} />
+      </div>
+      <div class="stat-value">{stats.open}</div>
+    </div>
+    <div class="stat-card tone-ok">
+      <div class="stat-top">
+        <span>{$t('admin.network.incidents.analytics.ack') || 'Ack'}</span>
+        <Icon name="check-circle" size={16} />
+      </div>
+      <div class="stat-value">{stats.ack}</div>
+    </div>
+    <div class="stat-card tone-bad">
+      <div class="stat-top">
+        <span>{$t('admin.network.alerts.severity.critical') || 'Critical'}</span>
+        <Icon name="shield-alert" size={16} />
+      </div>
+      <div class="stat-value">{stats.critical}</div>
+    </div>
+  </div>
+
   <div class="table-wrap">
     <NetworkFilterPanel>
       <div class="control">
@@ -382,6 +419,45 @@
 <style>
   .page-content {
     padding: 28px;
+    max-width: 1460px;
+    margin: 0 auto;
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 14px 14px 12px;
+  }
+  .stat-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-secondary);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+  }
+  .stat-value {
+    margin-top: 10px;
+    font-size: 1.6rem;
+    font-weight: 950;
+    color: var(--text-primary);
+  }
+  .tone-ok {
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.15) inset;
+  }
+  .tone-bad {
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.16) inset;
+  }
+  .tone-warn {
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.16) inset;
   }
 
   .btn {
@@ -406,6 +482,7 @@
     border: 1px solid var(--border-color);
     border-radius: 18px;
     overflow: hidden;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
   }
 
   .cell-title .row-top {
@@ -475,6 +552,14 @@
   @media (max-width: 900px) {
     .page-content {
       padding: 18px;
+    }
+    .stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 640px) {
+    .stats {
+      grid-template-columns: 1fr;
     }
   }
 </style>

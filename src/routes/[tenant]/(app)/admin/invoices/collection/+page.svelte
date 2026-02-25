@@ -6,7 +6,7 @@
   import { get } from 'svelte/store';
   import { api, type BillingCollectionLogView, type BillingCollectionRunResult, type InvoiceReminderLogView } from '$lib/api/client';
   import { appSettings } from '$lib/stores/settings';
-  import { user, tenant } from '$lib/stores/auth';
+  import { can, user, tenant } from '$lib/stores/auth';
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
@@ -96,6 +96,10 @@
   const currentLoading = $derived(activeTab === 'collection' ? loadingCollection : loadingReminders);
 
   onMount(async () => {
+    if (!$can('read', 'billing') && !$can('manage', 'billing')) {
+      goto('/unauthorized');
+      return;
+    }
     await Promise.all([loadCollection(), loadReminders()]);
     ready = true;
   });
@@ -538,7 +542,7 @@
 <style>
   .page-container {
     padding: clamp(1rem, 3vw, 2rem);
-    max-width: 1280px;
+    max-width: 1520px;
     margin: 0 auto;
   }
 
@@ -670,7 +674,7 @@
     padding: 0.9rem;
     border-bottom: 1px solid var(--border-color);
     display: grid;
-    grid-template-columns: 1fr 1fr 1.5fr 1fr 1fr 110px auto;
+    grid-template-columns: minmax(160px, 0.9fr) minmax(160px, 0.9fr) minmax(280px, 1.5fr) minmax(170px, 1fr) minmax(170px, 1fr) 120px auto;
     gap: 0.6rem;
   }
 
@@ -810,11 +814,16 @@
 
   @media (max-width: 1080px) {
     .filter-row {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
     }
 
     .limit-input {
       max-width: none;
+    }
+  }
+  @media (max-width: 760px) {
+    .filter-row {
+      grid-template-columns: 1fr;
     }
   }
 

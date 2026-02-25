@@ -35,7 +35,9 @@
     }
 
     try {
-      const [membersRes, settingsRes] = await Promise.all([team.list(), settings.getAll()]);
+      const membersPromise = team.list();
+      const settingsPromise = get(can)('read', 'settings') ? settings.getAll() : Promise.resolve([]);
+      const [membersRes, settingsRes] = await Promise.all([membersPromise, settingsPromise]);
 
       memberCount = membersRes.length;
       settingsCount = settingsRes.length;

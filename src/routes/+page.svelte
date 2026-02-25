@@ -64,8 +64,8 @@
           if (get(isAdmin)) goto('/admin');
           else goto('/dashboard');
         } else {
-          if (get(isAdmin)) goto(`/${slug}/admin`);
-          else goto(`/${slug}/dashboard`);
+          if (get(isAdmin)) goto('/admin');
+          else goto('/dashboard');
         }
       } else {
         goto('/dashboard');
@@ -98,9 +98,9 @@
           }
         } else {
           if (response.user.role === 'admin') {
-            goto(`/${slug}/admin`);
+            goto('/admin');
           } else {
-            goto(`/${slug}/dashboard`);
+            goto('/dashboard');
           }
         }
       } else {

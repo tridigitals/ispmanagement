@@ -156,8 +156,7 @@
           <button
             class="icon-btn-sm"
             onclick={() => {
-              const slug = $user?.tenant_slug || 'default';
-              goto(`/${slug}/profile?tab=notifications`);
+              goto(`${tenantPrefix}/profile?tab=notifications`);
               close();
             }}
             title={$t('topbar.notifications_menu.settings') || 'Settings'}

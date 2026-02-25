@@ -1,6 +1,21 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { can } from '$lib/stores/auth';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { t } from 'svelte-i18n';
+
+  onMount(() => {
+    if (
+      !$can('read', 'backups') &&
+      !$can('create', 'backups') &&
+      !$can('download', 'backups') &&
+      !$can('restore', 'backups') &&
+      !$can('delete', 'backups')
+    ) {
+      goto('/unauthorized');
+    }
+  });
 </script>
 
 <div class="tenant-content">
@@ -93,4 +108,3 @@
     font-size: 0.9rem;
   }
 </style>
-

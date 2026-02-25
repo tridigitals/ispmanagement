@@ -592,25 +592,27 @@ import { appSettings } from '$lib/stores/settings';
         <Toggle bind:checked={pkgYearlyEnabled} ariaLabel={$t('admin.network.packages.fields.enable_yearly') || 'Enable yearly price'} />
       </div>
 
-      <label>
-        <span>{$t('admin.network.packages.fields.price_yearly') || 'Yearly price'} ({tenantCurrencyCode})</span>
-        <div class="price-input-wrap">
-          <input class="input mono with-addon" type="number" min="0" step="0.01" bind:value={pkgPriceYearly} disabled={!pkgYearlyEnabled} />
-          <span class="currency-addon">{tenantCurrencyCode}</span>
-        </div>
-        <div class="field-hint">
-          {$t('admin.network.packages.fields.currency_active') || 'Active currency'}: <strong>{tenantCurrencyCode}</strong>
-          {#if tenantCurrencyCode !== baseCurrencyCode}
-            · {$t('admin.network.packages.fields.currency_base') || 'Base currency'}: <strong>{baseCurrencyCode}</strong>
-          {/if}
-        </div>
-        <div class="field-hint">
-          {$t('admin.network.packages.fields.price_hint') || 'Stored in base currency; displayed in your tenant currency when possible.'}
-          {#if tenantCurrencyCode !== baseCurrencyCode}
-            <span class="hint-inline">Preview: {formatDisplayPrice(Number(pkgPriceMonthly || 0))}/mo, {formatDisplayPrice(Number(pkgPriceYearly || 0))}/yr</span>
-          {/if}
-        </div>
-      </label>
+      {#if pkgYearlyEnabled}
+        <label>
+          <span>{$t('admin.network.packages.fields.price_yearly') || 'Yearly price'} ({tenantCurrencyCode})</span>
+          <div class="price-input-wrap">
+            <input class="input mono with-addon" type="number" min="0" step="0.01" bind:value={pkgPriceYearly} />
+            <span class="currency-addon">{tenantCurrencyCode}</span>
+          </div>
+          <div class="field-hint">
+            {$t('admin.network.packages.fields.currency_active') || 'Active currency'}: <strong>{tenantCurrencyCode}</strong>
+            {#if tenantCurrencyCode !== baseCurrencyCode}
+              · {$t('admin.network.packages.fields.currency_base') || 'Base currency'}: <strong>{baseCurrencyCode}</strong>
+            {/if}
+          </div>
+          <div class="field-hint">
+            {$t('admin.network.packages.fields.price_hint') || 'Stored in base currency; displayed in your tenant currency when possible.'}
+            {#if tenantCurrencyCode !== baseCurrencyCode}
+              <span class="hint-inline">Preview: {formatDisplayPrice(Number(pkgPriceMonthly || 0))}/mo, {formatDisplayPrice(Number(pkgPriceYearly || 0))}/yr</span>
+            {/if}
+          </div>
+        </label>
+      {/if}
 
       <div class="toggle-row">
         <div class="toggle-text">

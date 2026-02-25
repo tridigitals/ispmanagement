@@ -357,6 +357,13 @@
         "message": "Thank you for your payment. Your subscription has been activated.",
         "cta": "Go to Subscription"
       },
+      "failed": {
+        "title": "Payment Verification Failed",
+        "message": "Your payment proof was rejected. Please check the reason below and upload a new proof.",
+        "reason_label": "Reason",
+        "reupload_hint": "After re-transfering, upload your new payment proof.",
+        "upload_again": "Upload Proof Again"
+      },
       "not_found": "Invoice not found",
       "errors": {
         "load_failed": "Failed to load invoice",
@@ -399,6 +406,7 @@
     "wallboard": "Wallboard",
     "alerts": "Alerts",
     "incidents": "Incidents",
+    "installations": "Installations",
     "logs": "Logs",
     "pppoe": "PPPoE",
     "ppp_profiles": "PPP Profiles",
@@ -1549,7 +1557,8 @@
       "actions": {
         "buy": "Buy package",
         "switch": "Switch package",
-        "current": "Current package"
+        "current": "Current package",
+        "add_location": "Add location"
       },
       "badges": {
         "active": "Active"
@@ -2808,7 +2817,7 @@
         },
         "bulk": {
           "select_filtered": "Select filtered",
-          "selected": "{{count}} selected",
+          "selected": "{count} selected",
           "ack": "Bulk Ack",
           "resolve": "Bulk Resolve",
           "assign": "Bulk Assign",
@@ -2884,6 +2893,23 @@
           "save": "Save Notes",
           "open_network_settings": "Open Network Settings"
         }
+      },
+      "installations": {
+        "title": "Installation Work Orders",
+        "subtitle": "Technician pipeline from paid invoices to active service.",
+        "empty": "No installation work orders",
+        "show_closed": "Show closed",
+        "hide_closed": "Hide closed",
+        "assign_required": "Choose assignee first",
+        "assigned": "Work order assigned",
+        "start_ok": "Work started",
+        "complete_ok": "Work completed and service activated",
+        "cancel_ok": "Work order cancelled",
+        "details_title": "Installation Details",
+        "checklist": "Installation Checklist",
+        "notes_placeholder": "Technician notes and onsite findings",
+        "save_plan": "Save Plan",
+        "history": "Latest Notes"
       },
       "logs": {
         "title": "Router Logs",
@@ -3297,6 +3323,12 @@
           "create_failed": "Failed to create invoice",
           "bulk_generated": "Bulk generated",
           "bulk_generate_failed": "Failed to generate due invoices"
+        },
+        "stats": {
+          "total": "Total",
+          "paid": "Paid",
+          "pending": "Pending",
+          "overdue": "Overdue"
         }
       },
       "detail": {
@@ -3307,7 +3339,9 @@
           "amount": "Amount",
           "due_date": "Due Date",
           "created": "Created",
-          "updated": "Updated"
+          "updated": "Updated",
+          "payment_method": "Payment Method",
+          "rejection_reason": "Rejection Reason"
         },
         "actions": {
           "pay_now": "Pay Now",
@@ -3316,7 +3350,16 @@
           "processing": "Processing...",
           "mark_paid": "Mark Paid",
           "mark_failed": "Mark Failed",
-          "open_payment_page": "Open Payment Page"
+          "open_payment_page": "Open Payment Page",
+          "view_payment_proof": "View Payment Proof"
+        },
+        "payment_methods": {
+          "online_payment": "Online Payment",
+          "bank_transfer": "Bank Transfer"
+        },
+        "payment_proof": {
+          "title": "Payment Proof",
+          "hint": "Click image to enlarge"
         },
         "confirm": {
           "mark_paid_title": "Mark Invoice as Paid",
@@ -3326,11 +3369,25 @@
           "mark_paid_confirm": "Mark Paid",
           "mark_failed_confirm": "Mark Failed"
         },
+        "reject": {
+          "title": "Mark Invoice as Failed",
+          "description": "Provide a clear reason so customer can fix and re-upload payment proof.",
+          "placeholder": "Write rejection reason...",
+          "reason_required": "Rejection reason is required",
+          "options": {
+            "blurry": "Proof image is unclear",
+            "amount_mismatch": "Transfer amount does not match invoice total",
+            "wrong_destination": "Transfer destination account is incorrect",
+            "invalid_proof": "Invalid or unrelated payment proof",
+            "duplicate": "Duplicate proof already used"
+          }
+        },
         "errors": {
           "not_customer_package": "Invoice is not a customer package invoice",
           "load_failed": "Failed to load invoice",
           "check_failed": "Failed to check status",
-          "verify_failed": "Failed to verify invoice"
+          "verify_failed": "Failed to verify invoice",
+          "proof_not_available": "Payment proof is not available yet"
         },
         "toasts": {
           "status_updated": "Status updated",

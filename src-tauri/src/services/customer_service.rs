@@ -2,11 +2,15 @@ use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
-    CreateCustomerRegistrationInviteRequest, CreateCustomerRequest, CreateCustomerSubscriptionRequest,
-    CreateCustomerWithPortalRequest, Customer, CustomerLocation, CustomerPortalUser,
-    CustomerRegistrationInviteCreateResponse, CustomerRegistrationInviteView, CustomerSubscription,
-    CustomerSubscriptionView, CustomerUser, IspPackage, PaginatedResponse,
-    PortalCheckoutSubscriptionRequest, UpdateCustomerLocationRequest, UpdateCustomerRequest,
+    CreateCustomerRegistrationInviteRequest, CreateCustomerRequest,
+    CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
+    CreateMyCustomerLocationRequest, Customer, CustomerLocation, CustomerPortalUser,
+    CustomerRegistrationInviteCreateResponse, CustomerRegistrationInvitePolicy,
+    CustomerRegistrationInviteSummary, CustomerRegistrationInviteValidationView,
+    CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionView, CustomerUser,
+    InstallationWorkOrder, InstallationWorkOrderView, IspPackage, PaginatedResponse,
+    PortalCheckoutSubscriptionRequest, UpdateCustomerLocationRequest,
+    UpdateCustomerRegistrationInvitePolicyRequest, UpdateCustomerRequest,
     UpdateCustomerSubscriptionRequest,
 };
 use crate::security::secret::encrypt_secret_for;
@@ -16,6 +20,23 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 const PURPOSE_PPPOE: &str = "pppoe_secrets";
+const INVITE_DEFAULT_EXPIRES_HOURS: u32 = 24;
+const INVITE_DEFAULT_MAX_USES: u32 = 1;
+const INVITE_DEFAULT_EXPIRES_KEY: &str = "customer_invite_default_expires_hours";
+const INVITE_DEFAULT_MAX_USES_KEY: &str = "customer_invite_default_max_uses";
+
+#[derive(sqlx::FromRow)]
+struct InviteSummaryRow {
+    total: i64,
+    active: i64,
+    revoked: i64,
+    expired: i64,
+    used_up: i64,
+    total_uses: i64,
+    total_capacity: i64,
+    created_last_30d: i64,
+    used_last_30d: i64,
+}
 
 #[derive(Clone)]
 pub struct CustomerService {
@@ -137,11 +158,48 @@ impl CustomerService {
     fn normalize_subscription_status(v: &str) -> AppResult<String> {
         let x = v.trim().to_lowercase();
         match x.as_str() {
-            "active" | "suspended" | "cancelled" => Ok(x),
+            "active" | "pending_installation" | "suspended" | "cancelled" => Ok(x),
             _ => Err(AppError::Validation(
-                "status must be active, suspended, or cancelled".to_string(),
+                "status must be active, pending_installation, suspended, or cancelled".to_string(),
             )),
         }
+    }
+
+    fn normalize_work_order_status(v: &str) -> AppResult<String> {
+        let x = v.trim().to_lowercase();
+        match x.as_str() {
+            "pending" | "in_progress" | "completed" | "cancelled" => Ok(x),
+            _ => Err(AppError::Validation(
+                "status must be pending, in_progress, completed, or cancelled".to_string(),
+            )),
+        }
+    }
+
+    fn merge_work_order_notes(
+        existing: Option<String>,
+        actor_id: &str,
+        note: Option<&str>,
+    ) -> Option<String> {
+        let mut out = existing.unwrap_or_default();
+        let incoming = note.unwrap_or("").trim();
+        if incoming.is_empty() {
+            return if out.trim().is_empty() {
+                None
+            } else {
+                Some(out)
+            };
+        }
+
+        if !out.trim().is_empty() {
+            out.push_str("\n\n");
+        }
+        out.push_str(&format!(
+            "[{}] {}: {}",
+            Utc::now().format("%Y-%m-%d %H:%M:%S UTC"),
+            actor_id,
+            incoming
+        ));
+        Some(out)
     }
 
     fn parse_optional_datetime(input: Option<String>) -> AppResult<Option<DateTime<Utc>>> {
@@ -175,11 +233,133 @@ impl CustomerService {
     }
 
     fn build_registration_invite_token() -> String {
-        format!(
-            "{}{}",
-            Uuid::new_v4().simple(),
-            Uuid::new_v4().simple()
+        format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple())
+    }
+
+    fn parse_invite_policy_u32(raw: Option<String>, default_value: u32, min: u32, max: u32) -> u32 {
+        raw.and_then(|v| v.trim().parse::<u32>().ok())
+            .map(|v| v.clamp(min, max))
+            .unwrap_or(default_value)
+    }
+
+    async fn read_tenant_setting_value(
+        &self,
+        tenant_id: &str,
+        key: &str,
+    ) -> AppResult<Option<String>> {
+        #[cfg(feature = "postgres")]
+        let value: Option<String> = sqlx::query_scalar(
+            "SELECT value FROM settings WHERE tenant_id = $1 AND key = $2 LIMIT 1",
         )
+        .bind(tenant_id)
+        .bind(key)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let value: Option<String> = sqlx::query_scalar(
+            "SELECT value FROM settings WHERE tenant_id = ? AND key = ? LIMIT 1",
+        )
+        .bind(tenant_id)
+        .bind(key)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(value)
+    }
+
+    async fn upsert_tenant_setting_value(
+        &self,
+        tenant_id: &str,
+        key: &str,
+        value: &str,
+        description: &str,
+    ) -> AppResult<()> {
+        let now = Utc::now();
+
+        #[cfg(feature = "postgres")]
+        let update_res = sqlx::query(
+            "UPDATE settings SET value = $1, description = $2, updated_at = $3 WHERE tenant_id = $4 AND key = $5",
+        )
+        .bind(value)
+        .bind(description)
+        .bind(now)
+        .bind(tenant_id)
+        .bind(key)
+        .execute(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let update_res = sqlx::query(
+            "UPDATE settings SET value = ?, description = ?, updated_at = ? WHERE tenant_id = ? AND key = ?",
+        )
+        .bind(value)
+        .bind(description)
+        .bind(now.to_rfc3339())
+        .bind(tenant_id)
+        .bind(key)
+        .execute(&self.pool)
+        .await?;
+
+        if update_res.rows_affected() == 0 {
+            let id = Uuid::new_v4().to_string();
+
+            #[cfg(feature = "postgres")]
+            sqlx::query(
+                "INSERT INTO settings (id, tenant_id, key, value, description, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$6)",
+            )
+            .bind(&id)
+            .bind(tenant_id)
+            .bind(key)
+            .bind(value)
+            .bind(description)
+            .bind(now)
+            .execute(&self.pool)
+            .await?;
+
+            #[cfg(feature = "sqlite")]
+            sqlx::query(
+                "INSERT INTO settings (id, tenant_id, key, value, description, created_at, updated_at) VALUES (?,?,?,?,?,?,?)",
+            )
+            .bind(&id)
+            .bind(tenant_id)
+            .bind(key)
+            .bind(value)
+            .bind(description)
+            .bind(now.to_rfc3339())
+            .bind(now.to_rfc3339())
+            .execute(&self.pool)
+            .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn resolve_invite_policy_for_tenant(
+        &self,
+        tenant_id: &str,
+    ) -> AppResult<CustomerRegistrationInvitePolicy> {
+        let expires_raw = self
+            .read_tenant_setting_value(tenant_id, INVITE_DEFAULT_EXPIRES_KEY)
+            .await?;
+        let max_uses_raw = self
+            .read_tenant_setting_value(tenant_id, INVITE_DEFAULT_MAX_USES_KEY)
+            .await?;
+
+        Ok(CustomerRegistrationInvitePolicy {
+            default_expires_in_hours: Self::parse_invite_policy_u32(
+                expires_raw,
+                INVITE_DEFAULT_EXPIRES_HOURS,
+                1,
+                24 * 30,
+            ),
+            default_max_uses: Self::parse_invite_policy_u32(
+                max_uses_raw,
+                INVITE_DEFAULT_MAX_USES,
+                1,
+                100,
+            ),
+        })
     }
 
     fn build_auto_pppoe_username(
@@ -1153,8 +1333,15 @@ impl CustomerService {
             .check_permission(actor_id, tenant_id, "customers", "manage")
             .await?;
 
-        let expires_in_hours = dto.expires_in_hours.unwrap_or(24).clamp(1, 24 * 30);
-        let max_uses = dto.max_uses.unwrap_or(1).clamp(1, 100);
+        let policy = self.resolve_invite_policy_for_tenant(tenant_id).await?;
+        let expires_in_hours = dto
+            .expires_in_hours
+            .unwrap_or(policy.default_expires_in_hours)
+            .clamp(1, 24 * 30);
+        let max_uses = dto
+            .max_uses
+            .unwrap_or(policy.default_max_uses)
+            .clamp(1, 100);
         let note = dto.note.and_then(|v| {
             let trimmed = v.trim().to_string();
             if trimmed.is_empty() {
@@ -1165,7 +1352,7 @@ impl CustomerService {
         });
 
         #[cfg(feature = "postgres")]
-        let tenant_domain: Option<String> = sqlx::query_scalar(
+        let tenant_domain: Option<Option<String>> = sqlx::query_scalar(
             "SELECT custom_domain FROM tenants WHERE id = $1 AND is_active = true",
         )
         .bind(tenant_id)
@@ -1173,12 +1360,13 @@ impl CustomerService {
         .await?;
 
         #[cfg(feature = "sqlite")]
-        let tenant_domain: Option<String> = sqlx::query_scalar(
-            "SELECT custom_domain FROM tenants WHERE id = ? AND is_active = 1",
-        )
-        .bind(tenant_id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let tenant_domain: Option<Option<String>> =
+            sqlx::query_scalar("SELECT custom_domain FROM tenants WHERE id = ? AND is_active = 1")
+                .bind(tenant_id)
+                .fetch_optional(&self.pool)
+                .await?;
+
+        let tenant_domain = tenant_domain.flatten();
 
         let domain = tenant_domain
             .map(|v| v.trim().to_string())
@@ -1270,6 +1458,275 @@ impl CustomerService {
             invite,
             invite_token,
             invite_url,
+        })
+    }
+
+    pub async fn get_customer_registration_invite_policy(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+    ) -> AppResult<CustomerRegistrationInvitePolicy> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "customers", "manage")
+            .await?;
+        self.resolve_invite_policy_for_tenant(tenant_id).await
+    }
+
+    pub async fn update_customer_registration_invite_policy(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        dto: UpdateCustomerRegistrationInvitePolicyRequest,
+        ip_address: Option<&str>,
+    ) -> AppResult<CustomerRegistrationInvitePolicy> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "customers", "manage")
+            .await?;
+
+        let current = self.resolve_invite_policy_for_tenant(tenant_id).await?;
+        let expires_in_hours = dto
+            .default_expires_in_hours
+            .unwrap_or(current.default_expires_in_hours)
+            .clamp(1, 24 * 30);
+        let max_uses = dto
+            .default_max_uses
+            .unwrap_or(current.default_max_uses)
+            .clamp(1, 100);
+
+        self.upsert_tenant_setting_value(
+            tenant_id,
+            INVITE_DEFAULT_EXPIRES_KEY,
+            &expires_in_hours.to_string(),
+            "Default invite expiry (hours) for customer registration links",
+        )
+        .await?;
+        self.upsert_tenant_setting_value(
+            tenant_id,
+            INVITE_DEFAULT_MAX_USES_KEY,
+            &max_uses.to_string(),
+            "Default max uses for customer registration invite links",
+        )
+        .await?;
+
+        self.audit_service
+            .log(
+                Some(actor_id),
+                Some(tenant_id),
+                "CUSTOMER_INVITE_POLICY_UPDATE",
+                "settings",
+                None,
+                Some(&format!(
+                    "Updated customer invite policy defaults (expires={}h, max_uses={})",
+                    expires_in_hours, max_uses
+                )),
+                ip_address,
+            )
+            .await;
+
+        Ok(CustomerRegistrationInvitePolicy {
+            default_expires_in_hours: expires_in_hours,
+            default_max_uses: max_uses,
+        })
+    }
+
+    pub async fn summarize_customer_registration_invites(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+    ) -> AppResult<CustomerRegistrationInviteSummary> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "customers", "manage")
+            .await?;
+
+        let now = Utc::now();
+        let since_30d = now - chrono::Duration::days(30);
+
+        #[cfg(feature = "postgres")]
+        let row: InviteSummaryRow = sqlx::query_as(
+            r#"
+            SELECT
+                COUNT(*)::bigint AS total,
+                COALESCE(SUM(CASE WHEN is_revoked = false AND expires_at > $2 AND used_count < max_uses THEN 1 ELSE 0 END), 0)::bigint AS active,
+                COALESCE(SUM(CASE WHEN is_revoked = true THEN 1 ELSE 0 END), 0)::bigint AS revoked,
+                COALESCE(SUM(CASE WHEN is_revoked = false AND expires_at <= $2 AND used_count < max_uses THEN 1 ELSE 0 END), 0)::bigint AS expired,
+                COALESCE(SUM(CASE WHEN is_revoked = false AND used_count >= max_uses THEN 1 ELSE 0 END), 0)::bigint AS used_up,
+                COALESCE(SUM(used_count), 0)::bigint AS total_uses,
+                COALESCE(SUM(max_uses), 0)::bigint AS total_capacity,
+                COALESCE(SUM(CASE WHEN created_at >= $3 THEN 1 ELSE 0 END), 0)::bigint AS created_last_30d,
+                COALESCE(SUM(CASE WHEN last_used_at >= $3 THEN 1 ELSE 0 END), 0)::bigint AS used_last_30d
+            FROM customer_registration_invites
+            WHERE tenant_id = $1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(now)
+        .bind(since_30d)
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let row: InviteSummaryRow = sqlx::query_as(
+            r#"
+            SELECT
+                COUNT(*) AS total,
+                COALESCE(SUM(CASE WHEN is_revoked = 0 AND expires_at > ? AND used_count < max_uses THEN 1 ELSE 0 END), 0) AS active,
+                COALESCE(SUM(CASE WHEN is_revoked = 1 THEN 1 ELSE 0 END), 0) AS revoked,
+                COALESCE(SUM(CASE WHEN is_revoked = 0 AND expires_at <= ? AND used_count < max_uses THEN 1 ELSE 0 END), 0) AS expired,
+                COALESCE(SUM(CASE WHEN is_revoked = 0 AND used_count >= max_uses THEN 1 ELSE 0 END), 0) AS used_up,
+                COALESCE(SUM(used_count), 0) AS total_uses,
+                COALESCE(SUM(max_uses), 0) AS total_capacity,
+                COALESCE(SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END), 0) AS created_last_30d,
+                COALESCE(SUM(CASE WHEN last_used_at >= ? THEN 1 ELSE 0 END), 0) AS used_last_30d
+            FROM customer_registration_invites
+            WHERE tenant_id = ?
+            "#,
+        )
+        .bind(now.to_rfc3339())
+        .bind(now.to_rfc3339())
+        .bind(since_30d.to_rfc3339())
+        .bind(since_30d.to_rfc3339())
+        .bind(tenant_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let utilization_percent = if row.total_capacity > 0 {
+            (row.total_uses as f64 / row.total_capacity as f64) * 100.0
+        } else {
+            0.0
+        };
+
+        Ok(CustomerRegistrationInviteSummary {
+            total: row.total,
+            active: row.active,
+            revoked: row.revoked,
+            expired: row.expired,
+            used_up: row.used_up,
+            total_uses: row.total_uses,
+            total_capacity: row.total_capacity,
+            utilization_percent,
+            created_last_30d: row.created_last_30d,
+            used_last_30d: row.used_last_30d,
+        })
+    }
+
+    pub async fn validate_customer_registration_invite(
+        &self,
+        tenant_id: &str,
+        invite_token: &str,
+    ) -> AppResult<CustomerRegistrationInviteValidationView> {
+        let token = invite_token.trim();
+        if token.len() < 20 {
+            return Ok(CustomerRegistrationInviteValidationView {
+                valid: false,
+                status: "invalid".to_string(),
+                message: "Invite token is missing or malformed".to_string(),
+                expires_at: None,
+                max_uses: None,
+                used_count: None,
+                remaining_uses: None,
+            });
+        }
+
+        let token_hash = Self::hash_registration_invite_token(token);
+        let now = Utc::now();
+
+        #[cfg(feature = "postgres")]
+        let invite: Option<CustomerRegistrationInviteView> = sqlx::query_as(
+            r#"
+            SELECT
+                id,
+                tenant_id,
+                created_by,
+                max_uses,
+                used_count,
+                expires_at,
+                is_revoked,
+                revoked_at,
+                last_used_at,
+                note,
+                created_at
+            FROM customer_registration_invites
+            WHERE tenant_id = $1 AND token_hash = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&token_hash)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let invite: Option<CustomerRegistrationInviteView> = sqlx::query_as(
+            r#"
+            SELECT
+                id,
+                tenant_id,
+                created_by,
+                max_uses,
+                used_count,
+                expires_at,
+                is_revoked,
+                revoked_at,
+                last_used_at,
+                note,
+                created_at
+            FROM customer_registration_invites
+            WHERE tenant_id = ? AND token_hash = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&token_hash)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let Some(invite) = invite else {
+            return Ok(CustomerRegistrationInviteValidationView {
+                valid: false,
+                status: "invalid".to_string(),
+                message: "Invite link is invalid or no longer available".to_string(),
+                expires_at: None,
+                max_uses: None,
+                used_count: None,
+                remaining_uses: None,
+            });
+        };
+
+        let remaining = (invite.max_uses - invite.used_count).max(0);
+        let (valid, status, message) = if invite.is_revoked {
+            (
+                false,
+                "revoked".to_string(),
+                "Invite link has been revoked".to_string(),
+            )
+        } else if invite.expires_at <= now {
+            (
+                false,
+                "expired".to_string(),
+                "Invite link has expired".to_string(),
+            )
+        } else if invite.used_count >= invite.max_uses {
+            (
+                false,
+                "used_up".to_string(),
+                "Invite link has reached the maximum usage".to_string(),
+            )
+        } else {
+            (
+                true,
+                "valid".to_string(),
+                "Invite link is valid".to_string(),
+            )
+        };
+
+        Ok(CustomerRegistrationInviteValidationView {
+            valid,
+            status,
+            message,
+            expires_at: Some(invite.expires_at),
+            max_uses: Some(invite.max_uses),
+            used_count: Some(invite.used_count),
+            remaining_uses: Some(remaining),
         })
     }
 
@@ -2795,6 +3252,103 @@ impl CustomerService {
         Ok(rows)
     }
 
+    pub async fn create_my_location(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        dto: CreateMyCustomerLocationRequest,
+        ip_address: Option<&str>,
+    ) -> AppResult<CustomerLocation> {
+        let customer_id = self.get_portal_customer_id(actor_id, tenant_id).await?;
+        let label = dto.label.trim().to_string();
+        if label.is_empty() {
+            return Err(AppError::Validation("label is required".to_string()));
+        }
+
+        let loc = CustomerLocation::new(
+            tenant_id.to_string(),
+            customer_id,
+            label,
+            dto.address_line1,
+            dto.address_line2,
+            dto.city,
+            dto.state,
+            dto.postal_code,
+            dto.country,
+            dto.latitude,
+            dto.longitude,
+            dto.notes,
+        );
+
+        #[cfg(feature = "postgres")]
+        sqlx::query(
+            r#"
+            INSERT INTO customer_locations
+                (id, tenant_id, customer_id, label, address_line1, address_line2, city, state, postal_code, country, latitude, longitude, notes, created_at, updated_at)
+            VALUES
+                ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+            "#,
+        )
+        .bind(&loc.id)
+        .bind(&loc.tenant_id)
+        .bind(&loc.customer_id)
+        .bind(&loc.label)
+        .bind(&loc.address_line1)
+        .bind(&loc.address_line2)
+        .bind(&loc.city)
+        .bind(&loc.state)
+        .bind(&loc.postal_code)
+        .bind(&loc.country)
+        .bind(loc.latitude)
+        .bind(loc.longitude)
+        .bind(&loc.notes)
+        .bind(loc.created_at)
+        .bind(loc.updated_at)
+        .execute(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query(
+            r#"
+            INSERT INTO customer_locations
+                (id, tenant_id, customer_id, label, address_line1, address_line2, city, state, postal_code, country, latitude, longitude, notes, created_at, updated_at)
+            VALUES
+                (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            "#,
+        )
+        .bind(&loc.id)
+        .bind(&loc.tenant_id)
+        .bind(&loc.customer_id)
+        .bind(&loc.label)
+        .bind(&loc.address_line1)
+        .bind(&loc.address_line2)
+        .bind(&loc.city)
+        .bind(&loc.state)
+        .bind(&loc.postal_code)
+        .bind(&loc.country)
+        .bind(loc.latitude)
+        .bind(loc.longitude)
+        .bind(&loc.notes)
+        .bind(loc.created_at.to_rfc3339())
+        .bind(loc.updated_at.to_rfc3339())
+        .execute(&self.pool)
+        .await?;
+
+        self.audit_service
+            .log(
+                Some(actor_id),
+                Some(tenant_id),
+                "CUSTOMER_LOCATION_SELF_CREATE",
+                "customer_locations",
+                Some(&loc.id),
+                Some("Created own customer location from portal"),
+                ip_address,
+            )
+            .await;
+
+        Ok(loc)
+    }
+
     pub async fn list_my_packages(
         &self,
         actor_id: &str,
@@ -3058,7 +3612,7 @@ impl CustomerService {
             WHERE tenant_id = $1
               AND customer_id = $2
               AND location_id = $3
-              AND status IN ('active', 'suspended')
+              AND status IN ('active', 'pending_installation', 'suspended')
             ORDER BY updated_at DESC
             LIMIT 1
             "#,
@@ -3077,7 +3631,7 @@ impl CustomerService {
             WHERE tenant_id = ?
               AND customer_id = ?
               AND location_id = ?
-              AND status IN ('active', 'suspended')
+              AND status IN ('active', 'pending_installation', 'suspended')
             ORDER BY updated_at DESC
             LIMIT 1
             "#,
@@ -3231,6 +3785,461 @@ impl CustomerService {
 
         self.auto_provision_pppoe_for_subscription(actor_id, tenant_id, &row, ip_address)
             .await?;
+
+        Ok(row)
+    }
+
+    pub async fn list_installation_work_orders(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        status: Option<String>,
+        assigned_to: Option<String>,
+        include_closed: bool,
+        limit: u32,
+    ) -> AppResult<Vec<InstallationWorkOrderView>> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "work_orders", "read")
+            .await?;
+
+        let limit = limit.clamp(1, 500);
+        let status_filter = status
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(Self::normalize_work_order_status)
+            .transpose()?;
+        let assigned_filter = assigned_to
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string);
+
+        #[cfg(feature = "postgres")]
+        let rows: Vec<InstallationWorkOrderView> = sqlx::query_as(
+            r#"
+            SELECT
+              wo.id, wo.tenant_id, wo.subscription_id, wo.invoice_id, wo.customer_id, wo.location_id, wo.router_id,
+              wo.status, wo.assigned_to, wo.scheduled_at, wo.completed_at, wo.notes, wo.created_at, wo.updated_at,
+              c.name AS customer_name,
+              l.label AS location_label,
+              p.name AS package_name,
+              r.name AS router_name,
+              u.name AS assigned_to_name,
+              u.email AS assigned_to_email
+            FROM installation_work_orders wo
+            LEFT JOIN customers c ON c.tenant_id = wo.tenant_id AND c.id = wo.customer_id
+            LEFT JOIN customer_locations l ON l.tenant_id = wo.tenant_id AND l.id = wo.location_id
+            LEFT JOIN customer_subscriptions cs ON cs.tenant_id = wo.tenant_id AND cs.id = wo.subscription_id
+            LEFT JOIN isp_packages p ON p.tenant_id = wo.tenant_id AND p.id = cs.package_id
+            LEFT JOIN mikrotik_routers r ON r.tenant_id = wo.tenant_id AND r.id = wo.router_id
+            LEFT JOIN users u ON u.id = wo.assigned_to
+            WHERE wo.tenant_id = $1
+              AND ($2::text IS NULL OR wo.status = $2)
+              AND ($3::text IS NULL OR wo.assigned_to = $3)
+              AND ($4::bool OR wo.status NOT IN ('completed', 'cancelled'))
+            ORDER BY
+              CASE wo.status
+                WHEN 'pending' THEN 0
+                WHEN 'in_progress' THEN 1
+                WHEN 'completed' THEN 2
+                WHEN 'cancelled' THEN 3
+                ELSE 4
+              END ASC,
+              wo.updated_at DESC
+            LIMIT $5
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(status_filter)
+        .bind(assigned_filter)
+        .bind(include_closed)
+        .bind(limit as i64)
+        .fetch_all(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let rows: Vec<InstallationWorkOrderView> = sqlx::query_as(
+            r#"
+            SELECT
+              wo.id, wo.tenant_id, wo.subscription_id, wo.invoice_id, wo.customer_id, wo.location_id, wo.router_id,
+              wo.status, wo.assigned_to, wo.scheduled_at, wo.completed_at, wo.notes, wo.created_at, wo.updated_at,
+              c.name AS customer_name,
+              l.label AS location_label,
+              p.name AS package_name,
+              r.name AS router_name,
+              u.name AS assigned_to_name,
+              u.email AS assigned_to_email
+            FROM installation_work_orders wo
+            LEFT JOIN customers c ON c.tenant_id = wo.tenant_id AND c.id = wo.customer_id
+            LEFT JOIN customer_locations l ON l.tenant_id = wo.tenant_id AND l.id = wo.location_id
+            LEFT JOIN customer_subscriptions cs ON cs.tenant_id = wo.tenant_id AND cs.id = wo.subscription_id
+            LEFT JOIN isp_packages p ON p.tenant_id = wo.tenant_id AND p.id = cs.package_id
+            LEFT JOIN mikrotik_routers r ON r.tenant_id = wo.tenant_id AND r.id = wo.router_id
+            LEFT JOIN users u ON u.id = wo.assigned_to
+            WHERE wo.tenant_id = ?
+              AND (? IS NULL OR wo.status = ?)
+              AND (? IS NULL OR wo.assigned_to = ?)
+              AND (? = 1 OR wo.status NOT IN ('completed', 'cancelled'))
+            ORDER BY
+              CASE wo.status
+                WHEN 'pending' THEN 0
+                WHEN 'in_progress' THEN 1
+                WHEN 'completed' THEN 2
+                WHEN 'cancelled' THEN 3
+                ELSE 4
+              END ASC,
+              wo.updated_at DESC
+            LIMIT ?
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&status_filter)
+        .bind(&status_filter)
+        .bind(&assigned_filter)
+        .bind(&assigned_filter)
+        .bind(if include_closed { 1 } else { 0 })
+        .bind(limit as i64)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
+    }
+
+    pub async fn assign_installation_work_order(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        work_order_id: &str,
+        assigned_to: &str,
+        scheduled_at: Option<String>,
+        notes: Option<String>,
+        ip_address: Option<&str>,
+    ) -> AppResult<InstallationWorkOrder> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "work_orders", "manage")
+            .await?;
+
+        #[cfg(feature = "postgres")]
+        let assignee_exists: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1
+              FROM tenant_members tm
+              WHERE tm.tenant_id = $1 AND tm.user_id = $2
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(assigned_to)
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let assignee_exists: bool = {
+            let raw: i64 = sqlx::query_scalar(
+                r#"
+                SELECT EXISTS(
+                  SELECT 1
+                  FROM tenant_members tm
+                  WHERE tm.tenant_id = ? AND tm.user_id = ?
+                )
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(assigned_to)
+            .fetch_one(&self.pool)
+            .await?;
+            raw != 0
+        };
+
+        if !assignee_exists {
+            return Err(AppError::Validation(
+                "Assignee must be a member of this tenant".to_string(),
+            ));
+        }
+
+        self.set_installation_work_order_status_internal(
+            actor_id,
+            tenant_id,
+            work_order_id,
+            Some("pending"),
+            Some(assigned_to),
+            scheduled_at,
+            notes,
+            ip_address,
+            "WORK_ORDER_ASSIGN",
+            "Assigned installation work order",
+        )
+        .await
+    }
+
+    pub async fn start_installation_work_order(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        work_order_id: &str,
+        notes: Option<String>,
+        ip_address: Option<&str>,
+    ) -> AppResult<InstallationWorkOrder> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "work_orders", "manage")
+            .await?;
+
+        self.set_installation_work_order_status_internal(
+            actor_id,
+            tenant_id,
+            work_order_id,
+            Some("in_progress"),
+            None,
+            None,
+            notes,
+            ip_address,
+            "WORK_ORDER_START",
+            "Started installation work order",
+        )
+        .await
+    }
+
+    pub async fn complete_installation_work_order(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        work_order_id: &str,
+        notes: Option<String>,
+        ip_address: Option<&str>,
+    ) -> AppResult<InstallationWorkOrder> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "work_orders", "manage")
+            .await?;
+
+        let row = self
+            .set_installation_work_order_status_internal(
+                actor_id,
+                tenant_id,
+                work_order_id,
+                Some("completed"),
+                None,
+                None,
+                notes,
+                ip_address,
+                "WORK_ORDER_COMPLETE",
+                "Completed installation work order",
+            )
+            .await?;
+
+        #[cfg(feature = "postgres")]
+        let sub: Option<CustomerSubscription> = sqlx::query_as(
+            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price::float8 as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE tenant_id = $1 AND id = $2",
+        )
+        .bind(tenant_id)
+        .bind(&row.subscription_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let sub: Option<CustomerSubscription> = sqlx::query_as(
+            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE tenant_id = ? AND id = ?",
+        )
+        .bind(tenant_id)
+        .bind(&row.subscription_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if let Some(mut s) = sub {
+            if s.status != "cancelled" {
+                s.status = "active".to_string();
+                s.updated_at = Utc::now();
+
+                #[cfg(feature = "postgres")]
+                sqlx::query(
+                    r#"
+                    UPDATE customer_subscriptions
+                    SET status = 'active', updated_at = $1
+                    WHERE tenant_id = $2 AND id = $3
+                    "#,
+                )
+                .bind(s.updated_at)
+                .bind(tenant_id)
+                .bind(&s.id)
+                .execute(&self.pool)
+                .await?;
+
+                #[cfg(feature = "sqlite")]
+                sqlx::query(
+                    r#"
+                    UPDATE customer_subscriptions
+                    SET status = 'active', updated_at = ?
+                    WHERE tenant_id = ? AND id = ?
+                    "#,
+                )
+                .bind(s.updated_at)
+                .bind(tenant_id)
+                .bind(&s.id)
+                .execute(&self.pool)
+                .await?;
+
+                let _ = self
+                    .auto_provision_pppoe_for_subscription(actor_id, tenant_id, &s, ip_address)
+                    .await;
+            }
+        }
+
+        Ok(row)
+    }
+
+    pub async fn cancel_installation_work_order(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        work_order_id: &str,
+        notes: Option<String>,
+        ip_address: Option<&str>,
+    ) -> AppResult<InstallationWorkOrder> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "work_orders", "manage")
+            .await?;
+
+        self.set_installation_work_order_status_internal(
+            actor_id,
+            tenant_id,
+            work_order_id,
+            Some("cancelled"),
+            None,
+            None,
+            notes,
+            ip_address,
+            "WORK_ORDER_CANCEL",
+            "Cancelled installation work order",
+        )
+        .await
+    }
+
+    async fn set_installation_work_order_status_internal(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        work_order_id: &str,
+        new_status: Option<&str>,
+        assigned_to: Option<&str>,
+        scheduled_at: Option<String>,
+        notes: Option<String>,
+        ip_address: Option<&str>,
+        audit_action: &str,
+        audit_desc: &str,
+    ) -> AppResult<InstallationWorkOrder> {
+        #[cfg(feature = "postgres")]
+        let mut row: InstallationWorkOrder = sqlx::query_as(
+            r#"
+            SELECT id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, assigned_to, scheduled_at, completed_at, notes, created_at, updated_at
+            FROM installation_work_orders
+            WHERE tenant_id = $1 AND id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(work_order_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Work order not found".to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let mut row: InstallationWorkOrder = sqlx::query_as(
+            r#"
+            SELECT id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, assigned_to, scheduled_at, completed_at, notes, created_at, updated_at
+            FROM installation_work_orders
+            WHERE tenant_id = ? AND id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(work_order_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Work order not found".to_string()))?;
+
+        if row.status == "completed" || row.status == "cancelled" {
+            return Err(AppError::Validation(
+                "Closed work order cannot be changed".to_string(),
+            ));
+        }
+
+        if let Some(s) = new_status {
+            row.status = Self::normalize_work_order_status(s)?;
+            row.completed_at = if row.status == "completed" {
+                Some(Utc::now())
+            } else {
+                None
+            };
+        }
+        if let Some(uid) = assigned_to {
+            row.assigned_to = Some(uid.to_string());
+        }
+        if scheduled_at.is_some() {
+            row.scheduled_at = Self::parse_optional_datetime(scheduled_at)?;
+        }
+        row.notes = Self::merge_work_order_notes(row.notes, actor_id, notes.as_deref());
+        row.updated_at = Utc::now();
+
+        #[cfg(feature = "postgres")]
+        sqlx::query(
+            r#"
+            UPDATE installation_work_orders
+            SET status = $1,
+                assigned_to = $2,
+                scheduled_at = $3,
+                completed_at = $4,
+                notes = $5,
+                updated_at = $6
+            WHERE tenant_id = $7 AND id = $8
+            "#,
+        )
+        .bind(&row.status)
+        .bind(&row.assigned_to)
+        .bind(row.scheduled_at)
+        .bind(row.completed_at)
+        .bind(&row.notes)
+        .bind(row.updated_at)
+        .bind(tenant_id)
+        .bind(work_order_id)
+        .execute(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query(
+            r#"
+            UPDATE installation_work_orders
+            SET status = ?,
+                assigned_to = ?,
+                scheduled_at = ?,
+                completed_at = ?,
+                notes = ?,
+                updated_at = ?
+            WHERE tenant_id = ? AND id = ?
+            "#,
+        )
+        .bind(&row.status)
+        .bind(&row.assigned_to)
+        .bind(row.scheduled_at)
+        .bind(row.completed_at)
+        .bind(&row.notes)
+        .bind(row.updated_at)
+        .bind(tenant_id)
+        .bind(work_order_id)
+        .execute(&self.pool)
+        .await?;
+
+        self.audit_service
+            .log(
+                Some(actor_id),
+                Some(tenant_id),
+                audit_action,
+                "installation_work_orders",
+                Some(work_order_id),
+                Some(audit_desc),
+                ip_address,
+            )
+            .await;
 
         Ok(row)
     }

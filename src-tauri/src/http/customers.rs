@@ -3,11 +3,14 @@ use crate::http::auth::extract_ip;
 use crate::http::AppState;
 use crate::models::{
     AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
-    CreateCustomerRegistrationInviteRequest, CreateCustomerRequest, CreateCustomerSubscriptionRequest,
-    CreateCustomerWithPortalRequest, Customer, CustomerLocation, CustomerPortalUser,
-    CustomerRegistrationInviteCreateResponse, CustomerRegistrationInviteView, CustomerSubscription,
+    CreateCustomerRegistrationInviteRequest, CreateCustomerRequest,
+    CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
+    CreateMyCustomerLocationRequest, Customer, CustomerLocation, CustomerPortalUser,
+    CustomerRegistrationInviteCreateResponse, CustomerRegistrationInvitePolicy,
+    CustomerRegistrationInviteSummary, CustomerRegistrationInviteView, CustomerSubscription,
     CustomerSubscriptionView, Invoice, IspPackage, PaginatedResponse,
-    PortalCheckoutSubscriptionRequest, UpdateCustomerLocationRequest, UpdateCustomerRequest,
+    PortalCheckoutSubscriptionRequest, UpdateCustomerLocationRequest,
+    UpdateCustomerRegistrationInvitePolicyRequest, UpdateCustomerRequest,
     UpdateCustomerSubscriptionRequest,
 };
 use axum::{
@@ -25,6 +28,23 @@ pub fn router() -> Router<AppState> {
         .route("/", get(list_customers).post(create_customer))
         .route("/with-portal", post(create_customer_with_portal))
         .route(
+            "/invites",
+            get(list_customer_registration_invites).post(create_customer_registration_invite),
+        )
+        .route(
+            "/invites/policy",
+            get(get_customer_registration_invite_policy)
+                .put(update_customer_registration_invite_policy),
+        )
+        .route(
+            "/invites/summary",
+            get(get_customer_registration_invite_summary),
+        )
+        .route(
+            "/invites/{invite_id}",
+            delete(revoke_customer_registration_invite),
+        )
+        .route(
             "/{id}",
             get(get_customer)
                 .put(update_customer)
@@ -36,11 +56,6 @@ pub fn router() -> Router<AppState> {
             "/{id}/subscriptions",
             get(list_subscriptions).post(create_subscription),
         )
-        .route(
-            "/invites",
-            get(list_customer_registration_invites).post(create_customer_registration_invite),
-        )
-        .route("/invites/{invite_id}", delete(revoke_customer_registration_invite))
         // Locations (write)
         .route("/locations", post(create_location))
         .route(
@@ -59,7 +74,10 @@ pub fn router() -> Router<AppState> {
             axum::routing::put(update_subscription).delete(delete_subscription),
         )
         // Customer portal
-        .route("/portal/my-locations", get(list_my_locations))
+        .route(
+            "/portal/my-locations",
+            get(list_my_locations).post(create_my_location),
+        )
         .route("/portal/my-packages", get(list_my_packages))
         .route("/portal/my-subscriptions", get(list_my_subscriptions))
         .route("/portal/checkout", post(portal_checkout_subscription))
@@ -249,6 +267,48 @@ async fn list_customer_registration_invites(
     Ok(Json(rows))
 }
 
+// GET /api/customers/invites/policy
+async fn get_customer_registration_invite_policy(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> AppResult<Json<CustomerRegistrationInvitePolicy>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let policy = state
+        .customer_service
+        .get_customer_registration_invite_policy(&claims.sub, &tenant_id)
+        .await?;
+    Ok(Json(policy))
+}
+
+// PUT /api/customers/invites/policy
+async fn update_customer_registration_invite_policy(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Json(dto): Json<UpdateCustomerRegistrationInvitePolicyRequest>,
+) -> AppResult<Json<CustomerRegistrationInvitePolicy>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+    let policy = state
+        .customer_service
+        .update_customer_registration_invite_policy(&claims.sub, &tenant_id, dto, Some(&ip))
+        .await?;
+    Ok(Json(policy))
+}
+
+// GET /api/customers/invites/summary
+async fn get_customer_registration_invite_summary(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> AppResult<Json<CustomerRegistrationInviteSummary>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let summary = state
+        .customer_service
+        .summarize_customer_registration_invites(&claims.sub, &tenant_id)
+        .await?;
+    Ok(Json(summary))
+}
+
 // DELETE /api/customers/invites/{invite_id}
 async fn revoke_customer_registration_invite(
     State(state): State<AppState>,
@@ -401,6 +461,22 @@ async fn list_my_locations(
         .list_my_locations(&claims.sub, &tenant_id)
         .await?;
     Ok(Json(rows))
+}
+
+// POST /api/customers/portal/my-locations
+async fn create_my_location(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Json(dto): Json<CreateMyCustomerLocationRequest>,
+) -> AppResult<Json<CustomerLocation>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+    let row = state
+        .customer_service
+        .create_my_location(&claims.sub, &tenant_id, dto, Some(&ip))
+        .await?;
+    Ok(Json(row))
 }
 
 // GET /api/customers/portal/my-packages

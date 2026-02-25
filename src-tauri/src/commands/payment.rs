@@ -1,7 +1,8 @@
 //! Payment Commands
 
 use crate::models::{
-    BankAccount, BillingCollectionLogView, CreateBankAccountRequest, Invoice, InvoiceReminderLogView,
+    BankAccount, BillingCollectionLogView, CreateBankAccountRequest, Invoice,
+    InvoiceReminderLogView,
 };
 use crate::services::{
     AuthService, BillingCollectionRunResult, BulkGenerateInvoicesResult, Claims, PaymentService,
@@ -85,7 +86,10 @@ fn is_customer_package_invoice(invoice: &Invoice) -> bool {
 }
 
 fn parse_datetime_opt(input: Option<String>, field: &str) -> Result<Option<DateTime<Utc>>, String> {
-    let Some(raw) = input.map(|v| v.trim().to_string()).filter(|v| !v.is_empty()) else {
+    let Some(raw) = input
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+    else {
         return Ok(None);
     };
 

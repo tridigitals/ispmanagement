@@ -3,7 +3,8 @@
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    BankAccount, BillingCollectionLogView, CreateBankAccountRequest, Invoice, InvoiceReminderLogView,
+    BankAccount, BillingCollectionLogView, CreateBankAccountRequest, Invoice,
+    InvoiceReminderLogView,
 };
 use base64::{engine::general_purpose, Engine as _};
 use chrono::{Datelike, Duration, Months, Utc};
@@ -22,6 +23,63 @@ const BILLING_AUTO_SUSPEND_GRACE_DAYS_KEY: &str = "billing_auto_suspend_grace_da
 const BILLING_AUTO_RESUME_ON_PAYMENT_KEY: &str = "billing_auto_resume_on_payment";
 const BILLING_REMINDER_ENABLED_KEY: &str = "billing_reminder_enabled";
 const BILLING_REMINDER_SCHEDULE_KEY: &str = "billing_reminder_schedule";
+
+fn is_customer_package_invoice_external_id(external_id: Option<&str>) -> bool {
+    external_id
+        .map(|v| v.starts_with(CUSTOMER_PACKAGE_INVOICE_PREFIX))
+        .unwrap_or(false)
+}
+
+fn is_manual_payment_invoice(invoice: &Invoice) -> bool {
+    let method = invoice
+        .payment_method
+        .as_deref()
+        .unwrap_or_default()
+        .trim()
+        .to_ascii_lowercase();
+    invoice.status == "verification_pending"
+        || invoice.proof_attachment.is_some()
+        || method.contains("bank")
+        || method.contains("manual")
+}
+
+fn is_owner_or_admin_role(role: Option<&str>) -> bool {
+    role.map(|r| {
+        let normalized = r.trim().to_ascii_lowercase();
+        normalized == "owner" || normalized == "admin"
+    })
+    .unwrap_or(false)
+}
+
+fn filter_owner_admin_user_ids(rows: Vec<(String, Option<String>)>) -> Vec<String> {
+    let mut set = HashSet::new();
+    for (user_id, role) in rows {
+        if is_owner_or_admin_role(role.as_deref()) {
+            set.insert(user_id);
+        }
+    }
+    set.into_iter().collect()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PostPaidSubscriptionAction {
+    QueueInstallation,
+    ResumeIfSuspended,
+    SkipCancelled,
+}
+
+fn resolve_post_paid_subscription_action(
+    has_previous_paid: bool,
+    current_status: &str,
+) -> PostPaidSubscriptionAction {
+    if !has_previous_paid {
+        if current_status == "cancelled" {
+            return PostPaidSubscriptionAction::SkipCancelled;
+        }
+        return PostPaidSubscriptionAction::QueueInstallation;
+    }
+    PostPaidSubscriptionAction::ResumeIfSuspended
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct BulkGenerateInvoicesResult {
@@ -159,7 +217,7 @@ impl PaymentService {
                 amount::FLOAT8 as amount,
                 currency_code, base_currency_code,
                 fx_rate::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
-                status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
+                status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, rejection_reason, created_at, updated_at
             "#
         )
         .bind(&id)
@@ -223,7 +281,7 @@ impl PaymentService {
                 amount::FLOAT8 as amount,
                 currency_code, base_currency_code,
                 COALESCE(fx_rate, 1.0)::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
-                status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
+                status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, rejection_reason, created_at, updated_at
             FROM invoices WHERE id = $1
             "#
         )
@@ -253,7 +311,7 @@ impl PaymentService {
                     amount::FLOAT8 as amount,
                     currency_code, base_currency_code,
                     COALESCE(fx_rate, 1.0)::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
-                    status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
+                    status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, rejection_reason, created_at, updated_at
                 FROM invoices
                 WHERE tenant_id = $1
                   AND (external_id IS NULL OR external_id NOT LIKE 'pkgsub:%')
@@ -270,7 +328,7 @@ impl PaymentService {
                     amount::FLOAT8 as amount,
                     currency_code, base_currency_code,
                     COALESCE(fx_rate, 1.0)::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
-                    status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
+                    status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, rejection_reason, created_at, updated_at
                 FROM invoices
                 WHERE external_id IS NULL OR external_id NOT LIKE 'pkgsub:%'
                 ORDER BY created_at DESC
@@ -308,7 +366,7 @@ impl PaymentService {
                 amount::FLOAT8 as amount,
                 currency_code, base_currency_code,
                 COALESCE(fx_rate, 1.0)::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
-                status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
+                status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, rejection_reason, created_at, updated_at
             FROM invoices
             WHERE tenant_id = $1 AND external_id LIKE $2
             ORDER BY created_at DESC
@@ -346,7 +404,7 @@ impl PaymentService {
                 i.amount::FLOAT8 as amount,
                 i.currency_code, i.base_currency_code,
                 COALESCE(i.fx_rate, 1.0)::FLOAT8 as fx_rate, i.fx_source, i.fx_fetched_at,
-                i.status, i.description, i.due_date, i.paid_at, i.payment_method, i.proof_attachment, i.external_id, i.merchant_id, i.created_at, i.updated_at
+                i.status, i.description, i.due_date, i.paid_at, i.payment_method, i.proof_attachment, i.external_id, i.merchant_id, i.rejection_reason, i.created_at, i.updated_at
             FROM invoices i
             INNER JOIN customer_subscriptions cs
               ON cs.tenant_id = i.tenant_id
@@ -541,43 +599,47 @@ impl PaymentService {
         );
 
         #[cfg(feature = "postgres")]
-        let exists_current_period: bool = sqlx::query_scalar(
+        let existing_current_period: Option<Invoice> = sqlx::query_as::<_, Invoice>(
             r#"
-            SELECT EXISTS(
-                SELECT 1
-                FROM invoices
-                WHERE tenant_id = $1
-                  AND external_id = $2
-            )
+            SELECT
+                id, tenant_id, invoice_number,
+                amount::FLOAT8 as amount,
+                currency_code, base_currency_code,
+                COALESCE(fx_rate, 1.0)::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
+                status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, rejection_reason, created_at, updated_at
+            FROM invoices
+            WHERE tenant_id = $1
+              AND external_id = $2
+            ORDER BY created_at DESC
+            LIMIT 1
             "#,
         )
         .bind(tenant_id)
         .bind(&external_id)
-        .fetch_one(&self.pool)
+        .fetch_optional(&self.pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
         #[cfg(feature = "sqlite")]
-        let exists_current_period: bool = sqlx::query_scalar(
+        let existing_current_period: Option<Invoice> = sqlx::query_as::<_, Invoice>(
             r#"
-            SELECT EXISTS(
-                SELECT 1
-                FROM invoices
-                WHERE tenant_id = ?
-                  AND external_id = ?
-            )
+            SELECT *
+            FROM invoices
+            WHERE tenant_id = ?
+              AND external_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1
             "#,
         )
         .bind(tenant_id)
         .bind(&external_id)
-        .fetch_one(&self.pool)
+        .fetch_optional(&self.pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        if exists_current_period {
-            return Err(AppError::Validation(
-                "Invoice for current billing period already exists".to_string(),
-            ));
+        // Idempotent checkout: reuse existing invoice for the same billing period.
+        if let Some(existing) = existing_current_period {
+            return Ok(existing);
         }
 
         let description = format!(
@@ -802,11 +864,7 @@ impl PaymentService {
             match self.run_billing_collection_for_tenant(&tenant_id).await {
                 Ok(partial) => Self::merge_collection_result(&mut total, &partial),
                 Err(e) => {
-                    tracing::warn!(
-                        "billing collection tenant {} failed: {}",
-                        tenant_id,
-                        e
-                    );
+                    tracing::warn!("billing collection tenant {} failed: {}", tenant_id, e);
                     total.failed_count += 1;
                 }
             }
@@ -1798,7 +1856,7 @@ impl PaymentService {
                 amount::FLOAT8 as amount,
                 currency_code, base_currency_code,
                 fx_rate::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
-                status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, created_at, updated_at
+                status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, rejection_reason, created_at, updated_at
             FROM invoices WHERE invoice_number = $1
             "#
         )
@@ -1853,7 +1911,7 @@ impl PaymentService {
         let paid_at = if status == "paid" { Some(now) } else { None };
 
         #[cfg(feature = "postgres")]
-        sqlx::query("UPDATE invoices SET status = $1, paid_at = $2, updated_at = $3 WHERE id = $4")
+        sqlx::query("UPDATE invoices SET status = $1, paid_at = $2, rejection_reason = CASE WHEN $1 = 'paid' THEN NULL ELSE rejection_reason END, updated_at = $3 WHERE id = $4")
             .bind(status)
             .bind(paid_at)
             .bind(now)
@@ -1865,9 +1923,10 @@ impl PaymentService {
         #[cfg(feature = "sqlite")]
         {
             let paid_str = paid_at.map(|t| t.to_rfc3339());
-            sqlx::query("UPDATE invoices SET status = ?, paid_at = ?, updated_at = ? WHERE id = ?")
+            sqlx::query("UPDATE invoices SET status = ?, paid_at = ?, rejection_reason = CASE WHEN ? = 'paid' THEN NULL ELSE rejection_reason END, updated_at = ? WHERE id = ?")
                 .bind(status)
                 .bind(paid_str)
+                .bind(status)
                 .bind(now.to_rfc3339())
                 .bind(&invoice.id)
                 .execute(&self.pool)
@@ -1943,33 +2002,29 @@ impl PaymentService {
             }
         }
 
-        // 4. Send Notification to Tenant Users
+        let is_customer_package =
+            is_customer_package_invoice_external_id(invoice.external_id.as_deref());
+
+        // 4. Send status notification
+        // - Customer package invoice:
+        //   - customer/member role => customer-facing page (/pay/{invoice_id})
+        //   - owner/admin role => admin invoice page (/admin/invoices)
+        // - SaaS plan invoice: notify Owner/Admin tenant members only (/admin/subscription)
         if status == "paid" || status == "failed" {
-            // Get all users in this tenant
-            #[cfg(feature = "postgres")]
-            let users: Vec<(String,)> =
-                sqlx::query_as("SELECT user_id FROM tenant_members WHERE tenant_id = $1")
-                    .bind(&invoice.tenant_id)
-                    .fetch_all(&self.pool)
-                    .await
-                    .unwrap_or_default();
-
-            #[cfg(feature = "sqlite")]
-            let users: Vec<(String,)> =
-                sqlx::query_as("SELECT user_id FROM tenant_members WHERE tenant_id = ?")
-                    .bind(&invoice.tenant_id)
-                    .fetch_all(&self.pool)
-                    .await
-                    .unwrap_or_default();
-
             let title = if status == "paid" {
                 "Payment Successful".to_string()
             } else {
                 "Payment Failed".to_string()
             };
+            let manual_failure = status == "failed" && is_manual_payment_invoice(&invoice);
             let message = if status == "paid" {
                 format!(
                     "Invoice {} has been successfully paid. Thank you!",
+                    invoice.invoice_number
+                )
+            } else if manual_failure {
+                format!(
+                    "Payment proof for invoice {} was rejected. Please review the reason and upload a new proof.",
                     invoice.invoice_number
                 )
             } else {
@@ -1979,55 +2034,172 @@ impl PaymentService {
                 )
             };
 
-            for (user_id,) in users {
-                // Fire and forget notification
-                let _ = self
-                    .notification_service
-                    .create_notification(
-                        user_id,
-                        Some(invoice.tenant_id.clone()),
-                        title.clone(),
-                        message.clone(),
-                        "info".to_string(),                      // type
-                        "billing".to_string(),                   // category
-                        Some("/admin/subscription".to_string()), // action_url
-                    )
-                    .await;
+            if is_customer_package {
+                if manual_failure {
+                    let subscription_id = Self::parse_customer_subscription_id(
+                        invoice.external_id.as_deref(),
+                    );
+                    if let Some(subscription_id) = subscription_id {
+                        let customer_user_ids = self
+                            .list_customer_user_ids_for_subscription(
+                                &invoice.tenant_id,
+                                &subscription_id,
+                            )
+                            .await
+                            .unwrap_or_default();
+
+                        for user_id in customer_user_ids {
+                            let _ = self
+                                .notification_service
+                                .create_notification(
+                                    user_id,
+                                    Some(invoice.tenant_id.clone()),
+                                    title.clone(),
+                                    message.clone(),
+                                    "info".to_string(),
+                                    "billing".to_string(),
+                                    Some(format!("/pay/{}", invoice.id)),
+                                )
+                                .await;
+                        }
+                    }
+                    // For manual failed, stop here: no admin/owner or other tenant roles.
+                    // Requirement: notify only the affected customer.
+                    return Ok(());
+                }
+
+                #[cfg(feature = "postgres")]
+                let recipients: Vec<(String, Option<String>)> = sqlx::query_as(
+                    r#"
+                    SELECT DISTINCT user_id, role
+                    FROM tenant_members
+                    WHERE tenant_id = $1
+                    "#,
+                )
+                .bind(&invoice.tenant_id)
+                .fetch_all(&self.pool)
+                .await
+                .unwrap_or_default();
+
+                #[cfg(feature = "sqlite")]
+                let recipients: Vec<(String, Option<String>)> = sqlx::query_as(
+                    r#"
+                    SELECT DISTINCT user_id, role
+                    FROM tenant_members
+                    WHERE tenant_id = ?
+                    "#,
+                )
+                .bind(&invoice.tenant_id)
+                .fetch_all(&self.pool)
+                .await
+                .unwrap_or_default();
+
+                for (user_id, role) in recipients {
+                    let is_admin = is_owner_or_admin_role(role.as_deref());
+                    // For manual mark-failed flow, only notify customer-side users.
+                    // Admin/owner can still receive failed notifications for online payment failures.
+                    if manual_failure && is_admin {
+                        continue;
+                    }
+
+                    let action_url = if is_admin {
+                        "/admin/invoices".to_string()
+                    } else {
+                        format!("/pay/{}", invoice.id)
+                    };
+                    let _ = self
+                        .notification_service
+                        .create_notification(
+                            user_id,
+                            Some(invoice.tenant_id.clone()),
+                            title.clone(),
+                            message.clone(),
+                            "info".to_string(),
+                            "billing".to_string(),
+                            Some(action_url),
+                        )
+                        .await;
+                }
+            } else {
+                let users = self
+                    .list_tenant_owner_admin_user_ids(&invoice.tenant_id)
+                    .await
+                    .unwrap_or_default();
+
+                for user_id in users {
+                    let _ = self
+                        .notification_service
+                        .create_notification(
+                            user_id,
+                            Some(invoice.tenant_id.clone()),
+                            title.clone(),
+                            message.clone(),
+                            "info".to_string(),
+                            "billing".to_string(),
+                            Some("/admin/subscription".to_string()),
+                        )
+                        .await;
+                }
             }
         }
 
-        // 5. Notify Superadmins (New Sale Alert)
+        // 5. Notify payment stakeholders
         if status == "paid" {
-            #[cfg(feature = "postgres")]
-            let super_admins: Vec<(String,)> =
-                sqlx::query_as("SELECT id FROM users WHERE is_super_admin = true")
-                    .fetch_all(&self.pool)
+            if is_customer_package {
+                let tenant_admins = self
+                    .list_tenant_owner_admin_user_ids(&invoice.tenant_id)
                     .await
                     .unwrap_or_default();
 
-            #[cfg(feature = "sqlite")]
-            let super_admins: Vec<(String,)> =
-                sqlx::query_as("SELECT id FROM users WHERE is_super_admin = 1")
-                    .fetch_all(&self.pool)
-                    .await
-                    .unwrap_or_default();
+                for user_id in tenant_admins {
+                    let _ = self
+                        .notification_service
+                        .create_notification(
+                            user_id,
+                            Some(invoice.tenant_id.clone()),
+                            "Customer Payment Received".to_string(),
+                            format!(
+                                "Customer invoice {} has been paid. Amount: {}",
+                                invoice.invoice_number, invoice.amount
+                            ),
+                            "success".to_string(),
+                            "billing".to_string(),
+                            Some("/admin/invoices".to_string()),
+                        )
+                        .await;
+                }
+            } else {
+                #[cfg(feature = "postgres")]
+                let super_admins: Vec<(String,)> =
+                    sqlx::query_as("SELECT id FROM users WHERE is_super_admin = true")
+                        .fetch_all(&self.pool)
+                        .await
+                        .unwrap_or_default();
 
-            for (admin_id,) in super_admins {
-                let _ = self
-                    .notification_service
-                    .create_notification(
-                        admin_id,
-                        None, // System notification
-                        "New Subscription Sale!".to_string(),
-                        format!(
-                            "Invoice {} has been paid. Amount: {}",
-                            invoice.invoice_number, invoice.amount
-                        ),
-                        "success".to_string(),
-                        "billing".to_string(),
-                        Some("/superadmin/invoices".to_string()),
-                    )
-                    .await;
+                #[cfg(feature = "sqlite")]
+                let super_admins: Vec<(String,)> =
+                    sqlx::query_as("SELECT id FROM users WHERE is_super_admin = 1")
+                        .fetch_all(&self.pool)
+                        .await
+                        .unwrap_or_default();
+
+                for (admin_id,) in super_admins {
+                    let _ = self
+                        .notification_service
+                        .create_notification(
+                            admin_id,
+                            None, // System notification for SaaS billing
+                            "New Subscription Sale!".to_string(),
+                            format!(
+                                "Invoice {} has been paid. Amount: {}",
+                                invoice.invoice_number, invoice.amount
+                            ),
+                            "success".to_string(),
+                            "billing".to_string(),
+                            Some("/superadmin/invoices".to_string()),
+                        )
+                        .await;
+                }
             }
         }
 
@@ -2205,10 +2377,11 @@ impl PaymentService {
 
     /// Submit Payment Proof (Manual Transfer)
     pub async fn submit_payment_proof(&self, invoice_id: &str, file_path: &str) -> AppResult<()> {
+        let invoice = self.get_invoice(invoice_id).await?;
         let now = Utc::now();
 
         #[cfg(feature = "postgres")]
-        sqlx::query("UPDATE invoices SET status = 'verification_pending', proof_attachment = $1, updated_at = $2 WHERE id = $3")
+        sqlx::query("UPDATE invoices SET status = 'verification_pending', proof_attachment = $1, rejection_reason = NULL, updated_at = $2 WHERE id = $3")
             .bind(file_path)
             .bind(now)
             .bind(invoice_id)
@@ -2217,7 +2390,7 @@ impl PaymentService {
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
         #[cfg(feature = "sqlite")]
-        sqlx::query("UPDATE invoices SET status = 'verification_pending', proof_attachment = ?, updated_at = ? WHERE id = ?")
+        sqlx::query("UPDATE invoices SET status = 'verification_pending', proof_attachment = ?, rejection_reason = NULL, updated_at = ? WHERE id = ?")
             .bind(file_path)
             .bind(now.to_rfc3339())
             .bind(invoice_id)
@@ -2225,42 +2398,64 @@ impl PaymentService {
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        // Notify Admins about new proof
-        // TODO: This should ideally notify Superadmins.
-        // Reusing the same Superadmin notification logic could be good here.
-        // For now, let's keep it simple and just update the status.
-        // We will add a Notification Trigger next.
+        let is_customer_package =
+            is_customer_package_invoice_external_id(invoice.external_id.as_deref());
 
-        #[cfg(feature = "postgres")]
-        let super_admins: Vec<(String,)> =
-            sqlx::query_as("SELECT id FROM users WHERE is_super_admin = true")
-                .fetch_all(&self.pool)
+        if is_customer_package {
+            let tenant_admins = self
+                .list_tenant_owner_admin_user_ids(&invoice.tenant_id)
                 .await
                 .unwrap_or_default();
 
-        #[cfg(feature = "sqlite")]
-        let super_admins: Vec<(String,)> =
-            sqlx::query_as("SELECT id FROM users WHERE is_super_admin = 1")
-                .fetch_all(&self.pool)
-                .await
-                .unwrap_or_default();
+            for user_id in tenant_admins {
+                let _ = self
+                    .notification_service
+                    .create_notification(
+                        user_id,
+                        Some(invoice.tenant_id.clone()),
+                        "New Payment Proof Uploaded".to_string(),
+                        format!(
+                            "A payment proof has been uploaded for customer invoice {}",
+                            invoice.invoice_number
+                        ),
+                        "info".to_string(),
+                        "billing".to_string(),
+                        Some("/admin/invoices".to_string()),
+                    )
+                    .await;
+            }
+        } else {
+            #[cfg(feature = "postgres")]
+            let super_admins: Vec<(String,)> =
+                sqlx::query_as("SELECT id FROM users WHERE is_super_admin = true")
+                    .fetch_all(&self.pool)
+                    .await
+                    .unwrap_or_default();
 
-        for (admin_id,) in super_admins {
-            let _ = self
-                .notification_service
-                .create_notification(
-                    admin_id,
-                    None,
-                    "New Payment Proof Uploaded".to_string(),
-                    format!(
-                        "A payment proof has been uploaded for invoice {}",
-                        invoice_id
-                    ),
-                    "info".to_string(),
-                    "billing".to_string(),
-                    Some("/superadmin/invoices".to_string()),
-                )
-                .await;
+            #[cfg(feature = "sqlite")]
+            let super_admins: Vec<(String,)> =
+                sqlx::query_as("SELECT id FROM users WHERE is_super_admin = 1")
+                    .fetch_all(&self.pool)
+                    .await
+                    .unwrap_or_default();
+
+            for (admin_id,) in super_admins {
+                let _ = self
+                    .notification_service
+                    .create_notification(
+                        admin_id,
+                        None,
+                        "New Payment Proof Uploaded".to_string(),
+                        format!(
+                            "A payment proof has been uploaded for invoice {}",
+                            invoice.invoice_number
+                        ),
+                        "info".to_string(),
+                        "billing".to_string(),
+                        Some("/superadmin/invoices".to_string()),
+                    )
+                    .await;
+            }
         }
 
         Ok(())
@@ -2271,11 +2466,20 @@ impl PaymentService {
         &self,
         invoice_id: &str,
         status: &str,
-        _rejection_reason: Option<String>,
+        rejection_reason: Option<String>,
     ) -> AppResult<()> {
         if status != "paid" && status != "failed" {
             return Err(AppError::Validation(
                 "Status must be 'paid' or 'failed'".to_string(),
+            ));
+        }
+
+        let normalized_reason = rejection_reason
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty());
+        if status == "failed" && normalized_reason.is_none() {
+            return Err(AppError::Validation(
+                "rejection_reason is required when status is failed".to_string(),
             ));
         }
 
@@ -2286,6 +2490,30 @@ impl PaymentService {
         // process_midtrans_notification(&self, invoice: &Invoice, status: &str)
         self.process_midtrans_notification(&invoice.invoice_number, status)
             .await?;
+
+        #[cfg(feature = "postgres")]
+        sqlx::query("UPDATE invoices SET rejection_reason = $1 WHERE id = $2")
+            .bind(if status == "failed" {
+                normalized_reason.as_deref()
+            } else {
+                None
+            })
+            .bind(invoice_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query("UPDATE invoices SET rejection_reason = ? WHERE id = ?")
+            .bind(if status == "failed" {
+                normalized_reason.as_deref()
+            } else {
+                None
+            })
+            .bind(invoice_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
         Ok(())
     }
@@ -2346,6 +2574,76 @@ impl PaymentService {
                 )
                 .await;
             return Ok(());
+        }
+
+        let has_previous_paid = self
+            .has_previous_paid_customer_package_invoice(
+                &invoice.tenant_id,
+                &subscription_id,
+                &invoice.id,
+            )
+            .await?;
+
+        let current_status = self
+            .get_customer_subscription_status(&invoice.tenant_id, &subscription_id)
+            .await?;
+
+        let Some(current_status) = current_status else {
+            return Err(AppError::NotFound(
+                "Customer subscription not found".to_string(),
+            ));
+        };
+
+        match resolve_post_paid_subscription_action(has_previous_paid, &current_status) {
+            PostPaidSubscriptionAction::SkipCancelled => {
+                let _ = self
+                    .insert_billing_collection_log(
+                        &invoice.tenant_id,
+                        &invoice.id,
+                        Some(&subscription_id),
+                        "installation",
+                        "skipped",
+                        Some("Subscription is cancelled"),
+                        "system",
+                        None,
+                    )
+                    .await;
+                return Ok(());
+            }
+            PostPaidSubscriptionAction::QueueInstallation => {
+                self.set_customer_subscription_status(
+                    &invoice.tenant_id,
+                    &subscription_id,
+                    "pending_installation",
+                )
+                .await?;
+                let _work_order_id = self
+                    .ensure_installation_work_order(&invoice.tenant_id, &subscription_id, &invoice.id)
+                    .await?;
+
+                let _ = self
+                    .insert_billing_collection_log(
+                        &invoice.tenant_id,
+                        &invoice.id,
+                        Some(&subscription_id),
+                        "installation",
+                        "success",
+                        Some("First paid invoice: subscription moved to pending_installation"),
+                        "system",
+                        None,
+                    )
+                    .await;
+                let _ = self
+                    .notify_subscription_installation_pending(
+                        &invoice.tenant_id,
+                        &subscription_id,
+                        &invoice.invoice_number,
+                    )
+                    .await;
+
+                return Ok(());
+            }
+            PostPaidSubscriptionAction::ResumeIfSuspended => {}
         }
 
         match self
@@ -2549,6 +2847,48 @@ impl PaymentService {
         Ok(sent)
     }
 
+    async fn notify_subscription_installation_pending(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        invoice_number: &str,
+    ) -> AppResult<usize> {
+        let user_ids = self
+            .list_notification_user_ids_for_subscription(tenant_id, subscription_id)
+            .await?;
+        if user_ids.is_empty() {
+            return Ok(0);
+        }
+
+        let title = "Installation scheduled".to_string();
+        let message = format!(
+            "Payment for invoice {} is confirmed. Your service is queued for installation/activation by technician.",
+            invoice_number
+        );
+
+        let mut sent = 0usize;
+        for user_id in user_ids {
+            if self
+                .notification_service
+                .create_notification(
+                    user_id,
+                    Some(tenant_id.to_string()),
+                    title.clone(),
+                    message.clone(),
+                    "info".to_string(),
+                    "billing".to_string(),
+                    Some("/dashboard/packages".to_string()),
+                )
+                .await
+                .is_ok()
+            {
+                sent += 1;
+            }
+        }
+
+        Ok(sent)
+    }
+
     async fn list_notification_user_ids_for_subscription(
         &self,
         tenant_id: &str,
@@ -2600,22 +2940,98 @@ impl PaymentService {
         Ok(merged.into_iter().collect())
     }
 
-    async fn list_tenant_member_user_ids(&self, tenant_id: &str) -> AppResult<Vec<String>> {
+    async fn list_customer_user_ids_for_subscription(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+    ) -> AppResult<Vec<String>> {
         #[cfg(feature = "postgres")]
-        let rows: Vec<String> = sqlx::query_scalar("SELECT user_id FROM tenant_members WHERE tenant_id = $1")
-            .bind(tenant_id)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+        let customer_user_ids: Vec<String> = sqlx::query_scalar(
+            r#"
+            SELECT DISTINCT cu.user_id
+            FROM customer_subscriptions cs
+            INNER JOIN customer_users cu
+              ON cu.tenant_id = cs.tenant_id
+             AND cu.customer_id = cs.customer_id
+            WHERE cs.tenant_id = $1
+              AND cs.id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
 
         #[cfg(feature = "sqlite")]
-        let rows: Vec<String> = sqlx::query_scalar("SELECT user_id FROM tenant_members WHERE tenant_id = ?")
-            .bind(tenant_id)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+        let customer_user_ids: Vec<String> = sqlx::query_scalar(
+            r#"
+            SELECT DISTINCT cu.user_id
+            FROM customer_subscriptions cs
+            INNER JOIN customer_users cu
+              ON cu.tenant_id = cs.tenant_id
+             AND cu.customer_id = cs.customer_id
+            WHERE cs.tenant_id = ?
+              AND cs.id = ?
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(customer_user_ids)
+    }
+
+    async fn list_tenant_member_user_ids(&self, tenant_id: &str) -> AppResult<Vec<String>> {
+        #[cfg(feature = "postgres")]
+        let rows: Vec<String> =
+            sqlx::query_scalar("SELECT user_id FROM tenant_members WHERE tenant_id = $1")
+                .bind(tenant_id)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let rows: Vec<String> =
+            sqlx::query_scalar("SELECT user_id FROM tenant_members WHERE tenant_id = ?")
+                .bind(tenant_id)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
 
         Ok(rows)
+    }
+
+    async fn list_tenant_owner_admin_user_ids(&self, tenant_id: &str) -> AppResult<Vec<String>> {
+        #[cfg(feature = "postgres")]
+        let rows: Vec<(String, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT DISTINCT user_id, role
+            FROM tenant_members
+            WHERE tenant_id = $1
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let rows: Vec<(String, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT DISTINCT user_id, role
+            FROM tenant_members
+            WHERE tenant_id = ?
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(filter_owner_admin_user_ids(rows))
     }
 
     async fn has_sent_invoice_reminder(
@@ -2695,7 +3111,9 @@ impl PaymentService {
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
         let Some(current_status) = current_status else {
-            return Err(AppError::NotFound("Customer subscription not found".to_string()));
+            return Err(AppError::NotFound(
+                "Customer subscription not found".to_string(),
+            ));
         };
 
         if current_status != expected_status {
@@ -2730,6 +3148,264 @@ impl PaymentService {
         .rows_affected();
 
         Ok(rows > 0)
+    }
+
+    async fn get_customer_subscription_status(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+    ) -> AppResult<Option<String>> {
+        #[cfg(feature = "postgres")]
+        let current_status: Option<String> = sqlx::query_scalar(
+            "SELECT status FROM customer_subscriptions WHERE tenant_id = $1 AND id = $2",
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let current_status: Option<String> = sqlx::query_scalar(
+            "SELECT status FROM customer_subscriptions WHERE tenant_id = ? AND id = ?",
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(current_status)
+    }
+
+    async fn set_customer_subscription_status(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        new_status: &str,
+    ) -> AppResult<bool> {
+        let now = Utc::now();
+        #[cfg(feature = "postgres")]
+        let rows = sqlx::query(
+            "UPDATE customer_subscriptions SET status = $1, updated_at = $2 WHERE tenant_id = $3 AND id = $4",
+        )
+        .bind(new_status)
+        .bind(now)
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .rows_affected();
+
+        #[cfg(feature = "sqlite")]
+        let rows = sqlx::query(
+            "UPDATE customer_subscriptions SET status = ?, updated_at = ? WHERE tenant_id = ? AND id = ?",
+        )
+        .bind(new_status)
+        .bind(now.to_rfc3339())
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .rows_affected();
+
+        Ok(rows > 0)
+    }
+
+    async fn has_previous_paid_customer_package_invoice(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        current_invoice_id: &str,
+    ) -> AppResult<bool> {
+        let pattern = format!("{}{}:%", CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id);
+
+        #[cfg(feature = "postgres")]
+        let exists: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1
+              FROM invoices
+              WHERE tenant_id = $1
+                AND id <> $2
+                AND external_id LIKE $3
+                AND status = 'paid'
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(current_invoice_id)
+        .bind(&pattern)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let exists: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1
+              FROM invoices
+              WHERE tenant_id = ?
+                AND id <> ?
+                AND external_id LIKE ?
+                AND status = 'paid'
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(current_invoice_id)
+        .bind(&pattern)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(exists)
+    }
+
+    async fn ensure_installation_work_order(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        invoice_id: &str,
+    ) -> AppResult<String> {
+        #[derive(sqlx::FromRow)]
+        struct SubRef {
+            customer_id: String,
+            location_id: String,
+            router_id: Option<String>,
+        }
+
+        #[cfg(feature = "postgres")]
+        let sub: SubRef = sqlx::query_as(
+            r#"
+            SELECT customer_id, location_id, router_id
+            FROM customer_subscriptions
+            WHERE tenant_id = $1 AND id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .ok_or_else(|| AppError::NotFound("Customer subscription not found".to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let sub: SubRef = sqlx::query_as(
+            r#"
+            SELECT customer_id, location_id, router_id
+            FROM customer_subscriptions
+            WHERE tenant_id = ? AND id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .ok_or_else(|| AppError::NotFound("Customer subscription not found".to_string()))?;
+
+        #[derive(sqlx::FromRow)]
+        struct ExistingOrder {
+            id: String,
+        }
+
+        #[cfg(feature = "postgres")]
+        let existing: Option<ExistingOrder> = sqlx::query_as(
+            r#"
+            SELECT id
+            FROM installation_work_orders
+            WHERE tenant_id = $1
+              AND subscription_id = $2
+              AND status IN ('pending', 'in_progress')
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let existing: Option<ExistingOrder> = sqlx::query_as(
+            r#"
+            SELECT id
+            FROM installation_work_orders
+            WHERE tenant_id = ?
+              AND subscription_id = ?
+              AND status IN ('pending', 'in_progress')
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        if let Some(ex) = existing {
+            return Ok(ex.id);
+        }
+
+        let now = Utc::now();
+        let id = Uuid::new_v4().to_string();
+        let notes = "Auto-created from paid invoice; awaiting technician installation/activation.";
+
+        #[cfg(feature = "postgres")]
+        sqlx::query(
+            r#"
+            INSERT INTO installation_work_orders
+              (id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, notes, created_at, updated_at)
+            VALUES
+              ($1,$2,$3,$4,$5,$6,$7,'pending',$8,$9,$10)
+            "#,
+        )
+        .bind(&id)
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .bind(invoice_id)
+        .bind(&sub.customer_id)
+        .bind(&sub.location_id)
+        .bind(&sub.router_id)
+        .bind(notes)
+        .bind(now)
+        .bind(now)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query(
+            r#"
+            INSERT INTO installation_work_orders
+              (id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, notes, created_at, updated_at)
+            VALUES
+              (?,?,?,?,?,?,?,'pending',?,?,?)
+            "#,
+        )
+        .bind(&id)
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .bind(invoice_id)
+        .bind(&sub.customer_id)
+        .bind(&sub.location_id)
+        .bind(&sub.router_id)
+        .bind(notes)
+        .bind(now.to_rfc3339())
+        .bind(now.to_rfc3339())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(id)
     }
 
     async fn insert_invoice_reminder_log(
@@ -3187,5 +3863,71 @@ impl PaymentService {
         }
 
         Ok((effective_rate, now, source))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        filter_owner_admin_user_ids, is_customer_package_invoice_external_id, resolve_post_paid_subscription_action,
+        PostPaidSubscriptionAction,
+        is_owner_or_admin_role,
+    };
+
+    #[test]
+    fn owner_admin_role_detection_is_case_insensitive() {
+        assert!(is_owner_or_admin_role(Some("Owner")));
+        assert!(is_owner_or_admin_role(Some("owner")));
+        assert!(is_owner_or_admin_role(Some("ADMIN")));
+        assert!(is_owner_or_admin_role(Some(" admin ")));
+
+        assert!(!is_owner_or_admin_role(Some("customer")));
+        assert!(!is_owner_or_admin_role(Some("member")));
+        assert!(!is_owner_or_admin_role(None));
+    }
+
+    #[test]
+    fn customer_package_external_id_detection() {
+        assert!(is_customer_package_invoice_external_id(Some("pkgsub:abc-123:monthly")));
+        assert!(is_customer_package_invoice_external_id(Some("pkgsub:sub-id")));
+        assert!(!is_customer_package_invoice_external_id(Some("plan:pro:monthly")));
+        assert!(!is_customer_package_invoice_external_id(Some("")));
+        assert!(!is_customer_package_invoice_external_id(None));
+    }
+
+    #[test]
+    fn filters_recipients_to_owner_admin_only() {
+        let rows = vec![
+            ("u-owner".to_string(), Some("Owner".to_string())),
+            ("u-admin".to_string(), Some("admin".to_string())),
+            ("u-customer".to_string(), Some("customer".to_string())),
+            ("u-member".to_string(), Some("member".to_string())),
+            ("u-empty".to_string(), Some("".to_string())),
+            ("u-null".to_string(), None),
+            ("u-admin".to_string(), Some("Admin".to_string())),
+        ];
+
+        let mut got = filter_owner_admin_user_ids(rows);
+        got.sort();
+
+        assert_eq!(got, vec!["u-admin".to_string(), "u-owner".to_string()]);
+    }
+
+    #[test]
+    fn first_paid_subscription_is_queued_for_installation() {
+        let action = resolve_post_paid_subscription_action(false, "active");
+        assert_eq!(action, PostPaidSubscriptionAction::QueueInstallation);
+    }
+
+    #[test]
+    fn paid_overdue_subscription_uses_resume_flow() {
+        let action = resolve_post_paid_subscription_action(true, "suspended");
+        assert_eq!(action, PostPaidSubscriptionAction::ResumeIfSuspended);
+    }
+
+    #[test]
+    fn first_paid_cancelled_subscription_skips_installation_flow() {
+        let action = resolve_post_paid_subscription_action(false, "cancelled");
+        assert_eq!(action, PostPaidSubscriptionAction::SkipCancelled);
     }
 }

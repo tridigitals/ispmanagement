@@ -87,9 +87,9 @@
 
         if (isTauri) {
           if (get(isAdmin)) {
-            goto(`/${slug}/admin`);
+            goto('/admin');
           } else {
-            goto(`/${slug}/dashboard`);
+            goto('/dashboard');
           }
           return;
         }
@@ -104,9 +104,9 @@
 
       if (slug) {
         if (get(isAdmin)) {
-          goto(`/${slug}/admin`);
+          goto('/admin');
         } else {
-          goto(`/${slug}/dashboard`);
+          goto('/dashboard');
         }
       } else {
         goto('/dashboard');
@@ -248,7 +248,7 @@
         }
       } else {
         if (u.role === 'admin') {
-          goto(`/${slug}/admin`);
+          goto('/admin');
         }
       } // This closing brace was missing in the original search
     } else {

@@ -1,6 +1,6 @@
 use super::AppState;
 use crate::http::auth::extract_ip;
-use crate::models::{RegisterDto, Tenant, User};
+use crate::models::{CustomerRegistrationInviteValidationView, RegisterDto, Tenant, User};
 use crate::services::decode_unsubscribe_token;
 use axum::{
     extract::{ConnectInfo, Path, Query, State},
@@ -53,6 +53,11 @@ pub struct CustomerRegistrationStatus {
     pub enabled: bool,
     pub global_registration_enabled: bool,
     pub tenant_self_registration_enabled: bool,
+}
+
+#[derive(serde::Deserialize)]
+pub struct ValidateInviteQuery {
+    pub token: String,
 }
 
 #[derive(serde::Deserialize, Validate)]
@@ -131,6 +136,83 @@ pub async fn customer_registration_status_by_domain(
         global_registration_enabled,
         tenant_self_registration_enabled,
     }))
+}
+
+pub async fn validate_customer_registration_invite_by_domain(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<ValidateInviteQuery>,
+) -> Result<Json<CustomerRegistrationInviteValidationView>, crate::error::AppError> {
+    let token = query.token.trim();
+    if token.is_empty() {
+        return Ok(Json(CustomerRegistrationInviteValidationView {
+            valid: false,
+            status: "invalid".to_string(),
+            message: "Invite token is required".to_string(),
+            expires_at: None,
+            max_uses: None,
+            used_count: None,
+            remaining_uses: None,
+        }));
+    }
+
+    let host = match request_host(&headers) {
+        Some(v) => v,
+        None => {
+            return Ok(Json(CustomerRegistrationInviteValidationView {
+                valid: false,
+                status: "invalid".to_string(),
+                message: "Unable to detect request host".to_string(),
+                expires_at: None,
+                max_uses: None,
+                used_count: None,
+                remaining_uses: None,
+            }));
+        }
+    };
+    let auth_settings = state.auth_service.get_auth_settings().await;
+    if is_local_or_ip(&host) || is_platform_domain(&host, auth_settings.main_domain.as_deref()) {
+        return Ok(Json(CustomerRegistrationInviteValidationView {
+            valid: false,
+            status: "invalid_domain".to_string(),
+            message: "Invite can only be used from a tenant custom domain".to_string(),
+            expires_at: None,
+            max_uses: None,
+            used_count: None,
+            remaining_uses: None,
+        }));
+    }
+
+    #[cfg(feature = "postgres")]
+    let tenant: Option<Tenant> =
+        sqlx::query_as("SELECT * FROM tenants WHERE custom_domain = $1 AND is_active = true")
+            .bind(&host)
+            .fetch_optional(&state.auth_service.pool)
+            .await?;
+    #[cfg(feature = "sqlite")]
+    let tenant: Option<Tenant> =
+        sqlx::query_as("SELECT * FROM tenants WHERE custom_domain = ? AND is_active = 1")
+            .bind(&host)
+            .fetch_optional(&state.auth_service.pool)
+            .await?;
+
+    let Some(tenant) = tenant else {
+        return Ok(Json(CustomerRegistrationInviteValidationView {
+            valid: false,
+            status: "tenant_not_found".to_string(),
+            message: "No active tenant was found for this domain".to_string(),
+            expires_at: None,
+            max_uses: None,
+            used_count: None,
+            remaining_uses: None,
+        }));
+    };
+
+    let result = state
+        .customer_service
+        .validate_customer_registration_invite(&tenant.id, token)
+        .await?;
+    Ok(Json(result))
 }
 
 fn normalize_host(raw: &str) -> Option<String> {

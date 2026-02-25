@@ -138,4 +138,30 @@ describe('api client auth-expired handling', () => {
     vi.runAllTimers();
     expect(assign).not.toHaveBeenCalled();
   });
+
+  it('does not clear session or redirect on 403 forbidden', async () => {
+    const { assign, local } = setupBrowser('/dashboard/packages');
+    local.setItem('auth_token', 'token-403');
+    local.setItem('auth_user', '{"id":"u403"}');
+    local.setItem('auth_tenant', '{"id":"t403"}');
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+
+    const { settings } = await import('./client');
+    await expect(settings.getAll()).rejects.toThrow('Forbidden');
+
+    expect(local.getItem('auth_token')).toBe('token-403');
+    expect(local.getItem('auth_user')).toBe('{"id":"u403"}');
+    expect(local.getItem('auth_tenant')).toBe('{"id":"t403"}');
+    vi.runAllTimers();
+    expect(assign).not.toHaveBeenCalled();
+  });
 });

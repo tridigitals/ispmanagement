@@ -4,6 +4,7 @@
   import { get } from 'svelte/store';
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import Modal from '$lib/components/ui/Modal.svelte';
   import {
     api,
     type CustomerLocation,
@@ -21,6 +22,17 @@
   let selectedCycle = $state<'monthly' | 'yearly'>('monthly');
   let purchasingPackageId = $state<string | null>(null);
   let loadError = $state('');
+  let showCheckoutModal = $state(false);
+  let checkoutCandidate = $state<IspPackage | null>(null);
+  let showAddLocationModal = $state(false);
+  let creatingLocation = $state(false);
+  let newLocationLabel = $state('');
+  let newLocationAddress = $state('');
+  let newLocationCity = $state('');
+  let newLocationState = $state('');
+  let newLocationPostalCode = $state('');
+  let newLocationCountry = $state('ID');
+  let newLocationNotes = $state('');
 
   onMount(() => {
     void loadData();
@@ -60,6 +72,9 @@
       null
     );
   });
+  const selectedLocation = $derived.by(
+    () => locations.find((location) => location.id === selectedLocationId) || null,
+  );
 
   function hasYearlyPrice(pkg: IspPackage) {
     return Number(pkg.price_yearly || 0) > 0;
@@ -90,27 +105,45 @@
     return get(t)('dashboard.packages.actions.buy') || 'Buy package';
   }
 
-  async function checkout(pkg: IspPackage) {
+  function checkoutEligibilityError(pkg: IspPackage, cycle: 'monthly' | 'yearly'): string | null {
     if (!selectedLocationId) {
-      toast.error(get(t)('dashboard.packages.toasts.select_location') || 'Select a location first');
-      return;
+      return get(t)('dashboard.packages.toasts.select_location') || 'Select a location first';
     }
 
-    if (selectedCycle === 'yearly' && !hasYearlyPrice(pkg)) {
-      toast.error(
+    if (cycle === 'yearly' && !hasYearlyPrice(pkg)) {
+      return (
         get(t)('dashboard.packages.toasts.yearly_unavailable') ||
-          'Yearly billing is not available for this package',
+        'Yearly billing is not available for this package'
       );
-      return;
     }
 
     if (
       currentSubscription?.package_id === pkg.id &&
-      currentSubscription?.billing_cycle === selectedCycle
+      currentSubscription?.billing_cycle === cycle
     ) {
-      toast.info(
-        get(t)('dashboard.packages.toasts.already_active') || 'This package is already active',
-      );
+      return get(t)('dashboard.packages.toasts.already_active') || 'This package is already active';
+    }
+
+    return null;
+  }
+
+  function requestCheckout(pkg: IspPackage) {
+    const eligibilityError = checkoutEligibilityError(pkg, 'monthly');
+    if (eligibilityError) {
+      toast.info(eligibilityError);
+      return;
+    }
+    selectedCycle = 'monthly';
+    checkoutCandidate = pkg;
+    showCheckoutModal = true;
+  }
+
+  async function confirmCheckout() {
+    const pkg = checkoutCandidate;
+    if (!pkg) return;
+    const eligibilityError = checkoutEligibilityError(pkg, selectedCycle);
+    if (eligibilityError) {
+      toast.info(eligibilityError);
       return;
     }
 
@@ -121,9 +154,20 @@
         package_id: pkg.id,
         billing_cycle: selectedCycle,
       });
+      showCheckoutModal = false;
+      checkoutCandidate = null;
+
+      const invoiceNumber = res.invoice?.invoice_number || res.invoice?.id;
+      if (res.invoice?.status === 'paid') {
+        toast.info(
+          `${get(t)('dashboard.packages.toasts.already_active') || 'This package is already active'} (${invoiceNumber})`,
+        );
+        goto('/dashboard/invoices');
+        return;
+      }
+
       toast.success(
-        get(t)('dashboard.packages.toasts.checkout_success') ||
-          'Invoice created. Continue to payment.',
+        `${get(t)('dashboard.packages.toasts.checkout_success') || 'Invoice ready for payment.'} (${invoiceNumber})`,
       );
       await loadData();
       goto(`/pay/${res.invoice.id}`);
@@ -133,6 +177,43 @@
       );
     } finally {
       purchasingPackageId = null;
+    }
+  }
+
+  function openAddLocationModal() {
+    newLocationLabel = '';
+    newLocationAddress = '';
+    newLocationCity = '';
+    newLocationState = '';
+    newLocationPostalCode = '';
+    newLocationCountry = 'ID';
+    newLocationNotes = '';
+    showAddLocationModal = true;
+  }
+
+  async function saveMyLocation() {
+    if (creatingLocation || !newLocationLabel.trim()) return;
+    creatingLocation = true;
+    try {
+      await api.customers.portal.createMyLocation({
+        label: newLocationLabel.trim(),
+        address_line1: newLocationAddress.trim() || null,
+        city: newLocationCity.trim() || null,
+        state: newLocationState.trim() || null,
+        postal_code: newLocationPostalCode.trim() || null,
+        country: newLocationCountry.trim() || null,
+        notes: newLocationNotes.trim() || null,
+      });
+      toast.success($t('common.saved') || 'Saved');
+      showAddLocationModal = false;
+      await loadData();
+      if (locations.length > 0) {
+        selectedLocationId = locations[0].id;
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to create location');
+    } finally {
+      creatingLocation = false;
     }
   }
 </script>
@@ -146,10 +227,16 @@
           'Choose your package and generate an invoice instantly for payment.'}
       </p>
     </div>
-    <button class="btn btn-secondary" onclick={loadData} disabled={loading}>
-      <Icon name="refresh-cw" size={16} />
-      {$t('common.refresh') || 'Refresh'}
-    </button>
+    <div class="header-actions">
+      <button class="btn btn-secondary" onclick={() => goto('/dashboard/invoices')}>
+        <Icon name="file-text" size={16} />
+        {$t('admin.invoices.title') || 'Invoices'}
+      </button>
+      <button class="btn btn-secondary" onclick={loadData} disabled={loading}>
+        <Icon name="refresh-cw" size={16} />
+        {$t('common.refresh') || 'Refresh'}
+      </button>
+    </div>
   </header>
 
   {#if loadError}
@@ -172,16 +259,6 @@
         {#each locations as location (location.id)}
           <option value={location.id}>{location.label}</option>
         {/each}
-      </select>
-    </div>
-
-    <div class="field">
-      <label for="billing-cycle"
-        >{$t('dashboard.packages.fields.billing_cycle') || 'Billing cycle'}</label
-      >
-      <select id="billing-cycle" bind:value={selectedCycle} disabled={loading}>
-        <option value="monthly">{$t('dashboard.packages.cycles.monthly') || 'Monthly'}</option>
-        <option value="yearly">{$t('dashboard.packages.cycles.yearly') || 'Yearly'}</option>
       </select>
     </div>
 
@@ -213,6 +290,12 @@
           {$t('dashboard.packages.empty.no_locations_hint') ||
             'Ask admin to link your account with a customer location first.'}
         </p>
+        <div class="empty-actions">
+          <button class="btn btn-primary" onclick={openAddLocationModal}>
+            <Icon name="plus" size={16} />
+            {$t('dashboard.packages.actions.add_location') || 'Add location'}
+          </button>
+        </div>
       </div>
     </div>
   {/if}
@@ -249,12 +332,11 @@
             <p class="description">{pkg.description}</p>
           {/if}
 
-          <div class="price">{formatCurrency(getPrice(pkg))}</div>
+          <div class="price">{formatCurrency(Number(pkg.price_monthly || 0))}</div>
           <div class="price-sub">
-            {#if selectedCycle === 'yearly'}
-              {$t('dashboard.packages.cycles.yearly') || 'Yearly'}
-            {:else}
-              {$t('dashboard.packages.cycles.monthly') || 'Monthly'}
+            {$t('dashboard.packages.cycles.monthly') || 'Monthly'}
+            {#if hasYearlyPrice(pkg)}
+              · {$t('dashboard.packages.cycles.yearly') || 'Yearly'} {$t('common.available') || 'available'}
             {/if}
           </div>
 
@@ -272,9 +354,8 @@
           <button
             class="btn btn-primary"
             disabled={!selectedLocationId ||
-              purchasingPackageId === pkg.id ||
-              (selectedCycle === 'yearly' && !hasYearlyPrice(pkg))}
-            onclick={() => checkout(pkg)}
+              purchasingPackageId === pkg.id}
+            onclick={() => requestCheckout(pkg)}
           >
             {#if purchasingPackageId === pkg.id}
               <Icon name="refresh-cw" size={16} />
@@ -289,6 +370,144 @@
     {/if}
   </section>
 </div>
+
+<Modal
+  show={showCheckoutModal}
+  title={$t('dashboard.packages.actions.buy') || 'Buy package'}
+  onclose={() => {
+    showCheckoutModal = false;
+    checkoutCandidate = null;
+  }}
+>
+  {#if checkoutCandidate}
+    <div class="checkout-modal">
+      <div class="checkout-summary">
+        <div>
+          <small>Package</small>
+          <strong>{checkoutCandidate.name}</strong>
+        </div>
+        <div>
+          <small>Location</small>
+          <strong>{selectedLocation?.label || '-'}</strong>
+        </div>
+        <div>
+          <small>Billing cycle</small>
+          <strong>{selectedCycle === 'yearly' ? 'Yearly' : 'Monthly'}</strong>
+        </div>
+        <div>
+          <small>Total invoice</small>
+          <strong>{formatCurrency(getPrice(checkoutCandidate))}</strong>
+        </div>
+      </div>
+      <div class="cycle-pills">
+        <button
+          class="cycle-pill {selectedCycle === 'monthly' ? 'active' : ''}"
+          type="button"
+          onclick={() => (selectedCycle = 'monthly')}
+          disabled={!!purchasingPackageId}
+        >
+          {$t('dashboard.packages.cycles.monthly') || 'Monthly'}
+        </button>
+        <button
+          class="cycle-pill {selectedCycle === 'yearly' ? 'active' : ''}"
+          type="button"
+          onclick={() => (selectedCycle = 'yearly')}
+          disabled={!!purchasingPackageId || !hasYearlyPrice(checkoutCandidate)}
+        >
+          {$t('dashboard.packages.cycles.yearly') || 'Yearly'}
+        </button>
+      </div>
+      <p class="checkout-note">
+        Checkout akan membuat invoice otomatis untuk periode berjalan. Jika invoice periode ini sudah
+        ada, sistem akan menggunakan invoice yang sama.
+      </p>
+      <div class="checkout-actions">
+        <button
+          class="btn btn-secondary"
+          onclick={() => {
+            showCheckoutModal = false;
+            checkoutCandidate = null;
+          }}
+          disabled={!!purchasingPackageId}
+        >
+          {$t('common.cancel') || 'Cancel'}
+        </button>
+        <button
+          class="btn btn-primary"
+          onclick={confirmCheckout}
+          disabled={purchasingPackageId === checkoutCandidate?.id}
+        >
+          {#if purchasingPackageId === checkoutCandidate.id}
+            <Icon name="refresh-cw" size={16} />
+            {$t('common.loading') || 'Loading...'}
+          {:else}
+            <Icon name="credit-card" size={16} />
+            {$t('dashboard.packages.actions.buy') || 'Buy package'}
+          {/if}
+        </button>
+      </div>
+    </div>
+  {/if}
+</Modal>
+
+<Modal
+  show={showAddLocationModal}
+  title={$t('dashboard.packages.actions.add_location') || 'Add location'}
+  onclose={() => {
+    if (!creatingLocation) showAddLocationModal = false;
+  }}
+>
+  <div class="location-form">
+    <label class="form-field">
+      <span>Label</span>
+      <input class="input" bind:value={newLocationLabel} placeholder="Home / Office" />
+    </label>
+    <label class="form-field">
+      <span>Address</span>
+      <input class="input" bind:value={newLocationAddress} placeholder="Street address" />
+    </label>
+    <div class="location-grid-2">
+      <label class="form-field">
+        <span>City</span>
+        <input class="input" bind:value={newLocationCity} />
+      </label>
+      <label class="form-field">
+        <span>State</span>
+        <input class="input" bind:value={newLocationState} />
+      </label>
+      <label class="form-field">
+        <span>Postal code</span>
+        <input class="input" bind:value={newLocationPostalCode} />
+      </label>
+      <label class="form-field">
+        <span>Country</span>
+        <input class="input" bind:value={newLocationCountry} />
+      </label>
+    </div>
+    <label class="form-field">
+      <span>Notes</span>
+      <textarea class="input textarea" bind:value={newLocationNotes} rows="3"></textarea>
+    </label>
+    <div class="checkout-actions">
+      <button
+        class="btn btn-secondary"
+        onclick={() => (showAddLocationModal = false)}
+        disabled={creatingLocation}
+      >
+        {$t('common.cancel') || 'Cancel'}
+      </button>
+      <button class="btn btn-primary" onclick={saveMyLocation} disabled={creatingLocation || !newLocationLabel.trim()}>
+        {#if creatingLocation}
+          <Icon name="refresh-cw" size={16} />
+          {$t('common.loading') || 'Loading...'}
+        {:else}
+          <Icon name="save" size={16} />
+          {$t('common.save') || 'Save'}
+        {/if}
+      </button>
+    </div>
+  </div>
+</Modal>
 
 <style>
   .packages-page {
@@ -318,6 +537,13 @@
     color: var(--text-secondary);
   }
 
+  .header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+  }
+
   .card {
     border: 1px solid var(--border-color);
     border-radius: 12px;
@@ -327,7 +553,7 @@
 
   .controls {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
     align-items: end;
   }
@@ -484,6 +710,71 @@
     color: var(--text-on-primary, #fff);
   }
 
+  .checkout-modal {
+    display: grid;
+    gap: 0.8rem;
+  }
+
+  .checkout-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+
+  .checkout-summary > div {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.6rem 0.65rem;
+    display: grid;
+    gap: 0.2rem;
+    background: var(--bg-secondary);
+  }
+
+  .checkout-summary small {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+  }
+
+  .checkout-summary strong {
+    font-size: 0.92rem;
+  }
+
+  .checkout-note {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 1.45;
+  }
+
+  .cycle-pills {
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .cycle-pill {
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-radius: 999px;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  .cycle-pill.active {
+    border-color: color-mix(in srgb, var(--accent-primary) 55%, var(--border-color));
+    background: color-mix(in srgb, var(--accent-primary) 14%, transparent);
+    color: var(--accent-primary);
+    font-weight: 700;
+  }
+
+  .checkout-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+  }
+
   .empty-block {
     display: flex;
     align-items: flex-start;
@@ -500,6 +791,48 @@
     color: var(--text-secondary);
   }
 
+  .empty-actions {
+    margin-top: 0.75rem;
+  }
+
+  .location-form {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .form-field {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .form-field > span {
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .input {
+    width: 100%;
+    border: 1px solid var(--border-color);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+    min-height: 40px;
+  }
+
+  .textarea {
+    min-height: 84px;
+    resize: vertical;
+  }
+
+  .location-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+
   .skeleton {
     min-height: 220px;
     opacity: 0.4;
@@ -507,6 +840,12 @@
 
   @media (max-width: 900px) {
     .controls {
+      grid-template-columns: 1fr;
+    }
+    .checkout-summary {
+      grid-template-columns: 1fr;
+    }
+    .location-grid-2 {
       grid-template-columns: 1fr;
     }
   }

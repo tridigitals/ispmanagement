@@ -53,7 +53,12 @@
   }
 
   function canShowPackageBillingAlert() {
-    return !$isAdmin && !$isSuperAdmin && $can('read_own', 'customers');
+    return !$isAdmin && !$isSuperAdmin && (canAccessCustomerPackages() || $can('read_own', 'customers'));
+  }
+
+  function canAccessCustomerPackages() {
+    const role = String(($user as any)?.tenant_role || $user?.role || '').trim().toLowerCase();
+    return role === 'customer';
   }
 
   async function refreshPackageOverdueAlert() {
@@ -125,7 +130,7 @@
             label: $t('sidebar.packages') || 'Packages',
             icon: 'package',
             href: `${tenantPrefix}/dashboard/packages`,
-            show: $can('read_own', 'customers'),
+            show: $can('read_own', 'customers') || canAccessCustomerPackages(),
           },
           {
             label: $t('sidebar.announcements') || 'Announcements',
@@ -231,7 +236,22 @@
             label: $t('sidebar.overview'),
             icon: 'shield',
             href: `${tenantPrefix}/admin`,
-            show: true,
+            show:
+              $can('access', 'admin') ||
+              $can('read', 'network_routers') ||
+              $can('manage', 'network_routers') ||
+              $can('read', 'work_orders') ||
+              $can('manage', 'work_orders') ||
+              $can('read', 'customers') ||
+              $can('manage', 'customers') ||
+              $can('read', 'billing') ||
+              $can('manage', 'billing') ||
+              $can('read', 'team') ||
+              $can('read', 'roles') ||
+              $can('read', 'settings') ||
+              $can('read', 'audit_logs') ||
+              $can('read_all', 'support') ||
+              $can('read', 'email_outbox'),
           },
           {
             label: $t('sidebar.customers') || 'Customers',
@@ -270,6 +290,12 @@
             show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
           },
           {
+            label: $t('sidebar.installations') || 'Installations',
+            icon: 'settings',
+            href: `${tenantPrefix}/admin/network/installations`,
+            show: $can('read', 'work_orders') || $can('manage', 'work_orders'),
+          },
+          {
             label: $t('sidebar.logs') || 'Logs',
             icon: 'file-text',
             href: `${tenantPrefix}/admin/network/logs`,
@@ -285,13 +311,13 @@
             label: $t('sidebar.ppp_profiles') || 'PPP Profiles',
             icon: 'key',
             href: `${tenantPrefix}/admin/network/ppp-profiles`,
-            show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+            show: $can('read', 'pppoe') || $can('manage', 'pppoe'),
           },
           {
             label: $t('sidebar.ip_pools') || 'IP Pools',
             icon: 'database',
             href: `${tenantPrefix}/admin/network/ip-pools`,
-            show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+            show: $can('read', 'pppoe') || $can('manage', 'pppoe'),
           },
           {
             label: $t('sidebar.packages') || 'Packages',
@@ -345,7 +371,7 @@
             label: $t('sidebar.storage') || 'Storage',
             icon: 'folder',
             href: `${tenantPrefix}/admin/storage`,
-            show: true,
+            show: $can('read', 'storage') || $can('upload', 'storage') || $can('delete', 'storage'),
           },
           {
             label: $t('sidebar.email_outbox') || 'Email Outbox',
@@ -357,7 +383,7 @@
             label: $t('sidebar.support') || 'Support',
             icon: 'life-buoy',
             href: `${tenantPrefix}/admin/support`,
-            show: $can('read_all', 'support'),
+            show: $can('read_all', 'support') || $can('read', 'support'),
           },
         ]),
       },
@@ -369,19 +395,19 @@
             label: $t('sidebar.subscription') || 'Subscription',
             icon: 'credit-card',
             href: `${tenantPrefix}/admin/subscription`,
-            show: true,
+            show: $can('read', 'billing') || $can('manage', 'billing'),
           },
           {
             label: $t('sidebar.invoices') || 'Invoices',
             icon: 'file-text',
             href: `${tenantPrefix}/admin/invoices`,
-            show: true,
+            show: $can('read', 'billing') || $can('manage', 'billing'),
           },
           {
             label: $t('sidebar.billing_collection') || 'Billing Logs',
             icon: 'activity',
             href: `${tenantPrefix}/admin/invoices/collection`,
-            show: true,
+            show: $can('read', 'billing') || $can('manage', 'billing'),
           },
         ]),
       },
@@ -399,7 +425,7 @@
             label: $t('sidebar.announcements') || 'Announcements',
             icon: 'megaphone',
             href: `${tenantPrefix}/admin/announcements`,
-            show: $can('manage', 'announcements'),
+            show: $can('read', 'announcements') || $can('manage', 'announcements'),
           },
         ]),
       },

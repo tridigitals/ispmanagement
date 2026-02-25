@@ -33,6 +33,10 @@
   let currentPlanInfo = $derived(availablePlans.find((p) => p.slug === subscription?.plan_slug));
 
   onMount(async () => {
+    if (!$can('read', 'billing') && !$can('manage', 'billing')) {
+      goto('/unauthorized');
+      return;
+    }
     try {
       const [subRes, plansRes, invoicesRes, publicSettings] = await Promise.all([
         api.plans.getSubscriptionDetails(),

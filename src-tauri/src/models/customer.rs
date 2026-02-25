@@ -168,6 +168,21 @@ pub struct CreateCustomerLocationRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct CreateMyCustomerLocationRequest {
+    pub label: String,
+    pub address_line1: Option<String>,
+    pub address_line2: Option<String>,
+    pub city: Option<String>,
+    pub state: Option<String>,
+    pub postal_code: Option<String>,
+    pub country: Option<String>,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateCustomerLocationRequest {
     pub label: Option<String>,
     pub address_line1: Option<String>,
@@ -218,7 +233,7 @@ pub struct CustomerSubscription {
     #[sqlx(try_from = "f64")]
     pub price: f64,
     pub currency_code: String,
-    pub status: String, // active | suspended | cancelled
+    pub status: String, // active | pending_installation | suspended | cancelled
     pub starts_at: Option<DateTime<Utc>>,
     pub ends_at: Option<DateTime<Utc>>,
     pub notes: Option<String>,
@@ -247,6 +262,62 @@ pub struct CustomerSubscriptionView {
     pub package_name: Option<String>,
     pub location_label: Option<String>,
     pub router_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct InstallationWorkOrder {
+    pub id: String,
+    pub tenant_id: String,
+    pub subscription_id: String,
+    pub invoice_id: Option<String>,
+    pub customer_id: String,
+    pub location_id: String,
+    pub router_id: Option<String>,
+    pub status: String, // pending | in_progress | completed | cancelled
+    pub assigned_to: Option<String>,
+    pub scheduled_at: Option<DateTime<Utc>>,
+    pub completed_at: Option<DateTime<Utc>>,
+    pub notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct InstallationWorkOrderView {
+    pub id: String,
+    pub tenant_id: String,
+    pub subscription_id: String,
+    pub invoice_id: Option<String>,
+    pub customer_id: String,
+    pub location_id: String,
+    pub router_id: Option<String>,
+    pub status: String,
+    pub assigned_to: Option<String>,
+    pub scheduled_at: Option<DateTime<Utc>>,
+    pub completed_at: Option<DateTime<Utc>>,
+    pub notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub customer_name: Option<String>,
+    pub location_label: Option<String>,
+    pub package_name: Option<String>,
+    pub router_name: Option<String>,
+    pub assigned_to_name: Option<String>,
+    pub assigned_to_email: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AssignInstallationWorkOrderRequest {
+    pub assigned_to: String,
+    pub scheduled_at: Option<String>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateInstallationWorkOrderStatusRequest {
+    pub notes: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -289,9 +360,11 @@ pub struct PortalCheckoutSubscriptionRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(deny_unknown_fields)]
 pub struct CreateCustomerRegistrationInviteRequest {
+    #[serde(alias = "expiresInHours")]
     pub expires_in_hours: Option<u32>,
+    #[serde(alias = "maxUses")]
     pub max_uses: Option<u32>,
     pub note: Option<String>,
 }
@@ -316,4 +389,44 @@ pub struct CustomerRegistrationInviteCreateResponse {
     pub invite: CustomerRegistrationInviteView,
     pub invite_token: String,
     pub invite_url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomerRegistrationInviteValidationView {
+    pub valid: bool,
+    pub status: String,
+    pub message: String,
+    pub expires_at: Option<DateTime<Utc>>,
+    pub max_uses: Option<i64>,
+    pub used_count: Option<i64>,
+    pub remaining_uses: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomerRegistrationInvitePolicy {
+    pub default_expires_in_hours: u32,
+    pub default_max_uses: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateCustomerRegistrationInvitePolicyRequest {
+    #[serde(alias = "defaultExpiresInHours")]
+    pub default_expires_in_hours: Option<u32>,
+    #[serde(alias = "defaultMaxUses")]
+    pub default_max_uses: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomerRegistrationInviteSummary {
+    pub total: i64,
+    pub active: i64,
+    pub revoked: i64,
+    pub expired: i64,
+    pub used_up: i64,
+    pub total_uses: i64,
+    pub total_capacity: i64,
+    pub utilization_percent: f64,
+    pub created_last_30d: i64,
+    pub used_last_30d: i64,
 }

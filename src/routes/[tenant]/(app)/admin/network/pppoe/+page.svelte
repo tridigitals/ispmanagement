@@ -163,7 +163,11 @@
       return;
     }
     void load();
-    void loadProvisioningSetting();
+    if ($can('read', 'settings') || $can('update', 'settings')) {
+      void loadProvisioningSetting();
+    } else {
+      autoApplyOnSave = false;
+    }
   });
 
   async function load() {
@@ -179,6 +183,10 @@
   }
 
   async function loadProvisioningSetting() {
+    if (!$can('read', 'settings') && !$can('update', 'settings')) {
+      autoApplyOnSave = false;
+      return;
+    }
     try {
       const raw = await api.settings.getValue('pppoe_auto_apply_on_save_enabled');
       const val = String(raw || '')

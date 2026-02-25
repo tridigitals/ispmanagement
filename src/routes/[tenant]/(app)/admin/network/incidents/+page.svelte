@@ -113,6 +113,7 @@
     }),
   );
   let tenantPrefix = $derived(tenantCtx.tenantPrefix);
+  let canUseTenantSettings = $derived($can('read', 'settings') || $can('update', 'settings'));
 
   const columns = $derived.by(() => [
     { key: 'select', label: '', width: '44px' },
@@ -310,6 +311,10 @@
   }
 
   async function loadAssignmentEmailSetting() {
+    if (!canUseTenantSettings) {
+      assignmentEmailEnabled = false;
+      return;
+    }
     try {
       const v = await api.settings.getValue('mikrotik_incident_assignment_email_enabled');
       const norm = (v || '').trim().toLowerCase();
@@ -320,6 +325,11 @@
   }
 
   async function loadSlaSettings() {
+    if (!canUseTenantSettings) {
+      slaWarnMinutes = 30;
+      slaBreachMinutes = 120;
+      return;
+    }
     try {
       const [warnRaw, breachRaw] = await Promise.all([
         api.settings.getValue('mikrotik_incident_sla_warn_minutes'),
@@ -1303,6 +1313,8 @@
 <style>
   .page-content {
     padding: 28px;
+    max-width: 1460px;
+    margin: 0 auto;
   }
   .export-wrap {
     position: relative;
@@ -1360,6 +1372,7 @@
     border: 1px solid var(--border-color);
     border-radius: 18px;
     overflow: hidden;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
   }
   .analytics {
     display: grid;

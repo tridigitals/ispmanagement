@@ -69,6 +69,7 @@
     }),
   );
   let tenantPrefix = $derived(tenantCtx.tenantPrefix);
+  let canUseTenantSettings = $derived($can('read', 'settings') || $can('update', 'settings'));
 
   onMount(() => {
     if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
@@ -94,6 +95,7 @@
 
     // Load thresholds from tenant settings (best-effort).
     void (async () => {
+      if (!canUseTenantSettings) return;
       try {
         const keys = [
           'mikrotik_alert_cpu_risk',
@@ -462,6 +464,8 @@
 <style>
   .page-content {
     padding: 28px;
+    max-width: 1460px;
+    margin: 0 auto;
   }
 
   .btn {
@@ -535,6 +539,7 @@
     border: 1px solid var(--border-color);
     border-radius: 18px;
     overflow: hidden;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
   }
 
   .link {

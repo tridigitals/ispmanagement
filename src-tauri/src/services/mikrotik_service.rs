@@ -191,16 +191,16 @@ impl MikrotikService {
                   i.*,
                   EXISTS(
                     SELECT 1 FROM audit_logs a
-                    WHERE a.tenant_id = i.tenant_id
+                    WHERE CAST(a.tenant_id AS TEXT) = CAST(i.tenant_id AS TEXT)
                       AND a.resource = 'mikrotik_incident'
-                      AND a.resource_id = i.id
+                      AND CAST(a.resource_id AS TEXT) = CAST(i.id AS TEXT)
                       AND a.action = 'escalate'
                   ) AS is_auto_escalated,
                   (
                     SELECT MAX(a.created_at) FROM audit_logs a
-                    WHERE a.tenant_id = i.tenant_id
+                    WHERE CAST(a.tenant_id AS TEXT) = CAST(i.tenant_id AS TEXT)
                       AND a.resource = 'mikrotik_incident'
-                      AND a.resource_id = i.id
+                      AND CAST(a.resource_id AS TEXT) = CAST(i.id AS TEXT)
                       AND a.action = 'escalate'
                   ) AS escalated_at
                 FROM mikrotik_incidents i
@@ -221,16 +221,16 @@ impl MikrotikService {
                   i.*,
                   EXISTS(
                     SELECT 1 FROM audit_logs a
-                    WHERE a.tenant_id = i.tenant_id
+                    WHERE CAST(a.tenant_id AS TEXT) = CAST(i.tenant_id AS TEXT)
                       AND a.resource = 'mikrotik_incident'
-                      AND a.resource_id = i.id
+                      AND CAST(a.resource_id AS TEXT) = CAST(i.id AS TEXT)
                       AND a.action = 'escalate'
                   ) AS is_auto_escalated,
                   (
                     SELECT MAX(a.created_at) FROM audit_logs a
-                    WHERE a.tenant_id = i.tenant_id
+                    WHERE CAST(a.tenant_id AS TEXT) = CAST(i.tenant_id AS TEXT)
                       AND a.resource = 'mikrotik_incident'
-                      AND a.resource_id = i.id
+                      AND CAST(a.resource_id AS TEXT) = CAST(i.id AS TEXT)
                       AND a.action = 'escalate'
                   ) AS escalated_at
                 FROM mikrotik_incidents i
@@ -245,7 +245,6 @@ impl MikrotikService {
             .await
             .map_err(AppError::Database)?
         };
-
         Ok(rows)
     }
 
@@ -262,7 +261,10 @@ impl MikrotikService {
                 "run_auto_escalation",
                 "mikrotik_incident",
                 None,
-                Some(&format!("Manual auto escalation run; escalated {} incident(s)", count)),
+                Some(&format!(
+                    "Manual auto escalation run; escalated {} incident(s)",
+                    count
+                )),
                 None,
             )
             .await;
@@ -392,7 +394,10 @@ impl MikrotikService {
                     .flatten();
 
                     let incident_target = if let Some(iface) = incident.interface_name.as_deref() {
-                        format!("{} ({iface})", router_name.unwrap_or(incident.router_id.clone()))
+                        format!(
+                            "{} ({iface})",
+                            router_name.unwrap_or(incident.router_id.clone())
+                        )
                     } else {
                         router_name.unwrap_or(incident.router_id.clone())
                     };
@@ -415,7 +420,10 @@ impl MikrotikService {
 
                     let assignment_email_enabled = match self
                         .settings_service
-                        .get_value(Some(tenant_id), "mikrotik_incident_assignment_email_enabled")
+                        .get_value(
+                            Some(tenant_id),
+                            "mikrotik_incident_assignment_email_enabled",
+                        )
                         .await
                     {
                         Ok(Some(v)) => matches!(
@@ -450,7 +458,12 @@ impl MikrotikService {
                             );
                             let _ = self
                                 .notification_service
-                                .force_send_email(Some(tenant_id.to_string()), &email, &subject, &body)
+                                .force_send_email(
+                                    Some(tenant_id.to_string()),
+                                    &email,
+                                    &subject,
+                                    &body,
+                                )
                                 .await;
                         }
                     }
@@ -479,7 +492,9 @@ impl MikrotikService {
         let normalized_type = {
             let v = incident_type.trim().to_ascii_lowercase();
             if v.is_empty() {
-                return Err(AppError::Validation("incident_type is required".to_string()));
+                return Err(AppError::Validation(
+                    "incident_type is required".to_string(),
+                ));
             }
             v
         };
@@ -539,8 +554,11 @@ impl MikrotikService {
         )
         .await?;
 
-        let dedup_key =
-            MikrotikIncident::dedup_key(router_id, normalized_interface.as_deref(), &normalized_type);
+        let dedup_key = MikrotikIncident::dedup_key(
+            router_id,
+            normalized_interface.as_deref(),
+            &normalized_type,
+        );
         let incident = sqlx::query_as::<_, MikrotikIncident>(
             r#"
             SELECT * FROM mikrotik_incidents

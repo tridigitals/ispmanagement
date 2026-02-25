@@ -28,6 +28,7 @@
   let customerRegistrationEnabled = false;
   let inviteToken = '';
   let hasInviteToken = false;
+  let inviteTokenValidated = false;
 
   // Visibility states
   let showPassword = false;
@@ -46,12 +47,10 @@
     password_require_special: false,
   };
 
-  $: if ($appSettings.auth && $appSettings.auth.allow_registration === false) {
-    toast.error(
-      $t('auth.register.disabled_message') || 'Public registration is currently disabled',
-    );
-    goto('/login');
-  }
+  $: canShowRegisterForm =
+    isCustomDomain &&
+    (hasInviteToken ? inviteTokenValidated : customerRegistrationEnabled) &&
+    (($appSettings.auth?.allow_registration === true) || hasInviteToken);
 
   onMount(async () => {
     // @ts-ignore
@@ -79,8 +78,27 @@
       goto('/login');
       return;
     }
-    customerRegistrationEnabled = hasInviteToken;
-    if (!hasInviteToken) {
+    customerRegistrationEnabled = false;
+    if (hasInviteToken) {
+      try {
+        const validation = await publicApi.validateCustomerRegistrationInviteByDomain(inviteToken);
+        inviteTokenValidated = validation?.valid === true;
+        customerRegistrationEnabled = inviteTokenValidated;
+        if (!inviteTokenValidated) {
+          toast.error(
+            validation?.message ||
+              ($t('auth.register.disabled_message') ||
+                'Invite link is invalid or no longer available.'),
+          );
+          goto('/login');
+          return;
+        }
+      } catch (e: any) {
+        toast.error(e?.message || 'Failed to validate invite link');
+        goto('/login');
+        return;
+      }
+    } else {
       try {
         const status = await publicApi.getCustomerRegistrationStatusByDomain(hostname);
         customerRegistrationEnabled = status?.enabled === true;
@@ -131,7 +149,8 @@
     e.preventDefault();
     error = '';
 
-    if (!isCustomDomain || (!customerRegistrationEnabled && !hasInviteToken)) {
+    const registerAllowed = hasInviteToken ? inviteTokenValidated : customerRegistrationEnabled;
+    if (!isCustomDomain || !registerAllowed) {
       error =
         'Customer registration is only available from a tenant custom domain in web browser.';
       return;
@@ -182,7 +201,7 @@
   }
 </script>
 
-{#if $appSettings.auth?.allow_registration && isCustomDomain && customerRegistrationEnabled}
+{#if canShowRegisterForm}
   <div class="auth-container">
     <div class="brand-section">
       <div class="brand-content" in:fade={{ duration: 1000 }}>

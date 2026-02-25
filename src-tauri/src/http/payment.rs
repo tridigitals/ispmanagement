@@ -2,7 +2,8 @@
 
 use crate::http::AppState;
 use crate::models::{
-    BankAccount, BillingCollectionLogView, CreateBankAccountRequest, Invoice, InvoiceReminderLogView,
+    BankAccount, BillingCollectionLogView, CreateBankAccountRequest, Invoice,
+    InvoiceReminderLogView,
 };
 use crate::services::{BillingCollectionRunResult, BulkGenerateInvoicesResult, Claims};
 use axum::{
@@ -49,6 +50,8 @@ pub fn router() -> Router<AppState> {
             "/invoices/{id}/customer-package/verify",
             post(verify_customer_package_payment),
         )
+        .route("/invoices/{id}/verify", post(verify_invoice_payment))
+        .route("/invoices/{id}/proof", post(submit_payment_proof))
         .route("/invoices/{id}", get(get_invoice))
         .route("/invoices/{id}/midtrans", post(pay_invoice_midtrans))
         .route("/invoices/{id}/status", get(check_payment_status))
@@ -127,6 +130,10 @@ fn require_superadmin(claims: &Claims) -> Result<(), (StatusCode, Json<ErrorResp
     Ok(())
 }
 
+fn is_customer_role(role: &str) -> bool {
+    role.trim().eq_ignore_ascii_case("customer")
+}
+
 async fn resolve_payment_read_scope(
     state: &AppState,
     claims: &Claims,
@@ -159,6 +166,24 @@ async fn resolve_payment_read_scope(
         .await
         .is_ok()
     {
+        let customer_id = state
+            .customer_service
+            .get_portal_customer_id(&claims.sub, tenant_id)
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::FORBIDDEN,
+                    Json(ErrorResponse {
+                        error: e.to_string(),
+                    }),
+                )
+            })?;
+        return Ok(PaymentReadScope::CustomerPortal { customer_id });
+    }
+
+    // Backward-compatible fallback:
+    // Some tenants still use role-only customer setup without explicit customers.read_own permission.
+    if is_customer_role(&claims.role) {
         let customer_id = state
             .customer_service
             .get_portal_customer_id(&claims.sub, tenant_id)
@@ -335,6 +360,13 @@ struct VerifyCustomerPackagePaymentBody {
     rejection_reason: Option<String>,
     #[serde(default, alias = "invoice_id", alias = "id")]
     invoice_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+struct SubmitPaymentProofBody {
+    file_path: String,
 }
 
 #[derive(Deserialize)]
@@ -791,6 +823,75 @@ async fn verify_customer_package_payment(
     state
         .payment_service
         .verify_payment(&id, &body.status, body.rejection_reason)
+        .await
+        .map(|_| StatusCode::NO_CONTENT)
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
+}
+
+async fn verify_invoice_payment(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(body): Json<VerifyCustomerPackagePaymentBody>,
+) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    require_superadmin(&claims)?;
+
+    if let Some(invoice_id) = body.invoice_id.as_deref() {
+        if invoice_id != id {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: "Invoice ID mismatch".to_string(),
+                }),
+            ));
+        }
+    }
+
+    state
+        .payment_service
+        .verify_payment(&id, &body.status, body.rejection_reason)
+        .await
+        .map(|_| StatusCode::NO_CONTENT)
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
+}
+
+async fn submit_payment_proof(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(body): Json<SubmitPaymentProofBody>,
+) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    let scope = resolve_payment_read_scope(&state, &claims).await?;
+    let _ = authorize_invoice_access(&state, &claims, &scope, &id).await?;
+
+    if body.file_path.trim().is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "filePath is required".to_string(),
+            }),
+        ));
+    }
+
+    state
+        .payment_service
+        .submit_payment_proof(&id, body.file_path.trim())
         .await
         .map(|_| StatusCode::NO_CONTENT)
         .map_err(|e| {

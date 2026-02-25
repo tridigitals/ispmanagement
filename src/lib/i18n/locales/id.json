@@ -357,6 +357,13 @@
         "message": "Terima kasih atas pembayarannya. Langganan Anda sudah aktif.",
         "cta": "Ke Langganan"
       },
+      "failed": {
+        "title": "Verifikasi Pembayaran Gagal",
+        "message": "Bukti pembayaran Anda ditolak. Silakan cek alasan berikut dan unggah bukti baru.",
+        "reason_label": "Alasan",
+        "reupload_hint": "Setelah transfer ulang, unggah bukti pembayaran terbaru Anda.",
+        "upload_again": "Unggah Ulang Bukti"
+      },
       "not_found": "Invoice tidak ditemukan",
       "errors": {
         "load_failed": "Gagal memuat invoice",
@@ -399,6 +406,7 @@
     "wallboard": "Wallboard",
     "alerts": "Alert",
     "incidents": "Insiden",
+    "installations": "Instalasi",
     "logs": "Log",
     "pppoe": "PPPoE",
     "ppp_profiles": "Profil PPP",
@@ -1549,7 +1557,8 @@
       "actions": {
         "buy": "Beli paket",
         "switch": "Ganti paket",
-        "current": "Paket aktif"
+        "current": "Paket aktif",
+        "add_location": "Tambah lokasi"
       },
       "badges": {
         "active": "Aktif"
@@ -2614,7 +2623,7 @@
         },
         "bulk": {
           "select_filtered": "Pilih hasil filter",
-          "selected": "{{count}} dipilih",
+          "selected": "{count} dipilih",
           "ack": "Ack Massal",
           "resolve": "Resolve Massal",
           "assign": "Assign Massal",
@@ -2690,6 +2699,23 @@
           "save": "Simpan Catatan",
           "open_network_settings": "Buka Pengaturan Network"
         }
+      },
+      "installations": {
+        "title": "Work Order Instalasi",
+        "subtitle": "Alur teknisi dari invoice terbayar sampai layanan aktif.",
+        "empty": "Belum ada work order instalasi",
+        "show_closed": "Tampilkan closed",
+        "hide_closed": "Sembunyikan closed",
+        "assign_required": "Pilih assignee terlebih dahulu",
+        "assigned": "Work order berhasil di-assign",
+        "start_ok": "Pekerjaan instalasi dimulai",
+        "complete_ok": "Pekerjaan selesai dan layanan diaktifkan",
+        "cancel_ok": "Work order dibatalkan",
+        "details_title": "Detail Instalasi",
+        "checklist": "Checklist Instalasi",
+        "notes_placeholder": "Catatan teknisi dan hasil kunjungan",
+        "save_plan": "Simpan Rencana",
+        "history": "Catatan Terakhir"
       },
       "logs": {
         "title": "Log Router",
@@ -3103,6 +3129,12 @@
           "create_failed": "Gagal membuat invoice",
           "bulk_generated": "Generate massal selesai",
           "bulk_generate_failed": "Gagal generate invoice jatuh tempo"
+        },
+        "stats": {
+          "total": "Total",
+          "paid": "Lunas",
+          "pending": "Menunggu",
+          "overdue": "Terlambat"
         }
       },
       "detail": {
@@ -3113,7 +3145,9 @@
           "amount": "Jumlah",
           "due_date": "Jatuh Tempo",
           "created": "Dibuat",
-          "updated": "Diperbarui"
+          "updated": "Diperbarui",
+          "payment_method": "Metode Pembayaran",
+          "rejection_reason": "Alasan Penolakan"
         },
         "actions": {
           "pay_now": "Bayar Sekarang",
@@ -3122,7 +3156,16 @@
           "processing": "Memproses...",
           "mark_paid": "Tandai Lunas",
           "mark_failed": "Tandai Gagal",
-          "open_payment_page": "Buka Halaman Pembayaran"
+          "open_payment_page": "Buka Halaman Pembayaran",
+          "view_payment_proof": "Lihat Bukti Pembayaran"
+        },
+        "payment_methods": {
+          "online_payment": "Pembayaran Online",
+          "bank_transfer": "Transfer Bank"
+        },
+        "payment_proof": {
+          "title": "Bukti Pembayaran",
+          "hint": "Klik gambar untuk memperbesar"
         },
         "confirm": {
           "mark_paid_title": "Tandai Invoice sebagai Lunas",
@@ -3132,11 +3175,25 @@
           "mark_paid_confirm": "Tandai Lunas",
           "mark_failed_confirm": "Tandai Gagal"
         },
+        "reject": {
+          "title": "Tandai Invoice sebagai Gagal",
+          "description": "Berikan alasan yang jelas agar pelanggan bisa memperbaiki dan unggah ulang bukti pembayaran.",
+          "placeholder": "Tulis alasan penolakan...",
+          "reason_required": "Alasan penolakan wajib diisi",
+          "options": {
+            "blurry": "Gambar bukti kurang jelas",
+            "amount_mismatch": "Nominal transfer tidak sesuai total invoice",
+            "wrong_destination": "Rekening tujuan transfer tidak sesuai",
+            "invalid_proof": "Bukti pembayaran tidak valid atau tidak terkait",
+            "duplicate": "Bukti pembayaran duplikat"
+          }
+        },
         "errors": {
           "not_customer_package": "Invoice ini bukan invoice paket pelanggan",
           "load_failed": "Gagal memuat invoice",
           "check_failed": "Gagal mengecek status",
-          "verify_failed": "Gagal memverifikasi invoice"
+          "verify_failed": "Gagal memverifikasi invoice",
+          "proof_not_available": "Bukti pembayaran belum tersedia"
         },
         "toasts": {
           "status_updated": "Status diperbarui",

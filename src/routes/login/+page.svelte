@@ -82,7 +82,7 @@
     if (u.is_super_admin) {
       // If logged in on a tenant domain/subdomain, go to tenant admin
       if (slug && currentHost.includes(slug)) {
-        goto(`/${slug}/admin`);
+        goto('/admin');
       } else {
         // Otherwise go to superadmin dashboard
         goto('/superadmin');
@@ -143,9 +143,9 @@
       } else {
         // We are on main domain, redirect to path-based tenant dashboard
         if (u.role === 'admin') {
-          goto(`/${slug}/admin`);
+          goto('/admin');
         } else {
-          goto(`/${slug}/dashboard`);
+          goto('/dashboard');
         }
       }
     } else {

@@ -48,6 +48,7 @@
     }),
   );
   const tenantPrefix = $derived(tenantCtx.tenantPrefix);
+  const canUseTenantSettings = $derived($can('read', 'settings') || $can('update', 'settings'));
 
   function loadLocal() {
     try {
@@ -71,6 +72,7 @@
   }
 
   async function loadRemoteLayout() {
+    if (!canUseTenantSettings) return;
     try {
       const rl = await api.settings.getValue(SETTINGS_LAYOUT_KEY);
       if (isLayoutPreset(rl)) layout = rl;
@@ -106,10 +108,12 @@
     saving = true;
     try {
       saveLocal();
-      try {
-        await api.settings.upsert(SETTINGS_LAYOUT_KEY, layout, 'Wallboard layout preset (tenant scoped)');
-      } catch {
-        // remote save best effort
+      if (canUseTenantSettings) {
+        try {
+          await api.settings.upsert(SETTINGS_LAYOUT_KEY, layout, 'Wallboard layout preset (tenant scoped)');
+        } catch {
+          // remote save best effort
+        }
       }
       toast.success($t('common.saved') || 'Saved');
       await navigateWithTransition(`${tenantPrefix}/admin/network/noc/wallboard`);

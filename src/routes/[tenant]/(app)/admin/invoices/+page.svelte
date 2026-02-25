@@ -11,7 +11,7 @@
   import { goto } from '$app/navigation';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
-  import { user, tenant } from '$lib/stores/auth';
+  import { can, user, tenant } from '$lib/stores/auth';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
 
   let invoices = $state<Invoice[]>([]);
@@ -91,7 +91,31 @@
     });
   });
 
+  const invoiceStats = $derived.by(() => {
+    const source = filteredInvoices;
+    const now = Date.now();
+    const overdue = source.filter((inv) => {
+      if (inv.status === 'paid') return false;
+      const due = new Date(inv.due_date).getTime();
+      return Number.isFinite(due) && due < now;
+    }).length;
+    const pending = source.filter((inv) => inv.status === 'pending').length;
+    const verificationPending = source.filter((inv) => inv.status === 'verification_pending').length;
+    const paid = source.filter((inv) => inv.status === 'paid').length;
+    return {
+      total: source.length,
+      paid,
+      pending,
+      verificationPending,
+      overdue,
+    };
+  });
+
   onMount(() => {
+    if (!$can('read', 'billing') && !$can('manage', 'billing')) {
+      goto('/unauthorized');
+      return;
+    }
     Promise.all([loadInvoices(), loadSubscriptionOptions()]);
   });
 
@@ -289,6 +313,25 @@
     </button>
   </div>
 
+  <div class="stats-grid">
+    <article class="stat-card">
+      <span class="stat-label">{$t('admin.package_invoices.list.stats.total') || 'Total'}</span>
+      <strong class="stat-value">{invoiceStats.total}</strong>
+    </article>
+    <article class="stat-card">
+      <span class="stat-label">{$t('admin.package_invoices.list.stats.paid') || 'Paid'}</span>
+      <strong class="stat-value tone-paid">{invoiceStats.paid}</strong>
+    </article>
+    <article class="stat-card">
+      <span class="stat-label">{$t('admin.package_invoices.list.stats.pending') || 'Pending'}</span>
+      <strong class="stat-value tone-pending">{invoiceStats.pending + invoiceStats.verificationPending}</strong>
+    </article>
+    <article class="stat-card">
+      <span class="stat-label">{$t('admin.package_invoices.list.stats.overdue') || 'Overdue'}</span>
+      <strong class="stat-value tone-overdue">{invoiceStats.overdue}</strong>
+    </article>
+  </div>
+
   <div class="card content-card">
     {#if error}
       <div class="alert alert-error">{error}</div>
@@ -363,7 +406,7 @@
 <style>
   .page-container {
     padding: clamp(1rem, 3vw, 2rem);
-    max-width: 1200px;
+    max-width: 1520px;
     margin: 0 auto;
   }
   .breadcrumb {
@@ -408,9 +451,43 @@
   }
   .create-row {
     display: grid;
-    grid-template-columns: 1fr 1.6fr auto;
+    grid-template-columns: minmax(220px, 1fr) minmax(320px, 1.6fr) auto;
     gap: 0.75rem;
     margin-bottom: 1rem;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .stat-card {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-surface);
+    padding: 0.75rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  .stat-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+  .stat-value {
+    font-size: 1.25rem;
+    line-height: 1.1;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+  .tone-paid {
+    color: var(--color-success, #10b981);
+  }
+  .tone-pending {
+    color: var(--color-warning, #f59e0b);
+  }
+  .tone-overdue {
+    color: var(--color-danger, #ef4444);
   }
   .select-input {
     min-height: 40px;
@@ -427,7 +504,7 @@
   }
   .filter-row {
     display: grid;
-    grid-template-columns: 1fr 160px 160px auto;
+    grid-template-columns: minmax(180px, 1fr) 170px 170px auto;
     gap: 0.75rem;
     padding: 0.85rem;
     border-bottom: 1px solid var(--border-color);
@@ -530,6 +607,9 @@
     }
     .create-row {
       grid-template-columns: 1fr;
+    }
+    .stats-grid {
+      grid-template-columns: 1fr 1fr;
     }
     .filter-row {
       grid-template-columns: 1fr;

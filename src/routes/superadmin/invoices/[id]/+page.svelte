@@ -13,6 +13,7 @@
   import { getTenantsCached } from '$lib/stores/superadminTenantsCache';
   import { appSettings } from '$lib/stores/settings';
   import { getApiBaseUrl } from '$lib/utils/apiUrl';
+  import { token } from '$lib/stores/auth';
 
   let invoiceId = $state('');
   let invoice = $state<Invoice | null>(null);
@@ -128,7 +129,8 @@
 
   function getProofUrl(fileId: string) {
     const API_BASE = getApiBaseUrl();
-    return `${API_BASE}/storage/files/${fileId}/content`;
+    const authParam = $token ? `?token=${encodeURIComponent($token)}` : '';
+    return `${API_BASE}/storage/files/${fileId}/content${authParam}`;
   }
 
   function openLightbox(fileId: string) {

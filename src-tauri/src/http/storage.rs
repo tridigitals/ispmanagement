@@ -88,6 +88,60 @@ pub struct ListFileParams {
     pub search: Option<String>,
 }
 
+#[derive(serde::Deserialize, Default)]
+pub struct UploadFileQuery {
+    pub payment_invoice_id: Option<String>,
+}
+
+async fn can_upload_payment_proof(
+    state: &AppState,
+    claims: &crate::services::Claims,
+    tenant_id: &str,
+    invoice_id: &str,
+) -> bool {
+    let invoice = match state.payment_service.get_invoice(invoice_id).await {
+        Ok(inv) => inv,
+        Err(_) => return false,
+    };
+
+    if invoice.tenant_id != tenant_id {
+        return false;
+    }
+
+    if state
+        .auth_service
+        .check_permission(&claims.sub, tenant_id, "billing", "manage")
+        .await
+        .is_ok()
+    {
+        return true;
+    }
+
+    if state
+        .auth_service
+        .check_permission(&claims.sub, tenant_id, "customers", "read_own")
+        .await
+        .is_err()
+    {
+        return false;
+    }
+
+    let customer_id = match state
+        .customer_service
+        .get_portal_customer_id(&claims.sub, tenant_id)
+        .await
+    {
+        Ok(id) => id,
+        Err(_) => return false,
+    };
+
+    state
+        .payment_service
+        .customer_owns_package_invoice(tenant_id, &customer_id, invoice_id)
+        .await
+        .unwrap_or(false)
+}
+
 pub async fn list_files(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -444,6 +498,7 @@ fn parse_range(range_str: &str, file_size: u64) -> Option<(u64, u64)> {
 pub async fn upload_file_http(
     State(state): State<AppState>,
     headers: HeaderMap,
+    Query(query): Query<UploadFileQuery>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     mut multipart: Multipart,
 ) -> Response {
@@ -472,7 +527,7 @@ pub async fn upload_file_http(
     };
     let ip = extract_ip(&headers, addr);
 
-    let tenant_id = match claims.tenant_id {
+    let tenant_id = match claims.tenant_id.clone() {
         Some(tid) => tid,
         None => {
             if claims.is_super_admin {
@@ -484,13 +539,26 @@ pub async fn upload_file_http(
     };
 
     if !claims.is_super_admin {
-        if state
+        let has_storage_upload = state
             .auth_service
             .check_permission(&claims.sub, &tenant_id, "storage", "upload")
             .await
-            .is_err()
-        {
-            return (StatusCode::FORBIDDEN, "Forbidden").into_response();
+            .is_ok();
+
+        if !has_storage_upload {
+            let payment_invoice_id = query
+                .payment_invoice_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|v| !v.is_empty());
+
+            let Some(invoice_id) = payment_invoice_id else {
+                return (StatusCode::FORBIDDEN, "Forbidden").into_response();
+            };
+
+            if !can_upload_payment_proof(&state, &claims, &tenant_id, invoice_id).await {
+                return (StatusCode::FORBIDDEN, "Forbidden").into_response();
+            }
         }
     }
 

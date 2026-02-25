@@ -2,7 +2,7 @@
   import Sidebar from '$lib/components/layout/Sidebar.svelte';
   import Topbar from '$lib/components/layout/Topbar.svelte';
   import AnnouncementBanner from '$lib/components/layout/AnnouncementBanner.svelte';
-  import { isAuthenticated, isSuperAdmin, is2FARequiredButDisabled } from '$lib/stores/auth';
+  import { isAuthenticated, isSuperAdmin, is2FARequiredButDisabled, can } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import { page } from '$app/stores';
   import { user } from '$lib/stores/auth';
@@ -34,21 +34,154 @@
     console.log(`[tenant-layout] ${message}`, meta || {});
   }
 
+  function hasAnyAdminCapability() {
+    if ($isSuperAdmin) return true;
+    return (
+      $can('access', 'admin') ||
+      $can('read', 'network_routers') ||
+      $can('manage', 'network_routers') ||
+      $can('read', 'work_orders') ||
+      $can('manage', 'work_orders') ||
+      $can('read', 'customers') ||
+      $can('manage', 'customers') ||
+      $can('read', 'billing') ||
+      $can('manage', 'billing') ||
+      $can('read', 'team') ||
+      $can('read', 'roles') ||
+      $can('read', 'settings') ||
+      $can('read', 'audit_logs') ||
+      $can('read_all', 'support') ||
+      $can('read', 'email_outbox')
+    );
+  }
+
+  function canAccessAdminPath(path: string) {
+    if (!path.startsWith('/admin')) return true;
+    if ($isSuperAdmin) return true;
+
+    // /admin home
+    if (path === '/admin' || path === '/admin/') {
+      return hasAnyAdminCapability();
+    }
+
+    if (path === '/admin/network' || path === '/admin/network/') {
+      return (
+        $can('read', 'network_routers') ||
+        $can('manage', 'network_routers') ||
+        $can('read', 'pppoe') ||
+        $can('manage', 'pppoe') ||
+        $can('read', 'isp_packages') ||
+        $can('manage', 'isp_packages') ||
+        $can('read', 'work_orders') ||
+        $can('manage', 'work_orders')
+      );
+    }
+    if (path.startsWith('/admin/network/pppoe')) {
+      return $can('read', 'pppoe') || $can('manage', 'pppoe');
+    }
+    if (path.startsWith('/admin/network/packages')) {
+      return $can('read', 'isp_packages') || $can('manage', 'isp_packages');
+    }
+    if (path.startsWith('/admin/network/installations')) {
+      return $can('read', 'work_orders') || $can('manage', 'work_orders');
+    }
+    if (
+      path.startsWith('/admin/network/noc') ||
+      path.startsWith('/admin/network/alerts') ||
+      path.startsWith('/admin/network/incidents') ||
+      path.startsWith('/admin/network/logs') ||
+      path.startsWith('/admin/network/routers') ||
+      path.startsWith('/admin/network/ppp-profiles') ||
+      path.startsWith('/admin/network/ip-pools')
+    ) {
+      return $can('read', 'network_routers') || $can('manage', 'network_routers');
+    }
+    if (path.startsWith('/admin/customers')) {
+      return $can('read', 'customers') || $can('manage', 'customers');
+    }
+    if (path.startsWith('/admin/invoices')) {
+      return $can('read', 'billing') || $can('manage', 'billing');
+    }
+    if (path.startsWith('/admin/subscription')) {
+      return $can('read', 'billing') || $can('manage', 'billing');
+    }
+    if (path.startsWith('/admin/billing-logs')) {
+      return $can('read', 'billing') || $can('manage', 'billing');
+    }
+    if (path.startsWith('/admin/announcements')) {
+      return $can('read', 'announcements') || $can('manage', 'announcements');
+    }
+    if (path.startsWith('/admin/backups')) {
+      return (
+        $can('read', 'backups') ||
+        $can('create', 'backups') ||
+        $can('download', 'backups') ||
+        $can('restore', 'backups') ||
+        $can('delete', 'backups')
+      );
+    }
+    if (path.startsWith('/admin/team')) {
+      return (
+        $can('read', 'team') ||
+        $can('create', 'team') ||
+        $can('update', 'team') ||
+        $can('delete', 'team')
+      );
+    }
+    if (path.startsWith('/admin/roles')) {
+      return (
+        $can('read', 'roles') ||
+        $can('create', 'roles') ||
+        $can('update', 'roles') ||
+        $can('delete', 'roles')
+      );
+    }
+    if (path.startsWith('/admin/settings')) {
+      return $can('read', 'settings') || $can('update', 'settings') || $can('delete', 'settings');
+    }
+    if (path.startsWith('/admin/audit-logs')) {
+      return $can('read', 'audit_logs');
+    }
+    if (path.startsWith('/admin/support')) {
+      return $can('read_all', 'support') || $can('read', 'support');
+    }
+    if (path.startsWith('/admin/storage')) {
+      return $can('read', 'storage') || $can('upload', 'storage') || $can('delete', 'storage');
+    }
+    if (path.startsWith('/admin/email-outbox')) {
+      return (
+        $can('read', 'email_outbox') ||
+        $can('retry', 'email_outbox') ||
+        $can('delete', 'email_outbox')
+      );
+    }
+
+    // Unknown admin sub-route -> deny by default.
+    return false;
+  }
+
   // Reactive Auth Guard & Tenant Scoping
   $effect(() => {
     if (!$isAuthenticated || !$user) return;
 
     const currentHost = $page.url.hostname;
+    const pathname = $page.url.pathname || '/';
     const userCustomDomain = ($user as any)?.tenant_custom_domain || ($user as any)?.custom_domain;
     const currentSlug = $page.params.tenant;
     const userSlug = $user?.tenant_slug;
     const onPlatformDomain = isPlatformDomain(currentHost);
-    const canonicalPath = $page.url.pathname.replace(/^\/[^/]+/, '') || '/';
     const currentSlugLooksLikeAppRoot = !!currentSlug && RESERVED_APP_SEGMENTS.has(currentSlug);
+    const hasTenantPrefixInPath =
+      !!currentSlug &&
+      !currentSlugLooksLikeAppRoot &&
+      (pathname === `/${currentSlug}` || pathname.startsWith(`/${currentSlug}/`));
+    const canonicalPath = hasTenantPrefixInPath
+      ? pathname.replace(new RegExp(`^/${currentSlug}`), '') || '/'
+      : pathname;
 
     debugLog('guard-check', {
       host: currentHost,
-      path: $page.url.pathname,
+      path: pathname,
       currentSlug,
       userSlug,
       onPlatformDomain,
@@ -58,12 +191,10 @@
     // Keep main domain URL clean: never expose /:tenant/... in browser URL.
     if (
       onPlatformDomain &&
-      currentSlug &&
-      !currentSlugLooksLikeAppRoot &&
-      $page.url.pathname.startsWith(`/${currentSlug}`)
+      hasTenantPrefixInPath
     ) {
       debugLog('canonicalize-main-domain-path', {
-        from: $page.url.pathname,
+        from: pathname,
         to: canonicalPath,
       });
       goto(canonicalPath);
@@ -100,20 +231,35 @@
     ) {
       console.warn(`[Layout] Tenant Mismatch! User ${userSlug} tried to access ${currentSlug}`);
       // Keep session and normalize route.
-      const restPath = $page.url.pathname.replace(/^\/[^/]+/, '') || '/';
+      const restPath = hasTenantPrefixInPath
+        ? pathname.replace(new RegExp(`^/${currentSlug}`), '') || '/'
+        : pathname;
       if (onPlatformDomain) {
         debugLog('tenant-mismatch-normalize-platform', {
-          from: $page.url.pathname,
+          from: pathname,
           to: restPath,
         });
         goto(restPath);
       } else {
         debugLog('tenant-mismatch-normalize-tenant', {
-          from: $page.url.pathname,
+          from: pathname,
           to: `/${userSlug}${restPath}`,
         });
         goto(`/${userSlug}${restPath}`);
       }
+    }
+
+    // Global admin route guard:
+    // deny rendering /admin pages when user has no matching permission.
+    if (canonicalPath.startsWith('/admin') && !canAccessAdminPath(canonicalPath)) {
+      debugLog('redirect-unauthorized-admin-route', {
+        canonicalPath,
+        role: $user?.role,
+      });
+      if (!$page.url.pathname.startsWith('/unauthorized')) {
+        goto('/unauthorized');
+      }
+      return;
     }
   });
 

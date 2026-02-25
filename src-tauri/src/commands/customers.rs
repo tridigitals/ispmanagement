@@ -1,11 +1,13 @@
 use crate::models::{
     AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
-    CreateCustomerRegistrationInviteRequest, CreateCustomerRequest, CreateCustomerSubscriptionRequest,
-    CreateCustomerWithPortalRequest, Customer, CustomerLocation, CustomerPortalUser,
-    CustomerRegistrationInviteCreateResponse, CustomerRegistrationInviteView, CustomerSubscription,
-    CustomerSubscriptionView, Invoice, IspPackage, PaginatedResponse,
-    PortalCheckoutSubscriptionRequest, UpdateCustomerLocationRequest, UpdateCustomerRequest,
-    UpdateCustomerSubscriptionRequest,
+    CreateCustomerRegistrationInviteRequest, CreateCustomerRequest,
+    CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest, Customer, CustomerLocation,
+    CustomerPortalUser, CustomerRegistrationInviteCreateResponse, CustomerRegistrationInvitePolicy,
+    CustomerRegistrationInviteSummary, CustomerRegistrationInviteView, CustomerSubscription,
+    CustomerSubscriptionView, InstallationWorkOrder, InstallationWorkOrderView, Invoice,
+    IspPackage, PaginatedResponse, PortalCheckoutSubscriptionRequest,
+    UpdateCustomerLocationRequest, UpdateCustomerRegistrationInvitePolicyRequest,
+    UpdateCustomerRequest, UpdateCustomerSubscriptionRequest,
 };
 use crate::services::{AuthService, CustomerService, PaymentService};
 use tauri::State;
@@ -206,6 +208,67 @@ pub async fn list_customer_registration_invites(
 }
 
 #[tauri::command]
+pub async fn get_customer_registration_invite_policy(
+    token: String,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<CustomerRegistrationInvitePolicy, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .get_customer_registration_invite_policy(&claims.sub, &tenant_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn update_customer_registration_invite_policy(
+    token: String,
+    dto: UpdateCustomerRegistrationInvitePolicyRequest,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<CustomerRegistrationInvitePolicy, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .update_customer_registration_invite_policy(&claims.sub, &tenant_id, dto, Some("127.0.0.1"))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_customer_registration_invite_summary(
+    token: String,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<CustomerRegistrationInviteSummary, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .summarize_customer_registration_invites(&claims.sub, &tenant_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn revoke_customer_registration_invite(
     token: String,
     invite_id: String,
@@ -221,12 +284,7 @@ pub async fn revoke_customer_registration_invite(
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     customers
-        .revoke_customer_registration_invite(
-            &claims.sub,
-            &tenant_id,
-            &invite_id,
-            Some("127.0.0.1"),
-        )
+        .revoke_customer_registration_invite(&claims.sub, &tenant_id, &invite_id, Some("127.0.0.1"))
         .await
         .map_err(|e| e.to_string())
 }
@@ -605,6 +663,135 @@ pub async fn delete_customer_subscription(
 
     customers
         .delete_customer_subscription(&claims.sub, &tenant_id, &subscription_id, Some("127.0.0.1"))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_installation_work_orders(
+    token: String,
+    status: Option<String>,
+    assigned_to: Option<String>,
+    include_closed: Option<bool>,
+    limit: Option<u32>,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<Vec<InstallationWorkOrderView>, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .list_installation_work_orders(
+            &claims.sub,
+            &tenant_id,
+            status,
+            assigned_to,
+            include_closed.unwrap_or(false),
+            limit.unwrap_or(200),
+        )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn assign_installation_work_order(
+    token: String,
+    id: String,
+    assigned_to: String,
+    scheduled_at: Option<String>,
+    notes: Option<String>,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<InstallationWorkOrder, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .assign_installation_work_order(
+            &claims.sub,
+            &tenant_id,
+            &id,
+            &assigned_to,
+            scheduled_at,
+            notes,
+            Some("127.0.0.1"),
+        )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn start_installation_work_order(
+    token: String,
+    id: String,
+    notes: Option<String>,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<InstallationWorkOrder, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .start_installation_work_order(&claims.sub, &tenant_id, &id, notes, Some("127.0.0.1"))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn complete_installation_work_order(
+    token: String,
+    id: String,
+    notes: Option<String>,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<InstallationWorkOrder, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .complete_installation_work_order(&claims.sub, &tenant_id, &id, notes, Some("127.0.0.1"))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn cancel_installation_work_order(
+    token: String,
+    id: String,
+    notes: Option<String>,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<InstallationWorkOrder, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .cancel_installation_work_order(&claims.sub, &tenant_id, &id, notes, Some("127.0.0.1"))
         .await
         .map_err(|e| e.to_string())
 }

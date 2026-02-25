@@ -151,6 +151,12 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       delete_customer: { method: 'DELETE', path: '/customers/:customerId' },
       list_customer_registration_invites: { method: 'GET', path: '/customers/invites' },
       create_customer_registration_invite: { method: 'POST', path: '/customers/invites' },
+      get_customer_registration_invite_policy: { method: 'GET', path: '/customers/invites/policy' },
+      update_customer_registration_invite_policy: {
+        method: 'PUT',
+        path: '/customers/invites/policy',
+      },
+      get_customer_registration_invite_summary: { method: 'GET', path: '/customers/invites/summary' },
       revoke_customer_registration_invite: {
         method: 'DELETE',
         path: '/customers/invites/:inviteId',
@@ -180,11 +186,29 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         path: '/customers/subscriptions/:subscriptionId',
       },
       list_my_customer_locations: { method: 'GET', path: '/customers/portal/my-locations' },
+      create_my_customer_location: { method: 'POST', path: '/customers/portal/my-locations' },
       list_my_customer_packages: { method: 'GET', path: '/customers/portal/my-packages' },
       list_my_customer_subscriptions: { method: 'GET', path: '/customers/portal/my-subscriptions' },
       create_my_customer_subscription_invoice: {
         method: 'POST',
         path: '/customers/portal/checkout',
+      },
+      list_installation_work_orders: { method: 'GET', path: '/admin/work-orders' },
+      assign_installation_work_order: {
+        method: 'POST',
+        path: '/admin/work-orders/:id/assign',
+      },
+      start_installation_work_order: {
+        method: 'POST',
+        path: '/admin/work-orders/:id/start',
+      },
+      complete_installation_work_order: {
+        method: 'POST',
+        path: '/admin/work-orders/:id/complete',
+      },
+      cancel_installation_work_order: {
+        method: 'POST',
+        path: '/admin/work-orders/:id/cancel',
       },
       // Settings
       get_logo: { method: 'GET', path: '/settings/logo' },
@@ -220,6 +244,10 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       get_customer_registration_status_by_domain: {
         method: 'GET',
         path: '/public/customer-registration-status',
+      },
+      validate_customer_registration_invite_by_domain: {
+        method: 'GET',
+        path: '/public/customer-invite/validate',
       },
       register_customer_by_domain: { method: 'POST', path: '/public/customer-register' },
       get_app_version: { method: 'GET', path: '/version' },
@@ -273,10 +301,15 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         method: 'POST',
         path: '/payment/invoices/:id/customer-package/verify',
       },
+      verify_payment: {
+        method: 'POST',
+        path: '/payment/invoices/:invoiceId/verify',
+      },
       list_all_invoices: { method: 'GET', path: '/payment/invoices/all' },
       get_fx_rate: { method: 'GET', path: '/payment/fx-rate' },
       pay_invoice_midtrans: { method: 'POST', path: '/payment/invoices/:id/midtrans' },
       check_payment_status: { method: 'GET', path: '/payment/invoices/:id/status' },
+      submit_payment_proof: { method: 'POST', path: '/payment/invoices/:invoiceId/proof' },
 
       // Notifications
       list_notifications: { method: 'GET', path: '/notifications' },
@@ -518,12 +551,20 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       const isJson = contentType.toLowerCase().includes('application/json');
 
       if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
+        // Only 401 should force auth-expired logout flow.
+        // 403 is usually permission/role denial and must not clear session.
+        if (response.status === 401) {
           handleAuthExpired(`HTTP ${response.status} from ${command}`);
         }
         if (isJson) {
           const errorBody = await response.json().catch(() => ({}));
-          throw new Error(errorBody.error || `HTTP Error ${response.status}`);
+          const message =
+            errorBody?.error ||
+            errorBody?.message ||
+            errorBody?.detail ||
+            errorBody?.details ||
+            `HTTP Error ${response.status}`;
+          throw new Error(message);
         }
         const errorText = (await response.text().catch(() => '')).trim();
         throw new Error(errorText || `HTTP Error ${response.status}`);
@@ -846,6 +887,34 @@ export interface CustomerRegistrationInviteCreateResponse {
   invite_url: string;
 }
 
+export interface CustomerRegistrationInvitePolicy {
+  default_expires_in_hours: number;
+  default_max_uses: number;
+}
+
+export interface CustomerRegistrationInviteSummary {
+  total: number;
+  active: number;
+  revoked: number;
+  expired: number;
+  used_up: number;
+  total_uses: number;
+  total_capacity: number;
+  utilization_percent: number;
+  created_last_30d: number;
+  used_last_30d: number;
+}
+
+export interface CustomerRegistrationInviteValidation {
+  valid: boolean;
+  status: string;
+  message: string;
+  expires_at: string | null;
+  max_uses: number | null;
+  used_count: number | null;
+  remaining_uses: number | null;
+}
+
 export interface CustomerSubscription {
   id: string;
   tenant_id: string;
@@ -856,7 +925,7 @@ export interface CustomerSubscription {
   billing_cycle: 'monthly' | 'yearly' | string;
   price: number;
   currency_code: string;
-  status: 'active' | 'suspended' | 'cancelled' | string;
+  status: 'active' | 'pending_installation' | 'suspended' | 'cancelled' | string;
   starts_at: string | null;
   ends_at: string | null;
   notes: string | null;
@@ -873,6 +942,29 @@ export interface CustomerSubscriptionView extends CustomerSubscription {
 export interface CustomerPortalCheckoutResponse {
   subscription: CustomerSubscription;
   invoice: Invoice;
+}
+
+export interface InstallationWorkOrderView {
+  id: string;
+  tenant_id: string;
+  subscription_id: string;
+  invoice_id: string | null;
+  customer_id: string;
+  location_id: string;
+  router_id: string | null;
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | string;
+  assigned_to: string | null;
+  scheduled_at: string | null;
+  completed_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  customer_name: string | null;
+  location_label: string | null;
+  package_name: string | null;
+  router_name: string | null;
+  assigned_to_name: string | null;
+  assigned_to_email: string | null;
 }
 
 export interface PppoeAccountPublic {
@@ -1678,9 +1770,7 @@ export const customers = {
       safeInvoke('create_customer_registration_invite', {
         token: getTokenOrThrow(),
         expires_in_hours: dto?.expires_in_hours,
-        expiresInHours: dto?.expires_in_hours,
         max_uses: dto?.max_uses,
-        maxUses: dto?.max_uses,
         note: dto?.note ?? undefined,
       }),
     revoke: (inviteId: string): Promise<void> =>
@@ -1688,6 +1778,23 @@ export const customers = {
         token: getTokenOrThrow(),
         inviteId,
         invite_id: inviteId,
+      }),
+    getPolicy: (): Promise<CustomerRegistrationInvitePolicy> =>
+      safeInvoke('get_customer_registration_invite_policy', {
+        token: getTokenOrThrow(),
+      }),
+    updatePolicy: (dto: {
+      default_expires_in_hours?: number;
+      default_max_uses?: number;
+    }): Promise<CustomerRegistrationInvitePolicy> =>
+      safeInvoke('update_customer_registration_invite_policy', {
+        token: getTokenOrThrow(),
+        default_expires_in_hours: dto.default_expires_in_hours,
+        default_max_uses: dto.default_max_uses,
+      }),
+    summary: (): Promise<CustomerRegistrationInviteSummary> =>
+      safeInvoke('get_customer_registration_invite_summary', {
+        token: getTokenOrThrow(),
       }),
   },
 
@@ -1842,6 +1949,19 @@ export const customers = {
   portal: {
     myLocations: (): Promise<CustomerLocation[]> =>
       safeInvoke('list_my_customer_locations', { token: getTokenOrThrow() }),
+    createMyLocation: (dto: {
+      label: string;
+      address_line1?: string | null;
+      address_line2?: string | null;
+      city?: string | null;
+      state?: string | null;
+      postal_code?: string | null;
+      country?: string | null;
+      latitude?: number | null;
+      longitude?: number | null;
+      notes?: string | null;
+    }): Promise<CustomerLocation> =>
+      safeInvoke('create_my_customer_location', { token: getTokenOrThrow(), ...dto }),
     myPackages: (): Promise<IspPackage[]> =>
       safeInvoke('list_my_customer_packages', { token: getTokenOrThrow() }),
     mySubscriptions: (params?: {
@@ -1863,6 +1983,43 @@ export const customers = {
         ...dto,
       }),
   },
+};
+
+export const workOrders = {
+  list: (params?: {
+    status?: string;
+    assigned_to?: string;
+    include_closed?: boolean;
+    limit?: number;
+  }): Promise<InstallationWorkOrderView[]> =>
+    safeInvoke('list_installation_work_orders', {
+      token: getTokenOrThrow(),
+      ...(params || {}),
+    }),
+  assign: (id: string, payload: { assigned_to: string; scheduled_at?: string; notes?: string }) =>
+    safeInvoke('assign_installation_work_order', {
+      token: getTokenOrThrow(),
+      id,
+      ...payload,
+    }),
+  start: (id: string, notes?: string) =>
+    safeInvoke('start_installation_work_order', {
+      token: getTokenOrThrow(),
+      id,
+      notes: notes ?? undefined,
+    }),
+  complete: (id: string, notes?: string) =>
+    safeInvoke('complete_installation_work_order', {
+      token: getTokenOrThrow(),
+      id,
+      notes: notes ?? undefined,
+    }),
+  cancel: (id: string, notes?: string) =>
+    safeInvoke('cancel_installation_work_order', {
+      token: getTokenOrThrow(),
+      id,
+      notes: notes ?? undefined,
+    }),
 };
 
 export const pppoe = {
@@ -1996,10 +2153,7 @@ export const ispPackages = {
         name: dto.name,
         description: dto.description ?? null,
         features: dto.features ?? [],
-        isActive: dto.is_active ?? true,
         is_active: dto.is_active ?? true,
-        priceMonthly: dto.price_monthly ?? 0,
-        priceYearly: dto.price_yearly ?? 0,
         price_monthly: dto.price_monthly ?? 0,
         price_yearly: dto.price_yearly ?? 0,
       }),
@@ -2020,10 +2174,7 @@ export const ispPackages = {
         name: dto.name,
         description: dto.description ?? undefined,
         features: dto.features,
-        isActive: dto.is_active,
         is_active: dto.is_active,
-        priceMonthly: dto.price_monthly,
-        priceYearly: dto.price_yearly,
         price_monthly: dto.price_monthly,
         price_yearly: dto.price_yearly,
       }),
@@ -2035,7 +2186,6 @@ export const ispPackages = {
       safeInvoke('list_isp_package_router_mappings', {
         token: getTokenOrThrow(),
         router_id: params?.router_id,
-        routerId: params?.router_id,
       }),
     upsert: (dto: {
       router_id: string;
@@ -2046,13 +2196,9 @@ export const ispPackages = {
       safeInvoke('upsert_isp_package_router_mapping', {
         token: getTokenOrThrow(),
         router_id: dto.router_id,
-        routerId: dto.router_id,
         package_id: dto.package_id,
-        packageId: dto.package_id,
         router_profile_name: dto.router_profile_name,
-        routerProfileName: dto.router_profile_name,
         address_pool: dto.address_pool ?? null,
-        addressPool: dto.address_pool ?? null,
       }),
   },
 };
@@ -2103,6 +2249,10 @@ export const publicApi = {
     global_registration_enabled: boolean;
     tenant_self_registration_enabled: boolean;
   }> => safeInvoke('get_customer_registration_status_by_domain', { domain }),
+  validateCustomerRegistrationInviteByDomain: (
+    token: string,
+  ): Promise<CustomerRegistrationInviteValidation> =>
+    safeInvoke('validate_customer_registration_invite_by_domain', { token }),
   registerCustomerByDomain: (
     email: string,
     password: string,
@@ -2454,6 +2604,7 @@ export interface Invoice {
   external_id?: string | null;
   merchant_id?: string | null;
   proof_attachment?: string | null;
+  rejection_reason?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -2665,12 +2816,21 @@ export const storage = {
   deleteFileTenant: (fileId: string): Promise<void> =>
     safeInvoke('delete_file_tenant', { token: getTokenOrThrow(), fileId }),
 
-  uploadFile: async (file: File): Promise<FileRecord> => {
+  uploadFile: async (
+    file: File,
+    options?: { paymentInvoiceId?: string | null },
+  ): Promise<FileRecord> => {
     const API_BASE = getApiBaseUrl();
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE}/storage/upload`, {
+    const query = new URLSearchParams();
+    if (options?.paymentInvoiceId) {
+      query.set('payment_invoice_id', options.paymentInvoiceId);
+    }
+    const url = `${API_BASE}/storage/upload${query.toString() ? `?${query.toString()}` : ''}`;
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${getTokenOrThrow()}`,
@@ -2913,6 +3073,7 @@ export const api = {
   roles,
   team,
   customers,
+  workOrders,
   pppoe,
   ispPackages,
   superadmin,

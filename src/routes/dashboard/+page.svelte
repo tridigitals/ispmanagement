@@ -5,9 +5,8 @@
   import { t } from 'svelte-i18n';
 
   onMount(() => {
-    if ($isAuthenticated && $user?.tenant_slug) {
-      // Redirect to scoped dashboard
-      goto(`/${$user.tenant_slug}/dashboard`);
+    if ($isAuthenticated) {
+      goto('/dashboard');
     } else {
       // Redirect to login
       goto('/login');

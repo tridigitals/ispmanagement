@@ -27,6 +27,10 @@ impl IntoResponse for crate::error::AppError {
     fn into_response(self) -> Response {
         let (status, message) = match self {
             crate::error::AppError::Validation(msg) => (StatusCode::BAD_REQUEST, msg),
+            crate::error::AppError::Database(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", err),
+            ),
             crate::error::AppError::InvalidCredentials => {
                 (StatusCode::UNAUTHORIZED, "Invalid credentials".to_string())
             }
@@ -54,10 +58,8 @@ impl IntoResponse for crate::error::AppError {
                 (StatusCode::SERVICE_UNAVAILABLE, msg)
             }
             crate::error::AppError::Conflict(msg) => (StatusCode::CONFLICT, msg),
-            _ => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Unknown error".to_string(),
-            ),
+            crate::error::AppError::Authentication(msg) => (StatusCode::UNAUTHORIZED, msg),
+            crate::error::AppError::Configuration(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
         };
 
         let body = Json(json!({

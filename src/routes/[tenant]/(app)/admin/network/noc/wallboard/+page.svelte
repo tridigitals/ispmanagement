@@ -239,6 +239,7 @@
     }),
   );
   const tenantPrefix = $derived(tenantCtx.tenantPrefix);
+  const canUseTenantSettings = $derived($can('read', 'settings') || $can('update', 'settings'));
 
   // Auto-hide toolbar for NOC display friendly behavior.
   let lastActivityAt = $state(Date.now());
@@ -1329,6 +1330,10 @@
   }
 
   async function loadRemoteConfig() {
+    if (!canUseTenantSettings) {
+      remoteLoaded = true;
+      return;
+    }
     try {
       const [remoteLayout, remoteSlots] = await Promise.all([
         api.settings.getValue(SETTINGS_LAYOUT_KEY),
@@ -1372,7 +1377,7 @@
   }
 
   async function persistRemoteNow() {
-    if (!remoteLoaded) return;
+    if (!remoteLoaded || !canUseTenantSettings) return;
     const payload = JSON.stringify({ layout, slots: slotsAll });
     if (payload === lastRemotePayload) return;
     lastRemotePayload = payload;

@@ -487,6 +487,7 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
             payment_method TEXT,
             external_id TEXT,
             merchant_id TEXT,
+            rejection_reason TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
@@ -615,6 +616,9 @@ async fn run_migrations_sqlite(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
         .await;
 
     let _ = sqlx::query("ALTER TABLE invoices ADD COLUMN proof_attachment TEXT")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("ALTER TABLE invoices ADD COLUMN rejection_reason TEXT")
         .execute(pool)
         .await;
 
@@ -973,8 +977,32 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
     let roles = vec![
         ("Owner", "Full access to all resources", true, 100),
         ("Admin", "Access to settings and team management", true, 50),
+        (
+            "NOC",
+            "Network operations center access for monitoring and provisioning",
+            true,
+            35,
+        ),
+        (
+            "Customer Service",
+            "Handle customers, tickets, and billing communication",
+            true,
+            25,
+        ),
+        (
+            "Technician",
+            "Field technician for installation and activation tasks",
+            true,
+            20,
+        ),
         ("Member", "Can view dashboard and read team", true, 10),
         ("Viewer", "Read-only access", true, 0),
+        (
+            "Customer",
+            "Customer portal access (dashboard only)",
+            true,
+            0,
+        ),
     ];
 
     for (name, description, is_system, level) in roles {
@@ -1063,6 +1091,15 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
         sqlx::query("UPDATE roles SET level = 50 WHERE name = 'Admin' AND level = 0")
             .execute(pool)
             .await?;
+        sqlx::query("UPDATE roles SET level = 35 WHERE name = 'NOC' AND level = 0")
+            .execute(pool)
+            .await?;
+        sqlx::query("UPDATE roles SET level = 25 WHERE name = 'Customer Service' AND level = 0")
+            .execute(pool)
+            .await?;
+        sqlx::query("UPDATE roles SET level = 20 WHERE name = 'Technician' AND level = 0")
+            .execute(pool)
+            .await?;
         sqlx::query("UPDATE roles SET level = 10 WHERE name = 'Member' AND level = 0")
             .execute(pool)
             .await?;
@@ -1074,6 +1111,15 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
             .execute(pool)
             .await?;
         sqlx::query("UPDATE roles SET level = 50 WHERE name = 'Admin' AND level = 0")
+            .execute(pool)
+            .await?;
+        sqlx::query("UPDATE roles SET level = 35 WHERE name = 'NOC' AND level = 0")
+            .execute(pool)
+            .await?;
+        sqlx::query("UPDATE roles SET level = 25 WHERE name = 'Customer Service' AND level = 0")
+            .execute(pool)
+            .await?;
+        sqlx::query("UPDATE roles SET level = 20 WHERE name = 'Technician' AND level = 0")
             .execute(pool)
             .await?;
         sqlx::query("UPDATE roles SET level = 10 WHERE name = 'Member' AND level = 0")
@@ -1124,6 +1170,31 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
         ("support", "internal", "Post internal support notes"),
         // Audit Logs (tenant-scoped; subject to plan feature access)
         ("audit_logs", "read", "View audit logs"),
+        // Customer & location management
+        ("customers", "read", "View customers"),
+        ("customers", "manage", "Manage customers"),
+        ("customers", "read_own", "View own customer portal data"),
+        ("customer_locations", "read", "View customer locations"),
+        ("customer_locations", "manage", "Manage customer locations"),
+        // Network & provisioning
+        ("network_routers", "read", "View routers and status"),
+        ("network_routers", "manage", "Manage router inventory"),
+        ("pppoe", "read", "View PPPoE sessions and users"),
+        ("pppoe", "manage", "Manage PPPoE sessions and users"),
+        ("isp_packages", "read", "View ISP packages"),
+        ("isp_packages", "manage", "Manage ISP packages"),
+        ("work_orders", "read", "View installation work orders"),
+        ("work_orders", "manage", "Manage installation work orders"),
+        // Billing
+        ("billing", "read", "View billing and subscription data"),
+        ("billing", "manage", "Manage billing actions"),
+        // Announcements
+        ("announcements", "read", "View announcements"),
+        ("announcements", "manage", "Manage announcements"),
+        // Email outbox
+        ("email_outbox", "read", "View email outbox"),
+        ("email_outbox", "retry", "Retry failed email outbox"),
+        ("email_outbox", "delete", "Delete email outbox records"),
     ];
 
     // Cleanup: Remove permissions with non-standard IDs (e.g. random UUIDs)
@@ -1236,10 +1307,97 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
         "support:update",
         "support:assign",
         "support:internal",
+        "customers:read",
+        "customers:manage",
+        "customer_locations:read",
+        "customer_locations:manage",
+        "network_routers:read",
+        "network_routers:manage",
+        "pppoe:read",
+        "pppoe:manage",
+        "isp_packages:read",
+        "isp_packages:manage",
+        "work_orders:read",
+        "work_orders:manage",
+        "billing:read",
+        "billing:manage",
+        "announcements:read",
+        "announcements:manage",
+        "email_outbox:read",
+        "email_outbox:retry",
+        "email_outbox:delete",
     ];
     for p in admin_perms {
         assign_perm(pool, "Admin", p).await?;
         assign_perm(pool, "Owner", p).await?; // Owner gets all admin perms too
+    }
+
+    let noc_perms = vec![
+        "admin:access",
+        "dashboard:read",
+        "storage:read",
+        "network_routers:read",
+        "network_routers:manage",
+        "pppoe:read",
+        "pppoe:manage",
+        "isp_packages:read",
+        "isp_packages:manage",
+        "work_orders:read",
+        "billing:read",
+        "support:read",
+        "support:read_all",
+        "support:reply",
+        "support:update",
+        "support:internal",
+    ];
+    for p in noc_perms {
+        assign_perm(pool, "NOC", p).await?;
+    }
+
+    let cs_perms = vec![
+        "admin:access",
+        "dashboard:read",
+        "storage:read",
+        "customers:read",
+        "customers:manage",
+        "customer_locations:read",
+        "customer_locations:manage",
+        "billing:read",
+        "billing:manage",
+        "announcements:read",
+        "support:create",
+        "support:read",
+        "support:read_all",
+        "support:reply",
+        "support:update",
+        "support:assign",
+        "support:internal",
+    ];
+    for p in cs_perms {
+        assign_perm(pool, "Customer Service", p).await?;
+    }
+
+    let tech_perms = vec![
+        "admin:access",
+        "dashboard:read",
+        "storage:read",
+        "customers:read",
+        "customer_locations:read",
+        "network_routers:read",
+        "work_orders:read",
+        "work_orders:manage",
+        "support:read",
+        "support:read_all",
+        "support:reply",
+        "support:internal",
+    ];
+    for p in tech_perms {
+        assign_perm(pool, "Technician", p).await?;
+    }
+
+    let customer_perms = vec!["dashboard:read"];
+    for p in customer_perms {
+        assign_perm(pool, "Customer", p).await?;
     }
 
     let member_perms = vec![
@@ -1260,8 +1418,12 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
     for p in all_roles_perms {
         assign_perm(pool, "Owner", p).await?;
         assign_perm(pool, "Admin", p).await?;
+        assign_perm(pool, "NOC", p).await?;
+        assign_perm(pool, "Customer Service", p).await?;
+        assign_perm(pool, "Technician", p).await?;
         assign_perm(pool, "Member", p).await?;
         assign_perm(pool, "Viewer", p).await?;
+        assign_perm(pool, "Customer", p).await?;
     }
 
     Ok(())

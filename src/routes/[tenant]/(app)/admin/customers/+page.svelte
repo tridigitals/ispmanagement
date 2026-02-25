@@ -9,6 +9,8 @@
   import {
     api,
     type Customer,
+    type CustomerRegistrationInvitePolicy,
+    type CustomerRegistrationInviteSummary,
     type CustomerRegistrationInviteView,
     type PaginatedResponse,
   } from '$lib/api/client';
@@ -63,6 +65,12 @@
   let inviteRows = $state<CustomerRegistrationInviteView[]>([]);
   let generatedInviteUrl = $state('');
   let generatedInviteExpiresAt = $state('');
+  let invitePolicyLoading = $state(false);
+  let invitePolicySaving = $state(false);
+  let inviteSummaryLoading = $state(false);
+  let invitePolicyExpiresInHours = $state(24);
+  let invitePolicyMaxUses = $state(1);
+  let inviteSummary = $state<CustomerRegistrationInviteSummary | null>(null);
 
   let stats = $derived({
     total,
@@ -225,30 +233,92 @@
     }
   }
 
+  async function loadInvitePolicy() {
+    if (!$can('manage', 'customers')) return;
+    invitePolicyLoading = true;
+    try {
+      const policy: CustomerRegistrationInvitePolicy = await api.customers.invites.getPolicy();
+      invitePolicyExpiresInHours = policy.default_expires_in_hours || 24;
+      invitePolicyMaxUses = policy.default_max_uses || 1;
+      inviteExpiresInHours = invitePolicyExpiresInHours;
+      inviteMaxUses = invitePolicyMaxUses;
+    } catch (e: any) {
+      const msg = String(e?.message || '');
+      const isMissingEndpoint = msg.includes('404') || msg.toLowerCase().includes('not found');
+      if (!isMissingEndpoint) {
+        toast.error(msg || 'Failed to load invite defaults');
+      }
+    } finally {
+      invitePolicyLoading = false;
+    }
+  }
+
+  async function saveInvitePolicy() {
+    if (invitePolicySaving) return;
+    invitePolicySaving = true;
+    try {
+      const nextExpires = Math.min(720, Math.max(1, Math.trunc(invitePolicyExpiresInHours || 24)));
+      const nextMaxUses = Math.min(100, Math.max(1, Math.trunc(invitePolicyMaxUses || 1)));
+      const policy = await api.customers.invites.updatePolicy({
+        default_expires_in_hours: nextExpires,
+        default_max_uses: nextMaxUses,
+      });
+      invitePolicyExpiresInHours = policy.default_expires_in_hours;
+      invitePolicyMaxUses = policy.default_max_uses;
+      inviteExpiresInHours = policy.default_expires_in_hours;
+      inviteMaxUses = policy.default_max_uses;
+      toast.success('Invite defaults updated');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to update invite defaults');
+    } finally {
+      invitePolicySaving = false;
+    }
+  }
+
+  async function loadInviteSummary() {
+    if (!$can('manage', 'customers')) return;
+    inviteSummaryLoading = true;
+    try {
+      inviteSummary = await api.customers.invites.summary();
+    } catch (e: any) {
+      const msg = String(e?.message || '');
+      const isMissingEndpoint = msg.includes('404') || msg.toLowerCase().includes('not found');
+      if (!isMissingEndpoint) {
+        toast.error(msg || 'Failed to load invite summary');
+      }
+    } finally {
+      inviteSummaryLoading = false;
+    }
+  }
+
   function openInviteModal() {
     showInviteModal = true;
     generatedInviteUrl = '';
     generatedInviteExpiresAt = '';
-    inviteExpiresInHours = 24;
-    inviteMaxUses = 1;
+    inviteExpiresInHours = invitePolicyExpiresInHours || 24;
+    inviteMaxUses = invitePolicyMaxUses || 1;
     inviteNote = '';
-    void loadInvites();
+    void Promise.all([loadInvitePolicy(), loadInviteSummary(), loadInvites()]);
   }
 
   async function generateInvite() {
     if (inviteGenerating) return;
     inviteGenerating = true;
     try {
+      const nextExpires = Math.min(720, Math.max(1, Math.trunc(inviteExpiresInHours || 24)));
+      const nextMaxUses = Math.min(100, Math.max(1, Math.trunc(inviteMaxUses || 1)));
       const res = await api.customers.invites.create({
-        expires_in_hours: inviteExpiresInHours,
-        max_uses: inviteMaxUses,
+        expires_in_hours: nextExpires,
+        max_uses: nextMaxUses,
         note: inviteNote.trim() || null,
       });
+      inviteExpiresInHours = nextExpires;
+      inviteMaxUses = nextMaxUses;
       generatedInviteUrl = res.invite_url;
       generatedInviteExpiresAt = res.invite.expires_at;
       inviteNote = '';
       toast.success('Invite link generated');
-      await loadInvites();
+      await Promise.all([loadInvites(), loadInviteSummary()]);
     } catch (e: any) {
       toast.error(e?.message || 'Failed to generate invite link');
     } finally {
@@ -262,7 +332,7 @@
     try {
       await api.customers.invites.revoke(inviteId);
       toast.success('Invite link revoked');
-      await loadInvites();
+      await Promise.all([loadInvites(), loadInviteSummary()]);
     } catch (e: any) {
       toast.error(e?.message || 'Failed to revoke invite');
     } finally {
@@ -487,33 +557,105 @@
 
 <Modal show={showInviteModal} title="Customer Invite Link" onclose={() => (showInviteModal = false)}>
   <div class="form">
-    <div class="grid2">
-      <label>
-        <span>Expire (hours)</span>
-        <input
-          class="input"
-          type="number"
-          min="1"
-          max="720"
-          bind:value={inviteExpiresInHours}
-        />
-      </label>
-      <label>
-        <span>Max uses</span>
-        <input class="input" type="number" min="1" max="100" bind:value={inviteMaxUses} />
-      </label>
-    </div>
-    <label>
-      <span>Note (optional)</span>
-      <input class="input" bind:value={inviteNote} placeholder="Campaign/remark" />
-    </label>
+    <section class="invite-section">
+      <div class="invite-section-head">
+        <strong>Default policy (tenant)</strong>
+        {#if invitePolicyLoading}
+          <span class="muted">{$t('common.loading') || 'Loading...'}</span>
+        {/if}
+      </div>
+      <div class="grid2">
+        <label>
+          <span>Default expiry (hours)</span>
+          <input
+            class="input"
+            type="number"
+            min="1"
+            max="720"
+            bind:value={invitePolicyExpiresInHours}
+          />
+        </label>
+        <label>
+          <span>Default max uses</span>
+          <input class="input" type="number" min="1" max="100" bind:value={invitePolicyMaxUses} />
+        </label>
+      </div>
+      <div class="actions actions-inline">
+        <button class="btn btn-secondary" onclick={saveInvitePolicy} disabled={invitePolicySaving}>
+          <Icon name="save" size={14} />
+          {invitePolicySaving ? 'Saving...' : 'Save defaults'}
+        </button>
+      </div>
+    </section>
 
-    <div class="actions">
-      <button class="btn btn-primary" onclick={generateInvite} disabled={inviteGenerating}>
-        <Icon name="plus" size={16} />
-        {inviteGenerating ? 'Generating...' : 'Generate Invite Link'}
-      </button>
-    </div>
+    <section class="invite-section">
+      <div class="invite-section-head">
+        <strong>Invite summary</strong>
+      </div>
+      {#if inviteSummaryLoading}
+        <div class="muted">{$t('common.loading') || 'Loading...'}</div>
+      {:else if inviteSummary}
+        <div class="invite-summary-grid">
+          <div class="invite-summary-item">
+            <small>Total</small>
+            <strong>{inviteSummary.total}</strong>
+          </div>
+          <div class="invite-summary-item">
+            <small>Active</small>
+            <strong>{inviteSummary.active}</strong>
+          </div>
+          <div class="invite-summary-item">
+            <small>Used up</small>
+            <strong>{inviteSummary.used_up}</strong>
+          </div>
+          <div class="invite-summary-item">
+            <small>Expired</small>
+            <strong>{inviteSummary.expired}</strong>
+          </div>
+          <div class="invite-summary-item">
+            <small>Revoked</small>
+            <strong>{inviteSummary.revoked}</strong>
+          </div>
+          <div class="invite-summary-item">
+            <small>Utilization</small>
+            <strong>{inviteSummary.utilization_percent.toFixed(1)}%</strong>
+          </div>
+        </div>
+      {/if}
+    </section>
+
+    <section class="invite-section">
+      <div class="invite-section-head">
+        <strong>Generate invite</strong>
+      </div>
+      <div class="grid2">
+        <label>
+          <span>Expire (hours)</span>
+          <input
+            class="input"
+            type="number"
+            min="1"
+            max="720"
+            bind:value={inviteExpiresInHours}
+          />
+        </label>
+        <label>
+          <span>Max uses</span>
+          <input class="input" type="number" min="1" max="100" bind:value={inviteMaxUses} />
+        </label>
+      </div>
+      <label>
+        <span>Note (optional)</span>
+        <input class="input" bind:value={inviteNote} placeholder="Campaign/remark" />
+      </label>
+
+      <div class="actions actions-inline">
+        <button class="btn btn-primary" onclick={generateInvite} disabled={inviteGenerating}>
+          <Icon name="plus" size={16} />
+          {inviteGenerating ? 'Generating...' : 'Generate Invite Link'}
+        </button>
+      </div>
+    </section>
 
     {#if generatedInviteUrl}
       <div class="invite-result">
@@ -809,6 +951,50 @@
     font-size: 0.9rem;
   }
 
+  .invite-section {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0.75rem;
+    background: var(--bg-surface);
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .invite-section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .actions-inline {
+    margin-top: 0;
+  }
+
+  .invite-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+
+  .invite-summary-item {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.55rem 0.6rem;
+    background: rgba(99, 102, 241, 0.06);
+    display: grid;
+    gap: 0.2rem;
+  }
+
+  .invite-summary-item small {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+  }
+
+  .invite-summary-item strong {
+    font-size: 0.98rem;
+  }
+
   .invite-result {
     border: 1px solid var(--border-color);
     border-radius: 12px;
@@ -890,6 +1076,9 @@
     }
     .grid2 {
       grid-template-columns: 1fr;
+    }
+    .invite-summary-grid {
+      grid-template-columns: 1fr 1fr;
     }
     .invite-copy-row {
       grid-template-columns: 1fr;

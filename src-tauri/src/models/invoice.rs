@@ -23,6 +23,7 @@ pub struct Invoice {
     pub external_id: Option<String>,
     pub merchant_id: Option<String>, // NULL = System, Some = Tenant
     pub proof_attachment: Option<String>,
+    pub rejection_reason: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

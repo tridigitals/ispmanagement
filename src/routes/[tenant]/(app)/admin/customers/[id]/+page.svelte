@@ -72,6 +72,7 @@
   let subNotes = $state('');
   let billingInvoices = $state<Invoice[]>([]);
   let loadingBilling = $state(false);
+  let billingLoadInFlight = false;
   let billingStatus = $state<'all' | 'pending' | 'verification_pending' | 'paid' | 'failed'>('all');
   let billingDateFrom = $state('');
   let billingDateTo = $state('');
@@ -473,7 +474,8 @@
   }
 
   async function loadBillingInvoices() {
-    if (loadingBilling) return;
+    if (billingLoadInFlight) return;
+    billingLoadInFlight = true;
     loadingBilling = true;
     try {
       const invoices = await api.payment.listCustomerPackageInvoices();
@@ -485,6 +487,7 @@
       );
     } finally {
       loadingBilling = false;
+      billingLoadInFlight = false;
     }
   }
 

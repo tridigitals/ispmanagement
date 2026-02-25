@@ -83,13 +83,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         audit_service.clone(),
         user_service.clone(),
     );
-    let pppoe_service =
-        PppoeService::new(
-            pool.clone(),
-            auth_service.clone(),
-            audit_service.clone(),
-            settings_service.clone(),
-        );
+    let pppoe_service = PppoeService::new(
+        pool.clone(),
+        auth_service.clone(),
+        audit_service.clone(),
+        settings_service.clone(),
+    );
     let isp_package_service =
         IspPackageService::new(pool.clone(), auth_service.clone(), audit_service.clone());
     let team_service = TeamService::new(
