@@ -30,16 +30,82 @@ impl NetworkMappingService {
         Self { pool, auth_service }
     }
 
+    async fn check_permission_any(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        permissions: &[(&str, &str)],
+    ) -> AppResult<()> {
+        let mut last_err: Option<AppError> = None;
+        for (resource, action) in permissions {
+            match self
+                .auth_service
+                .check_permission(actor_id, tenant_id, resource, action)
+                .await
+            {
+                Ok(()) => return Ok(()),
+                Err(err) => last_err = Some(err),
+            }
+        }
+        Err(last_err.unwrap_or_else(|| AppError::Forbidden("permission check failed".into())))
+    }
+
     async fn require_read(&self, actor_id: &str, tenant_id: &str) -> AppResult<()> {
-        self.auth_service
-            .check_permission(actor_id, tenant_id, "network_routers", "read")
-            .await
+        self.check_permission_any(
+            actor_id,
+            tenant_id,
+            &[("network_topology", "read"), ("network_routers", "read")],
+        )
+        .await
     }
 
     async fn require_manage(&self, actor_id: &str, tenant_id: &str) -> AppResult<()> {
-        self.auth_service
-            .check_permission(actor_id, tenant_id, "network_routers", "manage")
-            .await
+        self.check_permission_any(
+            actor_id,
+            tenant_id,
+            &[("network_topology", "manage"), ("network_routers", "manage")],
+        )
+        .await
+    }
+
+    async fn require_zones_read(&self, actor_id: &str, tenant_id: &str) -> AppResult<()> {
+        self.check_permission_any(
+            actor_id,
+            tenant_id,
+            &[
+                ("service_zones", "read"),
+                ("network_topology", "read"),
+                ("network_routers", "read"),
+            ],
+        )
+        .await
+    }
+
+    async fn require_zones_manage(&self, actor_id: &str, tenant_id: &str) -> AppResult<()> {
+        self.check_permission_any(
+            actor_id,
+            tenant_id,
+            &[
+                ("service_zones", "manage"),
+                ("network_topology", "manage"),
+                ("network_routers", "manage"),
+            ],
+        )
+        .await
+    }
+
+    async fn require_coverage_read(&self, actor_id: &str, tenant_id: &str) -> AppResult<()> {
+        self.check_permission_any(
+            actor_id,
+            tenant_id,
+            &[
+                ("coverage", "read"),
+                ("service_zones", "read"),
+                ("network_topology", "read"),
+                ("network_routers", "read"),
+            ],
+        )
+        .await
     }
 
     fn cleaned_query(q: Option<String>) -> String {
@@ -592,7 +658,7 @@ impl NetworkMappingService {
         tenant_id: &str,
         q: ListQuery,
     ) -> AppResult<PaginatedResponse<ServiceZone>> {
-        self.require_read(actor_id, tenant_id).await?;
+        self.require_zones_read(actor_id, tenant_id).await?;
         let search = Self::cleaned_query(q.q);
         let page = q.page.max(1);
         let per_page = q.per_page.clamp(1, 200);
@@ -682,7 +748,7 @@ impl NetworkMappingService {
         tenant_id: &str,
         dto: CreateServiceZoneRequest,
     ) -> AppResult<ServiceZone> {
-        self.require_manage(actor_id, tenant_id).await?;
+        self.require_zones_manage(actor_id, tenant_id).await?;
         if dto.name.trim().is_empty() {
             return Err(AppError::Validation("name is required".into()));
         }
@@ -720,7 +786,7 @@ impl NetworkMappingService {
         id: &str,
         dto: UpdateServiceZoneRequest,
     ) -> AppResult<ServiceZone> {
-        self.require_manage(actor_id, tenant_id).await?;
+        self.require_zones_manage(actor_id, tenant_id).await?;
         let current = self.get_zone_by_id(tenant_id, id).await?;
         let geometry = dto.geometry.unwrap_or(current.geometry);
         Self::validate_geojson_geometry(&geometry, &["Polygon", "MultiPolygon"], "geometry")?;
@@ -752,7 +818,7 @@ impl NetworkMappingService {
     }
 
     pub async fn delete_zone(&self, actor_id: &str, tenant_id: &str, id: &str) -> AppResult<()> {
-        self.require_manage(actor_id, tenant_id).await?;
+        self.require_zones_manage(actor_id, tenant_id).await?;
         let res = sqlx::query("DELETE FROM service_zones WHERE tenant_id = $1::uuid AND id = $2::uuid")
             .bind(tenant_id)
             .bind(id)
@@ -771,7 +837,7 @@ impl NetworkMappingService {
         tenant_id: &str,
         zone_id: Option<String>,
     ) -> AppResult<Vec<ZoneNodeBinding>> {
-        self.require_read(actor_id, tenant_id).await?;
+        self.require_zones_read(actor_id, tenant_id).await?;
         let rows: Vec<ZoneNodeBinding> = sqlx::query_as(
             r#"
             SELECT
@@ -802,7 +868,7 @@ impl NetworkMappingService {
         tenant_id: &str,
         dto: CreateZoneNodeBindingRequest,
     ) -> AppResult<ZoneNodeBinding> {
-        self.require_manage(actor_id, tenant_id).await?;
+        self.require_zones_manage(actor_id, tenant_id).await?;
         let id = Uuid::new_v4().to_string();
         let is_primary = dto.is_primary.unwrap_or(false);
         let weight = dto.weight.unwrap_or(100);
@@ -851,7 +917,7 @@ impl NetworkMappingService {
         tenant_id: &str,
         id: &str,
     ) -> AppResult<()> {
-        self.require_manage(actor_id, tenant_id).await?;
+        self.require_zones_manage(actor_id, tenant_id).await?;
         let res = sqlx::query("DELETE FROM zone_node_bindings WHERE tenant_id = $1::uuid AND id = $2::uuid")
             .bind(tenant_id)
             .bind(id)
@@ -870,7 +936,7 @@ impl NetworkMappingService {
         tenant_id: &str,
         dto: ResolveZoneRequest,
     ) -> AppResult<ResolvedZoneResponse> {
-        self.require_read(actor_id, tenant_id).await?;
+        self.require_coverage_read(actor_id, tenant_id).await?;
         let zone: Option<ResolvedZone> = sqlx::query_as(
             r#"
             SELECT id::text AS id, name, priority

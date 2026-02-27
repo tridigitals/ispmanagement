@@ -98,11 +98,11 @@
 ## Quality / Security / Ops
 
 ## RBAC
-- [ ] Add new permissions to seeder:
-- [ ] `network_topology:read/manage`
-- [ ] `service_zones:read/manage`
-- [ ] `coverage:read`
-- [ ] Bind permissions to owner/admin/planner/noc/technician roles
+- [x] Add new permissions to seeder:
+- [x] `network_topology:read/manage`
+- [x] `service_zones:read/manage`
+- [x] `coverage:read`
+- [x] Bind permissions to owner/admin/planner/noc/technician roles
 
 ## Testing
 - [ ] Migration integration test (up/down)

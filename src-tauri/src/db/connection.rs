@@ -984,6 +984,12 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
             35,
         ),
         (
+            "Planner",
+            "Plan network topology, zones, and coverage",
+            true,
+            30,
+        ),
+        (
             "Customer Service",
             "Handle customers, tickets, and billing communication",
             true,
@@ -1094,6 +1100,9 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
         sqlx::query("UPDATE roles SET level = 35 WHERE name = 'NOC' AND level = 0")
             .execute(pool)
             .await?;
+        sqlx::query("UPDATE roles SET level = 30 WHERE name = 'Planner' AND level = 0")
+            .execute(pool)
+            .await?;
         sqlx::query("UPDATE roles SET level = 25 WHERE name = 'Customer Service' AND level = 0")
             .execute(pool)
             .await?;
@@ -1114,6 +1123,9 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
             .execute(pool)
             .await?;
         sqlx::query("UPDATE roles SET level = 35 WHERE name = 'NOC' AND level = 0")
+            .execute(pool)
+            .await?;
+        sqlx::query("UPDATE roles SET level = 30 WHERE name = 'Planner' AND level = 0")
             .execute(pool)
             .await?;
         sqlx::query("UPDATE roles SET level = 25 WHERE name = 'Customer Service' AND level = 0")
@@ -1179,6 +1191,11 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
         // Network & provisioning
         ("network_routers", "read", "View routers and status"),
         ("network_routers", "manage", "Manage router inventory"),
+        ("network_topology", "read", "View network topology map"),
+        ("network_topology", "manage", "Manage network topology map"),
+        ("service_zones", "read", "View service zones"),
+        ("service_zones", "manage", "Manage service zones"),
+        ("coverage", "read", "Read coverage checks"),
         ("pppoe", "read", "View PPPoE sessions and users"),
         ("pppoe", "manage", "Manage PPPoE sessions and users"),
         ("isp_packages", "read", "View ISP packages"),
@@ -1313,6 +1330,11 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
         "customer_locations:manage",
         "network_routers:read",
         "network_routers:manage",
+        "network_topology:read",
+        "network_topology:manage",
+        "service_zones:read",
+        "service_zones:manage",
+        "coverage:read",
         "pppoe:read",
         "pppoe:manage",
         "isp_packages:read",
@@ -1338,6 +1360,11 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
         "storage:read",
         "network_routers:read",
         "network_routers:manage",
+        "network_topology:read",
+        "network_topology:manage",
+        "service_zones:read",
+        "service_zones:manage",
+        "coverage:read",
         "pppoe:read",
         "pppoe:manage",
         "isp_packages:read",
@@ -1352,6 +1379,26 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
     ];
     for p in noc_perms {
         assign_perm(pool, "NOC", p).await?;
+    }
+
+    let planner_perms = vec![
+        "admin:access",
+        "dashboard:read",
+        "storage:read",
+        "customers:read",
+        "customer_locations:read",
+        "network_routers:read",
+        "network_topology:read",
+        "network_topology:manage",
+        "service_zones:read",
+        "service_zones:manage",
+        "coverage:read",
+        "isp_packages:read",
+        "work_orders:read",
+        "announcements:read",
+    ];
+    for p in planner_perms {
+        assign_perm(pool, "Planner", p).await?;
     }
 
     let cs_perms = vec![
@@ -1384,6 +1431,9 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
         "customers:read",
         "customer_locations:read",
         "network_routers:read",
+        "network_topology:read",
+        "service_zones:read",
+        "coverage:read",
         "work_orders:read",
         "work_orders:manage",
         "support:read",
@@ -1419,6 +1469,7 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
         assign_perm(pool, "Owner", p).await?;
         assign_perm(pool, "Admin", p).await?;
         assign_perm(pool, "NOC", p).await?;
+        assign_perm(pool, "Planner", p).await?;
         assign_perm(pool, "Customer Service", p).await?;
         assign_perm(pool, "Technician", p).await?;
         assign_perm(pool, "Member", p).await?;
