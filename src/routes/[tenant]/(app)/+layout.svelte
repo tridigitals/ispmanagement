@@ -87,6 +87,7 @@
     }
     if (
       path.startsWith('/admin/network/noc') ||
+      path.startsWith('/admin/network/map') ||
       path.startsWith('/admin/network/alerts') ||
       path.startsWith('/admin/network/incidents') ||
       path.startsWith('/admin/network/logs') ||

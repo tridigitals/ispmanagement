@@ -11,6 +11,7 @@
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { isPlatformDomain } from '$lib/utils/domain';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { publicApi } from '$lib/api/client';
 
   let email = '';
@@ -108,6 +109,22 @@
 
     // If user logs in from the tenant custom domain, use root tenant routes
     // and cache domain->slug mapping for reroute consistency.
+    const ctx = resolveTenantContext({
+      hostname: currentHost,
+      userTenantSlug: slug,
+      tenantSlug: t?.slug,
+      routeTenantSlug: $page.params.tenant,
+    });
+
+    const goToRoleHome = () => {
+      const role = String(u?.role || '').toLowerCase();
+      let target = role === 'admin' ? `${ctx.tenantPrefix}/admin` : `${ctx.tenantPrefix}/dashboard`;
+      const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/login';
+      if (target === currentPath) target = `${ctx.tenantPrefix}/profile`;
+      if (target === currentPath) target = '/';
+      goto(target);
+    };
+
     if (customDomain && currentHost === customDomain && slug) {
       try {
         const { cacheDomainMapping } = await import('$lib/utils/domain');
@@ -115,11 +132,7 @@
       } catch {
         // ignore cache failures
       }
-      if (u.role === 'admin') {
-        goto('/admin');
-      } else {
-        goto('/dashboard');
-      }
+      goToRoleHome();
       return;
     }
 
@@ -134,19 +147,9 @@
       // For now, let's stick to the existing path-based logic but make it robust.
 
       if ($page.url.hostname.includes(slug) || isMainDomain) {
-        // We are on the correct subdomain (presumably)
-        if (u.role === 'admin') {
-          goto(`/admin`); // Root of subdomain
-        } else {
-          goto(`/dashboard`);
-        }
+        goToRoleHome();
       } else {
-        // We are on main domain, redirect to path-based tenant dashboard
-        if (u.role === 'admin') {
-          goto('/admin');
-        } else {
-          goto('/dashboard');
-        }
+        goToRoleHome();
       }
     } else {
       // Prevent dashboard<->login redirect loop for users without tenant scope.

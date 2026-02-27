@@ -113,6 +113,7 @@
     "page": "Halaman",
     "results": "hasil",
     "search": "Cari",
+    "apply": "Terapkan",
     "next": "Berikutnya",
     "previous": "Sebelumnya",
     "retry": "Coba Lagi",
@@ -129,6 +130,16 @@
     "all": "Semua",
     "add": "Tambah",
     "create": "Buat",
+    "total": "Total",
+    "start": "Mulai",
+    "complete": "Selesai",
+    "available": "Tersedia",
+    "customer": "Pelanggan",
+    "package": "Paket",
+    "location": "Lokasi",
+    "assignee": "Penanggung Jawab",
+    "schedule": "Jadwal",
+    "notes": "Catatan",
     "global": "Global",
     "na": "—",
     "per_month_short": "/bln",
@@ -403,6 +414,7 @@
     "announcements": "Pengumuman",
     "routers": "Router",
     "noc": "NOC",
+    "topology_map": "Peta Topologi",
     "wallboard": "Wallboard",
     "alerts": "Alert",
     "incidents": "Insiden",
@@ -2515,6 +2527,40 @@
           "seen": "Terakhir Terlihat"
         }
       },
+      "map": {
+        "title": "Peta Topologi Jaringan",
+        "subtitle": "Visualisasi node, link, dan zona layanan pada viewport saat ini.",
+        "back_to_noc": "Kembali ke NOC",
+        "bbox": "BBox viewport",
+        "stats": {
+          "nodes": "Node",
+          "links": "Link",
+          "zones": "Zona"
+        },
+        "layers": {
+          "nodes": "Node",
+          "links": "Link",
+          "zones": "Zona"
+        },
+        "view": {
+          "label": "Tampilan",
+          "standard": "Standar",
+          "satellite": "Satelit"
+        },
+        "location": {
+          "show": "Lokasi Saya",
+          "hide": "Sembunyikan Lokasi Saya"
+        },
+        "filters": {
+          "search": "Cari",
+          "search_placeholder": "Cari node/link/zona...",
+          "status": "Status",
+          "kind": "Tipe",
+          "any_status": "Semua status",
+          "any_kind": "Semua tipe",
+          "actions": "Aksi"
+        }
+      },
       "alerts": {
         "title": "Alert Router",
         "subtitle": "Insiden terdeteksi dari polling router.",
@@ -2579,7 +2625,7 @@
           "auto_escalated": "Auto Eskalasi"
         },
         "toasts": {
-          "auto_escalation_done": "{{count}} insiden berhasil dieskalasi"
+          "auto_escalation_done": "{count} insiden berhasil dieskalasi"
         },
         "simulate": {
           "subtitle": "Buat insiden uji secara manual",
@@ -3333,7 +3379,7 @@
         "thresholds": {
           "title": "Ambang Batas",
           "desc": "Dipakai oleh filter NOC dan background poller untuk membuka insiden.",
-          "sla_preview": "Insiden menjadi warning setelah {{warn}} menit dan breach setelah {{breach}} menit.",
+          "sla_preview": "Insiden menjadi warning setelah {warn} menit dan breach setelah {breach} menit.",
           "offline_after_secs": "Insiden offline setelah (detik)",
           "cpu_risk": "CPU risk (%)",
           "cpu_hot": "CPU hot (%)",

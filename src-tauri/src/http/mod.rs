@@ -1,7 +1,7 @@
 use crate::services::{
     AuditService, AuthService, CustomerService, EmailService, IspPackageService, MikrotikService,
-    NotificationService, PaymentService, PlanService, PppoeService, RoleService, SettingsService,
-    StorageService, SystemService, TeamService, UserService,
+    NetworkMappingService, NotificationService, PaymentService, PlanService, PppoeService,
+    RoleService, SettingsService, StorageService, SystemService, TeamService, UserService,
 };
 use axum::{
     extract::DefaultBodyLimit,
@@ -33,6 +33,7 @@ pub mod install;
 pub mod isp_packages;
 pub mod middleware;
 pub mod mikrotik;
+pub mod network_mapping;
 pub mod notifications;
 pub mod payment;
 pub mod plans;
@@ -84,6 +85,7 @@ pub struct AppState {
     pub customer_service: Arc<CustomerService>,
     pub pppoe_service: Arc<PppoeService>,
     pub isp_package_service: Arc<IspPackageService>,
+    pub network_mapping_service: Arc<NetworkMappingService>,
     pub backup_service: Arc<crate::services::BackupService>,
     pub ws_hub: Arc<WsHub>,
     pub app_data_dir: PathBuf,
@@ -112,6 +114,7 @@ pub async fn start_server(
     customer_service: CustomerService,
     pppoe_service: PppoeService,
     isp_package_service: IspPackageService,
+    network_mapping_service: NetworkMappingService,
     backup_service: crate::services::BackupService,
     ws_hub: Arc<WsHub>,
     app_data_dir: PathBuf,
@@ -239,6 +242,7 @@ pub async fn start_server(
         customer_service: Arc::new(customer_service),
         pppoe_service: Arc::new(pppoe_service),
         isp_package_service: Arc::new(isp_package_service),
+        network_mapping_service: Arc::new(network_mapping_service),
         backup_service: Arc::new(backup_service),
         ws_hub,
         app_data_dir,
@@ -474,6 +478,8 @@ pub async fn start_server(
         .nest("/api/admin/pppoe", pppoe::router())
         // ISP packages + router mapping (tenant scoped)
         .nest("/api/admin/isp-packages", isp_packages::router())
+        // Network topology mapping (tenant scoped)
+        .nest("/api/admin/network-mapping", network_mapping::router())
         // Settings Routes
         .route(
             "/api/settings",

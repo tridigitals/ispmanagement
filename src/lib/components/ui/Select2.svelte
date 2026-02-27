@@ -30,6 +30,7 @@
   }>();
 
   let isOpen = $state(false);
+  let selectingViaPointer = $state(false);
   let containerElement: HTMLElement;
   let searchElement: HTMLInputElement | null = $state(null);
   let query = $state('');
@@ -89,10 +90,39 @@
     close();
   }
 
-  function handleClickOutside(event: MouseEvent) {
-    if (isOpen && containerElement && !containerElement.contains(event.target as Node)) {
+  function isEventInsideContainer(event: Event) {
+    if (!containerElement) return false;
+    const path = (event as any).composedPath?.() as EventTarget[] | undefined;
+    if (Array.isArray(path) && path.length > 0) return path.includes(containerElement);
+    const target = event.target as Node | null;
+    return !!target && containerElement.contains(target);
+  }
+
+  function handleGlobalPointerDown(event: PointerEvent) {
+    if (!isOpen || !containerElement) return;
+    if (isEventInsideContainer(event)) return;
+    close();
+  }
+
+  function handleFocusOut() {
+    if (!isOpen || !containerElement) return;
+    queueMicrotask(() => {
+      if (selectingViaPointer) return;
+      const active = document.activeElement;
+      if (active && containerElement.contains(active)) return;
       close();
-    }
+    });
+  }
+
+  function handleOptionPointerDown(optionVal: any, event: PointerEvent) {
+    // Select on pointer-down so blur/focusout from map/canvas won't close before selection applies.
+    event.preventDefault();
+    event.stopPropagation();
+    selectingViaPointer = true;
+    selectOption(optionVal);
+    queueMicrotask(() => {
+      selectingViaPointer = false;
+    });
   }
 
   function stepActive(delta: number) {
@@ -140,9 +170,9 @@
   }
 </script>
 
-<svelte:window onclick={handleClickOutside} />
+<svelte:window onpointerdown={handleGlobalPointerDown} />
 
-<div class="select-container" style="width: {width}" bind:this={containerElement}>
+<div class="select-container" style="width: {width}" bind:this={containerElement} onfocusout={handleFocusOut}>
   <button
     class="select-trigger {disabled ? 'disabled' : ''} {isOpen ? 'open' : ''}"
     onclick={toggle}
@@ -185,6 +215,7 @@
             class="dropdown-item {option.value === value ? 'selected' : ''} {idx === activeIndex
               ? 'active'
               : ''}"
+            onpointerdown={(event) => handleOptionPointerDown(option.value, event)}
             onclick={() => selectOption(option.value)}
             onmousemove={() => (activeIndex = idx)}
             type="button"

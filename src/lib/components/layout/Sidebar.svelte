@@ -272,6 +272,12 @@
             show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
           },
           {
+            label: $t('sidebar.topology_map') || 'Topology Map',
+            icon: 'map-pin',
+            href: `${tenantPrefix}/admin/network/map`,
+            show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+          },
+          {
             label: $t('sidebar.wallboard') || 'Wallboard',
             icon: 'monitor',
             href: `${tenantPrefix}/admin/network/noc/wallboard`,

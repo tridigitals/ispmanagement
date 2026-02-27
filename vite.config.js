@@ -1,12 +1,18 @@
 import { defineConfig, loadEnv } from 'vite';
 // @ts-nocheck
 import { sveltekit } from '@sveltejs/kit/vite';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 // @ts-ignore
 export default defineConfig(async ({ mode }) => {
+  const publicFieldInjectPath = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    'src/lib/shims/esbuild-public-field.js',
+  );
   // Load env file based on `mode` in the current working directory.
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '');
@@ -33,6 +39,11 @@ export default defineConfig(async ({ mode }) => {
 
   return {
     plugins: [await sveltekit()],
+    optimizeDeps: {
+      esbuildOptions: {
+        inject: [publicFieldInjectPath],
+      },
+    },
 
     // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
     //

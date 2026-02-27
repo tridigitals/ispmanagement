@@ -23,8 +23,8 @@ use services::metrics_service::MetricsService;
 use services::{
     AnnouncementScheduler, AuditService, AuthService, BackupService, CustomerService,
     EmailOutboxService, EmailService, IspPackageService, MikrotikService, NotificationService,
-    PaymentService, PlanService, PppoeService, RoleService, SettingsService, SystemService,
-    TeamService, UserService,
+    NetworkMappingService, PaymentService, PlanService, PppoeService, RoleService,
+    SettingsService, SystemService, TeamService, UserService,
 };
 #[cfg(feature = "desktop")]
 use tracing::info;
@@ -219,6 +219,8 @@ pub fn run() {
                     );
                 let isp_package_service =
                     IspPackageService::new(pool.clone(), auth_service.clone(), audit_service.clone());
+                let network_mapping_service =
+                    NetworkMappingService::new(pool.clone(), auth_service.clone());
                 let team_service = TeamService::new(pool.clone(), auth_service.clone(), audit_service.clone(), plan_service.clone());
                 let metrics_service = std::sync::Arc::new(MetricsService::new());
                 let system_service = SystemService::new(pool.clone(), metrics_service.clone());
@@ -271,6 +273,7 @@ pub fn run() {
                 app_handle.manage(customer_service.clone());
                 app_handle.manage(pppoe_service.clone());
                 app_handle.manage(isp_package_service.clone());
+                app_handle.manage(network_mapping_service.clone());
                 app_handle.manage(settings_service.clone());
                 app_handle.manage(email_service.clone());
                 app_handle.manage(team_service.clone());
@@ -309,6 +312,7 @@ pub fn run() {
                         customer_service,
                         pppoe_service,
                         isp_package_service,
+                        network_mapping_service,
                         backup_service,
                         ws_hub,
                         app_dir,

@@ -113,6 +113,7 @@
     "page": "Page",
     "results": "results",
     "search": "Search",
+    "apply": "Apply",
     "next": "Next",
     "previous": "Previous",
     "retry": "Retry",
@@ -129,6 +130,16 @@
     "all": "All",
     "add": "Add",
     "create": "Create",
+    "total": "Total",
+    "start": "Start",
+    "complete": "Complete",
+    "available": "Available",
+    "customer": "Customer",
+    "package": "Package",
+    "location": "Location",
+    "assignee": "Assignee",
+    "schedule": "Schedule",
+    "notes": "Notes",
     "global": "Global",
     "na": "—",
     "per_month_short": "/mo",
@@ -403,6 +414,7 @@
     "announcements": "Announcements",
     "routers": "Routers",
     "noc": "NOC",
+    "topology_map": "Topology Map",
     "wallboard": "Wallboard",
     "alerts": "Alerts",
     "incidents": "Incidents",
@@ -1885,7 +1897,7 @@
         "thresholds": {
           "title": "Thresholds",
           "desc": "Used by NOC filters and by the background poller to open incidents.",
-          "sla_preview": "Incidents become warning after {{warn}} minutes and breach after {{breach}} minutes.",
+          "sla_preview": "Incidents become warning after {warn} minutes and breach after {breach} minutes.",
           "cpu_risk": "CPU risk (%)",
           "cpu_hot": "CPU hot (%)",
           "latency_risk": "Latency risk (ms)",
@@ -2709,6 +2721,40 @@
           "seen": "Last Seen"
         }
       },
+      "map": {
+        "title": "Network Topology Map",
+        "subtitle": "Visualize nodes, links, and service zones in current viewport.",
+        "back_to_noc": "Back to NOC",
+        "bbox": "Viewport bbox",
+        "stats": {
+          "nodes": "Nodes",
+          "links": "Links",
+          "zones": "Zones"
+        },
+        "layers": {
+          "nodes": "Nodes",
+          "links": "Links",
+          "zones": "Zones"
+        },
+        "view": {
+          "label": "View",
+          "standard": "Standard",
+          "satellite": "Satellite"
+        },
+        "location": {
+          "show": "My Location",
+          "hide": "Hide My Location"
+        },
+        "filters": {
+          "search": "Search",
+          "search_placeholder": "Search node/link/zone...",
+          "status": "Status",
+          "kind": "Type",
+          "any_status": "Any status",
+          "any_kind": "Any type",
+          "actions": "Actions"
+        }
+      },
       "alerts": {
         "title": "Router Alerts",
         "subtitle": "Incidents detected from router polling.",
@@ -2773,7 +2819,7 @@
           "auto_escalated": "Auto Escalated"
         },
         "toasts": {
-          "auto_escalation_done": "{{count}} incident(s) escalated"
+          "auto_escalation_done": "{count} incident(s) escalated"
         },
         "simulate": {
           "subtitle": "Create test incident manually",

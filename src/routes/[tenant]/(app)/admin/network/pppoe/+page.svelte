@@ -11,8 +11,8 @@
   import Select2 from '$lib/components/ui/Select2.svelte';
   import Toggle from '$lib/components/ui/Toggle.svelte';
   import Table from '$lib/components/ui/Table.svelte';
-  import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
-  import StatsCard from '$lib/components/dashboard/StatsCard.svelte';
+  import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
+  import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
   import { timeAgo } from '$lib/utils/date';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
 
@@ -582,176 +582,179 @@
 </script>
 
 <div class="page-content fade-in">
-  <section class="hero">
-    <div class="hero-bg"></div>
-    <div class="hero-inner">
-      <div class="hgroup">
-        <div class="kicker">
-          <span class="dot"></span>
-          {$t('sidebar.sections.network') || 'Network'}
-        </div>
-        <h1 class="h1">{$t('admin.network.pppoe.title') || 'PPPoE'}</h1>
-        <div class="sub">
-          {$t('admin.network.pppoe.subtitle') || 'Tenant-wide view of PPPoE accounts across routers.'}
-        </div>
-      </div>
+  <NetworkPageHeader
+    title={$t('admin.network.pppoe.title') || 'PPPoE'}
+    subtitle={$t('admin.network.pppoe.subtitle') || 'Tenant-wide view of PPPoE accounts across routers.'}
+  >
+    {#snippet actions()}
+      {#if $can('manage', 'pppoe') && autoApplyOnSave}
+        <span class="chip active">{$t('admin.network.pppoe.auto_apply_on') || 'Auto-apply ON'}</span>
+      {/if}
+      <button class="btn ghost" type="button" onclick={loadAccounts} disabled={refreshing}>
+        <Icon name="refresh-cw" size={16} />
+        {$t('common.refresh') || 'Refresh'}
+      </button>
+      {#if $can('manage', 'pppoe')}
+        <button class="btn" type="button" onclick={openCreate}>
+          <Icon name="plus" size={16} />
+          {$t('admin.customers.pppoe.actions.add') || 'Add PPPoE'}
+        </button>
+      {/if}
+      {#if $can('manage', 'pppoe')}
+        <button
+          class="btn ghost"
+          type="button"
+          onclick={() => goto(`${tenantPrefix}/admin/network/pppoe/import`)}
+          title={$t('admin.network.pppoe.import.title') || 'Import PPPoE from MikroTik'}
+        >
+          <Icon name="download" size={16} />
+          {$t('admin.network.pppoe.import.cta') || 'Import'}
+        </button>
+      {/if}
+      {#if $can('manage', 'pppoe')}
+        <button
+          class="btn ghost"
+          type="button"
+          onclick={reconcileAll}
+          disabled={refreshing || viewRows.length === 0}
+          title={$t('admin.network.pppoe.actions.reconcile') || 'Reconcile'}
+        >
+          <Icon name="refresh-cw" size={16} />
+          {$t('admin.network.pppoe.actions.reconcile') || 'Reconcile'}
+        </button>
+      {/if}
+      {#if $can('manage', 'pppoe')}
+        <button
+          class="btn ghost"
+          type="button"
+          onclick={retryApplyBatch}
+          disabled={refreshing || retryCandidates.length === 0}
+          title={$t('admin.network.pppoe.actions.retry_apply_batch') || 'Retry apply'}
+        >
+          <Icon name="rotate-cw" size={16} />
+          {$t('admin.network.pppoe.actions.retry_apply_batch') || 'Retry apply'}
+          <span class="pill mono">{retryCandidates.length}</span>
+        </button>
+      {/if}
+      {#if q.trim() || routerId || status !== 'any' || disabled !== 'any' || provisioning !== 'any'}
+        <button class="btn ghost" type="button" onclick={clearFilters}>
+          <Icon name="eraser" size={16} />
+          {$t('common.clear') || 'Clear'}
+        </button>
+      {/if}
+    {/snippet}
+  </NetworkPageHeader>
 
-      <div class="hero-actions">
-        <div class="search">
-          <Icon name="search" size={16} />
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-top">
+        <span>{$t('admin.network.pppoe.stats.total') || 'Total'}</span>
+        <Icon name="key" size={16} />
+      </div>
+      <div class="stat-value">{stats.total}</div>
+    </div>
+    <div class="stat-card tone-ok">
+      <div class="stat-top">
+        <span>{$t('admin.network.pppoe.stats.present') || 'On router'}</span>
+        <Icon name="check-circle" size={16} />
+      </div>
+      <div class="stat-value">{stats.present}</div>
+    </div>
+    <div class="stat-card tone-warn">
+      <div class="stat-top">
+        <span>{$t('admin.network.pppoe.stats.missing') || 'Missing'}</span>
+        <Icon name="alert-triangle" size={16} />
+      </div>
+      <div class="stat-value">{stats.missing}</div>
+    </div>
+    <div class="stat-card tone-muted">
+      <div class="stat-top">
+        <span>{$t('admin.network.pppoe.stats.disabled') || 'Disabled'}</span>
+        <Icon name="pause" size={16} />
+      </div>
+      <div class="stat-value">{stats.disabled}</div>
+    </div>
+  </div>
+
+  <div class="filters-wrap">
+    <NetworkFilterPanel>
+      <div class="control control-wide">
+        <label for="pppoe-search">{$t('common.search') || 'Search'}</label>
+        <label class="search-wrap" for="pppoe-search">
+          <Icon name="search" size={14} />
           <input
-            class="search-input"
+            id="pppoe-search"
+            type="text"
+            placeholder={$t('admin.network.pppoe.search') || 'Search PPPoE...'}
             value={q}
             oninput={(e) => {
               q = (e.currentTarget as HTMLInputElement).value;
               void loadAccounts();
             }}
-            placeholder={$t('admin.network.pppoe.search') || 'Search PPPoE...'}
           />
           {#if q.trim()}
-            <button class="clear" type="button" onclick={() => (q = '')}>
+            <button
+              class="clear"
+              type="button"
+              onclick={() => {
+                q = '';
+                void loadAccounts();
+              }}
+              aria-label={$t('common.clear') || 'Clear'}
+            >
               <Icon name="x" size={14} />
             </button>
           {/if}
-        </div>
-
-        <div class="hero-buttons">
-          {#if $can('manage', 'pppoe') && autoApplyOnSave}
-            <span class="chip active">{$t('admin.network.pppoe.auto_apply_on') || 'Auto-apply ON'}</span>
-          {/if}
-          <button class="btn btn-secondary" onclick={loadAccounts} disabled={refreshing}>
-            <Icon name="refresh-cw" size={16} />
-            {$t('common.refresh') || 'Refresh'}
-          </button>
-          {#if $can('manage', 'pppoe')}
-            <button class="btn btn-primary" onclick={openCreate}>
-              <Icon name="plus" size={16} />
-              {$t('admin.customers.pppoe.actions.add') || 'Add PPPoE'}
-            </button>
-          {/if}
-          {#if $can('manage', 'pppoe')}
-            <button
-              class="btn btn-secondary"
-              onclick={() => goto(`${tenantPrefix}/admin/network/pppoe/import`)}
-              title={$t('admin.network.pppoe.import.title') || 'Import PPPoE from MikroTik'}
-            >
-              <Icon name="download" size={16} />
-              {$t('admin.network.pppoe.import.cta') || 'Import'}
-            </button>
-          {/if}
-          {#if $can('manage', 'pppoe')}
-            <button
-              class="btn btn-secondary"
-              onclick={reconcileAll}
-              disabled={refreshing || viewRows.length === 0}
-              title={$t('admin.network.pppoe.actions.reconcile') || 'Reconcile'}
-            >
-              <Icon name="refresh-cw" size={16} />
-              {$t('admin.network.pppoe.actions.reconcile') || 'Reconcile'}
-            </button>
-          {/if}
-          {#if $can('manage', 'pppoe')}
-            <button
-              class="btn btn-secondary"
-              onclick={retryApplyBatch}
-              disabled={refreshing || retryCandidates.length === 0}
-              title={$t('admin.network.pppoe.actions.retry_apply_batch') || 'Retry apply'}
-            >
-              <Icon name="rotate-cw" size={16} />
-              {$t('admin.network.pppoe.actions.retry_apply_batch') || 'Retry apply'}
-              <span class="pill mono">{retryCandidates.length}</span>
-            </button>
-          {/if}
-          {#if q.trim() || routerId || status !== 'any' || disabled !== 'any' || provisioning !== 'any'}
-            <button class="btn btn-secondary" onclick={clearFilters}>
-              <Icon name="eraser" size={16} />
-              {$t('common.clear') || 'Clear'}
-            </button>
-          {/if}
-        </div>
+        </label>
       </div>
-    </div>
-  </section>
 
-  <div class="stats-grid">
-    <StatsCard
-      title={$t('admin.network.pppoe.stats.total') || 'Total'}
-      value={stats.total}
-      icon="key"
-      color="blue"
-    />
-    <StatsCard
-      title={$t('admin.network.pppoe.stats.present') || 'On router'}
-      value={stats.present}
-      icon="check-circle"
-      color="green"
-    />
-    <StatsCard
-      title={$t('admin.network.pppoe.stats.missing') || 'Missing'}
-      value={stats.missing}
-      icon="alert-triangle"
-      color="orange"
-    />
-    <StatsCard
-      title={$t('admin.network.pppoe.stats.disabled') || 'Disabled'}
-      value={stats.disabled}
-      icon="pause"
-      color="warning"
-    />
+      <div class="control">
+        <label for="pppoe-filter-sync">{$t('admin.network.pppoe.filters.sync') || 'Sync'}</label>
+        <select id="pppoe-filter-sync" class="input" bind:value={status}>
+          <option value="any">{$t('admin.network.pppoe.filters.any') || 'Any'}</option>
+          <option value="present">{$t('admin.network.pppoe.filters.present') || 'On router'}</option>
+          <option value="missing">{$t('admin.network.pppoe.filters.missing') || 'Missing'}</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label for="pppoe-filter-state">{$t('admin.network.pppoe.filters.disabled') || 'State'}</label>
+        <select id="pppoe-filter-state" class="input" bind:value={disabled}>
+          <option value="any">{$t('admin.network.pppoe.filters.any') || 'Any'}</option>
+          <option value="enabled">{$t('admin.network.pppoe.filters.enabled') || 'Enabled'}</option>
+          <option value="disabled">{$t('admin.network.pppoe.filters.disabled_only') || 'Disabled'}</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label for="pppoe-filter-prov">{$t('admin.network.pppoe.filters.provisioning') || 'Provisioning'}</label>
+        <select id="pppoe-filter-prov" class="input" bind:value={provisioning}>
+          <option value="any">{$t('admin.network.pppoe.filters.any') || 'Any'}</option>
+          <option value="applied">{$t('admin.network.pppoe.provisioning.applied') || 'Applied'}</option>
+          <option value="draft">{$t('admin.network.pppoe.provisioning.draft') || 'Draft'}</option>
+          <option value="failed">{$t('admin.network.pppoe.provisioning.failed') || 'Failed'}</option>
+        </select>
+      </div>
+
+      <div class="control control-wide">
+        <label for="pppoe-filter-router">{$t('admin.network.pppoe.filters.router') || 'Router'}</label>
+        <Select2
+          bind:value={routerId}
+          options={routerOptions}
+          placeholder={($t('admin.network.pppoe.filters.all') || 'All') + '...'}
+          width="100%"
+          searchPlaceholder={$t('common.search') || 'Search'}
+          noResultsText={$t('common.no_results') || 'No results'}
+          onchange={() => void loadAccounts()}
+        />
+      </div>
+    </NetworkFilterPanel>
   </div>
 
-  <div class="card table-card">
-    <TableToolbar
-      showSearch={false}
-    >
-      {#snippet filters()}
-        <div class="filters">
-          <label class="router-filter">
-            <span class="label">{$t('admin.network.pppoe.filters.sync') || 'Sync'}</span>
-            <select class="input" bind:value={status}>
-              <option value="any">{$t('admin.network.pppoe.filters.any') || 'Any'}</option>
-              <option value="present">{$t('admin.network.pppoe.filters.present') || 'On router'}</option>
-              <option value="missing">{$t('admin.network.pppoe.filters.missing') || 'Missing'}</option>
-            </select>
-          </label>
-
-          <label class="router-filter">
-            <span class="label">{$t('admin.network.pppoe.filters.disabled') || 'State'}</span>
-            <select class="input" bind:value={disabled}>
-              <option value="any">{$t('admin.network.pppoe.filters.any') || 'Any'}</option>
-              <option value="enabled">{$t('admin.network.pppoe.filters.enabled') || 'Enabled'}</option>
-              <option value="disabled">{$t('admin.network.pppoe.filters.disabled_only') || 'Disabled'}</option>
-            </select>
-          </label>
-
-          <label class="router-filter">
-            <span class="label">{$t('admin.network.pppoe.filters.provisioning') || 'Provisioning'}</span>
-            <select class="input" bind:value={provisioning}>
-              <option value="any">{$t('admin.network.pppoe.filters.any') || 'Any'}</option>
-              <option value="applied">{$t('admin.network.pppoe.provisioning.applied') || 'Applied'}</option>
-              <option value="draft">{$t('admin.network.pppoe.provisioning.draft') || 'Draft'}</option>
-              <option value="failed">{$t('admin.network.pppoe.provisioning.failed') || 'Failed'}</option>
-            </select>
-          </label>
-
-          <label class="router-filter">
-            <span class="label">{$t('admin.network.pppoe.filters.router') || 'Router'}</span>
-            <Select2
-              bind:value={routerId}
-              options={routerOptions}
-              placeholder={($t('admin.network.pppoe.filters.all') || 'All') + '...'}
-              width="100%"
-              searchPlaceholder={$t('common.search') || 'Search'}
-              noResultsText={$t('common.no_results') || 'No results'}
-              onchange={() => void loadAccounts()}
-            />
-          </label>
-        </div>
-      {/snippet}
-      {#snippet actions()}
-        <span class="muted">{viewRows.length} {$t('common.results') || 'results'}</span>
-      {/snippet}
-    </TableToolbar>
+  <div class="table-wrap">
+    <div class="table-top">
+      <span class="muted">{viewRows.length} {$t('common.results') || 'results'}</span>
+    </div>
 
     {#if error}
       <div class="error-banner">
@@ -1024,11 +1027,11 @@
     </div>
 
     <div class="actions">
-      <button class="btn btn-secondary" onclick={() => (showCreate = false)} disabled={saving}>
+      <button class="btn ghost" onclick={() => (showCreate = false)} disabled={saving}>
         {$t('common.cancel') || 'Cancel'}
       </button>
       <button
-        class="btn btn-primary"
+        class="btn"
         onclick={submitCreate}
         disabled={saving || !formRouterId || !formCustomerId || !formLocationId || !formUsername.trim() || !formPassword}
       >
@@ -1176,10 +1179,10 @@
     </div>
 
     <div class="actions">
-      <button class="btn btn-secondary" onclick={() => (showEdit = false)} disabled={saving}>
+      <button class="btn ghost" onclick={() => (showEdit = false)} disabled={saving}>
         {$t('common.cancel') || 'Cancel'}
       </button>
-      <button class="btn btn-primary" onclick={submitEdit} disabled={saving || !formUsername.trim()}>
+      <button class="btn" onclick={submitEdit} disabled={saving || !formUsername.trim()}>
         <Icon name="check-circle" size={16} />
         {$t('common.save') || 'Save'}
       </button>
@@ -1188,151 +1191,141 @@
 </Modal>
 
 <style>
-  .hero {
-    position: relative;
+  .page-content {
+    padding: 28px;
+    max-width: 1460px;
+    margin: 0 auto;
+  }
+
+  .filters-wrap {
+    margin-bottom: 12px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 12px;
     border: 1px solid var(--border-color);
-    border-radius: 22px;
-    overflow: hidden;
-    background: rgba(255, 255, 255, 0.02);
-    box-shadow: var(--shadow-md);
-    margin-bottom: 1rem;
+    background: var(--color-primary);
+    color: white;
+    font-weight: 800;
+    cursor: pointer;
+    text-decoration: none;
   }
 
-  .hero-bg {
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(900px 220px at 10% 0%, rgba(99, 102, 241, 0.28), transparent 60%),
-      radial-gradient(900px 220px at 85% 30%, rgba(16, 185, 129, 0.12), transparent 60%),
-      radial-gradient(900px 220px at 50% 110%, rgba(245, 158, 11, 0.14), transparent 60%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
-    filter: saturate(1.1);
-  }
-
-  :global([data-theme='light']) .hero-bg {
-    background:
-      radial-gradient(900px 220px at 10% 0%, rgba(99, 102, 241, 0.18), transparent 60%),
-      radial-gradient(900px 220px at 85% 30%, rgba(16, 185, 129, 0.08), transparent 60%),
-      radial-gradient(900px 220px at 50% 110%, rgba(245, 158, 11, 0.1), transparent 60%),
-      linear-gradient(180deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.01));
-  }
-
-  .hero-inner {
-    position: relative;
-    padding: 1.15rem 1.2rem 1.2rem;
-    display: grid;
-    gap: 1rem;
-  }
-
-  .kicker {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--text-secondary);
-    font-weight: 850;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-size: 0.78rem;
-  }
-
-  .kicker .dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 999px;
-    background: rgba(99, 102, 241, 0.9);
-    box-shadow: 0 0 0 6px rgba(99, 102, 241, 0.12);
-  }
-
-  .h1 {
-    margin-top: 0.25rem;
-    font-size: clamp(1.55rem, 2.2vw, 2rem);
-    font-weight: 1000;
-    letter-spacing: 0.01em;
-    color: var(--text-primary);
-    line-height: 1.12;
-  }
-
-  .sub {
-    margin-top: 0.25rem;
-    color: var(--text-secondary);
-    font-weight: 650;
-    max-width: 70ch;
-  }
-
-  .hero-actions {
-    display: flex;
-    gap: 0.6rem;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-  }
-
-  .hero-buttons {
-    display: flex;
-    gap: 0.6rem;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .search {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.55rem;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(0, 0, 0, 0.18);
-    padding: 0.55rem 0.7rem;
-    border-radius: 14px;
-    min-width: min(520px, 100%);
-    color: rgba(255, 255, 255, 0.85);
-  }
-
-  :global([data-theme='light']) .search {
-    border-color: rgba(0, 0, 0, 0.12);
-    background: rgba(255, 255, 255, 0.8);
-    color: rgba(0, 0, 0, 0.75);
-  }
-
-  .search-input {
-    width: 100%;
+  .btn.ghost {
     background: transparent;
+    color: var(--text-primary);
+  }
+
+  .btn:hover:not(:disabled) {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  .btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+
+  .search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-surface), transparent 10%);
+  }
+
+  .search-wrap input {
+    flex: 1;
     border: none;
     outline: none;
-    color: inherit;
-    font-weight: 750;
+    background: transparent;
+    color: var(--text-primary);
     font-size: 0.95rem;
-    min-height: 0;
+    min-width: 0;
   }
 
   .clear {
-    border: none;
+    border: 1px solid var(--border-color);
     background: transparent;
-    color: inherit;
-    opacity: 0.8;
+    color: var(--text-secondary);
     cursor: pointer;
-    padding: 0.2rem;
     border-radius: 10px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
   }
 
   .clear:hover {
-    opacity: 1;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 1rem;
-    margin-bottom: 1rem;
+  .table-wrap {
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    background: var(--bg-card);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
   }
 
-  .filters {
+  .table-top {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-card) 82%, transparent);
+  }
+
+  .stats {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.8rem;
-    padding: 0.2rem 0.1rem 0.6rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 14px 14px 12px;
+  }
+
+  .stat-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-secondary);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+  }
+
+  .stat-value {
+    margin-top: 10px;
+    font-size: 1.6rem;
+    font-weight: 950;
+    color: var(--text-primary);
+  }
+
+  .tone-ok {
+    border-color: color-mix(in srgb, #1fbf75 55%, var(--border-color));
+  }
+
+  .tone-warn {
+    border-color: color-mix(in srgb, #ffcc66 55%, var(--border-color));
+  }
+
+  .tone-muted {
+    border-color: color-mix(in srgb, var(--text-secondary) 20%, var(--border-color));
   }
 
   .chip {
@@ -1363,18 +1356,6 @@
     border-color: rgba(99, 102, 241, 0.55);
     background: rgba(99, 102, 241, 0.18);
     color: var(--text-primary);
-  }
-
-  .router-filter {
-    display: grid;
-    gap: 0.4rem;
-    align-items: stretch;
-  }
-
-  .label {
-    font-size: 12px;
-    opacity: 0.75;
-    font-weight: 800;
   }
 
   .stack {
@@ -1592,23 +1573,10 @@
   }
 
   @media (max-width: 768px) {
-    .stats-grid {
-      grid-template-columns: 1fr;
-    }
-    .filters {
-      grid-template-columns: 1fr;
+    .page-content {
+      padding: 16px;
     }
 
-    .hero-buttons {
-      width: 100%;
-    }
-    .hero-buttons :global(.btn) {
-      width: 100%;
-      justify-content: center;
-    }
-    .router-filter {
-      width: 100%;
-    }
     .error-line {
       max-width: 100%;
     }
@@ -1619,11 +1587,5 @@
   }
 
   @media (max-width: 1100px) {
-    .stats-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .filters {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
   }
 </style>

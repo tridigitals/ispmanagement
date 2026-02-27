@@ -441,6 +441,32 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         method: 'POST',
         path: '/admin/isp-packages/router-mappings',
       },
+      // Network Mapping (tenant scoped)
+      list_network_nodes: { method: 'GET', path: '/admin/network-mapping/nodes' },
+      create_network_node: { method: 'POST', path: '/admin/network-mapping/nodes' },
+      update_network_node: { method: 'PATCH', path: '/admin/network-mapping/nodes/:id' },
+      delete_network_node: { method: 'DELETE', path: '/admin/network-mapping/nodes/:id' },
+      list_network_links: { method: 'GET', path: '/admin/network-mapping/links' },
+      create_network_link: { method: 'POST', path: '/admin/network-mapping/links' },
+      update_network_link: { method: 'PATCH', path: '/admin/network-mapping/links/:id' },
+      delete_network_link: { method: 'DELETE', path: '/admin/network-mapping/links/:id' },
+      list_service_zones: { method: 'GET', path: '/admin/network-mapping/zones' },
+      create_service_zone: { method: 'POST', path: '/admin/network-mapping/zones' },
+      update_service_zone: { method: 'PATCH', path: '/admin/network-mapping/zones/:id' },
+      delete_service_zone: { method: 'DELETE', path: '/admin/network-mapping/zones/:id' },
+      resolve_service_zone: { method: 'POST', path: '/admin/network-mapping/zones/resolve' },
+      list_zone_node_bindings: {
+        method: 'GET',
+        path: '/admin/network-mapping/zone-node-bindings',
+      },
+      create_zone_node_binding: {
+        method: 'POST',
+        path: '/admin/network-mapping/zone-node-bindings',
+      },
+      delete_zone_node_binding: {
+        method: 'DELETE',
+        path: '/admin/network-mapping/zone-node-bindings/:id',
+      },
 
       // Backup
       list_backups: { method: 'GET', path: '/backups' },
@@ -464,6 +490,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
 
       if (args) {
         for (const [key, value] of Object.entries(args)) {
+          if (key.startsWith('__')) continue;
           // Skip null/undefined values to avoid 'null' string in query params
           if (value === null || value === undefined) continue;
 
@@ -504,7 +531,27 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       }
 
       const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      const timeout = setTimeout(() => controller?.abort(), 15000);
+      const timeoutMs =
+        typeof args?.__timeout_ms === 'number' && Number.isFinite(args.__timeout_ms)
+          ? Math.max(1, args.__timeout_ms)
+          : 15000;
+      const externalSignal: AbortSignal | undefined = args?.__signal;
+      let abortedByExternalSignal = false;
+      let abortedByTimeout = false;
+      const onExternalAbort = () => {
+        abortedByExternalSignal = true;
+        controller?.abort();
+      };
+
+      if (externalSignal) {
+        if (externalSignal.aborted) onExternalAbort();
+        else externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+      }
+
+      const timeout = setTimeout(() => {
+        abortedByTimeout = true;
+        controller?.abort();
+      }, timeoutMs);
 
       let response: Response;
       try {
@@ -516,7 +563,10 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             ? (() => {
                 const rawEntries = Object.entries(args || {}).filter(
                   ([key, value]) =>
-                    key !== 'token' && value !== undefined && !consumedPathKeys.has(key),
+                    key !== 'token' &&
+                    !key.startsWith('__') &&
+                    value !== undefined &&
+                    !consumedPathKeys.has(key),
                 );
 
                 // If both camelCase and snake_case variants exist, keep camelCase only.
@@ -540,11 +590,18 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       } catch (e: any) {
         const name = String(e?.name || '');
         if (name === 'AbortError') {
-          throw new Error('Remote API request timed out. Is the server running?');
+          if (abortedByExternalSignal) {
+            throw new Error('Request canceled');
+          }
+          if (abortedByTimeout) {
+            throw new Error('Remote API request timed out. Is the server running?');
+          }
+          throw new Error('Request aborted');
         }
         throw e;
       } finally {
         clearTimeout(timeout);
+        if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
       }
 
       const contentType = response.headers.get('content-type') || '';
@@ -2203,6 +2260,82 @@ export const ispPackages = {
   },
 };
 
+export const networkMapping = {
+  nodes: {
+    list: (params?: {
+      q?: string;
+      page?: number;
+      per_page?: number;
+      status?: string;
+      kind?: string;
+      bbox?: string;
+    }, options?: { signal?: AbortSignal }): Promise<PaginatedResponse<any>> =>
+      safeInvoke('list_network_nodes', {
+        token: getTokenOrThrow(),
+        ...(params || {}),
+        __signal: options?.signal,
+      }),
+    create: (dto: any): Promise<any> =>
+      safeInvoke('create_network_node', { token: getTokenOrThrow(), ...dto }),
+    update: (id: string, dto: any): Promise<any> =>
+      safeInvoke('update_network_node', { token: getTokenOrThrow(), id, ...dto }),
+    delete: (id: string): Promise<void> =>
+      safeInvoke('delete_network_node', { token: getTokenOrThrow(), id }),
+  },
+  links: {
+    list: (params?: {
+      q?: string;
+      page?: number;
+      per_page?: number;
+      status?: string;
+      kind?: string;
+      bbox?: string;
+    }, options?: { signal?: AbortSignal }): Promise<PaginatedResponse<any>> =>
+      safeInvoke('list_network_links', {
+        token: getTokenOrThrow(),
+        ...(params || {}),
+        __signal: options?.signal,
+      }),
+    create: (dto: any): Promise<any> =>
+      safeInvoke('create_network_link', { token: getTokenOrThrow(), ...dto }),
+    update: (id: string, dto: any): Promise<any> =>
+      safeInvoke('update_network_link', { token: getTokenOrThrow(), id, ...dto }),
+    delete: (id: string): Promise<void> =>
+      safeInvoke('delete_network_link', { token: getTokenOrThrow(), id }),
+  },
+  zones: {
+    list: (params?: {
+      q?: string;
+      page?: number;
+      per_page?: number;
+      status?: string;
+      kind?: string;
+      bbox?: string;
+    }, options?: { signal?: AbortSignal }): Promise<PaginatedResponse<any>> =>
+      safeInvoke('list_service_zones', {
+        token: getTokenOrThrow(),
+        ...(params || {}),
+        __signal: options?.signal,
+      }),
+    create: (dto: any): Promise<any> =>
+      safeInvoke('create_service_zone', { token: getTokenOrThrow(), ...dto }),
+    update: (id: string, dto: any): Promise<any> =>
+      safeInvoke('update_service_zone', { token: getTokenOrThrow(), id, ...dto }),
+    delete: (id: string): Promise<void> =>
+      safeInvoke('delete_service_zone', { token: getTokenOrThrow(), id }),
+    resolve: (dto: { lat: number; lng: number }): Promise<any> =>
+      safeInvoke('resolve_service_zone', { token: getTokenOrThrow(), ...dto }),
+  },
+  zoneBindings: {
+    list: (params?: { zone_id?: string }): Promise<any[]> =>
+      safeInvoke('list_zone_node_bindings', { token: getTokenOrThrow(), ...(params || {}) }),
+    create: (dto: any): Promise<any> =>
+      safeInvoke('create_zone_node_binding', { token: getTokenOrThrow(), ...dto }),
+    delete: (id: string): Promise<void> =>
+      safeInvoke('delete_zone_node_binding', { token: getTokenOrThrow(), id }),
+  },
+};
+
 export const announcements = {
   listActive: (): Promise<Announcement[]> =>
     safeInvoke('list_active_announcements', { token: getTokenOrThrow() }),
@@ -3076,6 +3209,7 @@ export const api = {
   workOrders,
   pppoe,
   ispPackages,
+  networkMapping,
   superadmin,
   audit,
   mikrotik,

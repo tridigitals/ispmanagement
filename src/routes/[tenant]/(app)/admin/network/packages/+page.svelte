@@ -13,7 +13,8 @@ import { appSettings } from '$lib/stores/settings';
   import Select2 from '$lib/components/ui/Select2.svelte';
   import Toggle from '$lib/components/ui/Toggle.svelte';
   import Table from '$lib/components/ui/Table.svelte';
-  import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
+  import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
+  import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
 
   type RouterRow = { id: string; name: string };
@@ -144,6 +145,8 @@ import { appSettings } from '$lib/stores/settings';
 
   const mappingCountFor = (packageId: string) =>
     mappings.filter((m) => m.package_id === packageId).length;
+  const firstMappingFor = (packageId: string) =>
+    mappings.find((m) => m.package_id === packageId) || null;
 
   onMount(() => {
     if (!$can('read', 'isp_packages') && !$can('manage', 'isp_packages')) {
@@ -230,13 +233,22 @@ import { appSettings } from '$lib/stores/settings';
     pkgPriceMonthly = Number(p.price_monthly || 0);
     pkgPriceYearly = Number(p.price_yearly || 0);
     pkgYearlyEnabled = Number(p.price_yearly || 0) > 0;
-
-    pkgMapEnabled = false;
-    pkgMapRouterId = '';
-    pkgMapProfile = '';
-    pkgMapPool = '';
     pkgProfileSuggestions = [];
     pkgPoolSuggestions = [];
+
+    const existing = firstMappingFor(p.id);
+    if (existing) {
+      pkgMapEnabled = true;
+      pkgMapRouterId = existing.router_id || '';
+      pkgMapProfile = existing.router_profile_name || '';
+      pkgMapPool = existing.address_pool || '';
+      if (pkgMapRouterId) void loadPkgRouterMeta(pkgMapRouterId);
+    } else {
+      pkgMapEnabled = false;
+      pkgMapRouterId = '';
+      pkgMapProfile = '';
+      pkgMapPool = '';
+    }
     pkgFormTab = 'details';
 
     showPkgModal = true;
@@ -314,11 +326,13 @@ import { appSettings } from '$lib/stores/settings';
   async function openMapping(p: IspPackage) {
     if (!$can('manage', 'isp_packages')) return;
     mapPkg = p;
-    mapRouterId = '';
-    mapProfile = '';
-    mapPool = '';
+    const existing = firstMappingFor(p.id);
+    mapRouterId = existing?.router_id || '';
+    mapProfile = existing?.router_profile_name || '';
+    mapPool = existing?.address_pool || '';
     profileSuggestions = [];
     poolSuggestions = [];
+    if (mapRouterId) await loadRouterMeta(mapRouterId);
     showMapModal = true;
   }
 
@@ -398,26 +412,34 @@ import { appSettings } from '$lib/stores/settings';
 </script>
 
 <div class="page-content fade-in">
-  <section class="hero">
-    <div class="hero-bg"></div>
-    <div class="hero-inner">
-      <div class="hgroup">
-        <div class="kicker">
-          <span class="dot"></span>
-          {$t('sidebar.sections.network') || 'Network'}
-        </div>
-        <h1 class="h1">{$t('admin.network.packages.title') || 'Packages'}</h1>
-        <div class="sub">
-          {$t('admin.network.packages.subtitle') ||
-            'Create internet packages and map them to router PPP profiles (per-router).'}
-        </div>
-      </div>
+  <NetworkPageHeader
+    title={$t('admin.network.packages.title') || 'Packages'}
+    subtitle={$t('admin.network.packages.subtitle') || 'Create internet packages and map them to router PPP profiles (per-router).'}
+  >
+    {#snippet actions()}
+      <button class="btn ghost" type="button" onclick={() => void load()} disabled={loading}>
+        <Icon name="refresh-cw" size={16} />
+        {$t('common.refresh') || 'Refresh'}
+      </button>
+      {#if $can('manage', 'isp_packages')}
+        <button class="btn" type="button" onclick={openCreate}>
+          <Icon name="plus" size={16} />
+          {$t('admin.network.packages.actions.add') || 'Add package'}
+        </button>
+      {/if}
+    {/snippet}
+  </NetworkPageHeader>
 
-      <div class="hero-actions">
-        <div class="search">
-          <Icon name="search" size={16} />
+  <div class="filters-wrap">
+    <NetworkFilterPanel>
+      <div class="control control-wide">
+        <label for="packages-search">{$t('common.search') || 'Search'}</label>
+        <label class="search-wrap" for="packages-search">
+          <Icon name="search" size={14} />
           <input
-            class="search-input"
+            id="packages-search"
+            type="text"
+            placeholder={$t('admin.network.packages.search') || 'Search packages...'}
             value={q}
             oninput={(e) => {
               q = (e.currentTarget as HTMLInputElement).value;
@@ -425,37 +447,31 @@ import { appSettings } from '$lib/stores/settings';
               packageTableVersion += 1;
               void loadPackages();
             }}
-            placeholder={$t('admin.network.packages.search') || 'Search packages...'}
           />
           {#if q.trim()}
-            <button class="clear" type="button" onclick={() => { q = ''; packagePage = 0; packageTableVersion += 1; void loadPackages(); }}>
+            <button
+              class="clear"
+              type="button"
+              onclick={() => {
+                q = '';
+                packagePage = 0;
+                packageTableVersion += 1;
+                void loadPackages();
+              }}
+              aria-label={$t('common.clear') || 'Clear'}
+            >
               <Icon name="x" size={14} />
             </button>
           {/if}
-        </div>
-
-        <div class="hero-buttons">
-          <button class="btn btn-secondary" onclick={load} disabled={loading}>
-            <Icon name="refresh-cw" size={16} />
-            {$t('common.refresh') || 'Refresh'}
-          </button>
-          {#if $can('manage', 'isp_packages')}
-            <button class="btn btn-primary" onclick={openCreate}>
-              <Icon name="plus" size={16} />
-              {$t('admin.network.packages.actions.add') || 'Add package'}
-            </button>
-          {/if}
-        </div>
+        </label>
       </div>
-    </div>
-  </section>
+    </NetworkFilterPanel>
+  </div>
 
-  <div class="card table-card">
-    <TableToolbar showSearch={false}>
-      {#snippet actions()}
-        <span class="muted">{packages.length} {$t('common.results') || 'results'}</span>
-      {/snippet}
-    </TableToolbar>
+  <div class="table-wrap">
+    <div class="table-top">
+      <span class="muted">{total >= 0 ? total : packages.length} {$t('common.results') || 'results'}</span>
+    </div>
 
     {#key packageTableVersion}
       <Table
@@ -707,7 +723,7 @@ import { appSettings } from '$lib/stores/settings';
               }
             }}
           />
-          <button class="btn btn-secondary" type="button" onclick={addFeature}>
+          <button class="btn ghost" type="button" onclick={addFeature}>
             <Icon name="plus" size={14} />
             {$t('admin.network.packages.actions.add_feature') || 'Add feature'}
           </button>
@@ -730,10 +746,10 @@ import { appSettings } from '$lib/stores/settings';
     {/if}
 
     <div class="actions">
-      <button class="btn btn-secondary" type="button" onclick={() => (showPkgModal = false)} disabled={saving}>
+      <button class="btn ghost" type="button" onclick={() => (showPkgModal = false)} disabled={saving}>
         {$t('common.cancel') || 'Cancel'}
       </button>
-      <button class="btn btn-primary" type="button" onclick={savePackage} disabled={saving || !pkgName.trim() || !(Number(pkgPriceMonthly) > 0) || (pkgYearlyEnabled && !(Number(pkgPriceYearly) > 0)) || (pkgMapEnabled && (!pkgMapRouterId || !pkgMapProfile.trim()))}>
+      <button class="btn" type="button" onclick={savePackage} disabled={saving || !pkgName.trim() || !(Number(pkgPriceMonthly) > 0) || (pkgYearlyEnabled && !(Number(pkgPriceYearly) > 0)) || (pkgMapEnabled && (!pkgMapRouterId || !pkgMapProfile.trim()))}>
         <Icon name="save" size={16} />
         {$t('common.save') || 'Save'}
       </button>
@@ -805,10 +821,10 @@ import { appSettings } from '$lib/stores/settings';
     {/if}
 
     <div class="actions">
-      <button class="btn btn-secondary" type="button" onclick={() => (showMapModal = false)} disabled={saving}>
+      <button class="btn ghost" type="button" onclick={() => (showMapModal = false)} disabled={saving}>
         {$t('common.cancel') || 'Cancel'}
       </button>
-      <button class="btn btn-primary" type="button" onclick={saveMapping} disabled={saving || !mapPkg || !mapRouterId || !mapProfile.trim()}>
+      <button class="btn" type="button" onclick={saveMapping} disabled={saving || !mapPkg || !mapRouterId || !mapProfile.trim()}>
         <Icon name="save" size={16} />
         {$t('common.save') || 'Save'}
       </button>
@@ -817,69 +833,63 @@ import { appSettings } from '$lib/stores/settings';
 </Modal>
 
 <style>
-  .hero {
-    position: relative;
-    border: 1px solid var(--border-color);
-    border-radius: 22px;
-    overflow: hidden;
-    background: rgba(255, 255, 255, 0.02);
-    box-shadow: var(--shadow-md);
-    margin-bottom: 1rem;
+  .page-content {
+    padding: 28px;
+    max-width: 1460px;
+    margin: 0 auto;
   }
 
-  .hero-bg {
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(900px 220px at 10% 0%, rgba(99, 102, 241, 0.26), transparent 60%),
-      radial-gradient(900px 220px at 85% 30%, rgba(16, 185, 129, 0.12), transparent 60%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+  .filters-wrap {
+    margin-bottom: 12px;
   }
 
-  :global([data-theme='light']) .hero-bg {
-    background:
-      radial-gradient(900px 220px at 10% 0%, rgba(99, 102, 241, 0.18), transparent 60%),
-      radial-gradient(900px 220px at 85% 30%, rgba(16, 185, 129, 0.08), transparent 60%),
-      linear-gradient(180deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.01));
-  }
-
-  .hero-inner {
-    position: relative;
-    padding: 22px 22px 18px;
-    display: grid;
-    gap: 14px;
-  }
-
-  .kicker {
+  .btn {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    font-weight: 850;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    font-size: 0.75rem;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--color-primary);
+    color: white;
+    font-weight: 800;
+    cursor: pointer;
+    text-decoration: none;
   }
 
-  .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    background: rgba(99, 102, 241, 0.9);
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.14);
-  }
-
-  .h1 {
-    margin: 6px 0 0;
-    font-size: 2rem;
-    letter-spacing: -0.02em;
+  .btn.ghost {
+    background: transparent;
     color: var(--text-primary);
   }
 
-  .sub {
-    margin-top: 6px;
-    color: var(--text-secondary);
-    max-width: 760px;
+  .btn:hover:not(:disabled) {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  .btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+
+  .search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-surface), transparent 10%);
+  }
+
+  .search-wrap input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    min-width: 0;
   }
 
   .field-hint {
@@ -900,56 +910,33 @@ import { appSettings } from '$lib/stores/settings';
     font-size: 0.85em;
   }
 
-  .hero-actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  .search {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    padding: 10px 12px;
-    min-width: min(560px, 100%);
-    color: var(--text-secondary);
-  }
-
-  .search-input {
-    flex: 1;
-    border: none;
-    outline: none;
-    background: transparent;
-    color: var(--text-primary);
-    font-size: 0.95rem;
-  }
-
   .clear {
-    border: none;
+    border: 1px solid var(--border-color);
     background: transparent;
     cursor: pointer;
     color: var(--text-secondary);
     display: grid;
     place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
   }
 
-  .hero-buttons {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-
-  .card {
+  .table-wrap {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 18px;
     overflow: hidden;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+  }
+
+  .table-top {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--bg-card) 82%, transparent);
   }
 
   .stack {
@@ -1236,15 +1223,12 @@ import { appSettings } from '$lib/stores/settings';
   }
 
   @media (max-width: 768px) {
+    .page-content {
+      padding: 16px;
+    }
+
     .grid2 {
       grid-template-columns: 1fr;
-    }
-    .hero-buttons {
-      width: 100%;
-    }
-    .hero-buttons :global(.btn) {
-      width: 100%;
-      justify-content: center;
     }
   }
 </style>
