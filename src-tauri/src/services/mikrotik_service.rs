@@ -60,6 +60,24 @@ pub struct MikrotikService {
 }
 
 impl MikrotikService {
+    fn validate_router_coordinates(latitude: Option<f64>, longitude: Option<f64>) -> AppResult<()> {
+        if let Some(lat) = latitude {
+            if !(-90.0..=90.0).contains(&lat) {
+                return Err(AppError::Validation(
+                    "latitude must be between -90 and 90".to_string(),
+                ));
+            }
+        }
+        if let Some(lng) = longitude {
+            if !(-180.0..=180.0).contains(&lng) {
+                return Err(AppError::Validation(
+                    "longitude must be between -180 and 180".to_string(),
+                ));
+            }
+        }
+        Ok(())
+    }
+
     fn log_level_from_topics(topics: Option<&str>) -> String {
         let t = topics.unwrap_or_default().to_ascii_lowercase();
         if t.contains("critical") {
@@ -1076,6 +1094,7 @@ impl MikrotikService {
         tenant_id: &str,
         req: CreateMikrotikRouterRequest,
     ) -> AppResult<MikrotikRouter> {
+        Self::validate_router_coordinates(req.latitude, req.longitude)?;
         let encrypted_password = encrypt_secret(req.password.as_str())?;
         let router = MikrotikRouter::new(
             tenant_id.to_string(),
@@ -1086,6 +1105,8 @@ impl MikrotikService {
             encrypted_password,
             req.use_tls.unwrap_or(false),
             req.enabled.unwrap_or(true),
+            req.latitude,
+            req.longitude,
         );
 
         sqlx::query(
@@ -1093,13 +1114,13 @@ impl MikrotikService {
             INSERT INTO mikrotik_routers
             (id, tenant_id, name, host, port, username, password, use_tls, enabled,
              identity, ros_version, is_online, last_seen_at, latency_ms, last_error,
-             maintenance_until, maintenance_reason,
+             maintenance_until, maintenance_reason, latitude, longitude,
              created_at, updated_at)
             VALUES
             ($1,$2,$3,$4,$5,$6,$7,$8,$9,
              $10,$11,$12,$13,$14,$15,
-             $16,$17,
-             $18,$19)
+             $16,$17,$18,$19,
+             $20,$21)
             "#,
         )
         .bind(&router.id)
@@ -1119,6 +1140,8 @@ impl MikrotikService {
         .bind(&router.last_error)
         .bind(req.maintenance_until)
         .bind(req.maintenance_reason)
+        .bind(router.latitude)
+        .bind(router.longitude)
         .bind(router.created_at)
         .bind(router.updated_at)
         .execute(&self.pool)
@@ -1150,6 +1173,9 @@ impl MikrotikService {
         };
         let use_tls = req.use_tls.unwrap_or(existing.use_tls);
         let enabled = req.enabled.unwrap_or(existing.enabled);
+        let latitude = req.latitude.or(existing.latitude);
+        let longitude = req.longitude.or(existing.longitude);
+        Self::validate_router_coordinates(latitude, longitude)?;
         // Maintenance is treated as an explicit admin action; allow clearing by passing null.
         // Our client always sends these fields on update.
         let maintenance_until = req.maintenance_until;
@@ -1167,8 +1193,10 @@ impl MikrotikService {
               enabled = $7,
               maintenance_until = $8,
               maintenance_reason = $9,
-              updated_at = $10
-            WHERE id = $11 AND tenant_id = $12
+              latitude = $10,
+              longitude = $11,
+              updated_at = $12
+            WHERE id = $13 AND tenant_id = $14
             "#,
         )
         .bind(&name)
@@ -1180,6 +1208,8 @@ impl MikrotikService {
         .bind(enabled)
         .bind(maintenance_until)
         .bind(maintenance_reason)
+        .bind(latitude)
+        .bind(longitude)
         .bind(now)
         .bind(id)
         .bind(tenant_id)

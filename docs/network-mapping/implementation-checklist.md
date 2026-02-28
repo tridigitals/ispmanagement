@@ -73,20 +73,20 @@
 ## Phase 2 - Commercial Coverage
 
 ## DB / API
-- [ ] Create table `zone_offers`
+- [x] Create table `zone_offers`
 - [ ] Create table `package_templates` (if not existing equivalent)
-- [ ] Add endpoints for zone offers
-- [ ] Add endpoint `/coverage/check`
+- [x] Add endpoints for zone offers
+- [x] Add endpoint `/coverage/check`
 
 ## Frontend
-- [ ] Customer flow: address/coordinate coverage check
-- [ ] Filter visible packages by zone
-- [ ] Display zone-specific price
+- [x] Customer flow: address/coordinate coverage check
+- [x] Filter visible packages by zone
+- [x] Display zone-specific price
 
 ## Phase 3 - Provisioning Integration
 
 ## Backend
-- [ ] Add path compute service (shortest path with constraints)
+- [x] Add path compute service (shortest path with constraints)
 - [ ] Add candidate node ranking by health+capacity
 - [ ] Store assignment result on order/payment verification
 - [ ] Trigger installation work order creation from successful payment

@@ -552,6 +552,8 @@ pub async fn create_mikrotik_router(
     password: String,
     use_tls: Option<bool>,
     enabled: Option<bool>,
+    latitude: Option<f64>,
+    longitude: Option<f64>,
     maintenance_until: Option<String>,
     maintenance_reason: Option<String>,
     auth: State<'_, AuthService>,
@@ -581,6 +583,8 @@ pub async fn create_mikrotik_router(
                 password,
                 use_tls,
                 enabled,
+                latitude,
+                longitude,
                 maintenance_until: maintenance_until
                     .as_deref()
                     .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
@@ -620,6 +624,8 @@ pub async fn update_mikrotik_router(
     password: Option<String>,
     use_tls: Option<bool>,
     enabled: Option<bool>,
+    latitude: Option<f64>,
+    longitude: Option<f64>,
     maintenance_until: Option<String>,
     maintenance_reason: Option<String>,
     auth: State<'_, AuthService>,
@@ -650,6 +656,8 @@ pub async fn update_mikrotik_router(
                 password,
                 use_tls,
                 enabled,
+                latitude,
+                longitude,
                 maintenance_until: maintenance_until
                     .as_deref()
                     .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())

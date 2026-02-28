@@ -336,6 +336,7 @@ impl RoleService {
                     "support:read",
                     "support:reply",
                     "customers:read_own",
+                    "coverage:read",
                 ],
             ),
         ]

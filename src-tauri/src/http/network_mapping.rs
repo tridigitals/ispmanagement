@@ -2,8 +2,9 @@ use crate::error::{AppError, AppResult};
 use crate::http::AppState;
 use crate::models::{
     CreateNetworkLinkRequest, CreateNetworkNodeRequest, CreateServiceZoneRequest,
-    CreateZoneNodeBindingRequest, PaginatedResponse, ResolveZoneRequest, UpdateNetworkLinkRequest,
-    UpdateNetworkNodeRequest, UpdateServiceZoneRequest,
+    CreateZoneNodeBindingRequest, CreateZoneOfferRequest, CoverageCheckRequest, ComputePathRequest,
+    PaginatedResponse, ResolveZoneRequest, UpdateNetworkLinkRequest, UpdateNetworkNodeRequest,
+    UpdateServiceZoneRequest, UpdateZoneOfferRequest,
 };
 use crate::services::network_mapping_service::ListQuery;
 use axum::{
@@ -23,6 +24,13 @@ pub fn router() -> Router<AppState> {
         .route("/zones", get(list_zones).post(create_zone))
         .route("/zones/{id}", patch(update_zone).delete(delete_zone))
         .route("/zones/resolve", post(resolve_zone))
+        .route("/paths/compute", post(compute_path))
+        .route("/coverage/check", post(check_coverage))
+        .route("/zone-offers", get(list_zone_offers).post(create_zone_offer))
+        .route(
+            "/zone-offers/{id}",
+            patch(update_zone_offer).delete(delete_zone_offer),
+        )
         .route(
             "/zone-node-bindings",
             get(list_zone_node_bindings).post(create_zone_node_binding),
@@ -43,6 +51,13 @@ struct ListParams {
 #[derive(Debug, Deserialize)]
 struct ListZoneBindingsParams {
     zone_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ListZoneOffersParams {
+    zone_id: Option<String>,
+    package_id: Option<String>,
+    active_only: Option<bool>,
 }
 
 fn bearer_token(headers: &HeaderMap) -> AppResult<String> {
@@ -274,6 +289,91 @@ async fn resolve_zone(
     Ok(Json(out))
 }
 
+async fn check_coverage(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(dto): Json<CoverageCheckRequest>,
+) -> AppResult<Json<crate::models::CoverageCheckResponse>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let out = state
+        .network_mapping_service
+        .coverage_check(&claims.sub, &tenant_id, dto)
+        .await?;
+    Ok(Json(out))
+}
+
+async fn compute_path(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(dto): Json<ComputePathRequest>,
+) -> AppResult<Json<crate::models::ComputePathResponse>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let out = state
+        .network_mapping_service
+        .compute_path(&claims.sub, &tenant_id, dto)
+        .await?;
+    Ok(Json(out))
+}
+
+async fn list_zone_offers(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<ListZoneOffersParams>,
+) -> AppResult<Json<Vec<crate::models::ZoneOffer>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let out = state
+        .network_mapping_service
+        .list_zone_offers(
+            &claims.sub,
+            &tenant_id,
+            q.zone_id,
+            q.package_id,
+            q.active_only.unwrap_or(false),
+        )
+        .await?;
+    Ok(Json(out))
+}
+
+async fn create_zone_offer(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(dto): Json<CreateZoneOfferRequest>,
+) -> AppResult<Json<crate::models::ZoneOffer>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let out = state
+        .network_mapping_service
+        .create_zone_offer(&claims.sub, &tenant_id, dto)
+        .await?;
+    Ok(Json(out))
+}
+
+async fn update_zone_offer(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(dto): Json<UpdateZoneOfferRequest>,
+) -> AppResult<Json<crate::models::ZoneOffer>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let out = state
+        .network_mapping_service
+        .update_zone_offer(&claims.sub, &tenant_id, &id, dto)
+        .await?;
+    Ok(Json(out))
+}
+
+async fn delete_zone_offer(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<serde_json::Value>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .network_mapping_service
+        .delete_zone_offer(&claims.sub, &tenant_id, &id)
+        .await?;
+    Ok(Json(serde_json::json!({ "ok": true })))
+}
+
 async fn list_zone_node_bindings(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -312,4 +412,3 @@ async fn delete_zone_node_binding(
         .await?;
     Ok(Json(serde_json::json!({ "ok": true })))
 }
-

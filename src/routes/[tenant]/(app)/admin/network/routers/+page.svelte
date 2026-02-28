@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { t } from 'svelte-i18n';
@@ -12,7 +12,9 @@
   import Table from '$lib/components/ui/Table.svelte';
   import DateTimeLocalInput from '$lib/components/ui/DateTimeLocalInput.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
+  import MapCanvasShell from '$lib/components/network/MapCanvasShell.svelte';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
+  import 'maplibre-gl/dist/maplibre-gl.css';
 
   type RouterRow = {
     id: string;
@@ -29,6 +31,8 @@
     last_error?: string | null;
     maintenance_until?: string | null;
     maintenance_reason?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
     updated_at?: string;
   };
 
@@ -47,10 +51,26 @@
   let formPort = $state(8728);
   let formUsername = $state('');
   let formPassword = $state('');
+  let formLatitude = $state('');
+  let formLongitude = $state('');
   let formEnabled = $state(true);
   let formMaintenanceEnabled = $state(false);
   let formMaintenanceUntilLocal = $state('');
   let formMaintenanceReason = $state('');
+  let showMapPicker = $state(false);
+  let pickerMapHost = $state<HTMLDivElement | null>(null);
+  let pickerMap: any = null;
+  let pickerMarker: any = null;
+  let pickerLat = $state<number | null>(null);
+  let pickerLng = $state<number | null>(null);
+  let maplibrePromise: Promise<any> | null = null;
+  let pickerViewMode = $state<'standard' | 'satellite'>('standard');
+  let pickerMapLoading = $state(false);
+  let pickerMapUnavailable = $state(false);
+  let pickerMapErrorMessage = $state('');
+  const pickerMapTilerKey = (import.meta.env.VITE_MAPTILER_KEY as string | undefined)?.trim();
+  const pickerStandardMaxZoom = 19;
+  const pickerSatelliteMaxZoom = pickerMapTilerKey ? 21 : 18;
 
   function isoToLocalInput(iso?: string | null) {
     if (!iso) return '';
@@ -129,6 +149,11 @@
 
   onDestroy(() => {
     if (refreshHandle) clearInterval(refreshHandle);
+    if (pickerMap) {
+      pickerMap.remove();
+      pickerMap = null;
+      pickerMarker = null;
+    }
   });
 
   async function load() {
@@ -163,6 +188,8 @@
     formPort = 8728;
     formUsername = '';
     formPassword = '';
+    formLatitude = '';
+    formLongitude = '';
     formEnabled = true;
     formMaintenanceEnabled = false;
     formMaintenanceUntilLocal = '';
@@ -177,6 +204,8 @@
     formPort = Number(r.port || 8728);
     formUsername = r.username || '';
     formPassword = '';
+    formLatitude = r.latitude != null ? String(r.latitude) : '';
+    formLongitude = r.longitude != null ? String(r.longitude) : '';
     formEnabled = r.enabled ?? true;
     const untilIso = r.maintenance_until ?? null;
     const untilMs = untilIso ? new Date(untilIso).getTime() : NaN;
@@ -197,6 +226,20 @@
       toast.error($t('admin.network.routers.form.password') || 'Password is required.');
       return;
     }
+    const latRaw = formLatitude.trim();
+    const lngRaw = formLongitude.trim();
+    const parsedLat = latRaw ? Number(latRaw) : NaN;
+    const parsedLng = lngRaw ? Number(lngRaw) : NaN;
+    if (latRaw && (Number.isNaN(parsedLat) || parsedLat < -90 || parsedLat > 90)) {
+      toast.error('Latitude must be between -90 and 90');
+      return;
+    }
+    if (lngRaw && (Number.isNaN(parsedLng) || parsedLng < -180 || parsedLng > 180)) {
+      toast.error('Longitude must be between -180 and 180');
+      return;
+    }
+    const latitude = latRaw ? parsedLat : null;
+    const longitude = lngRaw ? parsedLng : null;
 
     try {
       const maintenance_until = formMaintenanceEnabled
@@ -214,6 +257,8 @@
           enabled: formEnabled,
           maintenance_until,
           maintenance_reason,
+          latitude,
+          longitude,
         });
         toast.success($t('admin.network.routers.toasts.updated') || 'Router updated');
       } else {
@@ -226,6 +271,8 @@
           enabled: formEnabled,
           maintenance_until,
           maintenance_reason,
+          latitude,
+          longitude,
         });
         toast.success($t('admin.network.routers.toasts.created') || 'Router created');
       }
@@ -272,6 +319,149 @@
     if (r.is_online) return $t('admin.network.routers.badges.online') || 'Online';
     return $t('admin.network.routers.badges.offline') || 'Offline';
   }
+
+  function parseCoordOrNull(v: string) {
+    const parsed = Number(v.trim());
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  async function getMaplibre() {
+    if (!maplibrePromise) {
+      maplibrePromise = import('maplibre-gl');
+    }
+    return maplibrePromise;
+  }
+
+  function setPickerPoint(lat: number, lng: number) {
+    pickerLat = lat;
+    pickerLng = lng;
+    if (pickerMarker) {
+      pickerMarker.setLngLat([lng, lat]);
+      return;
+    }
+    if (!pickerMap) return;
+    pickerMarker = new (pickerMap as any).libregl.Marker({ draggable: true })
+      .setLngLat([lng, lat])
+      .addTo(pickerMap);
+    pickerMarker.on('dragend', () => {
+      const pos = pickerMarker.getLngLat();
+      pickerLat = Number(pos.lat.toFixed(7));
+      pickerLng = Number(pos.lng.toFixed(7));
+    });
+  }
+
+  function syncPickerViewMode() {
+    if (!pickerMap) return;
+    const showSatellite = pickerViewMode === 'satellite';
+    const setVis = (layerId: string, visible: boolean) => {
+      if (!pickerMap.getLayer(layerId)) return;
+      pickerMap.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+    };
+    setVis('picker-base-standard', !showSatellite);
+    setVis('picker-base-satellite', showSatellite);
+    const targetMaxZoom = showSatellite ? pickerSatelliteMaxZoom : pickerStandardMaxZoom;
+    pickerMap.setMaxZoom(targetMaxZoom);
+    if (pickerMap.getZoom() > targetMaxZoom) {
+      pickerMap.setZoom(targetMaxZoom);
+    }
+  }
+
+  async function openMapPicker() {
+    const initialLat = parseCoordOrNull(formLatitude) ?? -6.2;
+    const initialLng = parseCoordOrNull(formLongitude) ?? 106.816666;
+    pickerLat = initialLat;
+    pickerLng = initialLng;
+    pickerMapUnavailable = false;
+    pickerMapErrorMessage = '';
+    showMapPicker = true;
+    await tick();
+    if (!pickerMapHost) return;
+    pickerMapLoading = true;
+    try {
+      const libregl = await getMaplibre();
+      if (!pickerMap) {
+        pickerMap = new libregl.Map({
+          container: pickerMapHost,
+          style: {
+            version: 8,
+            sources: {
+              standard: {
+                type: 'raster',
+                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                tileSize: 256,
+                attribution: 'OpenStreetMap contributors',
+                maxzoom: pickerStandardMaxZoom,
+              },
+              satellite: {
+                type: 'raster',
+                tiles: pickerMapTilerKey
+                  ? [`https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${pickerMapTilerKey}`]
+                  : ['https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                tileSize: 256,
+                attribution: pickerMapTilerKey ? 'MapTiler' : 'Esri',
+                maxzoom: pickerSatelliteMaxZoom,
+              },
+            },
+            layers: [
+              { id: 'picker-base-standard', type: 'raster', source: 'standard' },
+              { id: 'picker-base-satellite', type: 'raster', source: 'satellite', layout: { visibility: 'none' } },
+            ],
+          },
+          center: [initialLng, initialLat],
+          zoom: 12,
+          maxZoom: pickerStandardMaxZoom,
+        });
+        (pickerMap as any).libregl = libregl;
+        pickerMap.addControl(new libregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
+        pickerMap.addControl(new libregl.GeolocateControl({ trackUserLocation: false, showAccuracyCircle: true }), 'top-right');
+        pickerMap.on('click', (ev: any) => {
+          const { lat, lng } = ev.lngLat;
+          setPickerPoint(Number(lat.toFixed(7)), Number(lng.toFixed(7)));
+        });
+      } else {
+        pickerMap.resize();
+        pickerMap.setCenter([initialLng, initialLat]);
+        pickerMap.setZoom(Math.min(12, pickerViewMode === 'satellite' ? pickerSatelliteMaxZoom : pickerStandardMaxZoom));
+      }
+      syncPickerViewMode();
+      setPickerPoint(initialLat, initialLng);
+    } catch (error: any) {
+      pickerMapUnavailable = true;
+      pickerMapErrorMessage = error?.message || 'Failed to initialize map';
+      toast.error(pickerMapErrorMessage);
+    } finally {
+      pickerMapLoading = false;
+    }
+  }
+
+  function closeMapPicker() {
+    showMapPicker = false;
+  }
+
+  function applyPickedCoordinates() {
+    if (pickerLat == null || pickerLng == null) return;
+    formLatitude = String(pickerLat);
+    formLongitude = String(pickerLng);
+    closeMapPicker();
+  }
+
+  function onPickerSearchSelect(event: CustomEvent<{ lat: number; lng: number; label: string }>) {
+    const { lat, lng } = event.detail;
+    setPickerPoint(Number(lat.toFixed(7)), Number(lng.toFixed(7)));
+    if (!pickerMap) return;
+    const currentZoom = Number.isFinite(pickerMap.getZoom()) ? pickerMap.getZoom() : 12;
+    pickerMap.flyTo({
+      center: [lng, lat],
+      zoom: Math.max(currentZoom, 13),
+      essential: true,
+    });
+  }
+
+  $effect(() => {
+    pickerViewMode;
+    if (!pickerMap) return;
+    syncPickerViewMode();
+  });
 </script>
 
 <div class="page-content fade-in">
@@ -357,6 +547,9 @@
               {/if}
             </div>
             <div class="muted">{item.username}@{item.host}:{item.port}</div>
+            {#if item.latitude != null && item.longitude != null}
+              <div class="muted mono">{item.latitude.toFixed(6)}, {item.longitude.toFixed(6)}</div>
+            {/if}
             {#if item.last_error}
               <div class="error">{item.last_error}</div>
             {/if}
@@ -432,6 +625,23 @@
 
     <div class="grid2">
       <label>
+        <span>Latitude</span>
+        <input type="number" bind:value={formLatitude} step="any" min="-90" max="90" placeholder="-6.200000" />
+      </label>
+      <label>
+        <span>Longitude</span>
+        <input type="number" bind:value={formLongitude} step="any" min="-180" max="180" placeholder="106.816666" />
+      </label>
+    </div>
+    <div class="coord-actions">
+      <button class="btn ghost" type="button" onclick={openMapPicker}>
+        <Icon name="map-pin" size={16} />
+        Pick on map
+      </button>
+    </div>
+
+    <div class="grid2">
+      <label>
         <span>{$t('admin.network.routers.form.port') || 'Port'}</span>
         <input type="number" bind:value={formPort} min="1" max="65535" />
       </label>
@@ -484,6 +694,35 @@
       </button>
     </div>
   </form>
+</Modal>
+
+<Modal show={showMapPicker} title="Pick Router Location" width="860px" onclose={closeMapPicker}>
+  <div class="map-picker-shell">
+    <div class="map-picker-help">Klik peta untuk pilih titik, lalu drag marker jika perlu presisi.</div>
+    <div class="map-picker-cords">
+      {#if pickerLat != null && pickerLng != null}
+        <span class="mono">{pickerLat.toFixed(7)}, {pickerLng.toFixed(7)}</span>
+      {/if}
+    </div>
+    <MapCanvasShell
+      bind:mapEl={pickerMapHost}
+      bind:viewMode={pickerViewMode}
+      on:searchselect={onPickerSearchSelect}
+      loading={pickerMapLoading}
+      mapUnavailable={pickerMapUnavailable}
+      mapErrorMessage={pickerMapErrorMessage}
+      mapUnavailableTitle="Map unavailable"
+      mapUnavailableSubtitle="Unable to initialize WebGL map on this browser/device."
+      height="min(58vh, 520px)"
+    />
+    <div class="modal-actions">
+      <button class="btn ghost" type="button" onclick={closeMapPicker}>Cancel</button>
+      <button class="btn" type="button" onclick={applyPickedCoordinates}>
+        <Icon name="check" size={16} />
+        Use this point
+      </button>
+    </div>
+  </div>
 </Modal>
 
 <style>
@@ -703,6 +942,11 @@
     margin: 2px 0;
   }
 
+  .coord-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
   label {
     display: flex;
     flex-direction: column;
@@ -744,6 +988,22 @@
     justify-content: flex-end;
     gap: 10px;
     margin-top: 12px;
+  }
+
+  .map-picker-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .map-picker-help {
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+  }
+
+  .map-picker-cords {
+    color: var(--text-primary);
+    min-height: 1.2rem;
   }
 
   @media (max-width: 900px) {

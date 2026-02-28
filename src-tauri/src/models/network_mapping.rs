@@ -62,6 +62,20 @@ pub struct ZoneNodeBinding {
     pub created_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct ZoneOffer {
+    pub id: String,
+    pub tenant_id: String,
+    pub zone_id: String,
+    pub package_id: String,
+    pub price_monthly: Option<f64>,
+    pub price_yearly: Option<f64>,
+    pub is_active: bool,
+    pub metadata: serde_json::Value,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateNetworkNodeRequest {
     pub name: String,
@@ -147,7 +161,33 @@ pub struct CreateZoneNodeBindingRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateZoneOfferRequest {
+    pub zone_id: String,
+    pub package_id: String,
+    pub price_monthly: Option<f64>,
+    pub price_yearly: Option<f64>,
+    pub is_active: Option<bool>,
+    pub metadata: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateZoneOfferRequest {
+    pub zone_id: Option<String>,
+    pub package_id: Option<String>,
+    pub price_monthly: Option<f64>,
+    pub price_yearly: Option<f64>,
+    pub is_active: Option<bool>,
+    pub metadata: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResolveZoneRequest {
+    pub lat: f64,
+    pub lng: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CoverageCheckRequest {
     pub lat: f64,
     pub lng: f64,
 }
@@ -157,10 +197,52 @@ pub struct ResolvedZoneResponse {
     pub zone: Option<ResolvedZone>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CoverageCheckResponse {
+    pub zone: Option<ResolvedZone>,
+    pub offers: Vec<ZoneOffer>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComputePathRequest {
+    pub source_node_id: String,
+    pub target_node_id: String,
+    pub max_hops: Option<u32>,
+    pub max_utilization_pct: Option<f64>,
+    pub allowed_link_types: Option<Vec<String>>,
+    pub allowed_statuses: Option<Vec<String>>,
+    pub exclude_link_ids: Option<Vec<String>>,
+    pub require_active_nodes: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComputedPathHop {
+    pub seq_no: i32,
+    pub link_id: String,
+    pub from_node_id: String,
+    pub to_node_id: String,
+    pub name: String,
+    pub link_type: String,
+    pub status: String,
+    pub distance_m: f64,
+    pub cost: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComputePathResponse {
+    pub found: bool,
+    pub source_node_id: String,
+    pub target_node_id: String,
+    pub node_ids: Vec<String>,
+    pub link_ids: Vec<String>,
+    pub hops: Vec<ComputedPathHop>,
+    pub total_cost: Option<f64>,
+    pub total_distance_m: Option<f64>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct ResolvedZone {
     pub id: String,
     pub name: String,
     pub priority: i32,
 }
-

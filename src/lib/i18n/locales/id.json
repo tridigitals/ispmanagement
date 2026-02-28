@@ -1566,6 +1566,16 @@
         "title": "Langganan saat ini",
         "none": "Belum ada paket aktif di lokasi ini"
       },
+      "coverage": {
+        "title": "Zona cakupan",
+        "select_location": "Pilih lokasi terlebih dulu",
+        "checking": "Memeriksa cakupan...",
+        "missing_coordinates": "Lokasi ini belum punya koordinat. Filter cakupan tidak aktif.",
+        "not_covered": "Lokasi ini berada di luar zona cakupan aktif.",
+        "zone_packages": "Paket tersedia di zona ini",
+        "no_packages_for_zone": "Tidak ada paket pada zona cakupan ini",
+        "no_packages_for_zone_hint": "Lokasi Anda tercakup, tetapi belum ada penawaran paket yang dikonfigurasi untuk zona ini."
+      },
       "actions": {
         "buy": "Beli paket",
         "switch": "Ganti paket",

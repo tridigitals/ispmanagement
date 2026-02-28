@@ -12,6 +12,7 @@
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import Select2 from '$lib/components/ui/Select2.svelte';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import MapCanvasShell from '$lib/components/network/MapCanvasShell.svelte';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -47,6 +48,20 @@
     geometry: GeoJSON.Geometry;
   };
 
+  type NMRouter = {
+    id: string;
+    name: string;
+    host: string;
+    port: number;
+    is_online: boolean;
+    enabled: boolean;
+    identity?: string | null;
+    ros_version?: string | null;
+    latency_ms?: number | null;
+    latitude?: number | null;
+    longitude?: number | null;
+  };
+
   type MaplibreModule = typeof import('maplibre-gl');
   type MapInstance = import('maplibre-gl').Map;
 
@@ -65,6 +80,7 @@
   let nodesVisible = $state(true);
   let linksVisible = $state(true);
   let zonesVisible = $state(true);
+  let routersVisible = $state(true);
   let customersVisible = $state(true);
   let viewMode = $state<'standard' | 'satellite'>('standard');
 
@@ -78,6 +94,7 @@
   let nodeRows = $state<NMNode[]>([]);
   let linkRows = $state<NMLink[]>([]);
   let zoneRows = $state<NMZone[]>([]);
+  let routerRows = $state<NMRouter[]>([]);
   let zoneBindings = $state<any[]>([]);
   let selectedZoneId = $state('');
   let selectedTab = $state<'nodes' | 'links' | 'zones' | 'bindings'>('nodes');
@@ -150,9 +167,16 @@
   let myLocationControlBtn: HTMLButtonElement | null = null;
   let activeNodePopup: import('maplibre-gl').Popup | null = null;
   let activeDataAbortController: AbortController | null = null;
+  let didInitialFitToMarkers = false;
   const dataCache = new Map<
     string,
-    { at: number; nodes: PaginatedResponse<any>; links: PaginatedResponse<any>; zones: PaginatedResponse<any> }
+    {
+      at: number;
+      nodes: PaginatedResponse<any>;
+      links: PaginatedResponse<any>;
+      zones: PaginatedResponse<any>;
+      routers: NMRouter[];
+    }
   >();
   const dataCacheTtlMs = 20_000;
   const dataCacheMaxEntries = 40;
@@ -165,6 +189,7 @@
   const SOURCE_CUSTOMERS = 'nm-customers';
   const SOURCE_LINKS = 'nm-links';
   const SOURCE_ZONES = 'nm-zones';
+  const SOURCE_ROUTERS = 'nm-routers';
   const SOURCE_LINK_DRAFT = 'nm-link-draft';
   const SOURCE_LINK_DRAFT_POINTS = 'nm-link-draft-points';
   const nodeTypeOptions = [
@@ -618,6 +643,59 @@
     popup.addTo(map);
   }
 
+  function handleRouterLayerClick(e: any) {
+    if (!map || !e.features?.[0] || !maplibre) return;
+    const props = e.features[0].properties || {};
+    const coords = (e.features[0].geometry as GeoJSON.Point).coordinates;
+    const routerId = String(props.id || '');
+    const status = props.is_online ? 'online' : 'offline';
+    const tone: 'ok' | 'muted' = props.is_online ? 'ok' : 'muted';
+    const name = escapeHtml(props.name || '-');
+    const host = escapeHtml(props.host || '-');
+    const port = escapeHtml(props.port || '-');
+    const latency = props.latency_ms != null ? `${escapeHtml(props.latency_ms)} ms` : '-';
+    const popupUid = `nm-router-popup-${Math.random().toString(36).slice(2, 10)}`;
+    const openBtnId = `${popupUid}-open`;
+    const closeBtnId = `${popupUid}-close`;
+
+    activeNodePopup?.remove();
+    const popup = new maplibre.Popup({ closeButton: false, closeOnClick: true })
+      .setLngLat(coords as [number, number])
+      .setHTML(`
+        <div class="nm-popup-card">
+          <div class="nm-popup-head">
+            <div class="nm-popup-title">${name}</div>
+            <span class="nm-popup-badge ${tone}">${status}</span>
+          </div>
+          <div class="nm-popup-grid">
+            <div class="nm-popup-label">Host</div>
+            <div class="nm-popup-value mono">${host}:${port}</div>
+            <div class="nm-popup-label">Latency</div>
+            <div class="nm-popup-value">${latency}</div>
+          </div>
+          <div class="nm-popup-actions">
+            <button id="${openBtnId}" class="nm-popup-btn primary" type="button">Open Router</button>
+            <button id="${closeBtnId}" class="nm-popup-btn" type="button">Close</button>
+          </div>
+        </div>
+      `);
+
+    popup.on('open', () => {
+      const openBtn = document.getElementById(openBtnId) as HTMLButtonElement | null;
+      const closeBtn = document.getElementById(closeBtnId) as HTMLButtonElement | null;
+      openBtn?.addEventListener('click', () => {
+        popup.remove();
+        void goto(`${tenantPrefix}/admin/network/routers/${routerId}`);
+      });
+      closeBtn?.addEventListener('click', () => popup.remove());
+    });
+    popup.on('close', () => {
+      if (activeNodePopup === popup) activeNodePopup = null;
+    });
+    activeNodePopup = popup;
+    popup.addTo(map);
+  }
+
   async function initMap() {
     try {
       maplibre = await import('maplibre-gl');
@@ -688,6 +766,7 @@
         map.addSource(SOURCE_ZONES, { type: 'geojson', data: emptyFeatureCollection() });
         map.addSource(SOURCE_LINKS, { type: 'geojson', data: emptyFeatureCollection() });
         map.addSource(SOURCE_NODES, { type: 'geojson', data: emptyFeatureCollection() });
+        map.addSource(SOURCE_ROUTERS, { type: 'geojson', data: emptyFeatureCollection() });
         map.addSource(SOURCE_CUSTOMERS, {
           type: 'geojson',
           data: emptyFeatureCollection(),
@@ -838,6 +917,50 @@
         });
 
         map.addLayer({
+          id: 'nm-routers-circle',
+          type: 'circle',
+          source: SOURCE_ROUTERS,
+          paint: {
+            'circle-radius': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              8,
+              7,
+              11,
+              9,
+              14,
+              11.5,
+            ],
+            'circle-color': ['case', ['==', ['get', 'is_online'], true], '#16a34a', '#ef4444'],
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#e2e8f0',
+          },
+        });
+
+        map.addLayer({
+          id: 'nm-routers-icon',
+          type: 'symbol',
+          source: SOURCE_ROUTERS,
+          layout: {
+            'icon-image': 'nm-node-icon-router',
+            'icon-size': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              8,
+              0.72,
+              11,
+              0.86,
+              14,
+              1,
+            ],
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true,
+          },
+        });
+
+        map.addLayer({
           id: 'nm-customers-cluster-circle',
           type: 'circle',
           source: SOURCE_CUSTOMERS,
@@ -930,6 +1053,8 @@
 
         map.on('click', 'nm-nodes-circle', handleNodeLayerClick);
         map.on('click', 'nm-nodes-icons', handleNodeLayerClick);
+        map.on('click', 'nm-routers-circle', handleRouterLayerClick);
+        map.on('click', 'nm-routers-icon', handleRouterLayerClick);
         map.on('click', 'nm-customers-point', handleNodeLayerClick);
         map.on('click', 'nm-customers-cluster-circle', async (e) => {
           if (!map || !maplibre || !e.features?.[0]) return;
@@ -954,7 +1079,13 @@
           if (linkPickMode && linkPickDrawMode === 'path' && linkForm.from_node_id) {
             const hitNode =
               map.queryRenderedFeatures(e.point, {
-                layers: ['nm-nodes-circle', 'nm-nodes-icons', 'nm-customers-point'],
+                layers: [
+                  'nm-nodes-circle',
+                  'nm-nodes-icons',
+                  'nm-routers-circle',
+                  'nm-routers-icon',
+                  'nm-customers-point',
+                ],
               }).length > 0;
             if (!hitNode) {
               linkPathBendPoints = [...linkPathBendPoints, [e.lngLat.lng, e.lngLat.lat]];
@@ -967,7 +1098,13 @@
           // Ignore node popup click when user clicks existing node circle.
           const hitNode =
             map.queryRenderedFeatures(e.point, {
-              layers: ['nm-nodes-circle', 'nm-nodes-icons', 'nm-customers-point'],
+              layers: [
+                'nm-nodes-circle',
+                'nm-nodes-icons',
+                'nm-routers-circle',
+                'nm-routers-icon',
+                'nm-customers-point',
+              ],
             }).length > 0;
           if (hitNode) return;
           applyPickedNodeCoordinates(e.lngLat.lng, e.lngLat.lat);
@@ -980,6 +1117,8 @@
           'nm-links-line-dashed',
           'nm-nodes-circle',
           'nm-nodes-icons',
+          'nm-routers-circle',
+          'nm-routers-icon',
           'nm-customers-cluster-circle',
           'nm-customers-cluster-count',
           'nm-customers-point',
@@ -1084,6 +1223,7 @@
         nodeRows = (cached.nodes.data || []) as NMNode[];
         linkRows = (cached.links.data || []) as NMLink[];
         zoneRows = (cached.zones.data || []) as NMZone[];
+        routerRows = (cached.routers || []) as NMRouter[];
         nodeCount = cached.nodes.total || cached.nodes.data?.length || 0;
         linkCount = cached.links.total || cached.links.data?.length || 0;
         zoneCount = cached.zones.total || cached.zones.data?.length || 0;
@@ -1091,6 +1231,8 @@
         setSourceData(SOURCE_CUSTOMERS, customersToFeatureCollection(cached.nodes.data as NMNode[]));
         setSourceData(SOURCE_LINKS, linksToFeatureCollection(cached.links.data as NMLink[]));
         setSourceData(SOURCE_ZONES, zonesToFeatureCollection(cached.zones.data as NMZone[]));
+        setSourceData(SOURCE_ROUTERS, routersToFeatureCollection(cached.routers as NMRouter[]));
+        fitMapToAllMarkersOnFirstLoad(nodeRows, routerRows);
         return;
       }
 
@@ -1098,10 +1240,11 @@
       const abortController = new AbortController();
       activeDataAbortController = abortController;
 
-      const [nodesRes, linksRes, zonesRes] = await Promise.all([
+      const [nodesRes, linksRes, zonesRes, routersRes] = await Promise.all([
         api.networkMapping.nodes.list(params, { signal: abortController.signal }),
         api.networkMapping.links.list(params, { signal: abortController.signal }),
         api.networkMapping.zones.list(params, { signal: abortController.signal }),
+        api.mikrotik.routers.list(),
       ]);
 
       // Drop stale responses when user moves map quickly.
@@ -1111,6 +1254,7 @@
       nodeRows = (nodesRes.data || []) as NMNode[];
       linkRows = (linksRes.data || []) as NMLink[];
       zoneRows = (zonesRes.data || []) as NMZone[];
+      routerRows = (routersRes || []) as NMRouter[];
       nodeCount = nodesRes.total || nodesRes.data?.length || 0;
       linkCount = linksRes.total || linksRes.data?.length || 0;
       zoneCount = zonesRes.total || zonesRes.data?.length || 0;
@@ -1120,6 +1264,7 @@
         nodes: nodesRes,
         links: linksRes,
         zones: zonesRes,
+        routers: (routersRes || []) as NMRouter[],
       });
       if (dataCache.size > dataCacheMaxEntries) {
         const oldestKey = dataCache.keys().next().value as string | undefined;
@@ -1130,6 +1275,8 @@
       setSourceData(SOURCE_CUSTOMERS, customersToFeatureCollection(nodesRes.data as NMNode[]));
       setSourceData(SOURCE_LINKS, linksToFeatureCollection(linksRes.data as NMLink[]));
       setSourceData(SOURCE_ZONES, zonesToFeatureCollection(zonesRes.data as NMZone[]));
+      setSourceData(SOURCE_ROUTERS, routersToFeatureCollection(routersRes as NMRouter[]));
+      fitMapToAllMarkersOnFirstLoad(nodeRows, routerRows);
     } catch (e: any) {
       if ((e?.message || '').includes('Request canceled')) return;
       console.error(e);
@@ -1137,6 +1284,34 @@
       if (requestId === lastRequestId) activeDataAbortController = null;
       refreshing = false;
     }
+  }
+
+  function fitMapToAllMarkersOnFirstLoad(nodes: NMNode[], routers: NMRouter[]) {
+    if (!map || didInitialFitToMarkers) return;
+    const points: Array<[number, number]> = [];
+    for (const row of nodes || []) {
+      if (Number.isFinite(row.lng) && Number.isFinite(row.lat)) {
+        points.push([row.lng, row.lat]);
+      }
+    }
+    for (const row of routers || []) {
+      if (row.longitude == null || row.latitude == null) continue;
+      if (Number.isFinite(row.longitude) && Number.isFinite(row.latitude)) {
+        points.push([row.longitude, row.latitude]);
+      }
+    }
+    if (!points.length) return;
+    if (!maplibre) return;
+    const bounds = points.reduce(
+      (acc, point) => acc.extend(point),
+      new maplibre.LngLatBounds(points[0], points[0]),
+    );
+    didInitialFitToMarkers = true;
+    map.fitBounds(bounds, {
+      padding: { top: 80, right: 80, bottom: 80, left: 80 },
+      maxZoom: 15,
+      duration: 600,
+    });
   }
 
   function setSourceData(sourceId: string, data: GeoJSON.FeatureCollection) {
@@ -1203,6 +1378,29 @@
     };
   }
 
+  function routersToFeatureCollection(rows: NMRouter[]): GeoJSON.FeatureCollection {
+    return {
+      type: 'FeatureCollection',
+      features: (rows || [])
+        .filter((row) => row.latitude != null && row.longitude != null)
+        .map((row) => ({
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [Number(row.longitude), Number(row.latitude)],
+          },
+          properties: {
+            id: row.id,
+            name: row.name,
+            host: row.host,
+            port: row.port,
+            is_online: !!row.is_online,
+            latency_ms: row.latency_ms ?? null,
+          },
+        })),
+    };
+  }
+
   function computeLinkHealth(row: NMLink): { score: number; tone: 'good' | 'warn' | 'bad' } {
     const statusRaw = String(row.status || '').toLowerCase();
     if (statusRaw === 'down' || statusRaw === 'retired') return { score: 5, tone: 'bad' };
@@ -1260,6 +1458,8 @@
     setLayerVisibility('nm-links-line-dashed', linksVisible);
     setLayerVisibility('nm-nodes-circle', nodesVisible);
     setLayerVisibility('nm-nodes-icons', nodesVisible);
+    setLayerVisibility('nm-routers-circle', routersVisible);
+    setLayerVisibility('nm-routers-icon', routersVisible);
     setLayerVisibility('nm-customers-cluster-circle', customersVisible);
     setLayerVisibility('nm-customers-cluster-count', customersVisible);
     setLayerVisibility('nm-customers-point', customersVisible);
@@ -2029,6 +2229,17 @@
     deleteTargetId = '';
   }
 
+  function onMapSearchSelect(event: CustomEvent<{ lat: number; lng: number; label: string }>) {
+    if (!map) return;
+    const { lat, lng } = event.detail;
+    const currentZoom = Number.isFinite(map.getZoom()) ? map.getZoom() : 12;
+    map.flyTo({
+      center: [lng, lat],
+      zoom: Math.max(currentZoom, 13),
+      essential: true,
+    });
+  }
+
   $effect(() => {
     if (!selectedZoneId) {
       if (bindingForm.zone_id) bindingForm = { ...bindingForm, zone_id: '' };
@@ -2163,6 +2374,10 @@
           <span>{$t('admin.network.map.layers.zones') || 'Zones'}</span>
         </label>
         <label class="toggle">
+          <input type="checkbox" bind:checked={routersVisible} />
+          <span>Routers</span>
+        </label>
+        <label class="toggle">
           <input type="checkbox" bind:checked={customersVisible} />
           <span>Customers</span>
         </label>
@@ -2177,47 +2392,18 @@
     {/if}
   </div>
 
-  <div class="map-wrap">
-    <div class="map-shell">
-      {#if loading}
-        <div class="map-loading">{$t('common.loading') || 'Loading...'}</div>
-      {/if}
-      {#if mapUnavailable}
-        <div class="map-unavailable">
-          <Icon name="alert-triangle" size={16} />
-          <div>
-            <div class="map-unavailable-title">Map preview unavailable on this device</div>
-            <div class="map-unavailable-sub">
-              WebGL context failed. Data is still loaded and counts are visible.
-            </div>
-            <div class="map-unavailable-sub">{mapErrorMessage}</div>
-          </div>
-        </div>
-      {:else}
-        <div class="map-canvas" bind:this={mapEl}></div>
-      {/if}
-
-      <div class="map-view-switch" role="group" aria-label="Map view mode">
-        <button
-          type="button"
-          class={`switch-btn ${viewMode === 'standard' ? 'active' : ''}`}
-          onclick={() => (viewMode = 'standard')}
-          title="Standard view"
-          aria-label="Standard view"
-        >
-          Map
-        </button>
-        <button
-          type="button"
-          class={`switch-btn ${viewMode === 'satellite' ? 'active' : ''}`}
-          onclick={() => (viewMode = 'satellite')}
-          title="Satellite view"
-          aria-label="Satellite view"
-        >
-          Sat
-        </button>
-      </div>
-
+  <MapCanvasShell
+    bind:mapEl={mapEl}
+    bind:viewMode={viewMode}
+    on:searchselect={onMapSearchSelect}
+    {loading}
+    {mapUnavailable}
+    {mapErrorMessage}
+    mapUnavailableTitle="Map preview unavailable on this device"
+    mapUnavailableSubtitle="WebGL context failed. Data is still loaded and counts are visible."
+    height="min(62vh, 700px)"
+  >
+    <svelte:fragment slot="overlay">
       {#if showCreateNodePanel}
         <div class="node-create-panel">
           <div class="panel-head">
@@ -2294,8 +2480,8 @@
           </button>
         </div>
       {/if}
-    </div>
-  </div>
+    </svelte:fragment>
+  </MapCanvasShell>
 
   <div class="manager-wrap">
     <div class="manager-header">

@@ -24,6 +24,8 @@ pub struct MikrotikRouter {
     pub last_error: Option<String>,
     pub maintenance_until: Option<DateTime<Utc>>,
     pub maintenance_reason: Option<String>,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -38,6 +40,8 @@ impl MikrotikRouter {
         password: String,
         use_tls: bool,
         enabled: bool,
+        latitude: Option<f64>,
+        longitude: Option<f64>,
     ) -> Self {
         let now = Utc::now();
         Self {
@@ -58,6 +62,8 @@ impl MikrotikRouter {
             last_error: None,
             maintenance_until: None,
             maintenance_reason: None,
+            latitude,
+            longitude,
             created_at: now,
             updated_at: now,
         }
@@ -79,6 +85,10 @@ pub struct CreateMikrotikRouterRequest {
     pub maintenance_until: Option<DateTime<Utc>>,
     #[serde(alias = "maintenanceReason")]
     pub maintenance_reason: Option<String>,
+    #[serde(alias = "latitude")]
+    pub latitude: Option<f64>,
+    #[serde(alias = "longitude")]
+    pub longitude: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -97,6 +107,10 @@ pub struct UpdateMikrotikRouterRequest {
     pub maintenance_until: Option<DateTime<Utc>>,
     #[serde(alias = "maintenanceReason")]
     pub maintenance_reason: Option<String>,
+    #[serde(alias = "latitude")]
+    pub latitude: Option<f64>,
+    #[serde(alias = "longitude")]
+    pub longitude: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

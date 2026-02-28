@@ -2,11 +2,14 @@ use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     CreateNetworkLinkRequest, CreateNetworkNodeRequest, CreateServiceZoneRequest,
-    CreateZoneNodeBindingRequest, NetworkLink, NetworkNode, PaginatedResponse, ResolvedZone,
-    ResolvedZoneResponse, ResolveZoneRequest, ServiceZone, UpdateNetworkLinkRequest,
-    UpdateNetworkNodeRequest, UpdateServiceZoneRequest, ZoneNodeBinding,
+    CreateZoneNodeBindingRequest, CreateZoneOfferRequest, CoverageCheckRequest,
+    CoverageCheckResponse, ComputePathRequest, ComputePathResponse, ComputedPathHop, NetworkLink,
+    NetworkNode, PaginatedResponse, ResolvedZone, ResolvedZoneResponse, ResolveZoneRequest,
+    ServiceZone, UpdateNetworkLinkRequest, UpdateNetworkNodeRequest, UpdateServiceZoneRequest,
+    UpdateZoneOfferRequest, ZoneNodeBinding, ZoneOffer,
 };
 use crate::services::AuthService;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -23,6 +26,38 @@ pub struct ListQuery {
     pub status: Option<String>,
     pub kind: Option<String>,
     pub bbox: Option<(f64, f64, f64, f64)>,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+struct NodeStatusRow {
+    id: String,
+    status: String,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+struct PathLinkRow {
+    id: String,
+    from_node_id: String,
+    to_node_id: String,
+    name: String,
+    link_type: String,
+    status: String,
+    distance_m: f64,
+    utilization_pct: Option<f64>,
+    loss_db: Option<f64>,
+    latency_ms: Option<f64>,
+}
+
+#[derive(Debug, Clone)]
+struct PathEdge {
+    link_id: String,
+    from_node_id: String,
+    to_node_id: String,
+    name: String,
+    link_type: String,
+    status: String,
+    distance_m: f64,
+    cost: f64,
 }
 
 impl NetworkMappingService {
@@ -181,6 +216,20 @@ impl NetworkMappingService {
         }
     }
 
+    fn link_cost(link: &PathLinkRow) -> f64 {
+        let distance_km = (link.distance_m.max(0.0)) / 1000.0;
+        let latency_component = link.latency_ms.unwrap_or(0.0) * 0.2;
+        let utilization_component = link.utilization_pct.unwrap_or(0.0) * 0.1;
+        let loss_component = link.loss_db.unwrap_or(0.0).abs() * 5.0;
+        let status_penalty = match link.status.as_str() {
+            "degraded" => 25.0,
+            "planning" => 75.0,
+            _ => 0.0,
+        };
+        (distance_km + latency_component + utilization_component + loss_component + status_penalty)
+            .max(0.0001)
+    }
+
     async fn ensure_link_pair_available(
         &self,
         tenant_id: &str,
@@ -216,6 +265,312 @@ impl NetworkMappingService {
             ));
         }
         Ok(())
+    }
+
+    pub async fn compute_path(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        dto: ComputePathRequest,
+    ) -> AppResult<ComputePathResponse> {
+        self.require_read(actor_id, tenant_id).await?;
+        let source_id = dto.source_node_id.clone();
+        let target_id = dto.target_node_id.clone();
+
+        if source_id == target_id {
+            return Err(AppError::Validation(
+                "source_node_id and target_node_id must be different".into(),
+            ));
+        }
+
+        let node_rows: Vec<NodeStatusRow> = sqlx::query_as(
+            r#"
+            SELECT id::text AS id, status
+            FROM network_nodes
+            WHERE tenant_id = $1::uuid
+              AND id::text IN ($2, $3)
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&source_id)
+        .bind(&target_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        if node_rows.len() < 2 {
+            return Err(AppError::Validation(
+                "source_node_id or target_node_id not found".into(),
+            ));
+        }
+
+        let source_status = node_rows
+            .iter()
+            .find(|n| n.id == source_id)
+            .map(|n| n.status.clone())
+            .unwrap_or_else(|| "inactive".to_string());
+        let target_status = node_rows
+            .iter()
+            .find(|n| n.id == target_id)
+            .map(|n| n.status.clone())
+            .unwrap_or_else(|| "inactive".to_string());
+
+        let require_active_nodes = dto.require_active_nodes.unwrap_or(true);
+        if require_active_nodes && (source_status != "active" || target_status != "active") {
+            return Ok(ComputePathResponse {
+                found: false,
+                source_node_id: source_id.clone(),
+                target_node_id: target_id.clone(),
+                node_ids: vec![],
+                link_ids: vec![],
+                hops: vec![],
+                total_cost: None,
+                total_distance_m: None,
+            });
+        }
+
+        let allowed_statuses = if let Some(v) = dto.allowed_statuses {
+            if v.is_empty() {
+                None
+            } else {
+                Some(v)
+            }
+        } else {
+            Some(vec!["up".to_string(), "degraded".to_string()])
+        };
+        let allowed_link_types = dto.allowed_link_types.filter(|v| !v.is_empty());
+        let exclude_link_ids = dto.exclude_link_ids.filter(|v| !v.is_empty());
+
+        let links: Vec<PathLinkRow> = sqlx::query_as(
+            r#"
+            SELECT
+              id::text AS id,
+              from_node_id::text AS from_node_id,
+              to_node_id::text AS to_node_id,
+              name,
+              link_type,
+              status,
+              COALESCE(ST_Length(geography(geom)), 0)::float8 AS distance_m,
+              utilization_pct::float8 AS utilization_pct,
+              loss_db::float8 AS loss_db,
+              latency_ms::float8 AS latency_ms
+            FROM network_links
+            WHERE tenant_id = $1::uuid
+              AND ($2::text[] IS NULL OR link_type = ANY($2::text[]))
+              AND ($3::text[] IS NULL OR status = ANY($3::text[]))
+              AND ($4::text[] IS NULL OR NOT (id::text = ANY($4::text[])))
+              AND ($5::float8 IS NULL OR utilization_pct IS NULL OR utilization_pct::float8 <= $5::float8)
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(allowed_link_types)
+        .bind(allowed_statuses)
+        .bind(exclude_link_ids)
+        .bind(dto.max_utilization_pct)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        if links.is_empty() {
+            return Ok(ComputePathResponse {
+                found: false,
+                source_node_id: source_id.clone(),
+                target_node_id: target_id.clone(),
+                node_ids: vec![],
+                link_ids: vec![],
+                hops: vec![],
+                total_cost: None,
+                total_distance_m: None,
+            });
+        }
+
+        let node_status_rows: Vec<NodeStatusRow> = sqlx::query_as(
+            r#"
+            SELECT id::text AS id, status
+            FROM network_nodes
+            WHERE tenant_id = $1::uuid
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+        let node_statuses: HashMap<String, String> = node_status_rows
+            .into_iter()
+            .map(|r| (r.id, r.status))
+            .collect();
+
+        let mut adjacency: HashMap<String, Vec<PathEdge>> = HashMap::new();
+        for link in links {
+            if require_active_nodes {
+                let from_active = node_statuses
+                    .get(&link.from_node_id)
+                    .map(|s| s == "active")
+                    .unwrap_or(false);
+                let to_active = node_statuses
+                    .get(&link.to_node_id)
+                    .map(|s| s == "active")
+                    .unwrap_or(false);
+                if !from_active || !to_active {
+                    continue;
+                }
+            }
+
+            let cost = Self::link_cost(&link);
+            let forward = PathEdge {
+                link_id: link.id.clone(),
+                from_node_id: link.from_node_id.clone(),
+                to_node_id: link.to_node_id.clone(),
+                name: link.name.clone(),
+                link_type: link.link_type.clone(),
+                status: link.status.clone(),
+                distance_m: link.distance_m,
+                cost,
+            };
+            let backward = PathEdge {
+                link_id: link.id.clone(),
+                from_node_id: link.to_node_id.clone(),
+                to_node_id: link.from_node_id.clone(),
+                name: link.name,
+                link_type: link.link_type,
+                status: link.status,
+                distance_m: link.distance_m,
+                cost,
+            };
+            adjacency
+                .entry(forward.from_node_id.clone())
+                .or_default()
+                .push(forward);
+            adjacency
+                .entry(backward.from_node_id.clone())
+                .or_default()
+                .push(backward);
+        }
+
+        if !adjacency.contains_key(&source_id) {
+            return Ok(ComputePathResponse {
+                found: false,
+                source_node_id: source_id.clone(),
+                target_node_id: target_id.clone(),
+                node_ids: vec![],
+                link_ids: vec![],
+                hops: vec![],
+                total_cost: None,
+                total_distance_m: None,
+            });
+        }
+
+        let max_hops = dto.max_hops.unwrap_or(64).max(1) as usize;
+        let mut dist: HashMap<String, f64> = HashMap::new();
+        let mut hop_count: HashMap<String, usize> = HashMap::new();
+        let mut prev: HashMap<String, PathEdge> = HashMap::new();
+        let mut frontier: Vec<(String, f64)> = vec![(source_id.clone(), 0.0)];
+        dist.insert(source_id.clone(), 0.0);
+        hop_count.insert(source_id.clone(), 0);
+
+        while !frontier.is_empty() {
+            let mut min_idx = 0usize;
+            for i in 1..frontier.len() {
+                if frontier[i].1 < frontier[min_idx].1 {
+                    min_idx = i;
+                }
+            }
+            let (node, cost_here) = frontier.swap_remove(min_idx);
+            let best = *dist.get(&node).unwrap_or(&f64::INFINITY);
+            if cost_here > best {
+                continue;
+            }
+            if node == target_id {
+                break;
+            }
+
+            let current_hops = *hop_count.get(&node).unwrap_or(&0);
+            if current_hops >= max_hops {
+                continue;
+            }
+
+            for edge in adjacency.get(&node).cloned().unwrap_or_default() {
+                let next = edge.to_node_id.clone();
+                let next_hops = current_hops + 1;
+                if next_hops > max_hops {
+                    continue;
+                }
+                let candidate = cost_here + edge.cost;
+                let current_best = *dist.get(&next).unwrap_or(&f64::INFINITY);
+                if candidate + 1e-9 < current_best {
+                    dist.insert(next.clone(), candidate);
+                    hop_count.insert(next.clone(), next_hops);
+                    prev.insert(next.clone(), edge);
+                    frontier.push((next, candidate));
+                }
+            }
+        }
+
+        let Some(total_cost) = dist.get(&target_id).copied() else {
+            return Ok(ComputePathResponse {
+                found: false,
+                source_node_id: source_id.clone(),
+                target_node_id: target_id.clone(),
+                node_ids: vec![],
+                link_ids: vec![],
+                hops: vec![],
+                total_cost: None,
+                total_distance_m: None,
+            });
+        };
+
+        let mut reversed: Vec<PathEdge> = Vec::new();
+        let mut cursor = target_id.clone();
+        while cursor != source_id {
+            let Some(step) = prev.get(&cursor).cloned() else {
+                return Ok(ComputePathResponse {
+                    found: false,
+                    source_node_id: source_id.clone(),
+                    target_node_id: target_id.clone(),
+                    node_ids: vec![],
+                    link_ids: vec![],
+                    hops: vec![],
+                    total_cost: None,
+                    total_distance_m: None,
+                });
+            };
+            cursor = step.from_node_id.clone();
+            reversed.push(step);
+        }
+        reversed.reverse();
+
+        let mut node_ids = vec![source_id.clone()];
+        let mut link_ids = Vec::with_capacity(reversed.len());
+        let mut hops = Vec::with_capacity(reversed.len());
+        let mut total_distance = 0.0;
+
+        for (idx, step) in reversed.into_iter().enumerate() {
+            total_distance += step.distance_m;
+            link_ids.push(step.link_id.clone());
+            node_ids.push(step.to_node_id.clone());
+            hops.push(ComputedPathHop {
+                seq_no: idx as i32 + 1,
+                link_id: step.link_id,
+                from_node_id: step.from_node_id,
+                to_node_id: step.to_node_id,
+                name: step.name,
+                link_type: step.link_type,
+                status: step.status,
+                distance_m: step.distance_m,
+                cost: step.cost,
+            });
+        }
+
+        Ok(ComputePathResponse {
+            found: true,
+            source_node_id: source_id,
+            target_node_id: target_id,
+            node_ids,
+            link_ids,
+            hops,
+            total_cost: Some(total_cost),
+            total_distance_m: Some(total_distance),
+        })
     }
 
     pub async fn list_nodes(
@@ -930,6 +1285,132 @@ impl NetworkMappingService {
         Ok(())
     }
 
+    pub async fn list_zone_offers(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        zone_id: Option<String>,
+        package_id: Option<String>,
+        active_only: bool,
+    ) -> AppResult<Vec<ZoneOffer>> {
+        self.require_coverage_read(actor_id, tenant_id).await?;
+        let rows: Vec<ZoneOffer> = sqlx::query_as(
+            r#"
+            SELECT
+              id::text AS id,
+              tenant_id::text AS tenant_id,
+              zone_id::text AS zone_id,
+              package_id,
+              price_monthly::float8 AS price_monthly,
+              price_yearly::float8 AS price_yearly,
+              is_active,
+              metadata,
+              created_at,
+              updated_at
+            FROM zone_offers
+            WHERE tenant_id = $1::uuid
+              AND ($2::uuid IS NULL OR zone_id = $2::uuid)
+              AND ($3::text IS NULL OR package_id = $3)
+              AND ($4::bool = false OR is_active = true)
+            ORDER BY updated_at DESC
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(zone_id)
+        .bind(package_id)
+        .bind(active_only)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+        Ok(rows)
+    }
+
+    pub async fn create_zone_offer(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        dto: CreateZoneOfferRequest,
+    ) -> AppResult<ZoneOffer> {
+        self.require_zones_manage(actor_id, tenant_id).await?;
+        let id = Uuid::new_v4().to_string();
+        let is_active = dto.is_active.unwrap_or(true);
+        let metadata = dto.metadata.unwrap_or_else(|| serde_json::json!({}));
+
+        sqlx::query(
+            r#"
+            INSERT INTO zone_offers
+              (id, tenant_id, zone_id, package_id, price_monthly, price_yearly, is_active, metadata, created_at, updated_at)
+            VALUES
+              ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8, now(), now())
+            "#,
+        )
+        .bind(&id)
+        .bind(tenant_id)
+        .bind(dto.zone_id)
+        .bind(dto.package_id)
+        .bind(dto.price_monthly)
+        .bind(dto.price_yearly)
+        .bind(is_active)
+        .bind(metadata)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        self.get_zone_offer_by_id(tenant_id, &id).await
+    }
+
+    pub async fn update_zone_offer(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        id: &str,
+        dto: UpdateZoneOfferRequest,
+    ) -> AppResult<ZoneOffer> {
+        self.require_zones_manage(actor_id, tenant_id).await?;
+        let current = self.get_zone_offer_by_id(tenant_id, id).await?;
+
+        sqlx::query(
+            r#"
+            UPDATE zone_offers
+            SET zone_id = $1::uuid,
+                package_id = $2,
+                price_monthly = $3,
+                price_yearly = $4,
+                is_active = $5,
+                metadata = $6,
+                updated_at = now()
+            WHERE tenant_id = $7::uuid AND id = $8::uuid
+            "#,
+        )
+        .bind(dto.zone_id.unwrap_or(current.zone_id))
+        .bind(dto.package_id.unwrap_or(current.package_id))
+        .bind(dto.price_monthly.or(current.price_monthly))
+        .bind(dto.price_yearly.or(current.price_yearly))
+        .bind(dto.is_active.unwrap_or(current.is_active))
+        .bind(dto.metadata.unwrap_or(current.metadata))
+        .bind(tenant_id)
+        .bind(id)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        self.get_zone_offer_by_id(tenant_id, id).await
+    }
+
+    pub async fn delete_zone_offer(&self, actor_id: &str, tenant_id: &str, id: &str) -> AppResult<()> {
+        self.require_zones_manage(actor_id, tenant_id).await?;
+        let res = sqlx::query("DELETE FROM zone_offers WHERE tenant_id = $1::uuid AND id = $2::uuid")
+            .bind(tenant_id)
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
+        if res.rows_affected() == 0 {
+            return Err(AppError::NotFound("Zone offer not found".into()));
+        }
+        Ok(())
+    }
+
     pub async fn resolve_zone(
         &self,
         actor_id: &str,
@@ -956,6 +1437,64 @@ impl NetworkMappingService {
         .map_err(AppError::Database)?;
 
         Ok(ResolvedZoneResponse { zone })
+    }
+
+    pub async fn coverage_check(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        dto: CoverageCheckRequest,
+    ) -> AppResult<CoverageCheckResponse> {
+        self.require_coverage_read(actor_id, tenant_id).await?;
+        let zone: Option<ResolvedZone> = sqlx::query_as(
+            r#"
+            SELECT id::text AS id, name, priority
+            FROM service_zones
+            WHERE tenant_id = $1::uuid
+              AND status = 'active'
+              AND ST_Contains(geom, ST_SetSRID(ST_MakePoint($2, $3), 4326))
+            ORDER BY priority ASC, updated_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(dto.lng)
+        .bind(dto.lat)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let offers: Vec<ZoneOffer> = if let Some(z) = &zone {
+            sqlx::query_as(
+                r#"
+                SELECT
+                  id::text AS id,
+                  tenant_id::text AS tenant_id,
+                  zone_id::text AS zone_id,
+                  package_id,
+                  price_monthly::float8 AS price_monthly,
+                  price_yearly::float8 AS price_yearly,
+                  is_active,
+                  metadata,
+                  created_at,
+                  updated_at
+                FROM zone_offers
+                WHERE tenant_id = $1::uuid
+                  AND zone_id = $2::uuid
+                  AND is_active = true
+                ORDER BY updated_at DESC
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(&z.id)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(AppError::Database)?
+        } else {
+            vec![]
+        };
+
+        Ok(CoverageCheckResponse { zone, offers })
     }
 
     async fn get_node_by_id(&self, tenant_id: &str, id: &str) -> AppResult<NetworkNode> {
@@ -1042,5 +1581,31 @@ impl NetworkMappingService {
         .await
         .map_err(AppError::Database)?
         .ok_or_else(|| AppError::NotFound("Zone not found".into()))
+    }
+
+    async fn get_zone_offer_by_id(&self, tenant_id: &str, id: &str) -> AppResult<ZoneOffer> {
+        sqlx::query_as(
+            r#"
+            SELECT
+              id::text AS id,
+              tenant_id::text AS tenant_id,
+              zone_id::text AS zone_id,
+              package_id,
+              price_monthly::float8 AS price_monthly,
+              price_yearly::float8 AS price_yearly,
+              is_active,
+              metadata,
+              created_at,
+              updated_at
+            FROM zone_offers
+            WHERE tenant_id = $1::uuid AND id = $2::uuid
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or_else(|| AppError::NotFound("Zone offer not found".into()))
     }
 }

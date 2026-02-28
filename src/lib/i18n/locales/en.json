@@ -1566,6 +1566,16 @@
         "title": "Current subscription",
         "none": "No active package on this location"
       },
+      "coverage": {
+        "title": "Coverage zone",
+        "select_location": "Select a location first",
+        "checking": "Checking coverage...",
+        "missing_coordinates": "This location has no coordinates yet. Coverage filter is disabled.",
+        "not_covered": "This location is outside active coverage zones.",
+        "zone_packages": "Packages available in this zone",
+        "no_packages_for_zone": "No packages in this coverage zone",
+        "no_packages_for_zone_hint": "Your location is covered, but no package offer is configured for this zone yet."
+      },
       "actions": {
         "buy": "Buy package",
         "switch": "Switch package",

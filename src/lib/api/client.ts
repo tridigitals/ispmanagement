@@ -455,6 +455,12 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       update_service_zone: { method: 'PATCH', path: '/admin/network-mapping/zones/:id' },
       delete_service_zone: { method: 'DELETE', path: '/admin/network-mapping/zones/:id' },
       resolve_service_zone: { method: 'POST', path: '/admin/network-mapping/zones/resolve' },
+      compute_network_path: { method: 'POST', path: '/admin/network-mapping/paths/compute' },
+      check_network_coverage: { method: 'POST', path: '/admin/network-mapping/coverage/check' },
+      list_zone_offers: { method: 'GET', path: '/admin/network-mapping/zone-offers' },
+      create_zone_offer: { method: 'POST', path: '/admin/network-mapping/zone-offers' },
+      update_zone_offer: { method: 'PATCH', path: '/admin/network-mapping/zone-offers/:id' },
+      delete_zone_offer: { method: 'DELETE', path: '/admin/network-mapping/zone-offers/:id' },
       list_zone_node_bindings: {
         method: 'GET',
         path: '/admin/network-mapping/zone-node-bindings',
@@ -1474,6 +1480,8 @@ export const mikrotik = {
       enabled?: boolean;
       maintenance_until?: string | null;
       maintenance_reason?: string | null;
+      latitude?: number | null;
+      longitude?: number | null;
     }): Promise<any> =>
       safeInvoke('create_mikrotik_router', {
         token: getTokenOrThrow(),
@@ -1489,6 +1497,8 @@ export const mikrotik = {
         maintenanceUntil: router.maintenance_until,
         maintenance_reason: router.maintenance_reason,
         maintenanceReason: router.maintenance_reason,
+        latitude: router.latitude,
+        longitude: router.longitude,
       }),
     update: (
       id: string,
@@ -1502,6 +1512,8 @@ export const mikrotik = {
         enabled?: boolean;
         maintenance_until?: string | null;
         maintenance_reason?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
       },
     ): Promise<any> =>
       safeInvoke('update_mikrotik_router', {
@@ -1520,6 +1532,8 @@ export const mikrotik = {
         maintenanceUntil: router.maintenance_until ?? null,
         maintenance_reason: router.maintenance_reason ?? null,
         maintenanceReason: router.maintenance_reason ?? null,
+        latitude: router.latitude ?? null,
+        longitude: router.longitude ?? null,
       }),
     delete: (id: string): Promise<void> =>
       safeInvoke('delete_mikrotik_router', { token: getTokenOrThrow(), id }),
@@ -2303,6 +2317,19 @@ export const networkMapping = {
     delete: (id: string): Promise<void> =>
       safeInvoke('delete_network_link', { token: getTokenOrThrow(), id }),
   },
+  paths: {
+    compute: (dto: {
+      source_node_id: string;
+      target_node_id: string;
+      max_hops?: number;
+      max_utilization_pct?: number;
+      allowed_link_types?: string[];
+      allowed_statuses?: string[];
+      exclude_link_ids?: string[];
+      require_active_nodes?: boolean;
+    }): Promise<any> =>
+      safeInvoke('compute_network_path', { token: getTokenOrThrow(), ...dto }),
+  },
   zones: {
     list: (params?: {
       q?: string;
@@ -2325,6 +2352,18 @@ export const networkMapping = {
       safeInvoke('delete_service_zone', { token: getTokenOrThrow(), id }),
     resolve: (dto: { lat: number; lng: number }): Promise<any> =>
       safeInvoke('resolve_service_zone', { token: getTokenOrThrow(), ...dto }),
+    checkCoverage: (dto: { lat: number; lng: number }): Promise<any> =>
+      safeInvoke('check_network_coverage', { token: getTokenOrThrow(), ...dto }),
+  },
+  zoneOffers: {
+    list: (params?: { zone_id?: string; package_id?: string; active_only?: boolean }): Promise<any[]> =>
+      safeInvoke('list_zone_offers', { token: getTokenOrThrow(), ...(params || {}) }),
+    create: (dto: any): Promise<any> =>
+      safeInvoke('create_zone_offer', { token: getTokenOrThrow(), ...dto }),
+    update: (id: string, dto: any): Promise<any> =>
+      safeInvoke('update_zone_offer', { token: getTokenOrThrow(), id, ...dto }),
+    delete: (id: string): Promise<void> =>
+      safeInvoke('delete_zone_offer', { token: getTokenOrThrow(), id }),
   },
   zoneBindings: {
     list: (params?: { zone_id?: string }): Promise<any[]> =>

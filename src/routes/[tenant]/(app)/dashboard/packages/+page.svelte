@@ -16,12 +16,20 @@
 
   let loading = $state(true);
   let locations = $state<CustomerLocation[]>([]);
-  let packages = $state<IspPackage[]>([]);
+  let basePackages = $state<IspPackage[]>([]);
   let subscriptions = $state<CustomerSubscriptionView[]>([]);
   let selectedLocationId = $state('');
   let selectedCycle = $state<'monthly' | 'yearly'>('monthly');
   let purchasingPackageId = $state<string | null>(null);
   let loadError = $state('');
+  let coverageError = $state('');
+  let coverageChecking = $state(false);
+  let coverageFiltering = $state(false);
+  let coverageZoneId = $state<string | null>(null);
+  let coverageZoneName = $state<string | null>(null);
+  let coverageHasCoordinates = $state(false);
+  let coverageOffersByPackage = $state<Record<string, { price_monthly: number | null; price_yearly: number | null }>>({});
+  let coverageVersion = 0;
   let showCheckoutModal = $state(false);
   let checkoutCandidate = $state<IspPackage | null>(null);
   let showAddLocationModal = $state(false);
@@ -32,10 +40,20 @@
   let newLocationState = $state('');
   let newLocationPostalCode = $state('');
   let newLocationCountry = $state('ID');
+  let newLocationLatitude = $state('');
+  let newLocationLongitude = $state('');
   let newLocationNotes = $state('');
 
   onMount(() => {
     void loadData();
+  });
+
+  $effect(() => {
+    selectedLocationId;
+    basePackages;
+    if (!loading) {
+      void refreshCoverage();
+    }
   });
 
   async function loadData() {
@@ -49,7 +67,7 @@
       ]);
 
       locations = myLocations || [];
-      packages = (myPackages || []).filter((p) => p.is_active);
+      basePackages = (myPackages || []).filter((p) => p.is_active);
       subscriptions = mySubscriptions?.data || [];
 
       if (!selectedLocationId && locations.length > 0) {
@@ -75,6 +93,21 @@
   const selectedLocation = $derived.by(
     () => locations.find((location) => location.id === selectedLocationId) || null,
   );
+  const packages = $derived.by(() => {
+    if (!coverageFiltering) return basePackages;
+    if (!coverageZoneId) return [];
+    return basePackages
+      .filter((pkg) => !!coverageOffersByPackage[pkg.id])
+      .map((pkg) => {
+        const offer = coverageOffersByPackage[pkg.id];
+        if (!offer) return pkg;
+        return {
+          ...pkg,
+          price_monthly: offer.price_monthly ?? pkg.price_monthly,
+          price_yearly: offer.price_yearly ?? pkg.price_yearly,
+        };
+      });
+  });
 
   function hasYearlyPrice(pkg: IspPackage) {
     return Number(pkg.price_yearly || 0) > 0;
@@ -83,6 +116,62 @@
   function getPrice(pkg: IspPackage) {
     if (selectedCycle === 'yearly' && hasYearlyPrice(pkg)) return Number(pkg.price_yearly || 0);
     return Number(pkg.price_monthly || 0);
+  }
+
+  async function refreshCoverage() {
+    const location = selectedLocation;
+    const myVersion = ++coverageVersion;
+    coverageError = '';
+    coverageZoneId = null;
+    coverageZoneName = null;
+    coverageOffersByPackage = {};
+    coverageHasCoordinates = false;
+    coverageFiltering = false;
+
+    if (!location) return;
+
+    if (location.latitude == null || location.longitude == null) {
+      return;
+    }
+
+    coverageHasCoordinates = true;
+    coverageChecking = true;
+    try {
+      const result = await api.networkMapping.zones.checkCoverage({
+        lat: Number(location.latitude),
+        lng: Number(location.longitude),
+      });
+      if (myVersion !== coverageVersion) return;
+
+      coverageZoneId = result?.zone?.id || null;
+      coverageZoneName = result?.zone?.name || null;
+      coverageFiltering = true;
+
+      const map: Record<string, { price_monthly: number | null; price_yearly: number | null }> = {};
+      for (const offer of result?.offers || []) {
+        if (!offer?.package_id) continue;
+        map[offer.package_id] = {
+          price_monthly: offer.price_monthly ?? null,
+          price_yearly: offer.price_yearly ?? null,
+        };
+      }
+      coverageOffersByPackage = map;
+    } catch (e: any) {
+      if (myVersion !== coverageVersion) return;
+      const message = String(e?.message || e || '');
+      if (message.toLowerCase().includes('permission denied')) {
+        // Keep backward compatibility when customer role doesn't have coverage permission yet.
+        coverageError = '';
+      } else {
+        coverageError = message || 'Failed to check coverage';
+      }
+      coverageFiltering = false;
+      coverageZoneId = null;
+      coverageZoneName = null;
+      coverageOffersByPackage = {};
+    } finally {
+      if (myVersion === coverageVersion) coverageChecking = false;
+    }
   }
 
   function formatCurrency(amount: number) {
@@ -187,12 +276,28 @@
     newLocationState = '';
     newLocationPostalCode = '';
     newLocationCountry = 'ID';
+    newLocationLatitude = '';
+    newLocationLongitude = '';
     newLocationNotes = '';
     showAddLocationModal = true;
   }
 
   async function saveMyLocation() {
     if (creatingLocation || !newLocationLabel.trim()) return;
+    const latRaw = newLocationLatitude.trim();
+    const lngRaw = newLocationLongitude.trim();
+    const parsedLat = latRaw ? Number(latRaw) : NaN;
+    const parsedLng = lngRaw ? Number(lngRaw) : NaN;
+    if (latRaw && (Number.isNaN(parsedLat) || parsedLat < -90 || parsedLat > 90)) {
+      toast.error('Latitude must be between -90 and 90');
+      return;
+    }
+    if (lngRaw && (Number.isNaN(parsedLng) || parsedLng < -180 || parsedLng > 180)) {
+      toast.error('Longitude must be between -180 and 180');
+      return;
+    }
+    const latitude = latRaw ? parsedLat : null;
+    const longitude = lngRaw ? parsedLng : null;
     creatingLocation = true;
     try {
       await api.customers.portal.createMyLocation({
@@ -202,6 +307,8 @@
         state: newLocationState.trim() || null,
         postal_code: newLocationPostalCode.trim() || null,
         country: newLocationCountry.trim() || null,
+        latitude,
+        longitude,
         notes: newLocationNotes.trim() || null,
       });
       toast.success($t('common.saved') || 'Saved');
@@ -242,6 +349,9 @@
   {#if loadError}
     <div class="alert alert-error">{loadError}</div>
   {/if}
+  {#if coverageError}
+    <div class="alert alert-error">{coverageError}</div>
+  {/if}
 
   <section class="controls card">
     <div class="field">
@@ -279,6 +389,34 @@
         </div>
       {/if}
     </div>
+    <div class="coverage-status">
+      <div class="status-label">{$t('dashboard.packages.coverage.title') || 'Coverage zone'}</div>
+      {#if !selectedLocationId}
+        <div class="status-empty">
+          {$t('dashboard.packages.coverage.select_location') || 'Select a location first'}
+        </div>
+      {:else if coverageChecking}
+        <div class="status-empty">
+          {$t('dashboard.packages.coverage.checking') || 'Checking coverage...'}
+        </div>
+      {:else if !coverageHasCoordinates}
+        <div class="status-empty">
+          {$t('dashboard.packages.coverage.missing_coordinates') ||
+            'This location has no coordinates yet. Coverage filter is disabled.'}
+        </div>
+      {:else if coverageZoneId}
+        <div class="status-value">{coverageZoneName || coverageZoneId}</div>
+        <div class="status-sub">
+          {$t('dashboard.packages.coverage.zone_packages') || 'Packages available in this zone'}:
+          {packages.length}
+        </div>
+      {:else}
+        <div class="status-empty">
+          {$t('dashboard.packages.coverage.not_covered') ||
+            'This location is outside active coverage zones.'}
+        </div>
+      {/if}
+    </div>
   </section>
 
   {#if !loading && locations.length === 0}
@@ -309,11 +447,19 @@
       <div class="empty-block card">
         <Icon name="package" size={20} />
         <div>
-          <h3>{$t('dashboard.packages.empty.no_packages') || 'No active packages yet'}</h3>
-          <p>
-            {$t('dashboard.packages.empty.no_packages_hint') ||
-              'Your admin has not published package catalog yet.'}
-          </p>
+          {#if coverageFiltering && coverageHasCoordinates}
+            <h3>{$t('dashboard.packages.coverage.no_packages_for_zone') || 'No packages in this coverage zone'}</h3>
+            <p>
+              {$t('dashboard.packages.coverage.no_packages_for_zone_hint') ||
+                'Your location is covered, but no package offer is configured for this zone yet.'}
+            </p>
+          {:else}
+            <h3>{$t('dashboard.packages.empty.no_packages') || 'No active packages yet'}</h3>
+            <p>
+              {$t('dashboard.packages.empty.no_packages_hint') ||
+                'Your admin has not published package catalog yet.'}
+            </p>
+          {/if}
         </div>
       </div>
     {:else}
@@ -484,11 +630,21 @@
         <input class="input" bind:value={newLocationCountry} />
       </label>
     </div>
-    <label class="form-field">
-      <span>Notes</span>
-      <textarea class="input textarea" bind:value={newLocationNotes} rows="3"></textarea>
-    </label>
-    <div class="checkout-actions">
+      <label class="form-field">
+        <span>Notes</span>
+        <textarea class="input textarea" bind:value={newLocationNotes} rows="3"></textarea>
+      </label>
+      <div class="location-grid-2">
+        <label class="form-field">
+          <span>Latitude</span>
+          <input class="input" bind:value={newLocationLatitude} placeholder="-6.200000" />
+        </label>
+        <label class="form-field">
+          <span>Longitude</span>
+          <input class="input" bind:value={newLocationLongitude} placeholder="106.816666" />
+        </label>
+      </div>
+      <div class="checkout-actions">
       <button
         class="btn btn-secondary"
         onclick={() => (showAddLocationModal = false)}
@@ -553,7 +709,7 @@
 
   .controls {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.75rem;
     align-items: end;
   }
@@ -580,6 +736,15 @@
   }
 
   .current-status {
+    grid-column: span 1;
+    border: 1px dashed var(--border-color);
+    border-radius: 10px;
+    padding: 0.7rem;
+    min-height: 40px;
+  }
+
+  .coverage-status {
+    grid-column: span 1;
     border: 1px dashed var(--border-color);
     border-radius: 10px;
     padding: 0.7rem;
