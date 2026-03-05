@@ -262,6 +262,17 @@ pub struct CustomerSubscriptionView {
     pub package_name: Option<String>,
     pub location_label: Option<String>,
     pub router_name: Option<String>,
+    pub latest_work_order_id: Option<String>,
+    pub latest_work_order_status: Option<String>,
+    pub can_request_reopen: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct CustomerPortalSubscriptionStats {
+    pub total: i64,
+    pub active: i64,
+    pub pending_installation: i64,
+    pub needs_attention: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -304,6 +315,17 @@ pub struct InstallationWorkOrderView {
     pub router_name: Option<String>,
     pub assigned_to_name: Option<String>,
     pub assigned_to_email: Option<String>,
+    pub assignment_id: Option<String>,
+    pub assignment_status: Option<String>,
+    pub subscription_status: Option<String>,
+    pub subscription_starts_at: Option<DateTime<Utc>>,
+    pub selected_zone_id: Option<String>,
+    pub selected_zone_name: Option<String>,
+    pub selected_node_id: Option<String>,
+    pub selected_node_name: Option<String>,
+    pub selected_node_score: Option<f64>,
+    pub path_node_ids: Option<serde_json::Value>,
+    pub path_link_ids: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

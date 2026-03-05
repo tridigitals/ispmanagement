@@ -6,8 +6,8 @@
   import { can, user, tenant } from '$lib/stores/auth';
   import { api, type IspPackage, type IspPackageRouterMappingView } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
-import { formatMoney } from '$lib/utils/money';
-import { appSettings } from '$lib/stores/settings';
+  import { formatMoney } from '$lib/utils/money';
+  import { appSettings } from '$lib/stores/settings';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
   import Select2 from '$lib/components/ui/Select2.svelte';
@@ -20,6 +20,8 @@ import { appSettings } from '$lib/stores/settings';
   type RouterRow = { id: string; name: string };
   type ProfileSuggestion = { id: string; name: string };
   type PoolSuggestion = { id: string; name: string };
+  type ServiceType = 'internet_pppoe' | 'hotspot' | 'vpn';
+  type PackageSortBy = 'name' | 'type' | 'price' | 'status' | 'mappings';
 
   const tenantCtx = $derived.by(() =>
     resolveTenantContext({
@@ -46,13 +48,17 @@ import { appSettings } from '$lib/stores/settings';
   let packagePage = $state(0);
   let packagePageSize = $state(10);
   let packageTableVersion = $state(0);
+  let packageSortBy = $state<PackageSortBy>('name');
+  let packageSortDirection = $state<'asc' | 'desc'>('asc');
 
   let routers = $state<RouterRow[]>([]);
   let mappings = $state<IspPackageRouterMappingView[]>([]);
 
   // Create/Edit package
+  let showServiceTypePicker = $state(false);
   let showPkgModal = $state(false);
   let editingPkg = $state<IspPackage | null>(null);
+  let pkgServiceType = $state<ServiceType>('internet_pppoe');
   let pkgName = $state('');
   let pkgDesc = $state('');
   let pkgFeatures = $state<string[]>([]);
@@ -113,10 +119,30 @@ import { appSettings } from '$lib/stores/settings';
   });
 
   const columns = $derived.by(() => [
-    { key: 'name', label: $t('admin.network.packages.columns.name') || 'Name' },
-    { key: 'price', label: $t('admin.network.packages.columns.price') || 'Price', width: '160px' },
-    { key: 'status', label: $t('admin.network.packages.columns.status') || 'Status', width: '120px' },
-    { key: 'mappings', label: $t('admin.network.packages.columns.mappings') || 'Mapped', width: '140px' },
+    {
+      key: 'name',
+      label: $t('admin.services.columns.name') || $t('admin.network.packages.columns.name') || 'Name',
+      sortable: true,
+    },
+    { key: 'type', label: $t('admin.services.columns.type') || 'Type', width: '140px', sortable: true },
+    {
+      key: 'price',
+      label: $t('admin.services.columns.price') || $t('admin.network.packages.columns.price') || 'Price',
+      width: '160px',
+      sortable: true,
+    },
+    {
+      key: 'status',
+      label: $t('admin.services.columns.status') || $t('admin.network.packages.columns.status') || 'Status',
+      width: '120px',
+      sortable: true,
+    },
+    {
+      key: 'mappings',
+      label: $t('admin.services.columns.mappings') || $t('admin.network.packages.columns.mappings') || 'Mapped',
+      width: '140px',
+      sortable: true,
+    },
     { key: 'actions', label: '', align: 'right' as const, width: '220px' },
   ]);
 
@@ -147,6 +173,103 @@ import { appSettings } from '$lib/stores/settings';
     mappings.filter((m) => m.package_id === packageId).length;
   const firstMappingFor = (packageId: string) =>
     mappings.find((m) => m.package_id === packageId) || null;
+  const normalizeServiceType = (value?: string | null): ServiceType => {
+    const key = String(value || 'internet_pppoe').toLowerCase();
+    if (key === 'hotspot') return 'hotspot';
+    if (key === 'vpn') return 'vpn';
+    return 'internet_pppoe';
+  };
+  const isInternetType = (value?: string | null) => normalizeServiceType(value) === 'internet_pppoe';
+  const serviceTypeLabel = (value?: string | null) => {
+    const key = String(value || 'internet_pppoe').toLowerCase();
+    if (key === 'hotspot') return $t('admin.services.types.hotspot') || 'Hotspot';
+    if (key === 'vpn') return $t('admin.services.types.vpn') || 'VPN';
+    return $t('admin.services.types.internet_pppoe') || 'Internet / PPPoE';
+  };
+  const serviceTypeCards = $derived.by(() => [
+    {
+      value: 'internet_pppoe' as ServiceType,
+      icon: 'router',
+      title: $t('admin.services.types.internet_pppoe') || 'Internet / PPPoE',
+      subtitle:
+        $t('admin.services.type_picker.internet_subtitle') ||
+        'Fixed internet service with PPPoE provisioning and optional router profile mapping.',
+      tags: [
+        $t('admin.services.type_picker.tag_provisioning') || 'Provisioning',
+        $t('admin.services.type_picker.tag_mapping') || 'Router mapping',
+      ],
+    },
+    {
+      value: 'hotspot' as ServiceType,
+      icon: 'wifi',
+      title: $t('admin.services.types.hotspot') || 'Hotspot',
+      subtitle:
+        $t('admin.services.type_picker.hotspot_subtitle') ||
+        'Voucher or captive portal service for shared/public wireless access zones.',
+      tags: [
+        $t('admin.services.type_picker.tag_shared_access') || 'Shared access',
+        $t('admin.services.type_picker.tag_portal_ready') || 'Portal ready',
+      ],
+    },
+    {
+      value: 'vpn' as ServiceType,
+      icon: 'shield',
+      title: $t('admin.services.types.vpn') || 'VPN',
+      subtitle:
+        $t('admin.services.type_picker.vpn_subtitle') ||
+        'Secure tunnel service for branch office, remote team, or dedicated private access.',
+      tags: [
+        $t('admin.services.type_picker.tag_secure_tunnel') || 'Secure tunnel',
+        $t('admin.services.type_picker.tag_private_access') || 'Private access',
+      ],
+    },
+  ]);
+  const serviceTypeFeatureSuggestions: Record<ServiceType, string[]> = {
+    internet_pppoe: ['PPPoE authentication', 'Dedicated bandwidth', '24/7 monitoring'],
+    hotspot: ['Captive portal login', 'Voucher support', 'Session/time limit'],
+    vpn: ['Encrypted tunnel', 'Site-to-site ready', 'Private subnet routing'],
+  };
+
+  function addFeatureIfMissing(value: string) {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    if (pkgFeatures.some((x) => x.toLowerCase() === trimmed.toLowerCase())) return;
+    pkgFeatures = [...pkgFeatures, trimmed];
+  }
+
+  function handlePackageSort(key: string) {
+    const allowed: PackageSortBy[] = ['name', 'type', 'price', 'status', 'mappings'];
+    if (!allowed.includes(key as PackageSortBy)) return;
+    const typed = key as PackageSortBy;
+    if (packageSortBy === typed) {
+      packageSortDirection = packageSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      packageSortBy = typed;
+      packageSortDirection = typed === 'price' || typed === 'mappings' ? 'desc' : 'asc';
+    }
+    packagePage = 0;
+    packageTableVersion += 1;
+    void loadPackages();
+  }
+
+  function resetCreateForm(type: ServiceType) {
+    pkgServiceType = type;
+    pkgName = '';
+    pkgDesc = '';
+    pkgFeatures = [];
+    pkgFeatureInput = '';
+    pkgActive = true;
+    pkgPriceMonthly = 0;
+    pkgPriceYearly = 0;
+    pkgYearlyEnabled = false;
+    pkgMapEnabled = false;
+    pkgMapRouterId = '';
+    pkgMapProfile = '';
+    pkgMapPool = '';
+    pkgProfileSuggestions = [];
+    pkgPoolSuggestions = [];
+    pkgFormTab = 'details';
+  }
 
   onMount(() => {
     if (!$can('read', 'isp_packages') && !$can('manage', 'isp_packages')) {
@@ -190,6 +313,8 @@ import { appSettings } from '$lib/stores/settings';
       q: q.trim() || undefined,
       page: packagePage + 1,
       per_page: packagePageSize,
+      sort_by: packageSortBy,
+      sort_dir: packageSortDirection,
     });
     packages = res.data || [];
     total = Number(res.total || 0);
@@ -202,29 +327,22 @@ import { appSettings } from '$lib/stores/settings';
   function openCreate() {
     if (!$can('manage', 'isp_packages')) return;
     editingPkg = null;
-    pkgName = '';
-    pkgDesc = '';
-    pkgFeatures = [];
-    pkgFeatureInput = '';
-    pkgActive = true;
-    pkgPriceMonthly = 0;
-    pkgPriceYearly = 0;
-    pkgYearlyEnabled = false;
+    resetCreateForm('internet_pppoe');
+    showServiceTypePicker = true;
+  }
 
-    pkgMapEnabled = false;
-    pkgMapRouterId = '';
-    pkgMapProfile = '';
-    pkgMapPool = '';
-    pkgProfileSuggestions = [];
-    pkgPoolSuggestions = [];
-    pkgFormTab = 'details';
-
+  function startCreateWithType(type: ServiceType) {
+    editingPkg = null;
+    resetCreateForm(type);
+    showServiceTypePicker = false;
     showPkgModal = true;
   }
 
   function openEdit(p: IspPackage) {
     if (!$can('manage', 'isp_packages')) return;
+    showServiceTypePicker = false;
     editingPkg = p;
+    pkgServiceType = normalizeServiceType(p.service_type);
     pkgName = p.name;
     pkgDesc = p.description || '';
     pkgFeatures = Array.isArray(p.features) ? [...p.features] : [];
@@ -237,7 +355,7 @@ import { appSettings } from '$lib/stores/settings';
     pkgPoolSuggestions = [];
 
     const existing = firstMappingFor(p.id);
-    if (existing) {
+    if (isInternetType(pkgServiceType) && existing) {
       pkgMapEnabled = true;
       pkgMapRouterId = existing.router_id || '';
       pkgMapProfile = existing.router_profile_name || '';
@@ -270,7 +388,14 @@ import { appSettings } from '$lib/stores/settings';
     try {
       const wasCreate = !editingPkg;
       let pkg = editingPkg;
+      if (!isInternetType(pkgServiceType)) {
+        pkgMapEnabled = false;
+        pkgMapRouterId = '';
+        pkgMapProfile = '';
+        pkgMapPool = '';
+      }
       const payload = {
+        service_type: pkgServiceType,
         name: pkgName.trim(),
         description: pkgDesc.trim() || null,
         features: pkgFeatures,
@@ -287,7 +412,7 @@ import { appSettings } from '$lib/stores/settings';
         editingPkg = pkg;
       }
 
-      if (pkgMapEnabled && pkgMapRouterId && pkgMapProfile.trim()) {
+      if (isInternetType(pkgServiceType) && pkgMapEnabled && pkgMapRouterId && pkgMapProfile.trim()) {
         await api.ispPackages.routerMappings.upsert({
           router_id: pkgMapRouterId,
           package_id: pkg.id,
@@ -298,8 +423,8 @@ import { appSettings } from '$lib/stores/settings';
 
       toast.success(
         wasCreate
-          ? ($t('admin.network.packages.toasts.created') || 'Package created')
-          : ($t('admin.network.packages.toasts.updated') || 'Package updated'),
+          ? ($t('admin.services.toasts.created') || $t('admin.network.packages.toasts.created') || 'Service created')
+          : ($t('admin.services.toasts.updated') || $t('admin.network.packages.toasts.updated') || 'Service updated'),
       );
 
       showPkgModal = false;
@@ -313,7 +438,7 @@ import { appSettings } from '$lib/stores/settings';
 
   async function deletePackage(p: IspPackage) {
     if (!$can('manage', 'isp_packages')) return;
-    if (!confirm($t('admin.network.packages.confirm_delete') || 'Delete this package?')) return;
+    if (!confirm($t('admin.services.confirm_delete') || $t('admin.network.packages.confirm_delete') || 'Delete this service?')) return;
     try {
       await api.ispPackages.packages.delete(p.id);
       toast.success($t('common.deleted') || 'Deleted');
@@ -325,6 +450,10 @@ import { appSettings } from '$lib/stores/settings';
 
   async function openMapping(p: IspPackage) {
     if (!$can('manage', 'isp_packages')) return;
+    if (!isInternetType(p.service_type)) {
+      toast.error($t('admin.services.mapping.only_internet') || 'Router mapping is only available for Internet / PPPoE services.');
+      return;
+    }
     mapPkg = p;
     const existing = firstMappingFor(p.id);
     mapRouterId = existing?.router_id || '';
@@ -413,8 +542,8 @@ import { appSettings } from '$lib/stores/settings';
 
 <div class="page-content fade-in">
   <NetworkPageHeader
-    title={$t('admin.network.packages.title') || 'Packages'}
-    subtitle={$t('admin.network.packages.subtitle') || 'Create internet packages and map them to router PPP profiles (per-router).'}
+    title={$t('admin.services.title') || $t('admin.network.packages.title') || 'Services'}
+    subtitle={$t('admin.services.subtitle') || 'Create services and configure service-specific options.'}
   >
     {#snippet actions()}
       <button class="btn ghost" type="button" onclick={() => void load()} disabled={loading}>
@@ -424,7 +553,7 @@ import { appSettings } from '$lib/stores/settings';
       {#if $can('manage', 'isp_packages')}
         <button class="btn" type="button" onclick={openCreate}>
           <Icon name="plus" size={16} />
-          {$t('admin.network.packages.actions.add') || 'Add package'}
+          {$t('admin.services.actions.add') || $t('admin.network.packages.actions.add') || 'Add service'}
         </button>
       {/if}
     {/snippet}
@@ -439,7 +568,7 @@ import { appSettings } from '$lib/stores/settings';
           <input
             id="packages-search"
             type="text"
-            placeholder={$t('admin.network.packages.search') || 'Search packages...'}
+            placeholder={$t('admin.services.search') || $t('admin.network.packages.search') || 'Search services...'}
             value={q}
             oninput={(e) => {
               q = (e.currentTarget as HTMLInputElement).value;
@@ -478,11 +607,14 @@ import { appSettings } from '$lib/stores/settings';
         columns={columns}
         data={packages}
         loading={loading}
-        emptyText={$t('admin.network.packages.empty') || 'No packages.'}
+        emptyText={$t('admin.services.empty') || $t('admin.network.packages.empty') || 'No services.'}
         pagination
         serverSide
         count={total}
         pageSize={packagePageSize}
+        sortKey={packageSortBy}
+        sortDirection={packageSortDirection}
+        onsort={handlePackageSort}
         onchange={(nextPage) => {
           packagePage = nextPage;
           void loadPackages();
@@ -513,6 +645,8 @@ import { appSettings } from '$lib/stores/settings';
               </div>
             {/if}
           </div>
+        {:else if key === 'type'}
+          <span class="badge neutral">{serviceTypeLabel(row.service_type)}</span>
         {:else if key === 'price'}
           <div class="stack">
             <div class="mono">{formatDisplayPrice(Number(row.price_monthly || 0))}<span class="unit">/mo</span></div>
@@ -529,13 +663,19 @@ import { appSettings } from '$lib/stores/settings';
             <span class="badge warn">{$t('common.disabled') || 'Disabled'}</span>
           {/if}
         {:else if key === 'mappings'}
-          <span class="pill mono">{mappingCountFor(row.id)}</span>
+          {#if isInternetType(row.service_type)}
+            <span class="pill mono">{mappingCountFor(row.id)}</span>
+          {:else}
+            <span class="meta">-</span>
+          {/if}
         {:else if key === 'actions'}
           <div class="row-actions">
             {#if $can('manage', 'isp_packages')}
-              <button class="btn-icon" title={$t('admin.network.packages.actions.map') || 'Map to router'} onclick={() => openMapping(row)}>
-                <Icon name="router" size={16} />
-              </button>
+              {#if isInternetType(row.service_type)}
+                <button class="btn-icon" title={$t('admin.network.packages.actions.map') || 'Map to router'} onclick={() => openMapping(row)}>
+                  <Icon name="router" size={16} />
+                </button>
+              {/if}
               <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => openEdit(row)}>
                 <Icon name="edit" size={16} />
               </button>
@@ -554,8 +694,48 @@ import { appSettings } from '$lib/stores/settings';
 </div>
 
 <Modal
+  show={showServiceTypePicker}
+  title={$t('admin.services.type_picker.title') || 'Choose Service Type'}
+  width="860px"
+  onclose={() => (showServiceTypePicker = false)}
+>
+  <div class="type-picker-wrap">
+    <p class="type-picker-subtitle">
+      {$t('admin.services.type_picker.subtitle') ||
+        'Select the service category first, then continue to the detailed service form.'}
+    </p>
+    <div class="type-card-grid">
+      {#each serviceTypeCards as card}
+        <button
+          type="button"
+          class="type-card"
+          onclick={() => startCreateWithType(card.value)}
+        >
+          <div class="type-card-head">
+            <span class="type-card-icon">
+              <Icon name={card.icon} size={18} />
+            </span>
+            <span class="type-card-title">{card.title}</span>
+          </div>
+          <p class="type-card-subtitle">{card.subtitle}</p>
+          <div class="type-card-tags">
+            {#each card.tags as tag}
+              <span class="type-card-tag">{tag}</span>
+            {/each}
+          </div>
+          <span class="type-card-cta">
+            {$t('admin.services.type_picker.continue') || 'Continue'}
+            <Icon name="arrow-right" size={14} />
+          </span>
+        </button>
+      {/each}
+    </div>
+  </div>
+</Modal>
+
+<Modal
   show={showPkgModal}
-  title={editingPkg ? ($t('admin.network.packages.actions.edit') || 'Edit package') : ($t('admin.network.packages.actions.add') || 'Add package')}
+  title={editingPkg ? ($t('admin.services.actions.edit') || $t('admin.network.packages.actions.edit') || 'Edit service') : ($t('admin.services.actions.add') || $t('admin.network.packages.actions.add') || 'Add service')}
   width="640px"
   onclose={() => (showPkgModal = false)}
 >
@@ -580,6 +760,40 @@ import { appSettings } from '$lib/stores/settings';
     </div>
 
     {#if pkgFormTab === 'details'}
+      <div class="selected-type-banner">
+        <div class="selected-type-main">
+          <span class="selected-type-label">{$t('admin.services.fields.service_type') || 'Service type'}</span>
+          <span class="badge neutral">{serviceTypeLabel(pkgServiceType)}</span>
+        </div>
+        {#if !editingPkg}
+          <button
+            class="btn ghost btn-sm"
+            type="button"
+            onclick={() => {
+              showPkgModal = false;
+              showServiceTypePicker = true;
+            }}
+          >
+            <Icon name="refresh-cw" size={14} />
+            {$t('admin.services.type_picker.change') || 'Change type'}
+          </button>
+        {/if}
+      </div>
+
+      <div class="type-hints">
+        {#each serviceTypeFeatureSuggestions[pkgServiceType] as suggestion}
+          <button
+            type="button"
+            class="hint-chip"
+            onclick={() => addFeatureIfMissing(suggestion)}
+            title={$t('admin.services.type_picker.add_as_feature') || 'Add as feature'}
+          >
+            <Icon name="plus" size={12} />
+            {suggestion}
+          </button>
+        {/each}
+      </div>
+
       <label>
         <span>{$t('admin.network.packages.fields.name') || 'Name'}</span>
         <input class="input" bind:value={pkgName} />
@@ -640,17 +854,23 @@ import { appSettings } from '$lib/stores/settings';
         <Toggle bind:checked={pkgActive} ariaLabel={$t('admin.network.packages.fields.active') || 'Active'} />
       </div>
 
-      <div class="toggle-row">
-        <div class="toggle-text">
-          <div class="toggle-title">{$t('admin.network.packages.mapping.inline_title') || 'Map to router now'}</div>
-          <div class="toggle-sub">
-            {$t('admin.network.packages.mapping.inline_hint') || 'Optional: prefill router profile/pool for this package (per-router).'}
+      {#if isInternetType(pkgServiceType)}
+        <div class="toggle-row">
+          <div class="toggle-text">
+            <div class="toggle-title">{$t('admin.network.packages.mapping.inline_title') || 'Map to router now'}</div>
+            <div class="toggle-sub">
+              {$t('admin.network.packages.mapping.inline_hint') || 'Optional: prefill router profile/pool for this package (per-router).'}
+            </div>
           </div>
+          <Toggle bind:checked={pkgMapEnabled} ariaLabel={$t('admin.network.packages.mapping.inline_title') || 'Map to router now'} />
         </div>
-        <Toggle bind:checked={pkgMapEnabled} ariaLabel={$t('admin.network.packages.mapping.inline_title') || 'Map to router now'} />
-      </div>
+      {:else}
+        <div class="field-hint">
+          {$t('admin.services.mapping.not_required') || 'Router PPP profile mapping is not required for this service type.'}
+        </div>
+      {/if}
 
-      {#if pkgMapEnabled}
+      {#if isInternetType(pkgServiceType) && pkgMapEnabled}
         <div class="grid2">
           <label>
             <span>{$t('admin.network.packages.mapping.router') || 'Router'}</span>
@@ -749,7 +969,7 @@ import { appSettings } from '$lib/stores/settings';
       <button class="btn ghost" type="button" onclick={() => (showPkgModal = false)} disabled={saving}>
         {$t('common.cancel') || 'Cancel'}
       </button>
-      <button class="btn" type="button" onclick={savePackage} disabled={saving || !pkgName.trim() || !(Number(pkgPriceMonthly) > 0) || (pkgYearlyEnabled && !(Number(pkgPriceYearly) > 0)) || (pkgMapEnabled && (!pkgMapRouterId || !pkgMapProfile.trim()))}>
+      <button class="btn" type="button" onclick={savePackage} disabled={saving || !pkgName.trim() || !(Number(pkgPriceMonthly) > 0) || (pkgYearlyEnabled && !(Number(pkgPriceYearly) > 0)) || (isInternetType(pkgServiceType) && pkgMapEnabled && (!pkgMapRouterId || !pkgMapProfile.trim()))}>
         <Icon name="save" size={16} />
         {$t('common.save') || 'Save'}
       </button>
@@ -872,6 +1092,12 @@ import { appSettings } from '$lib/stores/settings';
     cursor: not-allowed;
   }
 
+  .btn-sm {
+    padding: 0.5rem 0.7rem;
+    border-radius: 10px;
+    font-size: 0.82rem;
+  }
+
   .search-wrap {
     display: flex;
     align-items: center;
@@ -981,6 +1207,12 @@ import { appSettings } from '$lib/stores/settings';
     border-color: rgba(245, 158, 11, 0.28);
   }
 
+  .badge.neutral {
+    background: rgba(99, 102, 241, 0.12);
+    color: rgba(199, 210, 254, 0.98);
+    border-color: rgba(99, 102, 241, 0.32);
+  }
+
   .pill {
     display: inline-flex;
     align-items: center;
@@ -1027,6 +1259,99 @@ import { appSettings } from '$lib/stores/settings';
     gap: 0.9rem;
   }
 
+  .type-picker-wrap {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .type-picker-subtitle {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .type-card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.8rem;
+  }
+
+  .type-card {
+    text-align: left;
+    border: 1px solid var(--border-color);
+    background: linear-gradient(165deg, rgba(99, 102, 241, 0.1), rgba(15, 23, 42, 0.45));
+    border-radius: 14px;
+    padding: 0.95rem;
+    color: var(--text-primary);
+    display: grid;
+    gap: 0.65rem;
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+  }
+
+  .type-card:hover {
+    border-color: rgba(99, 102, 241, 0.45);
+    transform: translateY(-2px);
+    background: linear-gradient(165deg, rgba(99, 102, 241, 0.16), rgba(15, 23, 42, 0.6));
+  }
+
+  .type-card-head {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+
+  .type-card-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    background: rgba(99, 102, 241, 0.15);
+    color: rgba(199, 210, 254, 0.98);
+  }
+
+  .type-card-title {
+    font-weight: 900;
+    letter-spacing: 0.01em;
+  }
+
+  .type-card-subtitle {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.45;
+    min-height: 3.7em;
+  }
+
+  .type-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .type-card-tag {
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 0.22rem 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 750;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .type-card-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 850;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+  }
+
   .form-tabs {
     display: flex;
     gap: 0.5rem;
@@ -1047,6 +1372,57 @@ import { appSettings } from '$lib/stores/settings';
     color: var(--text-primary);
     border-color: rgba(99, 102, 241, 0.45);
     background: rgba(99, 102, 241, 0.12);
+  }
+
+  .selected-type-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 0.8rem 0.9rem;
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .selected-type-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+  }
+
+  .selected-type-label {
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.72rem;
+    font-weight: 850;
+  }
+
+  .type-hints {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
+  .hint-chip {
+    border: 1px dashed rgba(99, 102, 241, 0.45);
+    border-radius: 999px;
+    padding: 0.35rem 0.62rem;
+    background: rgba(99, 102, 241, 0.08);
+    color: var(--text-primary);
+    font-weight: 750;
+    font-size: 0.78rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    cursor: pointer;
+  }
+
+  .hint-chip:hover {
+    background: rgba(99, 102, 241, 0.15);
+    border-style: solid;
   }
 
   .grid2 {
@@ -1229,6 +1605,15 @@ import { appSettings } from '$lib/stores/settings';
 
     .grid2 {
       grid-template-columns: 1fr;
+    }
+
+    .type-card-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .selected-type-banner {
+      flex-direction: column;
+      align-items: stretch;
     }
   }
 </style>

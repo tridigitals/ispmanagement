@@ -19,6 +19,9 @@
     onpageSizeChange,
     searchable = false,
     searchPlaceholder = '',
+    sortKey = null,
+    sortDirection = null,
+    onsort,
     children,
     empty,
     cell,
@@ -30,6 +33,7 @@
       class?: string;
       align?: string;
       width?: string;
+      sortable?: boolean;
     }[];
     data?: any[];
     keyField?: string;
@@ -44,6 +48,9 @@
     onpageSizeChange?: (size: number) => void;
     searchable?: boolean;
     searchPlaceholder?: string;
+    sortKey?: string | null;
+    sortDirection?: 'asc' | 'desc' | null;
+    onsort?: (key: string) => void;
     children?: import('svelte').Snippet;
     empty?: import('svelte').Snippet;
     cell?: import('svelte').Snippet<[any]>; // { item, column, key }
@@ -80,6 +87,11 @@
     currentSize = newSize;
     currentPage = 0;
     if (onpageSizeChange) onpageSizeChange(newSize);
+  }
+
+  function handleSort(columnKey: string, sortable?: boolean) {
+    if (!sortable || !onsort) return;
+    onsort(columnKey);
   }
 
   let filteredData = $derived(
@@ -148,7 +160,28 @@
               style:text-align={col.align || 'left'}
               style:width={col.width}
             >
-              {col.label}
+              {#if col.sortable && onsort}
+                <button
+                  type="button"
+                  class="sort-trigger"
+                  style:justify-content={col.align === 'right'
+                    ? 'flex-end'
+                    : col.align === 'center'
+                      ? 'center'
+                      : 'flex-start'}
+                  aria-label={`Sort by ${col.label}`}
+                  onclick={() => handleSort(col.key, col.sortable)}
+                >
+                  <span>{col.label}</span>
+                  {#if sortKey === col.key}
+                    <Icon name={sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'} size={13} />
+                  {:else}
+                    <span class="sort-hint">↕</span>
+                  {/if}
+                </button>
+              {:else}
+                {col.label}
+              {/if}
             </th>
           {/each}
         </tr>
@@ -218,6 +251,32 @@
     font-weight: 600;
     border-bottom: 1px solid var(--border-color);
     white-space: nowrap;
+  }
+
+  .sort-trigger {
+    border: none;
+    background: transparent;
+    color: inherit;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    cursor: pointer;
+  }
+
+  .sort-trigger:hover {
+    color: var(--text-primary);
+  }
+
+  .sort-hint {
+    font-size: 0.76rem;
+    line-height: 1;
+    opacity: 0.7;
   }
 
   .responsive-table td {

@@ -423,9 +423,10 @@
     "pppoe": "PPPoE",
     "ppp_profiles": "Profil PPP",
     "ip_pools": "Pool IP",
+    "services": "Layanan",
     "packages": "Paket",
-    "packages_pending_alert": "Ada invoice pending. Silakan cek billing paket.",
-    "packages_overdue_alert": "Ada invoice lewat jatuh tempo. Silakan cek billing paket.",
+    "packages_pending_alert": "Ada invoice pending. Silakan cek billing layanan.",
+    "packages_overdue_alert": "Ada invoice lewat jatuh tempo. Silakan cek billing layanan.",
     "expand": "Perluas sidebar",
     "collapse": "Ciutkan sidebar",
     "exit": "Keluar",
@@ -1233,6 +1234,25 @@
           "instructions_label": "Instruksi Pembayaran",
           "instructions_desc": "Instruksi yang ditampilkan saat pengguna memilih Transfer Manual.",
           "bank_accounts_title": "Rekening Bank"
+        },
+        "installation_sla": {
+          "title": "Pengingat SLA Instalasi",
+          "enable": {
+            "label": "Aktifkan pengingat SLA instalasi",
+            "desc": "Kirim notifikasi otomatis saat work order instalasi melewati SLA."
+          },
+          "overdue_minutes": {
+            "label": "Batas terlambat (menit)",
+            "desc": "Work order terjadwal dianggap terlambat setelah melewati menit ini."
+          },
+          "cooldown_minutes": {
+            "label": "Jeda pengingat (menit)",
+            "desc": "Jeda minimum sebelum pengingat yang sama dikirim ulang untuk work order yang sama."
+          },
+          "scheduler_interval_minutes": {
+            "label": "Interval scheduler (menit)",
+            "desc": "Seberapa sering backend mengecek work order instalasi overdue di semua tenant."
+          }
         }
       },
       "fields": {
@@ -1552,11 +1572,23 @@
       }
     },
     "packages": {
-      "title": "Paket Internet",
-      "subtitle": "Pilih paket Anda dan buat invoice pembayaran secara instan.",
+      "title": "Layanan Internet",
+      "subtitle": "Kelola layanan Anda dan kirim permintaan instalasi secara instan.",
+      "tabs": {
+        "ordered": "Layanan Saya",
+        "order_new": "Pesan Layanan"
+      },
       "fields": {
         "location": "Lokasi",
-        "billing_cycle": "Siklus tagihan"
+        "billing_cycle": "Siklus tagihan",
+        "package": "Paket",
+        "total": "Total"
+      },
+      "builder": {
+        "title": "Builder Pesanan",
+        "subtitle": "Buat beberapa pesanan paket untuk alamat berbeda dalam satu alur checkout.",
+        "checkout_all": "Checkout semua",
+        "empty": "Belum ada item pesanan"
       },
       "cycles": {
         "monthly": "Bulanan",
@@ -1565,6 +1597,11 @@
       "current": {
         "title": "Langganan saat ini",
         "none": "Belum ada paket aktif di lokasi ini"
+      },
+      "ordered": {
+        "title": "Daftar Layanan Terpesan",
+        "subtitle": "Semua langganan dari lokasi yang terhubung dengan akun Anda.",
+        "empty": "Belum ada pesanan layanan. Mulai dari tab Pesan Layanan."
       },
       "coverage": {
         "title": "Zona cakupan",
@@ -1580,10 +1617,15 @@
         "buy": "Beli paket",
         "switch": "Ganti paket",
         "current": "Paket aktif",
-        "add_location": "Tambah lokasi"
+        "add_location": "Tambah lokasi",
+        "add_to_order": "Tambah ke pesanan",
+        "request_again": "Ajukan Lagi",
+        "request_reopen": "Ajukan Buka Ulang",
+        "order_again": "Pesan Lagi"
       },
       "badges": {
-        "active": "Aktif"
+        "active": "Aktif",
+        "rerequested": "Ajukan Ulang"
       },
       "empty": {
         "no_locations": "Belum ada lokasi",
@@ -1597,7 +1639,133 @@
         "yearly_unavailable": "Tagihan tahunan belum tersedia untuk paket ini",
         "already_active": "Paket ini sudah aktif",
         "checkout_success": "Invoice berhasil dibuat. Lanjutkan ke pembayaran.",
-        "checkout_failed": "Checkout gagal"
+        "checkout_failed": "Checkout gagal",
+        "request_success": "Permintaan instalasi berhasil dikirim.",
+        "request_failed": "Gagal mengirim permintaan instalasi",
+        "added_to_order": "Berhasil ditambahkan ke builder pesanan",
+        "bulk_checkout_success": "invoice berhasil dibuat",
+        "bulk_request_success": "permintaan instalasi berhasil dikirim",
+        "package_unavailable": "Paket sudah tidak tersedia. Silakan pilih paket lain.",
+        "location_unavailable": "Lokasi sudah tidak tersedia. Silakan tambah/pilih lokasi lain."
+      }
+    },
+    "internet_order": {
+      "hero": {
+        "title": "Pesan Layanan Internet",
+        "subtitle": "Alur: pilih alamat, pilih paket, tinjau pesanan, lalu kirim permintaan instalasi."
+      },
+      "steps": {
+        "address": "Alamat",
+        "package": "Paket",
+        "review": "Tinjau"
+      },
+      "actions": {
+        "service_types": "Jenis Layanan",
+        "billing_invoices": "Tagihan & Invoice",
+        "refresh": "Muat Ulang",
+        "add_location": "Tambah Lokasi",
+        "next_choose_package": "Lanjut: Pilih Paket",
+        "back_to_address": "Kembali ke Alamat",
+        "selected": "Terpilih",
+        "select_package": "Pilih Paket",
+        "order_now": "Pesan Sekarang",
+        "back_to_package": "Kembali ke Paket",
+        "add_more": "Tambah Lagi",
+        "submit_installation_request": "Kirim Permintaan Instalasi",
+        "cancel": "Batal",
+        "save": "Simpan"
+      },
+      "labels": {
+        "location": "Lokasi",
+        "coverage_zone": "Zona Cakupan",
+        "billing_cycle": "Siklus Tagihan",
+        "selected_address": "Alamat Terpilih",
+        "monthly_plan": "Paket bulanan",
+        "yearly_available": "opsi tahunan tersedia",
+        "yearly_not_available": "Paket tahunan belum tersedia",
+        "current_item_total": "Total Item Saat Ini",
+        "total_order_amount": "Total Pesanan"
+      },
+      "coverage": {
+        "checking": "Memeriksa cakupan...",
+        "select_location": "Pilih lokasi terlebih dahulu",
+        "missing_coordinates": "Lokasi ini belum memiliki koordinat. Filter cakupan dinonaktifkan.",
+        "not_covered": "Lokasi ini di luar zona cakupan aktif."
+      },
+      "stage": {
+        "address": {
+          "title": "Pilih Alamat",
+          "subtitle": "Pilih alamat yang sudah ada atau tambahkan alamat baru terlebih dahulu."
+        },
+        "package": {
+          "title": "Pilih Paket"
+        },
+        "review": {
+          "title": "Tinjau & Kirim",
+          "subtitle": "Semua item berikut akan dikirim sebagai permintaan instalasi."
+        }
+      },
+      "empty": {
+        "no_locations_title": "Belum ada lokasi",
+        "no_locations_subtitle": "Tambahkan minimal satu lokasi untuk melanjutkan pemesanan internet.",
+        "no_packages_title": "Tidak ada paket tersedia untuk lokasi ini",
+        "no_packages_subtitle": "Coba lokasi lain atau hubungi admin.",
+        "no_order_items_title": "Belum ada item pesanan",
+        "no_order_items_subtitle": "Tambahkan minimal satu paket terlebih dahulu."
+      },
+      "sidecard": {
+        "title": "Ringkasan Pilihan",
+        "step_badge": "Langkah 2 / 3",
+        "address": "Alamat",
+        "package": "Paket",
+        "billing": "Tagihan",
+        "hint": "Anda bisa menambah layanan lain nanti pada langkah Tinjau."
+      },
+      "modal": {
+        "add_location_title": "Tambah Lokasi",
+        "fields": {
+          "label": "Label",
+          "address": "Alamat",
+          "city": "Kota",
+          "state": "Provinsi",
+          "postal_code": "Kode Pos",
+          "country": "Negara",
+          "notes": "Catatan",
+          "latitude": "Latitude",
+          "longitude": "Longitude"
+        },
+        "placeholders": {
+          "label": "Rumah / Kantor",
+          "address": "Alamat jalan"
+        }
+      },
+      "status": {
+        "loading_packages": "Memuat paket...",
+        "processing": "Memproses...",
+        "saving": "Menyimpan..."
+      },
+      "cycles": {
+        "monthly": "Bulanan",
+        "yearly": "Tahunan"
+      },
+      "badges": {
+        "selected": "Dipilih"
+      },
+      "toasts": {
+        "load_failed": "Gagal memuat katalog layanan internet",
+        "coverage_failed": "Gagal memeriksa cakupan",
+        "select_location_first": "Pilih alamat terlebih dahulu",
+        "yearly_unavailable": "Paket ini belum mendukung tagihan tahunan",
+        "invalid_package": "Paket tidak valid",
+        "added_to_order": "Item berhasil ditambahkan ke pesanan",
+        "invalid_package_in_order": "Ada paket tidak valid di daftar pesanan",
+        "request_submitted_single": "Permintaan instalasi berhasil dikirim ({id})",
+        "request_submitted_multi": "{count} permintaan instalasi berhasil dikirim",
+        "request_submit_failed": "Gagal mengirim permintaan instalasi",
+        "latitude_range": "Latitude harus di antara -90 hingga 90",
+        "longitude_range": "Longitude harus di antara -180 hingga 180",
+        "location_saved": "Lokasi berhasil disimpan",
+        "location_create_failed": "Gagal menambahkan lokasi"
       }
     },
     "portal_summary": {
@@ -1608,7 +1776,7 @@
       "no_pending_invoice": "Tidak ada tagihan pending",
       "none": "-",
       "due": "Jatuh tempo",
-      "manage_package": "Kelola paket",
+      "manage_package": "Kelola layanan",
       "pay_now": "Bayar sekarang",
       "status": {
         "normal": "Aman",
@@ -1912,7 +2080,7 @@
       },
       "subscriptions": {
         "title": "Langganan",
-        "subtitle": "Langganan paket pelanggan untuk kebutuhan billing dan assignment layanan.",
+        "subtitle": "Langganan layanan pelanggan untuk kebutuhan billing dan assignment layanan.",
         "empty": "Belum ada langganan.",
         "new": {
           "title": "Tambah langganan"
@@ -2036,6 +2204,56 @@
         "update_failed": "Gagal memperbarui pelanggan: {message}",
         "deleted": "Pelanggan dihapus",
         "delete_failed": "Gagal menghapus pelanggan: {message}"
+      }
+    },
+    "services": {
+      "title": "Layanan",
+      "subtitle": "Buat layanan dan atur opsi sesuai tipe layanan.",
+      "search": "Cari layanan...",
+      "empty": "Belum ada layanan.",
+      "confirm_delete": "Hapus layanan ini?",
+      "columns": {
+        "name": "Nama",
+        "type": "Tipe",
+        "status": "Status",
+        "mappings": "Ter-mapping",
+        "price": "Harga"
+      },
+      "fields": {
+        "service_type": "Tipe layanan"
+      },
+      "actions": {
+        "add": "Tambah layanan",
+        "edit": "Edit layanan"
+      },
+      "type_picker": {
+        "title": "Pilih Tipe Layanan",
+        "subtitle": "Pilih kategori layanan dulu, lalu lanjut ke form detail layanan.",
+        "continue": "Lanjut",
+        "change": "Ubah tipe",
+        "add_as_feature": "Tambahkan sebagai fitur",
+        "internet_subtitle": "Layanan internet tetap dengan provisioning PPPoE dan opsi mapping profil router.",
+        "hotspot_subtitle": "Layanan voucher atau captive portal untuk akses wireless publik/bersama.",
+        "vpn_subtitle": "Layanan tunnel aman untuk cabang, tim remote, atau akses private khusus.",
+        "tag_provisioning": "Provisioning",
+        "tag_mapping": "Mapping router",
+        "tag_shared_access": "Akses bersama",
+        "tag_portal_ready": "Siap portal",
+        "tag_secure_tunnel": "Tunnel aman",
+        "tag_private_access": "Akses private"
+      },
+      "types": {
+        "internet_pppoe": "Internet / PPPoE",
+        "hotspot": "Hotspot",
+        "vpn": "VPN"
+      },
+      "mapping": {
+        "only_internet": "Mapping router hanya tersedia untuk layanan Internet / PPPoE.",
+        "not_required": "Mapping profil PPP router tidak diperlukan untuk tipe layanan ini."
+      },
+      "toasts": {
+        "created": "Layanan dibuat",
+        "updated": "Layanan diperbarui"
       }
     },
     "network": {
@@ -2695,6 +2913,10 @@
           "mttr": "MTTR",
           "top_type_24h": "Tipe Teratas (24j)"
         },
+        "impact": {
+          "title": "Pelanggan Terdampak",
+          "empty": "Tidak ada pelanggan terdampak dari topologi yang dipetakan."
+        },
         "activity": {
           "title": "Timeline Aktivitas",
           "first_seen": "Pertama terdeteksi",
@@ -2767,9 +2989,13 @@
         "start_ok": "Pekerjaan instalasi dimulai",
         "complete_ok": "Pekerjaan selesai dan layanan diaktifkan",
         "cancel_ok": "Work order dibatalkan",
+        "reopen_ok": "Work order dibuka kembali",
+        "cancel_reason_required": "Alasan pembatalan wajib diisi (minimal 10 karakter).",
+        "cancel_reason_hint": "Isi alasan pembatalan (minimal 10 karakter) di detail work order.",
         "details_title": "Detail Instalasi",
         "checklist": "Checklist Instalasi",
         "notes_placeholder": "Catatan teknisi dan hasil kunjungan",
+        "reopen_notes": "Catatan opsional sebelum membuka ulang work order",
         "save_plan": "Simpan Rencana",
         "history": "Catatan Terakhir"
       },
@@ -3146,9 +3372,9 @@
         "failed": "Gagal"
       },
       "list": {
-        "title": "Invoice Paket Pelanggan",
-        "subtitle": "Buat dan kelola invoice untuk paket internet pelanggan.",
-        "search_placeholder": "Cari invoice paket pelanggan...",
+        "title": "Invoice Layanan Pelanggan",
+        "subtitle": "Buat dan kelola invoice untuk layanan internet pelanggan.",
+        "search_placeholder": "Cari invoice layanan pelanggan...",
         "columns": {
           "invoice_number": "Invoice #",
           "description": "Deskripsi",
@@ -3179,9 +3405,9 @@
           "clear": "Reset"
         },
         "toasts": {
-          "load_failed": "Gagal memuat invoice paket pelanggan",
+          "load_failed": "Gagal memuat invoice layanan pelanggan",
           "load_subscriptions_failed": "Gagal memuat langganan pelanggan",
-          "created": "Invoice paket pelanggan berhasil dibuat",
+          "created": "Invoice layanan pelanggan berhasil dibuat",
           "create_failed": "Gagal membuat invoice",
           "bulk_generated": "Generate massal selesai",
           "bulk_generate_failed": "Gagal generate invoice jatuh tempo"
@@ -3245,7 +3471,7 @@
           }
         },
         "errors": {
-          "not_customer_package": "Invoice ini bukan invoice paket pelanggan",
+          "not_customer_package": "Invoice ini bukan invoice layanan pelanggan",
           "load_failed": "Gagal memuat invoice",
           "check_failed": "Gagal mengecek status",
           "verify_failed": "Gagal memverifikasi invoice",
@@ -3358,6 +3584,25 @@
             "add": "Tambah",
             "add_account": "Tambah Rekening",
             "remove_account": "Hapus Rekening"
+          }
+        },
+        "installation_sla": {
+          "title": "Pengingat SLA Instalasi",
+          "enable": {
+            "label": "Aktifkan pengingat SLA instalasi",
+            "desc": "Kirim notifikasi otomatis saat work order instalasi melewati SLA."
+          },
+          "overdue_minutes": {
+            "label": "Batas terlambat (menit)",
+            "desc": "Work order terjadwal dianggap terlambat setelah melewati menit ini."
+          },
+          "cooldown_minutes": {
+            "label": "Jeda pengingat (menit)",
+            "desc": "Jeda minimum sebelum pengingat yang sama dikirim ulang untuk work order yang sama."
+          },
+          "scheduler_interval_minutes": {
+            "label": "Interval scheduler (menit)",
+            "desc": "Seberapa sering backend mengecek work order instalasi overdue di semua tenant."
           }
         }
       },

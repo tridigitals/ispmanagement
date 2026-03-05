@@ -11,6 +11,8 @@ pub async fn list_isp_packages(
     q: Option<String>,
     page: Option<u32>,
     per_page: Option<u32>,
+    sort_by: Option<String>,
+    sort_dir: Option<String>,
     auth: State<'_, AuthService>,
     svc: State<'_, IspPackageService>,
 ) -> Result<PaginatedResponse<IspPackage>, String> {
@@ -28,6 +30,8 @@ pub async fn list_isp_packages(
         q,
         page.unwrap_or(1),
         per_page.unwrap_or(25),
+        sort_by,
+        sort_dir,
     )
     .await
     .map_err(|e| e.to_string())
@@ -36,6 +40,7 @@ pub async fn list_isp_packages(
 #[tauri::command]
 pub async fn create_isp_package(
     token: String,
+    service_type: Option<String>,
     name: String,
     description: Option<String>,
     features: Option<Vec<String>>,
@@ -54,6 +59,7 @@ pub async fn create_isp_package(
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     let dto = CreateIspPackageRequest {
+        service_type,
         name,
         description,
         features,
@@ -70,6 +76,7 @@ pub async fn create_isp_package(
 pub async fn update_isp_package(
     token: String,
     id: String,
+    service_type: Option<String>,
     name: Option<String>,
     description: Option<String>,
     features: Option<Vec<String>>,
@@ -88,6 +95,7 @@ pub async fn update_isp_package(
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     let dto = UpdateIspPackageRequest {
+        service_type,
         name,
         description,
         features,

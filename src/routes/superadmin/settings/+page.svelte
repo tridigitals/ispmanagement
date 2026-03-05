@@ -92,6 +92,10 @@
   let paymentMidtransIsProduction = false;
   let paymentManualEnabled = true;
   let paymentManualInstructions = '';
+  let installationSlaReminderEnabled = true;
+  let installationSlaOverdueMinutes = 120;
+  let installationSlaReminderCooldownMinutes = 180;
+  let installationSlaSchedulerIntervalMinutes = 15;
 
   // Alerting Settings
   let alertingEnabled = false;
@@ -285,6 +289,14 @@
     paymentManualEnabled = settingsMap['payment_manual_enabled'] !== 'false'; // Default true
     paymentManualInstructions =
       settingsMap['payment_manual_instructions'] || 'Please transfer to our bank account.';
+    installationSlaReminderEnabled = settingsMap['installation_sla_reminder_enabled'] !== 'false';
+    installationSlaOverdueMinutes = parseInt(settingsMap['installation_sla_overdue_minutes'] || '120');
+    installationSlaReminderCooldownMinutes = parseInt(
+      settingsMap['installation_sla_reminder_cooldown_minutes'] || '180',
+    );
+    installationSlaSchedulerIntervalMinutes = parseInt(
+      settingsMap['installation_sla_scheduler_interval_minutes'] || '15',
+    );
 
     // Alerting
     alertingEnabled = settingsMap['alerting_enabled'] === 'true';
@@ -529,6 +541,26 @@
           'payment_manual_instructions',
           paymentManualInstructions,
           'Manual Payment Instructions',
+        ),
+        api.settings.upsert(
+          'installation_sla_reminder_enabled',
+          installationSlaReminderEnabled ? 'true' : 'false',
+          'Enable SLA reminder notifications for overdue installation work orders',
+        ),
+        api.settings.upsert(
+          'installation_sla_overdue_minutes',
+          Math.max(15, Math.min(10080, installationSlaOverdueMinutes || 120)).toString(),
+          'Minutes after schedule when installation work order is considered overdue',
+        ),
+        api.settings.upsert(
+          'installation_sla_reminder_cooldown_minutes',
+          Math.max(15, Math.min(10080, installationSlaReminderCooldownMinutes || 180)).toString(),
+          'Cooldown in minutes before repeating the same installation SLA reminder',
+        ),
+        api.settings.upsert(
+          'installation_sla_scheduler_interval_minutes',
+          Math.max(5, Math.min(1440, installationSlaSchedulerIntervalMinutes || 15)).toString(),
+          'How often installation SLA scheduler scans for overdue work orders (minutes)',
         ),
         // Alerting
         api.settings.upsert(
@@ -923,6 +955,10 @@
             bind:paymentMidtransIsProduction
             bind:paymentManualEnabled
             bind:paymentManualInstructions
+            bind:installationSlaReminderEnabled
+            bind:installationSlaOverdueMinutes
+            bind:installationSlaReminderCooldownMinutes
+            bind:installationSlaSchedulerIntervalMinutes
             {bankAccounts}
             bind:newBankName
             bind:newAccountNumber

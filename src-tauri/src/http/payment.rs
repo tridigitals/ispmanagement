@@ -86,6 +86,13 @@ struct FxRateResponse {
     fetched_at: chrono::DateTime<chrono::Utc>,
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ListCustomerPackageInvoicesQuery {
+    sort_by: Option<String>,
+    sort_dir: Option<String>,
+}
+
 // Helper to extract and validate token from headers
 async fn authenticate(
     state: &AppState,
@@ -557,6 +564,7 @@ async fn get_invoice(
 async fn list_customer_package_invoices(
     State(state): State<AppState>,
     headers: HeaderMap,
+    Query(q): Query<ListCustomerPackageInvoicesQuery>,
 ) -> Result<Json<Vec<Invoice>>, (StatusCode, Json<ErrorResponse>)> {
     let claims = authenticate(&state, &headers).await?;
     let scope = resolve_payment_read_scope(&state, &claims).await?;
@@ -579,7 +587,7 @@ async fn list_customer_package_invoices(
 
     state
         .payment_service
-        .list_customer_package_invoices(tenant_id)
+        .list_customer_package_invoices(tenant_id, q.sort_by, q.sort_dir)
         .await
         .map(Json)
         .map_err(|e| {

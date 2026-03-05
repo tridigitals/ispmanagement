@@ -2,16 +2,23 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { t } from 'svelte-i18n';
-  import { can } from '$lib/stores/auth';
-  import { api, type InstallationWorkOrderView, type TeamMember } from '$lib/api/client';
+  import { can, user } from '$lib/stores/auth';
+  import {
+    api,
+    type AuditLog,
+    type InstallationWorkOrderView,
+    type TeamMember,
+  } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
   import { formatDateTime } from '$lib/utils/date';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import Select2 from '$lib/components/ui/Select2.svelte';
   import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
 
   let loading = $state(true);
   let busyId = $state<string | null>(null);
+  let creatingInvoiceId = $state<string | null>(null);
   let rows = $state<InstallationWorkOrderView[]>([]);
   let team = $state<TeamMember[]>([]);
   let includeClosed = $state(false);
@@ -20,6 +27,9 @@
 
   let detailOpen = $state(false);
   let activeRow = $state<InstallationWorkOrderView | null>(null);
+  let cancelDialogOpen = $state(false);
+  let cancelTarget = $state<InstallationWorkOrderView | null>(null);
+  let cancelReason = $state('');
   let formAssignee = $state('');
   let formSchedule = $state('');
   let formNotes = $state('');
@@ -27,9 +37,16 @@
   let checkOnt = $state(false);
   let checkPppoe = $state(false);
   let checkSpeed = $state(false);
-  let canReadTeam = $derived(
-    $can('read', 'team') || $can('create', 'team') || $can('update', 'team') || $can('delete', 'team'),
-  );
+  let canManageWorkOrders = $derived($can('manage', 'work_orders'));
+  let canReadAuditLogs = $derived($can('read', 'audit_logs'));
+  let currentUserId = $derived(($user?.id || '').trim());
+  let timelineLoading = $state(false);
+  let timelineRows = $state<AuditLog[]>([]);
+  let isAdminOwner = $derived.by(() => {
+    const role = `${$user?.role || ''}`.trim().toLowerCase();
+    return !!$user && (($user as any)?.is_super_admin === true || role === 'owner' || role === 'admin');
+  });
+  const CANCEL_REASON_MIN = 10;
 
   const filteredRows = $derived.by(() => {
     const q = search.trim().toLowerCase();
@@ -55,6 +72,29 @@
     inProgress: rows.filter((r) => r.status === 'in_progress').length,
     completed: rows.filter((r) => r.status === 'completed').length,
   }));
+  const assignableTeam = $derived.by(() =>
+    team
+      .filter((member) => member.is_active)
+      .sort((a, b) =>
+        `${a.name || a.email}`.toLowerCase().localeCompare(`${b.name || b.email}`.toLowerCase()),
+      ),
+  );
+  const assigneeOptions = $derived.by(() => {
+    const options = assignableTeam.map((member) => ({
+      value: member.user_id,
+      label: `${member.name || member.email} (${member.role_name || member.role || '-'})`,
+    }));
+    if (formAssignee && !options.some((option) => option.value === formAssignee)) {
+      const current = team.find((member) => member.user_id === formAssignee);
+      options.unshift({
+        value: formAssignee,
+        label: current
+          ? `${current.name || current.email} (${current.role_name || current.role || '-'})`
+          : formAssignee,
+      });
+    }
+    return options;
+  });
 
   onMount(() => {
     if (!$can('read', 'work_orders') && !$can('manage', 'work_orders')) {
@@ -69,7 +109,7 @@
     try {
       const [workOrders, members] = await Promise.all([
         api.workOrders.list({ include_closed: includeClosed, limit: 300 }),
-        canReadTeam ? api.team.list().catch(() => [] as TeamMember[]) : Promise.resolve([] as TeamMember[]),
+        canManageWorkOrders ? api.workOrders.assignees().catch(() => [] as TeamMember[]) : Promise.resolve([] as TeamMember[]),
       ]);
       rows = workOrders;
       team = members;
@@ -80,22 +120,144 @@
     }
   }
 
-  async function setStatus(row: InstallationWorkOrderView, action: 'start' | 'complete' | 'cancel', notes?: string) {
+  function isUnassigned(row: InstallationWorkOrderView) {
+    return !row.assigned_to || row.assigned_to.trim().length === 0;
+  }
+
+  function isAssignedToCurrentUser(row: InstallationWorkOrderView) {
+    if (!currentUserId) return false;
+    return (row.assigned_to || '').trim() === currentUserId;
+  }
+
+  function canOperateRow(row: InstallationWorkOrderView) {
+    return isAdminOwner || isAssignedToCurrentUser(row);
+  }
+
+  function canTakeRow(row: InstallationWorkOrderView) {
+    return canManageWorkOrders && row.status === 'pending' && isUnassigned(row);
+  }
+
+  function canReleaseRow(row: InstallationWorkOrderView) {
+    return canManageWorkOrders && isAdminOwner && row.status === 'pending' && !isUnassigned(row);
+  }
+
+  async function claimWorkOrder(row: InstallationWorkOrderView) {
+    if (!canTakeRow(row)) return;
+    busyId = row.id;
+    try {
+      await api.workOrders.claim(row.id);
+      toast.success(tr('admin.network.installations.claim_ok', 'Work order taken'));
+      await loadAll();
+      if (activeRow?.id === row.id) {
+        const refreshed = rows.find((x) => x.id === row.id);
+        if (refreshed) openDetail(refreshed);
+      }
+    } catch (e: any) {
+      toast.error(e?.message || tr('admin.network.installations.claim_fail', 'Failed to take work order'));
+    } finally {
+      busyId = null;
+    }
+  }
+
+  async function releaseWorkOrder(row: InstallationWorkOrderView) {
+    if (!canReleaseRow(row)) return;
+    busyId = row.id;
+    try {
+      await api.workOrders.release(row.id);
+      toast.success(tr('admin.network.installations.release_ok', 'Assignee released'));
+      await loadAll();
+      if (activeRow?.id === row.id) {
+        const refreshed = rows.find((x) => x.id === row.id);
+        if (refreshed) openDetail(refreshed);
+      }
+    } catch (e: any) {
+      toast.error(
+        e?.message || tr('admin.network.installations.release_fail', 'Failed to release assignee'),
+      );
+    } finally {
+      busyId = null;
+    }
+  }
+
+  function hasValidCancelReason(notes?: string) {
+    return (notes || '').trim().length >= CANCEL_REASON_MIN;
+  }
+
+  async function setStatus(
+    row: InstallationWorkOrderView,
+    action: 'start' | 'complete' | 'cancel' | 'reopen',
+    notes?: string,
+  ): Promise<boolean> {
+    if (action === 'start' && !isPlanReady(row.assigned_to || '', row.scheduled_at || '')) {
+      toast.error(tr('admin.network.installations.plan_required', 'Set assignee and schedule before starting.'));
+      return false;
+    }
+    if (action === 'cancel' && !hasValidCancelReason(notes)) {
+      toast.error(
+        tr(
+          'admin.network.installations.cancel_reason_required',
+          `Cancellation reason is required (minimum ${CANCEL_REASON_MIN} characters).`,
+        ),
+      );
+      return false;
+    }
     busyId = row.id;
     try {
       if (action === 'start') await api.workOrders.start(row.id, notes);
       if (action === 'complete') await api.workOrders.complete(row.id, notes);
       if (action === 'cancel') await api.workOrders.cancel(row.id, notes);
-      toast.success($t(`admin.network.installations.${action}_ok`) || 'Updated');
-      await loadAll();
-      if (activeRow?.id === row.id) {
-        closeDetail();
+      if (action === 'reopen') await api.workOrders.reopen(row.id, notes);
+
+      const shouldRevealClosed = (action === 'complete' || action === 'cancel') && !includeClosed;
+      if (shouldRevealClosed) {
+        includeClosed = true;
       }
+
+      toast.success(tr(`admin.network.installations.${action}_ok`, 'Updated'));
+      await loadAll();
+
+      if (activeRow?.id === row.id) {
+        const refreshed = rows.find((x) => x.id === row.id);
+        if (refreshed) {
+          openDetail(refreshed);
+        } else {
+          closeDetail();
+        }
+      }
+
+      if (shouldRevealClosed) {
+        toast.info(
+          tr(
+            'admin.network.installations.closed_revealed',
+            'Work order moved to closed list. Closed filter is now visible.',
+          ),
+        );
+      }
+      return true;
     } catch (e: any) {
       toast.error(e?.message || 'Update failed');
+      return false;
     } finally {
       busyId = null;
     }
+  }
+
+  function openCancelDialog(row: InstallationWorkOrderView) {
+    cancelTarget = row;
+    cancelReason = '';
+    cancelDialogOpen = true;
+  }
+
+  function closeCancelDialog() {
+    cancelDialogOpen = false;
+    cancelTarget = null;
+    cancelReason = '';
+  }
+
+  async function confirmCancelFromDialog() {
+    if (!cancelTarget) return;
+    const ok = await setStatus(cancelTarget, 'cancel', cancelReason);
+    if (ok) closeCancelDialog();
   }
 
   function statusClass(status: string) {
@@ -116,6 +278,7 @@
     checkOnt = false;
     checkPppoe = false;
     checkSpeed = false;
+    void loadWorkOrderTimeline(row.id);
   }
 
   function closeDetail() {
@@ -124,6 +287,29 @@
     formAssignee = '';
     formSchedule = '';
     formNotes = '';
+    timelineRows = [];
+    timelineLoading = false;
+  }
+
+  async function loadWorkOrderTimeline(workOrderId: string) {
+    if (!canReadAuditLogs || !workOrderId) {
+      timelineRows = [];
+      return;
+    }
+    timelineLoading = true;
+    try {
+      const res = await api.audit.listTenant(1, 30, {
+        resource: 'installation_work_orders',
+        resource_id: workOrderId,
+      });
+      timelineRows = (res?.data || []).filter((log) =>
+        `${log.action || ''}`.toUpperCase().startsWith('WORK_ORDER_'),
+      );
+    } catch {
+      timelineRows = [];
+    } finally {
+      timelineLoading = false;
+    }
   }
 
   function toLocalInputValue(raw: string) {
@@ -148,7 +334,7 @@
     if (!row) return;
     const assigned_to = formAssignee.trim();
     if (!assigned_to) {
-      toast.error($t('admin.network.installations.assign_required') || 'Choose assignee first');
+      toast.error(tr('admin.network.installations.assign_required', 'Choose assignee first'));
       return;
     }
     busyId = row.id;
@@ -161,7 +347,7 @@
         scheduled_at: formSchedule ? new Date(formSchedule).toISOString() : undefined,
         notes: note,
       });
-      toast.success($t('admin.network.installations.assigned') || 'Assigned');
+      toast.success(tr('admin.network.installations.assigned', 'Assigned'));
       await loadAll();
       const refreshed = rows.find((x) => x.id === row.id);
       if (refreshed) openDetail(refreshed);
@@ -172,9 +358,118 @@
     }
   }
 
+  function isPlanReady(assignee: string, schedule: string) {
+    return assignee.trim().length > 0 && schedule.trim().length > 0;
+  }
+
+  function hasAssignee(assignee: string) {
+    return assignee.trim().length > 0;
+  }
+
+  const checklistDoneCount = $derived(
+    [checkCable, checkOnt, checkPppoe, checkSpeed].filter(Boolean).length,
+  );
+  const checklistTotal = 4;
+  const isClosedState = $derived(activeRow?.status === 'completed' || activeRow?.status === 'cancelled');
+  const canCompleteActive = $derived(activeRow?.status === 'in_progress' && checklistDoneCount === checklistTotal);
+  const canSaveAssignStep = $derived(activeRow?.status === 'pending' && hasAssignee(formAssignee));
+  const canSaveScheduleStep = $derived(activeRow?.status === 'pending' && isPlanReady(formAssignee, formSchedule));
+  const canStartActive = $derived(
+    activeRow?.status === 'pending' && isPlanReady(formAssignee, formSchedule),
+  );
+  const effectiveStep = $derived.by(() => {
+    if (!activeRow) return 1;
+    if (activeRow.status === 'completed' || activeRow.status === 'cancelled') return 4;
+    if (activeRow.status === 'in_progress' && checklistDoneCount === checklistTotal) return 4;
+    if (activeRow.status === 'in_progress') return 3;
+    if (!hasAssignee(formAssignee)) return 1;
+    return 2;
+  });
+  const isAwaitingFirstPayment = $derived.by(() => {
+    if (!activeRow) return false;
+    return (
+      activeRow.status === 'completed' &&
+      activeRow.subscription_status === 'suspended' &&
+      !activeRow.subscription_starts_at
+    );
+  });
+
+  async function startFromDetail() {
+    if (!activeRow) return;
+    if (!isPlanReady(formAssignee, formSchedule)) {
+      toast.error(tr('admin.network.installations.plan_required', 'Set assignee and schedule before starting.'));
+      return;
+    }
+    await savePlan();
+    const latest = rows.find((x) => x.id === activeRow?.id);
+    if (latest) {
+      await setStatus(latest, 'start', formNotes);
+    }
+  }
+
+  async function completeFromDetail() {
+    if (!activeRow) return;
+    if (checklistDoneCount !== checklistTotal) {
+      toast.error(tr('admin.network.installations.checklist_required', 'Complete all checklist items before activation.'));
+      return;
+    }
+    await setStatus(activeRow, 'complete', formNotes);
+  }
+
+  async function saveAssignStep() {
+    if (!canSaveAssignStep) {
+      toast.error(tr('admin.network.installations.assign_required', 'Choose assignee first'));
+      return;
+    }
+    await savePlan();
+  }
+
+  async function saveScheduleStep() {
+    if (!canSaveScheduleStep) {
+      toast.error(tr('admin.network.installations.schedule_required', 'Choose schedule first'));
+      return;
+    }
+    await savePlan();
+  }
+
+  function resetToAssignStep() {
+    formAssignee = '';
+  }
+
+  function assigneeLabel(userId: string) {
+    if (!userId) return '-';
+    const member = team.find((x) => x.user_id === userId);
+    return member?.name || member?.email || userId;
+  }
+
   function tr(key: string, fallback: string) {
     const value = $t(key);
     return value && value !== key ? value : fallback;
+  }
+
+  async function createInvoiceFromDetail() {
+    if (!activeRow || creatingInvoiceId) return;
+    creatingInvoiceId = activeRow.id;
+    try {
+      const invoice = await api.payment.createInvoiceForCustomerSubscription(activeRow.subscription_id);
+      toast.success(
+        tr(
+          'admin.network.installations.invoice_created',
+          `Invoice created: ${invoice.invoice_number}`,
+        ),
+      );
+      await loadAll();
+      const refreshed = rows.find((x) => x.id === activeRow?.id);
+      if (refreshed) {
+        openDetail(refreshed);
+      }
+    } catch (e: any) {
+      toast.error(
+        e?.message || tr('admin.network.installations.invoice_create_failed', 'Failed to create invoice'),
+      );
+    } finally {
+      creatingInvoiceId = null;
+    }
   }
 </script>
 
@@ -285,16 +580,61 @@
                     {tr('common.view', 'View')}
                   </button>
                   {#if $can('manage', 'work_orders') && row.status === 'pending'}
-                    <button class="btn" onclick={(e) => { e.stopPropagation(); setStatus(row, 'start'); }} disabled={busyId === row.id}>
+                    {#if canTakeRow(row)}
+                      <button
+                        class="btn ghost"
+                        onclick={(e) => {
+                          e.stopPropagation();
+                          claimWorkOrder(row);
+                        }}
+                        disabled={busyId === row.id}
+                      >
+                        {tr('common.take', 'Take')}
+                      </button>
+                    {/if}
+                    {#if canReleaseRow(row)}
+                      <button
+                        class="btn ghost"
+                        onclick={(e) => {
+                          e.stopPropagation();
+                          releaseWorkOrder(row);
+                        }}
+                        disabled={busyId === row.id}
+                      >
+                        {tr('common.release', 'Release')}
+                      </button>
+                    {/if}
+                    <button
+                      class="btn"
+                      onclick={(e) => {
+                        e.stopPropagation();
+                        setStatus(row, 'start');
+                      }}
+                      disabled={busyId === row.id || !canOperateRow(row) || !isPlanReady(row.assigned_to || '', row.scheduled_at || '')}
+                    >
                       {tr('common.start', 'Start')}
                     </button>
                   {/if}
-                  {#if $can('manage', 'work_orders') && row.status !== 'completed' && row.status !== 'cancelled'}
-                    <button class="btn success" onclick={(e) => { e.stopPropagation(); setStatus(row, 'complete'); }} disabled={busyId === row.id}>
+                  {#if $can('manage', 'work_orders') && row.status === 'in_progress'}
+                    <button class="btn success" onclick={(e) => { e.stopPropagation(); setStatus(row, 'complete'); }} disabled={busyId === row.id || !canOperateRow(row)}>
                       {tr('common.complete', 'Complete')}
                     </button>
-                    <button class="btn danger" onclick={(e) => { e.stopPropagation(); setStatus(row, 'cancel'); }} disabled={busyId === row.id}>
+                  {/if}
+                  {#if $can('manage', 'work_orders') && isAdminOwner && row.status !== 'completed' && row.status !== 'cancelled'}
+                    <button class="btn danger" onclick={(e) => { e.stopPropagation(); openCancelDialog(row); }} disabled={busyId === row.id}>
                       {tr('common.cancel', 'Cancel')}
+                    </button>
+                  {/if}
+                  {#if $can('manage', 'work_orders') && row.status === 'cancelled'}
+                    <button
+                      class="btn ghost"
+                      onclick={(e) => {
+                        e.stopPropagation();
+                        setStatus(row, 'reopen');
+                      }}
+                      disabled={busyId === row.id}
+                    >
+                      {tr('common.reopen', 'Reopen')}
                     </button>
                   {/if}
                 </div>
@@ -321,76 +661,307 @@
   >
     <div class="modal">
       <div class="modal-head">
-        <h2>{$t('admin.network.installations.details_title') || 'Installation Details'}</h2>
+        <h2>{tr('admin.network.installations.details_title', 'Installation Details')}</h2>
         <button class="btn ghost" onclick={closeDetail}>✕</button>
       </div>
 
-      <div class="meta-grid">
-        <div><strong>{$t('common.customer') || 'Customer'}:</strong> {activeRow.customer_name || activeRow.customer_id}</div>
-        <div><strong>{$t('common.location') || 'Location'}:</strong> {activeRow.location_label || activeRow.location_id}</div>
-        <div><strong>{$t('common.package') || 'Package'}:</strong> {activeRow.package_name || '-'}</div>
-        <div><strong>{$t('common.status') || 'Status'}:</strong> <span class={statusClass(activeRow.status)}>{activeRow.status}</span></div>
+      <div class="step-flow">
+        <div class:active-step={effectiveStep >= 1}>1. {tr('admin.network.installations.step_assign', 'Assign')}</div>
+        <div class:active-step={effectiveStep >= 2}>2. {tr('admin.network.installations.step_schedule', 'Schedule')}</div>
+        <div class:active-step={effectiveStep >= 3}>3. {tr('admin.network.installations.step_onsite', 'On-site')}</div>
+        <div class:active-step={effectiveStep >= 4}>4. {tr('admin.network.installations.step_activate', 'Activate')}</div>
       </div>
 
+      <div class="meta-grid">
+        <div><strong>{tr('common.customer', 'Customer')}:</strong> {activeRow.customer_name || activeRow.customer_id}</div>
+        <div><strong>{tr('common.location', 'Location')}:</strong> {activeRow.location_label || activeRow.location_id}</div>
+        <div><strong>{tr('common.package', 'Package')}:</strong> {activeRow.package_name || '-'}</div>
+        <div><strong>{tr('common.status', 'Status')}:</strong> <span class={statusClass(activeRow.status)}>{activeRow.status}</span></div>
+        <div><strong>{tr('admin.network.installations.subscription_status', 'Service Status')}:</strong> {activeRow.subscription_status || '-'}</div>
+      </div>
+
+      <details class="topology-context">
+        <summary>{tr('admin.network.installations.topology_context', 'Topology Context')}</summary>
+        <div class="meta-grid">
+          <div>
+            <strong>{tr('admin.network.installations.assignment_status', 'Assignment Status')}:</strong>
+            {activeRow.assignment_status || '-'}
+          </div>
+          <div>
+            <strong>{tr('admin.network.installations.selected_zone', 'Selected Zone')}:</strong>
+            {activeRow.selected_zone_name || activeRow.selected_zone_id || '-'}
+          </div>
+          <div>
+            <strong>{tr('admin.network.installations.selected_node', 'Selected Node')}:</strong>
+            {activeRow.selected_node_name || activeRow.selected_node_id || '-'}
+          </div>
+          <div>
+            <strong>{tr('admin.network.installations.node_score', 'Node Score')}:</strong>
+            {activeRow.selected_node_score == null ? '-' : activeRow.selected_node_score.toFixed(1)}
+          </div>
+          <div>
+            <strong>{tr('admin.network.installations.path_nodes', 'Path Nodes')}:</strong>
+            {Array.isArray(activeRow.path_node_ids) ? activeRow.path_node_ids.length : 0}
+          </div>
+          <div>
+            <strong>{tr('admin.network.installations.path_links', 'Path Links')}:</strong>
+            {Array.isArray(activeRow.path_link_ids) ? activeRow.path_link_ids.length : 0}
+          </div>
+        </div>
+      </details>
+
       {#if $can('manage', 'work_orders')}
-        <div class="form-grid">
-          <label>
-            {$t('common.assignee') || 'Assignee'}
-            <select bind:value={formAssignee} disabled={busyId === activeRow.id || !canReadTeam}>
-              <option value="">-</option>
-              {#each team as member}
-                <option value={member.user_id}>{member.name || member.email}</option>
-              {/each}
-            </select>
-          </label>
-          <label>
-            {$t('common.schedule') || 'Schedule'}
-            <input type="datetime-local" bind:value={formSchedule} disabled={busyId === activeRow.id} />
-          </label>
-        </div>
-
-        <fieldset class="checklist">
-          <legend>{$t('admin.network.installations.checklist') || 'Installation Checklist'}</legend>
-          <label><input type="checkbox" bind:checked={checkCable} /> Cable installed</label>
-          <label><input type="checkbox" bind:checked={checkOnt} /> ONT installed</label>
-          <label><input type="checkbox" bind:checked={checkPppoe} /> PPPoE configured</label>
-          <label><input type="checkbox" bind:checked={checkSpeed} /> Speed test passed</label>
-        </fieldset>
-
-        <label class="notes">
-          {$t('common.notes') || 'Notes'}
-          <textarea rows="5" bind:value={formNotes} placeholder={$t('admin.network.installations.notes_placeholder') || 'Technician notes and onsite findings'}></textarea>
-        </label>
-
-        <div class="modal-actions">
-          <button class="btn ghost" onclick={savePlan} disabled={busyId === activeRow.id}>
-            {$t('admin.network.installations.save_plan') || 'Save Plan'}
-          </button>
-          {#if activeRow.status === 'pending'}
-            <button class="btn" onclick={() => activeRow && setStatus(activeRow, 'start', formNotes)} disabled={busyId === activeRow.id}>
-              {$t('common.start') || 'Start'}
-            </button>
+        <section class="wizard-card">
+          {#if activeRow.status === 'pending' && effectiveStep === 1}
+            <h3>{tr('admin.network.installations.step_assign', 'Assign')}</h3>
+            {#if isAdminOwner}
+              <p class="step-help">{tr('admin.network.installations.step_assign_help', 'Choose technician first, then continue to scheduling.')}</p>
+              <label>
+                {tr('common.assignee', 'Assignee')}
+                <Select2
+                  bind:value={formAssignee}
+                  options={assigneeOptions}
+                  placeholder={tr('admin.network.installations.assignee_placeholder', 'Select assignee')}
+                  searchPlaceholder={tr('common.search', 'Search')}
+                  noResultsText={tr('common.no_results', 'No results')}
+                  width="100%"
+                  disabled={busyId === activeRow.id || !canManageWorkOrders}
+                />
+              </label>
+              {#if canManageWorkOrders && assigneeOptions.length === 0}
+                <p class="helper-text">
+                  {tr(
+                    'admin.network.installations.no_assignable_members',
+                    'No eligible installers found. Only Admin/Technician or roles with installation permission are shown.',
+                  )}
+                </p>
+              {/if}
+              <label class="notes">
+                {tr('common.notes', 'Notes')}
+                <textarea rows="4" bind:value={formNotes} placeholder={tr('admin.network.installations.notes_placeholder', 'Technician notes and onsite findings')}></textarea>
+              </label>
+              <div class="modal-actions">
+                {#if canReleaseRow(activeRow)}
+                  <button
+                    class="btn ghost"
+                    onclick={() => activeRow && releaseWorkOrder(activeRow)}
+                    disabled={busyId === activeRow.id}
+                  >
+                    {tr('common.release', 'Release')}
+                  </button>
+                {/if}
+                <button class="btn ghost" onclick={saveAssignStep} disabled={busyId === activeRow.id || !canSaveAssignStep}>
+                  {tr('admin.network.installations.save_assign', 'Save Assignee')}
+                </button>
+              </div>
+            {:else}
+              <p class="step-help">{tr('admin.network.installations.step_take_help', 'Take this work order first, then continue to scheduling.')}</p>
+              {#if isUnassigned(activeRow)}
+                <div class="modal-actions">
+                  <button class="btn ghost" onclick={() => activeRow && claimWorkOrder(activeRow)} disabled={busyId === activeRow.id}>
+                    {tr('common.take', 'Take')}
+                  </button>
+                </div>
+              {:else if isAssignedToCurrentUser(activeRow)}
+                <p class="helper-text">{tr('admin.network.installations.already_taken_by_you', 'You already took this work order. Continue to Schedule step.')}</p>
+              {:else}
+                <p class="helper-text">{tr('admin.network.installations.taken_by_other', 'This work order has been taken by another technician.')}</p>
+              {/if}
+            {/if}
+          {:else if activeRow.status === 'pending' && effectiveStep === 2}
+            <h3>{tr('admin.network.installations.step_schedule', 'Schedule')}</h3>
+            <p class="step-help">{tr('admin.network.installations.step_schedule_help', 'Set installation date/time, then start work order.')}</p>
+            <div class="assigned-summary">
+              <span class="summary-label">{tr('common.assignee', 'Assignee')}</span>
+              <strong>{assigneeLabel(formAssignee)}</strong>
+              {#if isAdminOwner}
+                <button class="btn ghost mini" type="button" onclick={resetToAssignStep}>{tr('common.edit', 'Edit')}</button>
+              {/if}
+            </div>
+            <label>
+              {tr('common.schedule', 'Schedule')}
+              <input type="datetime-local" bind:value={formSchedule} disabled={busyId === activeRow.id} />
+            </label>
+            <label class="notes">
+              {tr('common.notes', 'Notes')}
+              <textarea rows="4" bind:value={formNotes} placeholder={tr('admin.network.installations.notes_placeholder', 'Technician notes and onsite findings')}></textarea>
+            </label>
+            <div class="modal-actions">
+              <button class="btn ghost" onclick={saveScheduleStep} disabled={busyId === activeRow.id || !canSaveScheduleStep}>
+                {tr('admin.network.installations.save_schedule', 'Save Schedule')}
+              </button>
+              <button class="btn" onclick={startFromDetail} disabled={busyId === activeRow.id || !canStartActive}>
+                {tr('common.start', 'Start')}
+              </button>
+            </div>
+          {:else if activeRow.status === 'in_progress' && effectiveStep === 3}
+            <h3>{tr('admin.network.installations.step_onsite', 'On-site')}</h3>
+            <p class="step-help">{tr('admin.network.installations.step_onsite_help', 'Complete onsite checklist. Progress updates automatically.')}</p>
+            <fieldset class="checklist">
+              <legend>
+                {tr('admin.network.installations.checklist', 'Installation Checklist')}
+                <span class="progress-inline">{checklistDoneCount}/{checklistTotal}</span>
+              </legend>
+              <label><input type="checkbox" bind:checked={checkCable} /> Cable installed</label>
+              <label><input type="checkbox" bind:checked={checkOnt} /> ONT installed</label>
+              <label><input type="checkbox" bind:checked={checkPppoe} /> PPPoE configured</label>
+              <label><input type="checkbox" bind:checked={checkSpeed} /> Speed test passed</label>
+            </fieldset>
+            <label class="notes">
+              {tr('common.notes', 'Notes')}
+              <textarea rows="4" bind:value={formNotes} placeholder={tr('admin.network.installations.notes_placeholder', 'Technician notes and onsite findings')}></textarea>
+            </label>
+            <div class="modal-actions">
+              <button class="btn ghost" onclick={savePlan} disabled={busyId === activeRow.id}>
+                {tr('admin.network.installations.save_plan', 'Save Plan')}
+              </button>
+            </div>
+          {:else if activeRow.status === 'in_progress' && effectiveStep === 4}
+            <h3>{tr('admin.network.installations.step_activate', 'Activate')}</h3>
+            <p class="step-help">{tr('admin.network.installations.step_active_help', 'Checklist complete. Activate service now.')}</p>
+            <div class="activation-ready">
+              <div>{tr('admin.network.installations.checklist', 'Installation Checklist')}: <strong>{checklistDoneCount}/{checklistTotal}</strong></div>
+              <div>{tr('common.schedule', 'Schedule')}: <strong>{activeRow.scheduled_at ? formatDateTime(activeRow.scheduled_at) : '-'}</strong></div>
+            </div>
+            <label class="notes">
+              {tr('common.notes', 'Notes')}
+              <textarea rows="4" bind:value={formNotes} placeholder={tr('admin.network.installations.notes_placeholder', 'Technician notes and onsite findings')}></textarea>
+            </label>
+            <div class="modal-actions">
+              <button class="btn success" onclick={completeFromDetail} disabled={busyId === activeRow.id || !canCompleteActive}>
+                {tr('common.complete', 'Complete')}
+              </button>
+            </div>
+          {:else if isClosedState}
+            <h3>{tr('admin.network.installations.final_state', 'Final State')}</h3>
+            <p class="step-help">
+              {activeRow.status === 'completed'
+                ? isAwaitingFirstPayment
+                  ? tr(
+                      'admin.network.installations.final_waiting_payment',
+                      'Installation is complete. Service is waiting first payment before activation.',
+                    )
+                  : tr('admin.network.installations.final_completed', 'Installation has been completed and service is active.')
+                : tr('admin.network.installations.final_cancelled', 'Installation has been cancelled.')}
+            </p>
+            {#if activeRow.status === 'completed' && isAwaitingFirstPayment}
+              <div class="modal-actions">
+                <button
+                  class="btn ghost"
+                  type="button"
+                  onclick={createInvoiceFromDetail}
+                  disabled={creatingInvoiceId === activeRow.id}
+                >
+                  <Icon name="file-plus" size={14} />
+                  {creatingInvoiceId === activeRow.id
+                    ? tr('common.loading', 'Loading...')
+                    : tr('admin.network.installations.create_invoice', 'Create payment invoice')}
+                </button>
+              </div>
+            {/if}
+            {#if activeRow.status === 'cancelled'}
+              <label class="notes">
+                {tr('common.notes', 'Notes')}
+                <textarea rows="3" bind:value={formNotes} placeholder={tr('admin.network.installations.reopen_notes', 'Optional note before reopening work order')}></textarea>
+              </label>
+              <div class="modal-actions">
+                <button class="btn ghost" onclick={() => activeRow && setStatus(activeRow, 'reopen', formNotes)} disabled={busyId === activeRow.id}>
+                  {tr('common.reopen', 'Reopen')}
+                </button>
+              </div>
+            {/if}
           {/if}
-          {#if activeRow.status !== 'completed' && activeRow.status !== 'cancelled'}
-            <button class="btn success" onclick={() => activeRow && setStatus(activeRow, 'complete', formNotes)} disabled={busyId === activeRow.id}>
-              {$t('common.complete') || 'Complete'}
-            </button>
-            <button class="btn danger" onclick={() => activeRow && setStatus(activeRow, 'cancel', formNotes)} disabled={busyId === activeRow.id}>
-              {$t('common.cancel') || 'Cancel'}
-            </button>
-          {/if}
-        </div>
-        {#if !canReadTeam}
-          <p class="helper-text">{$t('common.no_permission') || 'You do not have permission to view this page.'}</p>
-        {/if}
+        </section>
       {/if}
 
       {#if activeRow.notes}
         <div class="history">
-          <h3>{$t('admin.network.installations.history') || 'Latest Notes'}</h3>
+          <h3>{tr('admin.network.installations.history', 'Latest Notes')}</h3>
           <pre>{activeRow.notes}</pre>
         </div>
       {/if}
+
+      {#if canReadAuditLogs}
+        <div class="history">
+          <h3>{tr('admin.network.installations.timeline', 'Work Order Timeline')}</h3>
+          {#if timelineLoading}
+            <p class="helper-text">{tr('common.loading', 'Loading...')}</p>
+          {:else if timelineRows.length === 0}
+            <p class="helper-text">{tr('common.no_data', 'No data')}</p>
+          {:else}
+            <div class="timeline-list">
+              {#each timelineRows as log}
+                <article class="timeline-item">
+                  <div class="timeline-head">
+                    <strong>{log.action}</strong>
+                    <span>{formatDateTime(log.created_at)}</span>
+                  </div>
+                  <div class="timeline-meta">
+                    <span>{log.user_name || log.user_email || log.user_id || '-'}</span>
+                    {#if log.ip_address}
+                      <span>{log.ip_address}</span>
+                    {/if}
+                  </div>
+                  {#if log.details}
+                    <p>{log.details}</p>
+                  {/if}
+                </article>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {/if}
+    </div>
+  </div>
+{/if}
+
+{#if cancelDialogOpen && cancelTarget}
+  <div
+    class="modal-backdrop"
+    role="button"
+    tabindex="0"
+    onclick={(e) => {
+      if (e.target === e.currentTarget) closeCancelDialog();
+    }}
+    onkeydown={(e) => {
+      if (e.key === 'Escape') closeCancelDialog();
+    }}
+  >
+    <div class="modal cancel-modal">
+      <div class="modal-head">
+        <h2>{tr('common.cancel', 'Cancel')} Work Order</h2>
+        <button class="btn ghost" onclick={closeCancelDialog}>✕</button>
+      </div>
+      <p class="step-help">
+        {tr(
+          'admin.network.installations.cancel_reason_required',
+          'Cancellation reason is required (minimum 10 characters).',
+        )}
+      </p>
+      <div class="meta-grid">
+        <div><strong>{tr('common.customer', 'Customer')}:</strong> {cancelTarget.customer_name || cancelTarget.customer_id}</div>
+        <div><strong>{tr('common.location', 'Location')}:</strong> {cancelTarget.location_label || cancelTarget.location_id}</div>
+      </div>
+      <label class="notes">
+        {tr('common.notes', 'Notes')}
+        <textarea
+          rows="4"
+          bind:value={cancelReason}
+          placeholder={tr('admin.network.installations.notes_placeholder', 'Technician notes and onsite findings')}
+        ></textarea>
+      </label>
+      <div class="modal-actions">
+        <button class="btn ghost" onclick={closeCancelDialog} disabled={busyId === cancelTarget.id}>
+          {tr('common.close', 'Close')}
+        </button>
+        <button
+          class="btn danger"
+          onclick={confirmCancelFromDialog}
+          disabled={busyId === cancelTarget.id || !hasValidCancelReason(cancelReason)}
+        >
+          {tr('common.cancel', 'Cancel')}
+        </button>
+      </div>
     </div>
   </div>
 {/if}
@@ -536,6 +1107,11 @@
     align-items: center;
     gap: 6px;
   }
+  .btn.mini {
+    padding: 5px 9px;
+    font-size: 0.76rem;
+    border-radius: 10px;
+  }
   .btn.ghost {
     background: transparent;
     color: var(--text-primary);
@@ -607,6 +1183,9 @@
     gap: 14px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   }
+  .cancel-modal {
+    width: min(640px, 100%);
+  }
   .modal-head {
     display: flex;
     justify-content: space-between;
@@ -616,11 +1195,82 @@
     margin: 0;
     font-size: 1.2rem;
   }
+  .step-flow {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .step-flow > div {
+    border: 1px solid #334155;
+    border-radius: 999px;
+    padding: 8px 10px;
+    color: #9fb0cc;
+    font-size: 0.82rem;
+    text-align: center;
+    font-weight: 700;
+  }
+  .step-flow > div.active-step {
+    border-color: rgba(99, 102, 241, 0.6);
+    background: rgba(99, 102, 241, 0.14);
+    color: #dbeafe;
+  }
   .meta-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px 14px;
     font-size: 0.95rem;
+  }
+  .topology-context {
+    border: 1px solid #273452;
+    border-radius: 12px;
+    background: #0e172a;
+    padding: 12px;
+    display: grid;
+    gap: 8px;
+  }
+  .topology-context summary {
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: #dbeafe;
+    font-weight: 700;
+    list-style: none;
+  }
+  .topology-context summary::-webkit-details-marker {
+    display: none;
+  }
+  .wizard-card {
+    border: 1px solid #2b3a5b;
+    border-radius: 12px;
+    background: #0e1729;
+    padding: 14px;
+    display: grid;
+    gap: 10px;
+  }
+  .wizard-card h3 {
+    margin: 0;
+    font-size: 1rem;
+  }
+  .assigned-summary {
+    border: 1px solid #334766;
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    background: #0b1221;
+  }
+  .summary-label {
+    color: #9fb0cc;
+    font-size: 0.8rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .step-help {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #9fb0cc;
   }
   .form-grid {
     display: grid;
@@ -646,6 +1296,21 @@
     padding: 10px;
     display: grid;
     gap: 8px;
+  }
+  .progress-inline {
+    margin-left: 8px;
+    font-size: 0.78rem;
+    color: #93c5fd;
+    font-weight: 700;
+  }
+  .activation-ready {
+    border: 1px dashed #334766;
+    border-radius: 10px;
+    padding: 10px;
+    display: grid;
+    gap: 6px;
+    color: #cfe0ff;
+    font-size: 0.9rem;
   }
   .checklist label {
     display: flex;
@@ -683,6 +1348,44 @@
     font-size: 0.9rem;
     color: #b8c7e8;
   }
+  .timeline-list {
+    display: grid;
+    gap: 8px;
+  }
+  .timeline-item {
+    border: 1px solid #2d3650;
+    border-radius: 10px;
+    padding: 10px;
+    background: #0f1626;
+    display: grid;
+    gap: 4px;
+  }
+  .timeline-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+  }
+  .timeline-head strong {
+    font-size: 0.9rem;
+  }
+  .timeline-head span {
+    color: #9fb0cc;
+    font-size: 0.78rem;
+  }
+  .timeline-meta {
+    display: flex;
+    gap: 10px;
+    color: #9fb0cc;
+    font-size: 0.78rem;
+  }
+  .timeline-item p {
+    margin: 0;
+    color: #c9d6ef;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
   @media (max-width: 800px) {
     .page-content {
       padding: 16px;
@@ -693,6 +1396,9 @@
     .meta-grid,
     .form-grid {
       grid-template-columns: 1fr;
+    }
+    .step-flow {
+      grid-template-columns: 1fr 1fr;
     }
   }
 </style>

@@ -140,7 +140,7 @@ describe('api client auth-expired handling', () => {
   });
 
   it('does not clear session or redirect on 403 forbidden', async () => {
-    const { assign, local } = setupBrowser('/dashboard/packages');
+    const { assign, local } = setupBrowser('/dashboard/services');
     local.setItem('auth_token', 'token-403');
     local.setItem('auth_user', '{"id":"u403"}');
     local.setItem('auth_tenant', '{"id":"t403"}');

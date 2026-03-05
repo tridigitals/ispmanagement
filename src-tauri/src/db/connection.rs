@@ -898,6 +898,10 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
         ("billing_auto_resume_on_payment", "true", "Automatically resume suspended customer subscriptions when invoice is paid"),
         ("billing_reminder_enabled", "true", "Enable automatic invoice reminder notifications"),
         ("billing_reminder_schedule", "H-3,H-1,H+1,H+3", "Reminder schedule offsets around due date, comma separated"),
+        ("installation_sla_reminder_enabled", "true", "Enable SLA reminder notifications for overdue installation work orders"),
+        ("installation_sla_overdue_minutes", "120", "Minutes after schedule when installation work order is considered overdue"),
+        ("installation_sla_reminder_cooldown_minutes", "180", "Cooldown in minutes before repeating the same installation SLA reminder"),
+        ("installation_sla_scheduler_interval_minutes", "15", "How often installation SLA scheduler scans for overdue work orders (minutes)"),
         // Alerting Settings
         ("alerting_enabled", "false", "Enable error alerting via email"),
         ("alerting_email", "", "Email address to receive alerts"),

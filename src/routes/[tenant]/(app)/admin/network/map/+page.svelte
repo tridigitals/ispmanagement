@@ -129,6 +129,7 @@
   let linkPickMode = $state(false);
   let linkPickStep = $state<'from' | 'to'>('from');
   let linkPickDrawMode = $state<'quick' | 'path'>('quick');
+  let linkSnapToNodeEnabled = $state(true);
   let linkPathBendPoints = $state<Array<[number, number]>>([]);
   let linkForm = $state({
     name: '',
@@ -165,6 +166,7 @@
   let lastRequestId = 0;
   let myLocationMarker: import('maplibre-gl').Marker | null = null;
   let myLocationControlBtn: HTMLButtonElement | null = null;
+  let viewModeControlBtn: HTMLButtonElement | null = null;
   let activeNodePopup: import('maplibre-gl').Popup | null = null;
   let activeDataAbortController: AbortController | null = null;
   let didInitialFitToMarkers = false;
@@ -326,6 +328,10 @@
 
   $effect(() => {
     syncMyLocationControlUi();
+  });
+
+  $effect(() => {
+    syncViewModeControlUi();
   });
 
   function ensureMaplibreCompatHelpers() {
@@ -760,6 +766,30 @@
         'top-right',
       );
 
+      map.addControl(
+        {
+          onAdd: () => {
+            const wrap = document.createElement('div');
+            wrap.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'maplibregl-ctrl-icon nm-viewmode-ctrl';
+            btn.onclick = () => {
+              viewMode = viewMode === 'standard' ? 'satellite' : 'standard';
+            };
+            wrap.appendChild(btn);
+            viewModeControlBtn = btn;
+            syncViewModeControlUi();
+            return wrap;
+          },
+          onRemove: () => {
+            viewModeControlBtn = null;
+          },
+        },
+        'top-right',
+      );
+
       map.on('load', async () => {
         if (!map) return;
         ensureNodeTypeIconsRegistered();
@@ -1088,7 +1118,11 @@
                 ],
               }).length > 0;
             if (!hitNode) {
-              linkPathBendPoints = [...linkPathBendPoints, [e.lngLat.lng, e.lngLat.lat]];
+              const snapped = snapLinkPointToNearestNode(e.lngLat.lng, e.lngLat.lat);
+              const nextPoint: [number, number] = snapped
+                ? [snapped.lng, snapped.lat]
+                : [e.lngLat.lng, e.lngLat.lat];
+              linkPathBendPoints = [...linkPathBendPoints, nextPoint];
               refreshLinkGeometryDraft();
               syncLinkDraftPreview();
               return;
@@ -1545,6 +1579,17 @@
     myLocationControlBtn.classList.toggle('loading', locating);
   }
 
+  function syncViewModeControlUi() {
+    const btn = viewModeControlBtn;
+    if (!btn) return;
+    const isSat = viewMode === 'satellite';
+    const label = isSat ? 'Switch to standard map' : 'Switch to satellite map';
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+    btn.textContent = isSat ? 'SAT' : 'MAP';
+    btn.classList.toggle('active', isSat);
+  }
+
   function asNumber(input: string): number | undefined {
     const value = Number.parseFloat(input);
     return Number.isFinite(value) ? value : undefined;
@@ -1878,6 +1923,40 @@
     linkPathBendPoints = [];
     refreshLinkGeometryDraft();
     syncLinkDraftPreview();
+  }
+
+  function snapLinkPointToNearestNode(
+    lng: number,
+    lat: number,
+    maxDistancePx = 16,
+  ): { lng: number; lat: number; nodeId: string; nodeName: string } | null {
+    if (!map || !linkSnapToNodeEnabled || !nodeRows.length) return null;
+    const clickPoint = map.project([lng, lat]);
+    let best:
+      | {
+          row: NMNode;
+          distance: number;
+        }
+      | null = null;
+
+    for (const row of nodeRows) {
+      if (!Number.isFinite(row.lng) || !Number.isFinite(row.lat)) continue;
+      const point = map.project([row.lng, row.lat]);
+      const dx = point.x - clickPoint.x;
+      const dy = point.y - clickPoint.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (!best || distance < best.distance) {
+        best = { row, distance };
+      }
+    }
+
+    if (!best || best.distance > maxDistancePx) return null;
+    return {
+      lng: best.row.lng,
+      lat: best.row.lat,
+      nodeId: best.row.id,
+      nodeName: best.row.name || 'Node',
+    };
   }
 
   function hasExistingLinkBetweenNodes(fromNodeId: string, toNodeId: string, excludeLinkId?: string | null): boolean {
@@ -2396,6 +2475,7 @@
     bind:mapEl={mapEl}
     bind:viewMode={viewMode}
     on:searchselect={onMapSearchSelect}
+    showViewSwitch={false}
     {loading}
     {mapUnavailable}
     {mapErrorMessage}
@@ -2716,6 +2796,16 @@
           Draw Path
         </button>
       </div>
+      {#if linkPickDrawMode === 'path'}
+        <button
+          class={`btn ghost btn-xs ${linkSnapToNodeEnabled ? 'active' : ''}`}
+          type="button"
+          onclick={() => (linkSnapToNodeEnabled = !linkSnapToNodeEnabled)}
+          title="Snap bend points to nearest node"
+        >
+          Snap: {linkSnapToNodeEnabled ? 'On' : 'Off'}
+        </button>
+      {/if}
       <button
         class={`btn ghost btn-xs ${linkPickMode ? 'active' : ''}`}
         type="button"
@@ -2739,14 +2829,14 @@
         </button>
       {/if}
     </div>
-    {#if linkPickMode}
+      {#if linkPickMode}
       <div class="link-pick-hint">
         {#if linkPickDrawMode === 'quick'}
           Quick: click source node then destination node.
         {:else if linkPickStep === 'from'}
           Draw Path: click source node.
         {:else}
-          Draw Path: click map to add bend points, then click destination node.
+          Draw Path: click map to add bend points{linkSnapToNodeEnabled ? ' (auto-snap near node)' : ''}, then click destination node.
         {/if}
       </div>
     {/if}
@@ -3016,6 +3106,21 @@
 
   :global(.nm-location-ctrl.loading) {
     animation: spin 1s linear infinite;
+  }
+
+  :global(.nm-viewmode-ctrl) {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+  }
+
+  :global(.nm-viewmode-ctrl:hover:not(:disabled)) {
+    color: var(--text-primary);
+  }
+
+  :global(.nm-viewmode-ctrl.active) {
+    color: #3f8cff;
   }
 
   @keyframes spin {

@@ -8,8 +8,8 @@ use crate::models::{
     CreateMyCustomerLocationRequest, Customer, CustomerLocation, CustomerPortalUser,
     CustomerRegistrationInviteCreateResponse, CustomerRegistrationInvitePolicy,
     CustomerRegistrationInviteSummary, CustomerRegistrationInviteView, CustomerSubscription,
-    CustomerSubscriptionView, Invoice, IspPackage, PaginatedResponse,
-    PortalCheckoutSubscriptionRequest, UpdateCustomerLocationRequest,
+    CustomerSubscriptionView, CustomerPortalSubscriptionStats, InstallationWorkOrder, Invoice,
+    IspPackage, PaginatedResponse, PortalCheckoutSubscriptionRequest, UpdateCustomerLocationRequest,
     UpdateCustomerRegistrationInvitePolicyRequest, UpdateCustomerRequest,
     UpdateCustomerSubscriptionRequest,
 };
@@ -79,7 +79,16 @@ pub fn router() -> Router<AppState> {
             get(list_my_locations).post(create_my_location),
         )
         .route("/portal/my-packages", get(list_my_packages))
+        .route(
+            "/portal/my-subscriptions/stats",
+            get(get_my_subscription_stats),
+        )
         .route("/portal/my-subscriptions", get(list_my_subscriptions))
+        .route(
+            "/portal/my-subscriptions/{subscription_id}/reopen-request",
+            post(portal_reopen_order_request_subscription),
+        )
+        .route("/portal/order-request", post(portal_order_request_subscription))
         .route("/portal/checkout", post(portal_checkout_subscription))
 }
 
@@ -119,6 +128,9 @@ struct ListSubscriptionQuery {
 struct ListMySubscriptionQuery {
     page: Option<u32>,
     per_page: Option<u32>,
+    status: Option<String>,
+    sort_by: Option<String>,
+    sort_dir: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -131,6 +143,12 @@ struct ListCustomerInviteQuery {
 struct PortalCheckoutResponse {
     subscription: CustomerSubscription,
     invoice: Invoice,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct PortalOrderRequestResponse {
+    subscription: CustomerSubscription,
+    work_order: InstallationWorkOrder,
 }
 
 // GET /api/customers?q=...&page=1&per_page=25
@@ -506,9 +524,25 @@ async fn list_my_subscriptions(
             &tenant_id,
             q.page.unwrap_or(1),
             q.per_page.unwrap_or(25),
+            q.status,
+            q.sort_by,
+            q.sort_dir,
         )
         .await?;
     Ok(Json(rows))
+}
+
+// GET /api/customers/portal/my-subscriptions/stats
+async fn get_my_subscription_stats(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> AppResult<Json<CustomerPortalSubscriptionStats>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let stats = state
+        .customer_service
+        .get_my_subscription_stats(&claims.sub, &tenant_id)
+        .await?;
+    Ok(Json(stats))
 }
 
 // POST /api/customers/portal/checkout
@@ -534,6 +568,60 @@ async fn portal_checkout_subscription(
     Ok(Json(PortalCheckoutResponse {
         subscription,
         invoice,
+    }))
+}
+
+// POST /api/customers/portal/order-request
+async fn portal_order_request_subscription(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Json(dto): Json<PortalCheckoutSubscriptionRequest>,
+) -> AppResult<Json<PortalOrderRequestResponse>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+
+    let (subscription, work_order) = state
+        .customer_service
+        .create_my_subscription_order_request(&claims.sub, &tenant_id, dto, Some(&ip))
+        .await?;
+
+    Ok(Json(PortalOrderRequestResponse {
+        subscription,
+        work_order,
+    }))
+}
+
+#[derive(Debug, Deserialize)]
+struct PortalReopenRequestBody {
+    notes: Option<String>,
+}
+
+// POST /api/customers/portal/my-subscriptions/{subscription_id}/reopen-request
+async fn portal_reopen_order_request_subscription(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(subscription_id): Path<String>,
+    Json(body): Json<PortalReopenRequestBody>,
+) -> AppResult<Json<PortalOrderRequestResponse>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+
+    let (subscription, work_order) = state
+        .customer_service
+        .reopen_my_subscription_order_request(
+            &claims.sub,
+            &tenant_id,
+            &subscription_id,
+            body.notes,
+            Some(&ip),
+        )
+        .await?;
+
+    Ok(Json(PortalOrderRequestResponse {
+        subscription,
+        work_order,
     }))
 }
 

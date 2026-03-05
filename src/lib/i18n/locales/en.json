@@ -423,9 +423,10 @@
     "pppoe": "PPPoE",
     "ppp_profiles": "PPP Profiles",
     "ip_pools": "IP Pools",
+    "services": "Services",
     "packages": "Packages",
-    "packages_pending_alert": "There is a pending invoice. Please review package billing.",
-    "packages_overdue_alert": "There is an overdue invoice. Please review package billing.",
+    "packages_pending_alert": "There is a pending invoice. Please review service billing.",
+    "packages_overdue_alert": "There is an overdue invoice. Please review service billing.",
     "expand": "Expand sidebar",
     "collapse": "Collapse sidebar",
     "exit": "Exit",
@@ -1233,6 +1234,25 @@
           "instructions_label": "Payment Instructions",
           "instructions_desc": "Instructions shown to user when they select Manual Transfer.",
           "bank_accounts_title": "Bank Accounts"
+        },
+        "installation_sla": {
+          "title": "Installation SLA Reminders",
+          "enable": {
+            "label": "Enable installation SLA reminders",
+            "desc": "Send automatic notifications when installation work orders are overdue."
+          },
+          "overdue_minutes": {
+            "label": "Overdue threshold (minutes)",
+            "desc": "A scheduled work order is considered overdue after this many minutes."
+          },
+          "cooldown_minutes": {
+            "label": "Reminder cooldown (minutes)",
+            "desc": "Minimum delay before the same reminder is sent again for the same work order."
+          },
+          "scheduler_interval_minutes": {
+            "label": "Scheduler interval (minutes)",
+            "desc": "How often the backend checks all tenants for overdue installation work orders."
+          }
         }
       },
       "fields": {
@@ -1552,11 +1572,23 @@
       }
     },
     "packages": {
-      "title": "Internet Packages",
-      "subtitle": "Choose your package and generate an invoice instantly for payment.",
+      "title": "Internet Services",
+      "subtitle": "Manage your services and submit installation request instantly.",
+      "tabs": {
+        "ordered": "My Services",
+        "order_new": "Order Service"
+      },
       "fields": {
         "location": "Location",
-        "billing_cycle": "Billing cycle"
+        "billing_cycle": "Billing cycle",
+        "package": "Package",
+        "total": "Total"
+      },
+      "builder": {
+        "title": "Order Builder",
+        "subtitle": "Create multiple package orders for different addresses in one checkout flow.",
+        "checkout_all": "Checkout all",
+        "empty": "No order items yet"
       },
       "cycles": {
         "monthly": "Monthly",
@@ -1565,6 +1597,11 @@
       "current": {
         "title": "Current subscription",
         "none": "No active package on this location"
+      },
+      "ordered": {
+        "title": "Ordered Services",
+        "subtitle": "All subscriptions from your linked locations.",
+        "empty": "No service order yet. Start from Order Service tab."
       },
       "coverage": {
         "title": "Coverage zone",
@@ -1580,10 +1617,15 @@
         "buy": "Buy package",
         "switch": "Switch package",
         "current": "Current package",
-        "add_location": "Add location"
+        "add_location": "Add location",
+        "add_to_order": "Add to order",
+        "request_again": "Request Again",
+        "request_reopen": "Request Re-open",
+        "order_again": "Order Again"
       },
       "badges": {
-        "active": "Active"
+        "active": "Active",
+        "rerequested": "Re-requested"
       },
       "empty": {
         "no_locations": "No locations available",
@@ -1597,7 +1639,133 @@
         "yearly_unavailable": "Yearly billing is not available for this package",
         "already_active": "This package is already active",
         "checkout_success": "Invoice created. Continue to payment.",
-        "checkout_failed": "Checkout failed"
+        "checkout_failed": "Checkout failed",
+        "request_success": "Installation request submitted.",
+        "request_failed": "Failed to submit installation request",
+        "added_to_order": "Added to order builder",
+        "bulk_checkout_success": "invoices created successfully",
+        "bulk_request_success": "installation requests submitted successfully",
+        "package_unavailable": "Package is no longer available. Please choose another package.",
+        "location_unavailable": "Location is no longer available. Please add/select another location."
+      }
+    },
+    "internet_order": {
+      "hero": {
+        "title": "Internet Service Order",
+        "subtitle": "Flow: choose address, choose package, review your order, then submit installation request."
+      },
+      "steps": {
+        "address": "Address",
+        "package": "Package",
+        "review": "Review"
+      },
+      "actions": {
+        "service_types": "Service Types",
+        "billing_invoices": "Billing & Invoices",
+        "refresh": "Refresh",
+        "add_location": "Add Location",
+        "next_choose_package": "Next: Choose Package",
+        "back_to_address": "Back to Address",
+        "selected": "Selected",
+        "select_package": "Select Package",
+        "order_now": "Order Now",
+        "back_to_package": "Back to Package",
+        "add_more": "Add More",
+        "submit_installation_request": "Submit Installation Request",
+        "cancel": "Cancel",
+        "save": "Save"
+      },
+      "labels": {
+        "location": "Location",
+        "coverage_zone": "Coverage Zone",
+        "billing_cycle": "Billing Cycle",
+        "selected_address": "Selected Address",
+        "monthly_plan": "Monthly plan",
+        "yearly_available": "yearly option available",
+        "yearly_not_available": "Yearly plan not available",
+        "current_item_total": "Current item total",
+        "total_order_amount": "Total order amount"
+      },
+      "coverage": {
+        "checking": "Checking coverage...",
+        "select_location": "Select a location first",
+        "missing_coordinates": "This location has no coordinates yet. Coverage filter is disabled.",
+        "not_covered": "This location is outside active coverage zones."
+      },
+      "stage": {
+        "address": {
+          "title": "Select Address",
+          "subtitle": "Choose existing address or add a new one first."
+        },
+        "package": {
+          "title": "Choose Package"
+        },
+        "review": {
+          "title": "Review & Submit",
+          "subtitle": "All items below will be submitted as installation requests."
+        }
+      },
+      "empty": {
+        "no_locations_title": "No locations available",
+        "no_locations_subtitle": "Add at least one location to continue internet ordering.",
+        "no_packages_title": "No package available for this location",
+        "no_packages_subtitle": "Try another location or contact admin.",
+        "no_order_items_title": "No order item yet",
+        "no_order_items_subtitle": "Add at least one package first."
+      },
+      "sidecard": {
+        "title": "Current Selection",
+        "step_badge": "Step 2 / 3",
+        "address": "Address",
+        "package": "Package",
+        "billing": "Billing",
+        "hint": "You can add more services later from the Review step."
+      },
+      "modal": {
+        "add_location_title": "Add Location",
+        "fields": {
+          "label": "Label",
+          "address": "Address",
+          "city": "City",
+          "state": "State",
+          "postal_code": "Postal code",
+          "country": "Country",
+          "notes": "Notes",
+          "latitude": "Latitude",
+          "longitude": "Longitude"
+        },
+        "placeholders": {
+          "label": "Home / Office",
+          "address": "Street address"
+        }
+      },
+      "status": {
+        "loading_packages": "Loading packages...",
+        "processing": "Processing...",
+        "saving": "Saving..."
+      },
+      "cycles": {
+        "monthly": "Monthly",
+        "yearly": "Yearly"
+      },
+      "badges": {
+        "selected": "Selected"
+      },
+      "toasts": {
+        "load_failed": "Failed to load internet service catalog",
+        "coverage_failed": "Failed to check coverage",
+        "select_location_first": "Select a location first",
+        "yearly_unavailable": "Yearly billing is not available for this package",
+        "invalid_package": "Invalid package",
+        "added_to_order": "Item added to your order",
+        "invalid_package_in_order": "Invalid package in order list",
+        "request_submitted_single": "Installation request submitted ({id})",
+        "request_submitted_multi": "{count} installation requests submitted",
+        "request_submit_failed": "Failed to submit installation request",
+        "latitude_range": "Latitude must be between -90 and 90",
+        "longitude_range": "Longitude must be between -180 and 180",
+        "location_saved": "Location saved",
+        "location_create_failed": "Failed to create location"
       }
     },
     "portal_summary": {
@@ -1608,7 +1776,8 @@
       "no_pending_invoice": "No pending invoice",
       "none": "-",
       "due": "Due",
-      "manage_package": "Manage package",
+      "manage_package": "Manage service",
+      "manage_service": "Manage service",
       "pay_now": "Pay now",
       "status": {
         "normal": "Normal",
@@ -1877,6 +2046,25 @@
             "add_account": "Add Account",
             "remove_account": "Remove Account"
           }
+        },
+        "installation_sla": {
+          "title": "Installation SLA Reminders",
+          "enable": {
+            "label": "Enable installation SLA reminders",
+            "desc": "Send automatic notifications when installation work orders are overdue."
+          },
+          "overdue_minutes": {
+            "label": "Overdue threshold (minutes)",
+            "desc": "A scheduled work order is considered overdue after this many minutes."
+          },
+          "cooldown_minutes": {
+            "label": "Reminder cooldown (minutes)",
+            "desc": "Minimum delay before the same reminder is sent again for the same work order."
+          },
+          "scheduler_interval_minutes": {
+            "label": "Scheduler interval (minutes)",
+            "desc": "How often the backend checks all tenants for overdue installation work orders."
+          }
         }
       },
       "categories": {
@@ -2106,7 +2294,7 @@
       },
       "subscriptions": {
         "title": "Subscriptions",
-        "subtitle": "Customer package subscriptions for billing and service assignment.",
+        "subtitle": "Customer service subscriptions for billing and service assignment.",
         "empty": "No subscriptions yet.",
         "new": {
           "title": "Add subscription"
@@ -2230,6 +2418,56 @@
         "update_failed": "Failed to update customer: {message}",
         "deleted": "Customer deleted",
         "delete_failed": "Failed to delete customer: {message}"
+      }
+    },
+    "services": {
+      "title": "Services",
+      "subtitle": "Create services and configure service-specific options.",
+      "search": "Search services...",
+      "empty": "No services.",
+      "confirm_delete": "Delete this service?",
+      "columns": {
+        "name": "Name",
+        "type": "Type",
+        "status": "Status",
+        "mappings": "Mapped",
+        "price": "Price"
+      },
+      "fields": {
+        "service_type": "Service type"
+      },
+      "actions": {
+        "add": "Add service",
+        "edit": "Edit service"
+      },
+      "type_picker": {
+        "title": "Choose Service Type",
+        "subtitle": "Select the service category first, then continue to the detailed service form.",
+        "continue": "Continue",
+        "change": "Change type",
+        "add_as_feature": "Add as feature",
+        "internet_subtitle": "Fixed internet service with PPPoE provisioning and optional router profile mapping.",
+        "hotspot_subtitle": "Voucher or captive portal service for shared/public wireless access zones.",
+        "vpn_subtitle": "Secure tunnel service for branch office, remote team, or dedicated private access.",
+        "tag_provisioning": "Provisioning",
+        "tag_mapping": "Router mapping",
+        "tag_shared_access": "Shared access",
+        "tag_portal_ready": "Portal ready",
+        "tag_secure_tunnel": "Secure tunnel",
+        "tag_private_access": "Private access"
+      },
+      "types": {
+        "internet_pppoe": "Internet / PPPoE",
+        "hotspot": "Hotspot",
+        "vpn": "VPN"
+      },
+      "mapping": {
+        "only_internet": "Router mapping is only available for Internet / PPPoE services.",
+        "not_required": "Router PPP profile mapping is not required for this service type."
+      },
+      "toasts": {
+        "created": "Service created",
+        "updated": "Service updated"
       }
     },
     "network": {
@@ -2889,6 +3127,10 @@
           "mttr": "MTTR",
           "top_type_24h": "Top Type (24h)"
         },
+        "impact": {
+          "title": "Affected Customers",
+          "empty": "No impacted customers from mapped topology."
+        },
         "activity": {
           "title": "Activity Timeline",
           "first_seen": "First detected",
@@ -2961,9 +3203,13 @@
         "start_ok": "Work started",
         "complete_ok": "Work completed and service activated",
         "cancel_ok": "Work order cancelled",
+        "reopen_ok": "Work order reopened",
+        "cancel_reason_required": "Cancellation reason is required (minimum 10 characters).",
+        "cancel_reason_hint": "Add cancellation reason (minimum 10 characters) in detail modal.",
         "details_title": "Installation Details",
         "checklist": "Installation Checklist",
         "notes_placeholder": "Technician notes and onsite findings",
+        "reopen_notes": "Optional note before reopening work order",
         "save_plan": "Save Plan",
         "history": "Latest Notes"
       },
@@ -3340,9 +3586,9 @@
         "failed": "Failed"
       },
       "list": {
-        "title": "Customer Package Invoices",
-        "subtitle": "Generate and manage invoices for customer internet packages.",
-        "search_placeholder": "Search customer package invoices...",
+        "title": "Customer Service Invoices",
+        "subtitle": "Generate and manage invoices for customer internet services.",
+        "search_placeholder": "Search customer service invoices...",
         "columns": {
           "invoice_number": "Invoice #",
           "description": "Description",
@@ -3373,9 +3619,9 @@
           "clear": "Clear"
         },
         "toasts": {
-          "load_failed": "Failed to load customer package invoices",
+          "load_failed": "Failed to load customer service invoices",
           "load_subscriptions_failed": "Failed to load customer subscriptions",
-          "created": "Customer package invoice created",
+          "created": "Customer service invoice created",
           "create_failed": "Failed to create invoice",
           "bulk_generated": "Bulk generated",
           "bulk_generate_failed": "Failed to generate due invoices"
@@ -3439,7 +3685,7 @@
           }
         },
         "errors": {
-          "not_customer_package": "Invoice is not a customer package invoice",
+          "not_customer_package": "Invoice is not a customer service invoice",
           "load_failed": "Failed to load invoice",
           "check_failed": "Failed to check status",
           "verify_failed": "Failed to verify invoice",

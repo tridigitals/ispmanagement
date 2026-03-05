@@ -2,10 +2,11 @@ use crate::models::{
     AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
     CreateCustomerRegistrationInviteRequest, CreateCustomerRequest,
     CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest, Customer, CustomerLocation,
-    CustomerPortalUser, CustomerRegistrationInviteCreateResponse, CustomerRegistrationInvitePolicy,
-    CustomerRegistrationInviteSummary, CustomerRegistrationInviteView, CustomerSubscription,
-    CustomerSubscriptionView, InstallationWorkOrder, InstallationWorkOrderView, Invoice,
-    IspPackage, PaginatedResponse, PortalCheckoutSubscriptionRequest,
+    CustomerPortalSubscriptionStats, CustomerPortalUser, CustomerRegistrationInviteCreateResponse,
+    CustomerRegistrationInvitePolicy, CustomerRegistrationInviteSummary,
+    CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionView,
+    InstallationWorkOrder, InstallationWorkOrderView, Invoice, IspPackage, PaginatedResponse,
+    PortalCheckoutSubscriptionRequest, TeamMemberWithUser,
     UpdateCustomerLocationRequest, UpdateCustomerRegistrationInvitePolicyRequest,
     UpdateCustomerRequest, UpdateCustomerSubscriptionRequest,
 };
@@ -514,6 +515,9 @@ pub async fn list_my_customer_subscriptions(
     token: String,
     page: Option<u32>,
     per_page: Option<u32>,
+    status: Option<String>,
+    sort_by: Option<String>,
+    sort_dir: Option<String>,
     auth: State<'_, AuthService>,
     customers: State<'_, CustomerService>,
 ) -> Result<PaginatedResponse<CustomerSubscriptionView>, String> {
@@ -531,7 +535,30 @@ pub async fn list_my_customer_subscriptions(
             &tenant_id,
             page.unwrap_or(1),
             per_page.unwrap_or(25),
+            status,
+            sort_by,
+            sort_dir,
         )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_my_customer_subscription_stats(
+    token: String,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<CustomerPortalSubscriptionStats, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .get_my_subscription_stats(&claims.sub, &tenant_id)
         .await
         .map_err(|e| e.to_string())
 }
@@ -699,6 +726,26 @@ pub async fn list_installation_work_orders(
 }
 
 #[tauri::command]
+pub async fn list_installation_assignees(
+    token: String,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<Vec<TeamMemberWithUser>, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .list_installation_assignees(&claims.sub, &tenant_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn assign_installation_work_order(
     token: String,
     id: String,
@@ -726,6 +773,50 @@ pub async fn assign_installation_work_order(
             notes,
             Some("127.0.0.1"),
         )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn claim_installation_work_order(
+    token: String,
+    id: String,
+    notes: Option<String>,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<InstallationWorkOrder, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .claim_installation_work_order(&claims.sub, &tenant_id, &id, notes, Some("127.0.0.1"))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn release_installation_work_order(
+    token: String,
+    id: String,
+    notes: Option<String>,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<InstallationWorkOrder, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .release_installation_work_order(&claims.sub, &tenant_id, &id, notes, Some("127.0.0.1"))
         .await
         .map_err(|e| e.to_string())
 }

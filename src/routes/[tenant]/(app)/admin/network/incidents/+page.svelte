@@ -72,6 +72,8 @@
   let detailIncident = $state<IncidentRow | null>(null);
   let detailRouter = $state<RouterRow | null>(null);
   let detailMetric = $state<RouterMetricRow | null>(null);
+  let detailImpactedLoading = $state(false);
+  let detailImpactedCustomers = $state<any[]>([]);
   let detailSaving = $state(false);
   let selectedOwnerId = $state('');
   let draftNotes = $state('');
@@ -464,6 +466,8 @@
     detailIncident = item;
     detailRouter = null;
     detailMetric = null;
+    detailImpactedCustomers = [];
+    detailImpactedLoading = true;
     selectedOwnerId = item.owner_user_id || '';
     draftNotes = item.notes || '';
     if (typeof window !== 'undefined') {
@@ -472,15 +476,18 @@
       history.replaceState({}, '', `${u.pathname}${u.search}${u.hash}`);
     }
     try {
-      const [router, metrics] = await Promise.all([
+      const [router, metrics, impact] = await Promise.all([
         api.mikrotik.routers.get(item.router_id),
         api.mikrotik.routers.metrics(item.router_id, 1),
+        api.networkMapping.impact.listCustomers({ router_id: item.router_id }),
       ]);
       detailRouter = (router || null) as RouterRow | null;
       detailMetric = Array.isArray(metrics) && metrics.length > 0 ? (metrics[0] as RouterMetricRow) : null;
+      detailImpactedCustomers = Array.isArray((impact as any)?.customers) ? (impact as any).customers : [];
     } catch {
       // keep incident detail visible even if router snapshot fails
     } finally {
+      detailImpactedLoading = false;
       detailLoading = false;
     }
   }
@@ -746,6 +753,8 @@
   function closeDetail() {
     detailOpen = false;
     detailIncident = null;
+    detailImpactedCustomers = [];
+    detailImpactedLoading = false;
     if (typeof window !== 'undefined') {
       const u = new URL(window.location.href);
       u.searchParams.delete('incident');
@@ -1259,6 +1268,8 @@
     appTimezone={$appSettings.app_timezone}
     runbookSteps={detailIncident ? runbookStepsFor(detailIncident) : []}
     activityItems={detailIncident ? buildIncidentActivity(detailIncident) : []}
+    impactedLoading={detailImpactedLoading}
+    impactedCustomers={detailImpactedCustomers}
     {ownerLabel}
     {typeLabel}
     {severityLabel}

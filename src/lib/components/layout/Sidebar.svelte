@@ -89,7 +89,7 @@
 
   function shouldShowPackageAlert(item: NavItem) {
     if (packageBillingAlert === 'none') return false;
-    return item.href === `${tenantPrefix}/dashboard/packages`;
+    return item.href === `${tenantPrefix}/dashboard/services`;
   }
 
   function packageAlertLabel() {
@@ -127,9 +127,9 @@
             show: true,
           },
           {
-            label: $t('sidebar.packages') || 'Packages',
+            label: $t('sidebar.services') || $t('sidebar.packages') || 'Services',
             icon: 'package',
-            href: `${tenantPrefix}/dashboard/packages`,
+            href: `${tenantPrefix}/dashboard/services`,
             show: $can('read_own', 'customers') || canAccessCustomerPackages(),
           },
           {
@@ -326,9 +326,9 @@
             show: $can('read', 'pppoe') || $can('manage', 'pppoe'),
           },
           {
-            label: $t('sidebar.packages') || 'Packages',
+            label: $t('sidebar.services') || $t('sidebar.packages') || 'Services',
             icon: 'package',
-            href: `${tenantPrefix}/admin/network/packages`,
+            href: `${tenantPrefix}/admin/services`,
             show: $can('read', 'isp_packages') || $can('manage', 'isp_packages'),
           },
           {

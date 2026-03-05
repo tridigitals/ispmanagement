@@ -31,6 +31,26 @@ use tracing::info;
 #[cfg(feature = "desktop")]
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+#[cfg(all(feature = "desktop", target_os = "linux"))]
+fn init_linux_webview_fallbacks() {
+    // WebKitGTK can crash or spam errors in VMs/servers without usable /dev/dri.
+    // If DRI isn't available, disable dmabuf renderer (GPU path) and fall back to software.
+    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_some() {
+        return;
+    }
+
+    fn can_read(path: &str) -> bool {
+        std::fs::File::open(path).is_ok()
+    }
+
+    let dri_ok = can_read("/dev/dri/renderD128") || can_read("/dev/dri/card0");
+    if !dri_ok {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        // Helps in many headless/VM cases where EGL/DRI cannot initialize.
+        std::env::set_var("LIBGL_ALWAYS_SOFTWARE", "1");
+    }
+}
+
 /// Initialize logging
 #[cfg(feature = "desktop")]
 fn init_logging() {
@@ -55,6 +75,9 @@ pub fn run() {
     // Load `.env` for local development (desktop Tauri).
     // In production, prefer real environment variables.
     dotenvy::dotenv().ok();
+
+    #[cfg(target_os = "linux")]
+    init_linux_webview_fallbacks();
 
     init_logging();
     info!("Starting Application");
@@ -208,8 +231,6 @@ pub fn run() {
                 let email_service = EmailService::new(settings_service.clone());
                 let auth_service = AuthService::new(pool.clone(), jwt_secret, email_service.clone(), audit_service.clone(), settings_service.clone());
                 let user_service = UserService::new(pool.clone(), audit_service.clone());
-                let customer_service =
-                    CustomerService::new(pool.clone(), auth_service.clone(), audit_service.clone(), user_service.clone());
                 let pppoe_service =
                     PppoeService::new(
                         pool.clone(),
@@ -243,6 +264,14 @@ pub fn run() {
                     ws_hub.clone(),
                     email_outbox_service.clone(),
                 );
+                let customer_service = CustomerService::new(
+                    pool.clone(),
+                    auth_service.clone(),
+                    audit_service.clone(),
+                    notification_service.clone(),
+                    user_service.clone(),
+                );
+                customer_service.start_installation_sla_scheduler();
                 let payment_service = PaymentService::new(pool.clone(), notification_service.clone());
                 payment_service.start_customer_invoice_scheduler();
 
@@ -523,13 +552,17 @@ pub fn run() {
                                     list_my_customer_locations,
                                     list_my_customer_packages,
                                     list_my_customer_subscriptions,
+                                    get_my_customer_subscription_stats,
                                     create_my_customer_subscription_invoice,
                                     list_customer_subscriptions,
                                     create_customer_subscription,
                                     update_customer_subscription,
                                     delete_customer_subscription,
                                     list_installation_work_orders,
+                                    list_installation_assignees,
                                     assign_installation_work_order,
+                                    claim_installation_work_order,
+                                    release_installation_work_order,
                                     start_installation_work_order,
                                     complete_installation_work_order,
                                     cancel_installation_work_order,

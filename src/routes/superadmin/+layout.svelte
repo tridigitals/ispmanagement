@@ -1,7 +1,7 @@
 <script lang="ts">
   import Sidebar from '$lib/components/layout/Sidebar.svelte';
   import Topbar from '$lib/components/layout/Topbar.svelte';
-  import { user, isSuperAdmin, token } from '$lib/stores/auth';
+  import { isSuperAdmin, checkAuth } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
 
@@ -9,35 +9,33 @@
   let { children } = $props();
   let mobileOpen = $state(false);
 
-  // Strict auth check
+  // Strict auth check (must validate token with backend, not only local cache)
   onMount(() => {
-    // 1. Check if logged in at all
-    if (!$token) {
-      goto('/login');
-      return;
-    }
+    let cancelled = false;
 
-    // 2. Check permission
-    // We might need to wait for user store to hydrate if it's coming from localStorage
-    const check = setInterval(() => {
-      if ($user) {
-        clearInterval(check);
-        if ($isSuperAdmin) {
-          authorized = true;
-        } else {
-          // Logged in but not super admin
-          goto('/dashboard');
-        }
+    const runGuard = async () => {
+      const valid = await checkAuth();
+      if (cancelled) return;
+
+      if (!valid) {
+        goto('/login?reason=expired');
+        return;
       }
-    }, 50);
 
-    // Timeout backup (if user store never populates)
-    setTimeout(() => {
-      clearInterval(check);
-      if (!authorized) goto('/login');
-    }, 3000);
+      if ($isSuperAdmin) {
+        authorized = true;
+        return;
+      }
 
-    return () => clearInterval(check);
+      // Logged in but not super admin
+      goto('/dashboard');
+    };
+
+    void runGuard();
+
+    return () => {
+      cancelled = true;
+    };
   });
 </script>
 

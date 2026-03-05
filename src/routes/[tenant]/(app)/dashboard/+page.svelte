@@ -433,10 +433,10 @@
             <div class="summary-actions">
               <button
                 class="summary-btn"
-                onclick={() => goto(`${tenantPrefix}/dashboard/packages`)}
+                onclick={() => goto(`${tenantPrefix}/dashboard/services`)}
               >
                 <Icon name="package" size={15} />
-                {$t('dashboard.portal_summary.manage_package') || 'Manage package'}
+                {$t('dashboard.portal_summary.manage_package') || 'Manage service'}
               </button>
               {#if nextPendingInvoice}
                 <button

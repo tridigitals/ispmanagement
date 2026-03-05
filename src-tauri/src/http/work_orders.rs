@@ -3,6 +3,7 @@ use crate::http::auth::extract_ip;
 use crate::http::AppState;
 use crate::models::{
     AssignInstallationWorkOrderRequest, InstallationWorkOrder, InstallationWorkOrderView,
+    TeamMemberWithUser,
     UpdateInstallationWorkOrderStatusRequest,
 };
 use axum::{
@@ -17,10 +18,14 @@ use std::net::SocketAddr;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/", get(list_work_orders))
+        .route("/assignees", get(list_work_order_assignees))
         .route("/{id}/assign", post(assign_work_order))
+        .route("/{id}/claim", post(claim_work_order))
+        .route("/{id}/release", post(release_work_order))
         .route("/{id}/start", post(start_work_order))
         .route("/{id}/complete", post(complete_work_order))
         .route("/{id}/cancel", post(cancel_work_order))
+        .route("/{id}/reopen", post(reopen_work_order))
 }
 
 fn bearer_token(headers: &HeaderMap) -> AppResult<String> {
@@ -70,6 +75,18 @@ async fn list_work_orders(
     Ok(Json(rows))
 }
 
+async fn list_work_order_assignees(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> AppResult<Json<Vec<TeamMemberWithUser>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let rows = state
+        .customer_service
+        .list_installation_assignees(&claims.sub, &tenant_id)
+        .await?;
+    Ok(Json(rows))
+}
+
 async fn assign_work_order(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -90,6 +107,38 @@ async fn assign_work_order(
             dto.notes,
             Some(&ip),
         )
+        .await?;
+    Ok(Json(row))
+}
+
+async fn claim_work_order(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(id): Path<String>,
+    Json(dto): Json<UpdateInstallationWorkOrderStatusRequest>,
+) -> AppResult<Json<InstallationWorkOrder>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+    let row = state
+        .customer_service
+        .claim_installation_work_order(&claims.sub, &tenant_id, &id, dto.notes, Some(&ip))
+        .await?;
+    Ok(Json(row))
+}
+
+async fn release_work_order(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(id): Path<String>,
+    Json(dto): Json<UpdateInstallationWorkOrderStatusRequest>,
+) -> AppResult<Json<InstallationWorkOrder>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+    let row = state
+        .customer_service
+        .release_installation_work_order(&claims.sub, &tenant_id, &id, dto.notes, Some(&ip))
         .await?;
     Ok(Json(row))
 }
@@ -138,6 +187,22 @@ async fn cancel_work_order(
     let row = state
         .customer_service
         .cancel_installation_work_order(&claims.sub, &tenant_id, &id, dto.notes, Some(&ip))
+        .await?;
+    Ok(Json(row))
+}
+
+async fn reopen_work_order(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(id): Path<String>,
+    Json(dto): Json<UpdateInstallationWorkOrderStatusRequest>,
+) -> AppResult<Json<InstallationWorkOrder>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+    let row = state
+        .customer_service
+        .reopen_installation_work_order(&claims.sub, &tenant_id, &id, dto.notes, Some(&ip))
         .await?;
     Ok(Json(row))
 }

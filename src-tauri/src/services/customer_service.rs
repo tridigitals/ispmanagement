@@ -7,16 +7,19 @@ use crate::models::{
     CreateMyCustomerLocationRequest, Customer, CustomerLocation, CustomerPortalUser,
     CustomerRegistrationInviteCreateResponse, CustomerRegistrationInvitePolicy,
     CustomerRegistrationInviteSummary, CustomerRegistrationInviteValidationView,
-    CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionView, CustomerUser,
-    InstallationWorkOrder, InstallationWorkOrderView, IspPackage, PaginatedResponse,
-    PortalCheckoutSubscriptionRequest, UpdateCustomerLocationRequest,
+    CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionView,
+    CustomerPortalSubscriptionStats, CustomerUser, InstallationWorkOrder,
+    InstallationWorkOrderView, IspPackage, PaginatedResponse,
+    PortalCheckoutSubscriptionRequest, TeamMemberWithUser, UpdateCustomerLocationRequest,
     UpdateCustomerRegistrationInvitePolicyRequest, UpdateCustomerRequest,
     UpdateCustomerSubscriptionRequest,
 };
 use crate::security::secret::encrypt_secret_for;
-use crate::services::{AuditService, AuthService, UserService};
-use chrono::{DateTime, Utc};
+use crate::services::{AuditService, AuthService, NotificationService, UserService};
+use chrono::{DateTime, Duration, Utc};
 use sha2::{Digest, Sha256};
+use std::collections::HashSet;
+use tracing::warn;
 use uuid::Uuid;
 
 const PURPOSE_PPPOE: &str = "pppoe_secrets";
@@ -24,6 +27,30 @@ const INVITE_DEFAULT_EXPIRES_HOURS: u32 = 24;
 const INVITE_DEFAULT_MAX_USES: u32 = 1;
 const INVITE_DEFAULT_EXPIRES_KEY: &str = "customer_invite_default_expires_hours";
 const INVITE_DEFAULT_MAX_USES_KEY: &str = "customer_invite_default_max_uses";
+const CUSTOMER_PACKAGE_INVOICE_PREFIX: &str = "pkgsub:";
+const INSTALLATION_SLA_REMINDER_ENABLED_KEY: &str = "installation_sla_reminder_enabled";
+const INSTALLATION_SLA_OVERDUE_MINUTES_KEY: &str = "installation_sla_overdue_minutes";
+const INSTALLATION_SLA_REMINDER_COOLDOWN_MINUTES_KEY: &str =
+    "installation_sla_reminder_cooldown_minutes";
+const INSTALLATION_SLA_SCHEDULER_INTERVAL_MINUTES_KEY: &str =
+    "installation_sla_scheduler_interval_minutes";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum InstallationSlaBreachType {
+    ScheduledOverdue,
+    PendingUnscheduled,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+struct OverdueInstallationReminderRow {
+    work_order_id: String,
+    status: String,
+    scheduled_at: Option<DateTime<Utc>>,
+    created_at: DateTime<Utc>,
+    customer_name: Option<String>,
+    location_label: Option<String>,
+    package_name: Option<String>,
+}
 
 #[derive(sqlx::FromRow)]
 struct InviteSummaryRow {
@@ -43,22 +70,342 @@ pub struct CustomerService {
     pool: DbPool,
     auth_service: AuthService,
     audit_service: AuditService,
+    notification_service: NotificationService,
     user_service: UserService,
 }
 
 impl CustomerService {
+    async fn get_installation_work_order_row(
+        &self,
+        tenant_id: &str,
+        work_order_id: &str,
+    ) -> AppResult<InstallationWorkOrder> {
+        #[cfg(feature = "postgres")]
+        let row: Option<InstallationWorkOrder> = sqlx::query_as(
+            r#"
+            SELECT id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, assigned_to, scheduled_at, completed_at, notes, created_at, updated_at
+            FROM installation_work_orders
+            WHERE tenant_id = $1 AND id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(work_order_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let row: Option<InstallationWorkOrder> = sqlx::query_as(
+            r#"
+            SELECT id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, assigned_to, scheduled_at, completed_at, notes, created_at, updated_at
+            FROM installation_work_orders
+            WHERE tenant_id = ? AND id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(work_order_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        row.ok_or_else(|| AppError::NotFound("Work order not found".to_string()))
+    }
+
+    async fn is_actor_admin_or_owner(&self, tenant_id: &str, actor_id: &str) -> AppResult<bool> {
+        #[cfg(feature = "postgres")]
+        let role_name: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT LOWER(COALESCE(r.name, tm.role, ''))
+            FROM tenant_members tm
+            LEFT JOIN roles r ON r.id = tm.role_id
+            WHERE tm.tenant_id = $1 AND tm.user_id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(actor_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let role_name: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT LOWER(COALESCE(r.name, tm.role, ''))
+            FROM tenant_members tm
+            LEFT JOIN roles r ON r.id = tm.role_id
+            WHERE tm.tenant_id = ? AND tm.user_id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(actor_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(matches!(role_name.as_deref(), Some("owner") | Some("admin")))
+    }
+
+    async fn is_installation_assignee_eligible(
+        &self,
+        tenant_id: &str,
+        user_id: &str,
+    ) -> AppResult<bool> {
+        #[cfg(feature = "postgres")]
+        let eligible: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1
+              FROM tenant_members tm
+              JOIN users u ON u.id = tm.user_id
+              LEFT JOIN roles r ON r.id = tm.role_id
+              WHERE tm.tenant_id = $1
+                AND tm.user_id = $2
+                AND u.is_active = TRUE
+                AND (
+                  EXISTS(
+                    SELECT 1
+                    FROM role_permissions rp
+                    JOIN permissions p ON p.id = rp.permission_id
+                    WHERE rp.role_id = tm.role_id
+                      AND p.resource = 'work_orders'
+                      AND p.action = 'manage'
+                  )
+                  OR LOWER(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin', 'technician', 'teknisi')
+                )
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let eligible: bool = {
+            let raw: i64 = sqlx::query_scalar(
+                r#"
+                SELECT EXISTS(
+                  SELECT 1
+                  FROM tenant_members tm
+                  JOIN users u ON u.id = tm.user_id
+                  LEFT JOIN roles r ON r.id = tm.role_id
+                  WHERE tm.tenant_id = ?
+                    AND tm.user_id = ?
+                    AND u.is_active = 1
+                    AND (
+                      EXISTS(
+                        SELECT 1
+                        FROM role_permissions rp
+                        JOIN permissions p ON p.id = rp.permission_id
+                        WHERE rp.role_id = tm.role_id
+                          AND p.resource = 'work_orders'
+                          AND p.action = 'manage'
+                      )
+                      OR LOWER(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin', 'technician', 'teknisi')
+                    )
+                )
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(user_id)
+            .fetch_one(&self.pool)
+            .await?;
+            raw != 0
+        };
+
+        Ok(eligible)
+    }
+
+    pub async fn list_installation_assignees(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+    ) -> AppResult<Vec<TeamMemberWithUser>> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "work_orders", "manage")
+            .await?;
+
+        #[cfg(feature = "postgres")]
+        let rows: Vec<TeamMemberWithUser> = sqlx::query_as(
+            r#"
+            SELECT
+              tm.id,
+              tm.user_id,
+              u.name,
+              u.email,
+              tm.role,
+              tm.role_id,
+              r.name AS role_name,
+              u.is_active,
+              tm.created_at
+            FROM tenant_members tm
+            JOIN users u ON tm.user_id = u.id
+            LEFT JOIN roles r ON tm.role_id = r.id
+            WHERE tm.tenant_id = $1
+              AND u.is_active = TRUE
+              AND (
+                EXISTS(
+                  SELECT 1
+                  FROM role_permissions rp
+                  JOIN permissions p ON p.id = rp.permission_id
+                  WHERE rp.role_id = tm.role_id
+                    AND p.resource = 'work_orders'
+                    AND p.action = 'manage'
+                )
+                OR LOWER(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin', 'technician', 'teknisi')
+              )
+            ORDER BY LOWER(u.name), LOWER(u.email)
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let rows: Vec<TeamMemberWithUser> = sqlx::query_as(
+            r#"
+            SELECT
+              tm.id,
+              tm.user_id,
+              u.name,
+              u.email,
+              tm.role,
+              tm.role_id,
+              r.name AS role_name,
+              u.is_active,
+              tm.created_at
+            FROM tenant_members tm
+            JOIN users u ON tm.user_id = u.id
+            LEFT JOIN roles r ON tm.role_id = r.id
+            WHERE tm.tenant_id = ?
+              AND u.is_active = 1
+              AND (
+                EXISTS(
+                  SELECT 1
+                  FROM role_permissions rp
+                  JOIN permissions p ON p.id = rp.permission_id
+                  WHERE rp.role_id = tm.role_id
+                    AND p.resource = 'work_orders'
+                    AND p.action = 'manage'
+                )
+                OR LOWER(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin', 'technician', 'teknisi')
+              )
+            ORDER BY LOWER(u.name), LOWER(u.email)
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
+    }
+
+    #[cfg(feature = "postgres")]
+    async fn ensure_pending_installation_status_supported(&self) -> AppResult<()> {
+        let current_def: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT pg_get_constraintdef(c.oid)
+            FROM pg_constraint c
+            WHERE c.conrelid = 'public.customer_subscriptions'::regclass
+              AND c.conname = 'customer_subscriptions_status_check'
+            LIMIT 1
+            "#,
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let Some(definition) = current_def else {
+            return Ok(());
+        };
+        if definition.contains("pending_installation") {
+            return Ok(());
+        }
+
+        sqlx::query(
+            r#"
+            ALTER TABLE public.customer_subscriptions
+              DROP CONSTRAINT IF EXISTS customer_subscriptions_status_check
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query(
+            r#"
+            ALTER TABLE public.customer_subscriptions
+              ADD CONSTRAINT customer_subscriptions_status_check
+              CHECK (status IN ('active', 'pending_installation', 'suspended', 'cancelled'))
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
     pub fn new(
         pool: DbPool,
         auth_service: AuthService,
         audit_service: AuditService,
+        notification_service: NotificationService,
         user_service: UserService,
     ) -> Self {
         Self {
             pool,
             auth_service,
             audit_service,
+            notification_service,
             user_service,
         }
+    }
+
+    pub fn start_installation_sla_scheduler(&self) {
+        let svc = self.clone();
+        tokio::spawn(async move {
+            tracing::info!("Installation SLA reminder scheduler started.");
+            loop {
+                if let Err(err) = svc.run_installation_sla_reminders_for_all_tenants().await {
+                    tracing::warn!("installation SLA reminder scheduler failed: {}", err);
+                }
+                let interval_minutes = svc.resolve_installation_sla_scheduler_interval_minutes().await;
+                let sleep_secs = (interval_minutes.max(5) as u64) * 60;
+                tokio::time::sleep(std::time::Duration::from_secs(sleep_secs)).await;
+            }
+        });
+    }
+
+    pub async fn run_installation_sla_reminders_for_all_tenants(&self) -> AppResult<u64> {
+        if !self.resolve_installation_sla_reminder_enabled().await {
+            return Ok(0);
+        }
+
+        let overdue_minutes = self.resolve_installation_sla_overdue_minutes().await;
+        let unscheduled_minutes = (overdue_minutes * 2).max(120);
+        let cooldown_minutes = self.resolve_installation_sla_reminder_cooldown_minutes().await;
+
+        #[cfg(feature = "postgres")]
+        let tenant_ids: Vec<String> = sqlx::query_scalar("SELECT id FROM tenants WHERE is_active = true")
+            .fetch_all(&self.pool)
+            .await?;
+
+        #[cfg(feature = "sqlite")]
+        let tenant_ids: Vec<String> = sqlx::query_scalar("SELECT id FROM tenants WHERE is_active = 1")
+            .fetch_all(&self.pool)
+            .await?;
+
+        let mut sent = 0_u64;
+        for tenant_id in tenant_ids {
+            sent += self
+                .run_installation_sla_reminders_for_tenant(
+                    &tenant_id,
+                    overdue_minutes,
+                    unscheduled_minutes,
+                    cooldown_minutes,
+                )
+                .await?;
+        }
+
+        Ok(sent)
     }
 
     async fn get_system_role_id_by_name(&self, name: &str) -> AppResult<String> {
@@ -175,6 +522,94 @@ impl CustomerService {
         }
     }
 
+    fn parse_setting_bool(raw: Option<String>, default_value: bool) -> bool {
+        let Some(value) = raw else {
+            return default_value;
+        };
+        match value.trim().to_ascii_lowercase().as_str() {
+            "1" | "true" | "yes" | "on" => true,
+            "0" | "false" | "no" | "off" => false,
+            _ => default_value,
+        }
+    }
+
+    fn parse_setting_i64(raw: Option<String>, default_value: i64, min: i64, max: i64) -> i64 {
+        raw.and_then(|v| v.trim().parse::<i64>().ok())
+            .map(|v| v.clamp(min, max))
+            .unwrap_or(default_value)
+    }
+
+    fn detect_installation_sla_breach(
+        status: &str,
+        scheduled_at: Option<DateTime<Utc>>,
+        created_at: DateTime<Utc>,
+        now: DateTime<Utc>,
+        overdue_minutes: i64,
+        unscheduled_minutes: i64,
+    ) -> Option<InstallationSlaBreachType> {
+        let normalized_status = status.trim().to_ascii_lowercase();
+        if normalized_status != "pending" && normalized_status != "in_progress" {
+            return None;
+        }
+
+        let scheduled_cutoff = now - Duration::minutes(overdue_minutes.max(1));
+        if let Some(schedule_at) = scheduled_at {
+            if schedule_at <= scheduled_cutoff {
+                return Some(InstallationSlaBreachType::ScheduledOverdue);
+            }
+        }
+
+        if normalized_status == "pending" && scheduled_at.is_none() {
+            let unscheduled_cutoff = now - Duration::minutes(unscheduled_minutes.max(1));
+            if created_at <= unscheduled_cutoff {
+                return Some(InstallationSlaBreachType::PendingUnscheduled);
+            }
+        }
+
+        None
+    }
+
+    fn format_elapsed_duration(minutes: i64) -> String {
+        let total_minutes = minutes.max(0);
+        if total_minutes < 60 {
+            return format!("{}m", total_minutes);
+        }
+
+        let hours = total_minutes / 60;
+        let rem_minutes = total_minutes % 60;
+        if hours < 24 {
+            if rem_minutes == 0 {
+                return format!("{}h", hours);
+            }
+            return format!("{}h {}m", hours, rem_minutes);
+        }
+
+        let days = hours / 24;
+        let rem_hours = hours % 24;
+        if rem_hours == 0 {
+            return format!("{}d", days);
+        }
+        format!("{}d {}h", days, rem_hours)
+    }
+
+    fn is_owner_admin_or_technician_role(role: Option<&str>) -> bool {
+        role.map(|r| {
+            let normalized = r.trim().to_ascii_lowercase();
+            normalized == "owner" || normalized == "admin" || normalized == "technician"
+        })
+        .unwrap_or(false)
+    }
+
+    fn filter_installation_request_user_ids(rows: Vec<(String, Option<String>)>) -> Vec<String> {
+        let mut set = HashSet::new();
+        for (user_id, role) in rows {
+            if Self::is_owner_admin_or_technician_role(role.as_deref()) {
+                set.insert(user_id);
+            }
+        }
+        set.into_iter().collect()
+    }
+
     fn merge_work_order_notes(
         existing: Option<String>,
         actor_id: &str,
@@ -266,6 +701,97 @@ impl CustomerService {
         .await?;
 
         Ok(value)
+    }
+
+    async fn read_global_setting_value(&self, key: &str) -> AppResult<Option<String>> {
+        #[cfg(feature = "postgres")]
+        let value: Option<String> =
+            sqlx::query_scalar("SELECT value FROM settings WHERE tenant_id IS NULL AND key = $1 LIMIT 1")
+                .bind(key)
+                .fetch_optional(&self.pool)
+                .await?;
+
+        #[cfg(feature = "sqlite")]
+        let value: Option<String> =
+            sqlx::query_scalar("SELECT value FROM settings WHERE tenant_id IS NULL AND key = ? LIMIT 1")
+                .bind(key)
+                .fetch_optional(&self.pool)
+                .await?;
+
+        Ok(value)
+    }
+
+    async fn resolve_installation_sla_reminder_enabled(&self) -> bool {
+        let raw = self
+            .read_global_setting_value(INSTALLATION_SLA_REMINDER_ENABLED_KEY)
+            .await
+            .ok()
+            .flatten();
+        Self::parse_setting_bool(raw, true)
+    }
+
+    async fn resolve_installation_sla_overdue_minutes(&self) -> i64 {
+        let raw = self
+            .read_global_setting_value(INSTALLATION_SLA_OVERDUE_MINUTES_KEY)
+            .await
+            .ok()
+            .flatten();
+        Self::parse_setting_i64(raw, 120, 15, 7 * 24 * 60)
+    }
+
+    async fn resolve_installation_sla_reminder_cooldown_minutes(&self) -> i64 {
+        let raw = self
+            .read_global_setting_value(INSTALLATION_SLA_REMINDER_COOLDOWN_MINUTES_KEY)
+            .await
+            .ok()
+            .flatten();
+        Self::parse_setting_i64(raw, 180, 15, 7 * 24 * 60)
+    }
+
+    async fn resolve_installation_sla_scheduler_interval_minutes(&self) -> i64 {
+        let default_global = self
+            .read_global_setting_value(INSTALLATION_SLA_SCHEDULER_INTERVAL_MINUTES_KEY)
+            .await
+            .ok()
+            .flatten();
+        let default_global = Self::parse_setting_i64(default_global, 15, 5, 24 * 60);
+
+        #[cfg(feature = "postgres")]
+        let tenant_values: Vec<String> = sqlx::query_scalar(
+            r#"
+            SELECT s.value
+            FROM settings s
+            INNER JOIN tenants t ON t.id = s.tenant_id
+            WHERE s.key = $1
+              AND t.is_active = true
+            "#,
+        )
+        .bind(INSTALLATION_SLA_SCHEDULER_INTERVAL_MINUTES_KEY)
+        .fetch_all(&self.pool)
+        .await
+        .unwrap_or_default();
+
+        #[cfg(feature = "sqlite")]
+        let tenant_values: Vec<String> = sqlx::query_scalar(
+            r#"
+            SELECT s.value
+            FROM settings s
+            INNER JOIN tenants t ON t.id = s.tenant_id
+            WHERE s.key = ?
+              AND t.is_active = 1
+            "#,
+        )
+        .bind(INSTALLATION_SLA_SCHEDULER_INTERVAL_MINUTES_KEY)
+        .fetch_all(&self.pool)
+        .await
+        .unwrap_or_default();
+
+        tenant_values
+            .into_iter()
+            .filter_map(|v| v.parse::<i64>().ok())
+            .map(|v| v.clamp(5, 24 * 60))
+            .min()
+            .unwrap_or(default_global)
     }
 
     async fn upsert_tenant_setting_value(
@@ -2705,7 +3231,35 @@ impl CustomerService {
               cs.updated_at,
               p.name AS package_name,
               l.label AS location_label,
-              r.name AS router_name
+              r.name AS router_name,
+              (
+                SELECT iwo.id
+                FROM installation_work_orders iwo
+                WHERE iwo.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY iwo.created_at DESC
+                LIMIT 1
+              ) AS latest_work_order_id,
+              (
+                SELECT iwo.status
+                FROM installation_work_orders iwo
+                WHERE iwo.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY iwo.created_at DESC
+                LIMIT 1
+              ) AS latest_work_order_status,
+              CASE
+                WHEN LOWER(cs.status) = 'cancelled' THEN true
+                WHEN COALESCE((
+                  SELECT LOWER(iwo.status)
+                  FROM installation_work_orders iwo
+                  WHERE iwo.tenant_id = cs.tenant_id
+                    AND iwo.subscription_id = cs.id
+                  ORDER BY iwo.created_at DESC
+                  LIMIT 1
+                ), '') = 'cancelled' THEN true
+                ELSE false
+              END AS can_request_reopen
             FROM customer_subscriptions cs
             LEFT JOIN isp_packages p ON p.id = cs.package_id
             LEFT JOIN customer_locations l ON l.id = cs.location_id
@@ -2743,7 +3297,35 @@ impl CustomerService {
               cs.updated_at,
               p.name AS package_name,
               l.label AS location_label,
-              r.name AS router_name
+              r.name AS router_name,
+              (
+                SELECT iwo.id
+                FROM installation_work_orders iwo
+                WHERE iwo.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY iwo.created_at DESC
+                LIMIT 1
+              ) AS latest_work_order_id,
+              (
+                SELECT iwo.status
+                FROM installation_work_orders iwo
+                WHERE iwo.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY iwo.created_at DESC
+                LIMIT 1
+              ) AS latest_work_order_status,
+              CASE
+                WHEN LOWER(cs.status) = 'cancelled' THEN 1
+                WHEN COALESCE((
+                  SELECT LOWER(iwo.status)
+                  FROM installation_work_orders iwo
+                  WHERE iwo.tenant_id = cs.tenant_id
+                    AND iwo.subscription_id = cs.id
+                  ORDER BY iwo.created_at DESC
+                  LIMIT 1
+                ), '') = 'cancelled' THEN 1
+                ELSE 0
+              END AS can_request_reopen
             FROM customer_subscriptions cs
             LEFT JOIN isp_packages p ON p.id = cs.package_id
             LEFT JOIN customer_locations l ON l.id = cs.location_id
@@ -2977,8 +3559,8 @@ impl CustomerService {
             )
             .await;
 
-        self.auto_provision_pppoe_for_subscription(actor_id, tenant_id, &row, ip_address)
-            .await?;
+        // For portal self-checkout, PPPoE provisioning is deferred until
+        // installation work order is completed by technician.
 
         Ok(row)
     }
@@ -3362,6 +3944,7 @@ impl CustomerService {
             SELECT
               id,
               tenant_id,
+              service_type,
               name,
               description,
               features,
@@ -3386,6 +3969,7 @@ impl CustomerService {
             SELECT
               id,
               tenant_id,
+              service_type,
               name,
               description,
               features,
@@ -3413,31 +3997,110 @@ impl CustomerService {
         tenant_id: &str,
         page: u32,
         per_page: u32,
+        status: Option<String>,
+        sort_by: Option<String>,
+        sort_dir: Option<String>,
     ) -> AppResult<PaginatedResponse<CustomerSubscriptionView>> {
         let customer_id = self.get_portal_customer_id(actor_id, tenant_id).await?;
         let offset = (page.saturating_sub(1)) * per_page;
+        let status_filter = status
+            .map(|v| v.trim().to_lowercase())
+            .filter(|v| !v.is_empty());
+        let sort_column = match sort_by
+            .unwrap_or_else(|| "updated_at".to_string())
+            .trim()
+            .to_lowercase()
+            .as_str()
+        {
+            "price" => "cs.price",
+            "status" => "LOWER(cs.status)",
+            "package_name" => "LOWER(COALESCE(p.name, ''))",
+            "location_label" => "LOWER(COALESCE(l.label, ''))",
+            "updated_at" => "cs.updated_at",
+            _ => "cs.updated_at",
+        };
+        let sort_direction = match sort_dir
+            .unwrap_or_else(|| "desc".to_string())
+            .trim()
+            .to_lowercase()
+            .as_str()
+        {
+            "asc" => "ASC",
+            _ => "DESC",
+        };
 
         #[cfg(feature = "postgres")]
         let total: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM customer_subscriptions WHERE tenant_id = $1 AND customer_id = $2",
+            r#"
+            SELECT COUNT(*)
+            FROM customer_subscriptions cs
+            WHERE cs.tenant_id = $1
+              AND cs.customer_id = $2
+              AND (
+                    $3::text IS NULL
+                    OR LOWER(cs.status) = $3
+                    OR (
+                      $3 = 'needs_attention'
+                      AND (
+                        LOWER(cs.status) IN ('suspended', 'cancelled')
+                        OR COALESCE((
+                          SELECT LOWER(iwo.status)
+                          FROM installation_work_orders iwo
+                          WHERE iwo.tenant_id = cs.tenant_id
+                            AND iwo.subscription_id = cs.id
+                          ORDER BY iwo.created_at DESC
+                          LIMIT 1
+                        ), '') = 'cancelled'
+                      )
+                    )
+              )
+            "#,
         )
         .bind(tenant_id)
         .bind(&customer_id)
+        .bind(&status_filter)
         .fetch_one(&self.pool)
         .await?;
 
         #[cfg(feature = "sqlite")]
         let total: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM customer_subscriptions WHERE tenant_id = ? AND customer_id = ?",
+            r#"
+            SELECT COUNT(*)
+            FROM customer_subscriptions cs
+            WHERE cs.tenant_id = ?
+              AND cs.customer_id = ?
+              AND (
+                    ? IS NULL
+                    OR LOWER(cs.status) = ?
+                    OR (
+                      ? = 'needs_attention'
+                      AND (
+                        LOWER(cs.status) IN ('suspended', 'cancelled')
+                        OR COALESCE((
+                          SELECT LOWER(iwo.status)
+                          FROM installation_work_orders iwo
+                          WHERE iwo.tenant_id = cs.tenant_id
+                            AND iwo.subscription_id = cs.id
+                          ORDER BY iwo.created_at DESC
+                          LIMIT 1
+                        ), '') = 'cancelled'
+                      )
+                    )
+              )
+            "#,
         )
         .bind(tenant_id)
         .bind(&customer_id)
+        .bind(status_filter.clone())
+        .bind(status_filter.clone())
+        .bind(status_filter.clone())
         .fetch_one(&self.pool)
         .await?;
 
         #[cfg(feature = "postgres")]
         let rows: Vec<CustomerSubscriptionView> = sqlx::query_as(
-            r#"
+            &format!(
+                r#"
             SELECT
               cs.id,
               cs.tenant_id,
@@ -3456,18 +4119,67 @@ impl CustomerService {
               cs.updated_at,
               p.name AS package_name,
               l.label AS location_label,
-              r.name AS router_name
+              r.name AS router_name,
+              (
+                SELECT iwo.id
+                FROM installation_work_orders iwo
+                WHERE iwo.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY iwo.created_at DESC
+                LIMIT 1
+              ) AS latest_work_order_id,
+              (
+                SELECT iwo.status
+                FROM installation_work_orders iwo
+                WHERE iwo.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY iwo.created_at DESC
+                LIMIT 1
+              ) AS latest_work_order_status,
+              CASE
+                WHEN LOWER(cs.status) = 'cancelled' THEN true
+                WHEN COALESCE((
+                  SELECT LOWER(iwo.status)
+                  FROM installation_work_orders iwo
+                  WHERE iwo.tenant_id = cs.tenant_id
+                    AND iwo.subscription_id = cs.id
+                  ORDER BY iwo.created_at DESC
+                  LIMIT 1
+                ), '') = 'cancelled' THEN true
+                ELSE false
+              END AS can_request_reopen
             FROM customer_subscriptions cs
             LEFT JOIN isp_packages p ON p.id = cs.package_id
             LEFT JOIN customer_locations l ON l.id = cs.location_id
             LEFT JOIN mikrotik_routers r ON r.id = cs.router_id
-            WHERE cs.tenant_id = $1 AND cs.customer_id = $2
-            ORDER BY cs.updated_at DESC
-            LIMIT $3 OFFSET $4
+            WHERE cs.tenant_id = $1
+              AND cs.customer_id = $2
+              AND (
+                    $3::text IS NULL
+                    OR LOWER(cs.status) = $3
+                    OR (
+                      $3 = 'needs_attention'
+                      AND (
+                        LOWER(cs.status) IN ('suspended', 'cancelled')
+                        OR COALESCE((
+                          SELECT LOWER(iwo.status)
+                          FROM installation_work_orders iwo
+                          WHERE iwo.tenant_id = cs.tenant_id
+                            AND iwo.subscription_id = cs.id
+                          ORDER BY iwo.created_at DESC
+                          LIMIT 1
+                        ), '') = 'cancelled'
+                      )
+                    )
+              )
+            ORDER BY {sort_column} {sort_direction}
+            LIMIT $4 OFFSET $5
             "#,
+            ),
         )
         .bind(tenant_id)
         .bind(&customer_id)
+        .bind(&status_filter)
         .bind(per_page as i64)
         .bind(offset as i64)
         .fetch_all(&self.pool)
@@ -3475,7 +4187,8 @@ impl CustomerService {
 
         #[cfg(feature = "sqlite")]
         let rows: Vec<CustomerSubscriptionView> = sqlx::query_as(
-            r#"
+            &format!(
+                r#"
             SELECT
               cs.id,
               cs.tenant_id,
@@ -3494,18 +4207,69 @@ impl CustomerService {
               cs.updated_at,
               p.name AS package_name,
               l.label AS location_label,
-              r.name AS router_name
+              r.name AS router_name,
+              (
+                SELECT iwo.id
+                FROM installation_work_orders iwo
+                WHERE iwo.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY iwo.created_at DESC
+                LIMIT 1
+              ) AS latest_work_order_id,
+              (
+                SELECT iwo.status
+                FROM installation_work_orders iwo
+                WHERE iwo.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY iwo.created_at DESC
+                LIMIT 1
+              ) AS latest_work_order_status,
+              CASE
+                WHEN LOWER(cs.status) = 'cancelled' THEN 1
+                WHEN COALESCE((
+                  SELECT LOWER(iwo.status)
+                  FROM installation_work_orders iwo
+                  WHERE iwo.tenant_id = cs.tenant_id
+                    AND iwo.subscription_id = cs.id
+                  ORDER BY iwo.created_at DESC
+                  LIMIT 1
+                ), '') = 'cancelled' THEN 1
+                ELSE 0
+              END AS can_request_reopen
             FROM customer_subscriptions cs
             LEFT JOIN isp_packages p ON p.id = cs.package_id
             LEFT JOIN customer_locations l ON l.id = cs.location_id
             LEFT JOIN mikrotik_routers r ON r.id = cs.router_id
-            WHERE cs.tenant_id = ? AND cs.customer_id = ?
-            ORDER BY cs.updated_at DESC
+            WHERE cs.tenant_id = ?
+              AND cs.customer_id = ?
+              AND (
+                    ? IS NULL
+                    OR LOWER(cs.status) = ?
+                    OR (
+                      ? = 'needs_attention'
+                      AND (
+                        LOWER(cs.status) IN ('suspended', 'cancelled')
+                        OR COALESCE((
+                          SELECT LOWER(iwo.status)
+                          FROM installation_work_orders iwo
+                          WHERE iwo.tenant_id = cs.tenant_id
+                            AND iwo.subscription_id = cs.id
+                          ORDER BY iwo.created_at DESC
+                          LIMIT 1
+                        ), '') = 'cancelled'
+                      )
+                    )
+              )
+            ORDER BY {sort_column} {sort_direction}
             LIMIT ? OFFSET ?
             "#,
+            ),
         )
         .bind(tenant_id)
         .bind(&customer_id)
+        .bind(status_filter.clone())
+        .bind(status_filter.clone())
+        .bind(status_filter.clone())
         .bind(per_page as i64)
         .bind(offset as i64)
         .fetch_all(&self.pool)
@@ -3519,6 +4283,98 @@ impl CustomerService {
         })
     }
 
+    pub async fn get_my_subscription_stats(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+    ) -> AppResult<CustomerPortalSubscriptionStats> {
+        let customer_id = self.get_portal_customer_id(actor_id, tenant_id).await?;
+
+        #[cfg(feature = "postgres")]
+        let stats: CustomerPortalSubscriptionStats = sqlx::query_as(
+            r#"
+            SELECT
+              COUNT(*)::bigint AS total,
+              COUNT(*) FILTER (WHERE LOWER(cs.status) = 'active')::bigint AS active,
+              COUNT(*) FILTER (
+                WHERE LOWER(cs.status) = 'pending_installation'
+                  AND COALESCE((
+                    SELECT LOWER(iwo.status)
+                    FROM installation_work_orders iwo
+                    WHERE iwo.tenant_id = cs.tenant_id
+                      AND iwo.subscription_id = cs.id
+                    ORDER BY iwo.created_at DESC
+                    LIMIT 1
+                  ), '') <> 'cancelled'
+              )::bigint AS pending_installation,
+              COUNT(*) FILTER (
+                WHERE LOWER(cs.status) IN ('suspended', 'cancelled')
+                   OR COALESCE((
+                    SELECT LOWER(iwo.status)
+                    FROM installation_work_orders iwo
+                    WHERE iwo.tenant_id = cs.tenant_id
+                      AND iwo.subscription_id = cs.id
+                    ORDER BY iwo.created_at DESC
+                    LIMIT 1
+                  ), '') = 'cancelled'
+              )::bigint AS needs_attention
+            FROM customer_subscriptions cs
+            WHERE cs.tenant_id = $1
+              AND cs.customer_id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&customer_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let stats: CustomerPortalSubscriptionStats = sqlx::query_as(
+            r#"
+            SELECT
+              COUNT(*) AS total,
+              COALESCE(SUM(CASE WHEN LOWER(cs.status) = 'active' THEN 1 ELSE 0 END), 0) AS active,
+              COALESCE(SUM(
+                CASE
+                  WHEN LOWER(cs.status) = 'pending_installation'
+                   AND COALESCE((
+                    SELECT LOWER(iwo.status)
+                    FROM installation_work_orders iwo
+                    WHERE iwo.tenant_id = cs.tenant_id
+                      AND iwo.subscription_id = cs.id
+                    ORDER BY iwo.created_at DESC
+                    LIMIT 1
+                   ), '') <> 'cancelled'
+                  THEN 1 ELSE 0
+                END
+              ), 0) AS pending_installation,
+              COALESCE(SUM(
+                CASE
+                  WHEN LOWER(cs.status) IN ('suspended', 'cancelled')
+                    OR COALESCE((
+                      SELECT LOWER(iwo.status)
+                      FROM installation_work_orders iwo
+                      WHERE iwo.tenant_id = cs.tenant_id
+                        AND iwo.subscription_id = cs.id
+                      ORDER BY iwo.created_at DESC
+                      LIMIT 1
+                    ), '') = 'cancelled'
+                  THEN 1 ELSE 0
+                END
+              ), 0) AS needs_attention
+            FROM customer_subscriptions cs
+            WHERE cs.tenant_id = ?
+              AND cs.customer_id = ?
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&customer_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(stats)
+    }
+
     pub async fn create_my_subscription(
         &self,
         actor_id: &str,
@@ -3526,6 +4382,9 @@ impl CustomerService {
         dto: PortalCheckoutSubscriptionRequest,
         ip_address: Option<&str>,
     ) -> AppResult<CustomerSubscription> {
+        #[cfg(feature = "postgres")]
+        self.ensure_pending_installation_status_supported().await?;
+
         let customer_id = self.get_portal_customer_id(actor_id, tenant_id).await?;
 
         let location_id = dto.location_id.trim().to_string();
@@ -3604,154 +4463,58 @@ impl CustomerService {
             price_monthly
         };
 
-        #[cfg(feature = "postgres")]
-        let existing_id: Option<String> = sqlx::query_scalar(
-            r#"
-            SELECT id
-            FROM customer_subscriptions
-            WHERE tenant_id = $1
-              AND customer_id = $2
-              AND location_id = $3
-              AND status IN ('active', 'pending_installation', 'suspended')
-            ORDER BY updated_at DESC
-            LIMIT 1
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(&customer_id)
-        .bind(&location_id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        #[cfg(feature = "sqlite")]
-        let existing_id: Option<String> = sqlx::query_scalar(
-            r#"
-            SELECT id
-            FROM customer_subscriptions
-            WHERE tenant_id = ?
-              AND customer_id = ?
-              AND location_id = ?
-              AND status IN ('active', 'pending_installation', 'suspended')
-            ORDER BY updated_at DESC
-            LIMIT 1
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(&customer_id)
-        .bind(&location_id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        let has_existing = existing_id.is_some();
-        let subscription_id = existing_id.unwrap_or_else(|| Uuid::new_v4().to_string());
+        // Portal checkout must create a new service order/subscription each time.
+        // Renewal is handled by recurring invoice generation, not by overwriting
+        // currently active subscription on the same location.
+        let subscription_id = Uuid::new_v4().to_string();
         let currency = "IDR".to_string();
         let notes = Some("Self-service checkout".to_string());
 
-        if has_existing {
-            #[cfg(feature = "postgres")]
-            sqlx::query(
-                r#"
-                UPDATE customer_subscriptions
-                SET package_id = $1,
-                    billing_cycle = $2,
-                    price = $3,
-                    currency_code = $4,
-                    status = 'active',
-                    starts_at = $5,
-                    ends_at = NULL,
-                    notes = $6,
-                    updated_at = $7
-                WHERE id = $8 AND tenant_id = $9
-                "#,
-            )
-            .bind(&package_id)
-            .bind(&billing_cycle)
-            .bind(price)
-            .bind(&currency)
-            .bind(now)
-            .bind(&notes)
-            .bind(now)
-            .bind(&subscription_id)
-            .bind(tenant_id)
-            .execute(&self.pool)
-            .await?;
+        #[cfg(feature = "postgres")]
+        sqlx::query(
+            r#"
+            INSERT INTO customer_subscriptions
+              (id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at)
+            VALUES
+              ($1,$2,$3,$4,$5,NULL,$6,$7,$8,'pending_installation',NULL,NULL,$9,$10,$11)
+            "#,
+        )
+        .bind(&subscription_id)
+        .bind(tenant_id)
+        .bind(&customer_id)
+        .bind(&location_id)
+        .bind(&package_id)
+        .bind(&billing_cycle)
+        .bind(price)
+        .bind(&currency)
+        .bind(&notes)
+        .bind(now)
+        .bind(now)
+        .execute(&self.pool)
+        .await?;
 
-            #[cfg(feature = "sqlite")]
-            sqlx::query(
-                r#"
-                UPDATE customer_subscriptions
-                SET package_id = ?,
-                    billing_cycle = ?,
-                    price = ?,
-                    currency_code = ?,
-                    status = 'active',
-                    starts_at = ?,
-                    ends_at = NULL,
-                    notes = ?,
-                    updated_at = ?
-                WHERE id = ? AND tenant_id = ?
-                "#,
-            )
-            .bind(&package_id)
-            .bind(&billing_cycle)
-            .bind(price)
-            .bind(&currency)
-            .bind(now)
-            .bind(&notes)
-            .bind(now)
-            .bind(&subscription_id)
-            .bind(tenant_id)
-            .execute(&self.pool)
-            .await?;
-        } else {
-            #[cfg(feature = "postgres")]
-            sqlx::query(
-                r#"
-                INSERT INTO customer_subscriptions
-                  (id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at)
-                VALUES
-                  ($1,$2,$3,$4,$5,NULL,$6,$7,$8,'active',$9,NULL,$10,$11,$12)
-                "#,
-            )
-            .bind(&subscription_id)
-            .bind(tenant_id)
-            .bind(&customer_id)
-            .bind(&location_id)
-            .bind(&package_id)
-            .bind(&billing_cycle)
-            .bind(price)
-            .bind(&currency)
-            .bind(now)
-            .bind(&notes)
-            .bind(now)
-            .bind(now)
-            .execute(&self.pool)
-            .await?;
-
-            #[cfg(feature = "sqlite")]
-            sqlx::query(
-                r#"
-                INSERT INTO customer_subscriptions
-                  (id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at)
-                VALUES
-                  (?,?,?,?,?,NULL,?,?,?,'active',?,NULL,?,?,?)
-                "#,
-            )
-            .bind(&subscription_id)
-            .bind(tenant_id)
-            .bind(&customer_id)
-            .bind(&location_id)
-            .bind(&package_id)
-            .bind(&billing_cycle)
-            .bind(price)
-            .bind(&currency)
-            .bind(now)
-            .bind(&notes)
-            .bind(now)
-            .bind(now)
-            .execute(&self.pool)
-            .await?;
-        }
+        #[cfg(feature = "sqlite")]
+        sqlx::query(
+            r#"
+            INSERT INTO customer_subscriptions
+              (id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at)
+            VALUES
+              (?,?,?,?,?,NULL,?,?,?,'pending_installation',NULL,NULL,?,?,?)
+            "#,
+        )
+        .bind(&subscription_id)
+        .bind(tenant_id)
+        .bind(&customer_id)
+        .bind(&location_id)
+        .bind(&package_id)
+        .bind(&billing_cycle)
+        .bind(price)
+        .bind(&currency)
+        .bind(&notes)
+        .bind(now)
+        .bind(now)
+        .execute(&self.pool)
+        .await?;
 
         #[cfg(feature = "postgres")]
         let row: CustomerSubscription = sqlx::query_as(
@@ -3775,18 +4538,758 @@ impl CustomerService {
             .log(
                 Some(actor_id),
                 Some(tenant_id),
-                "CUSTOMER_PORTAL_SUBSCRIPTION_CHECKOUT",
+                "CUSTOMER_PORTAL_SUBSCRIPTION_ORDER_REQUEST",
                 "customer_subscriptions",
                 Some(&subscription_id),
-                Some("Customer portal checkout created/updated a subscription"),
+                Some("Customer portal created a subscription order request"),
                 ip_address,
             )
             .await;
 
-        self.auto_provision_pppoe_for_subscription(actor_id, tenant_id, &row, ip_address)
+        Ok(row)
+    }
+
+    pub async fn create_my_subscription_order_request(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        dto: PortalCheckoutSubscriptionRequest,
+        ip_address: Option<&str>,
+    ) -> AppResult<(CustomerSubscription, InstallationWorkOrder)> {
+        let subscription = self
+            .create_my_subscription(actor_id, tenant_id, dto, ip_address)
             .await?;
 
-        Ok(row)
+        let (work_order, _created) = self
+            .ensure_installation_work_order_for_subscription(tenant_id, &subscription)
+            .await?;
+
+        if let Err(err) = self
+            .notify_new_installation_request(tenant_id, &subscription, &work_order)
+            .await
+        {
+            warn!(
+                "failed to send new installation request notification: tenant_id={}, subscription_id={}, work_order_id={}, error={}",
+                tenant_id, subscription.id, work_order.id, err
+            );
+        }
+
+        Ok((subscription, work_order))
+    }
+
+    pub async fn reopen_my_subscription_order_request(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        subscription_id: &str,
+        notes: Option<String>,
+        ip_address: Option<&str>,
+    ) -> AppResult<(CustomerSubscription, InstallationWorkOrder)> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "customers", "read_own")
+            .await?;
+
+        let customer_id = self.get_portal_customer_id(actor_id, tenant_id).await?;
+
+        #[cfg(feature = "postgres")]
+        let mut sub: CustomerSubscription = sqlx::query_as(
+            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price::float8 as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE tenant_id = $1 AND id = $2 AND customer_id = $3 LIMIT 1",
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .bind(&customer_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Subscription not found".to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let mut sub: CustomerSubscription = sqlx::query_as(
+            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE tenant_id = ? AND id = ? AND customer_id = ? LIMIT 1",
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .bind(&customer_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Subscription not found".to_string()))?;
+
+        #[cfg(feature = "postgres")]
+        let latest_work_order_status: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT status
+            FROM installation_work_orders
+            WHERE tenant_id = $1
+              AND subscription_id = $2
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let latest_work_order_status: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT status
+            FROM installation_work_orders
+            WHERE tenant_id = ?
+              AND subscription_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let has_cancelled_state =
+            sub.status == "cancelled" || latest_work_order_status.as_deref() == Some("cancelled");
+        if !has_cancelled_state {
+            return Err(AppError::Validation(
+                "Only cancelled subscription/order can be reopened".to_string(),
+            ));
+        }
+
+        self.set_customer_subscription_status(tenant_id, &sub.id, "pending_installation")
+            .await?;
+        sub.status = "pending_installation".to_string();
+        sub.updated_at = Utc::now();
+
+        let (work_order, _created) = self
+            .ensure_installation_work_order_for_subscription(tenant_id, &sub)
+            .await?;
+
+        let mut note = "Reopened by customer request from portal".to_string();
+        if let Some(extra) = notes.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
+            note.push_str(". ");
+            note.push_str(extra);
+        }
+        let merged_notes = Self::merge_work_order_notes(work_order.notes.clone(), actor_id, Some(&note));
+        let now = Utc::now();
+        #[cfg(feature = "postgres")]
+        let _ = sqlx::query(
+            "UPDATE installation_work_orders SET notes = $1, updated_at = $2 WHERE tenant_id = $3 AND id = $4",
+        )
+        .bind(&merged_notes)
+        .bind(now)
+        .bind(tenant_id)
+        .bind(&work_order.id)
+        .execute(&self.pool)
+        .await;
+        #[cfg(feature = "sqlite")]
+        let _ = sqlx::query(
+            "UPDATE installation_work_orders SET notes = ?, updated_at = ? WHERE tenant_id = ? AND id = ?",
+        )
+        .bind(&merged_notes)
+        .bind(now.to_rfc3339())
+        .bind(tenant_id)
+        .bind(&work_order.id)
+        .execute(&self.pool)
+        .await;
+
+        if let Err(err) = self
+            .notify_new_installation_request(tenant_id, &sub, &work_order)
+            .await
+        {
+            warn!(
+                "failed to notify tenant about customer reopen request: tenant_id={}, subscription_id={}, work_order_id={}, error={}",
+                tenant_id, sub.id, work_order.id, err
+            );
+        }
+
+        self.audit_service
+            .log(
+                Some(actor_id),
+                Some(tenant_id),
+                "CUSTOMER_PORTAL_ORDER_REQUEST_REOPEN",
+                "customer_subscriptions",
+                Some(&sub.id),
+                Some("Customer requested installation order reopen"),
+                ip_address,
+            )
+            .await;
+
+        Ok((sub, work_order))
+    }
+
+    async fn ensure_installation_work_order_for_subscription(
+        &self,
+        tenant_id: &str,
+        sub: &CustomerSubscription,
+    ) -> AppResult<(InstallationWorkOrder, bool)> {
+        #[cfg(feature = "postgres")]
+        let existing: Option<InstallationWorkOrder> = sqlx::query_as(
+            r#"
+            SELECT id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, assigned_to, scheduled_at, completed_at, notes, created_at, updated_at
+            FROM installation_work_orders
+            WHERE tenant_id = $1
+              AND subscription_id = $2
+              AND status IN ('pending', 'in_progress')
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&sub.id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let existing: Option<InstallationWorkOrder> = sqlx::query_as(
+            r#"
+            SELECT id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, assigned_to, scheduled_at, completed_at, notes, created_at, updated_at
+            FROM installation_work_orders
+            WHERE tenant_id = ?
+              AND subscription_id = ?
+              AND status IN ('pending', 'in_progress')
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&sub.id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if let Some(row) = existing {
+            return Ok((row, false));
+        }
+
+        let id = Uuid::new_v4().to_string();
+        let now = Utc::now();
+        let notes = Some("Created from customer order request; awaiting assignment and schedule.".to_string());
+
+        #[cfg(feature = "postgres")]
+        sqlx::query(
+            r#"
+            INSERT INTO installation_work_orders
+              (id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, notes, created_at, updated_at)
+            VALUES
+              ($1,$2,$3,NULL,$4,$5,$6,'pending',$7,$8,$9)
+            "#,
+        )
+        .bind(&id)
+        .bind(tenant_id)
+        .bind(&sub.id)
+        .bind(&sub.customer_id)
+        .bind(&sub.location_id)
+        .bind(&sub.router_id)
+        .bind(&notes)
+        .bind(now)
+        .bind(now)
+        .execute(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query(
+            r#"
+            INSERT INTO installation_work_orders
+              (id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, notes, created_at, updated_at)
+            VALUES
+              (?,?,?,NULL,?,?,?,'pending',?,?,?)
+            "#,
+        )
+        .bind(&id)
+        .bind(tenant_id)
+        .bind(&sub.id)
+        .bind(&sub.customer_id)
+        .bind(&sub.location_id)
+        .bind(&sub.router_id)
+        .bind(notes.clone())
+        .bind(now.to_rfc3339())
+        .bind(now.to_rfc3339())
+        .execute(&self.pool)
+        .await?;
+
+        #[cfg(feature = "postgres")]
+        let row: InstallationWorkOrder = sqlx::query_as(
+            r#"
+            SELECT id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, assigned_to, scheduled_at, completed_at, notes, created_at, updated_at
+            FROM installation_work_orders
+            WHERE tenant_id = $1 AND id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let row: InstallationWorkOrder = sqlx::query_as(
+            r#"
+            SELECT id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, assigned_to, scheduled_at, completed_at, notes, created_at, updated_at
+            FROM installation_work_orders
+            WHERE tenant_id = ? AND id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok((row, true))
+    }
+
+    async fn has_paid_customer_package_invoice_for_subscription(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+    ) -> AppResult<bool> {
+        #[cfg(feature = "postgres")]
+        let exists: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1
+              FROM invoices
+              WHERE tenant_id = $1
+                AND status = 'paid'
+                AND (
+                    external_id = $2
+                    OR external_id LIKE $3
+                )
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(format!("{}{}", CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id))
+        .bind(format!("{}{}:%", CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id))
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let exists: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1
+              FROM invoices
+              WHERE tenant_id = ?
+                AND status = 'paid'
+                AND (
+                    external_id = ?
+                    OR external_id LIKE ?
+                )
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(format!("{}{}", CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id))
+        .bind(format!("{}{}:%", CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id))
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(exists)
+    }
+
+    async fn set_customer_subscription_status(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        status: &str,
+    ) -> AppResult<()> {
+        let now = Utc::now();
+        #[cfg(feature = "postgres")]
+        let rows = sqlx::query(
+            r#"
+            UPDATE customer_subscriptions
+            SET status = $1,
+                starts_at = CASE WHEN $1 = 'active' THEN COALESCE(starts_at, $2) ELSE starts_at END,
+                updated_at = $2
+            WHERE tenant_id = $3
+              AND id = $4
+            "#,
+        )
+        .bind(status)
+        .bind(now)
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+
+        #[cfg(feature = "sqlite")]
+        let rows = sqlx::query(
+            r#"
+            UPDATE customer_subscriptions
+            SET status = ?,
+                starts_at = CASE WHEN ? = 'active' THEN COALESCE(starts_at, ?) ELSE starts_at END,
+                updated_at = ?
+            WHERE tenant_id = ?
+              AND id = ?
+            "#,
+        )
+        .bind(status)
+        .bind(status)
+        .bind(now.to_rfc3339())
+        .bind(now.to_rfc3339())
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+
+        if rows == 0 {
+            return Err(AppError::NotFound(
+                "Customer subscription not found".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    async fn list_tenant_installation_alert_user_ids(&self, tenant_id: &str) -> AppResult<Vec<String>> {
+        #[cfg(feature = "postgres")]
+        let rows: Vec<(String, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT tm.user_id, COALESCE(r.name, tm.role) AS role_name
+            FROM tenant_members tm
+            LEFT JOIN roles r
+              ON r.id = tm.role_id
+             AND (r.tenant_id = tm.tenant_id OR r.tenant_id IS NULL)
+            WHERE tm.tenant_id = $1
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let rows: Vec<(String, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT tm.user_id, COALESCE(r.name, tm.role) AS role_name
+            FROM tenant_members tm
+            LEFT JOIN roles r
+              ON r.id = tm.role_id
+             AND (r.tenant_id = tm.tenant_id OR r.tenant_id IS NULL)
+            WHERE tm.tenant_id = ?
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(Self::filter_installation_request_user_ids(rows))
+    }
+
+    async fn notify_new_installation_request(
+        &self,
+        tenant_id: &str,
+        sub: &CustomerSubscription,
+        work_order: &InstallationWorkOrder,
+    ) -> AppResult<()> {
+        let recipient_ids = self.list_tenant_installation_alert_user_ids(tenant_id).await?;
+        if recipient_ids.is_empty() {
+            return Ok(());
+        }
+
+        #[cfg(feature = "postgres")]
+        let row: Option<(Option<String>, Option<String>, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT c.name, l.label, p.name
+            FROM customer_subscriptions cs
+            LEFT JOIN customers c ON c.tenant_id = cs.tenant_id AND c.id = cs.customer_id
+            LEFT JOIN customer_locations l ON l.tenant_id = cs.tenant_id AND l.id = cs.location_id
+            LEFT JOIN isp_packages p ON p.tenant_id = cs.tenant_id AND p.id = cs.package_id
+            WHERE cs.tenant_id = $1 AND cs.id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&sub.id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let row: Option<(Option<String>, Option<String>, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT c.name, l.label, p.name
+            FROM customer_subscriptions cs
+            LEFT JOIN customers c ON c.tenant_id = cs.tenant_id AND c.id = cs.customer_id
+            LEFT JOIN customer_locations l ON l.tenant_id = cs.tenant_id AND l.id = cs.location_id
+            LEFT JOIN isp_packages p ON p.tenant_id = cs.tenant_id AND p.id = cs.package_id
+            WHERE cs.tenant_id = ? AND cs.id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&sub.id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let (customer_name, location_label, package_name) =
+            row.unwrap_or((None, None, None));
+
+        let title = "New installation request".to_string();
+        let message = format!(
+            "New customer order needs installation scheduling. Customer: {} • Location: {} • Package: {} • WO {}",
+            customer_name.unwrap_or_else(|| "-".to_string()),
+            location_label.unwrap_or_else(|| "-".to_string()),
+            package_name.unwrap_or_else(|| "-".to_string()),
+            work_order.id
+        );
+
+        for user_id in recipient_ids {
+            self.notification_service
+                .create_notification(
+                    user_id,
+                    Some(tenant_id.to_string()),
+                    title.clone(),
+                    message.clone(),
+                    "info".to_string(),
+                    "operations".to_string(),
+                    Some("/admin/network/installations".to_string()),
+                )
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn run_installation_sla_reminders_for_tenant(
+        &self,
+        tenant_id: &str,
+        overdue_minutes: i64,
+        unscheduled_minutes: i64,
+        cooldown_minutes: i64,
+    ) -> AppResult<u64> {
+        let overdue_rows = self
+            .list_overdue_installation_work_orders(tenant_id, overdue_minutes, unscheduled_minutes)
+            .await?;
+        if overdue_rows.is_empty() {
+            return Ok(0);
+        }
+
+        let recipient_ids = self.list_tenant_installation_alert_user_ids(tenant_id).await?;
+        if recipient_ids.is_empty() {
+            return Ok(0);
+        }
+
+        let now = Utc::now();
+        let reminder_cutoff = now - Duration::minutes(cooldown_minutes.max(1));
+        let mut sent = 0_u64;
+
+        for row in overdue_rows {
+            let breach = Self::detect_installation_sla_breach(
+                &row.status,
+                row.scheduled_at,
+                row.created_at,
+                now,
+                overdue_minutes,
+                unscheduled_minutes,
+            );
+            let Some(breach_type) = breach else {
+                continue;
+            };
+
+            let action_url = format!("/admin/network/installations?workOrderId={}", row.work_order_id);
+            let customer_label = row.customer_name.unwrap_or_else(|| "-".to_string());
+            let location_label = row.location_label.unwrap_or_else(|| "-".to_string());
+            let package_label = row.package_name.unwrap_or_else(|| "-".to_string());
+            let title = "Installation SLA overdue".to_string();
+            let message = match breach_type {
+                InstallationSlaBreachType::ScheduledOverdue => {
+                    let schedule_at = row.scheduled_at.unwrap_or(now);
+                    let late_minutes = now.signed_duration_since(schedule_at).num_minutes().max(0);
+                    format!(
+                        "WO {} is overdue {} from schedule. Customer: {} • Location: {} • Package: {}",
+                        row.work_order_id,
+                        Self::format_elapsed_duration(late_minutes),
+                        customer_label,
+                        location_label,
+                        package_label
+                    )
+                }
+                InstallationSlaBreachType::PendingUnscheduled => {
+                    let waiting_minutes = now.signed_duration_since(row.created_at).num_minutes().max(0);
+                    format!(
+                        "WO {} is waiting {} without schedule/assignment. Customer: {} • Location: {} • Package: {}",
+                        row.work_order_id,
+                        Self::format_elapsed_duration(waiting_minutes),
+                        customer_label,
+                        location_label,
+                        package_label
+                    )
+                }
+            };
+
+            for user_id in &recipient_ids {
+                let recently_sent = self
+                    .has_recent_installation_sla_notification(
+                        user_id,
+                        tenant_id,
+                        &action_url,
+                        reminder_cutoff,
+                    )
+                    .await?;
+                if recently_sent {
+                    continue;
+                }
+
+                self.notification_service
+                    .create_notification(
+                        user_id.clone(),
+                        Some(tenant_id.to_string()),
+                        title.clone(),
+                        message.clone(),
+                        "warning".to_string(),
+                        "operations".to_string(),
+                        Some(action_url.clone()),
+                    )
+                    .await?;
+                sent += 1;
+            }
+        }
+
+        Ok(sent)
+    }
+
+    async fn list_overdue_installation_work_orders(
+        &self,
+        tenant_id: &str,
+        overdue_minutes: i64,
+        unscheduled_minutes: i64,
+    ) -> AppResult<Vec<OverdueInstallationReminderRow>> {
+        let now = Utc::now();
+        let scheduled_cutoff = now - Duration::minutes(overdue_minutes.max(1));
+        let unscheduled_cutoff = now - Duration::minutes(unscheduled_minutes.max(1));
+
+        #[cfg(feature = "postgres")]
+        let rows: Vec<OverdueInstallationReminderRow> = sqlx::query_as(
+            r#"
+            SELECT
+              wo.id AS work_order_id,
+              wo.status,
+              wo.scheduled_at,
+              wo.created_at,
+              c.name AS customer_name,
+              l.label AS location_label,
+              p.name AS package_name
+            FROM installation_work_orders wo
+            LEFT JOIN customers c
+              ON c.tenant_id = wo.tenant_id
+             AND c.id = wo.customer_id
+            LEFT JOIN customer_locations l
+              ON l.tenant_id = wo.tenant_id
+             AND l.id = wo.location_id
+            LEFT JOIN customer_subscriptions cs
+              ON cs.tenant_id = wo.tenant_id
+             AND cs.id = wo.subscription_id
+            LEFT JOIN isp_packages p
+              ON p.tenant_id = cs.tenant_id
+             AND p.id = cs.package_id
+            WHERE wo.tenant_id = $1
+              AND wo.status IN ('pending', 'in_progress')
+              AND (
+                (wo.scheduled_at IS NOT NULL AND wo.scheduled_at <= $2)
+                OR (wo.status = 'pending' AND wo.scheduled_at IS NULL AND wo.created_at <= $3)
+              )
+            ORDER BY wo.created_at ASC
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(scheduled_cutoff)
+        .bind(unscheduled_cutoff)
+        .fetch_all(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let rows: Vec<OverdueInstallationReminderRow> = sqlx::query_as(
+            r#"
+            SELECT
+              wo.id AS work_order_id,
+              wo.status,
+              wo.scheduled_at,
+              wo.created_at,
+              c.name AS customer_name,
+              l.label AS location_label,
+              p.name AS package_name
+            FROM installation_work_orders wo
+            LEFT JOIN customers c
+              ON c.tenant_id = wo.tenant_id
+             AND c.id = wo.customer_id
+            LEFT JOIN customer_locations l
+              ON l.tenant_id = wo.tenant_id
+             AND l.id = wo.location_id
+            LEFT JOIN customer_subscriptions cs
+              ON cs.tenant_id = wo.tenant_id
+             AND cs.id = wo.subscription_id
+            LEFT JOIN isp_packages p
+              ON p.tenant_id = cs.tenant_id
+             AND p.id = cs.package_id
+            WHERE wo.tenant_id = ?
+              AND wo.status IN ('pending', 'in_progress')
+              AND (
+                (wo.scheduled_at IS NOT NULL AND wo.scheduled_at <= ?)
+                OR (wo.status = 'pending' AND wo.scheduled_at IS NULL AND wo.created_at <= ?)
+              )
+            ORDER BY wo.created_at ASC
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(scheduled_cutoff.to_rfc3339())
+        .bind(unscheduled_cutoff.to_rfc3339())
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
+    }
+
+    async fn has_recent_installation_sla_notification(
+        &self,
+        user_id: &str,
+        tenant_id: &str,
+        action_url: &str,
+        since: DateTime<Utc>,
+    ) -> AppResult<bool> {
+        #[cfg(feature = "postgres")]
+        let exists: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1
+              FROM notifications
+              WHERE user_id = $1
+                AND tenant_id = $2
+                AND category = 'operations'
+                AND title = 'Installation SLA overdue'
+                AND action_url = $3
+                AND created_at >= $4
+            )
+            "#,
+        )
+        .bind(user_id)
+        .bind(tenant_id)
+        .bind(action_url)
+        .bind(since)
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let exists: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1
+              FROM notifications
+              WHERE user_id = ?
+                AND tenant_id = ?
+                AND category = 'operations'
+                AND title = 'Installation SLA overdue'
+                AND action_url = ?
+                AND created_at >= ?
+            )
+            "#,
+        )
+        .bind(user_id)
+        .bind(tenant_id)
+        .bind(action_url)
+        .bind(since.to_rfc3339())
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(exists)
     }
 
     pub async fn list_installation_work_orders(
@@ -3814,6 +5317,7 @@ impl CustomerService {
             .map(str::trim)
             .filter(|s| !s.is_empty())
             .map(str::to_string);
+        let is_admin_owner = self.is_actor_admin_or_owner(tenant_id, actor_id).await?;
 
         #[cfg(feature = "postgres")]
         let rows: Vec<InstallationWorkOrderView> = sqlx::query_as(
@@ -3826,7 +5330,18 @@ impl CustomerService {
               p.name AS package_name,
               r.name AS router_name,
               u.name AS assigned_to_name,
-              u.email AS assigned_to_email
+              u.email AS assigned_to_email,
+              csa.id AS assignment_id,
+              csa.status AS assignment_status,
+              cs.status AS subscription_status,
+              cs.starts_at AS subscription_starts_at,
+              csa.selected_zone_id AS selected_zone_id,
+              sz.name AS selected_zone_name,
+              csa.selected_node_id AS selected_node_id,
+              nn.name AS selected_node_name,
+              csa.selected_node_score::float8 AS selected_node_score,
+              csa.path_node_ids AS path_node_ids,
+              csa.path_link_ids AS path_link_ids
             FROM installation_work_orders wo
             LEFT JOIN customers c ON c.tenant_id = wo.tenant_id AND c.id = wo.customer_id
             LEFT JOIN customer_locations l ON l.tenant_id = wo.tenant_id AND l.id = wo.location_id
@@ -3834,10 +5349,21 @@ impl CustomerService {
             LEFT JOIN isp_packages p ON p.tenant_id = wo.tenant_id AND p.id = cs.package_id
             LEFT JOIN mikrotik_routers r ON r.tenant_id = wo.tenant_id AND r.id = wo.router_id
             LEFT JOIN users u ON u.id = wo.assigned_to
+            LEFT JOIN customer_service_assignments csa ON csa.tenant_id = wo.tenant_id AND csa.work_order_id = wo.id
+            LEFT JOIN service_zones sz ON sz.tenant_id = wo.tenant_id::uuid AND sz.id::text = csa.selected_zone_id
+            LEFT JOIN network_nodes nn ON nn.tenant_id = wo.tenant_id::uuid AND nn.id::text = csa.selected_node_id
             WHERE wo.tenant_id = $1
               AND ($2::text IS NULL OR wo.status = $2)
               AND ($3::text IS NULL OR wo.assigned_to = $3)
               AND ($4::bool OR wo.status NOT IN ('completed', 'cancelled'))
+              AND (
+                $5::bool
+                OR wo.assigned_to = $6
+                OR (
+                  wo.status = 'pending'
+                  AND (wo.assigned_to IS NULL OR btrim(wo.assigned_to) = '')
+                )
+              )
             ORDER BY
               CASE wo.status
                 WHEN 'pending' THEN 0
@@ -3847,13 +5373,15 @@ impl CustomerService {
                 ELSE 4
               END ASC,
               wo.updated_at DESC
-            LIMIT $5
+            LIMIT $7
             "#,
         )
         .bind(tenant_id)
         .bind(status_filter)
         .bind(assigned_filter)
         .bind(include_closed)
+        .bind(is_admin_owner)
+        .bind(actor_id)
         .bind(limit as i64)
         .fetch_all(&self.pool)
         .await?;
@@ -3869,7 +5397,18 @@ impl CustomerService {
               p.name AS package_name,
               r.name AS router_name,
               u.name AS assigned_to_name,
-              u.email AS assigned_to_email
+              u.email AS assigned_to_email,
+              csa.id AS assignment_id,
+              csa.status AS assignment_status,
+              cs.status AS subscription_status,
+              cs.starts_at AS subscription_starts_at,
+              csa.selected_zone_id AS selected_zone_id,
+              sz.name AS selected_zone_name,
+              csa.selected_node_id AS selected_node_id,
+              nn.name AS selected_node_name,
+              csa.selected_node_score AS selected_node_score,
+              csa.path_node_ids AS path_node_ids,
+              csa.path_link_ids AS path_link_ids
             FROM installation_work_orders wo
             LEFT JOIN customers c ON c.tenant_id = wo.tenant_id AND c.id = wo.customer_id
             LEFT JOIN customer_locations l ON l.tenant_id = wo.tenant_id AND l.id = wo.location_id
@@ -3877,10 +5416,21 @@ impl CustomerService {
             LEFT JOIN isp_packages p ON p.tenant_id = wo.tenant_id AND p.id = cs.package_id
             LEFT JOIN mikrotik_routers r ON r.tenant_id = wo.tenant_id AND r.id = wo.router_id
             LEFT JOIN users u ON u.id = wo.assigned_to
+            LEFT JOIN customer_service_assignments csa ON csa.tenant_id = wo.tenant_id AND csa.work_order_id = wo.id
+            LEFT JOIN service_zones sz ON sz.tenant_id = wo.tenant_id AND sz.id = csa.selected_zone_id
+            LEFT JOIN network_nodes nn ON nn.tenant_id = wo.tenant_id AND nn.id = csa.selected_node_id
             WHERE wo.tenant_id = ?
               AND (? IS NULL OR wo.status = ?)
               AND (? IS NULL OR wo.assigned_to = ?)
               AND (? = 1 OR wo.status NOT IN ('completed', 'cancelled'))
+              AND (
+                ? = 1
+                OR wo.assigned_to = ?
+                OR (
+                  wo.status = 'pending'
+                  AND (wo.assigned_to IS NULL OR trim(wo.assigned_to) = '')
+                )
+              )
             ORDER BY
               CASE wo.status
                 WHEN 'pending' THEN 0
@@ -3899,6 +5449,8 @@ impl CustomerService {
         .bind(&assigned_filter)
         .bind(&assigned_filter)
         .bind(if include_closed { 1 } else { 0 })
+        .bind(if is_admin_owner { 1 } else { 0 })
+        .bind(actor_id)
         .bind(limit as i64)
         .fetch_all(&self.pool)
         .await?;
@@ -3920,42 +5472,19 @@ impl CustomerService {
             .check_permission(actor_id, tenant_id, "work_orders", "manage")
             .await?;
 
-        #[cfg(feature = "postgres")]
-        let assignee_exists: bool = sqlx::query_scalar(
-            r#"
-            SELECT EXISTS(
-              SELECT 1
-              FROM tenant_members tm
-              WHERE tm.tenant_id = $1 AND tm.user_id = $2
-            )
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(assigned_to)
-        .fetch_one(&self.pool)
-        .await?;
+        if !self.is_actor_admin_or_owner(tenant_id, actor_id).await? {
+            return Err(AppError::Forbidden(
+                "Only admin/owner can assign installation work orders".to_string(),
+            ));
+        }
 
-        #[cfg(feature = "sqlite")]
-        let assignee_exists: bool = {
-            let raw: i64 = sqlx::query_scalar(
-                r#"
-                SELECT EXISTS(
-                  SELECT 1
-                  FROM tenant_members tm
-                  WHERE tm.tenant_id = ? AND tm.user_id = ?
-                )
-                "#,
-            )
-            .bind(tenant_id)
-            .bind(assigned_to)
-            .fetch_one(&self.pool)
+        let assignee_eligible = self
+            .is_installation_assignee_eligible(tenant_id, assigned_to)
             .await?;
-            raw != 0
-        };
-
-        if !assignee_exists {
+        if !assignee_eligible {
             return Err(AppError::Validation(
-                "Assignee must be a member of this tenant".to_string(),
+                "Assignee must be an eligible installer (Admin/Technician or role with work_orders:manage)"
+                    .to_string(),
             ));
         }
 
@@ -3967,9 +5496,184 @@ impl CustomerService {
             Some(assigned_to),
             scheduled_at,
             notes,
+            false,
             ip_address,
             "WORK_ORDER_ASSIGN",
             "Assigned installation work order",
+        )
+        .await
+    }
+
+    pub async fn claim_installation_work_order(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        work_order_id: &str,
+        notes: Option<String>,
+        ip_address: Option<&str>,
+    ) -> AppResult<InstallationWorkOrder> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "work_orders", "manage")
+            .await?;
+
+        let eligible = self
+            .is_installation_assignee_eligible(tenant_id, actor_id)
+            .await?;
+        if !eligible {
+            return Err(AppError::Forbidden(
+                "Only eligible installers can take installation work orders".to_string(),
+            ));
+        }
+
+        let current = self
+            .get_installation_work_order_row(tenant_id, work_order_id)
+            .await?;
+        if current.status != "pending" {
+            return Err(AppError::Validation(
+                "Only pending work order can be taken".to_string(),
+            ));
+        }
+        if let Some(assigned) = current
+            .assigned_to
+            .as_deref()
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+        {
+            if assigned != actor_id {
+                return Err(AppError::Conflict(
+                    "Work order already taken by another technician".to_string(),
+                ));
+            }
+            return Ok(current);
+        }
+
+        let now = Utc::now();
+
+        #[cfg(feature = "postgres")]
+        let affected = sqlx::query(
+            r#"
+            UPDATE installation_work_orders
+            SET assigned_to = $1, updated_at = $2
+            WHERE tenant_id = $3
+              AND id = $4
+              AND status = 'pending'
+              AND (assigned_to IS NULL OR btrim(assigned_to) = '')
+            "#,
+        )
+        .bind(actor_id)
+        .bind(now)
+        .bind(tenant_id)
+        .bind(work_order_id)
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+
+        #[cfg(feature = "sqlite")]
+        let affected = sqlx::query(
+            r#"
+            UPDATE installation_work_orders
+            SET assigned_to = ?, updated_at = ?
+            WHERE tenant_id = ?
+              AND id = ?
+              AND status = 'pending'
+              AND (assigned_to IS NULL OR trim(assigned_to) = '')
+            "#,
+        )
+        .bind(actor_id)
+        .bind(now)
+        .bind(tenant_id)
+        .bind(work_order_id)
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+
+        if affected == 0 {
+            return Err(AppError::Conflict(
+                "Work order already taken by another technician".to_string(),
+            ));
+        }
+
+        self.audit_service
+            .log(
+                Some(actor_id),
+                Some(tenant_id),
+                "WORK_ORDER_CLAIM",
+                "installation_work_orders",
+                Some(work_order_id),
+                Some("Technician took installation work order"),
+                ip_address,
+            )
+            .await;
+
+        let mut row = self
+            .get_installation_work_order_row(tenant_id, work_order_id)
+            .await?;
+        if notes
+            .as_deref()
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+            .is_some()
+        {
+            row = self
+                .set_installation_work_order_status_internal(
+                    actor_id,
+                    tenant_id,
+                    work_order_id,
+                    None,
+                    None,
+                    None,
+                    notes,
+                    false,
+                    ip_address,
+                    "WORK_ORDER_UPDATE_NOTE",
+                    "Updated work order notes while claiming",
+                )
+                .await?;
+        }
+
+        Ok(row)
+    }
+
+    pub async fn release_installation_work_order(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        work_order_id: &str,
+        notes: Option<String>,
+        ip_address: Option<&str>,
+    ) -> AppResult<InstallationWorkOrder> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "work_orders", "manage")
+            .await?;
+
+        if !self.is_actor_admin_or_owner(tenant_id, actor_id).await? {
+            return Err(AppError::Forbidden(
+                "Only admin/owner can release installation work orders".to_string(),
+            ));
+        }
+
+        let current = self
+            .get_installation_work_order_row(tenant_id, work_order_id)
+            .await?;
+        if current.status != "pending" {
+            return Err(AppError::Validation(
+                "Only pending work order can be released".to_string(),
+            ));
+        }
+
+        // Release means making assignment empty and clearing schedule so next assignee can re-plan.
+        self.set_installation_work_order_status_internal(
+            actor_id,
+            tenant_id,
+            work_order_id,
+            Some("pending"),
+            Some(""),
+            Some("".to_string()),
+            notes,
+            false,
+            ip_address,
+            "WORK_ORDER_RELEASE",
+            "Released installation work order assignment",
         )
         .await
     }
@@ -3986,6 +5690,19 @@ impl CustomerService {
             .check_permission(actor_id, tenant_id, "work_orders", "manage")
             .await?;
 
+        let is_admin = self.is_actor_admin_or_owner(tenant_id, actor_id).await?;
+        if !is_admin {
+            let current = self
+                .get_installation_work_order_row(tenant_id, work_order_id)
+                .await?;
+            let assigned = current.assigned_to.as_deref().map(str::trim).unwrap_or("");
+            if assigned != actor_id {
+                return Err(AppError::Forbidden(
+                    "Technician can only start own assigned work order".to_string(),
+                ));
+            }
+        }
+
         self.set_installation_work_order_status_internal(
             actor_id,
             tenant_id,
@@ -3994,6 +5711,7 @@ impl CustomerService {
             None,
             None,
             notes,
+            false,
             ip_address,
             "WORK_ORDER_START",
             "Started installation work order",
@@ -4013,6 +5731,19 @@ impl CustomerService {
             .check_permission(actor_id, tenant_id, "work_orders", "manage")
             .await?;
 
+        let is_admin = self.is_actor_admin_or_owner(tenant_id, actor_id).await?;
+        if !is_admin {
+            let current = self
+                .get_installation_work_order_row(tenant_id, work_order_id)
+                .await?;
+            let assigned = current.assigned_to.as_deref().map(str::trim).unwrap_or("");
+            if assigned != actor_id {
+                return Err(AppError::Forbidden(
+                    "Technician can only complete own assigned work order".to_string(),
+                ));
+            }
+        }
+
         let row = self
             .set_installation_work_order_status_internal(
                 actor_id,
@@ -4022,6 +5753,7 @@ impl CustomerService {
                 None,
                 None,
                 notes,
+                false,
                 ip_address,
                 "WORK_ORDER_COMPLETE",
                 "Completed installation work order",
@@ -4048,36 +5780,57 @@ impl CustomerService {
 
         if let Some(mut s) = sub {
             if s.status != "cancelled" {
-                s.status = "active".to_string();
-                s.updated_at = Utc::now();
+                let now = Utc::now();
+                let has_paid_invoice = self
+                    .has_paid_customer_package_invoice_for_subscription(tenant_id, &s.id)
+                    .await?;
 
-                #[cfg(feature = "postgres")]
-                sqlx::query(
-                    r#"
-                    UPDATE customer_subscriptions
-                    SET status = 'active', updated_at = $1
-                    WHERE tenant_id = $2 AND id = $3
-                    "#,
-                )
-                .bind(s.updated_at)
-                .bind(tenant_id)
-                .bind(&s.id)
-                .execute(&self.pool)
-                .await?;
+                if has_paid_invoice {
+                    s.status = "active".to_string();
+                    if s.starts_at.is_none() {
+                        s.starts_at = Some(now);
+                    }
+                    s.updated_at = now;
 
-                #[cfg(feature = "sqlite")]
-                sqlx::query(
-                    r#"
-                    UPDATE customer_subscriptions
-                    SET status = 'active', updated_at = ?
-                    WHERE tenant_id = ? AND id = ?
-                    "#,
-                )
-                .bind(s.updated_at)
-                .bind(tenant_id)
-                .bind(&s.id)
-                .execute(&self.pool)
-                .await?;
+                    #[cfg(feature = "postgres")]
+                    sqlx::query(
+                        r#"
+                        UPDATE customer_subscriptions
+                        SET status = 'active',
+                            starts_at = COALESCE(starts_at, $1),
+                            updated_at = $2
+                        WHERE tenant_id = $3 AND id = $4
+                        "#,
+                    )
+                    .bind(now)
+                    .bind(s.updated_at)
+                    .bind(tenant_id)
+                    .bind(&s.id)
+                    .execute(&self.pool)
+                    .await?;
+
+                    #[cfg(feature = "sqlite")]
+                    sqlx::query(
+                        r#"
+                        UPDATE customer_subscriptions
+                        SET status = 'active',
+                            starts_at = COALESCE(starts_at, ?),
+                            updated_at = ?
+                        WHERE tenant_id = ? AND id = ?
+                        "#,
+                    )
+                    .bind(now.to_rfc3339())
+                    .bind(s.updated_at)
+                    .bind(tenant_id)
+                    .bind(&s.id)
+                    .execute(&self.pool)
+                    .await?;
+                } else {
+                    s.status = "suspended".to_string();
+                    s.updated_at = now;
+                    self.set_customer_subscription_status(tenant_id, &s.id, "suspended")
+                        .await?;
+                }
 
                 let _ = self
                     .auto_provision_pppoe_for_subscription(actor_id, tenant_id, &s, ip_address)
@@ -4100,19 +5853,93 @@ impl CustomerService {
             .check_permission(actor_id, tenant_id, "work_orders", "manage")
             .await?;
 
-        self.set_installation_work_order_status_internal(
+        if !self.is_actor_admin_or_owner(tenant_id, actor_id).await? {
+            return Err(AppError::Forbidden(
+                "Only admin/owner can cancel installation work orders".to_string(),
+            ));
+        }
+
+        let reason = notes
+            .as_deref()
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+            .ok_or_else(|| {
+                AppError::Validation(
+                    "Cancellation reason is required (minimum 10 characters)".to_string(),
+                )
+            })?
+            .to_string();
+
+        if reason.chars().count() < 10 {
+            return Err(AppError::Validation(
+                "Cancellation reason is too short (minimum 10 characters)".to_string(),
+            ));
+        }
+
+        let row = self
+            .set_installation_work_order_status_internal(
+                actor_id,
+                tenant_id,
+                work_order_id,
+                Some("cancelled"),
+                None,
+                None,
+                notes,
+                false,
+                ip_address,
+                "WORK_ORDER_CANCEL",
+                "Cancelled installation work order",
+            )
+            .await?;
+
+        self.set_customer_subscription_status(tenant_id, &row.subscription_id, "cancelled")
+            .await?;
+
+        if let Err(err) = self
+            .notify_customer_installation_cancelled(tenant_id, &row.subscription_id, &reason)
+            .await
+        {
+            warn!(
+                "failed to send installation cancellation notification: tenant_id={}, work_order_id={}, error={}",
+                tenant_id, row.id, err
+            );
+        }
+
+        Ok(row)
+    }
+
+    pub async fn reopen_installation_work_order(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        work_order_id: &str,
+        notes: Option<String>,
+        ip_address: Option<&str>,
+    ) -> AppResult<InstallationWorkOrder> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "work_orders", "manage")
+            .await?;
+
+        let row = self
+            .set_installation_work_order_status_internal(
             actor_id,
             tenant_id,
             work_order_id,
-            Some("cancelled"),
+            Some("pending"),
             None,
             None,
             notes,
+            true,
             ip_address,
-            "WORK_ORDER_CANCEL",
-            "Cancelled installation work order",
+            "WORK_ORDER_REOPEN",
+            "Reopened installation work order",
         )
-        .await
+        .await?;
+
+        self.set_customer_subscription_status(tenant_id, &row.subscription_id, "pending_installation")
+            .await?;
+
+        Ok(row)
     }
 
     async fn set_installation_work_order_status_internal(
@@ -4124,6 +5951,7 @@ impl CustomerService {
         assigned_to: Option<&str>,
         scheduled_at: Option<String>,
         notes: Option<String>,
+        allow_closed_update: bool,
         ip_address: Option<&str>,
         audit_action: &str,
         audit_desc: &str,
@@ -4158,14 +5986,74 @@ impl CustomerService {
         .await?
         .ok_or_else(|| AppError::NotFound("Work order not found".to_string()))?;
 
-        if row.status == "completed" || row.status == "cancelled" {
+        if allow_closed_update && row.status != "cancelled" {
+            return Err(AppError::Validation(
+                "Only cancelled work order can be reopened".to_string(),
+            ));
+        }
+
+        if row.status == "completed" {
             return Err(AppError::Validation(
                 "Closed work order cannot be changed".to_string(),
             ));
         }
+        if row.status == "cancelled" {
+            if !allow_closed_update {
+                return Err(AppError::Validation(
+                    "Cancelled work order cannot be changed. Reopen it first.".to_string(),
+                ));
+            }
+            if new_status != Some("pending") {
+                return Err(AppError::Validation(
+                    "Cancelled work order can only be reopened to pending status".to_string(),
+                ));
+            }
+        }
 
-        if let Some(s) = new_status {
-            row.status = Self::normalize_work_order_status(s)?;
+        let normalized_new_status = match new_status {
+            Some(s) => Some(Self::normalize_work_order_status(s)?),
+            None => None,
+        };
+
+        if let Some(target_status) = normalized_new_status.as_deref() {
+            match target_status {
+                "pending" => {
+                    if row.status == "in_progress" && !allow_closed_update {
+                        return Err(AppError::Validation(
+                            "In-progress work order cannot be moved back to pending".to_string(),
+                        ));
+                    }
+                }
+                "in_progress" => {
+                    if row.status != "pending" {
+                        return Err(AppError::Validation(
+                            "Only pending work order can be started".to_string(),
+                        ));
+                    }
+                    if row.assigned_to.as_deref().map(str::trim).unwrap_or("").is_empty() {
+                        return Err(AppError::Validation(
+                            "Set assignee before starting work order".to_string(),
+                        ));
+                    }
+                    if row.scheduled_at.is_none() {
+                        return Err(AppError::Validation(
+                            "Set installation schedule before starting work order".to_string(),
+                        ));
+                    }
+                }
+                "completed" => {
+                    if row.status != "in_progress" {
+                        return Err(AppError::Validation(
+                            "Only in-progress work order can be completed".to_string(),
+                        ));
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        if let Some(s) = normalized_new_status {
+            row.status = s;
             row.completed_at = if row.status == "completed" {
                 Some(Utc::now())
             } else {
@@ -4173,7 +6061,12 @@ impl CustomerService {
             };
         }
         if let Some(uid) = assigned_to {
-            row.assigned_to = Some(uid.to_string());
+            let normalized_uid = uid.trim();
+            row.assigned_to = if normalized_uid.is_empty() {
+                None
+            } else {
+                Some(normalized_uid.to_string())
+            };
         }
         if scheduled_at.is_some() {
             row.scheduled_at = Self::parse_optional_datetime(scheduled_at)?;
@@ -4242,5 +6135,157 @@ impl CustomerService {
             .await;
 
         Ok(row)
+    }
+
+    async fn notify_customer_installation_cancelled(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        reason: &str,
+    ) -> AppResult<()> {
+        let user_ids = self
+            .list_customer_user_ids_for_subscription(tenant_id, subscription_id)
+            .await?;
+        if user_ids.is_empty() {
+            return Ok(());
+        }
+
+        let short_reason = reason.trim();
+        let message = format!(
+            "Installation request was cancelled by admin/technician. Reason: {}. You can request reopen from Services page.",
+            short_reason
+        );
+
+        for user_id in user_ids {
+            self.notification_service
+                .create_notification(
+                    user_id,
+                    Some(tenant_id.to_string()),
+                    "Installation cancelled".to_string(),
+                    message.clone(),
+                    "warning".to_string(),
+                    "operations".to_string(),
+                    Some("/dashboard/services".to_string()),
+                )
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn list_customer_user_ids_for_subscription(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+    ) -> AppResult<Vec<String>> {
+        #[cfg(feature = "postgres")]
+        let customer_user_ids: Vec<String> = sqlx::query_scalar(
+            r#"
+            SELECT DISTINCT cu.user_id
+            FROM customer_subscriptions cs
+            INNER JOIN customer_users cu
+              ON cu.tenant_id = cs.tenant_id
+             AND cu.customer_id = cs.customer_id
+            WHERE cs.tenant_id = $1
+              AND cs.id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let customer_user_ids: Vec<String> = sqlx::query_scalar(
+            r#"
+            SELECT DISTINCT cu.user_id
+            FROM customer_subscriptions cs
+            INNER JOIN customer_users cu
+              ON cu.tenant_id = cs.tenant_id
+             AND cu.customer_id = cs.customer_id
+            WHERE cs.tenant_id = ?
+              AND cs.id = ?
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(customer_user_ids)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CustomerService, InstallationSlaBreachType};
+    use chrono::{Duration, Utc};
+
+    #[test]
+    fn detect_installation_sla_breach_for_scheduled_work_order() {
+        let now = Utc::now();
+        let created_at = now - Duration::hours(3);
+        let scheduled_at = Some(now - Duration::minutes(121));
+
+        let got = CustomerService::detect_installation_sla_breach(
+            "pending",
+            scheduled_at,
+            created_at,
+            now,
+            120,
+            240,
+        );
+        assert_eq!(got, Some(InstallationSlaBreachType::ScheduledOverdue));
+    }
+
+    #[test]
+    fn detect_installation_sla_breach_for_unscheduled_pending_work_order() {
+        let now = Utc::now();
+        let created_at = now - Duration::minutes(241);
+
+        let got = CustomerService::detect_installation_sla_breach(
+            "pending",
+            None,
+            created_at,
+            now,
+            120,
+            240,
+        );
+        assert_eq!(got, Some(InstallationSlaBreachType::PendingUnscheduled));
+    }
+
+    #[test]
+    fn no_sla_breach_for_completed_or_fresh_work_order() {
+        let now = Utc::now();
+        let created_at = now - Duration::minutes(20);
+        let scheduled_at = Some(now - Duration::minutes(10));
+
+        let completed = CustomerService::detect_installation_sla_breach(
+            "completed",
+            scheduled_at,
+            created_at,
+            now,
+            120,
+            240,
+        );
+        assert_eq!(completed, None);
+
+        let fresh_pending = CustomerService::detect_installation_sla_breach(
+            "pending",
+            None,
+            created_at,
+            now,
+            120,
+            240,
+        );
+        assert_eq!(fresh_pending, None);
+    }
+
+    #[test]
+    fn elapsed_duration_formatter_is_human_readable() {
+        assert_eq!(CustomerService::format_elapsed_duration(45), "45m");
+        assert_eq!(CustomerService::format_elapsed_duration(120), "2h");
+        assert_eq!(CustomerService::format_elapsed_duration(145), "2h 25m");
+        assert_eq!(CustomerService::format_elapsed_duration(26 * 60), "1d 2h");
     }
 }

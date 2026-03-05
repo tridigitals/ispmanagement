@@ -32,10 +32,24 @@
   let searchDockEl: HTMLDivElement | null = null;
   let viewMenuOpen = false;
   let viewMenuEl: HTMLDivElement | null = null;
+  let searchDebounceHandle: ReturnType<typeof setTimeout> | null = null;
+  let activeSearchAbort: AbortController | null = null;
 
   async function submitSearch() {
     const q = searchQuery.trim();
-    if (!q) return;
+    if (!q) {
+      results = [];
+      searchError = '';
+      return;
+    }
+    if (q.length < 2) {
+      results = [];
+      searchError = '';
+      return;
+    }
+    activeSearchAbort?.abort();
+    const abort = new AbortController();
+    activeSearchAbort = abort;
     searching = true;
     searchError = '';
     try {
@@ -44,6 +58,7 @@
       url.searchParams.set('format', 'jsonv2');
       url.searchParams.set('limit', '6');
       const res = await fetch(url.toString(), {
+        signal: abort.signal,
         headers: {
           Accept: 'application/json',
         },
@@ -53,11 +68,29 @@
       results = Array.isArray(data) ? data : [];
       if (!results.length) searchError = 'Location not found';
     } catch (err: any) {
+      if (err?.name === 'AbortError') return;
       searchError = err?.message || 'Failed to search location';
       results = [];
     } finally {
+      if (activeSearchAbort === abort) activeSearchAbort = null;
       searching = false;
     }
+  }
+
+  function queueSearch() {
+    if (searchDebounceHandle) clearTimeout(searchDebounceHandle);
+    const q = searchQuery.trim();
+    if (!q || q.length < 2) {
+      activeSearchAbort?.abort();
+      activeSearchAbort = null;
+      searching = false;
+      searchError = '';
+      results = [];
+      return;
+    }
+    searchDebounceHandle = setTimeout(() => {
+      void submitSearch();
+    }, 260);
   }
 
   function selectResult(item: SearchResult) {
@@ -76,6 +109,10 @@
   function toggleSearchOpen() {
     searchOpen = !searchOpen;
     if (!searchOpen) {
+      if (searchDebounceHandle) clearTimeout(searchDebounceHandle);
+      activeSearchAbort?.abort();
+      activeSearchAbort = null;
+      searching = false;
       results = [];
       searchError = '';
     }
@@ -108,6 +145,8 @@
   }
 
   onDestroy(() => {
+    if (searchDebounceHandle) clearTimeout(searchDebounceHandle);
+    activeSearchAbort?.abort();
     if (typeof window !== 'undefined') {
       window.removeEventListener('pointerdown', onGlobalPointerDown);
     }
@@ -151,7 +190,7 @@
               class={`map-view-item ${viewMode === 'standard' ? 'active' : ''}`}
               onclick={() => setViewMode('standard')}
             >
-              <Icon name="map" size={14} />
+              <Icon name="map" size={11} />
               <span>Standard</span>
             </button>
             <button
@@ -159,7 +198,7 @@
               class={`map-view-item ${viewMode === 'satellite' ? 'active' : ''}`}
               onclick={() => setViewMode('satellite')}
             >
-              <Icon name="satellite" size={14} />
+              <Icon name="satellite" size={11} />
               <span>Satellite</span>
             </button>
           </div>
@@ -170,7 +209,7 @@
     {#if showSearch}
       <div class="map-search-dock" bind:this={searchDockEl}>
         <button class={`map-search-toggle ${searchOpen ? 'active' : ''}`} type="button" onclick={toggleSearchOpen}>
-          <Icon name="search" size={16} />
+          <Icon name="search" size={12} />
         </button>
 
         {#if searchOpen}
@@ -188,6 +227,7 @@
                 bind:value={searchQuery}
                 placeholder={searchPlaceholder}
                 autocomplete="off"
+                oninput={queueSearch}
               />
               <button class="map-search-btn" type="submit" disabled={searching}>
                 {searching ? '...' : 'Search'}
@@ -271,16 +311,16 @@
   .map-view-switch {
     position: absolute;
     right: 12px;
-    top: 62px;
+    top: 108px;
     z-index: 12;
     display: inline-block;
   }
 
   .map-view-toggle {
-    width: 38px;
-    height: 38px;
+    width: 18px;
+    height: 18px;
     border: 1px solid rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
+    border-radius: 3px;
     background: #ffffff;
     color: #1f2937;
     display: grid;
@@ -290,9 +330,9 @@
   }
 
   .map-view-toggle-label {
-    font-size: 0.62rem;
+    font-size: 0.3rem;
     font-weight: 800;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.01em;
     text-transform: uppercase;
   }
 
@@ -302,10 +342,10 @@
   }
 
   .map-view-menu {
-    margin-top: 6px;
-    min-width: 156px;
+    margin-top: 4px;
+    min-width: 92px;
     border: 1px solid rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
+    border-radius: 3px;
     background: #ffffff;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
     overflow: hidden;
@@ -316,13 +356,13 @@
     border: none;
     background: transparent;
     color: #111827;
-    padding: 9px 10px;
+    padding: 4px 6px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
     text-align: left;
     cursor: pointer;
-    font-size: 0.88rem;
+    font-size: 0.62rem;
   }
 
   .map-view-item:hover {
@@ -341,16 +381,16 @@
     z-index: 12;
     display: flex;
     align-items: flex-start;
-    gap: 8px;
+    gap: 4px;
   }
 
   .map-search-toggle {
-    width: 44px;
-    height: 44px;
-    border-radius: 4px;
-    border: 1px solid rgba(0, 0, 0, 0.2);
-    background: #ffffff;
-    color: #1f2937;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    border: 1px solid rgba(17, 24, 39, 0.25);
+    background: rgba(255, 255, 255, 0.82);
+    color: #111827;
     display: grid;
     place-items: center;
     cursor: pointer;
@@ -358,33 +398,37 @@
   }
 
   .map-search-toggle.active {
-    border-color: rgba(59, 130, 246, 0.55);
+    border-color: rgba(59, 130, 246, 0.75);
     color: #1d4ed8;
+    background: rgba(239, 246, 255, 0.95);
   }
 
   .map-search {
-    width: min(460px, calc(100vw - 200px));
+    width: min(240px, calc(100vw - 120px));
     background: #ffffff;
     border: 1px solid rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
-    padding: 8px;
+    border-radius: 3px;
+    padding: 5px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    position: relative;
+    overflow: visible;
   }
 
   .map-search-form {
     display: grid;
     grid-template-columns: 1fr auto;
-    gap: 8px;
+    gap: 4px;
   }
 
   .map-search-input {
-    height: 38px;
-    border-radius: 10px;
+    height: 20px;
+    border-radius: 4px;
     border: 1px solid var(--border-color);
     background: #ffffff;
     color: #111827;
-    padding: 0 12px;
+    padding: 0 6px;
     outline: none;
+    font-size: 0.62rem;
   }
 
   .map-search-input:focus {
@@ -393,24 +437,29 @@
   }
 
   .map-search-btn {
-    height: 38px;
-    padding: 0 12px;
-    border-radius: 10px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 4px;
     border: 1px solid var(--border-color);
     background: #ffffff;
     color: #111827;
     font-weight: 700;
     cursor: pointer;
+    font-size: 0.58rem;
   }
 
   .map-search-results {
-    margin-top: 6px;
-    max-height: 220px;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 140px;
     overflow: auto;
-    border-radius: 10px;
+    border-radius: 4px;
     border: 1px solid var(--border-color);
     background: #ffffff;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+    z-index: 14;
   }
 
   .map-search-item {
@@ -420,9 +469,9 @@
     background: transparent;
     color: #111827;
     text-align: left;
-    padding: 10px 12px;
+    padding: 5px 6px;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 0.6rem;
     line-height: 1.35;
   }
 
@@ -431,8 +480,8 @@
   }
 
   .map-search-error {
-    margin-top: 6px;
-    font-size: 0.83rem;
+    margin-top: 4px;
+    font-size: 0.58rem;
     color: #fca5a5;
   }
 

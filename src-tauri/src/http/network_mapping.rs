@@ -3,8 +3,9 @@ use crate::http::AppState;
 use crate::models::{
     CreateNetworkLinkRequest, CreateNetworkNodeRequest, CreateServiceZoneRequest,
     CreateZoneNodeBindingRequest, CreateZoneOfferRequest, CoverageCheckRequest, ComputePathRequest,
-    PaginatedResponse, ResolveZoneRequest, UpdateNetworkLinkRequest, UpdateNetworkNodeRequest,
-    UpdateServiceZoneRequest, UpdateZoneOfferRequest,
+    NetworkImpactResponse, PaginatedResponse, RankCandidateNodesRequest, ResolveZoneRequest,
+    UpdateNetworkLinkRequest, UpdateNetworkNodeRequest, UpdateServiceZoneRequest,
+    UpdateZoneOfferRequest,
 };
 use crate::services::network_mapping_service::ListQuery;
 use axum::{
@@ -25,7 +26,9 @@ pub fn router() -> Router<AppState> {
         .route("/zones/{id}", patch(update_zone).delete(delete_zone))
         .route("/zones/resolve", post(resolve_zone))
         .route("/paths/compute", post(compute_path))
+        .route("/nodes/rank-candidates", post(rank_candidate_nodes))
         .route("/coverage/check", post(check_coverage))
+        .route("/impact/customers", get(list_impacted_customers))
         .route("/zone-offers", get(list_zone_offers).post(create_zone_offer))
         .route(
             "/zone-offers/{id}",
@@ -58,6 +61,13 @@ struct ListZoneOffersParams {
     zone_id: Option<String>,
     package_id: Option<String>,
     active_only: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ImpactCustomersParams {
+    node_id: Option<String>,
+    link_id: Option<String>,
+    router_id: Option<String>,
 }
 
 fn bearer_token(headers: &HeaderMap) -> AppResult<String> {
@@ -302,6 +312,19 @@ async fn check_coverage(
     Ok(Json(out))
 }
 
+async fn list_impacted_customers(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<ImpactCustomersParams>,
+) -> AppResult<Json<NetworkImpactResponse>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let out = state
+        .network_mapping_service
+        .list_impacted_customers(&claims.sub, &tenant_id, q.node_id, q.link_id, q.router_id)
+        .await?;
+    Ok(Json(out))
+}
+
 async fn compute_path(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -311,6 +334,19 @@ async fn compute_path(
     let out = state
         .network_mapping_service
         .compute_path(&claims.sub, &tenant_id, dto)
+        .await?;
+    Ok(Json(out))
+}
+
+async fn rank_candidate_nodes(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(dto): Json<RankCandidateNodesRequest>,
+) -> AppResult<Json<crate::models::RankCandidateNodesResponse>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let out = state
+        .network_mapping_service
+        .rank_candidate_nodes(&claims.sub, &tenant_id, dto)
         .await?;
     Ok(Json(out))
 }

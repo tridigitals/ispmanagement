@@ -51,10 +51,28 @@ fn is_owner_or_admin_role(role: Option<&str>) -> bool {
     .unwrap_or(false)
 }
 
+fn is_owner_admin_or_technician_role(role: Option<&str>) -> bool {
+    role.map(|r| {
+        let normalized = r.trim().to_ascii_lowercase();
+        normalized == "owner" || normalized == "admin" || normalized == "technician"
+    })
+    .unwrap_or(false)
+}
+
 fn filter_owner_admin_user_ids(rows: Vec<(String, Option<String>)>) -> Vec<String> {
     let mut set = HashSet::new();
     for (user_id, role) in rows {
         if is_owner_or_admin_role(role.as_deref()) {
+            set.insert(user_id);
+        }
+    }
+    set.into_iter().collect()
+}
+
+fn filter_installation_request_user_ids(rows: Vec<(String, Option<String>)>) -> Vec<String> {
+    let mut set = HashSet::new();
+    for (user_id, role) in rows {
+        if is_owner_admin_or_technician_role(role.as_deref()) {
             set.insert(user_id);
         }
     }
@@ -71,10 +89,15 @@ enum PostPaidSubscriptionAction {
 fn resolve_post_paid_subscription_action(
     has_previous_paid: bool,
     current_status: &str,
+    installation_completed: bool,
 ) -> PostPaidSubscriptionAction {
+    if current_status == "cancelled" {
+        return PostPaidSubscriptionAction::SkipCancelled;
+    }
+
     if !has_previous_paid {
-        if current_status == "cancelled" {
-            return PostPaidSubscriptionAction::SkipCancelled;
+        if installation_completed {
+            return PostPaidSubscriptionAction::ResumeIfSuspended;
         }
         return PostPaidSubscriptionAction::QueueInstallation;
     }
@@ -122,6 +145,29 @@ impl Default for BillingCollectionSettings {
             ],
         }
     }
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+struct AssignmentSubscriptionRef {
+    customer_id: String,
+    location_id: String,
+    router_id: Option<String>,
+    latitude: Option<f64>,
+    longitude: Option<f64>,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+struct AssignmentCandidateNodeRow {
+    node_id: String,
+    name: String,
+    node_type: String,
+    status: String,
+    capacity_json: serde_json::Value,
+    health_json: serde_json::Value,
+    distance_m: Option<f64>,
+    avg_link_utilization_pct: Option<f64>,
+    down_links: i64,
+    link_count: i64,
 }
 
 #[derive(Clone)]
@@ -357,9 +403,38 @@ impl PaymentService {
         Ok(invoices)
     }
 
-    pub async fn list_customer_package_invoices(&self, tenant_id: &str) -> AppResult<Vec<Invoice>> {
+    pub async fn list_customer_package_invoices(
+        &self,
+        tenant_id: &str,
+        sort_by: Option<String>,
+        sort_dir: Option<String>,
+    ) -> AppResult<Vec<Invoice>> {
+        let sort_column = match sort_by
+            .unwrap_or_else(|| "created_at".to_string())
+            .trim()
+            .to_lowercase()
+            .as_str()
+        {
+            "invoice_number" => "invoice_number",
+            "description" => "description",
+            "amount" => "amount",
+            "status" => "status",
+            "due_date" => "due_date",
+            "created_at" => "created_at",
+            _ => "created_at",
+        };
+        let sort_direction = match sort_dir
+            .unwrap_or_else(|| "desc".to_string())
+            .trim()
+            .to_lowercase()
+            .as_str()
+        {
+            "asc" => "ASC",
+            _ => "DESC",
+        };
+
         #[cfg(feature = "postgres")]
-        let invoices = sqlx::query_as::<_, Invoice>(
+        let invoices = sqlx::query_as::<_, Invoice>(&format!(
             r#"
             SELECT
                 id, tenant_id, invoice_number,
@@ -369,9 +444,9 @@ impl PaymentService {
                 status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, rejection_reason, created_at, updated_at
             FROM invoices
             WHERE tenant_id = $1 AND external_id LIKE $2
-            ORDER BY created_at DESC
+            ORDER BY {sort_column} {sort_direction}
             "#,
-        )
+        ))
         .bind(tenant_id)
         .bind(format!("{}%", CUSTOMER_PACKAGE_INVOICE_PREFIX))
         .fetch_all(&self.pool)
@@ -379,9 +454,9 @@ impl PaymentService {
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
         #[cfg(feature = "sqlite")]
-        let invoices = sqlx::query_as::<_, Invoice>(
-            "SELECT * FROM invoices WHERE tenant_id = ? AND external_id LIKE ? ORDER BY created_at DESC",
-        )
+        let invoices = sqlx::query_as::<_, Invoice>(&format!(
+            "SELECT * FROM invoices WHERE tenant_id = ? AND external_id LIKE ? ORDER BY {sort_column} {sort_direction}"
+        ))
         .bind(tenant_id)
         .bind(format!("{}%", CUSTOMER_PACKAGE_INVOICE_PREFIX))
         .fetch_all(&self.pool)
@@ -647,8 +722,30 @@ impl PaymentService {
             customer_name, package_name, billing_cycle, period_key
         );
 
-        self.create_invoice(tenant_id, price, Some(description), Some(external_id))
+        let invoice = self
+            .create_invoice(tenant_id, price, Some(description), Some(external_id))
+            .await?;
+
+        if let Err(err) = self
+            .notify_subscription_invoice_created(
+                tenant_id,
+                subscription_id,
+                &invoice.invoice_number,
+                invoice.amount,
+                &invoice.currency_code,
+            )
             .await
+        {
+            tracing::warn!(
+                "failed to send invoice-created notification: tenant={}, subscription={}, invoice={}, error={}",
+                tenant_id,
+                subscription_id,
+                invoice.invoice_number,
+                err
+            );
+        }
+
+        Ok(invoice)
     }
 
     pub async fn generate_due_customer_package_invoices(
@@ -1958,7 +2055,7 @@ impl PaymentService {
             if let Some(ext_id) = &invoice.external_id {
                 if ext_id.starts_with(CUSTOMER_PACKAGE_INVOICE_PREFIX) {
                     println!(
-                        "DEBUG: Skipping SaaS subscription activation for customer package invoice {}",
+                        "DEBUG: Customer package invoice handled by customer-flow; tenant SaaS activation skipped for {}",
                         invoice.invoice_number
                     );
                 } else if let Some(rest) = ext_id.strip_prefix("plan:") {
@@ -2547,6 +2644,60 @@ impl PaymentService {
         }
     }
 
+    fn json_number(value: &serde_json::Value, key: &str) -> Option<f64> {
+        value.get(key).and_then(|v| {
+            v.as_f64()
+                .or_else(|| v.as_i64().map(|n| n as f64))
+                .or_else(|| v.as_u64().map(|n| n as f64))
+                .or_else(|| v.as_str().and_then(|s| s.trim().parse::<f64>().ok()))
+        })
+    }
+
+    fn assignment_health_score(status: &str, health_json: &serde_json::Value) -> f64 {
+        if let Some(score) = Self::json_number(health_json, "score") {
+            return score.clamp(0.0, 100.0);
+        }
+        if let Some(score) = Self::json_number(health_json, "health_score") {
+            return score.clamp(0.0, 100.0);
+        }
+        match status {
+            "active" => 85.0,
+            "maintenance" => 60.0,
+            _ => 40.0,
+        }
+    }
+
+    fn assignment_capacity_score(
+        capacity_json: &serde_json::Value,
+        avg_link_utilization_pct: Option<f64>,
+    ) -> f64 {
+        if let Some(free_pct) = Self::json_number(capacity_json, "free_pct") {
+            return free_pct.clamp(0.0, 100.0);
+        }
+        if let Some(util_pct) = Self::json_number(capacity_json, "utilization_pct") {
+            return (100.0 - util_pct).clamp(0.0, 100.0);
+        }
+        if let (Some(avail), Some(total)) = (
+            Self::json_number(capacity_json, "available_mbps"),
+            Self::json_number(capacity_json, "total_mbps"),
+        ) {
+            if total > 0.0 {
+                return ((avail / total) * 100.0).clamp(0.0, 100.0);
+            }
+        }
+        if let Some(util) = avg_link_utilization_pct {
+            return (100.0 - util).clamp(0.0, 100.0);
+        }
+        60.0
+    }
+
+    fn assignment_distance_score(distance_m: Option<f64>) -> Option<f64> {
+        distance_m.map(|distance| {
+            let normalized = (distance / 50_000.0).clamp(0.0, 1.0);
+            (100.0 - (normalized * 100.0)).clamp(0.0, 100.0)
+        })
+    }
+
     async fn try_auto_resume_customer_subscription_from_paid_invoice(
         &self,
         invoice: &Invoice,
@@ -2556,25 +2707,6 @@ impl PaymentService {
         else {
             return Ok(());
         };
-
-        let settings = self
-            .resolve_billing_collection_settings(Some(&invoice.tenant_id))
-            .await;
-        if !settings.auto_resume_on_payment {
-            let _ = self
-                .insert_billing_collection_log(
-                    &invoice.tenant_id,
-                    &invoice.id,
-                    Some(&subscription_id),
-                    "resume",
-                    "skipped",
-                    Some("Auto resume disabled by setting"),
-                    "system",
-                    None,
-                )
-                .await;
-            return Ok(());
-        }
 
         let has_previous_paid = self
             .has_previous_paid_customer_package_invoice(
@@ -2594,8 +2726,32 @@ impl PaymentService {
             ));
         };
 
-        match resolve_post_paid_subscription_action(has_previous_paid, &current_status) {
+        let installation_completed = self
+            .has_completed_installation_work_order(&invoice.tenant_id, &subscription_id)
+            .await?;
+
+        tracing::info!(
+            "customer paid flow: tenant={}, invoice={}, subscription={}, status={}, has_previous_paid={}, installation_completed={}",
+            invoice.tenant_id,
+            invoice.invoice_number,
+            subscription_id,
+            current_status,
+            has_previous_paid,
+            installation_completed
+        );
+
+        match resolve_post_paid_subscription_action(
+            has_previous_paid,
+            &current_status,
+            installation_completed,
+        ) {
             PostPaidSubscriptionAction::SkipCancelled => {
+                tracing::info!(
+                    "customer paid flow: skip installation because subscription is cancelled (tenant={}, invoice={}, subscription={})",
+                    invoice.tenant_id,
+                    invoice.invoice_number,
+                    subscription_id
+                );
                 let _ = self
                     .insert_billing_collection_log(
                         &invoice.tenant_id,
@@ -2611,15 +2767,70 @@ impl PaymentService {
                 return Ok(());
             }
             PostPaidSubscriptionAction::QueueInstallation => {
+                // Installation queueing must happen for first successful payment,
+                // independent from auto-resume setting.
                 self.set_customer_subscription_status(
                     &invoice.tenant_id,
                     &subscription_id,
                     "pending_installation",
                 )
                 .await?;
-                let _work_order_id = self
+                let (_work_order_id, work_order_created) = self
                     .ensure_installation_work_order(&invoice.tenant_id, &subscription_id, &invoice.id)
                     .await?;
+                tracing::info!(
+                    "customer paid flow: created/ensured installation work order (tenant={}, invoice={}, subscription={}, work_order={})",
+                    invoice.tenant_id,
+                    invoice.invoice_number,
+                    subscription_id,
+                    _work_order_id
+                );
+
+                match self
+                    .upsert_customer_service_assignment_from_paid_invoice(
+                        &invoice.tenant_id,
+                        &subscription_id,
+                        &invoice.id,
+                        &_work_order_id,
+                    )
+                    .await
+                {
+                    Ok(()) => {
+                        let _ = self
+                            .insert_billing_collection_log(
+                                &invoice.tenant_id,
+                                &invoice.id,
+                                Some(&subscription_id),
+                                "assignment",
+                                "success",
+                                Some("Stored candidate node assignment for installation"),
+                                "system",
+                                None,
+                            )
+                            .await;
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "failed to store customer assignment: tenant={}, invoice={}, subscription={}, error={}",
+                            invoice.tenant_id,
+                            invoice.id,
+                            subscription_id,
+                            e
+                        );
+                        let _ = self
+                            .insert_billing_collection_log(
+                                &invoice.tenant_id,
+                                &invoice.id,
+                                Some(&subscription_id),
+                                "assignment",
+                                "failed",
+                                Some(&e.to_string()),
+                                "system",
+                                None,
+                            )
+                            .await;
+                    }
+                }
 
                 let _ = self
                     .insert_billing_collection_log(
@@ -2640,71 +2851,117 @@ impl PaymentService {
                         &invoice.invoice_number,
                     )
                     .await;
+                if work_order_created {
+                    let _ = self
+                        .notify_new_installation_request(
+                            &invoice.tenant_id,
+                            &invoice.invoice_number,
+                            &_work_order_id,
+                        )
+                        .await;
+                }
 
                 return Ok(());
             }
             PostPaidSubscriptionAction::ResumeIfSuspended => {}
         }
 
-        match self
+        let force_activation_after_install = !has_previous_paid && installation_completed;
+        let settings = self
+            .resolve_billing_collection_settings(Some(&invoice.tenant_id))
+            .await;
+        if !force_activation_after_install && !settings.auto_resume_on_payment {
+            let _ = self
+                .insert_billing_collection_log(
+                    &invoice.tenant_id,
+                    &invoice.id,
+                    Some(&subscription_id),
+                    "resume",
+                    "skipped",
+                    Some("Auto resume disabled by setting"),
+                    "system",
+                    None,
+                )
+                .await;
+            return Ok(());
+        }
+
+        let resumed_from_suspended = self
             .update_customer_subscription_status_if(
                 &invoice.tenant_id,
                 &subscription_id,
                 "suspended",
                 "active",
             )
-            .await
-        {
-            Ok(true) => {
-                let _ = self
-                    .insert_billing_collection_log(
-                        &invoice.tenant_id,
-                        &invoice.id,
-                        Some(&subscription_id),
-                        "resume",
-                        "success",
-                        Some("Subscription resumed because invoice is paid"),
-                        "system",
-                        None,
-                    )
-                    .await;
-                let _ = self
-                    .notify_subscription_resumed(
-                        &invoice.tenant_id,
-                        &subscription_id,
-                        &invoice.invoice_number,
-                    )
-                    .await;
-            }
-            Ok(false) => {
-                let _ = self
-                    .insert_billing_collection_log(
-                        &invoice.tenant_id,
-                        &invoice.id,
-                        Some(&subscription_id),
-                        "resume",
-                        "skipped",
-                        Some("Subscription is not suspended"),
-                        "system",
-                        None,
-                    )
-                    .await;
-            }
-            Err(e) => {
-                let _ = self
-                    .insert_billing_collection_log(
-                        &invoice.tenant_id,
-                        &invoice.id,
-                        Some(&subscription_id),
-                        "resume",
-                        "failed",
-                        Some(&e.to_string()),
-                        "system",
-                        None,
-                    )
-                    .await;
-                return Err(e);
-            }
+            .await?;
+        let resumed_from_pending_installation = if resumed_from_suspended {
+            false
+        } else {
+            self.update_customer_subscription_status_if(
+                &invoice.tenant_id,
+                &subscription_id,
+                "pending_installation",
+                "active",
+            )
+            .await?
+        };
+
+        if resumed_from_suspended || resumed_from_pending_installation {
+            let resume_reason = if resumed_from_pending_installation {
+                "Subscription activated after completed installation and payment"
+            } else {
+                "Subscription resumed because invoice is paid"
+            };
+
+            tracing::info!(
+                "customer paid flow: activated subscription (tenant={}, invoice={}, subscription={}, from={})",
+                invoice.tenant_id,
+                invoice.invoice_number,
+                subscription_id,
+                if resumed_from_pending_installation {
+                    "pending_installation"
+                } else {
+                    "suspended"
+                }
+            );
+            let _ = self
+                .insert_billing_collection_log(
+                    &invoice.tenant_id,
+                    &invoice.id,
+                    Some(&subscription_id),
+                    "resume",
+                    "success",
+                    Some(resume_reason),
+                    "system",
+                    None,
+                )
+                .await;
+            let _ = self
+                .notify_subscription_resumed(
+                    &invoice.tenant_id,
+                    &subscription_id,
+                    &invoice.invoice_number,
+                )
+                .await;
+        } else {
+            tracing::info!(
+                "customer paid flow: no activation performed because subscription not suspended/pending_installation (tenant={}, invoice={}, subscription={})",
+                invoice.tenant_id,
+                invoice.invoice_number,
+                subscription_id
+            );
+            let _ = self
+                .insert_billing_collection_log(
+                    &invoice.tenant_id,
+                    &invoice.id,
+                    Some(&subscription_id),
+                    "resume",
+                    "skipped",
+                    Some("Subscription is not suspended or pending_installation"),
+                    "system",
+                    None,
+                )
+                .await;
         }
 
         Ok(())
@@ -2749,6 +3006,50 @@ impl PaymentService {
                     title.clone(),
                     message.clone(),
                     "warning".to_string(),
+                    "billing".to_string(),
+                    Some("/dashboard/invoices".to_string()),
+                )
+                .await
+                .is_ok()
+            {
+                sent += 1;
+            }
+        }
+
+        Ok(sent)
+    }
+
+    async fn notify_subscription_invoice_created(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        invoice_number: &str,
+        amount: f64,
+        currency_code: &str,
+    ) -> AppResult<usize> {
+        let user_ids = self
+            .list_notification_user_ids_for_subscription(tenant_id, subscription_id)
+            .await?;
+        if user_ids.is_empty() {
+            return Ok(0);
+        }
+
+        let title = "Invoice created".to_string();
+        let message = format!(
+            "New invoice {} is ready ({} {:.2}). Please complete payment to activate/keep service.",
+            invoice_number, currency_code, amount
+        );
+
+        let mut sent = 0usize;
+        for user_id in user_ids {
+            if self
+                .notification_service
+                .create_notification(
+                    user_id,
+                    Some(tenant_id.to_string()),
+                    title.clone(),
+                    message.clone(),
+                    "info".to_string(),
                     "billing".to_string(),
                     Some("/dashboard/invoices".to_string()),
                 )
@@ -2877,7 +3178,49 @@ impl PaymentService {
                     message.clone(),
                     "info".to_string(),
                     "billing".to_string(),
-                    Some("/dashboard/packages".to_string()),
+                    Some("/dashboard/services".to_string()),
+                )
+                .await
+                .is_ok()
+            {
+                sent += 1;
+            }
+        }
+
+        Ok(sent)
+    }
+
+    async fn notify_new_installation_request(
+        &self,
+        tenant_id: &str,
+        invoice_number: &str,
+        work_order_id: &str,
+    ) -> AppResult<usize> {
+        let user_ids = self
+            .list_tenant_installation_alert_user_ids(tenant_id)
+            .await?;
+        if user_ids.is_empty() {
+            return Ok(0);
+        }
+
+        let title = "New installation request".to_string();
+        let message = format!(
+            "Invoice {} has been paid and a new installation work order is ready (WO {}).",
+            invoice_number, work_order_id
+        );
+
+        let mut sent = 0usize;
+        for user_id in user_ids {
+            if self
+                .notification_service
+                .create_notification(
+                    user_id,
+                    Some(tenant_id.to_string()),
+                    title.clone(),
+                    message.clone(),
+                    "info".to_string(),
+                    "operations".to_string(),
+                    Some("/admin/network/installations".to_string()),
                 )
                 .await
                 .is_ok()
@@ -3034,6 +3377,39 @@ impl PaymentService {
         Ok(filter_owner_admin_user_ids(rows))
     }
 
+    async fn list_tenant_installation_alert_user_ids(
+        &self,
+        tenant_id: &str,
+    ) -> AppResult<Vec<String>> {
+        #[cfg(feature = "postgres")]
+        let rows: Vec<(String, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT DISTINCT user_id, role
+            FROM tenant_members
+            WHERE tenant_id = $1
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let rows: Vec<(String, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT DISTINCT user_id, role
+            FROM tenant_members
+            WHERE tenant_id = ?
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(filter_installation_request_user_ids(rows))
+    }
+
     async fn has_sent_invoice_reminder(
         &self,
         tenant_id: &str,
@@ -3123,7 +3499,13 @@ impl PaymentService {
         let now = Utc::now();
         #[cfg(feature = "postgres")]
         let rows = sqlx::query(
-            "UPDATE customer_subscriptions SET status = $1, updated_at = $2 WHERE tenant_id = $3 AND id = $4",
+            r#"
+            UPDATE customer_subscriptions
+            SET status = $1,
+                starts_at = CASE WHEN $1 = 'active' THEN COALESCE(starts_at, $2) ELSE starts_at END,
+                updated_at = $2
+            WHERE tenant_id = $3 AND id = $4
+            "#,
         )
         .bind(new_status)
         .bind(now)
@@ -3136,9 +3518,17 @@ impl PaymentService {
 
         #[cfg(feature = "sqlite")]
         let rows = sqlx::query(
-            "UPDATE customer_subscriptions SET status = ?, updated_at = ? WHERE tenant_id = ? AND id = ?",
+            r#"
+            UPDATE customer_subscriptions
+            SET status = ?,
+                starts_at = CASE WHEN ? = 'active' THEN COALESCE(starts_at, ?) ELSE starts_at END,
+                updated_at = ?
+            WHERE tenant_id = ? AND id = ?
+            "#,
         )
         .bind(new_status)
+        .bind(new_status)
+        .bind(now.to_rfc3339())
         .bind(now.to_rfc3339())
         .bind(tenant_id)
         .bind(subscription_id)
@@ -3148,6 +3538,50 @@ impl PaymentService {
         .rows_affected();
 
         Ok(rows > 0)
+    }
+
+    async fn has_completed_installation_work_order(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+    ) -> AppResult<bool> {
+        #[cfg(feature = "postgres")]
+        let exists: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1
+              FROM installation_work_orders
+              WHERE tenant_id = $1
+                AND subscription_id = $2
+                AND status = 'completed'
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let exists: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1
+              FROM installation_work_orders
+              WHERE tenant_id = ?
+                AND subscription_id = ?
+                AND status = 'completed'
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        Ok(exists)
     }
 
     async fn get_customer_subscription_status(
@@ -3265,12 +3699,291 @@ impl PaymentService {
         Ok(exists)
     }
 
+    async fn upsert_customer_service_assignment_from_paid_invoice(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        invoice_id: &str,
+        work_order_id: &str,
+    ) -> AppResult<()> {
+        #[cfg(feature = "postgres")]
+        let sub: AssignmentSubscriptionRef = sqlx::query_as(
+            r#"
+            SELECT
+              cs.customer_id,
+              cs.location_id,
+              cs.router_id,
+              cl.latitude::float8 AS latitude,
+              cl.longitude::float8 AS longitude
+            FROM customer_subscriptions cs
+            INNER JOIN customer_locations cl
+              ON cl.tenant_id = cs.tenant_id
+             AND cl.id = cs.location_id
+            WHERE cs.tenant_id = $1
+              AND cs.id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .ok_or_else(|| AppError::NotFound("Customer subscription not found".to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let sub: AssignmentSubscriptionRef = sqlx::query_as(
+            r#"
+            SELECT
+              cs.customer_id,
+              cs.location_id,
+              cs.router_id,
+              cl.latitude AS latitude,
+              cl.longitude AS longitude
+            FROM customer_subscriptions cs
+            INNER JOIN customer_locations cl
+              ON cl.tenant_id = cs.tenant_id
+             AND cl.id = cs.location_id
+            WHERE cs.tenant_id = ?
+              AND cs.id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?
+        .ok_or_else(|| AppError::NotFound("Customer subscription not found".to_string()))?;
+
+        #[cfg(feature = "postgres")]
+        let zone_id: Option<String> = if let (Some(lat), Some(lng)) = (sub.latitude, sub.longitude) {
+            sqlx::query_scalar(
+                r#"
+                SELECT z.id::text
+                FROM service_zones z
+                WHERE z.tenant_id = $1::uuid
+                  AND z.status = 'active'
+                  AND ST_Contains(z.geom, ST_SetSRID(ST_MakePoint($2::float8, $3::float8), 4326))
+                ORDER BY z.priority ASC
+                LIMIT 1
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(lng)
+            .bind(lat)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+        } else {
+            None
+        };
+
+        #[cfg(feature = "sqlite")]
+        let zone_id: Option<String> = None;
+
+        #[cfg(feature = "postgres")]
+        let candidates: Vec<AssignmentCandidateNodeRow> = sqlx::query_as(
+            r#"
+            SELECT
+              n.id::text AS node_id,
+              n.name,
+              n.node_type,
+              n.status,
+              n.capacity_json,
+              n.health_json,
+              CASE
+                WHEN $2::float8 IS NOT NULL AND $3::float8 IS NOT NULL
+                THEN ST_Distance(
+                  geography(n.geom),
+                  geography(ST_SetSRID(ST_MakePoint($2::float8, $3::float8), 4326))
+                )::float8
+                ELSE NULL
+              END AS distance_m,
+              AVG(l.utilization_pct::float8) FILTER (WHERE l.utilization_pct IS NOT NULL) AS avg_link_utilization_pct,
+              COALESCE(COUNT(l.id) FILTER (WHERE l.status = 'down'), 0)::bigint AS down_links,
+              COALESCE(COUNT(l.id), 0)::bigint AS link_count
+            FROM network_nodes n
+            LEFT JOIN network_links l
+              ON l.tenant_id = n.tenant_id
+             AND (l.from_node_id = n.id OR l.to_node_id = n.id)
+            WHERE n.tenant_id = $1::uuid
+              AND n.status = 'active'
+              AND (
+                $4::uuid IS NULL
+                OR EXISTS (
+                  SELECT 1
+                  FROM zone_node_bindings znb
+                  WHERE znb.tenant_id = n.tenant_id
+                    AND znb.zone_id = $4::uuid
+                    AND znb.node_id = n.id
+                )
+              )
+            GROUP BY n.id
+            LIMIT 30
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(sub.longitude)
+        .bind(sub.latitude)
+        .bind(zone_id.as_deref())
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let candidates: Vec<AssignmentCandidateNodeRow> = Vec::new();
+
+        let mut ranked: Vec<(f64, serde_json::Value)> = Vec::new();
+        for row in candidates {
+            let health_score = Self::assignment_health_score(&row.status, &row.health_json);
+            let capacity_score =
+                Self::assignment_capacity_score(&row.capacity_json, row.avg_link_utilization_pct);
+            let distance_score = Self::assignment_distance_score(row.distance_m).unwrap_or(60.0);
+            let stability_penalty =
+                (row.down_links as f64 * 7.5) + if row.link_count == 0 { 12.0 } else { 0.0 };
+            let score =
+                ((health_score * 0.45) + (capacity_score * 0.35) + (distance_score * 0.20)
+                    - stability_penalty)
+                    .clamp(0.0, 100.0);
+
+            ranked.push((
+                score,
+                json!({
+                    "node_id": row.node_id,
+                    "name": row.name,
+                    "node_type": row.node_type,
+                    "health_score": health_score,
+                    "capacity_score": capacity_score,
+                    "distance_m": row.distance_m,
+                    "avg_link_utilization_pct": row.avg_link_utilization_pct,
+                    "down_links": row.down_links,
+                    "link_count": row.link_count,
+                    "score": score
+                }),
+            ));
+        }
+        ranked.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+        if ranked.len() > 10 {
+            ranked.truncate(10);
+        }
+
+        let selected_node_id = ranked
+            .first()
+            .and_then(|(_, value)| value.get("node_id"))
+            .and_then(|v| v.as_str())
+            .map(str::to_string);
+        let selected_node_score = ranked.first().map(|(score, _)| *score);
+        let candidate_snapshot =
+            serde_json::Value::Array(ranked.iter().map(|(_, value)| value.clone()).collect());
+
+        let resolution_notes = if selected_node_id.is_some() {
+            format!(
+                "Auto-assignment generated from paid invoice. Router ref: {}",
+                sub.router_id
+                    .as_deref()
+                    .filter(|v| !v.trim().is_empty())
+                    .unwrap_or("-")
+            )
+        } else {
+            "Auto-assignment generated but no eligible active node found".to_string()
+        };
+
+        let path_node_ids = serde_json::json!([]);
+        let path_link_ids = serde_json::json!([]);
+        let now = Utc::now();
+
+        #[cfg(feature = "postgres")]
+        sqlx::query(
+            r#"
+            INSERT INTO customer_service_assignments
+              (id, tenant_id, invoice_id, subscription_id, work_order_id, customer_id, location_id,
+               selected_zone_id, selected_node_id, selected_node_score, candidate_snapshot, path_node_ids, path_link_ids,
+               status, resolution_notes, created_at, updated_at)
+            VALUES
+              ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13::jsonb, 'pending_installation', $14, $15, $16)
+            ON CONFLICT (tenant_id, invoice_id)
+            DO UPDATE SET
+              subscription_id = EXCLUDED.subscription_id,
+              work_order_id = EXCLUDED.work_order_id,
+              customer_id = EXCLUDED.customer_id,
+              location_id = EXCLUDED.location_id,
+              selected_zone_id = EXCLUDED.selected_zone_id,
+              selected_node_id = EXCLUDED.selected_node_id,
+              selected_node_score = EXCLUDED.selected_node_score,
+              candidate_snapshot = EXCLUDED.candidate_snapshot,
+              path_node_ids = EXCLUDED.path_node_ids,
+              path_link_ids = EXCLUDED.path_link_ids,
+              status = EXCLUDED.status,
+              resolution_notes = EXCLUDED.resolution_notes,
+              updated_at = EXCLUDED.updated_at
+            "#,
+        )
+        .bind(Uuid::new_v4().to_string())
+        .bind(tenant_id)
+        .bind(invoice_id)
+        .bind(subscription_id)
+        .bind(work_order_id)
+        .bind(&sub.customer_id)
+        .bind(&sub.location_id)
+        .bind(zone_id)
+        .bind(selected_node_id)
+        .bind(selected_node_score)
+        .bind(candidate_snapshot)
+        .bind(path_node_ids)
+        .bind(path_link_ids)
+        .bind(resolution_notes)
+        .bind(now)
+        .bind(now)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        {
+            // Kept for cross-feature compilation. SQLite deployments currently do not use
+            // PostGIS-backed network mapping, so store a minimal placeholder assignment.
+            let id = Uuid::new_v4().to_string();
+            sqlx::query(
+                r#"
+                INSERT INTO customer_service_assignments
+                  (id, tenant_id, invoice_id, subscription_id, work_order_id, customer_id, location_id,
+                   selected_zone_id, selected_node_id, selected_node_score, candidate_snapshot, path_node_ids, path_link_ids,
+                   status, resolution_notes, created_at, updated_at)
+                VALUES
+                  (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_installation', ?, ?, ?)
+                "#,
+            )
+            .bind(id)
+            .bind(tenant_id)
+            .bind(invoice_id)
+            .bind(subscription_id)
+            .bind(work_order_id)
+            .bind(&sub.customer_id)
+            .bind(&sub.location_id)
+            .bind(zone_id)
+            .bind(selected_node_id)
+            .bind(selected_node_score)
+            .bind(candidate_snapshot.to_string())
+            .bind(path_node_ids.to_string())
+            .bind(path_link_ids.to_string())
+            .bind(resolution_notes)
+            .bind(now.to_rfc3339())
+            .bind(now.to_rfc3339())
+            .execute(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        }
+
+        Ok(())
+    }
+
     async fn ensure_installation_work_order(
         &self,
         tenant_id: &str,
         subscription_id: &str,
         invoice_id: &str,
-    ) -> AppResult<String> {
+    ) -> AppResult<(String, bool)> {
         #[derive(sqlx::FromRow)]
         struct SubRef {
             customer_id: String,
@@ -3352,7 +4065,7 @@ impl PaymentService {
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
         if let Some(ex) = existing {
-            return Ok(ex.id);
+            return Ok((ex.id, false));
         }
 
         let now = Utc::now();
@@ -3405,7 +4118,7 @@ impl PaymentService {
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        Ok(id)
+        Ok((id, true))
     }
 
     async fn insert_invoice_reminder_log(
@@ -3869,9 +4582,9 @@ impl PaymentService {
 #[cfg(test)]
 mod tests {
     use super::{
-        filter_owner_admin_user_ids, is_customer_package_invoice_external_id, resolve_post_paid_subscription_action,
-        PostPaidSubscriptionAction,
-        is_owner_or_admin_role,
+        filter_installation_request_user_ids, filter_owner_admin_user_ids,
+        is_customer_package_invoice_external_id, is_owner_admin_or_technician_role,
+        is_owner_or_admin_role, resolve_post_paid_subscription_action, PostPaidSubscriptionAction,
     };
 
     #[test]
@@ -3884,6 +4597,18 @@ mod tests {
         assert!(!is_owner_or_admin_role(Some("customer")));
         assert!(!is_owner_or_admin_role(Some("member")));
         assert!(!is_owner_or_admin_role(None));
+    }
+
+    #[test]
+    fn installation_alert_role_detection_includes_technician() {
+        assert!(is_owner_admin_or_technician_role(Some("Owner")));
+        assert!(is_owner_admin_or_technician_role(Some("admin")));
+        assert!(is_owner_admin_or_technician_role(Some("Technician")));
+        assert!(is_owner_admin_or_technician_role(Some(" technician ")));
+
+        assert!(!is_owner_admin_or_technician_role(Some("customer")));
+        assert!(!is_owner_admin_or_technician_role(Some("member")));
+        assert!(!is_owner_admin_or_technician_role(None));
     }
 
     #[test]
@@ -3914,20 +4639,56 @@ mod tests {
     }
 
     #[test]
+    fn filters_installation_alert_recipients_to_owner_admin_and_technician() {
+        let rows = vec![
+            ("u-owner".to_string(), Some("Owner".to_string())),
+            ("u-admin".to_string(), Some("admin".to_string())),
+            ("u-tech".to_string(), Some("Technician".to_string())),
+            ("u-customer".to_string(), Some("customer".to_string())),
+            ("u-member".to_string(), Some("member".to_string())),
+            ("u-tech".to_string(), Some("technician".to_string())),
+        ];
+
+        let mut got = filter_installation_request_user_ids(rows);
+        got.sort();
+
+        assert_eq!(
+            got,
+            vec![
+                "u-admin".to_string(),
+                "u-owner".to_string(),
+                "u-tech".to_string()
+            ]
+        );
+    }
+
+    #[test]
     fn first_paid_subscription_is_queued_for_installation() {
-        let action = resolve_post_paid_subscription_action(false, "active");
+        let action = resolve_post_paid_subscription_action(false, "active", false);
+        assert_eq!(action, PostPaidSubscriptionAction::QueueInstallation);
+    }
+
+    #[test]
+    fn first_paid_pending_installation_is_queued_for_installation() {
+        let action = resolve_post_paid_subscription_action(false, "pending_installation", false);
         assert_eq!(action, PostPaidSubscriptionAction::QueueInstallation);
     }
 
     #[test]
     fn paid_overdue_subscription_uses_resume_flow() {
-        let action = resolve_post_paid_subscription_action(true, "suspended");
+        let action = resolve_post_paid_subscription_action(true, "suspended", false);
         assert_eq!(action, PostPaidSubscriptionAction::ResumeIfSuspended);
     }
 
     #[test]
     fn first_paid_cancelled_subscription_skips_installation_flow() {
-        let action = resolve_post_paid_subscription_action(false, "cancelled");
+        let action = resolve_post_paid_subscription_action(false, "cancelled", false);
         assert_eq!(action, PostPaidSubscriptionAction::SkipCancelled);
+    }
+
+    #[test]
+    fn first_paid_after_completed_installation_uses_resume_flow() {
+        let action = resolve_post_paid_subscription_action(false, "suspended", true);
+        assert_eq!(action, PostPaidSubscriptionAction::ResumeIfSuspended);
     }
 }

@@ -22,6 +22,10 @@
   let statusFilter = $state<'all' | 'pending' | 'verification_pending' | 'paid' | 'failed'>('all');
   let dateFrom = $state('');
   let dateTo = $state('');
+  let invoiceSortBy = $state<'invoice_number' | 'description' | 'amount' | 'status' | 'due_date'>(
+    'due_date',
+  );
+  let invoiceSortDirection = $state<'asc' | 'desc'>('desc');
   let selectedCustomerId = $state('');
   let selectedSubscriptionId = $state('');
   let subscriptionOptions = $state<
@@ -122,12 +126,15 @@
   async function loadInvoices() {
     loading = true;
     try {
-      invoices = await api.payment.listCustomerPackageInvoices();
+      invoices = await api.payment.listCustomerPackageInvoices({
+        sort_by: invoiceSortBy,
+        sort_dir: invoiceSortDirection,
+      });
     } catch (e: any) {
       error = e.toString();
       toast.error(
         get(t)('admin.package_invoices.list.toasts.load_failed') ||
-          'Failed to load customer package invoices',
+          'Failed to load customer service invoices',
       );
     } finally {
       loading = false;
@@ -167,7 +174,7 @@
     try {
       const inv = await api.payment.createInvoiceForCustomerSubscription(selectedSubscriptionId);
       toast.success(
-        get(t)('admin.package_invoices.list.toasts.created') || 'Customer package invoice created',
+        get(t)('admin.package_invoices.list.toasts.created') || 'Customer service invoice created',
       );
       selectedSubscriptionId = '';
       await loadInvoices();
@@ -231,6 +238,26 @@
     statusFilter = 'all';
     dateFrom = '';
     dateTo = '';
+  }
+
+  function handleInvoiceSort(key: string) {
+    const allowed: Array<'invoice_number' | 'description' | 'amount' | 'status' | 'due_date'> = [
+      'invoice_number',
+      'description',
+      'amount',
+      'status',
+      'due_date',
+    ];
+    if (!allowed.includes(key as any)) return;
+    const typed = key as (typeof allowed)[number];
+    if (invoiceSortBy === typed) {
+      invoiceSortDirection = invoiceSortDirection === 'asc' ? 'desc' : 'asc';
+      void loadInvoices();
+      return;
+    }
+    invoiceSortBy = typed;
+    invoiceSortDirection = typed === 'amount' || typed === 'due_date' ? 'desc' : 'asc';
+    void loadInvoices();
   }
 
   function goToBillingLogs() {
@@ -374,7 +401,10 @@
       {columns}
       searchable={true}
       searchPlaceholder={$t('admin.package_invoices.list.search_placeholder') ||
-        'Search customer package invoices...'}
+        'Search customer service invoices...'}
+      sortKey={invoiceSortBy}
+      sortDirection={invoiceSortDirection}
+      onsort={handleInvoiceSort}
     >
       {#snippet cell({ item, column })}
         {#if column.key === 'amount'}

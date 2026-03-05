@@ -69,7 +69,7 @@
       if (!String(row.external_id || '').startsWith('pkgsub:')) {
         throw new Error(
           get(t)('admin.package_invoices.detail.errors.not_customer_package') ||
-            'Invoice is not a customer package invoice',
+            'Invoice is not a customer service invoice',
         );
       }
       invoice = row;

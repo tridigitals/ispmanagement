@@ -4,6 +4,9 @@ use crate::services::{
     RoleService, SettingsService, StorageService, SystemService, TeamService, UserService,
 };
 use axum::{
+    http::header::{
+        ACCEPT, AUTHORIZATION, CONTENT_TYPE, ORIGIN, USER_AGENT, HeaderName,
+    },
     extract::DefaultBodyLimit,
     routing::{delete, get, post, put},
     Router,
@@ -356,7 +359,16 @@ pub async fn start_server(
             false
         }))
         .allow_methods(Any)
-        .allow_headers(Any);
+        .allow_headers([
+            AUTHORIZATION,
+            CONTENT_TYPE,
+            ACCEPT,
+            ORIGIN,
+            USER_AGENT,
+            HeaderName::from_static("x-requested-with"),
+            HeaderName::from_static("x-csrf-token"),
+        ])
+        .expose_headers([HeaderName::from_static("content-disposition")]);
 
     // Build router
 

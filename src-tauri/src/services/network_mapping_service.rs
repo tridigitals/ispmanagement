@@ -4,12 +4,14 @@ use crate::models::{
     CreateNetworkLinkRequest, CreateNetworkNodeRequest, CreateServiceZoneRequest,
     CreateZoneNodeBindingRequest, CreateZoneOfferRequest, CoverageCheckRequest,
     CoverageCheckResponse, ComputePathRequest, ComputePathResponse, ComputedPathHop, NetworkLink,
-    NetworkNode, PaginatedResponse, ResolvedZone, ResolvedZoneResponse, ResolveZoneRequest,
-    ServiceZone, UpdateNetworkLinkRequest, UpdateNetworkNodeRequest, UpdateServiceZoneRequest,
-    UpdateZoneOfferRequest, ZoneNodeBinding, ZoneOffer,
+    NetworkNode, NetworkImpactCustomer, NetworkImpactResponse, PaginatedResponse,
+    RankCandidateNodesRequest, RankCandidateNodesResponse, RankedCandidateNode, ResolvedZone,
+    ResolvedZoneResponse, ResolveZoneRequest, ServiceZone, UpdateNetworkLinkRequest,
+    UpdateNetworkNodeRequest, UpdateServiceZoneRequest, UpdateZoneOfferRequest, ZoneNodeBinding,
+    ZoneOffer,
 };
 use crate::services::AuthService;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -58,6 +60,25 @@ struct PathEdge {
     status: String,
     distance_m: f64,
     cost: f64,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+struct CandidateNodeRow {
+    node_id: String,
+    name: String,
+    node_type: String,
+    status: String,
+    capacity_json: serde_json::Value,
+    health_json: serde_json::Value,
+    distance_m: Option<f64>,
+    avg_link_utilization_pct: Option<f64>,
+    down_links: i64,
+    link_count: i64,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+struct UuidTextRow {
+    id: String,
 }
 
 impl NetworkMappingService {
@@ -228,6 +249,206 @@ impl NetworkMappingService {
         };
         (distance_km + latency_component + utilization_component + loss_component + status_penalty)
             .max(0.0001)
+    }
+
+    fn json_number(value: &serde_json::Value, key: &str) -> Option<f64> {
+        value.get(key).and_then(|v| {
+            v.as_f64()
+                .or_else(|| v.as_i64().map(|n| n as f64))
+                .or_else(|| v.as_u64().map(|n| n as f64))
+                .or_else(|| v.as_str().and_then(|s| s.trim().parse::<f64>().ok()))
+        })
+    }
+
+    fn clamp_0_100(v: f64) -> f64 {
+        if v.is_nan() {
+            0.0
+        } else {
+            v.clamp(0.0, 100.0)
+        }
+    }
+
+    fn compute_health_score(status: &str, health_json: &serde_json::Value) -> f64 {
+        if let Some(score) = Self::json_number(health_json, "score") {
+            return Self::clamp_0_100(score);
+        }
+        if let Some(score) = Self::json_number(health_json, "health_score") {
+            return Self::clamp_0_100(score);
+        }
+        match status {
+            "active" => 85.0,
+            "maintenance" => 60.0,
+            _ => 40.0,
+        }
+    }
+
+    fn compute_capacity_score(
+        capacity_json: &serde_json::Value,
+        avg_link_utilization_pct: Option<f64>,
+    ) -> f64 {
+        if let Some(free_pct) = Self::json_number(capacity_json, "free_pct") {
+            return Self::clamp_0_100(free_pct);
+        }
+        if let Some(util_pct) = Self::json_number(capacity_json, "utilization_pct") {
+            return Self::clamp_0_100(100.0 - util_pct);
+        }
+        let available_mbps = Self::json_number(capacity_json, "available_mbps");
+        let total_mbps = Self::json_number(capacity_json, "total_mbps");
+        if let (Some(avail), Some(total)) = (available_mbps, total_mbps) {
+            if total > 0.0 {
+                return Self::clamp_0_100((avail / total) * 100.0);
+            }
+        }
+        if let Some(util) = avg_link_utilization_pct {
+            return Self::clamp_0_100(100.0 - util);
+        }
+        60.0
+    }
+
+    fn compute_distance_score(distance_m: Option<f64>) -> Option<f64> {
+        distance_m.map(|distance| {
+            let normalized = (distance / 50_000.0).clamp(0.0, 1.0);
+            Self::clamp_0_100(100.0 - (normalized * 100.0))
+        })
+    }
+
+    pub async fn rank_candidate_nodes(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        dto: RankCandidateNodesRequest,
+    ) -> AppResult<RankCandidateNodesResponse> {
+        self.require_read(actor_id, tenant_id).await?;
+
+        if dto.lat.is_some() ^ dto.lng.is_some() {
+            return Err(AppError::Validation(
+                "lat and lng must be provided together".into(),
+            ));
+        }
+        if let (Some(lat), Some(lng)) = (dto.lat, dto.lng) {
+            Self::validate_lat_lng(lat, lng, "candidate")?;
+        }
+
+        let limit = dto.limit.unwrap_or(10).clamp(1, 100) as i64;
+        let node_types = dto.node_types.filter(|v| !v.is_empty());
+        let require_active_nodes = dto.require_active_nodes.unwrap_or(true);
+        let zone_id = dto.zone_id.clone();
+        let has_point = dto.lat.is_some() && dto.lng.is_some();
+
+        let rows: Vec<CandidateNodeRow> = sqlx::query_as(
+            r#"
+            SELECT
+              n.id::text AS node_id,
+              n.name,
+              n.node_type,
+              n.status,
+              n.capacity_json,
+              n.health_json,
+              CASE
+                WHEN $2::bool = true
+                THEN ST_Distance(
+                  geography(n.geom),
+                  geography(ST_SetSRID(ST_MakePoint($3::float8, $4::float8), 4326))
+                )::float8
+                ELSE NULL
+              END AS distance_m,
+              AVG(l.utilization_pct::float8) FILTER (WHERE l.utilization_pct IS NOT NULL) AS avg_link_utilization_pct,
+              COALESCE(COUNT(l.id) FILTER (WHERE l.status = 'down'), 0)::bigint AS down_links,
+              COALESCE(COUNT(l.id), 0)::bigint AS link_count
+            FROM network_nodes n
+            LEFT JOIN network_links l
+              ON l.tenant_id = n.tenant_id
+             AND (l.from_node_id = n.id OR l.to_node_id = n.id)
+            WHERE n.tenant_id = $1::uuid
+              AND ($5::bool = false OR n.status = 'active')
+              AND ($6::text[] IS NULL OR n.node_type = ANY($6::text[]))
+              AND (
+                $7::uuid IS NULL
+                OR EXISTS (
+                  SELECT 1
+                  FROM zone_node_bindings znb
+                  WHERE znb.tenant_id = n.tenant_id
+                    AND znb.zone_id = $7::uuid
+                    AND znb.node_id = n.id
+                )
+              )
+            GROUP BY n.id
+            LIMIT 400
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(has_point)
+        .bind(dto.lng)
+        .bind(dto.lat)
+        .bind(require_active_nodes)
+        .bind(node_types)
+        .bind(zone_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let mut items: Vec<RankedCandidateNode> = rows
+            .into_iter()
+            .map(|row| {
+                let health_score = Self::compute_health_score(&row.status, &row.health_json);
+                let capacity_score =
+                    Self::compute_capacity_score(&row.capacity_json, row.avg_link_utilization_pct);
+                let distance_score = Self::compute_distance_score(row.distance_m);
+                let distance_component = distance_score.unwrap_or(60.0);
+
+                let stability_penalty = (row.down_links as f64 * 7.5)
+                    + if row.link_count == 0 { 12.0 } else { 0.0 };
+                let base_score = (health_score * 0.45)
+                    + (capacity_score * 0.35)
+                    + (distance_component * 0.20);
+                let score = (base_score - stability_penalty).clamp(0.0, 100.0);
+                let reason = format!(
+                    "health {:.0}, capacity {:.0}{}{}",
+                    health_score,
+                    capacity_score,
+                    match distance_score {
+                        Some(s) => format!(", distance {:.0}", s),
+                        None => String::new(),
+                    },
+                    if row.down_links > 0 {
+                        format!(", penalty: {} down link(s)", row.down_links)
+                    } else {
+                        String::new()
+                    }
+                );
+
+                RankedCandidateNode {
+                    node_id: row.node_id,
+                    name: row.name,
+                    node_type: row.node_type,
+                    status: row.status,
+                    score,
+                    health_score,
+                    capacity_score,
+                    distance_score,
+                    distance_m: row.distance_m,
+                    avg_link_utilization_pct: row.avg_link_utilization_pct,
+                    down_links: row.down_links,
+                    link_count: row.link_count,
+                    reason,
+                }
+            })
+            .collect();
+
+        items.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| {
+                    a.distance_m
+                        .unwrap_or(f64::INFINITY)
+                        .partial_cmp(&b.distance_m.unwrap_or(f64::INFINITY))
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
+        });
+        items.truncate(limit as usize);
+
+        Ok(RankCandidateNodesResponse { items })
     }
 
     async fn ensure_link_pair_available(
@@ -1495,6 +1716,173 @@ impl NetworkMappingService {
         };
 
         Ok(CoverageCheckResponse { zone, offers })
+    }
+
+    pub async fn list_impacted_customers(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        node_id: Option<String>,
+        link_id: Option<String>,
+        router_id: Option<String>,
+    ) -> AppResult<NetworkImpactResponse> {
+        self.require_read(actor_id, tenant_id).await?;
+
+        let mut node_ids = HashSet::<String>::new();
+        let mut link_ids = HashSet::<String>::new();
+
+        if let Some(id) = node_id.filter(|v| !v.trim().is_empty()) {
+            node_ids.insert(id.trim().to_string());
+        }
+        if let Some(id) = link_id.filter(|v| !v.trim().is_empty()) {
+            link_ids.insert(id.trim().to_string());
+        }
+
+        if let Some(router_id) = router_id.filter(|v| !v.trim().is_empty()) {
+            let router_id = router_id.trim().to_string();
+            let resolved_nodes: Vec<UuidTextRow> = sqlx::query_as(
+                r#"
+                SELECT id::text AS id
+                FROM network_nodes
+                WHERE tenant_id = $1::uuid
+                  AND (
+                    id::text = $2::text
+                    OR metadata->>'router_id' = $2::text
+                    OR metadata->>'routerId' = $2::text
+                    OR metadata->>'mikrotik_router_id' = $2::text
+                    OR metadata->>'mikrotikRouterId' = $2::text
+                  )
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(&router_id)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
+
+            for row in resolved_nodes {
+                node_ids.insert(row.id);
+            }
+        }
+
+        let node_vec = node_ids.into_iter().collect::<Vec<_>>();
+
+        if !node_vec.is_empty() {
+            let connected_links: Vec<UuidTextRow> = sqlx::query_as(
+                r#"
+                SELECT id::text AS id
+                FROM network_links
+                WHERE tenant_id = $1::uuid
+                  AND (
+                    from_node_id::text = ANY($2::text[])
+                    OR to_node_id::text = ANY($2::text[])
+                  )
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(&node_vec)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
+
+            for row in connected_links {
+                link_ids.insert(row.id);
+            }
+        }
+
+        let link_vec = link_ids.into_iter().collect::<Vec<_>>();
+        if node_vec.is_empty() && link_vec.is_empty() {
+            return Ok(NetworkImpactResponse {
+                node_ids: node_vec,
+                link_ids: link_vec,
+                customers: vec![],
+            });
+        }
+
+        let rows: Vec<NetworkImpactCustomer> = sqlx::query_as(
+            r#"
+            SELECT
+              csa.id::text AS assignment_id,
+              csa.status AS assignment_status,
+              csa.invoice_id::text AS invoice_id,
+              csa.subscription_id::text AS subscription_id,
+              cs.status AS subscription_status,
+              wo.id::text AS work_order_id,
+              wo.status AS work_order_status,
+              c.id::text AS customer_id,
+              c.name AS customer_name,
+              cl.id::text AS location_id,
+              cl.label AS location_label,
+              csa.selected_node_id AS selected_node_id,
+              nn.name AS selected_node_name,
+              (
+                ($2::text[] IS NOT NULL AND csa.selected_node_id = ANY($2::text[]))
+                OR ($2::text[] IS NOT NULL AND EXISTS (
+                  SELECT 1
+                  FROM jsonb_array_elements_text(csa.path_node_ids) n(node_id)
+                  WHERE n.node_id = ANY($2::text[])
+                ))
+              ) AS impacted_via_node,
+              (
+                $3::text[] IS NOT NULL AND EXISTS (
+                  SELECT 1
+                  FROM jsonb_array_elements_text(csa.path_link_ids) l(link_id)
+                  WHERE l.link_id = ANY($3::text[])
+                )
+              ) AS impacted_via_link,
+              csa.updated_at AS updated_at
+            FROM customer_service_assignments csa
+            JOIN customers c
+              ON c.tenant_id = csa.tenant_id AND c.id = csa.customer_id
+            JOIN customer_locations cl
+              ON cl.tenant_id = csa.tenant_id AND cl.id = csa.location_id
+            LEFT JOIN customer_subscriptions cs
+              ON cs.tenant_id = csa.tenant_id AND cs.id = csa.subscription_id
+            LEFT JOIN installation_work_orders wo
+              ON wo.tenant_id = csa.tenant_id AND wo.id = csa.work_order_id
+            LEFT JOIN network_nodes nn
+              ON nn.tenant_id = csa.tenant_id::uuid AND nn.id::text = csa.selected_node_id
+            WHERE csa.tenant_id = $1::text
+              AND (
+                ($2::text[] IS NOT NULL AND (
+                  csa.selected_node_id = ANY($2::text[])
+                  OR EXISTS (
+                    SELECT 1
+                    FROM jsonb_array_elements_text(csa.path_node_ids) n(node_id)
+                    WHERE n.node_id = ANY($2::text[])
+                  )
+                ))
+                OR
+                ($3::text[] IS NOT NULL AND EXISTS (
+                  SELECT 1
+                  FROM jsonb_array_elements_text(csa.path_link_ids) l(link_id)
+                  WHERE l.link_id = ANY($3::text[])
+                ))
+              )
+            ORDER BY csa.updated_at DESC
+            LIMIT 300
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(if node_vec.is_empty() {
+            None
+        } else {
+            Some(node_vec.clone())
+        })
+        .bind(if link_vec.is_empty() {
+            None
+        } else {
+            Some(link_vec.clone())
+        })
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        Ok(NetworkImpactResponse {
+            node_ids: node_vec,
+            link_ids: link_vec,
+            customers: rows,
+        })
     }
 
     async fn get_node_by_id(&self, tenant_id: &str, id: &str) -> AppResult<NetworkNode> {

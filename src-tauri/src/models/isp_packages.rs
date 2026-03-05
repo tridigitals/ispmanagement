@@ -6,6 +6,7 @@ use uuid::Uuid;
 pub struct IspPackage {
     pub id: String,
     pub tenant_id: String,
+    pub service_type: String,
     pub name: String,
     pub description: Option<String>,
     pub features: Vec<String>,
@@ -21,6 +22,7 @@ pub struct IspPackage {
 impl IspPackage {
     pub fn new(
         tenant_id: String,
+        service_type: Option<String>,
         name: String,
         description: Option<String>,
         features: Option<Vec<String>>,
@@ -32,6 +34,10 @@ impl IspPackage {
         Self {
             id: Uuid::new_v4().to_string(),
             tenant_id,
+            service_type: service_type
+                .unwrap_or_else(|| "internet_pppoe".to_string())
+                .trim()
+                .to_string(),
             name,
             description,
             features: features.unwrap_or_default(),
@@ -46,6 +52,7 @@ impl IspPackage {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateIspPackageRequest {
+    pub service_type: Option<String>,
     pub name: String,
     pub description: Option<String>,
     pub features: Option<Vec<String>>,
@@ -56,6 +63,7 @@ pub struct CreateIspPackageRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateIspPackageRequest {
+    pub service_type: Option<String>,
     pub name: Option<String>,
     pub description: Option<String>,
     pub features: Option<Vec<String>>,

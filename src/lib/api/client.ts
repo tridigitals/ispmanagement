@@ -188,15 +188,36 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       list_my_customer_locations: { method: 'GET', path: '/customers/portal/my-locations' },
       create_my_customer_location: { method: 'POST', path: '/customers/portal/my-locations' },
       list_my_customer_packages: { method: 'GET', path: '/customers/portal/my-packages' },
+      get_my_customer_subscription_stats: {
+        method: 'GET',
+        path: '/customers/portal/my-subscriptions/stats',
+      },
       list_my_customer_subscriptions: { method: 'GET', path: '/customers/portal/my-subscriptions' },
+      create_my_customer_subscription_order_request: {
+        method: 'POST',
+        path: '/customers/portal/order-request',
+      },
+      reopen_my_customer_subscription_order_request: {
+        method: 'POST',
+        path: '/customers/portal/my-subscriptions/:subscriptionId/reopen-request',
+      },
       create_my_customer_subscription_invoice: {
         method: 'POST',
         path: '/customers/portal/checkout',
       },
       list_installation_work_orders: { method: 'GET', path: '/admin/work-orders' },
+      list_installation_assignees: { method: 'GET', path: '/admin/work-orders/assignees' },
       assign_installation_work_order: {
         method: 'POST',
         path: '/admin/work-orders/:id/assign',
+      },
+      claim_installation_work_order: {
+        method: 'POST',
+        path: '/admin/work-orders/:id/claim',
+      },
+      release_installation_work_order: {
+        method: 'POST',
+        path: '/admin/work-orders/:id/release',
       },
       start_installation_work_order: {
         method: 'POST',
@@ -209,6 +230,10 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       cancel_installation_work_order: {
         method: 'POST',
         path: '/admin/work-orders/:id/cancel',
+      },
+      reopen_installation_work_order: {
+        method: 'POST',
+        path: '/admin/work-orders/:id/reopen',
       },
       // Settings
       get_logo: { method: 'GET', path: '/settings/logo' },
@@ -456,6 +481,10 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       delete_service_zone: { method: 'DELETE', path: '/admin/network-mapping/zones/:id' },
       resolve_service_zone: { method: 'POST', path: '/admin/network-mapping/zones/resolve' },
       compute_network_path: { method: 'POST', path: '/admin/network-mapping/paths/compute' },
+      rank_candidate_network_nodes: {
+        method: 'POST',
+        path: '/admin/network-mapping/nodes/rank-candidates',
+      },
       check_network_coverage: { method: 'POST', path: '/admin/network-mapping/coverage/check' },
       list_zone_offers: { method: 'GET', path: '/admin/network-mapping/zone-offers' },
       create_zone_offer: { method: 'POST', path: '/admin/network-mapping/zone-offers' },
@@ -472,6 +501,10 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       delete_zone_node_binding: {
         method: 'DELETE',
         path: '/admin/network-mapping/zone-node-bindings/:id',
+      },
+      list_network_impacted_customers: {
+        method: 'GET',
+        path: '/admin/network-mapping/impact/customers',
       },
 
       // Backup
@@ -1000,11 +1033,26 @@ export interface CustomerSubscriptionView extends CustomerSubscription {
   package_name: string | null;
   location_label: string | null;
   router_name: string | null;
+  latest_work_order_id: string | null;
+  latest_work_order_status: string | null;
+  can_request_reopen: boolean;
+}
+
+export interface CustomerPortalSubscriptionStats {
+  total: number;
+  active: number;
+  pending_installation: number;
+  needs_attention: number;
 }
 
 export interface CustomerPortalCheckoutResponse {
   subscription: CustomerSubscription;
   invoice: Invoice;
+}
+
+export interface CustomerPortalOrderRequestResponse {
+  subscription: CustomerSubscription;
+  work_order: InstallationWorkOrderView;
 }
 
 export interface InstallationWorkOrderView {
@@ -1028,6 +1076,17 @@ export interface InstallationWorkOrderView {
   router_name: string | null;
   assigned_to_name: string | null;
   assigned_to_email: string | null;
+  assignment_id: string | null;
+  assignment_status: string | null;
+  subscription_status: string | null;
+  subscription_starts_at: string | null;
+  selected_zone_id: string | null;
+  selected_zone_name: string | null;
+  selected_node_id: string | null;
+  selected_node_name: string | null;
+  selected_node_score: number | null;
+  path_node_ids: unknown[] | null;
+  path_link_ids: unknown[] | null;
 }
 
 export interface PppoeAccountPublic {
@@ -1055,6 +1114,7 @@ export interface PppoeAccountPublic {
 export interface IspPackage {
   id: string;
   tenant_id: string;
+  service_type: string;
   name: string;
   description: string | null;
   features: string[];
@@ -2035,14 +2095,22 @@ export const customers = {
       safeInvoke('create_my_customer_location', { token: getTokenOrThrow(), ...dto }),
     myPackages: (): Promise<IspPackage[]> =>
       safeInvoke('list_my_customer_packages', { token: getTokenOrThrow() }),
+    mySubscriptionStats: (): Promise<CustomerPortalSubscriptionStats> =>
+      safeInvoke('get_my_customer_subscription_stats', { token: getTokenOrThrow() }),
     mySubscriptions: (params?: {
       page?: number;
       per_page?: number;
+      status?: 'active' | 'pending_installation' | 'suspended' | 'cancelled' | 'needs_attention';
+      sort_by?: 'updated_at' | 'price' | 'status' | 'package_name' | 'location_label';
+      sort_dir?: 'asc' | 'desc';
     }): Promise<PaginatedResponse<CustomerSubscriptionView>> =>
       safeInvoke('list_my_customer_subscriptions', {
         token: getTokenOrThrow(),
         page: params?.page,
         per_page: params?.per_page,
+        status: params?.status,
+        sort_by: params?.sort_by,
+        sort_dir: params?.sort_dir,
       }),
     checkout: (dto: {
       location_id: string;
@@ -2052,6 +2120,25 @@ export const customers = {
       safeInvoke('create_my_customer_subscription_invoice', {
         token: getTokenOrThrow(),
         ...dto,
+      }),
+    orderRequest: (dto: {
+      location_id: string;
+      package_id: string;
+      billing_cycle: 'monthly' | 'yearly' | string;
+    }): Promise<CustomerPortalOrderRequestResponse> =>
+      safeInvoke('create_my_customer_subscription_order_request', {
+        token: getTokenOrThrow(),
+        ...dto,
+      }),
+    reopenOrderRequest: (
+      subscriptionId: string,
+      dto?: { notes?: string },
+    ): Promise<CustomerPortalOrderRequestResponse> =>
+      safeInvoke('reopen_my_customer_subscription_order_request', {
+        token: getTokenOrThrow(),
+        subscriptionId,
+        subscription_id: subscriptionId,
+        notes: dto?.notes,
       }),
   },
 };
@@ -2067,11 +2154,27 @@ export const workOrders = {
       token: getTokenOrThrow(),
       ...(params || {}),
     }),
+  assignees: (): Promise<TeamMember[]> =>
+    safeInvoke('list_installation_assignees', {
+      token: getTokenOrThrow(),
+    }),
   assign: (id: string, payload: { assigned_to: string; scheduled_at?: string; notes?: string }) =>
     safeInvoke('assign_installation_work_order', {
       token: getTokenOrThrow(),
       id,
       ...payload,
+    }),
+  claim: (id: string, notes?: string) =>
+    safeInvoke('claim_installation_work_order', {
+      token: getTokenOrThrow(),
+      id,
+      notes: notes ?? undefined,
+    }),
+  release: (id: string, notes?: string) =>
+    safeInvoke('release_installation_work_order', {
+      token: getTokenOrThrow(),
+      id,
+      notes: notes ?? undefined,
     }),
   start: (id: string, notes?: string) =>
     safeInvoke('start_installation_work_order', {
@@ -2087,6 +2190,12 @@ export const workOrders = {
     }),
   cancel: (id: string, notes?: string) =>
     safeInvoke('cancel_installation_work_order', {
+      token: getTokenOrThrow(),
+      id,
+      notes: notes ?? undefined,
+    }),
+  reopen: (id: string, notes?: string) =>
+    safeInvoke('reopen_installation_work_order', {
       token: getTokenOrThrow(),
       id,
       notes: notes ?? undefined,
@@ -2209,9 +2318,12 @@ export const ispPackages = {
       q?: string;
       page?: number;
       per_page?: number;
+      sort_by?: string;
+      sort_dir?: 'asc' | 'desc';
     }): Promise<PaginatedResponse<IspPackage>> =>
       safeInvoke('list_isp_packages', { token: getTokenOrThrow(), ...(params || {}) }),
     create: (dto: {
+      service_type?: string;
       name: string;
       description?: string | null;
       features?: string[];
@@ -2221,6 +2333,7 @@ export const ispPackages = {
     }): Promise<IspPackage> =>
       safeInvoke('create_isp_package', {
         token: getTokenOrThrow(),
+        service_type: dto.service_type ?? 'internet_pppoe',
         name: dto.name,
         description: dto.description ?? null,
         features: dto.features ?? [],
@@ -2231,6 +2344,7 @@ export const ispPackages = {
     update: (
       id: string,
       dto: {
+        service_type?: string;
         name?: string;
         description?: string | null;
         features?: string[];
@@ -2242,6 +2356,7 @@ export const ispPackages = {
       safeInvoke('update_isp_package', {
         token: getTokenOrThrow(),
         id,
+        service_type: dto.service_type ?? undefined,
         name: dto.name,
         description: dto.description ?? undefined,
         features: dto.features,
@@ -2330,6 +2445,17 @@ export const networkMapping = {
     }): Promise<any> =>
       safeInvoke('compute_network_path', { token: getTokenOrThrow(), ...dto }),
   },
+  candidates: {
+    rank: (dto: {
+      lat?: number;
+      lng?: number;
+      zone_id?: string;
+      node_types?: string[];
+      limit?: number;
+      require_active_nodes?: boolean;
+    }): Promise<any> =>
+      safeInvoke('rank_candidate_network_nodes', { token: getTokenOrThrow(), ...dto }),
+  },
   zones: {
     list: (params?: {
       q?: string;
@@ -2372,6 +2498,10 @@ export const networkMapping = {
       safeInvoke('create_zone_node_binding', { token: getTokenOrThrow(), ...dto }),
     delete: (id: string): Promise<void> =>
       safeInvoke('delete_zone_node_binding', { token: getTokenOrThrow(), id }),
+  },
+  impact: {
+    listCustomers: (params?: { node_id?: string; link_id?: string; router_id?: string }): Promise<any> =>
+      safeInvoke('list_network_impacted_customers', { token: getTokenOrThrow(), ...(params || {}) }),
   },
 };
 
@@ -2872,8 +3002,15 @@ export const payment = {
 
   listInvoices: (): Promise<Invoice[]> => safeInvoke('list_invoices', { token: getTokenOrThrow() }),
 
-  listCustomerPackageInvoices: (): Promise<Invoice[]> =>
-    safeInvoke('list_customer_package_invoices', { token: getTokenOrThrow() }),
+  listCustomerPackageInvoices: (params?: {
+    sort_by?: 'invoice_number' | 'description' | 'amount' | 'status' | 'due_date' | 'created_at';
+    sort_dir?: 'asc' | 'desc';
+  }): Promise<Invoice[]> =>
+    safeInvoke('list_customer_package_invoices', {
+      token: getTokenOrThrow(),
+      sort_by: params?.sort_by,
+      sort_dir: params?.sort_dir,
+    }),
 
   generateDueCustomerPackageInvoices: (): Promise<BulkGenerateInvoicesResult> =>
     safeInvoke('generate_due_customer_package_invoices', { token: getTokenOrThrow() }),

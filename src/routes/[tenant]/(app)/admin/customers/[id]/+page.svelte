@@ -1310,7 +1310,7 @@
             <h3>{$t('admin.customers.subscriptions.title') || 'Subscriptions'}</h3>
             <p class="subtitle">
               {$t('admin.customers.subscriptions.subtitle') ||
-                'Customer package subscriptions for billing and service assignment.'}
+                'Customer service subscriptions for billing and service assignment.'}
             </p>
           </div>
           <div class="header-actions">

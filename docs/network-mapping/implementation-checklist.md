@@ -87,13 +87,13 @@
 
 ## Backend
 - [x] Add path compute service (shortest path with constraints)
-- [ ] Add candidate node ranking by health+capacity
-- [ ] Store assignment result on order/payment verification
-- [ ] Trigger installation work order creation from successful payment
+- [x] Add candidate node ranking by health+capacity
+- [x] Store assignment result on order/payment verification
+- [x] Trigger installation work order creation from successful payment
 
 ## Frontend
-- [ ] Work order detail includes selected node/path context
-- [ ] NOC impact view: node/link issue -> affected customers
+- [x] Work order detail includes selected node/path context
+- [x] NOC impact view: node/link issue -> affected customers
 
 ## Quality / Security / Ops
 

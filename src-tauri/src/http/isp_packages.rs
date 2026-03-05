@@ -46,6 +46,8 @@ struct ListPackagesQuery {
     q: Option<String>,
     page: Option<u32>,
     per_page: Option<u32>,
+    sort_by: Option<String>,
+    sort_dir: Option<String>,
 }
 
 // GET /api/admin/isp-packages/packages
@@ -63,6 +65,8 @@ async fn list_packages(
             q.q,
             q.page.unwrap_or(1),
             q.per_page.unwrap_or(25),
+            q.sort_by,
+            q.sort_dir,
         )
         .await?;
     Ok(Json(out))

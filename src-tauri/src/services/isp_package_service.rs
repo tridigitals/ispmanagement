@@ -71,6 +71,19 @@ impl IspPackageService {
         out
     }
 
+    fn normalize_service_type(input: Option<String>) -> AppResult<String> {
+        let value = input
+            .unwrap_or_else(|| "internet_pppoe".to_string())
+            .trim()
+            .to_lowercase();
+        match value.as_str() {
+            "internet_pppoe" | "hotspot" | "vpn" => Ok(value),
+            _ => Err(AppError::Validation(
+                "service_type must be one of: internet_pppoe, hotspot, vpn".into(),
+            )),
+        }
+    }
+
     pub async fn list_packages(
         &self,
         actor_id: &str,
@@ -78,6 +91,8 @@ impl IspPackageService {
         q: Option<String>,
         page: u32,
         per_page: u32,
+        sort_by: Option<String>,
+        sort_dir: Option<String>,
     ) -> AppResult<PaginatedResponse<IspPackage>> {
         self.auth_service
             .check_permission(actor_id, tenant_id, "isp_packages", "read")
@@ -85,6 +100,32 @@ impl IspPackageService {
 
         let q = q.unwrap_or_default().trim().to_string();
         let offset = (page.saturating_sub(1)) * per_page;
+        let sort_column = match sort_by
+            .unwrap_or_else(|| "updated_at".to_string())
+            .trim()
+            .to_lowercase()
+            .as_str()
+        {
+            "name" => "name",
+            "type" => "service_type",
+            "price" => "price_monthly",
+            "status" => "is_active",
+            "mappings" => {
+                "(SELECT COUNT(*) FROM isp_package_router_mappings m WHERE m.package_id = isp_packages.id)"
+            }
+            "created_at" => "created_at",
+            "updated_at" => "updated_at",
+            _ => "updated_at",
+        };
+        let sort_direction = match sort_dir
+            .unwrap_or_else(|| "desc".to_string())
+            .trim()
+            .to_lowercase()
+            .as_str()
+        {
+            "asc" => "ASC",
+            _ => "DESC",
+        };
 
         let total: i64 = sqlx::query_scalar(
             r#"
@@ -99,11 +140,12 @@ impl IspPackageService {
         .await
         .map_err(AppError::Database)?;
 
-        let rows: Vec<IspPackage> = sqlx::query_as(
+        let list_sql = format!(
             r#"
             SELECT
               id,
               tenant_id,
+              service_type,
               name,
               description,
               features,
@@ -115,10 +157,12 @@ impl IspPackageService {
             FROM isp_packages
             WHERE tenant_id = $1
               AND ($2 = '' OR name ILIKE '%' || $2 || '%')
-            ORDER BY updated_at DESC
+            ORDER BY {sort_column} {sort_direction}
             LIMIT $3 OFFSET $4
-            "#,
-        )
+            "#
+        );
+
+        let rows: Vec<IspPackage> = sqlx::query_as(&list_sql)
         .bind(tenant_id)
         .bind(&q)
         .bind(per_page as i64)
@@ -164,9 +208,11 @@ impl IspPackageService {
         }
 
         let normalized_features = Self::normalize_features(dto.features);
+        let service_type = Self::normalize_service_type(dto.service_type)?;
 
         let pkg = IspPackage::new(
             tenant_id.to_string(),
+            Some(service_type),
             name,
             dto.description.and_then(|v| {
                 let x = v.trim().to_string();
@@ -184,12 +230,13 @@ impl IspPackageService {
 
         sqlx::query(
             r#"
-            INSERT INTO isp_packages (id, tenant_id, name, description, features, is_active, price_monthly, price_yearly, created_at, updated_at)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+            INSERT INTO isp_packages (id, tenant_id, service_type, name, description, features, is_active, price_monthly, price_yearly, created_at, updated_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
             "#,
         )
         .bind(&pkg.id)
         .bind(&pkg.tenant_id)
+        .bind(&pkg.service_type)
         .bind(&pkg.name)
         .bind(&pkg.description)
         .bind(&pkg.features)
@@ -219,8 +266,9 @@ impl IspPackageService {
                 "isp_packages",
                 Some(&pkg.id),
                 Some(&format!(
-                    "Created ISP package {} (monthly={}, yearly={}, features={})",
+                    "Created ISP package {} (type={}, monthly={}, yearly={}, features={})",
                     pkg.name,
+                    pkg.service_type,
                     pkg.price_monthly,
                     pkg.price_yearly,
                     pkg.features.join(" | ")
@@ -249,6 +297,7 @@ impl IspPackageService {
             SELECT
               id,
               tenant_id,
+              service_type,
               name,
               description,
               features,
@@ -274,12 +323,16 @@ impl IspPackageService {
         let old_name = pkg.name.clone();
         let old_description = pkg.description.clone();
         let old_active = pkg.is_active;
+        let old_service_type = pkg.service_type.clone();
 
         if let Some(v) = dto.name {
             let vv = v.trim().to_string();
             if !vv.is_empty() {
                 pkg.name = vv;
             }
+        }
+        if dto.service_type.is_some() {
+            pkg.service_type = Self::normalize_service_type(dto.service_type)?;
         }
         if let Some(v) = dto.description {
             let vv = v.trim().to_string();
@@ -318,16 +371,18 @@ impl IspPackageService {
         sqlx::query(
             r#"
             UPDATE isp_packages SET
-              name = $1,
-              description = $2,
-              features = $3,
-              is_active = $4,
-              price_monthly = $5,
-              price_yearly = $6,
-              updated_at = $7
-            WHERE tenant_id = $8 AND id = $9
+              service_type = $1,
+              name = $2,
+              description = $3,
+              features = $4,
+              is_active = $5,
+              price_monthly = $6,
+              price_yearly = $7,
+              updated_at = $8
+            WHERE tenant_id = $9 AND id = $10
             "#,
         )
+        .bind(&pkg.service_type)
         .bind(&pkg.name)
         .bind(&pkg.description)
         .bind(&pkg.features)
@@ -354,6 +409,12 @@ impl IspPackageService {
             let mut changes = Vec::new();
             if old_name != pkg.name {
                 changes.push(format!("name: '{}' -> '{}'", old_name, pkg.name));
+            }
+            if old_service_type != pkg.service_type {
+                changes.push(format!(
+                    "service_type: '{}' -> '{}'",
+                    old_service_type, pkg.service_type
+                ));
             }
             if old_description != pkg.description {
                 changes.push(format!(
@@ -501,6 +562,20 @@ impl IspPackageService {
         self.ensure_router_access(tenant_id, &dto.router_id).await?;
         self.ensure_package_access(tenant_id, &dto.package_id)
             .await?;
+
+        let package_type: Option<String> = sqlx::query_scalar(
+            "SELECT service_type FROM isp_packages WHERE tenant_id = $1 AND id = $2",
+        )
+        .bind(tenant_id)
+        .bind(&dto.package_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+        if package_type.as_deref() != Some("internet_pppoe") {
+            return Err(AppError::Validation(
+                "Router mapping is only available for service type internet_pppoe".into(),
+            ));
+        }
 
         let profile = dto.router_profile_name.trim().to_string();
         if profile.is_empty() {

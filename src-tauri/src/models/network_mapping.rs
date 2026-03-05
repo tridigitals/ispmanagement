@@ -240,9 +240,68 @@ pub struct ComputePathResponse {
     pub total_distance_m: Option<f64>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RankCandidateNodesRequest {
+    pub lat: Option<f64>,
+    pub lng: Option<f64>,
+    pub zone_id: Option<String>,
+    pub node_types: Option<Vec<String>>,
+    pub limit: Option<u32>,
+    pub require_active_nodes: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RankedCandidateNode {
+    pub node_id: String,
+    pub name: String,
+    pub node_type: String,
+    pub status: String,
+    pub score: f64,
+    pub health_score: f64,
+    pub capacity_score: f64,
+    pub distance_score: Option<f64>,
+    pub distance_m: Option<f64>,
+    pub avg_link_utilization_pct: Option<f64>,
+    pub down_links: i64,
+    pub link_count: i64,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RankCandidateNodesResponse {
+    pub items: Vec<RankedCandidateNode>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct ResolvedZone {
     pub id: String,
     pub name: String,
     pub priority: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct NetworkImpactCustomer {
+    pub assignment_id: String,
+    pub assignment_status: String,
+    pub invoice_id: String,
+    pub subscription_id: String,
+    pub subscription_status: Option<String>,
+    pub work_order_id: Option<String>,
+    pub work_order_status: Option<String>,
+    pub customer_id: String,
+    pub customer_name: String,
+    pub location_id: String,
+    pub location_label: Option<String>,
+    pub selected_node_id: Option<String>,
+    pub selected_node_name: Option<String>,
+    pub impacted_via_node: bool,
+    pub impacted_via_link: bool,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NetworkImpactResponse {
+    pub node_ids: Vec<String>,
+    pub link_ids: Vec<String>,
+    pub customers: Vec<NetworkImpactCustomer>,
 }

@@ -2,7 +2,13 @@
   import Sidebar from '$lib/components/layout/Sidebar.svelte';
   import Topbar from '$lib/components/layout/Topbar.svelte';
   import AnnouncementBanner from '$lib/components/layout/AnnouncementBanner.svelte';
-  import { isAuthenticated, isSuperAdmin, is2FARequiredButDisabled, can } from '$lib/stores/auth';
+  import {
+    isAuthenticated,
+    isSuperAdmin,
+    is2FARequiredButDisabled,
+    can,
+    checkAuth,
+  } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import { page } from '$app/stores';
   import { user } from '$lib/stores/auth';
@@ -79,7 +85,7 @@
     if (path.startsWith('/admin/network/pppoe')) {
       return $can('read', 'pppoe') || $can('manage', 'pppoe');
     }
-    if (path.startsWith('/admin/network/packages')) {
+    if (path.startsWith('/admin/services') || path.startsWith('/admin/network/packages')) {
       return $can('read', 'isp_packages') || $can('manage', 'isp_packages');
     }
     if (path.startsWith('/admin/network/installations')) {
@@ -264,31 +270,65 @@
     }
   });
 
-  onMount(() => {
+  // Force leaving protected app routes when session is gone/expired.
+  $effect(() => {
     const hasStoredToken =
       (typeof localStorage !== 'undefined' &&
         (localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token'))) ||
       false;
 
-    // Avoid false redirect while auth store is still hydrating/validating.
     if (!$isAuthenticated && !hasStoredToken) {
-      debugLog('redirect-login-no-session', {
+      debugLog('redirect-login-session-missing', {
         isAuthenticated: $isAuthenticated,
         hasStoredToken: !!hasStoredToken,
         path: $page.url.pathname,
       });
       goto('/login');
-      return;
     }
+  });
 
-    // Check maintenance mode on mount
-    const settings = $appSettings as any;
-    const isMaintenanceMode =
-      settings.maintenance_mode === true || settings.maintenance_mode === 'true';
+  onMount(() => {
+    let cancelled = false;
+    const runGuard = async () => {
+      const hasStoredToken =
+        (typeof localStorage !== 'undefined' &&
+          (localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token'))) ||
+        false;
 
-    if (isMaintenanceMode && !$isSuperAdmin) {
-      goto('/maintenance');
-    }
+      // Avoid false redirect while auth store is still hydrating/validating.
+      if (!$isAuthenticated && !hasStoredToken) {
+        debugLog('redirect-login-no-session', {
+          isAuthenticated: $isAuthenticated,
+          hasStoredToken: !!hasStoredToken,
+          path: $page.url.pathname,
+        });
+        goto('/login');
+        return;
+      }
+
+      if (hasStoredToken) {
+        const valid = await checkAuth();
+        if (cancelled) return;
+        if (!valid) {
+          goto('/login?reason=expired');
+          return;
+        }
+      }
+
+      // Check maintenance mode on mount
+      const settings = $appSettings as any;
+      const isMaintenanceMode =
+        settings.maintenance_mode === true || settings.maintenance_mode === 'true';
+
+      if (isMaintenanceMode && !$isSuperAdmin) {
+        goto('/maintenance');
+      }
+    };
+
+    void runGuard();
+    return () => {
+      cancelled = true;
+    };
   });
 
   let mobileOpen = $state(false);

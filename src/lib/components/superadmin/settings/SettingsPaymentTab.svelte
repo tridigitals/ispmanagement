@@ -11,6 +11,10 @@
   export let paymentMidtransIsProduction: boolean;
   export let paymentManualEnabled: boolean;
   export let paymentManualInstructions: string;
+  export let installationSlaReminderEnabled: boolean;
+  export let installationSlaOverdueMinutes: number;
+  export let installationSlaReminderCooldownMinutes: number;
+  export let installationSlaSchedulerIntervalMinutes: number;
   export let bankAccounts: BankAccount[] = [];
   export let newBankName: string = '';
   export let newAccountNumber: string = '';
@@ -279,6 +283,109 @@
         </div>
       </div>
     {/if}
+  </div>
+</div>
+
+<div class="card section fade-in" style="margin-top: 1.5rem;">
+  <div class="card-header">
+    <h3>{$t('superadmin.settings.payment.installation_sla.title') || 'Installation SLA Reminders'}</h3>
+  </div>
+  <div class="card-body">
+    <div class="setting-row">
+      <div class="setting-info">
+        <label class="setting-label" for="installation-sla-enabled">
+          {$t('superadmin.settings.payment.installation_sla.enable.label') ||
+            'Enable installation SLA reminders'}
+        </label>
+        <p class="setting-description">
+          {$t('superadmin.settings.payment.installation_sla.enable.desc') ||
+            'Send automatic notifications when installation work orders are overdue.'}
+        </p>
+      </div>
+      <label class="toggle">
+        <input
+          id="installation-sla-enabled"
+          type="checkbox"
+          bind:checked={installationSlaReminderEnabled}
+          on:change={handleChange}
+        />
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="sub-settings fade-in">
+      <div class="setting-row">
+        <div class="setting-info">
+          <label class="setting-label" for="installation-sla-overdue-minutes">
+            {$t('superadmin.settings.payment.installation_sla.overdue_minutes.label') ||
+              'Overdue threshold (minutes)'}
+          </label>
+          <p class="setting-description">
+            {$t('superadmin.settings.payment.installation_sla.overdue_minutes.desc') ||
+              'A scheduled work order is considered overdue after this many minutes.'}
+          </p>
+        </div>
+        <input
+          id="installation-sla-overdue-minutes"
+          class="form-input"
+          type="number"
+          min="15"
+          max="10080"
+          step="5"
+          disabled={!installationSlaReminderEnabled}
+          bind:value={installationSlaOverdueMinutes}
+          on:input={handleChange}
+        />
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <label class="setting-label" for="installation-sla-cooldown-minutes">
+            {$t('superadmin.settings.payment.installation_sla.cooldown_minutes.label') ||
+              'Reminder cooldown (minutes)'}
+          </label>
+          <p class="setting-description">
+            {$t('superadmin.settings.payment.installation_sla.cooldown_minutes.desc') ||
+              'Minimum delay before the same reminder is sent again for the same work order.'}
+          </p>
+        </div>
+        <input
+          id="installation-sla-cooldown-minutes"
+          class="form-input"
+          type="number"
+          min="15"
+          max="10080"
+          step="5"
+          disabled={!installationSlaReminderEnabled}
+          bind:value={installationSlaReminderCooldownMinutes}
+          on:input={handleChange}
+        />
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <label class="setting-label" for="installation-sla-interval-minutes">
+            {$t('superadmin.settings.payment.installation_sla.scheduler_interval_minutes.label') ||
+              'Scheduler interval (minutes)'}
+          </label>
+          <p class="setting-description">
+            {$t('superadmin.settings.payment.installation_sla.scheduler_interval_minutes.desc') ||
+              'How often the backend checks all tenants for overdue installation work orders.'}
+          </p>
+        </div>
+        <input
+          id="installation-sla-interval-minutes"
+          class="form-input"
+          type="number"
+          min="5"
+          max="1440"
+          step="1"
+          disabled={!installationSlaReminderEnabled}
+          bind:value={installationSlaSchedulerIntervalMinutes}
+          on:input={handleChange}
+        />
+      </div>
+    </div>
   </div>
 </div>
 

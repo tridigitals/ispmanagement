@@ -58,6 +58,17 @@
     detail?: string;
   };
 
+  type ImpactCustomer = {
+    assignment_id: string;
+    assignment_status: string;
+    subscription_status?: string | null;
+    customer_name: string;
+    location_label?: string | null;
+    selected_node_name?: string | null;
+    impacted_via_node?: boolean;
+    impacted_via_link?: boolean;
+  };
+
   let {
     open = false,
     incident = null,
@@ -75,6 +86,8 @@
     appTimezone = 'UTC',
     runbookSteps = [],
     activityItems = [],
+    impactedLoading = false,
+    impactedCustomers = [],
     ownerLabel,
     typeLabel,
     severityLabel,
@@ -108,6 +121,8 @@
     appTimezone?: string;
     runbookSteps?: RunbookStep[];
     activityItems?: ActivityItem[];
+    impactedLoading?: boolean;
+    impactedCustomers?: ImpactCustomer[];
     ownerLabel: (ownerUserId?: string | null) => string;
     typeLabel: (incidentType: string) => string;
     severityLabel: (severity: string) => string;
@@ -191,6 +206,41 @@
       </div>
 
       <div class="detail-message">{incident.message}</div>
+
+      <div class="impact-card">
+        <div class="impact-head">
+          <div class="impact-title">
+            {$t('admin.network.incidents.impact.title') || 'Affected Customers'}
+          </div>
+          <div class="impact-count">{impactedCustomers.length}</div>
+        </div>
+        {#if impactedLoading}
+          <div class="muted">{$t('common.loading') || 'Loading...'}</div>
+        {:else if impactedCustomers.length === 0}
+          <div class="muted">
+            {$t('admin.network.incidents.impact.empty') || 'No impacted customers from mapped topology.'}
+          </div>
+        {:else}
+          <div class="impact-list">
+            {#each impactedCustomers.slice(0, 10) as item}
+              <div class="impact-item">
+                <div>
+                  <div class="impact-name">{item.customer_name}</div>
+                  <div class="impact-meta">{item.location_label || ($t('common.na') || 'N/A')}</div>
+                </div>
+                <div class="impact-tags">
+                  {#if item.impacted_via_node}
+                    <span class="impact-tag">Node</span>
+                  {/if}
+                  {#if item.impacted_via_link}
+                    <span class="impact-tag">Link</span>
+                  {/if}
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
 
       <div class="detail-edit">
         <div class="field">
@@ -384,6 +434,77 @@
     border-radius: 12px;
     padding: 12px;
     background: color-mix(in srgb, var(--bg-card) 70%, transparent);
+  }
+  .impact-card {
+    display: grid;
+    gap: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 12px;
+    background: color-mix(in srgb, var(--bg-card) 72%, transparent);
+  }
+  .impact-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .impact-title {
+    font-size: 0.84rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: var(--text-primary);
+  }
+  .impact-count {
+    min-width: 26px;
+    height: 20px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    font-weight: 800;
+    padding: 0 8px;
+  }
+  .impact-list {
+    display: grid;
+    gap: 8px;
+    max-height: 220px;
+    overflow: auto;
+  }
+  .impact-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 9px 10px;
+  }
+  .impact-name {
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 0.84rem;
+  }
+  .impact-meta {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+  }
+  .impact-tags {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .impact-tag {
+    font-size: 0.68rem;
+    font-weight: 800;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 3px 8px;
+    color: var(--text-secondary);
+    white-space: nowrap;
   }
   .field {
     display: grid;
