@@ -181,6 +181,15 @@ pub struct UpdateZoneOfferRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SyncTopologyAssetsResponse {
+    pub router_nodes_created: i64,
+    pub router_nodes_updated: i64,
+    pub customer_nodes_created: i64,
+    pub customer_nodes_updated: i64,
+    pub total_nodes_touched: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResolveZoneRequest {
     pub lat: f64,
     pub lng: f64,

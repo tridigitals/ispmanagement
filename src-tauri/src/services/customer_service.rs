@@ -4,15 +4,15 @@ use crate::models::{
     AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
     CreateCustomerRegistrationInviteRequest, CreateCustomerRequest,
     CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
-    CreateMyCustomerLocationRequest, Customer, CustomerLocation, CustomerPortalUser,
-    CustomerRegistrationInviteCreateResponse, CustomerRegistrationInvitePolicy,
+    CreateMyCustomerLocationRequest, Customer, CustomerLocation, CustomerPortalSubscriptionStats,
+    CustomerPortalUser, CustomerRegistrationInviteCreateResponse, CustomerRegistrationInvitePolicy,
     CustomerRegistrationInviteSummary, CustomerRegistrationInviteValidationView,
-    CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionView,
-    CustomerPortalSubscriptionStats, CustomerUser, InstallationWorkOrder,
-    InstallationWorkOrderView, IspPackage, PaginatedResponse,
+    CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionView, CustomerUser,
+    InstallationWorkOrder, InstallationWorkOrderView, IspPackage, PaginatedResponse,
     PortalCheckoutSubscriptionRequest, TeamMemberWithUser, UpdateCustomerLocationRequest,
     UpdateCustomerRegistrationInvitePolicyRequest, UpdateCustomerRequest,
-    UpdateCustomerSubscriptionRequest,
+    UpdateCustomerSubscriptionRequest, WorkOrderRescheduleDecisionRequest,
+    WorkOrderRescheduleRequestView,
 };
 use crate::security::secret::encrypt_secret_for;
 use crate::services::{AuditService, AuthService, NotificationService, UserService};
@@ -142,7 +142,10 @@ impl CustomerService {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(matches!(role_name.as_deref(), Some("owner") | Some("admin")))
+        Ok(matches!(
+            role_name.as_deref(),
+            Some("owner") | Some("admin")
+        ))
     }
 
     async fn is_installation_assignee_eligible(
@@ -367,7 +370,9 @@ impl CustomerService {
                 if let Err(err) = svc.run_installation_sla_reminders_for_all_tenants().await {
                     tracing::warn!("installation SLA reminder scheduler failed: {}", err);
                 }
-                let interval_minutes = svc.resolve_installation_sla_scheduler_interval_minutes().await;
+                let interval_minutes = svc
+                    .resolve_installation_sla_scheduler_interval_minutes()
+                    .await;
                 let sleep_secs = (interval_minutes.max(5) as u64) * 60;
                 tokio::time::sleep(std::time::Duration::from_secs(sleep_secs)).await;
             }
@@ -381,17 +386,21 @@ impl CustomerService {
 
         let overdue_minutes = self.resolve_installation_sla_overdue_minutes().await;
         let unscheduled_minutes = (overdue_minutes * 2).max(120);
-        let cooldown_minutes = self.resolve_installation_sla_reminder_cooldown_minutes().await;
+        let cooldown_minutes = self
+            .resolve_installation_sla_reminder_cooldown_minutes()
+            .await;
 
         #[cfg(feature = "postgres")]
-        let tenant_ids: Vec<String> = sqlx::query_scalar("SELECT id FROM tenants WHERE is_active = true")
-            .fetch_all(&self.pool)
-            .await?;
+        let tenant_ids: Vec<String> =
+            sqlx::query_scalar("SELECT id FROM tenants WHERE is_active = true")
+                .fetch_all(&self.pool)
+                .await?;
 
         #[cfg(feature = "sqlite")]
-        let tenant_ids: Vec<String> = sqlx::query_scalar("SELECT id FROM tenants WHERE is_active = 1")
-            .fetch_all(&self.pool)
-            .await?;
+        let tenant_ids: Vec<String> =
+            sqlx::query_scalar("SELECT id FROM tenants WHERE is_active = 1")
+                .fetch_all(&self.pool)
+                .await?;
 
         let mut sent = 0_u64;
         for tenant_id in tenant_ids {
@@ -705,18 +714,20 @@ impl CustomerService {
 
     async fn read_global_setting_value(&self, key: &str) -> AppResult<Option<String>> {
         #[cfg(feature = "postgres")]
-        let value: Option<String> =
-            sqlx::query_scalar("SELECT value FROM settings WHERE tenant_id IS NULL AND key = $1 LIMIT 1")
-                .bind(key)
-                .fetch_optional(&self.pool)
-                .await?;
+        let value: Option<String> = sqlx::query_scalar(
+            "SELECT value FROM settings WHERE tenant_id IS NULL AND key = $1 LIMIT 1",
+        )
+        .bind(key)
+        .fetch_optional(&self.pool)
+        .await?;
 
         #[cfg(feature = "sqlite")]
-        let value: Option<String> =
-            sqlx::query_scalar("SELECT value FROM settings WHERE tenant_id IS NULL AND key = ? LIMIT 1")
-                .bind(key)
-                .fetch_optional(&self.pool)
-                .await?;
+        let value: Option<String> = sqlx::query_scalar(
+            "SELECT value FROM settings WHERE tenant_id IS NULL AND key = ? LIMIT 1",
+        )
+        .bind(key)
+        .fetch_optional(&self.pool)
+        .await?;
 
         Ok(value)
     }
@@ -2618,7 +2629,27 @@ impl CustomerService {
 
         #[cfg(feature = "postgres")]
         let rows: Vec<CustomerLocation> = sqlx::query_as(
-            "SELECT * FROM customer_locations WHERE tenant_id = $1 AND customer_id = $2 ORDER BY created_at DESC",
+            r#"
+            SELECT
+                id,
+                tenant_id,
+                customer_id,
+                label,
+                address_line1,
+                address_line2,
+                city,
+                state,
+                postal_code,
+                country,
+                latitude::float8 AS latitude,
+                longitude::float8 AS longitude,
+                notes,
+                created_at,
+                updated_at
+            FROM customer_locations
+            WHERE tenant_id = $1 AND customer_id = $2
+            ORDER BY created_at DESC
+            "#,
         )
         .bind(tenant_id)
         .bind(customer_id)
@@ -2749,13 +2780,33 @@ impl CustomerService {
             .await?;
 
         #[cfg(feature = "postgres")]
-        let mut loc: CustomerLocation =
-            sqlx::query_as("SELECT * FROM customer_locations WHERE tenant_id = $1 AND id = $2")
-                .bind(tenant_id)
-                .bind(location_id)
-                .fetch_optional(&self.pool)
-                .await?
-                .ok_or_else(|| AppError::NotFound("Location not found".to_string()))?;
+        let mut loc: CustomerLocation = sqlx::query_as(
+            r#"
+            SELECT
+                id,
+                tenant_id,
+                customer_id,
+                label,
+                address_line1,
+                address_line2,
+                city,
+                state,
+                postal_code,
+                country,
+                latitude::float8 AS latitude,
+                longitude::float8 AS longitude,
+                notes,
+                created_at,
+                updated_at
+            FROM customer_locations
+            WHERE tenant_id = $1 AND id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(location_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Location not found".to_string()))?;
 
         #[cfg(feature = "sqlite")]
         let mut loc: CustomerLocation =
@@ -3259,7 +3310,25 @@ impl CustomerService {
                   LIMIT 1
                 ), '') = 'cancelled' THEN true
                 ELSE false
-              END AS can_request_reopen
+              END AS can_request_reopen,
+              (
+                SELECT worr.status
+                FROM work_order_reschedule_requests worr
+                JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
+                WHERE worr.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY worr.created_at DESC
+                LIMIT 1
+              ) AS latest_reschedule_status,
+              (
+                SELECT CAST(worr.requested_schedule_at AS TEXT)
+                FROM work_order_reschedule_requests worr
+                JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
+                WHERE worr.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY worr.created_at DESC
+                LIMIT 1
+              ) AS latest_reschedule_requested_at
             FROM customer_subscriptions cs
             LEFT JOIN isp_packages p ON p.id = cs.package_id
             LEFT JOIN customer_locations l ON l.id = cs.location_id
@@ -3325,7 +3394,25 @@ impl CustomerService {
                   LIMIT 1
                 ), '') = 'cancelled' THEN 1
                 ELSE 0
-              END AS can_request_reopen
+              END AS can_request_reopen,
+              (
+                SELECT worr.status
+                FROM work_order_reschedule_requests worr
+                JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
+                WHERE worr.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY worr.created_at DESC
+                LIMIT 1
+              ) AS latest_reschedule_status,
+              (
+                SELECT CAST(worr.requested_schedule_at AS TEXT)
+                FROM work_order_reschedule_requests worr
+                JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
+                WHERE worr.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY worr.created_at DESC
+                LIMIT 1
+              ) AS latest_reschedule_requested_at
             FROM customer_subscriptions cs
             LEFT JOIN isp_packages p ON p.id = cs.package_id
             LEFT JOIN customer_locations l ON l.id = cs.location_id
@@ -3815,7 +3902,27 @@ impl CustomerService {
 
         #[cfg(feature = "postgres")]
         let rows: Vec<CustomerLocation> = sqlx::query_as(
-            "SELECT * FROM customer_locations WHERE tenant_id = $1 AND customer_id = $2 ORDER BY created_at DESC",
+            r#"
+            SELECT
+                id,
+                tenant_id,
+                customer_id,
+                label,
+                address_line1,
+                address_line2,
+                city,
+                state,
+                postal_code,
+                country,
+                latitude::float8 AS latitude,
+                longitude::float8 AS longitude,
+                notes,
+                created_at,
+                updated_at
+            FROM customer_locations
+            WHERE tenant_id = $1 AND customer_id = $2
+            ORDER BY created_at DESC
+            "#,
         )
         .bind(tenant_id)
         .bind(&customer_id)
@@ -3834,6 +3941,77 @@ impl CustomerService {
         Ok(rows)
     }
 
+    fn validate_location_coordinates(
+        latitude: Option<f64>,
+        longitude: Option<f64>,
+    ) -> AppResult<(f64, f64)> {
+        let lat = latitude
+            .ok_or_else(|| AppError::Validation("Location map point is required".to_string()))?;
+        let lng = longitude
+            .ok_or_else(|| AppError::Validation("Location map point is required".to_string()))?;
+        if !(-90.0..=90.0).contains(&lat) {
+            return Err(AppError::Validation(
+                "Latitude must be between -90 and 90".to_string(),
+            ));
+        }
+        if !(-180.0..=180.0).contains(&lng) {
+            return Err(AppError::Validation(
+                "Longitude must be between -180 and 180".to_string(),
+            ));
+        }
+        Ok((lat, lng))
+    }
+
+    async fn get_my_location_or_404(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        location_id: &str,
+    ) -> AppResult<CustomerLocation> {
+        let customer_id = self.get_portal_customer_id(actor_id, tenant_id).await?;
+
+        #[cfg(feature = "postgres")]
+        let loc: Option<CustomerLocation> = sqlx::query_as(
+            r#"
+            SELECT
+                id,
+                tenant_id,
+                customer_id,
+                label,
+                address_line1,
+                address_line2,
+                city,
+                state,
+                postal_code,
+                country,
+                latitude::float8 AS latitude,
+                longitude::float8 AS longitude,
+                notes,
+                created_at,
+                updated_at
+            FROM customer_locations
+            WHERE tenant_id = $1 AND customer_id = $2 AND id = $3
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&customer_id)
+        .bind(location_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let loc: Option<CustomerLocation> = sqlx::query_as(
+            "SELECT * FROM customer_locations WHERE tenant_id = ? AND customer_id = ? AND id = ?",
+        )
+        .bind(tenant_id)
+        .bind(&customer_id)
+        .bind(location_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        loc.ok_or_else(|| AppError::NotFound("Location not found".to_string()))
+    }
+
     pub async fn create_my_location(
         &self,
         actor_id: &str,
@@ -3846,6 +4024,8 @@ impl CustomerService {
         if label.is_empty() {
             return Err(AppError::Validation("label is required".to_string()));
         }
+        let (latitude, longitude) =
+            Self::validate_location_coordinates(dto.latitude, dto.longitude)?;
 
         let loc = CustomerLocation::new(
             tenant_id.to_string(),
@@ -3857,8 +4037,8 @@ impl CustomerService {
             dto.state,
             dto.postal_code,
             dto.country,
-            dto.latitude,
-            dto.longitude,
+            Some(latitude),
+            Some(longitude),
             dto.notes,
         );
 
@@ -3929,6 +4109,183 @@ impl CustomerService {
             .await;
 
         Ok(loc)
+    }
+
+    pub async fn update_my_location(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        location_id: &str,
+        dto: UpdateCustomerLocationRequest,
+        ip_address: Option<&str>,
+    ) -> AppResult<CustomerLocation> {
+        let mut loc = self
+            .get_my_location_or_404(actor_id, tenant_id, location_id)
+            .await?;
+
+        if let Some(v) = dto.label {
+            let vv = v.trim().to_string();
+            if vv.is_empty() {
+                return Err(AppError::Validation("label is required".to_string()));
+            }
+            loc.label = vv;
+        }
+        if let Some(v) = dto.address_line1 {
+            let vv = v.trim().to_string();
+            loc.address_line1 = if vv.is_empty() { None } else { Some(vv) };
+        }
+        if let Some(v) = dto.address_line2 {
+            let vv = v.trim().to_string();
+            loc.address_line2 = if vv.is_empty() { None } else { Some(vv) };
+        }
+        if let Some(v) = dto.city {
+            let vv = v.trim().to_string();
+            loc.city = if vv.is_empty() { None } else { Some(vv) };
+        }
+        if let Some(v) = dto.state {
+            let vv = v.trim().to_string();
+            loc.state = if vv.is_empty() { None } else { Some(vv) };
+        }
+        if let Some(v) = dto.postal_code {
+            let vv = v.trim().to_string();
+            loc.postal_code = if vv.is_empty() { None } else { Some(vv) };
+        }
+        if let Some(v) = dto.country {
+            let vv = v.trim().to_string();
+            loc.country = if vv.is_empty() { None } else { Some(vv) };
+        }
+        if let Some(v) = dto.latitude {
+            loc.latitude = Some(v);
+        }
+        if let Some(v) = dto.longitude {
+            loc.longitude = Some(v);
+        }
+        if let Some(v) = dto.notes {
+            let vv = v.trim().to_string();
+            loc.notes = if vv.is_empty() { None } else { Some(vv) };
+        }
+
+        let (latitude, longitude) =
+            Self::validate_location_coordinates(loc.latitude, loc.longitude)?;
+        loc.latitude = Some(latitude);
+        loc.longitude = Some(longitude);
+        loc.updated_at = Utc::now();
+
+        #[cfg(feature = "postgres")]
+        sqlx::query(
+            r#"
+            UPDATE customer_locations
+            SET label=$1, address_line1=$2, address_line2=$3, city=$4, state=$5, postal_code=$6, country=$7,
+                latitude=$8, longitude=$9, notes=$10, updated_at=$11
+            WHERE tenant_id=$12 AND customer_id=$13 AND id=$14
+            "#,
+        )
+        .bind(&loc.label)
+        .bind(&loc.address_line1)
+        .bind(&loc.address_line2)
+        .bind(&loc.city)
+        .bind(&loc.state)
+        .bind(&loc.postal_code)
+        .bind(&loc.country)
+        .bind(loc.latitude)
+        .bind(loc.longitude)
+        .bind(&loc.notes)
+        .bind(loc.updated_at)
+        .bind(tenant_id)
+        .bind(&loc.customer_id)
+        .bind(location_id)
+        .execute(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query(
+            r#"
+            UPDATE customer_locations
+            SET label=?, address_line1=?, address_line2=?, city=?, state=?, postal_code=?, country=?,
+                latitude=?, longitude=?, notes=?, updated_at=?
+            WHERE tenant_id=? AND customer_id=? AND id=?
+            "#,
+        )
+        .bind(&loc.label)
+        .bind(&loc.address_line1)
+        .bind(&loc.address_line2)
+        .bind(&loc.city)
+        .bind(&loc.state)
+        .bind(&loc.postal_code)
+        .bind(&loc.country)
+        .bind(loc.latitude)
+        .bind(loc.longitude)
+        .bind(&loc.notes)
+        .bind(loc.updated_at.to_rfc3339())
+        .bind(tenant_id)
+        .bind(&loc.customer_id)
+        .bind(location_id)
+        .execute(&self.pool)
+        .await?;
+
+        self.audit_service
+            .log(
+                Some(actor_id),
+                Some(tenant_id),
+                "PORTAL_CUSTOMER_LOCATION_UPDATE",
+                "customer_locations",
+                Some(location_id),
+                Some("Portal user updated customer location"),
+                ip_address,
+            )
+            .await;
+
+        Ok(loc)
+    }
+
+    pub async fn delete_my_location(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        location_id: &str,
+        ip_address: Option<&str>,
+    ) -> AppResult<()> {
+        let loc = self
+            .get_my_location_or_404(actor_id, tenant_id, location_id)
+            .await?;
+
+        #[cfg(feature = "postgres")]
+        let res = sqlx::query(
+            "DELETE FROM customer_locations WHERE tenant_id = $1 AND customer_id = $2 AND id = $3",
+        )
+        .bind(tenant_id)
+        .bind(&loc.customer_id)
+        .bind(location_id)
+        .execute(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let res = sqlx::query(
+            "DELETE FROM customer_locations WHERE tenant_id = ? AND customer_id = ? AND id = ?",
+        )
+        .bind(tenant_id)
+        .bind(&loc.customer_id)
+        .bind(location_id)
+        .execute(&self.pool)
+        .await?;
+
+        if res.rows_affected() == 0 {
+            return Err(AppError::NotFound("Location not found".to_string()));
+        }
+
+        self.audit_service
+            .log(
+                Some(actor_id),
+                Some(tenant_id),
+                "PORTAL_CUSTOMER_LOCATION_DELETE",
+                "customer_locations",
+                Some(location_id),
+                Some("Portal user deleted customer location"),
+                ip_address,
+            )
+            .await;
+
+        Ok(())
     }
 
     pub async fn list_my_packages(
@@ -4098,9 +4455,8 @@ impl CustomerService {
         .await?;
 
         #[cfg(feature = "postgres")]
-        let rows: Vec<CustomerSubscriptionView> = sqlx::query_as(
-            &format!(
-                r#"
+        let rows: Vec<CustomerSubscriptionView> = sqlx::query_as(&format!(
+            r#"
             SELECT
               cs.id,
               cs.tenant_id,
@@ -4147,7 +4503,25 @@ impl CustomerService {
                   LIMIT 1
                 ), '') = 'cancelled' THEN true
                 ELSE false
-              END AS can_request_reopen
+              END AS can_request_reopen,
+              (
+                SELECT worr.status
+                FROM work_order_reschedule_requests worr
+                JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
+                WHERE worr.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY worr.created_at DESC
+                LIMIT 1
+              ) AS latest_reschedule_status,
+              (
+                SELECT CAST(worr.requested_schedule_at AS TEXT)
+                FROM work_order_reschedule_requests worr
+                JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
+                WHERE worr.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY worr.created_at DESC
+                LIMIT 1
+              ) AS latest_reschedule_requested_at
             FROM customer_subscriptions cs
             LEFT JOIN isp_packages p ON p.id = cs.package_id
             LEFT JOIN customer_locations l ON l.id = cs.location_id
@@ -4175,8 +4549,7 @@ impl CustomerService {
             ORDER BY {sort_column} {sort_direction}
             LIMIT $4 OFFSET $5
             "#,
-            ),
-        )
+        ))
         .bind(tenant_id)
         .bind(&customer_id)
         .bind(&status_filter)
@@ -4186,9 +4559,8 @@ impl CustomerService {
         .await?;
 
         #[cfg(feature = "sqlite")]
-        let rows: Vec<CustomerSubscriptionView> = sqlx::query_as(
-            &format!(
-                r#"
+        let rows: Vec<CustomerSubscriptionView> = sqlx::query_as(&format!(
+            r#"
             SELECT
               cs.id,
               cs.tenant_id,
@@ -4235,7 +4607,25 @@ impl CustomerService {
                   LIMIT 1
                 ), '') = 'cancelled' THEN 1
                 ELSE 0
-              END AS can_request_reopen
+              END AS can_request_reopen,
+              (
+                SELECT worr.status
+                FROM work_order_reschedule_requests worr
+                JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
+                WHERE worr.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY worr.created_at DESC
+                LIMIT 1
+              ) AS latest_reschedule_status,
+              (
+                SELECT CAST(worr.requested_schedule_at AS TEXT)
+                FROM work_order_reschedule_requests worr
+                JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
+                WHERE worr.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY worr.created_at DESC
+                LIMIT 1
+              ) AS latest_reschedule_requested_at
             FROM customer_subscriptions cs
             LEFT JOIN isp_packages p ON p.id = cs.package_id
             LEFT JOIN customer_locations l ON l.id = cs.location_id
@@ -4263,8 +4653,7 @@ impl CustomerService {
             ORDER BY {sort_column} {sort_direction}
             LIMIT ? OFFSET ?
             "#,
-            ),
-        )
+        ))
         .bind(tenant_id)
         .bind(&customer_id)
         .bind(status_filter.clone())
@@ -4667,7 +5056,8 @@ impl CustomerService {
             note.push_str(". ");
             note.push_str(extra);
         }
-        let merged_notes = Self::merge_work_order_notes(work_order.notes.clone(), actor_id, Some(&note));
+        let merged_notes =
+            Self::merge_work_order_notes(work_order.notes.clone(), actor_id, Some(&note));
         let now = Utc::now();
         #[cfg(feature = "postgres")]
         let _ = sqlx::query(
@@ -4715,6 +5105,807 @@ impl CustomerService {
         Ok((sub, work_order))
     }
 
+    pub async fn get_my_subscription_installation_tracker(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        subscription_id: &str,
+    ) -> AppResult<(
+        CustomerSubscriptionView,
+        Option<InstallationWorkOrderView>,
+        Option<WorkOrderRescheduleRequestView>,
+    )> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "customers", "read_own")
+            .await?;
+
+        let customer_id = self.get_portal_customer_id(actor_id, tenant_id).await?;
+
+        #[cfg(feature = "postgres")]
+        let subscription: CustomerSubscriptionView = sqlx::query_as(
+            r#"
+            SELECT
+              cs.id, cs.tenant_id, cs.customer_id, cs.location_id, cs.package_id, cs.router_id,
+              cs.billing_cycle, cs.price::float8 as price, cs.currency_code, cs.status,
+              cs.starts_at, cs.ends_at, cs.notes, cs.created_at, cs.updated_at,
+              p.name AS package_name,
+              l.label AS location_label,
+              r.name AS router_name,
+              (
+                SELECT iwo.id
+                FROM installation_work_orders iwo
+                WHERE iwo.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY iwo.created_at DESC
+                LIMIT 1
+              ) AS latest_work_order_id,
+              (
+                SELECT iwo.status
+                FROM installation_work_orders iwo
+                WHERE iwo.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY iwo.created_at DESC
+                LIMIT 1
+              ) AS latest_work_order_status,
+              (
+                (
+                  cs.status = 'cancelled'
+                ) OR EXISTS (
+                  SELECT 1
+                  FROM installation_work_orders iwo
+                  WHERE iwo.tenant_id = cs.tenant_id
+                    AND iwo.subscription_id = cs.id
+                    AND iwo.status = 'cancelled'
+                )
+              ) AS can_request_reopen,
+              (
+                SELECT worr.status
+                FROM work_order_reschedule_requests worr
+                JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
+                WHERE worr.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY worr.created_at DESC
+                LIMIT 1
+              ) AS latest_reschedule_status,
+              (
+                SELECT CAST(worr.requested_schedule_at AS TEXT)
+                FROM work_order_reschedule_requests worr
+                JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
+                WHERE worr.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY worr.created_at DESC
+                LIMIT 1
+              ) AS latest_reschedule_requested_at
+            FROM customer_subscriptions cs
+            LEFT JOIN isp_packages p
+              ON p.tenant_id = cs.tenant_id
+             AND p.id = cs.package_id
+            LEFT JOIN customer_locations l
+              ON l.tenant_id = cs.tenant_id
+             AND l.id = cs.location_id
+            LEFT JOIN mikrotik_routers r
+              ON r.tenant_id = cs.tenant_id
+             AND r.id = cs.router_id
+            WHERE cs.tenant_id = $1
+              AND cs.customer_id = $2
+              AND cs.id = $3
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&customer_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Subscription not found".to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let subscription: CustomerSubscriptionView = sqlx::query_as(
+            r#"
+            SELECT
+              cs.id, cs.tenant_id, cs.customer_id, cs.location_id, cs.package_id, cs.router_id,
+              cs.billing_cycle, cs.price as price, cs.currency_code, cs.status,
+              cs.starts_at, cs.ends_at, cs.notes, cs.created_at, cs.updated_at,
+              p.name AS package_name,
+              l.label AS location_label,
+              r.name AS router_name,
+              (
+                SELECT iwo.id
+                FROM installation_work_orders iwo
+                WHERE iwo.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY iwo.created_at DESC
+                LIMIT 1
+              ) AS latest_work_order_id,
+              (
+                SELECT iwo.status
+                FROM installation_work_orders iwo
+                WHERE iwo.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY iwo.created_at DESC
+                LIMIT 1
+              ) AS latest_work_order_status,
+              (
+                (
+                  cs.status = 'cancelled'
+                ) OR EXISTS (
+                  SELECT 1
+                  FROM installation_work_orders iwo
+                  WHERE iwo.tenant_id = cs.tenant_id
+                    AND iwo.subscription_id = cs.id
+                    AND iwo.status = 'cancelled'
+                )
+              ) AS can_request_reopen,
+              (
+                SELECT worr.status
+                FROM work_order_reschedule_requests worr
+                JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
+                WHERE worr.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY worr.created_at DESC
+                LIMIT 1
+              ) AS latest_reschedule_status,
+              (
+                SELECT CAST(worr.requested_schedule_at AS TEXT)
+                FROM work_order_reschedule_requests worr
+                JOIN installation_work_orders iwo ON iwo.id = worr.work_order_id
+                WHERE worr.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY worr.created_at DESC
+                LIMIT 1
+              ) AS latest_reschedule_requested_at
+            FROM customer_subscriptions cs
+            LEFT JOIN isp_packages p
+              ON p.tenant_id = cs.tenant_id
+             AND p.id = cs.package_id
+            LEFT JOIN customer_locations l
+              ON l.tenant_id = cs.tenant_id
+             AND l.id = cs.location_id
+            LEFT JOIN mikrotik_routers r
+              ON r.tenant_id = cs.tenant_id
+             AND r.id = cs.router_id
+            WHERE cs.tenant_id = ?
+              AND cs.customer_id = ?
+              AND cs.id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&customer_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Subscription not found".to_string()))?;
+
+        #[cfg(feature = "postgres")]
+        let work_order: Option<InstallationWorkOrderView> = sqlx::query_as(
+            r#"
+            SELECT
+              wo.id, wo.tenant_id, wo.subscription_id, wo.invoice_id, wo.customer_id, wo.location_id, wo.router_id,
+              wo.status, wo.assigned_to, wo.scheduled_at, wo.completed_at, wo.notes, wo.created_at, wo.updated_at,
+              c.name AS customer_name,
+              l.label AS location_label,
+              p.name AS package_name,
+              r.name AS router_name,
+              u.name AS assigned_to_name,
+              u.email AS assigned_to_email,
+              csa.id AS assignment_id,
+              csa.status AS assignment_status,
+              cs.status AS subscription_status,
+              cs.starts_at AS subscription_starts_at,
+              csa.selected_zone_id AS selected_zone_id,
+              sz.name AS selected_zone_name,
+              csa.selected_node_id AS selected_node_id,
+              nn.name AS selected_node_name,
+              csa.selected_node_score::float8 AS selected_node_score,
+              csa.path_node_ids AS path_node_ids,
+              csa.path_link_ids AS path_link_ids
+            FROM installation_work_orders wo
+            LEFT JOIN customers c ON c.tenant_id = wo.tenant_id AND c.id = wo.customer_id
+            LEFT JOIN customer_locations l ON l.tenant_id = wo.tenant_id AND l.id = wo.location_id
+            LEFT JOIN customer_subscriptions cs ON cs.tenant_id = wo.tenant_id AND cs.id = wo.subscription_id
+            LEFT JOIN isp_packages p ON p.tenant_id = wo.tenant_id AND p.id = cs.package_id
+            LEFT JOIN mikrotik_routers r ON r.tenant_id = wo.tenant_id AND r.id = wo.router_id
+            LEFT JOIN users u ON u.id = wo.assigned_to
+            LEFT JOIN customer_service_assignments csa ON csa.tenant_id = wo.tenant_id AND csa.work_order_id = wo.id
+            LEFT JOIN service_zones sz ON sz.tenant_id = wo.tenant_id::uuid AND sz.id::text = csa.selected_zone_id
+            LEFT JOIN network_nodes nn ON nn.tenant_id = wo.tenant_id::uuid AND nn.id::text = csa.selected_node_id
+            WHERE wo.tenant_id = $1
+              AND wo.customer_id = $2
+              AND wo.subscription_id = $3
+            ORDER BY wo.created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&customer_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let work_order: Option<InstallationWorkOrderView> = sqlx::query_as(
+            r#"
+            SELECT
+              wo.id, wo.tenant_id, wo.subscription_id, wo.invoice_id, wo.customer_id, wo.location_id, wo.router_id,
+              wo.status, wo.assigned_to, wo.scheduled_at, wo.completed_at, wo.notes, wo.created_at, wo.updated_at,
+              c.name AS customer_name,
+              l.label AS location_label,
+              p.name AS package_name,
+              r.name AS router_name,
+              u.name AS assigned_to_name,
+              u.email AS assigned_to_email,
+              csa.id AS assignment_id,
+              csa.status AS assignment_status,
+              cs.status AS subscription_status,
+              cs.starts_at AS subscription_starts_at,
+              csa.selected_zone_id AS selected_zone_id,
+              sz.name AS selected_zone_name,
+              csa.selected_node_id AS selected_node_id,
+              nn.name AS selected_node_name,
+              csa.selected_node_score AS selected_node_score,
+              csa.path_node_ids AS path_node_ids,
+              csa.path_link_ids AS path_link_ids
+            FROM installation_work_orders wo
+            LEFT JOIN customers c ON c.tenant_id = wo.tenant_id AND c.id = wo.customer_id
+            LEFT JOIN customer_locations l ON l.tenant_id = wo.tenant_id AND l.id = wo.location_id
+            LEFT JOIN customer_subscriptions cs ON cs.tenant_id = wo.tenant_id AND cs.id = wo.subscription_id
+            LEFT JOIN isp_packages p ON p.tenant_id = wo.tenant_id AND p.id = cs.package_id
+            LEFT JOIN mikrotik_routers r ON r.tenant_id = wo.tenant_id AND r.id = wo.router_id
+            LEFT JOIN users u ON u.id = wo.assigned_to
+            LEFT JOIN customer_service_assignments csa ON csa.tenant_id = wo.tenant_id AND csa.work_order_id = wo.id
+            LEFT JOIN service_zones sz ON sz.tenant_id = wo.tenant_id AND sz.id = csa.selected_zone_id
+            LEFT JOIN network_nodes nn ON nn.tenant_id = wo.tenant_id AND nn.id = csa.selected_node_id
+            WHERE wo.tenant_id = ?
+              AND wo.customer_id = ?
+              AND wo.subscription_id = ?
+            ORDER BY wo.created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&customer_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "postgres")]
+        let latest_reschedule_request: Option<WorkOrderRescheduleRequestView> =
+            if let Some(ref wo) = work_order {
+                sqlx::query_as(
+                    r#"
+                    SELECT
+                      r.id,
+                      r.work_order_id,
+                      CAST(r.requested_schedule_at AS TEXT) AS requested_schedule_at,
+                      r.reason,
+                      r.status,
+                      req.name AS requested_by_name,
+                      req.email AS requested_by_email,
+                      rev.name AS reviewed_by_name,
+                      CAST(r.reviewed_at AS TEXT) AS reviewed_at,
+                      r.review_notes,
+                      CAST(r.created_at AS TEXT) AS created_at
+                    FROM work_order_reschedule_requests r
+                    LEFT JOIN users req ON req.id = r.requested_by
+                    LEFT JOIN users rev ON rev.id = r.reviewed_by
+                    WHERE r.tenant_id = $1
+                      AND r.work_order_id = $2
+                    ORDER BY r.created_at DESC
+                    LIMIT 1
+                    "#,
+                )
+                .bind(tenant_id)
+                .bind(&wo.id)
+                .fetch_optional(&self.pool)
+                .await?
+            } else {
+                None
+            };
+
+        #[cfg(feature = "sqlite")]
+        let latest_reschedule_request: Option<WorkOrderRescheduleRequestView> =
+            if let Some(ref wo) = work_order {
+                sqlx::query_as(
+                    r#"
+                    SELECT
+                      r.id,
+                      r.work_order_id,
+                      CAST(r.requested_schedule_at AS TEXT) AS requested_schedule_at,
+                      r.reason,
+                      r.status,
+                      req.name AS requested_by_name,
+                      req.email AS requested_by_email,
+                      rev.name AS reviewed_by_name,
+                      CAST(r.reviewed_at AS TEXT) AS reviewed_at,
+                      r.review_notes,
+                      CAST(r.created_at AS TEXT) AS created_at
+                    FROM work_order_reschedule_requests r
+                    LEFT JOIN users req ON req.id = r.requested_by
+                    LEFT JOIN users rev ON rev.id = r.reviewed_by
+                    WHERE r.tenant_id = ?
+                      AND r.work_order_id = ?
+                    ORDER BY r.created_at DESC
+                    LIMIT 1
+                    "#,
+                )
+                .bind(tenant_id)
+                .bind(&wo.id)
+                .fetch_optional(&self.pool)
+                .await?
+            } else {
+                None
+            };
+
+        Ok((subscription, work_order, latest_reschedule_request))
+    }
+
+    pub async fn request_my_subscription_reschedule(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        subscription_id: &str,
+        requested_at: String,
+        reason: Option<String>,
+        ip_address: Option<&str>,
+    ) -> AppResult<(CustomerSubscription, InstallationWorkOrder)> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "customers", "read_own")
+            .await?;
+
+        let customer_id = self.get_portal_customer_id(actor_id, tenant_id).await?;
+
+        #[cfg(feature = "postgres")]
+        let sub: CustomerSubscription = sqlx::query_as(
+            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price::float8 as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE tenant_id = $1 AND id = $2 AND customer_id = $3 LIMIT 1",
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .bind(&customer_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Subscription not found".to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let sub: CustomerSubscription = sqlx::query_as(
+            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE tenant_id = ? AND id = ? AND customer_id = ? LIMIT 1",
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .bind(&customer_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Subscription not found".to_string()))?;
+
+        let requested_dt = Self::parse_optional_datetime(Some(requested_at.clone()))?
+            .ok_or_else(|| AppError::Validation("Requested schedule is required".to_string()))?;
+        let now = Utc::now();
+        if requested_dt < (now + Duration::hours(2)) {
+            return Err(AppError::Validation(
+                "Reschedule must be at least 2 hours from now".to_string(),
+            ));
+        }
+
+        let (current_sub, current_wo_opt, _current_reschedule) = self
+            .get_my_subscription_installation_tracker(actor_id, tenant_id, &sub.id)
+            .await?;
+        let current_wo_view = current_wo_opt.ok_or_else(|| {
+            AppError::Validation(
+                "No installation work order found for this subscription".to_string(),
+            )
+        })?;
+        if current_wo_view.status != "pending" {
+            return Err(AppError::Validation(
+                "Reschedule is only allowed before installation starts".to_string(),
+            ));
+        }
+        let current_wo = self
+            .get_installation_work_order_row(tenant_id, &current_wo_view.id)
+            .await?;
+
+        let reason_txt = reason
+            .as_deref()
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+            .unwrap_or("Customer requested schedule change");
+        #[cfg(feature = "postgres")]
+        let pending_exists: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1
+              FROM work_order_reschedule_requests
+              WHERE tenant_id = $1
+                AND work_order_id = $2
+                AND status = 'pending'
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&current_wo_view.id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let pending_exists: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1
+              FROM work_order_reschedule_requests
+              WHERE tenant_id = ?
+                AND work_order_id = ?
+                AND status = 'pending'
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&current_wo_view.id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        if pending_exists {
+            return Err(AppError::Validation(
+                "There is already a pending reschedule request for this work order".to_string(),
+            ));
+        }
+
+        let request_id = Uuid::new_v4().to_string();
+        let now = Utc::now();
+        #[cfg(feature = "postgres")]
+        sqlx::query(
+            r#"
+            INSERT INTO work_order_reschedule_requests
+              (id, tenant_id, work_order_id, subscription_id, requested_by, requested_schedule_at, reason, status, created_at, updated_at)
+            VALUES
+              ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $8)
+            "#,
+        )
+        .bind(&request_id)
+        .bind(tenant_id)
+        .bind(&current_wo_view.id)
+        .bind(&sub.id)
+        .bind(actor_id)
+        .bind(requested_dt)
+        .bind(reason_txt)
+        .bind(now)
+        .execute(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query(
+            r#"
+            INSERT INTO work_order_reschedule_requests
+              (id, tenant_id, work_order_id, subscription_id, requested_by, requested_schedule_at, reason, status, created_at, updated_at)
+            VALUES
+              (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+            "#,
+        )
+        .bind(&request_id)
+        .bind(tenant_id)
+        .bind(&current_wo_view.id)
+        .bind(&sub.id)
+        .bind(actor_id)
+        .bind(requested_dt.to_rfc3339())
+        .bind(reason_txt)
+        .bind(now.to_rfc3339())
+        .bind(now.to_rfc3339())
+        .execute(&self.pool)
+        .await?;
+
+        self.audit_service
+            .log(
+                Some(actor_id),
+                Some(tenant_id),
+                "CUSTOMER_PORTAL_RESCHEDULE_REQUEST",
+                "customer_subscriptions",
+                Some(&current_sub.id),
+                Some("Customer requested installation reschedule"),
+                ip_address,
+            )
+            .await;
+
+        if let Err(err) = self
+            .notify_installation_rescheduled(tenant_id, &sub, &current_wo, reason_txt)
+            .await
+        {
+            warn!(
+                "failed to send installation reschedule notification: tenant_id={}, subscription_id={}, work_order_id={}, error={}",
+                tenant_id, sub.id, current_wo.id, err
+            );
+        }
+
+        Ok((sub, current_wo))
+    }
+
+    pub async fn get_pending_work_order_reschedule_request(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        work_order_id: &str,
+    ) -> AppResult<Option<WorkOrderRescheduleRequestView>> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "work_orders", "read")
+            .await?;
+
+        #[cfg(feature = "postgres")]
+        let row: Option<WorkOrderRescheduleRequestView> = sqlx::query_as(
+            r#"
+            SELECT
+              r.id,
+              r.work_order_id,
+              CAST(r.requested_schedule_at AS TEXT) AS requested_schedule_at,
+              r.reason,
+              r.status,
+              req.name AS requested_by_name,
+              req.email AS requested_by_email,
+              rev.name AS reviewed_by_name,
+              CAST(r.reviewed_at AS TEXT) AS reviewed_at,
+              r.review_notes,
+              CAST(r.created_at AS TEXT) AS created_at
+            FROM work_order_reschedule_requests r
+            LEFT JOIN users req ON req.id = r.requested_by
+            LEFT JOIN users rev ON rev.id = r.reviewed_by
+            WHERE r.tenant_id = $1
+              AND r.work_order_id = $2
+              AND r.status = 'pending'
+            ORDER BY r.created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(work_order_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let row: Option<WorkOrderRescheduleRequestView> = sqlx::query_as(
+            r#"
+            SELECT
+              r.id,
+              r.work_order_id,
+              CAST(r.requested_schedule_at AS TEXT) AS requested_schedule_at,
+              r.reason,
+              r.status,
+              req.name AS requested_by_name,
+              req.email AS requested_by_email,
+              rev.name AS reviewed_by_name,
+              CAST(r.reviewed_at AS TEXT) AS reviewed_at,
+              r.review_notes,
+              CAST(r.created_at AS TEXT) AS created_at
+            FROM work_order_reschedule_requests r
+            LEFT JOIN users req ON req.id = r.requested_by
+            LEFT JOIN users rev ON rev.id = r.reviewed_by
+            WHERE r.tenant_id = ?
+              AND r.work_order_id = ?
+              AND r.status = 'pending'
+            ORDER BY r.created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(work_order_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row)
+    }
+
+    pub async fn approve_work_order_reschedule_request(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        work_order_id: &str,
+        dto: WorkOrderRescheduleDecisionRequest,
+        ip_address: Option<&str>,
+    ) -> AppResult<InstallationWorkOrder> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "work_orders", "manage")
+            .await?;
+        let is_admin_owner = self.is_actor_admin_or_owner(tenant_id, actor_id).await?;
+        let current = self
+            .get_installation_work_order_row(tenant_id, work_order_id)
+            .await?;
+        let is_assigned_technician = current
+            .assigned_to
+            .as_deref()
+            .map(str::trim)
+            .map(|v| v == actor_id)
+            .unwrap_or(false);
+        if !is_admin_owner && !is_assigned_technician {
+            return Err(AppError::Forbidden(
+                "Only admin/owner or assigned technician can approve reschedule request"
+                    .to_string(),
+            ));
+        }
+
+        let pending = self
+            .get_pending_work_order_reschedule_request(actor_id, tenant_id, work_order_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("No pending reschedule request".to_string()))?;
+
+        let target_schedule = dto
+            .scheduled_at
+            .as_deref()
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+            .map(str::to_string)
+            .unwrap_or_else(|| pending.requested_schedule_at.clone());
+
+        let note = format!(
+            "Reschedule approved. New schedule: {}{}",
+            target_schedule,
+            dto.notes
+                .as_deref()
+                .map(str::trim)
+                .filter(|v| !v.is_empty())
+                .map(|v| format!(". Notes: {}", v))
+                .unwrap_or_default()
+        );
+
+        let row = self
+            .set_installation_work_order_status_internal(
+                actor_id,
+                tenant_id,
+                work_order_id,
+                Some("pending"),
+                None,
+                Some(target_schedule),
+                Some(note),
+                false,
+                ip_address,
+                "WORK_ORDER_RESCHEDULE_APPROVE",
+                "Approved work order reschedule request",
+            )
+            .await?;
+
+        let now = Utc::now();
+        #[cfg(feature = "postgres")]
+        sqlx::query(
+            r#"
+            UPDATE work_order_reschedule_requests
+            SET status = 'approved',
+                reviewed_by = $1,
+                reviewed_at = $2,
+                review_notes = $3,
+                updated_at = $2
+            WHERE tenant_id = $4
+              AND id = $5
+            "#,
+        )
+        .bind(actor_id)
+        .bind(now)
+        .bind(dto.notes)
+        .bind(tenant_id)
+        .bind(&pending.id)
+        .execute(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query(
+            r#"
+            UPDATE work_order_reschedule_requests
+            SET status = 'approved',
+                reviewed_by = ?,
+                reviewed_at = ?,
+                review_notes = ?,
+                updated_at = ?
+            WHERE tenant_id = ?
+              AND id = ?
+            "#,
+        )
+        .bind(actor_id)
+        .bind(now.to_rfc3339())
+        .bind(dto.notes)
+        .bind(now.to_rfc3339())
+        .bind(tenant_id)
+        .bind(&pending.id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(row)
+    }
+
+    pub async fn reject_work_order_reschedule_request(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        work_order_id: &str,
+        dto: WorkOrderRescheduleDecisionRequest,
+        ip_address: Option<&str>,
+    ) -> AppResult<InstallationWorkOrder> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "work_orders", "manage")
+            .await?;
+        let is_admin_owner = self.is_actor_admin_or_owner(tenant_id, actor_id).await?;
+        let current = self
+            .get_installation_work_order_row(tenant_id, work_order_id)
+            .await?;
+        let is_assigned_technician = current
+            .assigned_to
+            .as_deref()
+            .map(str::trim)
+            .map(|v| v == actor_id)
+            .unwrap_or(false);
+        if !is_admin_owner && !is_assigned_technician {
+            return Err(AppError::Forbidden(
+                "Only admin/owner or assigned technician can reject reschedule request".to_string(),
+            ));
+        }
+
+        let pending = self
+            .get_pending_work_order_reschedule_request(actor_id, tenant_id, work_order_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("No pending reschedule request".to_string()))?;
+
+        let reason = dto
+            .notes
+            .as_deref()
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+            .ok_or_else(|| AppError::Validation("Rejection reason is required".to_string()))?;
+
+        let row = self
+            .set_installation_work_order_status_internal(
+                actor_id,
+                tenant_id,
+                work_order_id,
+                None,
+                None,
+                None,
+                Some(format!("Reschedule request rejected. Reason: {}", reason)),
+                false,
+                ip_address,
+                "WORK_ORDER_RESCHEDULE_REJECT",
+                "Rejected work order reschedule request",
+            )
+            .await?;
+
+        let now = Utc::now();
+        #[cfg(feature = "postgres")]
+        sqlx::query(
+            r#"
+            UPDATE work_order_reschedule_requests
+            SET status = 'rejected',
+                reviewed_by = $1,
+                reviewed_at = $2,
+                review_notes = $3,
+                updated_at = $2
+            WHERE tenant_id = $4
+              AND id = $5
+            "#,
+        )
+        .bind(actor_id)
+        .bind(now)
+        .bind(Some(reason.to_string()))
+        .bind(tenant_id)
+        .bind(&pending.id)
+        .execute(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query(
+            r#"
+            UPDATE work_order_reschedule_requests
+            SET status = 'rejected',
+                reviewed_by = ?,
+                reviewed_at = ?,
+                review_notes = ?,
+                updated_at = ?
+            WHERE tenant_id = ?
+              AND id = ?
+            "#,
+        )
+        .bind(actor_id)
+        .bind(now.to_rfc3339())
+        .bind(Some(reason.to_string()))
+        .bind(now.to_rfc3339())
+        .bind(tenant_id)
+        .bind(&pending.id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(row)
+    }
+
     async fn ensure_installation_work_order_for_subscription(
         &self,
         tenant_id: &str,
@@ -4760,7 +5951,9 @@ impl CustomerService {
 
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
-        let notes = Some("Created from customer order request; awaiting assignment and schedule.".to_string());
+        let notes = Some(
+            "Created from customer order request; awaiting assignment and schedule.".to_string(),
+        );
 
         #[cfg(feature = "postgres")]
         sqlx::query(
@@ -4856,8 +6049,14 @@ impl CustomerService {
             "#,
         )
         .bind(tenant_id)
-        .bind(format!("{}{}", CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id))
-        .bind(format!("{}{}:%", CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id))
+        .bind(format!(
+            "{}{}",
+            CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id
+        ))
+        .bind(format!(
+            "{}{}:%",
+            CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id
+        ))
         .fetch_one(&self.pool)
         .await?;
 
@@ -4877,8 +6076,14 @@ impl CustomerService {
             "#,
         )
         .bind(tenant_id)
-        .bind(format!("{}{}", CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id))
-        .bind(format!("{}{}:%", CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id))
+        .bind(format!(
+            "{}{}",
+            CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id
+        ))
+        .bind(format!(
+            "{}{}:%",
+            CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id
+        ))
         .fetch_one(&self.pool)
         .await?;
 
@@ -4941,7 +6146,10 @@ impl CustomerService {
         Ok(())
     }
 
-    async fn list_tenant_installation_alert_user_ids(&self, tenant_id: &str) -> AppResult<Vec<String>> {
+    async fn list_tenant_installation_alert_user_ids(
+        &self,
+        tenant_id: &str,
+    ) -> AppResult<Vec<String>> {
         #[cfg(feature = "postgres")]
         let rows: Vec<(String, Option<String>)> = sqlx::query_as(
             r#"
@@ -4981,7 +6189,9 @@ impl CustomerService {
         sub: &CustomerSubscription,
         work_order: &InstallationWorkOrder,
     ) -> AppResult<()> {
-        let recipient_ids = self.list_tenant_installation_alert_user_ids(tenant_id).await?;
+        let recipient_ids = self
+            .list_tenant_installation_alert_user_ids(tenant_id)
+            .await?;
         if recipient_ids.is_empty() {
             return Ok(());
         }
@@ -5020,12 +6230,11 @@ impl CustomerService {
         .fetch_optional(&self.pool)
         .await?;
 
-        let (customer_name, location_label, package_name) =
-            row.unwrap_or((None, None, None));
+        let (customer_name, location_label, package_name) = row.unwrap_or((None, None, None));
 
-        let title = "New installation request".to_string();
+        let title = "Installation Work Order: New Request".to_string();
         let message = format!(
-            "New customer order needs installation scheduling. Customer: {} • Location: {} • Package: {} • WO {}",
+            "New paid customer order is ready for assignment and scheduling. Customer: {} • Location: {} • Package: {} • Work Order: {}",
             customer_name.unwrap_or_else(|| "-".to_string()),
             location_label.unwrap_or_else(|| "-".to_string()),
             package_name.unwrap_or_else(|| "-".to_string()),
@@ -5049,6 +6258,76 @@ impl CustomerService {
         Ok(())
     }
 
+    async fn notify_installation_rescheduled(
+        &self,
+        tenant_id: &str,
+        sub: &CustomerSubscription,
+        work_order: &InstallationWorkOrder,
+        reason: &str,
+    ) -> AppResult<()> {
+        let mut recipient_ids = self
+            .list_tenant_installation_alert_user_ids(tenant_id)
+            .await?;
+        if let Some(assigned_to) = work_order
+            .assigned_to
+            .as_deref()
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+        {
+            if !recipient_ids.iter().any(|id| id == assigned_to) {
+                recipient_ids.push(assigned_to.to_string());
+            }
+        }
+        if recipient_ids.is_empty() {
+            return Ok(());
+        }
+
+        let message = format!(
+            "Customer requested installation reschedule. Work Order: {} • Requested schedule: {} • Reason: {}",
+            work_order.id,
+            work_order
+                .scheduled_at
+                .map(|v| v.to_rfc3339())
+                .unwrap_or_else(|| "-".to_string()),
+            reason
+        );
+
+        for user_id in recipient_ids {
+            self.notification_service
+                .create_notification(
+                    user_id,
+                    Some(tenant_id.to_string()),
+                    "Installation Work Order: Reschedule Requested".to_string(),
+                    message.clone(),
+                    "info".to_string(),
+                    "operations".to_string(),
+                    Some("/admin/network/installations".to_string()),
+                )
+                .await?;
+        }
+
+        // Notify customer-side users too as confirmation.
+        let customer_user_ids = self
+            .list_customer_user_ids_for_subscription(tenant_id, &sub.id)
+            .await?;
+        for user_id in customer_user_ids {
+            self.notification_service
+                .create_notification(
+                    user_id,
+                    Some(tenant_id.to_string()),
+                    "Reschedule Request Received".to_string(),
+                    "Your reschedule request has been sent to admin/technician for review."
+                        .to_string(),
+                    "info".to_string(),
+                    "operations".to_string(),
+                    Some("/dashboard/services".to_string()),
+                )
+                .await?;
+        }
+
+        Ok(())
+    }
+
     async fn run_installation_sla_reminders_for_tenant(
         &self,
         tenant_id: &str,
@@ -5063,7 +6342,9 @@ impl CustomerService {
             return Ok(0);
         }
 
-        let recipient_ids = self.list_tenant_installation_alert_user_ids(tenant_id).await?;
+        let recipient_ids = self
+            .list_tenant_installation_alert_user_ids(tenant_id)
+            .await?;
         if recipient_ids.is_empty() {
             return Ok(0);
         }
@@ -5085,7 +6366,10 @@ impl CustomerService {
                 continue;
             };
 
-            let action_url = format!("/admin/network/installations?workOrderId={}", row.work_order_id);
+            let action_url = format!(
+                "/admin/network/installations?workOrderId={}",
+                row.work_order_id
+            );
             let customer_label = row.customer_name.unwrap_or_else(|| "-".to_string());
             let location_label = row.location_label.unwrap_or_else(|| "-".to_string());
             let package_label = row.package_name.unwrap_or_else(|| "-".to_string());
@@ -5104,7 +6388,10 @@ impl CustomerService {
                     )
                 }
                 InstallationSlaBreachType::PendingUnscheduled => {
-                    let waiting_minutes = now.signed_duration_since(row.created_at).num_minutes().max(0);
+                    let waiting_minutes = now
+                        .signed_duration_since(row.created_at)
+                        .num_minutes()
+                        .max(0);
                     format!(
                         "WO {} is waiting {} without schedule/assignment. Customer: {} • Location: {} • Package: {}",
                         row.work_order_id,
@@ -5472,10 +6759,31 @@ impl CustomerService {
             .check_permission(actor_id, tenant_id, "work_orders", "manage")
             .await?;
 
-        if !self.is_actor_admin_or_owner(tenant_id, actor_id).await? {
-            return Err(AppError::Forbidden(
-                "Only admin/owner can assign installation work orders".to_string(),
-            ));
+        let is_admin_owner = self.is_actor_admin_or_owner(tenant_id, actor_id).await?;
+        if !is_admin_owner {
+            // Technician is allowed to save schedule/notes for own pending work order,
+            // but cannot reassign to another user.
+            let current = self
+                .get_installation_work_order_row(tenant_id, work_order_id)
+                .await?;
+            if current.status != "pending" {
+                return Err(AppError::Validation(
+                    "Only pending work order can be updated".to_string(),
+                ));
+            }
+
+            let current_assigned = current.assigned_to.as_deref().map(str::trim).unwrap_or("");
+            if current_assigned != actor_id {
+                return Err(AppError::Forbidden(
+                    "Technician can only update own assigned work order".to_string(),
+                ));
+            }
+
+            if assigned_to.trim() != actor_id {
+                return Err(AppError::Forbidden(
+                    "Technician cannot reassign installation work order".to_string(),
+                ));
+            }
         }
 
         let assignee_eligible = self
@@ -5922,22 +7230,26 @@ impl CustomerService {
 
         let row = self
             .set_installation_work_order_status_internal(
-            actor_id,
+                actor_id,
+                tenant_id,
+                work_order_id,
+                Some("pending"),
+                None,
+                None,
+                notes,
+                true,
+                ip_address,
+                "WORK_ORDER_REOPEN",
+                "Reopened installation work order",
+            )
+            .await?;
+
+        self.set_customer_subscription_status(
             tenant_id,
-            work_order_id,
-            Some("pending"),
-            None,
-            None,
-            notes,
-            true,
-            ip_address,
-            "WORK_ORDER_REOPEN",
-            "Reopened installation work order",
+            &row.subscription_id,
+            "pending_installation",
         )
         .await?;
-
-        self.set_customer_subscription_status(tenant_id, &row.subscription_id, "pending_installation")
-            .await?;
 
         Ok(row)
     }
@@ -6030,7 +7342,13 @@ impl CustomerService {
                             "Only pending work order can be started".to_string(),
                         ));
                     }
-                    if row.assigned_to.as_deref().map(str::trim).unwrap_or("").is_empty() {
+                    if row
+                        .assigned_to
+                        .as_deref()
+                        .map(str::trim)
+                        .unwrap_or("")
+                        .is_empty()
+                    {
                         return Err(AppError::Validation(
                             "Set assignee before starting work order".to_string(),
                         ));
@@ -6152,7 +7470,7 @@ impl CustomerService {
 
         let short_reason = reason.trim();
         let message = format!(
-            "Installation request was cancelled by admin/technician. Reason: {}. You can request reopen from Services page.",
+            "Your installation request was cancelled by admin/technician. Reason: {}. You can request reopen from Services page.",
             short_reason
         );
 
@@ -6161,7 +7479,7 @@ impl CustomerService {
                 .create_notification(
                     user_id,
                     Some(tenant_id.to_string()),
-                    "Installation cancelled".to_string(),
+                    "Installation Request Cancelled".to_string(),
                     message.clone(),
                     "warning".to_string(),
                     "operations".to_string(),
@@ -6244,12 +7562,7 @@ mod tests {
         let created_at = now - Duration::minutes(241);
 
         let got = CustomerService::detect_installation_sla_breach(
-            "pending",
-            None,
-            created_at,
-            now,
-            120,
-            240,
+            "pending", None, created_at, now, 120, 240,
         );
         assert_eq!(got, Some(InstallationSlaBreachType::PendingUnscheduled));
     }
@@ -6271,12 +7584,7 @@ mod tests {
         assert_eq!(completed, None);
 
         let fresh_pending = CustomerService::detect_installation_sla_breach(
-            "pending",
-            None,
-            created_at,
-            now,
-            120,
-            240,
+            "pending", None, created_at, now, 120, 240,
         );
         assert_eq!(fresh_pending, None);
     }

@@ -1,66 +1,74 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
   import { toast } from 'svelte-sonner';
   import { can } from '$lib/stores/auth';
-  import { api, type CustomerLocation, type UserAddress } from '$lib/api/client';
-
+  import { api, type CustomerLocation } from '$lib/api/client';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+  import MapCanvasShell from '$lib/components/network/MapCanvasShell.svelte';
+  import 'maplibre-gl/dist/maplibre-gl.css';
 
   let loading = $state(true);
   let locations = $state<CustomerLocation[]>([]);
-  let userAddresses = $state<UserAddress[]>([]);
   let error = $state('');
-  const totalLocations = $derived((locations?.length || 0) + (userAddresses?.length || 0));
 
-  let showAddressModal = $state(false);
-  let editingAddressId = $state<string | null>(null);
-  let savingAddress = $state(false);
-  let showDeleteAddress = $state(false);
-  let deletingAddress = $state(false);
-  let deleteAddressId = $state<string | null>(null);
+  let showLocationModal = $state(false);
+  let editingLocation: CustomerLocation | null = $state(null);
+  let savingLocation = $state(false);
+  let showDeleteDialog = $state(false);
+  let deletingLocation = $state(false);
+  let deleteLocationId = $state<string | null>(null);
 
   let fLabel = $state('');
-  let fRecipient = $state('');
-  let fPhone = $state('');
   let fLine1 = $state('');
   let fLine2 = $state('');
   let fCity = $state('');
   let fState = $state('');
   let fPostal = $state('');
   let fCountry = $state('ID');
-  let fDefaultShipping = $state(false);
-  let fDefaultBilling = $state(false);
+  let fNotes = $state('');
+  let fLatitude = $state('');
+  let fLongitude = $state('');
 
-  type MergedLocation = {
-    id: string;
-    title: string;
-    address: string;
-    notes: string;
-    source: string;
-    isProfile: boolean;
-    profileId?: string;
-  };
+  let showMapPicker = $state(false);
+  let pickerMapHost = $state<HTMLDivElement | null>(null);
+  let pickerMap: any = null;
+  let pickerMarker: any = null;
+  let pickerLat = $state<number | null>(null);
+  let pickerLng = $state<number | null>(null);
+  let maplibrePromise: Promise<any> | null = null;
+  let pickerViewMode = $state<'standard' | 'satellite'>('standard');
+  let pickerMapLoading = $state(false);
+  let pickerMapUnavailable = $state(false);
+  let pickerMapErrorMessage = $state('');
+  const pickerMapTilerKey = (import.meta.env.VITE_MAPTILER_KEY as string | undefined)?.trim();
+  const pickerStandardMaxZoom = 19;
+  const pickerSatelliteMaxZoom = pickerMapTilerKey ? 21 : 18;
+
+  const hasLinkedCustomer = $derived($can('read_own', 'customers'));
+  const totalLocations = $derived(locations.length);
+  const mappedLocations = $derived(
+    locations.filter((loc) => loc.latitude != null && loc.longitude != null).length,
+  );
+  const notedLocations = $derived(locations.filter((loc) => (loc.notes || '').trim().length > 0).length);
 
   onMount(async () => {
     await load();
+  });
+
+  onDestroy(() => {
+    pickerMarker?.remove();
+    pickerMap?.remove();
   });
 
   async function load() {
     loading = true;
     error = '';
     try {
-      locations = [];
-      userAddresses = [];
-
-      if ($can('read_own', 'customers')) {
-        locations = await api.customers.portal.myLocations();
-      }
-      // Fallback/source for normal user accounts: profile multi-address
-      userAddresses = await api.users.listMyAddresses();
+      locations = hasLinkedCustomer ? await api.customers.portal.myLocations() : [];
     } catch (e: any) {
       error = String(e?.message || e || 'Failed to load locations');
       toast.error(get(t)('dashboard.locations.toasts.load_failed') || 'Failed to load locations');
@@ -70,129 +78,281 @@
   }
 
   function formatAddress(loc: CustomerLocation) {
-    const line1 = loc.address_line1 || '';
-    const parts = [loc.city, loc.state, loc.postal_code, loc.country].filter(Boolean).join(', ');
-    return [line1, parts].filter(Boolean).join(' • ');
+    return [
+      loc.address_line1,
+      loc.address_line2,
+      [loc.city, loc.state, loc.postal_code].filter(Boolean).join(', '),
+      loc.country,
+    ]
+      .filter((part) => Boolean(part && String(part).trim()))
+      .join(' • ');
   }
 
-  function formatUserAddress(addr: UserAddress) {
-    const line1 = addr.line1 || '';
-    const parts = [addr.city, addr.state, addr.postal_code, addr.country_code].filter(Boolean).join(', ');
-    return [line1, parts].filter(Boolean).join(' • ');
-  }
-
-  const mergedLocations = $derived.by<MergedLocation[]>(() => {
-    const fromCustomer = (locations || []).map((loc) => ({
-      id: `customer-${loc.id}`,
-      title: loc.label || 'Location',
-      address: formatAddress(loc),
-      notes: loc.notes || '',
-      source: $t('dashboard.locations.source.customer') || 'Customer',
-      isProfile: false,
-    }));
-
-    const fromProfile = (userAddresses || []).map((addr) => ({
-      id: `profile-${addr.id}`,
-      title: addr.label || addr.recipient_name || 'Address',
-      address: formatUserAddress(addr),
-      notes: '',
-      source: $t('dashboard.locations.source.profile') || 'Profile',
-      isProfile: true,
-      profileId: addr.id,
-    }));
-
-    return [...fromCustomer, ...fromProfile];
-  });
-
-  function resetAddressForm() {
-    editingAddressId = null;
+  function resetForm() {
+    editingLocation = null;
     fLabel = '';
-    fRecipient = '';
-    fPhone = '';
     fLine1 = '';
     fLine2 = '';
     fCity = '';
     fState = '';
     fPostal = '';
     fCountry = 'ID';
-    fDefaultShipping = false;
-    fDefaultBilling = false;
+    fNotes = '';
+    fLatitude = '';
+    fLongitude = '';
   }
 
-  function openCreateAddress() {
-    resetAddressForm();
-    showAddressModal = true;
+  function openCreateLocation() {
+    resetForm();
+    showLocationModal = true;
   }
 
-  function openEditAddress(addr: UserAddress) {
-    editingAddressId = addr.id;
-    fLabel = addr.label || '';
-    fRecipient = addr.recipient_name || '';
-    fPhone = addr.phone || '';
-    fLine1 = addr.line1 || '';
-    fLine2 = addr.line2 || '';
-    fCity = addr.city || '';
-    fState = addr.state || '';
-    fPostal = addr.postal_code || '';
-    fCountry = addr.country_code || 'ID';
-    fDefaultShipping = !!addr.is_default_shipping;
-    fDefaultBilling = !!addr.is_default_billing;
-    showAddressModal = true;
+  function openEditLocation(loc: CustomerLocation) {
+    editingLocation = loc;
+    fLabel = loc.label || '';
+    fLine1 = loc.address_line1 || '';
+    fLine2 = loc.address_line2 || '';
+    fCity = loc.city || '';
+    fState = loc.state || '';
+    fPostal = loc.postal_code || '';
+    fCountry = loc.country || 'ID';
+    fNotes = loc.notes || '';
+    fLatitude = loc.latitude != null ? String(loc.latitude) : '';
+    fLongitude = loc.longitude != null ? String(loc.longitude) : '';
+    showLocationModal = true;
   }
 
-  async function saveAddress() {
-    if (!fLine1.trim()) return;
-    savingAddress = true;
+  function parseCoordOrNull(v: string) {
+    const raw = v.trim();
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : NaN;
+  }
+
+  function validateLocationForm() {
+    const label = fLabel.trim();
+    if (!label) {
+      toast.error('Label lokasi wajib diisi');
+      return null;
+    }
+
+    const latitude = parseCoordOrNull(fLatitude);
+    const longitude = parseCoordOrNull(fLongitude);
+    if (latitude == null || longitude == null) {
+      toast.error('Lokasi wajib dipilih di map');
+      return null;
+    }
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      toast.error('Koordinat lokasi tidak valid');
+      return null;
+    }
+    if (latitude < -90 || latitude > 90) {
+      toast.error('Latitude harus di antara -90 hingga 90');
+      return null;
+    }
+    if (longitude < -180 || longitude > 180) {
+      toast.error('Longitude harus di antara -180 hingga 180');
+      return null;
+    }
+
+    return {
+      label,
+      address_line1: fLine1.trim() || null,
+      address_line2: fLine2.trim() || null,
+      city: fCity.trim() || null,
+      state: fState.trim() || null,
+      postal_code: fPostal.trim() || null,
+      country: fCountry.trim().toUpperCase() || null,
+      notes: fNotes.trim() || null,
+      latitude,
+      longitude,
+    };
+  }
+
+  async function saveLocation() {
+    const payload = validateLocationForm();
+    if (!payload) return;
+
+    savingLocation = true;
     try {
-      const payload = {
-        label: fLabel.trim() || undefined,
-        recipientName: fRecipient.trim() || undefined,
-        phone: fPhone.trim() || undefined,
-        line1: fLine1.trim(),
-        line2: fLine2.trim() || undefined,
-        city: fCity.trim() || undefined,
-        state: fState.trim() || undefined,
-        postalCode: fPostal.trim() || undefined,
-        countryCode: (fCountry.trim() || 'ID').toUpperCase(),
-        isDefaultShipping: fDefaultShipping,
-        isDefaultBilling: fDefaultBilling,
-      };
-
-      if (editingAddressId) {
-        await api.users.updateMyAddress(editingAddressId, payload);
+      if (editingLocation) {
+        await api.customers.portal.updateMyLocation(editingLocation.id, payload);
       } else {
-        await api.users.createMyAddress(payload);
+        await api.customers.portal.createMyLocation(payload);
       }
-      showAddressModal = false;
-      resetAddressForm();
+      showLocationModal = false;
+      resetForm();
       await load();
       toast.success($t('common.saved') || 'Saved');
     } catch (e: any) {
-      toast.error(String(e?.message || e || 'Failed to save address'));
+      toast.error(String(e?.message || e || 'Failed to save location'));
     } finally {
-      savingAddress = false;
+      savingLocation = false;
     }
   }
 
-  function askDeleteAddress(id: string) {
-    deleteAddressId = id;
-    showDeleteAddress = true;
+  function askDeleteLocation(locationId: string) {
+    deleteLocationId = locationId;
+    showDeleteDialog = true;
   }
 
-  async function doDeleteAddress() {
-    if (!deleteAddressId) return;
-    deletingAddress = true;
+  async function doDeleteLocation() {
+    if (!deleteLocationId) return;
+    deletingLocation = true;
     try {
-      await api.users.deleteMyAddress(deleteAddressId);
-      showDeleteAddress = false;
-      deleteAddressId = null;
+      await api.customers.portal.deleteMyLocation(deleteLocationId);
+      showDeleteDialog = false;
+      deleteLocationId = null;
       await load();
       toast.success($t('common.deleted') || 'Deleted');
     } catch (e: any) {
-      toast.error(String(e?.message || e || 'Failed to delete address'));
+      toast.error(String(e?.message || e || 'Failed to delete location'));
     } finally {
-      deletingAddress = false;
+      deletingLocation = false;
     }
+  }
+
+  async function getMaplibre() {
+    if (!maplibrePromise) {
+      maplibrePromise = import('maplibre-gl');
+    }
+    return maplibrePromise;
+  }
+
+  function setPickerPoint(lat: number, lng: number) {
+    pickerLat = lat;
+    pickerLng = lng;
+    if (pickerMarker) {
+      pickerMarker.setLngLat([lng, lat]);
+      return;
+    }
+    if (!pickerMap) return;
+    pickerMarker = new (pickerMap as any).libregl.Marker({ draggable: true })
+      .setLngLat([lng, lat])
+      .addTo(pickerMap);
+    pickerMarker.on('dragend', () => {
+      const pos = pickerMarker.getLngLat();
+      pickerLat = Number(pos.lat.toFixed(7));
+      pickerLng = Number(pos.lng.toFixed(7));
+    });
+  }
+
+  function syncPickerViewMode() {
+    if (!pickerMap) return;
+    const showSatellite = pickerViewMode === 'satellite';
+    const setVisibility = (layerId: string, visible: boolean) => {
+      if (!pickerMap.getLayer(layerId)) return;
+      pickerMap.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+    };
+    setVisibility('location-picker-standard', !showSatellite);
+    setVisibility('location-picker-satellite', showSatellite);
+    const targetMaxZoom = showSatellite ? pickerSatelliteMaxZoom : pickerStandardMaxZoom;
+    pickerMap.setMaxZoom(targetMaxZoom);
+    if (pickerMap.getZoom() > targetMaxZoom) {
+      pickerMap.setZoom(targetMaxZoom);
+    }
+  }
+
+  async function openMapPicker() {
+    const initialLat = parseCoordOrNull(fLatitude);
+    const initialLng = parseCoordOrNull(fLongitude);
+    const nextLat: number = typeof initialLat === 'number' && Number.isFinite(initialLat) ? initialLat : -6.2;
+    const nextLng: number =
+      typeof initialLng === 'number' && Number.isFinite(initialLng) ? initialLng : 106.816666;
+    pickerLat = nextLat;
+    pickerLng = nextLng;
+    pickerMapUnavailable = false;
+    pickerMapErrorMessage = '';
+    showMapPicker = true;
+    await tick();
+    if (!pickerMapHost) return;
+
+    pickerMapLoading = true;
+    try {
+      const libregl = await getMaplibre();
+      if (!pickerMap) {
+        pickerMap = new libregl.Map({
+          container: pickerMapHost,
+          style: {
+            version: 8,
+            sources: {
+              standard: {
+                type: 'raster',
+                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                tileSize: 256,
+                attribution: 'OpenStreetMap contributors',
+                maxzoom: pickerStandardMaxZoom,
+              },
+              satellite: {
+                type: 'raster',
+                tiles: pickerMapTilerKey
+                  ? [`https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${pickerMapTilerKey}`]
+                  : ['https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                tileSize: 256,
+                attribution: pickerMapTilerKey ? 'MapTiler' : 'Esri',
+                maxzoom: pickerSatelliteMaxZoom,
+              },
+            },
+            layers: [
+              { id: 'location-picker-standard', type: 'raster', source: 'standard' },
+              {
+                id: 'location-picker-satellite',
+                type: 'raster',
+                source: 'satellite',
+                layout: { visibility: 'none' },
+              },
+            ],
+          },
+          center: [nextLng, nextLat],
+          zoom: 13,
+          maxZoom: pickerStandardMaxZoom,
+        });
+        (pickerMap as any).libregl = libregl;
+        pickerMap.addControl(new libregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
+        pickerMap.addControl(
+          new libregl.GeolocateControl({ trackUserLocation: false, showAccuracyCircle: true }),
+          'top-right',
+        );
+        pickerMap.on('click', (event: any) => {
+          const { lat, lng } = event.lngLat;
+          setPickerPoint(Number(lat.toFixed(7)), Number(lng.toFixed(7)));
+        });
+      } else {
+        pickerMap.resize();
+        pickerMap.setCenter([nextLng, nextLat]);
+        pickerMap.setZoom(
+          Math.min(13, pickerViewMode === 'satellite' ? pickerSatelliteMaxZoom : pickerStandardMaxZoom),
+        );
+      }
+      syncPickerViewMode();
+      setPickerPoint(nextLat, nextLng);
+    } catch (e: any) {
+      pickerMapUnavailable = true;
+      pickerMapErrorMessage = e?.message || 'Failed to initialize map';
+    } finally {
+      pickerMapLoading = false;
+      pickerMap?.resize();
+    }
+  }
+
+  function closeMapPicker() {
+    showMapPicker = false;
+  }
+
+  function onPickerSearchSelect(event: CustomEvent<{ lat: number; lng: number }>) {
+    const { lat, lng } = event.detail;
+    setPickerPoint(Number(lat.toFixed(7)), Number(lng.toFixed(7)));
+    pickerMap?.flyTo({ center: [lng, lat], zoom: Math.max(pickerMap.getZoom(), 15), duration: 480 });
+  }
+
+  function applyPickedCoordinates() {
+    if (!Number.isFinite(pickerLat) || !Number.isFinite(pickerLng)) {
+      toast.error('Pilih titik lokasi terlebih dulu');
+      return;
+    }
+    fLatitude = String(pickerLat);
+    fLongitude = String(pickerLng);
+    closeMapPicker();
   }
 </script>
 
@@ -205,14 +365,13 @@
       </div>
       <h1>{$t('dashboard.locations.title') || 'My Locations'}</h1>
       <p class="subtitle">
-        {$t('dashboard.locations.subtitle') ||
-          'Your service locations. If something looks wrong, contact support.'}
+        Kelola lokasi layanan Anda di sini. Saat membuat atau mengubah lokasi, titik map wajib dipilih.
       </p>
     </div>
     <div class="header-actions">
-      <button class="btn-primary" onclick={openCreateAddress} disabled={loading}>
+      <button class="btn-primary" onclick={openCreateLocation} disabled={loading || !hasLinkedCustomer}>
         <Icon name="plus" size={16} />
-        {$t('common.add') || 'Add'}
+        Tambah Lokasi
       </button>
       <button class="btn-secondary" onclick={load} disabled={loading}>
         <Icon name="refresh-cw" size={16} />
@@ -223,18 +382,25 @@
 
   <div class="summary-grid">
     <div class="summary card">
-      <div class="summary-label">{$t('dashboard.locations.summary.total') || 'Total locations'}</div>
+      <div class="summary-label">Total lokasi</div>
       <div class="summary-value">{totalLocations}</div>
     </div>
     <div class="summary card">
-      <div class="summary-label">{$t('dashboard.locations.summary.customer') || 'Customer-linked'}</div>
-      <div class="summary-value">{locations.length}</div>
+      <div class="summary-label">Sudah pin map</div>
+      <div class="summary-value">{mappedLocations}</div>
     </div>
     <div class="summary card">
-      <div class="summary-label">{$t('dashboard.locations.summary.profile') || 'Profile addresses'}</div>
-      <div class="summary-value">{userAddresses.length}</div>
+      <div class="summary-label">Ada catatan</div>
+      <div class="summary-value">{notedLocations}</div>
     </div>
   </div>
+
+  {#if !hasLinkedCustomer}
+    <div class="error-banner">
+      <Icon name="alert-triangle" size={18} />
+      <span>Akun ini belum terhubung ke customer, jadi lokasi layanan belum bisa dikelola.</span>
+    </div>
+  {/if}
 
   {#if error}
     <div class="error-banner">
@@ -248,40 +414,41 @@
       <div class="spinner"></div>
       <p>{$t('common.loading') || 'Loading...'}</p>
     </div>
-  {:else if locations.length === 0 && userAddresses.length === 0}
+  {:else if locations.length === 0}
     <div class="empty card">
       <Icon name="map-pin" size={28} />
       <div class="empty-text">
-        <div class="title">{$t('dashboard.locations.empty') || 'No locations yet.'}</div>
-        <div class="sub">
-          {$t('dashboard.locations.empty_hint') ||
-            'Your admin has not linked your account to a customer location.'}
-        </div>
+        <div class="title">Belum ada lokasi layanan.</div>
+        <div class="sub">Tambahkan lokasi baru lalu pilih titik map agar bisa dipakai untuk order dan coverage check.</div>
       </div>
     </div>
   {:else}
     <div class="grid">
-      {#each mergedLocations as loc (loc.id)}
+      {#each locations as loc (loc.id)}
         <div class="location card">
           <div class="top">
             <div class="badge">
               <Icon name="map-pin" size={16} />
-              <span>{loc.source}</span>
+              <span>Service Location</span>
             </div>
-            {#if loc.isProfile}
-              {@const addr = userAddresses.find((a) => a.id === loc.profileId)}
-              <div class="row-actions">
-                <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => addr && openEditAddress(addr)}>
-                  <Icon name="edit" size={14} />
-                </button>
-                <button class="btn-icon danger" title={$t('common.delete') || 'Delete'} onclick={() => loc.profileId && askDeleteAddress(loc.profileId)}>
-                  <Icon name="trash-2" size={14} />
-                </button>
-              </div>
+            <div class="row-actions">
+              <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => openEditLocation(loc)}>
+                <Icon name="edit" size={14} />
+              </button>
+              <button class="btn-icon danger" title={$t('common.delete') || 'Delete'} onclick={() => askDeleteLocation(loc.id)}>
+                <Icon name="trash-2" size={14} />
+              </button>
+            </div>
+          </div>
+          <div class="name">{loc.label || 'Location'}</div>
+          <div class="addr">{formatAddress(loc) || 'Alamat belum diisi'}</div>
+          <div class="coords">
+            {#if loc.latitude != null && loc.longitude != null}
+              <span class="coord-chip">{Number(loc.latitude).toFixed(6)}, {Number(loc.longitude).toFixed(6)}</span>
+            {:else}
+              <span class="coord-chip missing">Belum ada titik map</span>
             {/if}
           </div>
-          <div class="name">{loc.title}</div>
-          <div class="addr">{loc.address || '—'}</div>
           {#if loc.notes}
             <div class="notes">{loc.notes}</div>
           {/if}
@@ -292,54 +459,134 @@
 </div>
 
 <Modal
-  show={showAddressModal}
-  title={editingAddressId ? ($t('common.edit') || 'Edit') : ($t('common.add') || 'Add')}
-  onclose={() => (showAddressModal = false)}
+  show={showLocationModal}
+  width="760px"
+  title={editingLocation ? 'Edit Lokasi' : 'Tambah Lokasi'}
+  onclose={() => (showLocationModal = false)}
 >
   <div class="form">
     <div class="grid2">
-      <label><span>Label</span><input class="input" bind:value={fLabel} /></label>
-      <label><span>Recipient</span><input class="input" bind:value={fRecipient} /></label>
-    </div>
-    <div class="grid2">
-      <label><span>Phone</span><input class="input" bind:value={fPhone} /></label>
       <label>
-        <span>Country</span>
+        <span>Label lokasi</span>
+        <input class="input" bind:value={fLabel} placeholder="Contoh: Rumah, Kantor, Gudang" />
+      </label>
+      <label>
+        <span>Negara</span>
         <select class="input" bind:value={fCountry}>
           <option value="ID">ID (Indonesia)</option>
           <option value="US">US (United States)</option>
         </select>
       </label>
     </div>
-    <label><span>Address line 1</span><input class="input" bind:value={fLine1} /></label>
-    <label><span>Address line 2</span><input class="input" bind:value={fLine2} /></label>
+
+    <label>
+      <span>Alamat line 1</span>
+      <input class="input" bind:value={fLine1} placeholder="Jl. / street / building" />
+    </label>
+
+    <label>
+      <span>Alamat line 2</span>
+      <input class="input" bind:value={fLine2} placeholder="Blok, RT/RW, unit, lantai, dll" />
+    </label>
+
     <div class="grid3">
-      <label><span>City</span><input class="input" bind:value={fCity} /></label>
-      <label><span>State</span><input class="input" bind:value={fState} /></label>
-      <label><span>Postal</span><input class="input" bind:value={fPostal} /></label>
+      <label>
+        <span>Kota</span>
+        <input class="input" bind:value={fCity} />
+      </label>
+      <label>
+        <span>Provinsi / State</span>
+        <input class="input" bind:value={fState} />
+      </label>
+      <label>
+        <span>Kode pos</span>
+        <input class="input" bind:value={fPostal} />
+      </label>
     </div>
-    <div class="checks">
-      <label class="check"><input type="checkbox" bind:checked={fDefaultShipping} /> Default shipping</label>
-      <label class="check"><input type="checkbox" bind:checked={fDefaultBilling} /> Default billing</label>
+
+    <label>
+      <span>Catatan</span>
+      <textarea class="input textarea" bind:value={fNotes} rows="3" placeholder="Catatan akses lokasi, patokan rumah, dll"></textarea>
+    </label>
+
+    <div class="map-picked-box">
+      <div>
+        <div class="map-picked-title">Titik lokasi di map</div>
+        <div class="map-picked-sub">Wajib pilih titik map saat create atau edit.</div>
+      </div>
+      <button class="btn-secondary" type="button" onclick={openMapPicker}>
+        <Icon name="map" size={16} />
+        {fLatitude && fLongitude ? 'Ubah Titik Map' : 'Pilih Titik Map'}
+      </button>
     </div>
+
+    <div class="grid2">
+      <label>
+        <span>Latitude</span>
+        <input class="input mono" bind:value={fLatitude} readonly />
+      </label>
+      <label>
+        <span>Longitude</span>
+        <input class="input mono" bind:value={fLongitude} readonly />
+      </label>
+    </div>
+
     <div class="modal-actions">
-      <button class="btn-secondary" onclick={() => (showAddressModal = false)}>{$t('common.cancel') || 'Cancel'}</button>
-      <button class="btn-primary" onclick={saveAddress} disabled={savingAddress || !fLine1.trim()}>
+      <button class="btn-secondary" type="button" onclick={() => (showLocationModal = false)}>
+        {$t('common.cancel') || 'Cancel'}
+      </button>
+      <button
+        class="btn-primary"
+        type="button"
+        onclick={saveLocation}
+        disabled={savingLocation || !fLabel.trim() || !fLatitude.trim() || !fLongitude.trim()}
+      >
         {$t('common.save') || 'Save'}
       </button>
     </div>
   </div>
 </Modal>
 
+<Modal show={showMapPicker} title="Pilih Titik Lokasi" width="860px" onclose={closeMapPicker}>
+  <div class="map-picker-shell">
+    <div class="map-picker-help">
+      Klik peta untuk memilih titik. Setelah itu marker bisa di-drag untuk presisi.
+    </div>
+    <div class="map-picker-cords">
+      {#if pickerLat != null && pickerLng != null}
+        <span class="mono">{pickerLat.toFixed(7)}, {pickerLng.toFixed(7)}</span>
+      {/if}
+    </div>
+    <MapCanvasShell
+      bind:mapEl={pickerMapHost}
+      bind:viewMode={pickerViewMode}
+      on:searchselect={onPickerSearchSelect}
+      loading={pickerMapLoading}
+      mapUnavailable={pickerMapUnavailable}
+      mapErrorMessage={pickerMapErrorMessage}
+      mapUnavailableTitle="Map unavailable"
+      mapUnavailableSubtitle="Unable to initialize WebGL map on this browser/device."
+      height="min(58vh, 520px)"
+    />
+    <div class="modal-actions">
+      <button class="btn-secondary" type="button" onclick={closeMapPicker}>Cancel</button>
+      <button class="btn-primary" type="button" onclick={applyPickedCoordinates}>
+        <Icon name="check" size={16} />
+        Gunakan Titik Ini
+      </button>
+    </div>
+  </div>
+</Modal>
+
 <ConfirmDialog
-  show={showDeleteAddress}
+  show={showDeleteDialog}
   title={$t('common.delete') || 'Delete'}
-  message={$t('common.confirm_delete') || 'Are you sure you want to delete this item?'}
+  message="Lokasi ini akan dihapus dari akun customer. Lanjutkan?"
   confirmText={$t('common.delete') || 'Delete'}
   cancelText={$t('common.cancel') || 'Cancel'}
-  loading={deletingAddress}
-  onconfirm={doDeleteAddress}
-  oncancel={() => (showDeleteAddress = false)}
+  loading={deletingLocation}
+  onconfirm={doDeleteLocation}
+  oncancel={() => (showDeleteDialog = false)}
 />
 
 <style>
@@ -377,6 +624,7 @@
   .subtitle {
     color: var(--text-secondary);
     margin-top: 0.35rem;
+    max-width: 720px;
   }
 
   .header-actions {
@@ -431,6 +679,13 @@
   .btn-secondary {
     background: var(--bg-surface);
     color: var(--text-primary);
+  }
+
+  .btn-primary:disabled,
+  .btn-secondary:disabled,
+  .btn-icon:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   .error-banner {
@@ -497,7 +752,8 @@
     color: rgb(239, 68, 68);
   }
 
-  .badge {
+  .badge,
+  .coord-chip {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
@@ -510,22 +766,35 @@
     font-weight: 650;
   }
 
-  .name {
+  .coord-chip.missing {
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.12);
+  }
+
+  .name,
+  .addr,
+  .coords,
+  .notes {
     position: relative;
+  }
+
+  .name {
     font-size: 1.1rem;
     font-weight: 750;
     margin-bottom: 0.35rem;
   }
 
   .addr {
-    position: relative;
     color: var(--text-secondary);
     line-height: 1.4;
     font-size: 0.95rem;
   }
 
+  .coords {
+    margin-top: 0.85rem;
+  }
+
   .notes {
-    position: relative;
     margin-top: 0.75rem;
     padding-top: 0.75rem;
     border-top: 1px solid var(--border-color);
@@ -566,18 +835,9 @@
     animation: spin 0.9s linear infinite;
   }
 
-  @keyframes spin {
-    from {
-      transform: rotate(0);
-    }
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
   .form {
     display: grid;
-    gap: 0.75rem;
+    gap: 0.8rem;
   }
 
   .grid2 {
@@ -609,16 +869,44 @@
     outline: none;
   }
 
-  .checks {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
+  .textarea {
+    resize: vertical;
+    min-height: 90px;
   }
 
-  .check {
-    display: inline-flex;
+  .mono {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  .map-picked-box {
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 0.85rem 0.9rem;
+    display: flex;
     align-items: center;
-    gap: 0.4rem;
+    justify-content: space-between;
+    gap: 1rem;
+    background: rgba(148, 163, 184, 0.06);
+  }
+
+  .map-picked-title {
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .map-picked-sub {
+    margin-top: 0.2rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+
+  .map-picker-shell {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .map-picker-help,
+  .map-picker-cords {
     color: var(--text-secondary);
   }
 
@@ -629,29 +917,40 @@
     gap: 0.7rem;
   }
 
+  @keyframes spin {
+    from {
+      transform: rotate(0);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
   @media (max-width: 980px) {
     .page-content {
       padding: 0.95rem;
     }
 
-    .summary-grid {
-      grid-template-columns: 1fr;
-    }
-
+    .summary-grid,
     .grid2,
     .grid3 {
       grid-template-columns: 1fr;
     }
 
-    .grid {
-      grid-template-columns: 1fr;
-    }
-    .page-header {
+    .page-header,
+    .map-picked-box {
       flex-direction: column;
       align-items: stretch;
     }
+
     .header-actions {
+      width: 100%;
       justify-content: stretch;
+    }
+
+    .header-actions > button {
+      flex: 1 1 auto;
+      justify-content: center;
     }
   }
 </style>

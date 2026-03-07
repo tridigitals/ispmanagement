@@ -3,8 +3,8 @@ use crate::http::auth::extract_ip;
 use crate::http::AppState;
 use crate::models::{
     AssignInstallationWorkOrderRequest, InstallationWorkOrder, InstallationWorkOrderView,
-    TeamMemberWithUser,
-    UpdateInstallationWorkOrderStatusRequest,
+    TeamMemberWithUser, UpdateInstallationWorkOrderStatusRequest,
+    WorkOrderRescheduleDecisionRequest, WorkOrderRescheduleRequestView,
 };
 use axum::{
     extract::{ConnectInfo, Path, Query, State},
@@ -26,6 +26,18 @@ pub fn router() -> Router<AppState> {
         .route("/{id}/complete", post(complete_work_order))
         .route("/{id}/cancel", post(cancel_work_order))
         .route("/{id}/reopen", post(reopen_work_order))
+        .route(
+            "/{id}/reschedule-request",
+            get(get_pending_reschedule_request),
+        )
+        .route(
+            "/{id}/reschedule-request/approve",
+            post(approve_reschedule_request),
+        )
+        .route(
+            "/{id}/reschedule-request/reject",
+            post(reject_reschedule_request),
+        )
 }
 
 fn bearer_token(headers: &HeaderMap) -> AppResult<String> {
@@ -203,6 +215,51 @@ async fn reopen_work_order(
     let row = state
         .customer_service
         .reopen_installation_work_order(&claims.sub, &tenant_id, &id, dto.notes, Some(&ip))
+        .await?;
+    Ok(Json(row))
+}
+
+async fn get_pending_reschedule_request(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<Option<WorkOrderRescheduleRequestView>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let row = state
+        .customer_service
+        .get_pending_work_order_reschedule_request(&claims.sub, &tenant_id, &id)
+        .await?;
+    Ok(Json(row))
+}
+
+async fn approve_reschedule_request(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(id): Path<String>,
+    Json(dto): Json<WorkOrderRescheduleDecisionRequest>,
+) -> AppResult<Json<InstallationWorkOrder>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+    let row = state
+        .customer_service
+        .approve_work_order_reschedule_request(&claims.sub, &tenant_id, &id, dto, Some(&ip))
+        .await?;
+    Ok(Json(row))
+}
+
+async fn reject_reschedule_request(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(id): Path<String>,
+    Json(dto): Json<WorkOrderRescheduleDecisionRequest>,
+) -> AppResult<Json<InstallationWorkOrder>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+    let row = state
+        .customer_service
+        .reject_work_order_reschedule_request(&claims.sub, &tenant_id, &id, dto, Some(&ip))
         .await?;
     Ok(Json(row))
 }

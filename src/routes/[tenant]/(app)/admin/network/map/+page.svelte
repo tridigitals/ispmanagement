@@ -23,6 +23,7 @@
     status: string;
     lat: number;
     lng: number;
+    metadata?: Record<string, any>;
   };
 
   type NMLink = {
@@ -73,6 +74,7 @@
   let mapErrorMessage = $state('');
   let loading = $state(true);
   let refreshing = $state(false);
+  let syncingAssetNodes = $state(false);
   let locating = $state(false);
   let myLocationVisible = $state(false);
   let myLocationError = $state('');
@@ -165,11 +167,15 @@
   let refreshDebounce: ReturnType<typeof setTimeout> | null = null;
   let lastRequestId = 0;
   let myLocationMarker: import('maplibre-gl').Marker | null = null;
+  let installationTargetMarker: import('maplibre-gl').Marker | null = null;
+  let installationTargetCoord: [number, number] | null = null;
+  let installationTargetResolved = false;
   let myLocationControlBtn: HTMLButtonElement | null = null;
   let viewModeControlBtn: HTMLButtonElement | null = null;
   let activeNodePopup: import('maplibre-gl').Popup | null = null;
   let activeDataAbortController: AbortController | null = null;
   let didInitialFitToMarkers = false;
+  let lastAssetSyncAt = 0;
   const dataCache = new Map<
     string,
     {
@@ -182,6 +188,7 @@
   >();
   const dataCacheTtlMs = 20_000;
   const dataCacheMaxEntries = 40;
+  const assetSyncTtlMs = 45_000;
   const mapTilerKey = (import.meta.env.VITE_MAPTILER_KEY as string | undefined)?.trim();
   const hasHiResSatellite = Boolean(mapTilerKey);
   const standardMaxZoom = 19;
@@ -194,14 +201,19 @@
   const SOURCE_ROUTERS = 'nm-routers';
   const SOURCE_LINK_DRAFT = 'nm-link-draft';
   const SOURCE_LINK_DRAFT_POINTS = 'nm-link-draft-points';
+  const canManageTopology = $derived($can('manage', 'network_topology') || $can('manage', 'network_routers'));
   const nodeTypeOptions = [
     { label: 'Core', value: 'core' },
     { label: 'POP', value: 'pop' },
     { label: 'OLT', value: 'olt' },
     { label: 'Router', value: 'router' },
+    { label: 'Switch', value: 'switch' },
     { label: 'Tower', value: 'tower' },
     { label: 'AP', value: 'ap' },
+    { label: 'ODC', value: 'odc' },
+    { label: 'ODP', value: 'odp' },
     { label: 'Splitter', value: 'splitter' },
+    { label: 'Customer Premise', value: 'customer_premise' },
     { label: 'Customer Endpoint', value: 'customer_endpoint' },
   ];
   const linkTypeOptions = [
@@ -300,6 +312,17 @@
     }),
   );
   const tenantPrefix = $derived(tenantCtx.tenantPrefix);
+  const compactMode = $derived($page.url.searchParams.get('compact') === '1');
+  const fromInstallation = $derived($page.url.searchParams.get('from_installation') === '1');
+  const sourceWorkOrderId = $derived($page.url.searchParams.get('work_order_id') || '');
+  const sourceCustomerId = $derived($page.url.searchParams.get('customer_id') || '');
+  const sourceLocationId = $derived($page.url.searchParams.get('location_id') || '');
+  const installationReturnUrl = $derived.by(() => {
+    if (!fromInstallation) return '';
+    const params = new URLSearchParams();
+    if (sourceWorkOrderId) params.set('work_order_id', sourceWorkOrderId);
+    return `${tenantPrefix}/admin/network/installations${params.toString() ? `?${params.toString()}` : ''}`;
+  });
 
   onMount(() => {
     if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
@@ -314,6 +337,7 @@
     if (refreshDebounce) clearTimeout(refreshDebounce);
     activeDataAbortController?.abort();
     myLocationMarker?.remove();
+    installationTargetMarker?.remove();
     draftNodeMarker?.remove();
     map?.remove();
   });
@@ -346,6 +370,82 @@
         });
         return value;
       };
+    }
+  }
+
+  function emitInstallationRefreshSignal() {
+    if (!fromInstallation || !sourceWorkOrderId) return;
+    try {
+      localStorage.setItem(
+        'nm_installation_work_order_refresh',
+        JSON.stringify({
+          work_order_id: sourceWorkOrderId,
+          ts: Date.now(),
+        }),
+      );
+    } catch {
+      // Ignore storage errors
+    }
+  }
+
+  function emitWorkOrderUpdatedToParent() {
+    if (!fromInstallation || !sourceWorkOrderId) return;
+    try {
+      if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+        window.parent.postMessage(
+          {
+            type: 'nm_work_order_updated',
+            work_order_id: sourceWorkOrderId,
+            ts: Date.now(),
+          },
+          window.location.origin,
+        );
+      }
+    } catch {
+      // Ignore cross-window messaging errors
+    }
+  }
+
+  async function resolveInstallationTargetMarker() {
+    if (!map || !maplibre || !fromInstallation || !sourceCustomerId || !sourceLocationId) return;
+    if (installationTargetResolved) return;
+    installationTargetResolved = true;
+    try {
+      const locations = await api.customers.locations.list(sourceCustomerId);
+      const target = (locations || []).find((row) => row.id === sourceLocationId);
+      if (!target) return;
+      if (!Number.isFinite(target.longitude) || !Number.isFinite(target.latitude)) return;
+      const lng = Number(target.longitude);
+      const lat = Number(target.latitude);
+      installationTargetCoord = [lng, lat];
+
+      installationTargetMarker?.remove();
+      const popup = new maplibre.Popup({ offset: 10 }).setHTML(
+        `<div class="nm-popup"><div class="nm-popup-title">${escapeHtml(target.label || 'Installation Location')}</div><div class="nm-popup-line">${escapeHtml(target.address_line1 || '')}</div></div>`,
+      );
+      installationTargetMarker = new maplibre.Marker({
+        color: '#06b6d4',
+        scale: 1.08,
+      })
+        .setLngLat([lng, lat])
+        .setPopup(popup)
+        .addTo(map);
+      // For installation flow, always focus the customer target marker first.
+      if (compactMode || fromInstallation) {
+        map.easeTo({
+          center: [lng, lat],
+          zoom: Math.max(map.getZoom(), 16),
+          duration: 420,
+        });
+      } else if (!didInitialFitToMarkers) {
+        map.easeTo({
+          center: [lng, lat],
+          zoom: Math.max(map.getZoom(), 14),
+          duration: 420,
+        });
+      }
+    } catch (error) {
+      console.error(error);
     }
   }
 
@@ -388,6 +488,16 @@
         ctx.arc(cx, cy, s * 0.05, 0, Math.PI * 2);
         ctx.arc(cx + s * 0.2, cy, s * 0.05, 0, Math.PI * 2);
         ctx.fill();
+        break;
+      }
+      case 'switch': {
+        ctx.strokeRect(cx - s * 0.5, cy - s * 0.26, s, s * 0.52);
+        ctx.beginPath();
+        ctx.moveTo(cx - s * 0.35, cy - s * 0.06);
+        ctx.lineTo(cx + s * 0.35, cy - s * 0.06);
+        ctx.moveTo(cx - s * 0.35, cy + s * 0.08);
+        ctx.lineTo(cx + s * 0.35, cy + s * 0.08);
+        ctx.stroke();
         break;
       }
       case 'tower': {
@@ -444,6 +554,23 @@
         ctx.fill();
         break;
       }
+      case 'odc': {
+        ctx.strokeRect(cx - s * 0.34, cy - s * 0.38, s * 0.68, s * 0.76);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - s * 0.26);
+        ctx.lineTo(cx, cy + s * 0.26);
+        ctx.moveTo(cx - s * 0.18, cy);
+        ctx.lineTo(cx + s * 0.18, cy);
+        ctx.stroke();
+        break;
+      }
+      case 'odp': {
+        ctx.beginPath();
+        ctx.arc(cx, cy - s * 0.06, s * 0.18, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeRect(cx - s * 0.22, cy + s * 0.08, s * 0.44, s * 0.24);
+        break;
+      }
       case 'pop': {
         ctx.strokeRect(cx - s * 0.4, cy - s * 0.4, s * 0.8, s * 0.8);
         ctx.beginPath();
@@ -471,6 +598,7 @@
         ctx.stroke();
         break;
       }
+      case 'customer_premise':
       case 'customer_endpoint': {
         ctx.beginPath();
         ctx.moveTo(cx - s * 0.42, cy + s * 0.08);
@@ -523,10 +651,13 @@
       { id: 'nm-node-icon-pop', bg: '#0ea5e9', type: 'pop' },
       { id: 'nm-node-icon-olt', bg: '#22c55e', type: 'olt' },
       { id: 'nm-node-icon-router', bg: '#3b82f6', type: 'router' },
+      { id: 'nm-node-icon-switch', bg: '#2563eb', type: 'switch' },
       { id: 'nm-node-icon-tower', bg: '#f59e0b', type: 'tower' },
       { id: 'nm-node-icon-ap', bg: '#ef4444', type: 'ap' },
+      { id: 'nm-node-icon-odc', bg: '#0f766e', type: 'odc' },
+      { id: 'nm-node-icon-odp', bg: '#14b8a6', type: 'odp' },
       { id: 'nm-node-icon-splitter', bg: '#a855f7', type: 'splitter' },
-      { id: 'nm-node-icon-customer', bg: '#06b6d4', type: 'customer_endpoint' },
+      { id: 'nm-node-icon-customer', bg: '#06b6d4', type: 'customer_premise' },
     ];
     for (const d of defs) {
       if (!map.hasImage(d.id)) {
@@ -535,11 +666,44 @@
     }
   }
 
+  function isCustomerNodeType(nodeType: string) {
+    return nodeType === 'customer_endpoint' || nodeType === 'customer_premise';
+  }
+
+  function isSystemManagedNode(row: NMNode | null | undefined) {
+    return !!row?.metadata?.system_managed;
+  }
+
+  function systemManagedNodeSourceLabel(row: NMNode | null | undefined) {
+    const source = String(row?.metadata?.asset_source || row?.metadata?.asset_type || '').trim();
+    if (source === 'mikrotik_router') return 'Router map';
+    if (source === 'customer_location') return 'Customer location map';
+    return source ? 'Synced asset' : '';
+  }
+
+  function buildSyncedAssetKeySet(rows: NMNode[]) {
+    const keys = new Set<string>();
+    for (const row of rows || []) {
+      const assetType = String(row.metadata?.asset_type || '').trim();
+      const assetId = String(row.metadata?.asset_id || '').trim();
+      if (assetType && assetId) keys.add(`${assetType}:${assetId}`);
+    }
+    return keys;
+  }
+
+  function filterRoutersForOverlay(rows: NMRouter[], nodes: NMNode[]) {
+    const syncedKeys = buildSyncedAssetKeySet(nodes);
+    return (rows || []).filter((row) => !syncedKeys.has(`mikrotik_router:${row.id}`));
+  }
+
   function handleNodeLayerClick(e: any) {
     if (!map || !e.features?.[0] || !maplibre) return;
     const props = e.features[0].properties || {};
     const coords = (e.features[0].geometry as GeoJSON.Point).coordinates;
     const nodeId = String(props.id || '');
+    const node = nodeRows.find((x) => x.id === nodeId);
+    const managed = isSystemManagedNode(node);
+    const managedSource = systemManagedNodeSourceLabel(node);
     if (linkPickMode) {
       handleLinkPickNode(nodeId);
       return;
@@ -552,6 +716,7 @@
     const tone = statusTone(props.status);
     const name = escapeHtml(props.name || '-');
     const nodeType = escapeHtml(props.node_type || '-');
+    const sourceDetail = managedSource ? `<div class="nm-popup-label">Source</div><div class="nm-popup-value">${escapeHtml(managedSource)}</div>` : '';
     activeNodePopup?.remove();
     const popup = new maplibre.Popup({ closeButton: false, closeOnClick: true })
       .setLngLat(coords as [number, number])
@@ -564,10 +729,11 @@
           <div class="nm-popup-grid">
             <div class="nm-popup-label">Type</div>
             <div class="nm-popup-value">${nodeType}</div>
+            ${sourceDetail}
           </div>
           <div class="nm-popup-actions">
             <button id="${connectBtnId}" class="nm-popup-btn primary" type="button">Connect</button>
-            <button id="${editBtnId}" class="nm-popup-btn" type="button">Edit</button>
+            ${managed ? '' : `<button id="${editBtnId}" class="nm-popup-btn" type="button">Edit</button>`}
             <button id="${closeBtnId}" class="nm-popup-btn" type="button">Close</button>
           </div>
         </div>
@@ -584,7 +750,6 @@
       });
       editBtn?.addEventListener('click', () => {
         popup.remove();
-        const node = nodeRows.find((x) => x.id === nodeId);
         if (node) openEditNodeModal(node);
       });
       closeBtn?.addEventListener('click', () => {
@@ -876,7 +1041,7 @@
           id: 'nm-nodes-circle',
           type: 'circle',
           source: SOURCE_NODES,
-          filter: ['!=', ['get', 'node_type'], 'customer_endpoint'],
+          filter: ['all', ['!=', ['get', 'node_type'], 'customer_endpoint'], ['!=', ['get', 'node_type'], 'customer_premise']],
           paint: {
             'circle-radius': [
               'interpolate',
@@ -907,7 +1072,7 @@
           id: 'nm-nodes-icons',
           type: 'symbol',
           source: SOURCE_NODES,
-          filter: ['!=', ['get', 'node_type'], 'customer_endpoint'],
+          filter: ['all', ['!=', ['get', 'node_type'], 'customer_endpoint'], ['!=', ['get', 'node_type'], 'customer_premise']],
           layout: {
             'icon-image': [
               'match',
@@ -920,12 +1085,20 @@
               'nm-node-icon-olt',
               'router',
               'nm-node-icon-router',
+              'switch',
+              'nm-node-icon-switch',
               'tower',
               'nm-node-icon-tower',
               'ap',
               'nm-node-icon-ap',
+              'odc',
+              'nm-node-icon-odc',
+              'odp',
+              'nm-node-icon-odp',
               'splitter',
               'nm-node-icon-splitter',
+              'customer_premise',
+              'nm-node-icon-customer',
               'customer_endpoint',
               'nm-node-icon-customer',
               'nm-node-icon-router',
@@ -1172,6 +1345,7 @@
         syncLayerVisibility();
         syncLinkDraftPreview();
         await refreshMapData();
+        await resolveInstallationTargetMarker();
       });
     } catch (e: any) {
       console.error(e);
@@ -1225,6 +1399,33 @@
     dataCache.clear();
   }
 
+  async function syncTopologyAssets(manual = false) {
+    if (!canManageTopology || syncingAssetNodes) return false;
+    const now = Date.now();
+    if (!manual && now - lastAssetSyncAt < assetSyncTtlMs) return false;
+
+    syncingAssetNodes = true;
+    try {
+      const result = await api.networkMapping.assets.sync();
+      lastAssetSyncAt = Date.now();
+      if (manual) {
+        toast.success(
+          `Topology sync selesai. Router: ${result.router_nodes_created + result.router_nodes_updated}, Customer: ${result.customer_nodes_created + result.customer_nodes_updated}.`,
+        );
+      }
+      return result.total_nodes_touched > 0;
+    } catch (e: any) {
+      if (manual) {
+        toast.error(e?.message || 'Failed to sync topology assets');
+      } else {
+        console.error(e);
+      }
+      return false;
+    } finally {
+      syncingAssetNodes = false;
+    }
+  }
+
   async function refreshMapData(force = false) {
     if (map && !mapReady) return;
     const requestId = ++lastRequestId;
@@ -1234,6 +1435,12 @@
     refreshing = true;
 
     try {
+      let shouldBypassCache = force;
+      if (await syncTopologyAssets(force)) {
+        shouldBypassCache = true;
+        invalidateMapDataCache();
+      }
+
       const params = {
         q: q.trim() || undefined,
         status: status || undefined,
@@ -1251,13 +1458,14 @@
         bbox: params.bbox,
         zoom: zoomSig,
       });
-      const cached = force ? undefined : dataCache.get(cacheKey);
+      const cached = shouldBypassCache ? undefined : dataCache.get(cacheKey);
       if (cached && Date.now() - cached.at <= dataCacheTtlMs) {
         if (requestId !== lastRequestId) return;
         nodeRows = (cached.nodes.data || []) as NMNode[];
         linkRows = (cached.links.data || []) as NMLink[];
         zoneRows = (cached.zones.data || []) as NMZone[];
         routerRows = (cached.routers || []) as NMRouter[];
+        const routerOverlayRows = filterRoutersForOverlay(routerRows, nodeRows);
         nodeCount = cached.nodes.total || cached.nodes.data?.length || 0;
         linkCount = cached.links.total || cached.links.data?.length || 0;
         zoneCount = cached.zones.total || cached.zones.data?.length || 0;
@@ -1265,8 +1473,8 @@
         setSourceData(SOURCE_CUSTOMERS, customersToFeatureCollection(cached.nodes.data as NMNode[]));
         setSourceData(SOURCE_LINKS, linksToFeatureCollection(cached.links.data as NMLink[]));
         setSourceData(SOURCE_ZONES, zonesToFeatureCollection(cached.zones.data as NMZone[]));
-        setSourceData(SOURCE_ROUTERS, routersToFeatureCollection(cached.routers as NMRouter[]));
-        fitMapToAllMarkersOnFirstLoad(nodeRows, routerRows);
+        setSourceData(SOURCE_ROUTERS, routersToFeatureCollection(routerOverlayRows));
+        fitMapToAllMarkersOnFirstLoad(nodeRows, routerOverlayRows);
         return;
       }
 
@@ -1289,6 +1497,7 @@
       linkRows = (linksRes.data || []) as NMLink[];
       zoneRows = (zonesRes.data || []) as NMZone[];
       routerRows = (routersRes || []) as NMRouter[];
+      const routerOverlayRows = filterRoutersForOverlay(routerRows, nodeRows);
       nodeCount = nodesRes.total || nodesRes.data?.length || 0;
       linkCount = linksRes.total || linksRes.data?.length || 0;
       zoneCount = zonesRes.total || zonesRes.data?.length || 0;
@@ -1309,8 +1518,8 @@
       setSourceData(SOURCE_CUSTOMERS, customersToFeatureCollection(nodesRes.data as NMNode[]));
       setSourceData(SOURCE_LINKS, linksToFeatureCollection(linksRes.data as NMLink[]));
       setSourceData(SOURCE_ZONES, zonesToFeatureCollection(zonesRes.data as NMZone[]));
-      setSourceData(SOURCE_ROUTERS, routersToFeatureCollection(routersRes as NMRouter[]));
-      fitMapToAllMarkersOnFirstLoad(nodeRows, routerRows);
+      setSourceData(SOURCE_ROUTERS, routersToFeatureCollection(routerOverlayRows));
+      fitMapToAllMarkersOnFirstLoad(nodeRows, routerOverlayRows);
     } catch (e: any) {
       if ((e?.message || '').includes('Request canceled')) return;
       console.error(e);
@@ -1333,6 +1542,9 @@
       if (Number.isFinite(row.longitude) && Number.isFinite(row.latitude)) {
         points.push([row.longitude, row.latitude]);
       }
+    }
+    if (installationTargetCoord) {
+      points.push(installationTargetCoord);
     }
     if (!points.length) return;
     if (!maplibre) return;
@@ -1371,6 +1583,8 @@
           name: row.name,
           node_type: row.node_type,
           status: row.status,
+          system_managed: !!row.metadata?.system_managed,
+          asset_source: String(row.metadata?.asset_source || ''),
         },
       })),
     };
@@ -1398,7 +1612,7 @@
     return {
       type: 'FeatureCollection',
       features: (rows || [])
-        .filter((row) => row.node_type === 'customer_endpoint')
+        .filter((row) => isCustomerNodeType(row.node_type))
         .map((row) => ({
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [row.lng, row.lat] },
@@ -1407,6 +1621,8 @@
             name: row.name,
             node_type: row.node_type,
             status: row.status,
+            system_managed: !!row.metadata?.system_managed,
+            asset_source: String(row.metadata?.asset_source || ''),
           },
         })),
     };
@@ -1762,6 +1978,10 @@
   }
 
   function openEditNodeModal(row: NMNode) {
+    if (isSystemManagedNode(row)) {
+      toast.info(`Node ini tersinkron dari ${systemManagedNodeSourceLabel(row) || 'asset map'}. Ubah dari sumbernya.`);
+      return;
+    }
     nodePickMode = true;
     applyPickedNodeCoordinates(row.lng, row.lat);
     editingNodeId = row.id;
@@ -2097,6 +2317,8 @@
       } else {
         await api.networkMapping.links.create(payload);
       }
+      emitInstallationRefreshSignal();
+      emitWorkOrderUpdatedToParent();
       toast.success(editingLinkId ? 'Link updated' : 'Link created');
       closeLinkModal();
       invalidateMapDataCache();
@@ -2336,49 +2558,74 @@
   });
 </script>
 
-<div class="page-content fade-in">
-  <NetworkPageHeader
-    title={$t('admin.network.map.title') || 'Network Topology Map'}
-    subtitle={$t('admin.network.map.subtitle') || 'Visualize nodes, links, and service zones in current viewport.'}
-  >
-    {#snippet actions()}
-      <a class="btn ghost" href={`${tenantPrefix}/admin/network/noc`}>
-        <Icon name="arrow-left" size={16} />
-        {$t('admin.network.map.back_to_noc') || 'Back to NOC'}
-      </a>
-      <button class="btn" type="button" onclick={() => void refreshMapData()} disabled={refreshing || loading}>
-        <Icon name="refresh-cw" size={16} />
-        {refreshing ? ($t('common.loading') || 'Loading...') : ($t('common.refresh') || 'Refresh')}
-      </button>
-    {/snippet}
-  </NetworkPageHeader>
+<div class="page-content fade-in" class:compact-mode={compactMode}>
+  {#if !compactMode}
+    <NetworkPageHeader
+      title={$t('admin.network.map.title') || 'Network Topology Map'}
+      subtitle={$t('admin.network.map.subtitle') || 'Visualize nodes, links, and service zones in current viewport.'}
+    >
+      {#snippet actions()}
+        {#if fromInstallation}
+          <a class="btn ghost" href={installationReturnUrl}>
+            <Icon name="arrow-left" size={16} />
+            {$t('admin.network.map.back_to_installation') || 'Back to Installation'}
+          </a>
+        {/if}
+        <a class="btn ghost" href={`${tenantPrefix}/admin/network/noc`}>
+          <Icon name="arrow-left" size={16} />
+          {$t('admin.network.map.back_to_noc') || 'Back to NOC'}
+        </a>
+        {#if canManageTopology}
+          <button
+            class="btn ghost"
+            type="button"
+            onclick={async () => {
+              if (await syncTopologyAssets(true)) {
+                invalidateMapDataCache();
+              }
+              await refreshMapData(true);
+            }}
+            disabled={syncingAssetNodes || refreshing || loading}
+          >
+            <Icon name="git-merge" size={16} />
+            {syncingAssetNodes ? 'Syncing...' : 'Sync Router & Customer Nodes'}
+          </button>
+        {/if}
+        <button class="btn" type="button" onclick={() => void refreshMapData()} disabled={refreshing || loading}>
+          <Icon name="refresh-cw" size={16} />
+          {refreshing ? ($t('common.loading') || 'Loading...') : ($t('common.refresh') || 'Refresh')}
+        </button>
+      {/snippet}
+    </NetworkPageHeader>
+  {/if}
 
-  <div class="stats">
-    <div class="stat-card">
-      <div class="stat-top">
-        <span>{$t('admin.network.map.stats.nodes') || 'Nodes'}</span>
-        <Icon name="map-pin" size={16} />
+  {#if !compactMode}
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-top">
+          <span>{$t('admin.network.map.stats.nodes') || 'Nodes'}</span>
+          <Icon name="map-pin" size={16} />
+        </div>
+        <div class="stat-value">{nodeCount}</div>
       </div>
-      <div class="stat-value">{nodeCount}</div>
-    </div>
-    <div class="stat-card tone-ok">
-      <div class="stat-top">
-        <span>{$t('admin.network.map.stats.links') || 'Links'}</span>
-        <Icon name="git-merge" size={16} />
+      <div class="stat-card tone-ok">
+        <div class="stat-top">
+          <span>{$t('admin.network.map.stats.links') || 'Links'}</span>
+          <Icon name="git-merge" size={16} />
+        </div>
+        <div class="stat-value">{linkCount}</div>
       </div>
-      <div class="stat-value">{linkCount}</div>
-    </div>
-    <div class="stat-card tone-warn">
-      <div class="stat-top">
-        <span>{$t('admin.network.map.stats.zones') || 'Zones'}</span>
-        <Icon name="layers" size={16} />
+      <div class="stat-card tone-warn">
+        <div class="stat-top">
+          <span>{$t('admin.network.map.stats.zones') || 'Zones'}</span>
+          <Icon name="layers" size={16} />
+        </div>
+        <div class="stat-value">{zoneCount}</div>
       </div>
-      <div class="stat-value">{zoneCount}</div>
     </div>
-  </div>
 
-  <div class="filters-wrap">
-    <NetworkFilterPanel>
+    <div class="filters-wrap">
+      <NetworkFilterPanel>
       <div class="control">
         <label for="nm-search">{$t('admin.network.map.filters.search') || 'Search'}</label>
         <input
@@ -2412,9 +2659,13 @@
           <option value="pop">POP</option>
           <option value="olt">OLT</option>
           <option value="router">Router</option>
+          <option value="switch">Switch</option>
           <option value="tower">Tower</option>
           <option value="ap">AP</option>
+          <option value="odc">ODC</option>
+          <option value="odp">ODP</option>
           <option value="splitter">Splitter</option>
+          <option value="customer_premise">Customer Premise</option>
           <option value="customer_endpoint">Customer Endpoint</option>
           <option value="fiber">Fiber</option>
           <option value="lan">LAN</option>
@@ -2434,42 +2685,45 @@
           {$t('common.reset') || 'Reset'}
         </button>
       </div>
-    </NetworkFilterPanel>
-  </div>
-
-  <div class="toolbar-wrap">
-    <div class="map-toolbar">
-      <div class="layer-toggles">
-        <label class="toggle">
-          <input type="checkbox" bind:checked={nodesVisible} />
-          <span>{$t('admin.network.map.layers.nodes') || 'Nodes'}</span>
-        </label>
-        <label class="toggle">
-          <input type="checkbox" bind:checked={linksVisible} />
-          <span>{$t('admin.network.map.layers.links') || 'Links'}</span>
-        </label>
-        <label class="toggle">
-          <input type="checkbox" bind:checked={zonesVisible} />
-          <span>{$t('admin.network.map.layers.zones') || 'Zones'}</span>
-        </label>
-        <label class="toggle">
-          <input type="checkbox" bind:checked={routersVisible} />
-          <span>Routers</span>
-        </label>
-        <label class="toggle">
-          <input type="checkbox" bind:checked={customersVisible} />
-          <span>Customers</span>
-        </label>
-      </div>
+      </NetworkFilterPanel>
     </div>
+  {/if}
 
-    {#if myLocationError}
-      <div class="location-error">
-        <Icon name="alert-triangle" size={14} />
-        <span>{myLocationError}</span>
+  {#if !compactMode}
+    <div class="toolbar-wrap">
+      <div class="map-toolbar">
+        <div class="layer-toggles">
+          <label class="toggle">
+            <input type="checkbox" bind:checked={nodesVisible} />
+            <span>{$t('admin.network.map.layers.nodes') || 'Nodes'}</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" bind:checked={linksVisible} />
+            <span>{$t('admin.network.map.layers.links') || 'Links'}</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" bind:checked={zonesVisible} />
+            <span>{$t('admin.network.map.layers.zones') || 'Zones'}</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" bind:checked={routersVisible} />
+            <span>Routers</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" bind:checked={customersVisible} />
+            <span>Customers</span>
+          </label>
+        </div>
       </div>
-    {/if}
-  </div>
+
+      {#if myLocationError}
+        <div class="location-error">
+          <Icon name="alert-triangle" size={14} />
+          <span>{myLocationError}</span>
+        </div>
+      {/if}
+    </div>
+  {/if}
 
   <MapCanvasShell
     bind:mapEl={mapEl}
@@ -2481,7 +2735,7 @@
     {mapErrorMessage}
     mapUnavailableTitle="Map preview unavailable on this device"
     mapUnavailableSubtitle="WebGL context failed. Data is still loaded and counts are visible."
-    height="min(62vh, 700px)"
+    height={compactMode ? 'min(76vh, 760px)' : 'min(62vh, 700px)'}
   >
     <svelte:fragment slot="overlay">
       {#if showCreateNodePanel}
@@ -2563,6 +2817,7 @@
     </svelte:fragment>
   </MapCanvasShell>
 
+  {#if !compactMode}
   <div class="manager-wrap">
     <div class="manager-header">
       <div class="manager-tabs">
@@ -2602,6 +2857,7 @@
             <tr>
               <th>Name</th>
               <th>Type</th>
+              <th>Source</th>
               <th>Status</th>
               <th>Coordinates</th>
               <th class="right">Actions</th>
@@ -2609,17 +2865,27 @@
           </thead>
           <tbody>
             {#if nodeRows.length === 0}
-              <tr><td colspan="5" class="empty">No nodes</td></tr>
+              <tr><td colspan="6" class="empty">No nodes</td></tr>
             {:else}
               {#each nodeRows as row}
                 <tr>
                   <td>{row.name}</td>
                   <td>{row.node_type}</td>
+                  <td>{systemManagedNodeSourceLabel(row) || 'Manual'}</td>
                   <td>{row.status}</td>
                   <td>{row.lat.toFixed(6)}, {row.lng.toFixed(6)}</td>
                   <td class="right">
-                    <button class="btn ghost btn-xs" onclick={() => openEditNodeModal(row)}>Edit</button>
-                    <button class="btn ghost btn-xs danger" onclick={() => openDeleteConfirm('node', row.id, row.name)} disabled={deletingId === row.id}>Delete</button>
+                    <button class="btn ghost btn-xs" onclick={() => startConnectFromNode(row.id)}>Connect</button>
+                    <button class="btn ghost btn-xs" onclick={() => openEditNodeModal(row)} disabled={isSystemManagedNode(row)}>
+                      Edit
+                    </button>
+                    <button
+                      class="btn ghost btn-xs danger"
+                      onclick={() => openDeleteConfirm('node', row.id, row.name)}
+                      disabled={deletingId === row.id || isSystemManagedNode(row)}
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               {/each}
@@ -2770,6 +3036,7 @@
       </div>
     {/if}
   </div>
+  {/if}
 </div>
 
 <Modal
@@ -2997,6 +3264,17 @@
     max-width: 1460px;
     margin: 0 auto;
   }
+  .page-content.compact-mode {
+    padding: 10px;
+    max-width: 100%;
+  }
+  .compact-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
 
   .btn {
     display: inline-flex;
@@ -3015,6 +3293,11 @@
   .btn.ghost {
     background: transparent;
     color: var(--text-primary);
+  }
+  .btn.mini {
+    padding: 7px 10px;
+    border-radius: 10px;
+    font-size: 0.8rem;
   }
 
   .btn:disabled {

@@ -22,9 +22,9 @@ use services::metrics_service::MetricsService;
 #[cfg(feature = "desktop")]
 use services::{
     AnnouncementScheduler, AuditService, AuthService, BackupService, CustomerService,
-    EmailOutboxService, EmailService, IspPackageService, MikrotikService, NotificationService,
-    NetworkMappingService, PaymentService, PlanService, PppoeService, RoleService,
-    SettingsService, SystemService, TeamService, UserService,
+    EmailOutboxService, EmailService, IspPackageService, MikrotikService, NetworkMappingService,
+    NotificationService, PaymentService, PlanService, PppoeService, RoleService, SettingsService,
+    SystemService, TeamService, UserService,
 };
 #[cfg(feature = "desktop")]
 use tracing::info;
@@ -550,9 +550,14 @@ pub fn run() {
                                     create_customer_portal_user,
                                     remove_customer_portal_user,
                                     list_my_customer_locations,
+                                    create_my_customer_location,
+                                    update_my_customer_location,
+                                    delete_my_customer_location,
                                     list_my_customer_packages,
                                     list_my_customer_subscriptions,
                                     get_my_customer_subscription_stats,
+                                    get_my_customer_subscription_installation_tracker,
+                                    request_my_customer_subscription_reschedule,
                                     create_my_customer_subscription_invoice,
                                     list_customer_subscriptions,
                                     create_customer_subscription,

@@ -332,25 +332,43 @@
   });
 
   let mobileOpen = $state(false);
+  const isCompactMapEmbed = $derived.by(() => {
+    const path = $page.url.pathname || '';
+    if (!path.includes('/admin/network/map')) return false;
+    return $page.url.searchParams.get('compact') === '1';
+  });
 </script>
 
-<div class="app-shell">
-  <!-- Sidebar sits on the base layer -->
-  <Sidebar bind:isMobileOpen={mobileOpen} />
+{#if isCompactMapEmbed}
+  <div class="embed-shell">
+    {@render children()}
+  </div>
+{:else}
+  <div class="app-shell">
+    <!-- Sidebar sits on the base layer -->
+    <Sidebar bind:isMobileOpen={mobileOpen} />
 
-  <!-- Main Area is a floating card -->
-  <div class="main-viewport">
-    <div class="content-surface">
-      <Topbar onMobileMenuClick={() => (mobileOpen = !mobileOpen)} />
-      <AnnouncementBanner />
-      <div class="scroll-area">
-        {@render children()}
+    <!-- Main Area is a floating card -->
+    <div class="main-viewport">
+      <div class="content-surface">
+        <Topbar onMobileMenuClick={() => (mobileOpen = !mobileOpen)} />
+        <AnnouncementBanner />
+        <div class="scroll-area">
+          {@render children()}
+        </div>
       </div>
     </div>
   </div>
-</div>
+{/if}
 
 <style>
+  .embed-shell {
+    width: 100%;
+    height: 100%;
+    min-height: 100dvh;
+    background: transparent;
+    overflow: hidden;
+  }
   .app-shell {
     display: flex;
     height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));

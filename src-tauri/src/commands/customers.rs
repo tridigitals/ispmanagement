@@ -1,14 +1,14 @@
 use crate::models::{
     AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
     CreateCustomerRegistrationInviteRequest, CreateCustomerRequest,
-    CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest, Customer, CustomerLocation,
-    CustomerPortalSubscriptionStats, CustomerPortalUser, CustomerRegistrationInviteCreateResponse,
-    CustomerRegistrationInvitePolicy, CustomerRegistrationInviteSummary,
-    CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionView,
-    InstallationWorkOrder, InstallationWorkOrderView, Invoice, IspPackage, PaginatedResponse,
-    PortalCheckoutSubscriptionRequest, TeamMemberWithUser,
+    CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
+    CreateMyCustomerLocationRequest, Customer, CustomerLocation, CustomerPortalSubscriptionStats,
+    CustomerPortalUser, CustomerRegistrationInviteCreateResponse, CustomerRegistrationInvitePolicy,
+    CustomerRegistrationInviteSummary, CustomerRegistrationInviteView, CustomerSubscription,
+    CustomerSubscriptionView, InstallationWorkOrder, InstallationWorkOrderView, Invoice,
+    IspPackage, PaginatedResponse, PortalCheckoutSubscriptionRequest, TeamMemberWithUser,
     UpdateCustomerLocationRequest, UpdateCustomerRegistrationInvitePolicyRequest,
-    UpdateCustomerRequest, UpdateCustomerSubscriptionRequest,
+    UpdateCustomerRequest, UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
 };
 use crate::services::{AuthService, CustomerService, PaymentService};
 use tauri::State;
@@ -17,6 +17,19 @@ use tauri::State;
 pub struct PortalCheckoutResponse {
     pub subscription: CustomerSubscription,
     pub invoice: Invoice,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct PortalOrderRequestResponse {
+    pub subscription: CustomerSubscription,
+    pub work_order: InstallationWorkOrder,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct PortalInstallationTrackerResponse {
+    pub subscription: CustomerSubscriptionView,
+    pub work_order: Option<InstallationWorkOrderView>,
+    pub reschedule_request: Option<WorkOrderRescheduleRequestView>,
 }
 
 #[tauri::command]
@@ -491,6 +504,76 @@ pub async fn list_my_customer_locations(
 }
 
 #[tauri::command]
+pub async fn create_my_customer_location(
+    token: String,
+    dto: CreateMyCustomerLocationRequest,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<CustomerLocation, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .create_my_location(&claims.sub, &tenant_id, dto, Some("127.0.0.1"))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn update_my_customer_location(
+    token: String,
+    location_id: String,
+    dto: UpdateCustomerLocationRequest,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<CustomerLocation, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .update_my_location(
+            &claims.sub,
+            &tenant_id,
+            &location_id,
+            dto,
+            Some("127.0.0.1"),
+        )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn delete_my_customer_location(
+    token: String,
+    location_id: String,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<(), String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .delete_my_location(&claims.sub, &tenant_id, &location_id, Some("127.0.0.1"))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn list_my_customer_packages(
     token: String,
     auth: State<'_, AuthService>,
@@ -561,6 +644,68 @@ pub async fn get_my_customer_subscription_stats(
         .get_my_subscription_stats(&claims.sub, &tenant_id)
         .await
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_my_customer_subscription_installation_tracker(
+    token: String,
+    subscription_id: String,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<PortalInstallationTrackerResponse, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    let (subscription, work_order, reschedule_request) = customers
+        .get_my_subscription_installation_tracker(&claims.sub, &tenant_id, &subscription_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(PortalInstallationTrackerResponse {
+        subscription,
+        work_order,
+        reschedule_request,
+    })
+}
+
+#[tauri::command]
+pub async fn request_my_customer_subscription_reschedule(
+    token: String,
+    subscription_id: String,
+    scheduled_at: String,
+    reason: Option<String>,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<PortalOrderRequestResponse, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    let (subscription, work_order) = customers
+        .request_my_subscription_reschedule(
+            &claims.sub,
+            &tenant_id,
+            &subscription_id,
+            scheduled_at,
+            reason,
+            Some("127.0.0.1"),
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(PortalOrderRequestResponse {
+        subscription,
+        work_order,
+    })
 }
 
 #[tauri::command]

@@ -187,6 +187,8 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       },
       list_my_customer_locations: { method: 'GET', path: '/customers/portal/my-locations' },
       create_my_customer_location: { method: 'POST', path: '/customers/portal/my-locations' },
+      update_my_customer_location: { method: 'PUT', path: '/customers/portal/my-locations/:locationId' },
+      delete_my_customer_location: { method: 'DELETE', path: '/customers/portal/my-locations/:locationId' },
       list_my_customer_packages: { method: 'GET', path: '/customers/portal/my-packages' },
       get_my_customer_subscription_stats: {
         method: 'GET',
@@ -200,6 +202,14 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       reopen_my_customer_subscription_order_request: {
         method: 'POST',
         path: '/customers/portal/my-subscriptions/:subscriptionId/reopen-request',
+      },
+      get_my_customer_subscription_installation_tracker: {
+        method: 'GET',
+        path: '/customers/portal/my-subscriptions/:subscriptionId/installation-tracker',
+      },
+      request_my_customer_subscription_reschedule: {
+        method: 'POST',
+        path: '/customers/portal/my-subscriptions/:subscriptionId/reschedule-request',
       },
       create_my_customer_subscription_invoice: {
         method: 'POST',
@@ -234,6 +244,18 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       reopen_installation_work_order: {
         method: 'POST',
         path: '/admin/work-orders/:id/reopen',
+      },
+      get_pending_work_order_reschedule_request: {
+        method: 'GET',
+        path: '/admin/work-orders/:id/reschedule-request',
+      },
+      approve_work_order_reschedule_request: {
+        method: 'POST',
+        path: '/admin/work-orders/:id/reschedule-request/approve',
+      },
+      reject_work_order_reschedule_request: {
+        method: 'POST',
+        path: '/admin/work-orders/:id/reschedule-request/reject',
       },
       // Settings
       get_logo: { method: 'GET', path: '/settings/logo' },
@@ -481,6 +503,7 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       delete_service_zone: { method: 'DELETE', path: '/admin/network-mapping/zones/:id' },
       resolve_service_zone: { method: 'POST', path: '/admin/network-mapping/zones/resolve' },
       compute_network_path: { method: 'POST', path: '/admin/network-mapping/paths/compute' },
+      sync_network_mapping_assets: { method: 'POST', path: '/admin/network-mapping/assets/sync' },
       rank_candidate_network_nodes: {
         method: 'POST',
         path: '/admin/network-mapping/nodes/rank-candidates',
@@ -1036,6 +1059,8 @@ export interface CustomerSubscriptionView extends CustomerSubscription {
   latest_work_order_id: string | null;
   latest_work_order_status: string | null;
   can_request_reopen: boolean;
+  latest_reschedule_status: string | null;
+  latest_reschedule_requested_at: string | null;
 }
 
 export interface CustomerPortalSubscriptionStats {
@@ -1053,6 +1078,12 @@ export interface CustomerPortalCheckoutResponse {
 export interface CustomerPortalOrderRequestResponse {
   subscription: CustomerSubscription;
   work_order: InstallationWorkOrderView;
+}
+
+export interface CustomerPortalInstallationTrackerResponse {
+  subscription: CustomerSubscriptionView;
+  work_order: InstallationWorkOrderView | null;
+  reschedule_request: WorkOrderRescheduleRequestView | null;
 }
 
 export interface InstallationWorkOrderView {
@@ -1087,6 +1118,20 @@ export interface InstallationWorkOrderView {
   selected_node_score: number | null;
   path_node_ids: unknown[] | null;
   path_link_ids: unknown[] | null;
+}
+
+export interface WorkOrderRescheduleRequestView {
+  id: string;
+  work_order_id: string;
+  requested_schedule_at: string;
+  reason: string | null;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | string;
+  requested_by_name: string | null;
+  requested_by_email: string | null;
+  reviewed_by_name: string | null;
+  reviewed_at: string | null;
+  review_notes: string | null;
+  created_at: string;
 }
 
 export interface PppoeAccountPublic {
@@ -2093,6 +2138,36 @@ export const customers = {
       notes?: string | null;
     }): Promise<CustomerLocation> =>
       safeInvoke('create_my_customer_location', { token: getTokenOrThrow(), ...dto }),
+    updateMyLocation: (
+      locationId: string,
+      dto: Partial<
+        Pick<
+          CustomerLocation,
+          | 'label'
+          | 'address_line1'
+          | 'address_line2'
+          | 'city'
+          | 'state'
+          | 'postal_code'
+          | 'country'
+          | 'latitude'
+          | 'longitude'
+          | 'notes'
+        >
+      >,
+    ): Promise<CustomerLocation> =>
+      safeInvoke('update_my_customer_location', {
+        token: getTokenOrThrow(),
+        locationId,
+        location_id: locationId,
+        ...dto,
+      }),
+    deleteMyLocation: (locationId: string): Promise<void> =>
+      safeInvoke('delete_my_customer_location', {
+        token: getTokenOrThrow(),
+        locationId,
+        location_id: locationId,
+      }),
     myPackages: (): Promise<IspPackage[]> =>
       safeInvoke('list_my_customer_packages', { token: getTokenOrThrow() }),
     mySubscriptionStats: (): Promise<CustomerPortalSubscriptionStats> =>
@@ -2139,6 +2214,24 @@ export const customers = {
         subscriptionId,
         subscription_id: subscriptionId,
         notes: dto?.notes,
+      }),
+    installationTracker: (
+      subscriptionId: string,
+    ): Promise<CustomerPortalInstallationTrackerResponse> =>
+      safeInvoke('get_my_customer_subscription_installation_tracker', {
+        token: getTokenOrThrow(),
+        subscriptionId,
+        subscription_id: subscriptionId,
+      }),
+    requestReschedule: (
+      subscriptionId: string,
+      dto: { scheduled_at: string; reason?: string },
+    ): Promise<CustomerPortalOrderRequestResponse> =>
+      safeInvoke('request_my_customer_subscription_reschedule', {
+        token: getTokenOrThrow(),
+        subscriptionId,
+        subscription_id: subscriptionId,
+        ...dto,
       }),
   },
 };
@@ -2199,6 +2292,23 @@ export const workOrders = {
       token: getTokenOrThrow(),
       id,
       notes: notes ?? undefined,
+    }),
+  getRescheduleRequest: (id: string): Promise<WorkOrderRescheduleRequestView | null> =>
+    safeInvoke('get_pending_work_order_reschedule_request', {
+      token: getTokenOrThrow(),
+      id,
+    }),
+  approveReschedule: (id: string, payload?: { scheduled_at?: string; notes?: string }) =>
+    safeInvoke('approve_work_order_reschedule_request', {
+      token: getTokenOrThrow(),
+      id,
+      ...(payload || {}),
+    }),
+  rejectReschedule: (id: string, payload: { notes: string }) =>
+    safeInvoke('reject_work_order_reschedule_request', {
+      token: getTokenOrThrow(),
+      id,
+      ...payload,
     }),
 };
 
@@ -2444,6 +2554,15 @@ export const networkMapping = {
       require_active_nodes?: boolean;
     }): Promise<any> =>
       safeInvoke('compute_network_path', { token: getTokenOrThrow(), ...dto }),
+  },
+  assets: {
+    sync: (): Promise<{
+      router_nodes_created: number;
+      router_nodes_updated: number;
+      customer_nodes_created: number;
+      customer_nodes_updated: number;
+      total_nodes_touched: number;
+    }> => safeInvoke('sync_network_mapping_assets', { token: getTokenOrThrow() }),
   },
   candidates: {
     rank: (dto: {

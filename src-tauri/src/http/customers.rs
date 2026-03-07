@@ -5,13 +5,13 @@ use crate::models::{
     AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
     CreateCustomerRegistrationInviteRequest, CreateCustomerRequest,
     CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
-    CreateMyCustomerLocationRequest, Customer, CustomerLocation, CustomerPortalUser,
-    CustomerRegistrationInviteCreateResponse, CustomerRegistrationInvitePolicy,
+    CreateMyCustomerLocationRequest, Customer, CustomerLocation, CustomerPortalSubscriptionStats,
+    CustomerPortalUser, CustomerRegistrationInviteCreateResponse, CustomerRegistrationInvitePolicy,
     CustomerRegistrationInviteSummary, CustomerRegistrationInviteView, CustomerSubscription,
-    CustomerSubscriptionView, CustomerPortalSubscriptionStats, InstallationWorkOrder, Invoice,
-    IspPackage, PaginatedResponse, PortalCheckoutSubscriptionRequest, UpdateCustomerLocationRequest,
-    UpdateCustomerRegistrationInvitePolicyRequest, UpdateCustomerRequest,
-    UpdateCustomerSubscriptionRequest,
+    CustomerSubscriptionView, InstallationWorkOrder, InstallationWorkOrderView, Invoice,
+    IspPackage, PaginatedResponse, PortalCheckoutSubscriptionRequest,
+    UpdateCustomerLocationRequest, UpdateCustomerRegistrationInvitePolicyRequest,
+    UpdateCustomerRequest, UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
 };
 use axum::{
     extract::{ConnectInfo, Path, Query, State},
@@ -78,6 +78,10 @@ pub fn router() -> Router<AppState> {
             "/portal/my-locations",
             get(list_my_locations).post(create_my_location),
         )
+        .route(
+            "/portal/my-locations/{location_id}",
+            axum::routing::put(update_my_location).delete(delete_my_location),
+        )
         .route("/portal/my-packages", get(list_my_packages))
         .route(
             "/portal/my-subscriptions/stats",
@@ -85,10 +89,21 @@ pub fn router() -> Router<AppState> {
         )
         .route("/portal/my-subscriptions", get(list_my_subscriptions))
         .route(
+            "/portal/my-subscriptions/{subscription_id}/installation-tracker",
+            get(portal_get_installation_tracker),
+        )
+        .route(
+            "/portal/my-subscriptions/{subscription_id}/reschedule-request",
+            post(portal_reschedule_order_request_subscription),
+        )
+        .route(
             "/portal/my-subscriptions/{subscription_id}/reopen-request",
             post(portal_reopen_order_request_subscription),
         )
-        .route("/portal/order-request", post(portal_order_request_subscription))
+        .route(
+            "/portal/order-request",
+            post(portal_order_request_subscription),
+        )
         .route("/portal/checkout", post(portal_checkout_subscription))
 }
 
@@ -149,6 +164,13 @@ struct PortalCheckoutResponse {
 struct PortalOrderRequestResponse {
     subscription: CustomerSubscription,
     work_order: InstallationWorkOrder,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct PortalInstallationTrackerResponse {
+    subscription: CustomerSubscriptionView,
+    work_order: Option<InstallationWorkOrderView>,
+    reschedule_request: Option<WorkOrderRescheduleRequestView>,
 }
 
 // GET /api/customers?q=...&page=1&per_page=25
@@ -497,6 +519,39 @@ async fn create_my_location(
     Ok(Json(row))
 }
 
+// PUT /api/customers/portal/my-locations/{location_id}
+async fn update_my_location(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(location_id): Path<String>,
+    Json(dto): Json<UpdateCustomerLocationRequest>,
+) -> AppResult<Json<CustomerLocation>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+    let row = state
+        .customer_service
+        .update_my_location(&claims.sub, &tenant_id, &location_id, dto, Some(&ip))
+        .await?;
+    Ok(Json(row))
+}
+
+// DELETE /api/customers/portal/my-locations/{location_id}
+async fn delete_my_location(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(location_id): Path<String>,
+) -> AppResult<Json<serde_json::Value>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+    state
+        .customer_service
+        .delete_my_location(&claims.sub, &tenant_id, &location_id, Some(&ip))
+        .await?;
+    Ok(Json(serde_json::json!({ "ok": true })))
+}
+
 // GET /api/customers/portal/my-packages
 async fn list_my_packages(
     State(state): State<AppState>,
@@ -597,6 +652,31 @@ struct PortalReopenRequestBody {
     notes: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+struct PortalRescheduleRequestBody {
+    scheduled_at: String,
+    reason: Option<String>,
+}
+
+// GET /api/customers/portal/my-subscriptions/{subscription_id}/installation-tracker
+async fn portal_get_installation_tracker(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(subscription_id): Path<String>,
+) -> AppResult<Json<PortalInstallationTrackerResponse>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let (subscription, work_order, reschedule_request) = state
+        .customer_service
+        .get_my_subscription_installation_tracker(&claims.sub, &tenant_id, &subscription_id)
+        .await?;
+
+    Ok(Json(PortalInstallationTrackerResponse {
+        subscription,
+        work_order,
+        reschedule_request,
+    }))
+}
+
 // POST /api/customers/portal/my-subscriptions/{subscription_id}/reopen-request
 async fn portal_reopen_order_request_subscription(
     State(state): State<AppState>,
@@ -615,6 +695,35 @@ async fn portal_reopen_order_request_subscription(
             &tenant_id,
             &subscription_id,
             body.notes,
+            Some(&ip),
+        )
+        .await?;
+
+    Ok(Json(PortalOrderRequestResponse {
+        subscription,
+        work_order,
+    }))
+}
+
+// POST /api/customers/portal/my-subscriptions/{subscription_id}/reschedule-request
+async fn portal_reschedule_order_request_subscription(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(subscription_id): Path<String>,
+    Json(body): Json<PortalRescheduleRequestBody>,
+) -> AppResult<Json<PortalOrderRequestResponse>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+
+    let (subscription, work_order) = state
+        .customer_service
+        .request_my_subscription_reschedule(
+            &claims.sub,
+            &tenant_id,
+            &subscription_id,
+            body.scheduled_at,
+            body.reason,
             Some(&ip),
         )
         .await?;

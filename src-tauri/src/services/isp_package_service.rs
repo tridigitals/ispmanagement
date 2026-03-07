@@ -163,13 +163,13 @@ impl IspPackageService {
         );
 
         let rows: Vec<IspPackage> = sqlx::query_as(&list_sql)
-        .bind(tenant_id)
-        .bind(&q)
-        .bind(per_page as i64)
-        .bind(offset as i64)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
+            .bind(tenant_id)
+            .bind(&q)
+            .bind(per_page as i64)
+            .bind(offset as i64)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
 
         Ok(PaginatedResponse {
             data: rows,

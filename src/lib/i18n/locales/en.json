@@ -1768,6 +1768,125 @@
         "location_create_failed": "Failed to create location"
       }
     },
+    "services_portal": {
+      "page": {
+        "title": "Customer Services",
+        "subtitle": "List of all services you have ordered."
+      },
+      "actions": {
+        "billing_invoices": "Billing & Invoices",
+        "order_new_service": "Order New Service",
+        "show_all_services": "Show All Services",
+        "view_invoices": "View Invoices",
+        "track_installation": "Track Installation",
+        "request_reopen": "Request Reopen",
+        "reopening": "Reopening..."
+      },
+      "stats": {
+        "total": "Total Services",
+        "active": "Active",
+        "pending_installation": "Pending Installation",
+        "needs_attention": "Needs Attention"
+      },
+      "list": {
+        "title": "Ordered Services",
+        "subtitle": "Services requested by your account.",
+        "services_suffix": "services",
+        "filter": "Filter",
+        "sort": "Sort"
+      },
+      "filters": {
+        "all": "All Services",
+        "active": "Active",
+        "pending_installation": "Pending Installation",
+        "needs_attention": "Needs Attention"
+      },
+      "sort": {
+        "updated_at": "Updated",
+        "price": "Price",
+        "status": "Status",
+        "location": "Location",
+        "service": "Service"
+      },
+      "table": {
+        "service": "Service",
+        "status": "Status",
+        "location": "Location",
+        "billing_cycle": "Billing Cycle",
+        "price": "Price",
+        "updated_at": "Updated",
+        "actions": "Actions"
+      },
+      "empty": {
+        "no_services": "No ordered services yet.",
+        "no_match": "No service found for selected filter."
+      },
+      "toasts": {
+        "load_failed": "Failed to load services",
+        "reopen_success_with_id": "Installation request reopened (WO {id})",
+        "reopen_success": "Installation request reopened",
+        "reopen_failed": "Failed to reopen installation request"
+      },
+      "status": {
+        "pending_installation": "Pending Installation",
+        "awaiting_payment": "Awaiting Payment",
+        "suspended": "Suspended",
+        "cancelled": "Cancelled"
+      },
+      "status_hint": {
+        "active": "Service is active and running.",
+        "pending_installation": "Waiting assignment and installation scheduling.",
+        "awaiting_payment": "Installation is complete. Waiting for first invoice/payment confirmation.",
+        "suspended": "Service is suspended. Please check billing or contact support.",
+        "cancelled": "Request was cancelled.",
+        "cancelled_reopen": "Request was cancelled. You can submit reopen request."
+      },
+      "tracker": {
+        "title": "Installation Tracker",
+        "loading": "Loading tracker...",
+        "scheduled_at": "Scheduled At",
+        "last_update": "Last Update",
+        "latest_notes": "Latest Notes",
+        "steps": {
+          "requested": "Requested",
+          "assigned": "Assigned",
+          "scheduled": "Scheduled",
+          "onsite": "On-site",
+          "active": "Active"
+        }
+      },
+      "reschedule": {
+        "badge": {
+          "pending": "Reschedule Pending",
+          "approved": "Reschedule Approved",
+          "rejected": "Reschedule Rejected"
+        },
+        "latest_title": "Latest Reschedule Request",
+        "labels": {
+          "requested_at": "Reschedule At",
+          "requested_schedule": "Requested Schedule",
+          "requested_by": "Requested By",
+          "reason": "Reason",
+          "admin_notes": "Admin Notes"
+        },
+        "form": {
+          "title": "Request Reschedule",
+          "subtitle": "You can request new installation time before onsite work starts.",
+          "new_schedule": "New Schedule",
+          "reason_optional": "Reason (optional)",
+          "reason_placeholder": "Need different time slot",
+          "submit": "Submit Reschedule",
+          "submitting": "Submitting...",
+          "wait_schedule": "Reschedule will be available after admin/technician sets your installation schedule."
+        },
+        "toasts": {
+          "select_schedule": "Please select new installation schedule",
+          "invalid_datetime": "Invalid date time",
+          "submit_success": "Reschedule request submitted",
+          "submit_failed": "Failed to submit reschedule request"
+        }
+      }
+    },
     "portal_summary": {
       "title": "Service Overview",
       "health": "Status",
@@ -3196,22 +3315,68 @@
         "title": "Installation Work Orders",
         "subtitle": "Technician pipeline from paid invoices to active service.",
         "empty": "No installation work orders",
+        "search": "Search work orders...",
         "show_closed": "Show closed",
         "hide_closed": "Hide closed",
         "assign_required": "Choose assignee first",
+        "schedule_required": "Choose schedule first",
+        "checklist_required": "Complete all checklist items before activation.",
+        "plan_required": "Set assignee and schedule before starting.",
+        "invoice_created": "Invoice created successfully",
+        "invoice_create_failed": "Failed to create invoice",
         "assigned": "Work order assigned",
+        "claim_ok": "Work order taken",
+        "claim_fail": "Failed to take work order",
+        "release_ok": "Assignee released",
+        "release_fail": "Failed to release assignee",
         "start_ok": "Work started",
         "complete_ok": "Work completed and service activated",
         "cancel_ok": "Work order cancelled",
         "reopen_ok": "Work order reopened",
+        "closed_revealed": "Work order moved to closed list. Closed filter is now visible.",
+        "reschedule_pending_title": "Pending reschedule request",
+        "reschedule_approved": "Reschedule request approved",
+        "reschedule_rejected": "Reschedule request rejected",
+        "reschedule_reject_reason_required": "Reason is required to reject reschedule request.",
+        "reschedule_decision_notes": "Decision notes",
+        "override_schedule_optional": "Override schedule (optional)",
         "cancel_reason_required": "Cancellation reason is required (minimum 10 characters).",
         "cancel_reason_hint": "Add cancellation reason (minimum 10 characters) in detail modal.",
         "details_title": "Installation Details",
+        "step_assign": "Assign",
+        "step_schedule": "Schedule",
+        "step_onsite": "On-site",
+        "step_activate": "Activate",
+        "step_assign_help": "Choose technician first, then continue to scheduling.",
+        "step_take_help": "Take this work order first, then continue to scheduling.",
+        "step_schedule_help": "Set installation date/time, then start work order.",
+        "step_onsite_help": "Complete onsite checklist. Progress updates automatically.",
+        "step_active_help": "Checklist complete. Activate service now.",
+        "subscription_status": "Service Status",
+        "topology_context": "Topology Context",
+        "assignment_status": "Assignment Status",
+        "selected_zone": "Selected Zone",
+        "selected_node": "Selected Node",
+        "node_score": "Node Score",
+        "path_nodes": "Path Nodes",
+        "path_links": "Path Links",
+        "assignee_placeholder": "Select assignee",
+        "save_assign": "Save Assignee",
+        "save_schedule": "Save Schedule",
         "checklist": "Installation Checklist",
+        "no_assignable_members": "No eligible installers found. Only Admin/Technician or roles with installation permission are shown.",
+        "already_taken_by_you": "You already took this work order. Continue to Schedule step.",
+        "taken_by_other": "This work order has been taken by another technician.",
         "notes_placeholder": "Technician notes and onsite findings",
+        "final_state": "Final State",
+        "final_waiting_payment": "Installation completed. Waiting payment confirmation before service activation.",
+        "final_completed": "Installation has been completed and service is active.",
+        "final_cancelled": "Installation has been cancelled.",
+        "create_invoice": "Create payment invoice",
         "reopen_notes": "Optional note before reopening work order",
         "save_plan": "Save Plan",
-        "history": "Latest Notes"
+        "history": "Latest Notes",
+        "timeline": "Work Order Timeline"
       },
       "logs": {
         "title": "Router Logs",

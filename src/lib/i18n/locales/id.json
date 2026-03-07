@@ -1768,6 +1768,125 @@
         "location_create_failed": "Gagal menambahkan lokasi"
       }
     },
+    "services_portal": {
+      "page": {
+        "title": "Layanan Pelanggan",
+        "subtitle": "Daftar semua layanan yang pernah Anda pesan."
+      },
+      "actions": {
+        "billing_invoices": "Tagihan & Invoice",
+        "order_new_service": "Pesan Layanan Baru",
+        "show_all_services": "Tampilkan Semua Layanan",
+        "view_invoices": "Lihat Invoice",
+        "track_installation": "Lacak Instalasi",
+        "request_reopen": "Ajukan Buka Ulang",
+        "reopening": "Membuka ulang..."
+      },
+      "stats": {
+        "total": "Total Layanan",
+        "active": "Aktif",
+        "pending_installation": "Menunggu Instalasi",
+        "needs_attention": "Perlu Perhatian"
+      },
+      "list": {
+        "title": "Layanan Dipesan",
+        "subtitle": "Layanan yang diminta oleh akun Anda.",
+        "services_suffix": "layanan",
+        "filter": "Filter",
+        "sort": "Urutkan"
+      },
+      "filters": {
+        "all": "Semua Layanan",
+        "active": "Aktif",
+        "pending_installation": "Menunggu Instalasi",
+        "needs_attention": "Perlu Perhatian"
+      },
+      "sort": {
+        "updated_at": "Terbaru",
+        "price": "Harga",
+        "status": "Status",
+        "location": "Lokasi",
+        "service": "Layanan"
+      },
+      "table": {
+        "service": "Layanan",
+        "status": "Status",
+        "location": "Lokasi",
+        "billing_cycle": "Siklus Tagihan",
+        "price": "Harga",
+        "updated_at": "Diperbarui",
+        "actions": "Aksi"
+      },
+      "empty": {
+        "no_services": "Belum ada layanan yang dipesan.",
+        "no_match": "Tidak ada layanan yang cocok dengan filter terpilih."
+      },
+      "toasts": {
+        "load_failed": "Gagal memuat layanan",
+        "reopen_success_with_id": "Permintaan instalasi dibuka ulang (WO {id})",
+        "reopen_success": "Permintaan instalasi berhasil dibuka ulang",
+        "reopen_failed": "Gagal membuka ulang permintaan instalasi"
+      },
+      "status": {
+        "pending_installation": "Menunggu Instalasi",
+        "awaiting_payment": "Menunggu Pembayaran",
+        "suspended": "Ditangguhkan",
+        "cancelled": "Dibatalkan"
+      },
+      "status_hint": {
+        "active": "Layanan aktif dan berjalan.",
+        "pending_installation": "Menunggu penugasan dan penjadwalan instalasi.",
+        "awaiting_payment": "Instalasi selesai. Menunggu invoice/pembayaran pertama.",
+        "suspended": "Layanan ditangguhkan. Silakan cek billing atau hubungi support.",
+        "cancelled": "Permintaan telah dibatalkan.",
+        "cancelled_reopen": "Permintaan dibatalkan. Anda bisa ajukan buka ulang."
+      },
+      "tracker": {
+        "title": "Pelacakan Instalasi",
+        "loading": "Memuat pelacakan...",
+        "scheduled_at": "Jadwal",
+        "last_update": "Update Terakhir",
+        "latest_notes": "Catatan Terbaru",
+        "steps": {
+          "requested": "Diminta",
+          "assigned": "Ditugaskan",
+          "scheduled": "Dijadwalkan",
+          "onsite": "On-site",
+          "active": "Aktif"
+        }
+      },
+      "reschedule": {
+        "badge": {
+          "pending": "Reschedule Menunggu",
+          "approved": "Reschedule Disetujui",
+          "rejected": "Reschedule Ditolak"
+        },
+        "latest_title": "Permintaan Reschedule Terbaru",
+        "labels": {
+          "requested_at": "Waktu Reschedule",
+          "requested_schedule": "Jadwal Diminta",
+          "requested_by": "Diminta Oleh",
+          "reason": "Alasan",
+          "admin_notes": "Catatan Admin"
+        },
+        "form": {
+          "title": "Ajukan Reschedule",
+          "subtitle": "Anda dapat mengajukan waktu instalasi baru sebelum pekerjaan onsite dimulai.",
+          "new_schedule": "Jadwal Baru",
+          "reason_optional": "Alasan (opsional)",
+          "reason_placeholder": "Perlu slot waktu berbeda",
+          "submit": "Kirim Reschedule",
+          "submitting": "Mengirim...",
+          "wait_schedule": "Reschedule akan tersedia setelah admin/teknisi menetapkan jadwal instalasi Anda."
+        },
+        "toasts": {
+          "select_schedule": "Pilih jadwal instalasi baru terlebih dahulu",
+          "invalid_datetime": "Format tanggal/waktu tidak valid",
+          "submit_success": "Permintaan reschedule berhasil dikirim",
+          "submit_failed": "Gagal mengirim permintaan reschedule"
+        }
+      }
+    },
     "portal_summary": {
       "title": "Ringkasan Layanan",
       "health": "Status",
@@ -2982,22 +3101,68 @@
         "title": "Work Order Instalasi",
         "subtitle": "Alur teknisi dari invoice terbayar sampai layanan aktif.",
         "empty": "Belum ada work order instalasi",
+        "search": "Cari work order...",
         "show_closed": "Tampilkan closed",
         "hide_closed": "Sembunyikan closed",
         "assign_required": "Pilih assignee terlebih dahulu",
+        "schedule_required": "Pilih jadwal terlebih dahulu",
+        "checklist_required": "Lengkapi semua checklist sebelum aktivasi.",
+        "plan_required": "Tentukan assignee dan jadwal sebelum memulai.",
+        "invoice_created": "Invoice berhasil dibuat",
+        "invoice_create_failed": "Gagal membuat invoice",
         "assigned": "Work order berhasil di-assign",
+        "claim_ok": "Work order berhasil diambil",
+        "claim_fail": "Gagal mengambil work order",
+        "release_ok": "Assignee berhasil dilepas",
+        "release_fail": "Gagal melepas assignee",
         "start_ok": "Pekerjaan instalasi dimulai",
         "complete_ok": "Pekerjaan selesai dan layanan diaktifkan",
         "cancel_ok": "Work order dibatalkan",
         "reopen_ok": "Work order dibuka kembali",
+        "closed_revealed": "Work order dipindah ke daftar closed. Filter closed sekarang ditampilkan.",
+        "reschedule_pending_title": "Permintaan reschedule menunggu",
+        "reschedule_approved": "Permintaan reschedule disetujui",
+        "reschedule_rejected": "Permintaan reschedule ditolak",
+        "reschedule_reject_reason_required": "Alasan wajib diisi untuk menolak permintaan reschedule.",
+        "reschedule_decision_notes": "Catatan keputusan",
+        "override_schedule_optional": "Override jadwal (opsional)",
         "cancel_reason_required": "Alasan pembatalan wajib diisi (minimal 10 karakter).",
         "cancel_reason_hint": "Isi alasan pembatalan (minimal 10 karakter) di detail work order.",
         "details_title": "Detail Instalasi",
+        "step_assign": "Assign",
+        "step_schedule": "Jadwal",
+        "step_onsite": "On-site",
+        "step_activate": "Aktivasi",
+        "step_assign_help": "Pilih teknisi terlebih dahulu, lalu lanjut ke jadwal.",
+        "step_take_help": "Ambil work order ini terlebih dahulu, lalu lanjut ke jadwal.",
+        "step_schedule_help": "Tentukan tanggal/waktu instalasi, lalu mulai pekerjaan.",
+        "step_onsite_help": "Selesaikan checklist on-site. Progress diperbarui otomatis.",
+        "step_active_help": "Checklist lengkap. Aktifkan layanan sekarang.",
+        "subscription_status": "Status Layanan",
+        "topology_context": "Konteks Topologi",
+        "assignment_status": "Status Assignment",
+        "selected_zone": "Zona Terpilih",
+        "selected_node": "Node Terpilih",
+        "node_score": "Skor Node",
+        "path_nodes": "Path Node",
+        "path_links": "Path Link",
+        "assignee_placeholder": "Pilih assignee",
+        "save_assign": "Simpan Assignee",
+        "save_schedule": "Simpan Jadwal",
         "checklist": "Checklist Instalasi",
+        "no_assignable_members": "Tidak ada installer yang memenuhi syarat. Hanya Admin/Teknisi atau role dengan izin instalasi yang ditampilkan.",
+        "already_taken_by_you": "Work order ini sudah Anda ambil. Lanjut ke langkah Jadwal.",
+        "taken_by_other": "Work order ini sudah diambil teknisi lain.",
         "notes_placeholder": "Catatan teknisi dan hasil kunjungan",
+        "final_state": "Status Akhir",
+        "final_waiting_payment": "Instalasi selesai. Menunggu konfirmasi pembayaran sebelum layanan diaktifkan.",
+        "final_completed": "Instalasi sudah selesai dan layanan aktif.",
+        "final_cancelled": "Instalasi dibatalkan.",
+        "create_invoice": "Buat invoice pembayaran",
         "reopen_notes": "Catatan opsional sebelum membuka ulang work order",
         "save_plan": "Simpan Rencana",
-        "history": "Catatan Terakhir"
+        "history": "Catatan Terakhir",
+        "timeline": "Timeline Work Order"
       },
       "logs": {
         "title": "Log Router",

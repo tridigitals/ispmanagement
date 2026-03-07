@@ -4,10 +4,8 @@ use crate::services::{
     RoleService, SettingsService, StorageService, SystemService, TeamService, UserService,
 };
 use axum::{
-    http::header::{
-        ACCEPT, AUTHORIZATION, CONTENT_TYPE, ORIGIN, USER_AGENT, HeaderName,
-    },
     extract::DefaultBodyLimit,
+    http::header::{HeaderName, ACCEPT, AUTHORIZATION, CONTENT_TYPE, ORIGIN, USER_AGENT},
     routing::{delete, get, post, put},
     Router,
 };

@@ -1,14 +1,14 @@
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    CreateNetworkLinkRequest, CreateNetworkNodeRequest, CreateServiceZoneRequest,
-    CreateZoneNodeBindingRequest, CreateZoneOfferRequest, CoverageCheckRequest,
-    CoverageCheckResponse, ComputePathRequest, ComputePathResponse, ComputedPathHop, NetworkLink,
-    NetworkNode, NetworkImpactCustomer, NetworkImpactResponse, PaginatedResponse,
-    RankCandidateNodesRequest, RankCandidateNodesResponse, RankedCandidateNode, ResolvedZone,
-    ResolvedZoneResponse, ResolveZoneRequest, ServiceZone, UpdateNetworkLinkRequest,
-    UpdateNetworkNodeRequest, UpdateServiceZoneRequest, UpdateZoneOfferRequest, ZoneNodeBinding,
-    ZoneOffer,
+    ComputePathRequest, ComputePathResponse, ComputedPathHop, CoverageCheckRequest,
+    CoverageCheckResponse, CreateNetworkLinkRequest, CreateNetworkNodeRequest,
+    CreateServiceZoneRequest, CreateZoneNodeBindingRequest, CreateZoneOfferRequest,
+    NetworkImpactCustomer, NetworkImpactResponse, NetworkLink, NetworkNode, PaginatedResponse,
+    RankCandidateNodesRequest, RankCandidateNodesResponse, RankedCandidateNode, ResolveZoneRequest,
+    ResolvedZone, ResolvedZoneResponse, ServiceZone, SyncTopologyAssetsResponse,
+    UpdateNetworkLinkRequest, UpdateNetworkNodeRequest, UpdateServiceZoneRequest,
+    UpdateZoneOfferRequest, ZoneNodeBinding, ZoneOffer,
 };
 use crate::services::AuthService;
 use std::collections::{HashMap, HashSet};
@@ -81,6 +81,26 @@ struct UuidTextRow {
     id: String,
 }
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+struct SyncRouterRow {
+    id: String,
+    name: String,
+    enabled: bool,
+    latitude: f64,
+    longitude: f64,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+struct SyncCustomerLocationRow {
+    location_id: String,
+    customer_id: String,
+    customer_name: String,
+    label: String,
+    subscription_status: String,
+    latitude: f64,
+    longitude: f64,
+}
+
 impl NetworkMappingService {
     pub fn new(pool: DbPool, auth_service: AuthService) -> Self {
         Self { pool, auth_service }
@@ -119,7 +139,10 @@ impl NetworkMappingService {
         self.check_permission_any(
             actor_id,
             tenant_id,
-            &[("network_topology", "manage"), ("network_routers", "manage")],
+            &[
+                ("network_topology", "manage"),
+                ("network_routers", "manage"),
+            ],
         )
         .await
     }
@@ -170,7 +193,9 @@ impl NetworkMappingService {
 
     fn validate_lat_lng(lat: f64, lng: f64, field: &str) -> AppResult<()> {
         if !(-90.0..=90.0).contains(&lat) {
-            return Err(AppError::Validation(format!("{field}.lat must be between -90 and 90")));
+            return Err(AppError::Validation(format!(
+                "{field}.lat must be between -90 and 90"
+            )));
         }
         if !(-180.0..=180.0).contains(&lng) {
             return Err(AppError::Validation(format!(
@@ -312,6 +337,358 @@ impl NetworkMappingService {
         })
     }
 
+    fn is_system_managed_node(metadata: &serde_json::Value) -> bool {
+        metadata
+            .get("system_managed")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+    }
+
+    fn system_managed_node_source_label(metadata: &serde_json::Value) -> Option<&str> {
+        metadata
+            .get("asset_source")
+            .and_then(|v| v.as_str())
+            .or_else(|| metadata.get("asset_type").and_then(|v| v.as_str()))
+    }
+
+    async fn find_node_by_asset_reference(
+        &self,
+        tenant_id: &str,
+        asset_type: &str,
+        asset_id: &str,
+    ) -> AppResult<Option<NetworkNode>> {
+        sqlx::query_as(
+            r#"
+            SELECT
+              id::text AS id,
+              tenant_id::text AS tenant_id,
+              name,
+              node_type,
+              status,
+              ST_Y(geom)::float8 AS lat,
+              ST_X(geom)::float8 AS lng,
+              capacity_json,
+              health_json,
+              metadata,
+              created_at,
+              updated_at
+            FROM network_nodes
+            WHERE tenant_id = $1::uuid
+              AND (
+                (
+                  metadata->>'asset_type' = $2::text
+                  AND metadata->>'asset_id' = $3::text
+                )
+                OR (
+                  $2::text = 'mikrotik_router'
+                  AND (
+                    metadata->>'router_id' = $3::text
+                    OR metadata->>'routerId' = $3::text
+                    OR metadata->>'mikrotik_router_id' = $3::text
+                    OR metadata->>'mikrotikRouterId' = $3::text
+                  )
+                )
+                OR (
+                  $2::text = 'customer_location'
+                  AND (
+                    metadata->>'location_id' = $3::text
+                    OR metadata->>'locationId' = $3::text
+                    OR metadata->>'customer_location_id' = $3::text
+                    OR metadata->>'customerLocationId' = $3::text
+                  )
+                )
+              )
+            ORDER BY updated_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(asset_type)
+        .bind(asset_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)
+    }
+
+    async fn upsert_system_managed_node(
+        &self,
+        tenant_id: &str,
+        asset_type: &str,
+        asset_id: &str,
+        name: &str,
+        node_type: &str,
+        status: &str,
+        lat: f64,
+        lng: f64,
+        metadata: serde_json::Value,
+    ) -> AppResult<bool> {
+        Self::validate_lat_lng(lat, lng, "asset_node")?;
+        let existing = self
+            .find_node_by_asset_reference(tenant_id, asset_type, asset_id)
+            .await?;
+
+        if let Some(current) = existing {
+            let mut merged = current.metadata;
+            if let (Some(dst), Some(src)) = (merged.as_object_mut(), metadata.as_object()) {
+                for (key, value) in src {
+                    dst.insert(key.clone(), value.clone());
+                }
+            } else {
+                merged = metadata;
+            }
+
+            sqlx::query(
+                r#"
+                UPDATE network_nodes
+                SET name = $1,
+                    node_type = $2,
+                    status = $3,
+                    geom = ST_SetSRID(ST_MakePoint($4, $5), 4326),
+                    metadata = $6
+                WHERE tenant_id = $7::uuid AND id = $8::uuid
+                "#,
+            )
+            .bind(name)
+            .bind(node_type)
+            .bind(status)
+            .bind(lng)
+            .bind(lat)
+            .bind(merged)
+            .bind(tenant_id)
+            .bind(&current.id)
+            .execute(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
+
+            return Ok(false);
+        }
+
+        let id = Uuid::new_v4().to_string();
+        sqlx::query(
+            r#"
+            INSERT INTO network_nodes
+              (id, tenant_id, name, node_type, status, geom, capacity_json, health_json, metadata, created_at, updated_at)
+            VALUES
+              ($1::uuid, $2::uuid, $3, $4, $5, ST_SetSRID(ST_MakePoint($6, $7), 4326), '{}'::jsonb, '{}'::jsonb, $8, now(), now())
+            "#,
+        )
+        .bind(&id)
+        .bind(tenant_id)
+        .bind(name)
+        .bind(node_type)
+        .bind(status)
+        .bind(lng)
+        .bind(lat)
+        .bind(metadata)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        Ok(true)
+    }
+
+    async fn prune_system_managed_nodes_not_in_assets(
+        &self,
+        tenant_id: &str,
+        asset_type: &str,
+        asset_ids: &[String],
+    ) -> AppResult<u64> {
+        let rows_affected = if asset_ids.is_empty() {
+            sqlx::query(
+                r#"
+                DELETE FROM network_nodes
+                WHERE tenant_id = $1::uuid
+                  AND metadata->>'asset_type' = $2::text
+                  AND COALESCE((metadata->>'system_managed')::boolean, false)
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(asset_type)
+            .execute(&self.pool)
+            .await
+            .map_err(AppError::Database)?
+            .rows_affected()
+        } else {
+            sqlx::query(
+                r#"
+                DELETE FROM network_nodes
+                WHERE tenant_id = $1::uuid
+                  AND metadata->>'asset_type' = $2::text
+                  AND COALESCE((metadata->>'system_managed')::boolean, false)
+                  AND NOT (metadata->>'asset_id' = ANY($3))
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(asset_type)
+            .bind(asset_ids)
+            .execute(&self.pool)
+            .await
+            .map_err(AppError::Database)?
+            .rows_affected()
+        };
+
+        Ok(rows_affected)
+    }
+
+    pub async fn sync_topology_asset_nodes(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+    ) -> AppResult<SyncTopologyAssetsResponse> {
+        self.require_manage(actor_id, tenant_id).await?;
+
+        let routers: Vec<SyncRouterRow> = sqlx::query_as(
+            r#"
+            SELECT
+              id::text AS id,
+              name,
+              enabled,
+              latitude::float8 AS latitude,
+              longitude::float8 AS longitude
+            FROM mikrotik_routers
+            WHERE tenant_id = $1::text
+              AND latitude IS NOT NULL
+              AND longitude IS NOT NULL
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let customer_locations: Vec<SyncCustomerLocationRow> = sqlx::query_as(
+            r#"
+            SELECT
+              cl.id::text AS location_id,
+              cl.customer_id::text AS customer_id,
+              c.name AS customer_name,
+              COALESCE(NULLIF(BTRIM(cl.label), ''), c.name || ' Location') AS label,
+              svc.subscription_status AS subscription_status,
+              cl.latitude::float8 AS latitude,
+              cl.longitude::float8 AS longitude
+            FROM customer_locations cl
+            INNER JOIN customers c
+              ON c.tenant_id::text = cl.tenant_id::text
+             AND c.id::text = cl.customer_id::text
+            INNER JOIN LATERAL (
+              SELECT cs.status AS subscription_status
+              FROM customer_subscriptions cs
+              WHERE cs.tenant_id = cl.tenant_id
+                AND cs.location_id = cl.id
+                AND cs.status IN ('active', 'suspended')
+              ORDER BY
+                CASE cs.status
+                  WHEN 'active' THEN 0
+                  WHEN 'suspended' THEN 1
+                  ELSE 2
+                END,
+                cs.updated_at DESC,
+                cs.created_at DESC
+              LIMIT 1
+            ) svc ON TRUE
+            WHERE cl.tenant_id = $1::text
+              AND cl.latitude IS NOT NULL
+              AND cl.longitude IS NOT NULL
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let eligible_customer_location_ids: Vec<String> = customer_locations
+            .iter()
+            .map(|row| row.location_id.clone())
+            .collect();
+        let pruned_customer_nodes = self
+            .prune_system_managed_nodes_not_in_assets(
+                tenant_id,
+                "customer_location",
+                &eligible_customer_location_ids,
+            )
+            .await?;
+
+        let mut router_nodes_created = 0_i64;
+        let mut router_nodes_updated = 0_i64;
+        let mut customer_nodes_created = 0_i64;
+        let mut customer_nodes_updated = 0_i64;
+
+        for row in routers {
+            let created = self
+                .upsert_system_managed_node(
+                    tenant_id,
+                    "mikrotik_router",
+                    &row.id,
+                    row.name.trim(),
+                    "router",
+                    if row.enabled { "active" } else { "inactive" },
+                    row.latitude,
+                    row.longitude,
+                    serde_json::json!({
+                        "system_managed": true,
+                        "asset_source": "mikrotik_router",
+                        "asset_type": "mikrotik_router",
+                        "asset_id": row.id,
+                        "router_id": row.id,
+                    }),
+                )
+                .await?;
+            if created {
+                router_nodes_created += 1;
+            } else {
+                router_nodes_updated += 1;
+            }
+        }
+
+        for row in customer_locations {
+            let name = if row.customer_name.trim() == row.label.trim() {
+                row.label.clone()
+            } else {
+                format!("{} - {}", row.customer_name.trim(), row.label.trim())
+            };
+            let created = self
+                .upsert_system_managed_node(
+                    tenant_id,
+                    "customer_location",
+                    &row.location_id,
+                    name.trim(),
+                    "customer_premise",
+                    &row.subscription_status,
+                    row.latitude,
+                    row.longitude,
+                    serde_json::json!({
+                        "system_managed": true,
+                        "asset_source": "customer_location",
+                        "asset_type": "customer_location",
+                        "asset_id": row.location_id,
+                        "location_id": row.location_id,
+                        "customer_id": row.customer_id,
+                        "customer_name": row.customer_name,
+                        "location_label": row.label,
+                        "subscription_status": row.subscription_status,
+                    }),
+                )
+                .await?;
+            if created {
+                customer_nodes_created += 1;
+            } else {
+                customer_nodes_updated += 1;
+            }
+        }
+
+        Ok(SyncTopologyAssetsResponse {
+            router_nodes_created,
+            router_nodes_updated,
+            customer_nodes_created,
+            customer_nodes_updated,
+            total_nodes_touched: router_nodes_created
+                + router_nodes_updated
+                + customer_nodes_created
+                + customer_nodes_updated
+                + pruned_customer_nodes as i64,
+        })
+    }
+
     pub async fn rank_candidate_nodes(
         &self,
         actor_id: &str,
@@ -396,11 +773,10 @@ impl NetworkMappingService {
                 let distance_score = Self::compute_distance_score(row.distance_m);
                 let distance_component = distance_score.unwrap_or(60.0);
 
-                let stability_penalty = (row.down_links as f64 * 7.5)
-                    + if row.link_count == 0 { 12.0 } else { 0.0 };
-                let base_score = (health_score * 0.45)
-                    + (capacity_score * 0.35)
-                    + (distance_component * 0.20);
+                let stability_penalty =
+                    (row.down_links as f64 * 7.5) + if row.link_count == 0 { 12.0 } else { 0.0 };
+                let base_score =
+                    (health_score * 0.45) + (capacity_score * 0.35) + (distance_component * 0.20);
                 let score = (base_score - stability_penalty).clamp(0.0, 100.0);
                 let reason = format!(
                     "health {:.0}, capacity {:.0}{}{}",
@@ -937,6 +1313,13 @@ impl NetworkMappingService {
     ) -> AppResult<NetworkNode> {
         self.require_manage(actor_id, tenant_id).await?;
         let current = self.get_node_by_id(tenant_id, id).await?;
+        if Self::is_system_managed_node(&current.metadata) {
+            let source =
+                Self::system_managed_node_source_label(&current.metadata).unwrap_or("source asset");
+            return Err(AppError::Validation(format!(
+                "This node is synced from {source}. Update the source map coordinates instead."
+            )));
+        }
         let name = dto.name.unwrap_or(current.name);
         let node_type = dto.node_type.unwrap_or(current.node_type);
         let status = dto.status.unwrap_or(current.status);
@@ -979,12 +1362,21 @@ impl NetworkMappingService {
 
     pub async fn delete_node(&self, actor_id: &str, tenant_id: &str, id: &str) -> AppResult<()> {
         self.require_manage(actor_id, tenant_id).await?;
-        let res = sqlx::query("DELETE FROM network_nodes WHERE tenant_id = $1::uuid AND id = $2::uuid")
-            .bind(tenant_id)
-            .bind(id)
-            .execute(&self.pool)
-            .await
-            .map_err(AppError::Database)?;
+        let current = self.get_node_by_id(tenant_id, id).await?;
+        if Self::is_system_managed_node(&current.metadata) {
+            let source =
+                Self::system_managed_node_source_label(&current.metadata).unwrap_or("source asset");
+            return Err(AppError::Validation(format!(
+                "This node is synced from {source} and cannot be deleted here."
+            )));
+        }
+        let res =
+            sqlx::query("DELETE FROM network_nodes WHERE tenant_id = $1::uuid AND id = $2::uuid")
+                .bind(tenant_id)
+                .bind(id)
+                .execute(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
         if res.rows_affected() == 0 {
             return Err(AppError::NotFound("Node not found".into()));
         }
@@ -999,10 +1391,7 @@ impl NetworkMappingService {
     ) -> AppResult<PaginatedResponse<NetworkLink>> {
         self.require_read(actor_id, tenant_id).await?;
         let search = Self::cleaned_query(q.q);
-        let status_filter = q
-            .status
-            .as_deref()
-            .map(Self::normalize_link_status);
+        let status_filter = q.status.as_deref().map(Self::normalize_link_status);
         let page = q.page.max(1);
         let per_page = q.per_page.clamp(1, 200);
         let offset = (page - 1) * per_page;
@@ -1101,7 +1490,11 @@ impl NetworkMappingService {
         if dto.name.trim().is_empty() {
             return Err(AppError::Validation("name is required".into()));
         }
-        Self::validate_geojson_geometry(&dto.geometry, &["LineString", "MultiLineString"], "geometry")?;
+        Self::validate_geojson_geometry(
+            &dto.geometry,
+            &["LineString", "MultiLineString"],
+            "geometry",
+        )?;
         let id = Uuid::new_v4().to_string();
         let status = Self::normalize_link_status(dto.status.as_deref().unwrap_or("up"));
         Self::validate_link_status(&status)?;
@@ -1153,11 +1546,8 @@ impl NetworkMappingService {
 
         let geometry = dto.geometry.unwrap_or(current.geometry);
         Self::validate_geojson_geometry(&geometry, &["LineString", "MultiLineString"], "geometry")?;
-        let status = Self::normalize_link_status(
-            dto.status
-                .as_deref()
-                .unwrap_or(current.status.as_str()),
-        );
+        let status =
+            Self::normalize_link_status(dto.status.as_deref().unwrap_or(current.status.as_str()));
         Self::validate_link_status(&status)?;
         let next_from_node_id = dto
             .from_node_id
@@ -1167,13 +1557,8 @@ impl NetworkMappingService {
             .to_node_id
             .clone()
             .unwrap_or_else(|| current.to_node_id.clone());
-        self.ensure_link_pair_available(
-            tenant_id,
-            &next_from_node_id,
-            &next_to_node_id,
-            Some(id),
-        )
-        .await?;
+        self.ensure_link_pair_available(tenant_id, &next_from_node_id, &next_to_node_id, Some(id))
+            .await?;
 
         sqlx::query(
             r#"
@@ -1216,12 +1601,13 @@ impl NetworkMappingService {
 
     pub async fn delete_link(&self, actor_id: &str, tenant_id: &str, id: &str) -> AppResult<()> {
         self.require_manage(actor_id, tenant_id).await?;
-        let res = sqlx::query("DELETE FROM network_links WHERE tenant_id = $1::uuid AND id = $2::uuid")
-            .bind(tenant_id)
-            .bind(id)
-            .execute(&self.pool)
-            .await
-            .map_err(AppError::Database)?;
+        let res =
+            sqlx::query("DELETE FROM network_links WHERE tenant_id = $1::uuid AND id = $2::uuid")
+                .bind(tenant_id)
+                .bind(id)
+                .execute(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
         if res.rows_affected() == 0 {
             return Err(AppError::NotFound("Link not found".into()));
         }
@@ -1395,12 +1781,13 @@ impl NetworkMappingService {
 
     pub async fn delete_zone(&self, actor_id: &str, tenant_id: &str, id: &str) -> AppResult<()> {
         self.require_zones_manage(actor_id, tenant_id).await?;
-        let res = sqlx::query("DELETE FROM service_zones WHERE tenant_id = $1::uuid AND id = $2::uuid")
-            .bind(tenant_id)
-            .bind(id)
-            .execute(&self.pool)
-            .await
-            .map_err(AppError::Database)?;
+        let res =
+            sqlx::query("DELETE FROM service_zones WHERE tenant_id = $1::uuid AND id = $2::uuid")
+                .bind(tenant_id)
+                .bind(id)
+                .execute(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
         if res.rows_affected() == 0 {
             return Err(AppError::NotFound("Zone not found".into()));
         }
@@ -1494,12 +1881,14 @@ impl NetworkMappingService {
         id: &str,
     ) -> AppResult<()> {
         self.require_zones_manage(actor_id, tenant_id).await?;
-        let res = sqlx::query("DELETE FROM zone_node_bindings WHERE tenant_id = $1::uuid AND id = $2::uuid")
-            .bind(tenant_id)
-            .bind(id)
-            .execute(&self.pool)
-            .await
-            .map_err(AppError::Database)?;
+        let res = sqlx::query(
+            "DELETE FROM zone_node_bindings WHERE tenant_id = $1::uuid AND id = $2::uuid",
+        )
+        .bind(tenant_id)
+        .bind(id)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
         if res.rows_affected() == 0 {
             return Err(AppError::NotFound("Zone-node binding not found".into()));
         }
@@ -1618,14 +2007,20 @@ impl NetworkMappingService {
         self.get_zone_offer_by_id(tenant_id, id).await
     }
 
-    pub async fn delete_zone_offer(&self, actor_id: &str, tenant_id: &str, id: &str) -> AppResult<()> {
+    pub async fn delete_zone_offer(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        id: &str,
+    ) -> AppResult<()> {
         self.require_zones_manage(actor_id, tenant_id).await?;
-        let res = sqlx::query("DELETE FROM zone_offers WHERE tenant_id = $1::uuid AND id = $2::uuid")
-            .bind(tenant_id)
-            .bind(id)
-            .execute(&self.pool)
-            .await
-            .map_err(AppError::Database)?;
+        let res =
+            sqlx::query("DELETE FROM zone_offers WHERE tenant_id = $1::uuid AND id = $2::uuid")
+                .bind(tenant_id)
+                .bind(id)
+                .execute(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
         if res.rows_affected() == 0 {
             return Err(AppError::NotFound("Zone offer not found".into()));
         }

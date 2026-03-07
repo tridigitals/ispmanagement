@@ -1,13 +1,16 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { t } from 'svelte-i18n';
-  import { can, user } from '$lib/stores/auth';
+  import { can, token, user } from '$lib/stores/auth';
+  import { getApiBaseUrl } from '$lib/utils/apiUrl';
   import {
     api,
     type AuditLog,
+    type FileRecord,
     type InstallationWorkOrderView,
     type TeamMember,
+    type WorkOrderRescheduleRequestView,
   } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
   import { formatDateTime } from '$lib/utils/date';
@@ -15,6 +18,7 @@
   import Select2 from '$lib/components/ui/Select2.svelte';
   import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
+  import InstallationCableMap from '$lib/components/network/InstallationCableMap.svelte';
 
   let loading = $state(true);
   let busyId = $state<string | null>(null);
@@ -37,16 +41,38 @@
   let checkOnt = $state(false);
   let checkPppoe = $state(false);
   let checkSpeed = $state(false);
+  let showCableMapDrawer = $state(false);
+  let installationPhotos = $state<FileRecord[]>([]);
+  let uploadingPhotos = $state(false);
+  let onsiteFocusIndex = $state<number | null>(null);
   let canManageWorkOrders = $derived($can('manage', 'work_orders'));
   let canReadAuditLogs = $derived($can('read', 'audit_logs'));
   let currentUserId = $derived(($user?.id || '').trim());
   let timelineLoading = $state(false);
   let timelineRows = $state<AuditLog[]>([]);
+  let rescheduleLoading = $state(false);
+  let rescheduleRequest = $state<WorkOrderRescheduleRequestView | null>(null);
+  let rescheduleDecisionBusy = $state(false);
+  let rescheduleDecisionNotes = $state('');
+  let rescheduleOverrideAt = $state('');
   let isAdminOwner = $derived.by(() => {
-    const role = `${$user?.role || ''}`.trim().toLowerCase();
-    return !!$user && (($user as any)?.is_super_admin === true || role === 'owner' || role === 'admin');
+    const globalRole = `${$user?.role || ''}`.trim().toLowerCase();
+    const tenantRole = `${($user as any)?.tenant_role || ''}`.trim().toLowerCase();
+    return (
+      !!$user &&
+      (($user as any)?.is_super_admin === true ||
+        globalRole === 'owner' ||
+        globalRole === 'admin' ||
+        tenantRole === 'owner' ||
+        tenantRole === 'admin')
+    );
   });
+  let canReviewReschedule = $derived.by(
+    () => !!activeRow && canManageWorkOrders && (isAdminOwner || isAssignedToCurrentUser(activeRow)),
+  );
   const CANCEL_REASON_MIN = 10;
+  const INSTALLATION_REFRESH_SIGNAL_KEY = 'nm_installation_work_order_refresh';
+  let lastHandledRefreshSignalTs = $state(0);
 
   const filteredRows = $derived.by(() => {
     const q = search.trim().toLowerCase();
@@ -102,7 +128,66 @@
       return;
     }
     void loadAll();
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== INSTALLATION_REFRESH_SIGNAL_KEY || !event.newValue) return;
+      void maybeHandleRefreshSignal(event.newValue, false);
+    };
+    const onFocus = () => {
+      const raw = localStorage.getItem(INSTALLATION_REFRESH_SIGNAL_KEY);
+      if (!raw) return;
+      void maybeHandleRefreshSignal(raw, true);
+    };
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data as any;
+      if (!data || typeof data !== 'object') return;
+      if (data.type !== 'nm_work_order_updated') return;
+      if (!activeRow || data.work_order_id !== activeRow.id) return;
+      void loadAll();
+      toast.success(
+        tr(
+          'admin.network.installations.cable_route_synced',
+          'Cable route update synced from topology map.',
+        ),
+      );
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('message', onMessage);
+
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('message', onMessage);
+    };
   });
+
+  onDestroy(() => {
+    // onMount cleanup handles event listener removal.
+  });
+
+  async function maybeHandleRefreshSignal(raw: string, showToast: boolean) {
+    let payload: { work_order_id?: string; ts?: number } | null = null;
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      return;
+    }
+    if (!payload?.work_order_id || !payload?.ts) return;
+    if (payload.ts <= lastHandledRefreshSignalTs) return;
+    if (!activeRow || payload.work_order_id !== activeRow.id) return;
+
+    lastHandledRefreshSignalTs = payload.ts;
+    await loadAll();
+    if (showToast) {
+      toast.success(
+        tr(
+          'admin.network.installations.cable_route_synced',
+          'Cable route update synced from topology map.',
+        ),
+      );
+    }
+  }
 
   async function loadAll() {
     loading = true;
@@ -113,6 +198,19 @@
       ]);
       rows = workOrders;
       team = members;
+
+      // Keep detail modal in sync with latest server state (including reschedule requests)
+      if (detailOpen && activeRow) {
+        const refreshed = workOrders.find((x) => x.id === activeRow?.id) || null;
+        activeRow = refreshed;
+        if (refreshed) {
+          formAssignee = refreshed.assigned_to || formAssignee;
+          formSchedule = refreshed.scheduled_at ? toLocalInputValue(refreshed.scheduled_at) : formSchedule;
+          void loadRescheduleRequest(refreshed.id);
+        } else {
+          rescheduleRequest = null;
+        }
+      }
     } catch (e: any) {
       toast.error(e?.message || 'Failed to load installation work orders');
     } finally {
@@ -278,7 +376,26 @@
     checkOnt = false;
     checkPppoe = false;
     checkSpeed = false;
+    showCableMapDrawer = false;
+    installationPhotos = parsePhotoIdsFromNotes(row.notes).map((id, index) => ({
+      id,
+      tenant_id: '',
+      name: `photo-${index + 1}`,
+      original_name: `photo-${index + 1}`,
+      path: '',
+      size: 0,
+      content_type: 'image/*',
+      uploaded_by: null,
+      created_at: '',
+      updated_at: '',
+    }));
+    onsiteFocusIndex = null;
+    rescheduleRequest = null;
+    rescheduleLoading = false;
+    rescheduleDecisionNotes = '';
+    rescheduleOverrideAt = '';
     void loadWorkOrderTimeline(row.id);
+    void loadRescheduleRequest(row.id);
   }
 
   function closeDetail() {
@@ -289,6 +406,15 @@
     formNotes = '';
     timelineRows = [];
     timelineLoading = false;
+    rescheduleLoading = false;
+    rescheduleRequest = null;
+    rescheduleDecisionBusy = false;
+    rescheduleDecisionNotes = '';
+    rescheduleOverrideAt = '';
+    installationPhotos = [];
+    uploadingPhotos = false;
+    showCableMapDrawer = false;
+    onsiteFocusIndex = null;
   }
 
   async function loadWorkOrderTimeline(workOrderId: string) {
@@ -312,6 +438,22 @@
     }
   }
 
+  async function loadRescheduleRequest(workOrderId: string) {
+    if (!canManageWorkOrders || !workOrderId) {
+      rescheduleRequest = null;
+      return;
+    }
+    rescheduleLoading = true;
+    try {
+      rescheduleRequest = await api.workOrders.getRescheduleRequest(workOrderId);
+      rescheduleOverrideAt = toLocalInputValue(rescheduleRequest?.requested_schedule_at || '');
+    } catch {
+      rescheduleRequest = null;
+    } finally {
+      rescheduleLoading = false;
+    }
+  }
+
   function toLocalInputValue(raw: string) {
     const d = new Date(raw);
     if (!Number.isFinite(d.getTime())) return '';
@@ -329,6 +471,97 @@
     return `Installation checklist:\n${lines.join('\n')}`;
   }
 
+  function parsePhotoIdsFromNotes(notes: string | null | undefined): string[] {
+    if (!notes) return [];
+    const ids = new Set<string>();
+    const regex = /\/storage\/files\/([0-9a-fA-F-]{8,})\/content/g;
+    let match: RegExpExecArray | null = null;
+    while ((match = regex.exec(notes)) !== null) {
+      if (match[1]) ids.add(match[1]);
+    }
+    return Array.from(ids);
+  }
+
+  function getStorageContentUrl(fileId: string) {
+    const API_BASE = getApiBaseUrl();
+    const authParam = $token ? `?token=${encodeURIComponent($token)}` : '';
+    return `${API_BASE}/storage/files/${fileId}/content${authParam}`;
+  }
+
+  function buildInstallationPhotosNote() {
+    if (installationPhotos.length === 0) return '';
+    const lines = installationPhotos.map((file) => {
+      const url = getStorageContentUrl(file.id);
+      const name = file.original_name || file.name || file.id;
+      return `- ${name}: ${url}`;
+    });
+    return `Installation photos:\n${lines.join('\n')}`;
+  }
+
+  async function uploadInstallationPhotos(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const files = Array.from(input.files || []);
+    if (files.length === 0) return;
+
+    uploadingPhotos = true;
+    try {
+      for (const file of files) {
+        if (!file.type.startsWith('image/')) continue;
+        const uploaded = await api.storage.uploadFile(file);
+        if (!installationPhotos.some((x) => x.id === uploaded.id)) {
+          installationPhotos = [...installationPhotos, uploaded];
+        }
+      }
+      toast.success(
+        tr('admin.network.installations.photos_uploaded', 'Installation photos uploaded'),
+      );
+    } catch (e: any) {
+      toast.error(
+        e?.message ||
+          tr(
+            'admin.network.installations.photos_upload_failed',
+            'Failed to upload installation photos',
+          ),
+      );
+    } finally {
+      uploadingPhotos = false;
+      input.value = '';
+    }
+  }
+
+  function removeInstallationPhoto(fileId: string) {
+    installationPhotos = installationPhotos.filter((x) => x.id !== fileId);
+  }
+
+  function openCableDesigner() {
+    showCableMapDrawer = true;
+  }
+
+  async function handleCableMapSaved() {
+    await loadAll();
+  }
+
+  const onsiteTaskDefs = [
+    { key: 'cable', title: 'Cable installed', desc: 'Drop cable + termination complete.' },
+    { key: 'ont', title: 'ONT installed', desc: 'Power and signal indicator normal.' },
+    { key: 'pppoe', title: 'PPPoE configured', desc: 'Account applied and authenticated.' },
+    { key: 'speed', title: 'Speed test passed', desc: 'Measured speed meets package threshold.' },
+  ] as const;
+
+  function getOnsiteTaskChecked(index: number) {
+    if (index === 0) return checkCable;
+    if (index === 1) return checkOnt;
+    if (index === 2) return checkPppoe;
+    return checkSpeed;
+  }
+
+  function setOnsiteTaskChecked(index: number, checked: boolean) {
+    if (index === 0) checkCable = checked;
+    else if (index === 1) checkOnt = checked;
+    else if (index === 2) checkPppoe = checked;
+    else checkSpeed = checked;
+  }
+
   async function savePlan() {
     const row = activeRow;
     if (!row) return;
@@ -341,7 +574,10 @@
     try {
       const extra = formNotes.trim();
       const checklist = buildChecklistNote();
-      const note = extra ? `${extra}\n\n${checklist}` : checklist;
+      const photos = buildInstallationPhotosNote();
+      const note = [extra, checklist, photos]
+        .filter((part) => part && part.trim().length > 0)
+        .join('\n\n');
       await api.workOrders.assign(row.id, {
         assigned_to,
         scheduled_at: formSchedule ? new Date(formSchedule).toISOString() : undefined,
@@ -370,6 +606,15 @@
     [checkCable, checkOnt, checkPppoe, checkSpeed].filter(Boolean).length,
   );
   const checklistTotal = 4;
+  const onsiteAutoIndex = $derived.by(() => {
+    const idx = onsiteTaskDefs.findIndex((_, i) => !getOnsiteTaskChecked(i));
+    return idx >= 0 ? idx : checklistTotal - 1;
+  });
+  const onsiteActiveIndex = $derived.by(() => {
+    const candidate = onsiteFocusIndex ?? onsiteAutoIndex;
+    return Math.max(0, Math.min(checklistTotal - 1, candidate));
+  });
+  const onsiteActiveTask = $derived.by(() => onsiteTaskDefs[onsiteActiveIndex]);
   const isClosedState = $derived(activeRow?.status === 'completed' || activeRow?.status === 'cancelled');
   const canCompleteActive = $derived(activeRow?.status === 'in_progress' && checklistDoneCount === checklistTotal);
   const canSaveAssignStep = $derived(activeRow?.status === 'pending' && hasAssignee(formAssignee));
@@ -442,6 +687,25 @@
     return member?.name || member?.email || userId;
   }
 
+  function focusOnsiteStep(index: number) {
+    onsiteFocusIndex = Math.max(0, Math.min(checklistTotal - 1, index));
+  }
+
+  function goPrevOnsiteStep() {
+    focusOnsiteStep(onsiteActiveIndex - 1);
+  }
+
+  function goNextOnsiteStep() {
+    focusOnsiteStep(onsiteActiveIndex + 1);
+  }
+
+  function markActiveOnsiteStepDone() {
+    setOnsiteTaskChecked(onsiteActiveIndex, true);
+    if (onsiteActiveIndex < checklistTotal - 1) {
+      focusOnsiteStep(onsiteActiveIndex + 1);
+    }
+  }
+
   function tr(key: string, fallback: string) {
     const value = $t(key);
     return value && value !== key ? value : fallback;
@@ -469,6 +733,65 @@
       );
     } finally {
       creatingInvoiceId = null;
+    }
+  }
+
+  async function approveRescheduleFromDetail() {
+    if (!activeRow || !rescheduleRequest || !canReviewReschedule || rescheduleDecisionBusy) return;
+    const rowId = activeRow.id;
+    rescheduleDecisionBusy = true;
+    try {
+      await api.workOrders.approveReschedule(rowId, {
+        scheduled_at: rescheduleOverrideAt
+          ? new Date(rescheduleOverrideAt).toISOString()
+          : undefined,
+        notes: rescheduleDecisionNotes.trim() || undefined,
+      });
+      toast.success(
+        tr(
+          'admin.network.installations.reschedule_approved',
+          'Reschedule request approved',
+        ),
+      );
+      await loadAll();
+      const refreshed = rows.find((x) => x.id === rowId);
+      if (refreshed) openDetail(refreshed);
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to approve reschedule request');
+    } finally {
+      rescheduleDecisionBusy = false;
+    }
+  }
+
+  async function rejectRescheduleFromDetail() {
+    if (!activeRow || !rescheduleRequest || !canReviewReschedule || rescheduleDecisionBusy) return;
+    const rowId = activeRow.id;
+    const notes = rescheduleDecisionNotes.trim();
+    if (notes.length < 5) {
+      toast.error(
+        tr(
+          'admin.network.installations.reschedule_reject_reason_required',
+          'Add rejection reason first',
+        ),
+      );
+      return;
+    }
+    rescheduleDecisionBusy = true;
+    try {
+      await api.workOrders.rejectReschedule(rowId, { notes });
+      toast.success(
+        tr(
+          'admin.network.installations.reschedule_rejected',
+          'Reschedule request rejected',
+        ),
+      );
+      await loadAll();
+      const refreshed = rows.find((x) => x.id === rowId);
+      if (refreshed) openDetail(refreshed);
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to reject reschedule request');
+    } finally {
+      rescheduleDecisionBusy = false;
     }
   }
 </script>
@@ -666,49 +989,58 @@
       </div>
 
       <div class="step-flow">
-        <div class:active-step={effectiveStep >= 1}>1. {tr('admin.network.installations.step_assign', 'Assign')}</div>
-        <div class:active-step={effectiveStep >= 2}>2. {tr('admin.network.installations.step_schedule', 'Schedule')}</div>
-        <div class:active-step={effectiveStep >= 3}>3. {tr('admin.network.installations.step_onsite', 'On-site')}</div>
-        <div class:active-step={effectiveStep >= 4}>4. {tr('admin.network.installations.step_activate', 'Activate')}</div>
+        {#if activeRow.status === 'in_progress'}
+          <div class:active-step={true}>1. {tr('admin.network.installations.step_assign', 'Assign')}</div>
+          <div class:active-step={true}>2. {tr('admin.network.installations.step_schedule', 'Schedule')}</div>
+          <div class:done-step={checkCable} class:active-step={!checkCable && onsiteActiveIndex === 0}>
+            3. Cable
+          </div>
+          <div class:done-step={checkOnt} class:active-step={!checkOnt && onsiteActiveIndex === 1}>
+            4. ONT
+          </div>
+          <div class:done-step={checkPppoe} class:active-step={!checkPppoe && onsiteActiveIndex === 2}>
+            5. PPPoE
+          </div>
+          <div class:done-step={checkSpeed} class:active-step={!checkSpeed && onsiteActiveIndex === 3}>
+            6. Speed Test
+          </div>
+          <div class:active-step={checklistDoneCount === checklistTotal}>
+            7. {tr('admin.network.installations.step_activate', 'Activate')}
+          </div>
+        {:else}
+          <div class:active-step={effectiveStep >= 1}>1. {tr('admin.network.installations.step_assign', 'Assign')}</div>
+          <div class:active-step={effectiveStep >= 2}>2. {tr('admin.network.installations.step_schedule', 'Schedule')}</div>
+          <div class:active-step={effectiveStep >= 3}>3. {tr('admin.network.installations.step_onsite', 'On-site')}</div>
+          <div class:active-step={effectiveStep >= 4}>4. {tr('admin.network.installations.step_activate', 'Activate')}</div>
+        {/if}
       </div>
 
       <div class="meta-grid">
-        <div><strong>{tr('common.customer', 'Customer')}:</strong> {activeRow.customer_name || activeRow.customer_id}</div>
-        <div><strong>{tr('common.location', 'Location')}:</strong> {activeRow.location_label || activeRow.location_id}</div>
-        <div><strong>{tr('common.package', 'Package')}:</strong> {activeRow.package_name || '-'}</div>
-        <div><strong>{tr('common.status', 'Status')}:</strong> <span class={statusClass(activeRow.status)}>{activeRow.status}</span></div>
-        <div><strong>{tr('admin.network.installations.subscription_status', 'Service Status')}:</strong> {activeRow.subscription_status || '-'}</div>
+        <article class="meta-item">
+          <span class="meta-label">{tr('common.customer', 'Customer')}</span>
+          <strong class="meta-value">{activeRow.customer_name || activeRow.customer_id}</strong>
+        </article>
+        <article class="meta-item">
+          <span class="meta-label">{tr('common.location', 'Location')}</span>
+          <strong class="meta-value">{activeRow.location_label || activeRow.location_id}</strong>
+        </article>
+        <article class="meta-item">
+          <span class="meta-label">{tr('common.package', 'Package')}</span>
+          <strong class="meta-value">{activeRow.package_name || '-'}</strong>
+        </article>
+        <article class="meta-item">
+          <span class="meta-label">{tr('common.status', 'Status')}</span>
+          <span class="meta-value"><span class={statusClass(activeRow.status)}>{activeRow.status}</span></span>
+        </article>
+        <article class="meta-item">
+          <span class="meta-label">{tr('admin.network.installations.subscription_status', 'Service Status')}</span>
+          <strong class="meta-value">{activeRow.subscription_status || '-'}</strong>
+        </article>
+        <article class="meta-item">
+          <span class="meta-label">{tr('common.assignee', 'Assignee')}</span>
+          <strong class="meta-value">{activeRow.assigned_to_name || '-'}</strong>
+        </article>
       </div>
-
-      <details class="topology-context">
-        <summary>{tr('admin.network.installations.topology_context', 'Topology Context')}</summary>
-        <div class="meta-grid">
-          <div>
-            <strong>{tr('admin.network.installations.assignment_status', 'Assignment Status')}:</strong>
-            {activeRow.assignment_status || '-'}
-          </div>
-          <div>
-            <strong>{tr('admin.network.installations.selected_zone', 'Selected Zone')}:</strong>
-            {activeRow.selected_zone_name || activeRow.selected_zone_id || '-'}
-          </div>
-          <div>
-            <strong>{tr('admin.network.installations.selected_node', 'Selected Node')}:</strong>
-            {activeRow.selected_node_name || activeRow.selected_node_id || '-'}
-          </div>
-          <div>
-            <strong>{tr('admin.network.installations.node_score', 'Node Score')}:</strong>
-            {activeRow.selected_node_score == null ? '-' : activeRow.selected_node_score.toFixed(1)}
-          </div>
-          <div>
-            <strong>{tr('admin.network.installations.path_nodes', 'Path Nodes')}:</strong>
-            {Array.isArray(activeRow.path_node_ids) ? activeRow.path_node_ids.length : 0}
-          </div>
-          <div>
-            <strong>{tr('admin.network.installations.path_links', 'Path Links')}:</strong>
-            {Array.isArray(activeRow.path_link_ids) ? activeRow.path_link_ids.length : 0}
-          </div>
-        </div>
-      </details>
 
       {#if $can('manage', 'work_orders')}
         <section class="wizard-card">
@@ -771,6 +1103,54 @@
           {:else if activeRow.status === 'pending' && effectiveStep === 2}
             <h3>{tr('admin.network.installations.step_schedule', 'Schedule')}</h3>
             <p class="step-help">{tr('admin.network.installations.step_schedule_help', 'Set installation date/time, then start work order.')}</p>
+            {#if rescheduleLoading}
+              <p class="helper-text">{tr('common.loading', 'Loading...')}</p>
+            {:else if rescheduleRequest}
+              <div class="reschedule-request-card">
+                <div class="reschedule-request-head">
+                  <strong>{tr('admin.network.installations.reschedule_pending_title', 'Pending reschedule request')}</strong>
+                  <span>{formatDateTime(rescheduleRequest.created_at)}</span>
+                </div>
+                <div class="reschedule-request-grid">
+                  <div>
+                    <span>{tr('common.requested_by', 'Requested by')}</span>
+                    <strong>{rescheduleRequest.requested_by_name || rescheduleRequest.requested_by_email || '-'}</strong>
+                  </div>
+                  <div>
+                    <span>{tr('common.schedule', 'Schedule')}</span>
+                    <strong>{formatDateTime(rescheduleRequest.requested_schedule_at)}</strong>
+                  </div>
+                </div>
+                {#if rescheduleRequest.reason}
+                  <p>{rescheduleRequest.reason}</p>
+                {/if}
+                {#if canReviewReschedule}
+                  <div class="reschedule-decision-fields">
+                    <label>
+                      {tr('admin.network.installations.override_schedule_optional', 'Override schedule (optional)')}
+                      <input type="datetime-local" bind:value={rescheduleOverrideAt} disabled={rescheduleDecisionBusy} />
+                    </label>
+                    <label>
+                      {tr('common.notes', 'Notes')}
+                      <textarea
+                        rows="3"
+                        bind:value={rescheduleDecisionNotes}
+                        placeholder={tr('admin.network.installations.reschedule_decision_notes', 'Decision notes')}
+                        disabled={rescheduleDecisionBusy}
+                      ></textarea>
+                    </label>
+                  </div>
+                  <div class="modal-actions">
+                    <button class="btn ghost" type="button" onclick={approveRescheduleFromDetail} disabled={rescheduleDecisionBusy}>
+                      {tr('common.approve', 'Approve')}
+                    </button>
+                    <button class="btn danger" type="button" onclick={rejectRescheduleFromDetail} disabled={rescheduleDecisionBusy}>
+                      {tr('common.reject', 'Reject')}
+                    </button>
+                  </div>
+                {/if}
+              </div>
+            {/if}
             <div class="assigned-summary">
               <span class="summary-label">{tr('common.assignee', 'Assignee')}</span>
               <strong>{assigneeLabel(formAssignee)}</strong>
@@ -797,23 +1177,146 @@
           {:else if activeRow.status === 'in_progress' && effectiveStep === 3}
             <h3>{tr('admin.network.installations.step_onsite', 'On-site')}</h3>
             <p class="step-help">{tr('admin.network.installations.step_onsite_help', 'Complete onsite checklist. Progress updates automatically.')}</p>
-            <fieldset class="checklist">
+            {#if onsiteActiveTask.key === 'cable'}
+              <div class="cable-designer-card">
+                <div class="cable-designer-copy">
+                  <strong>{tr('admin.network.installations.cable_route_title', 'Cable Route')}</strong>
+                  <p>
+                    {tr(
+                      'admin.network.installations.cable_route_desc',
+                      'Draw physical cable/link route in Topology Map and save it there.',
+                    )}
+                  </p>
+                </div>
+                <button class="btn ghost" type="button" onclick={openCableDesigner}>
+                  <Icon name="map-pin" size={14} />
+                  {tr('admin.network.installations.open_cable_designer', 'Draw Cable Route')}
+                </button>
+              </div>
+              {#if showCableMapDrawer}
+                <div class="cable-map-drawer">
+                  <div class="cable-map-head">
+                    <strong>{tr('admin.network.installations.cable_map_inline_title', 'Cable Route Designer')}</strong>
+                    <button class="btn ghost mini" type="button" onclick={() => (showCableMapDrawer = false)}>
+                      {tr('common.close', 'Close')}
+                    </button>
+                  </div>
+                  <InstallationCableMap
+                    workOrderId={activeRow.id}
+                    customerId={activeRow.customer_id}
+                    locationId={activeRow.location_id}
+                    initialFromNodeId={activeRow.selected_node_id}
+                    on:saved={handleCableMapSaved}
+                  />
+                </div>
+              {/if}
+            {/if}
+            <fieldset class="checklist single-step">
               <legend>
-                {tr('admin.network.installations.checklist', 'Installation Checklist')}
-                <span class="progress-inline">{checklistDoneCount}/{checklistTotal}</span>
+                {tr('admin.network.installations.current_step', 'Current Step')}
+                <span class="progress-inline">{onsiteActiveIndex + 1}/{checklistTotal}</span>
               </legend>
-              <label><input type="checkbox" bind:checked={checkCable} /> Cable installed</label>
-              <label><input type="checkbox" bind:checked={checkOnt} /> ONT installed</label>
-              <label><input type="checkbox" bind:checked={checkPppoe} /> PPPoE configured</label>
-              <label><input type="checkbox" bind:checked={checkSpeed} /> Speed test passed</label>
+              <label class="check-item" class:is-done={getOnsiteTaskChecked(onsiteActiveIndex)}>
+                <input
+                  type="checkbox"
+                  checked={getOnsiteTaskChecked(onsiteActiveIndex)}
+                  onchange={(e) =>
+                    setOnsiteTaskChecked(
+                      onsiteActiveIndex,
+                      (e.currentTarget as HTMLInputElement).checked,
+                    )}
+                />
+                <span class="check-indicator">{getOnsiteTaskChecked(onsiteActiveIndex) ? '✓' : ''}</span>
+                <span class="check-content">
+                  <strong>{onsiteActiveTask.title}</strong>
+                  <small>{onsiteActiveTask.desc}</small>
+                </span>
+              </label>
             </fieldset>
+
+            <section class="photos-card">
+              <div class="photos-head">
+                <strong>{tr('admin.network.installations.photos_title', 'Installation Photos')}</strong>
+                <label class="btn ghost upload-btn">
+                  <Icon name="image" size={14} />
+                  {uploadingPhotos
+                    ? tr('common.loading', 'Loading...')
+                    : tr('admin.network.installations.photos_add', 'Add Photos')}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onchange={uploadInstallationPhotos}
+                    disabled={uploadingPhotos}
+                  />
+                </label>
+              </div>
+
+              {#if installationPhotos.length > 0}
+                <div class="photo-grid">
+                  {#each installationPhotos as file}
+                    <article class="photo-item">
+                      <a href={getStorageContentUrl(file.id)} target="_blank" rel="noreferrer">
+                        <img
+                          src={getStorageContentUrl(file.id)}
+                          alt={file.original_name || file.name || 'Installation photo'}
+                          loading="lazy"
+                        />
+                      </a>
+                      <div class="photo-meta">
+                        <span title={file.original_name || file.name || file.id}>
+                          {file.original_name || file.name || file.id}
+                        </span>
+                        <button class="btn danger mini" type="button" onclick={() => removeInstallationPhoto(file.id)}>
+                          {tr('common.remove', 'Remove')}
+                        </button>
+                      </div>
+                    </article>
+                  {/each}
+                </div>
+              {:else}
+                <p class="helper-text">
+                  {tr(
+                    'admin.network.installations.photos_empty',
+                    'No installation photos uploaded yet.',
+                  )}
+                </p>
+              {/if}
+            </section>
             <label class="notes">
               {tr('common.notes', 'Notes')}
               <textarea rows="4" bind:value={formNotes} placeholder={tr('admin.network.installations.notes_placeholder', 'Technician notes and onsite findings')}></textarea>
             </label>
             <div class="modal-actions">
+              <button
+                class="btn ghost"
+                type="button"
+                onclick={goPrevOnsiteStep}
+                disabled={onsiteActiveIndex === 0}
+              >
+                {tr('common.previous', 'Previous')}
+              </button>
+              <button
+                class="btn ghost"
+                type="button"
+                onclick={goNextOnsiteStep}
+                disabled={onsiteActiveIndex >= checklistTotal - 1}
+              >
+                {tr('common.next', 'Next')}
+              </button>
+              <button
+                class="btn"
+                type="button"
+                onclick={markActiveOnsiteStepDone}
+                disabled={getOnsiteTaskChecked(onsiteActiveIndex)}
+              >
+                {tr('admin.network.installations.mark_done', 'Mark done')}
+              </button>
               <button class="btn ghost" onclick={savePlan} disabled={busyId === activeRow.id}>
                 {tr('admin.network.installations.save_plan', 'Save Plan')}
+              </button>
+              <button class="btn success" onclick={completeFromDetail} disabled={busyId === activeRow.id || !canCompleteActive}>
+                {tr('common.complete', 'Complete')}
               </button>
             </div>
           {:else if activeRow.status === 'in_progress' && effectiveStep === 4}
@@ -1197,7 +1700,7 @@
   }
   .step-flow {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 8px;
   }
   .step-flow > div {
@@ -1214,29 +1717,36 @@
     background: rgba(99, 102, 241, 0.14);
     color: #dbeafe;
   }
+  .step-flow > div.done-step {
+    border-color: rgba(34, 197, 94, 0.45);
+    background: rgba(22, 101, 52, 0.22);
+    color: #d1fae5;
+  }
   .meta-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px 14px;
-    font-size: 0.95rem;
   }
-  .topology-context {
-    border: 1px solid #273452;
-    border-radius: 12px;
-    background: #0e172a;
-    padding: 12px;
+  .meta-item {
+    border: 1px solid #2b3854;
+    border-radius: 10px;
+    background: #0f1728;
+    padding: 10px 12px;
     display: grid;
-    gap: 8px;
+    gap: 5px;
   }
-  .topology-context summary {
-    cursor: pointer;
-    font-size: 0.95rem;
-    color: #dbeafe;
+  .meta-label {
+    color: #9fb0cc;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
     font-weight: 700;
-    list-style: none;
   }
-  .topology-context summary::-webkit-details-marker {
-    display: none;
+  .meta-value {
+    color: #e5edff;
+    font-size: 0.96rem;
+    font-weight: 800;
+    min-height: 20px;
   }
   .wizard-card {
     border: 1px solid #2b3a5b;
@@ -1259,6 +1769,57 @@
     gap: 10px;
     flex-wrap: wrap;
     background: #0b1221;
+  }
+  .reschedule-request-card {
+    border: 1px solid rgba(245, 158, 11, 0.38);
+    border-radius: 10px;
+    background: rgba(120, 53, 15, 0.18);
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+  }
+  .reschedule-request-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.84rem;
+    color: #fbbf24;
+  }
+  .reschedule-request-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+  }
+  .reschedule-request-grid > div {
+    display: grid;
+    gap: 4px;
+  }
+  .reschedule-request-grid span {
+    font-size: 0.75rem;
+    color: #fcd34d;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+  }
+  .reschedule-request-grid strong {
+    color: #fde68a;
+    font-size: 0.92rem;
+  }
+  .reschedule-request-card p {
+    margin: 0;
+    font-size: 0.86rem;
+    color: #fde68a;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .reschedule-decision-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .reschedule-decision-fields label:last-child {
+    grid-column: 1 / -1;
   }
   .summary-label {
     color: #9fb0cc;
@@ -1297,6 +1858,9 @@
     display: grid;
     gap: 8px;
   }
+  .checklist.single-step {
+    padding: 12px;
+  }
   .progress-inline {
     margin-left: 8px;
     font-size: 0.78rem;
@@ -1316,6 +1880,169 @@
     display: flex;
     gap: 8px;
     align-items: center;
+  }
+  .check-item {
+    border: 1px solid #314261;
+    background: #0f1728;
+    border-radius: 10px;
+    padding: 10px;
+    cursor: pointer;
+    gap: 10px !important;
+    align-items: flex-start !important;
+    transition: border-color 140ms ease, background 140ms ease;
+  }
+  .check-item:hover {
+    border-color: #47608d;
+    background: #111d33;
+  }
+  .check-item input[type='checkbox'] {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+  }
+  .check-indicator {
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    border: 1px solid #496087;
+    background: #0c1422;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #0b1a32;
+    font-weight: 900;
+    line-height: 1;
+  }
+  .check-content {
+    display: grid;
+    gap: 3px;
+    color: #d9e7ff;
+  }
+  .check-content strong {
+    font-size: 0.96rem;
+  }
+  .check-content small {
+    color: #9eb0cf;
+    font-size: 0.8rem;
+  }
+  .check-item.is-done {
+    border-color: rgba(34, 197, 94, 0.44);
+    background: rgba(22, 101, 52, 0.2);
+  }
+  .check-item.is-done .check-indicator {
+    border-color: rgba(34, 197, 94, 0.65);
+    background: #22c55e;
+    color: #06280f;
+  }
+  .check-item.is-done .check-content strong {
+    color: #d1fadf;
+  }
+  .cable-designer-card {
+    border: 1px solid #2d3f61;
+    border-radius: 10px;
+    background: #0c162a;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .cable-designer-copy {
+    display: grid;
+    gap: 4px;
+  }
+  .cable-designer-copy p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #9fb0cc;
+  }
+  .cable-map-drawer {
+    margin-top: 10px;
+    border: 1px solid #2d3f61;
+    border-radius: 10px;
+    background: #0a1220;
+    overflow: hidden;
+  }
+  .cable-map-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-bottom: 1px solid #263655;
+    background: #0b1629;
+  }
+  .cable-map-drawer :global(.icm-map) {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+  }
+  .photos-card {
+    border: 1px solid #2d3650;
+    border-radius: 10px;
+    padding: 10px;
+    display: grid;
+    gap: 10px;
+    background: #0f1626;
+  }
+  .photos-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .upload-btn {
+    position: relative;
+    overflow: hidden;
+  }
+  .upload-btn input[type='file'] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+  }
+  .photo-item {
+    border: 1px solid #2d3650;
+    border-radius: 10px;
+    background: #0b1221;
+    overflow: hidden;
+    display: grid;
+    gap: 6px;
+    padding: 6px;
+  }
+  .photo-item img {
+    width: 100%;
+    height: 92px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #2d3650;
+    display: block;
+    background: #0a1220;
+  }
+  .photo-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .photo-meta span {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    color: #b8c7e3;
   }
   .notes textarea {
     resize: vertical;
@@ -1394,7 +2121,9 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .meta-grid,
-    .form-grid {
+    .form-grid,
+    .reschedule-request-grid,
+    .reschedule-decision-fields {
       grid-template-columns: 1fr;
     }
     .step-flow {

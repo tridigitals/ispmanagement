@@ -1,11 +1,11 @@
 use crate::error::{AppError, AppResult};
 use crate::http::AppState;
 use crate::models::{
-    CreateNetworkLinkRequest, CreateNetworkNodeRequest, CreateServiceZoneRequest,
-    CreateZoneNodeBindingRequest, CreateZoneOfferRequest, CoverageCheckRequest, ComputePathRequest,
+    ComputePathRequest, CoverageCheckRequest, CreateNetworkLinkRequest, CreateNetworkNodeRequest,
+    CreateServiceZoneRequest, CreateZoneNodeBindingRequest, CreateZoneOfferRequest,
     NetworkImpactResponse, PaginatedResponse, RankCandidateNodesRequest, ResolveZoneRequest,
-    UpdateNetworkLinkRequest, UpdateNetworkNodeRequest, UpdateServiceZoneRequest,
-    UpdateZoneOfferRequest,
+    SyncTopologyAssetsResponse, UpdateNetworkLinkRequest, UpdateNetworkNodeRequest,
+    UpdateServiceZoneRequest, UpdateZoneOfferRequest,
 };
 use crate::services::network_mapping_service::ListQuery;
 use axum::{
@@ -27,9 +27,13 @@ pub fn router() -> Router<AppState> {
         .route("/zones/resolve", post(resolve_zone))
         .route("/paths/compute", post(compute_path))
         .route("/nodes/rank-candidates", post(rank_candidate_nodes))
+        .route("/assets/sync", post(sync_topology_assets))
         .route("/coverage/check", post(check_coverage))
         .route("/impact/customers", get(list_impacted_customers))
-        .route("/zone-offers", get(list_zone_offers).post(create_zone_offer))
+        .route(
+            "/zone-offers",
+            get(list_zone_offers).post(create_zone_offer),
+        )
         .route(
             "/zone-offers/{id}",
             patch(update_zone_offer).delete(delete_zone_offer),
@@ -136,6 +140,18 @@ async fn list_nodes(
     let out = state
         .network_mapping_service
         .list_nodes(&claims.sub, &tenant_id, to_list_query(q)?)
+        .await?;
+    Ok(Json(out))
+}
+
+async fn sync_topology_assets(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> AppResult<Json<SyncTopologyAssetsResponse>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let out = state
+        .network_mapping_service
+        .sync_topology_asset_nodes(&claims.sub, &tenant_id)
         .await?;
     Ok(Json(out))
 }

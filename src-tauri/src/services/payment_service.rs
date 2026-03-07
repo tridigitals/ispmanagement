@@ -2133,9 +2133,8 @@ impl PaymentService {
 
             if is_customer_package {
                 if manual_failure {
-                    let subscription_id = Self::parse_customer_subscription_id(
-                        invoice.external_id.as_deref(),
-                    );
+                    let subscription_id =
+                        Self::parse_customer_subscription_id(invoice.external_id.as_deref());
                     if let Some(subscription_id) = subscription_id {
                         let customer_user_ids = self
                             .list_customer_user_ids_for_subscription(
@@ -2776,7 +2775,11 @@ impl PaymentService {
                 )
                 .await?;
                 let (_work_order_id, work_order_created) = self
-                    .ensure_installation_work_order(&invoice.tenant_id, &subscription_id, &invoice.id)
+                    .ensure_installation_work_order(
+                        &invoice.tenant_id,
+                        &subscription_id,
+                        &invoice.id,
+                    )
                     .await?;
                 tracing::info!(
                     "customer paid flow: created/ensured installation work order (tenant={}, invoice={}, subscription={}, work_order={})",
@@ -3161,9 +3164,9 @@ impl PaymentService {
             return Ok(0);
         }
 
-        let title = "Installation scheduled".to_string();
+        let title = "Order Queued for Installation".to_string();
         let message = format!(
-            "Payment for invoice {} is confirmed. Your service is queued for installation/activation by technician.",
+            "Payment for invoice {} is confirmed. Your order is now Pending Installation and waiting assignment/schedule from admin or technician.",
             invoice_number
         );
 
@@ -3177,7 +3180,7 @@ impl PaymentService {
                     title.clone(),
                     message.clone(),
                     "info".to_string(),
-                    "billing".to_string(),
+                    "operations".to_string(),
                     Some("/dashboard/services".to_string()),
                 )
                 .await
@@ -3203,9 +3206,9 @@ impl PaymentService {
             return Ok(0);
         }
 
-        let title = "New installation request".to_string();
+        let title = "Installation Work Order: New Request".to_string();
         let message = format!(
-            "Invoice {} has been paid and a new installation work order is ready (WO {}).",
+            "Invoice {} is paid. A new installation work order is ready for assignment and scheduling (WO {}).",
             invoice_number, work_order_id
         );
 
@@ -3757,7 +3760,8 @@ impl PaymentService {
         .ok_or_else(|| AppError::NotFound("Customer subscription not found".to_string()))?;
 
         #[cfg(feature = "postgres")]
-        let zone_id: Option<String> = if let (Some(lat), Some(lng)) = (sub.latitude, sub.longitude) {
+        let zone_id: Option<String> = if let (Some(lat), Some(lng)) = (sub.latitude, sub.longitude)
+        {
             sqlx::query_scalar(
                 r#"
                 SELECT z.id::text
@@ -3842,10 +3846,9 @@ impl PaymentService {
             let distance_score = Self::assignment_distance_score(row.distance_m).unwrap_or(60.0);
             let stability_penalty =
                 (row.down_links as f64 * 7.5) + if row.link_count == 0 { 12.0 } else { 0.0 };
-            let score =
-                ((health_score * 0.45) + (capacity_score * 0.35) + (distance_score * 0.20)
-                    - stability_penalty)
-                    .clamp(0.0, 100.0);
+            let score = ((health_score * 0.45) + (capacity_score * 0.35) + (distance_score * 0.20)
+                - stability_penalty)
+                .clamp(0.0, 100.0);
 
             ranked.push((
                 score,
@@ -4613,9 +4616,15 @@ mod tests {
 
     #[test]
     fn customer_package_external_id_detection() {
-        assert!(is_customer_package_invoice_external_id(Some("pkgsub:abc-123:monthly")));
-        assert!(is_customer_package_invoice_external_id(Some("pkgsub:sub-id")));
-        assert!(!is_customer_package_invoice_external_id(Some("plan:pro:monthly")));
+        assert!(is_customer_package_invoice_external_id(Some(
+            "pkgsub:abc-123:monthly"
+        )));
+        assert!(is_customer_package_invoice_external_id(Some(
+            "pkgsub:sub-id"
+        )));
+        assert!(!is_customer_package_invoice_external_id(Some(
+            "plan:pro:monthly"
+        )));
         assert!(!is_customer_package_invoice_external_id(Some("")));
         assert!(!is_customer_package_invoice_external_id(None));
     }

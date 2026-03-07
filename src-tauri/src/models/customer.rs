@@ -265,6 +265,8 @@ pub struct CustomerSubscriptionView {
     pub latest_work_order_id: Option<String>,
     pub latest_work_order_status: Option<String>,
     pub can_request_reopen: bool,
+    pub latest_reschedule_status: Option<String>,
+    pub latest_reschedule_requested_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -339,6 +341,45 @@ pub struct AssignInstallationWorkOrderRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UpdateInstallationWorkOrderStatusRequest {
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct WorkOrderRescheduleRequest {
+    pub id: String,
+    pub tenant_id: String,
+    pub work_order_id: String,
+    pub subscription_id: String,
+    pub requested_by: String,
+    pub requested_schedule_at: DateTime<Utc>,
+    pub reason: Option<String>,
+    pub status: String,
+    pub reviewed_by: Option<String>,
+    pub reviewed_at: Option<DateTime<Utc>>,
+    pub review_notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct WorkOrderRescheduleRequestView {
+    pub id: String,
+    pub work_order_id: String,
+    pub requested_schedule_at: String,
+    pub reason: Option<String>,
+    pub status: String,
+    pub requested_by_name: Option<String>,
+    pub requested_by_email: Option<String>,
+    pub reviewed_by_name: Option<String>,
+    pub reviewed_at: Option<String>,
+    pub review_notes: Option<String>,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WorkOrderRescheduleDecisionRequest {
+    pub scheduled_at: Option<String>,
     pub notes: Option<String>,
 }
 
