@@ -213,6 +213,7 @@
     { label: 'ODC', value: 'odc' },
     { label: 'ODP', value: 'odp' },
     { label: 'Splitter', value: 'splitter' },
+    { label: 'Junction', value: 'junction' },
     { label: 'Customer Premise', value: 'customer_premise' },
     { label: 'Customer Endpoint', value: 'customer_endpoint' },
   ];
@@ -554,6 +555,22 @@
         ctx.fill();
         break;
       }
+      case 'junction': {
+        ctx.beginPath();
+        ctx.arc(cx, cy, s * 0.08, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(cx - s * 0.34, cy);
+        ctx.lineTo(cx - s * 0.1, cy);
+        ctx.moveTo(cx + s * 0.1, cy);
+        ctx.lineTo(cx + s * 0.34, cy);
+        ctx.moveTo(cx, cy - s * 0.34);
+        ctx.lineTo(cx, cy - s * 0.1);
+        ctx.moveTo(cx, cy + s * 0.1);
+        ctx.lineTo(cx, cy + s * 0.34);
+        ctx.stroke();
+        break;
+      }
       case 'odc': {
         ctx.strokeRect(cx - s * 0.34, cy - s * 0.38, s * 0.68, s * 0.76);
         ctx.beginPath();
@@ -657,6 +674,7 @@
       { id: 'nm-node-icon-odc', bg: '#0f766e', type: 'odc' },
       { id: 'nm-node-icon-odp', bg: '#14b8a6', type: 'odp' },
       { id: 'nm-node-icon-splitter', bg: '#a855f7', type: 'splitter' },
+      { id: 'nm-node-icon-junction', bg: '#f97316', type: 'junction' },
       { id: 'nm-node-icon-customer', bg: '#06b6d4', type: 'customer_premise' },
     ];
     for (const d of defs) {
@@ -1097,6 +1115,8 @@
               'nm-node-icon-odp',
               'splitter',
               'nm-node-icon-splitter',
+              'junction',
+              'nm-node-icon-junction',
               'customer_premise',
               'nm-node-icon-customer',
               'customer_endpoint',
@@ -2665,6 +2685,7 @@
           <option value="odc">ODC</option>
           <option value="odp">ODP</option>
           <option value="splitter">Splitter</option>
+          <option value="junction">Junction</option>
           <option value="customer_premise">Customer Premise</option>
           <option value="customer_endpoint">Customer Endpoint</option>
           <option value="fiber">Fiber</option>

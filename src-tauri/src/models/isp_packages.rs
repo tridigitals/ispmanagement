@@ -121,6 +121,7 @@ pub struct IspPackageRouterMappingView {
     pub router_id: String,
     pub package_id: String,
     pub package_name: String,
+    pub router_name: Option<String>,
     pub router_profile_name: String,
     pub address_pool: Option<String>,
     pub created_at: DateTime<Utc>,

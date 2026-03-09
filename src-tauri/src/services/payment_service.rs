@@ -15,7 +15,7 @@ use sha2::{Digest, Sha512};
 use std::collections::HashSet;
 use uuid::Uuid;
 
-use crate::services::NotificationService;
+use crate::services::{NotificationService, PppoeService};
 
 const CUSTOMER_PACKAGE_INVOICE_PREFIX: &str = "pkgsub:";
 const BILLING_AUTO_SUSPEND_ENABLED_KEY: &str = "billing_auto_suspend_enabled";
@@ -175,14 +175,20 @@ pub struct PaymentService {
     pool: DbPool,
     http_client: Client,
     notification_service: NotificationService,
+    pppoe_service: PppoeService,
 }
 
 impl PaymentService {
-    pub fn new(pool: DbPool, notification_service: NotificationService) -> Self {
+    pub fn new(
+        pool: DbPool,
+        notification_service: NotificationService,
+        pppoe_service: PppoeService,
+    ) -> Self {
         Self {
             pool,
             http_client: Client::new(),
             notification_service,
+            pppoe_service,
         }
     }
 
@@ -591,6 +597,48 @@ impl PaymentService {
             .await
     }
 
+    pub async fn create_invoice_for_installation_work_order(
+        &self,
+        tenant_id: &str,
+        work_order_id: &str,
+    ) -> AppResult<Invoice> {
+        #[cfg(feature = "postgres")]
+        let subscription_id: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT subscription_id
+            FROM installation_work_orders
+            WHERE tenant_id = $1 AND id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(work_order_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let subscription_id: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT subscription_id
+            FROM installation_work_orders
+            WHERE tenant_id = ? AND id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(work_order_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let subscription_id = subscription_id
+            .ok_or_else(|| AppError::NotFound("Installation work order not found".to_string()))?;
+
+        self.create_invoice_for_customer_subscription(tenant_id, &subscription_id)
+            .await
+    }
+
     async fn create_invoice_for_customer_subscription_at(
         &self,
         tenant_id: &str,
@@ -730,6 +778,7 @@ impl PaymentService {
             .notify_subscription_invoice_created(
                 tenant_id,
                 subscription_id,
+                &invoice.id,
                 &invoice.invoice_number,
                 invoice.amount,
                 &invoice.currency_code,
@@ -1198,6 +1247,7 @@ impl PaymentService {
                             .notify_subscription_suspension(
                                 tenant_id,
                                 &subscription_id,
+                                &invoice_id,
                                 &invoice_number,
                                 day_offset,
                             )
@@ -2910,6 +2960,9 @@ impl PaymentService {
         };
 
         if resumed_from_suspended || resumed_from_pending_installation {
+            let _ = self
+                .set_subscription_pppoe_disabled_state(&invoice.tenant_id, &subscription_id, false)
+                .await;
             let resume_reason = if resumed_from_pending_installation {
                 "Subscription activated after completed installation and payment"
             } else {
@@ -2943,6 +2996,7 @@ impl PaymentService {
                 .notify_subscription_resumed(
                     &invoice.tenant_id,
                     &subscription_id,
+                    &invoice.id,
                     &invoice.invoice_number,
                 )
                 .await;
@@ -3026,6 +3080,7 @@ impl PaymentService {
         &self,
         tenant_id: &str,
         subscription_id: &str,
+        invoice_id: &str,
         invoice_number: &str,
         amount: f64,
         currency_code: &str,
@@ -3054,7 +3109,7 @@ impl PaymentService {
                     message.clone(),
                     "info".to_string(),
                     "billing".to_string(),
-                    Some("/dashboard/invoices".to_string()),
+                    Some(format!("/pay/{}", invoice_id)),
                 )
                 .await
                 .is_ok()
@@ -3070,6 +3125,7 @@ impl PaymentService {
         &self,
         tenant_id: &str,
         subscription_id: &str,
+        invoice_id: &str,
         invoice_number: &str,
         overdue_days: i64,
     ) -> AppResult<usize> {
@@ -3097,7 +3153,7 @@ impl PaymentService {
                     message.clone(),
                     "warning".to_string(),
                     "billing".to_string(),
-                    Some("/dashboard/invoices".to_string()),
+                    Some(format!("/pay/{}", invoice_id)),
                 )
                 .await
                 .is_ok()
@@ -3113,6 +3169,7 @@ impl PaymentService {
         &self,
         tenant_id: &str,
         subscription_id: &str,
+        invoice_id: &str,
         invoice_number: &str,
     ) -> AppResult<usize> {
         let user_ids = self
@@ -3139,7 +3196,7 @@ impl PaymentService {
                     message.clone(),
                     "success".to_string(),
                     "billing".to_string(),
-                    Some("/dashboard/invoices".to_string()),
+                    Some(format!("/pay/{}", invoice_id)),
                 )
                 .await
                 .is_ok()
@@ -3649,6 +3706,41 @@ impl PaymentService {
         .rows_affected();
 
         Ok(rows > 0)
+    }
+
+    async fn set_subscription_pppoe_disabled_state(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        disabled: bool,
+    ) -> AppResult<u64> {
+        #[cfg(feature = "postgres")]
+        let location_id: Option<String> = sqlx::query_scalar(
+            "SELECT location_id FROM customer_subscriptions WHERE tenant_id = $1 AND id = $2 LIMIT 1",
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        #[cfg(feature = "sqlite")]
+        let location_id: Option<String> = sqlx::query_scalar(
+            "SELECT location_id FROM customer_subscriptions WHERE tenant_id = ? AND id = ? LIMIT 1",
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let Some(location_id) = location_id else {
+            return Ok(0);
+        };
+
+        self.pppoe_service
+            .set_location_accounts_disabled_state(tenant_id, &location_id, disabled)
+            .await
     }
 
     async fn has_previous_paid_customer_package_invoice(

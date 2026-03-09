@@ -1,14 +1,15 @@
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    ComputePathRequest, ComputePathResponse, ComputedPathHop, CoverageCheckRequest,
-    CoverageCheckResponse, CreateNetworkLinkRequest, CreateNetworkNodeRequest,
-    CreateServiceZoneRequest, CreateZoneNodeBindingRequest, CreateZoneOfferRequest,
-    NetworkImpactCustomer, NetworkImpactResponse, NetworkLink, NetworkNode, PaginatedResponse,
-    RankCandidateNodesRequest, RankCandidateNodesResponse, RankedCandidateNode, ResolveZoneRequest,
-    ResolvedZone, ResolvedZoneResponse, ServiceZone, SyncTopologyAssetsResponse,
-    UpdateNetworkLinkRequest, UpdateNetworkNodeRequest, UpdateServiceZoneRequest,
-    UpdateZoneOfferRequest, ZoneNodeBinding, ZoneOffer,
+    ComputePathRequest, ComputePathResponse, ComputedPathHop, ConnectNodeToLinkRequest,
+    ConnectNodeToLinkResponse, CoverageCheckRequest, CoverageCheckResponse,
+    CreateNetworkLinkRequest, CreateNetworkNodeRequest, CreateServiceZoneRequest,
+    CreateZoneNodeBindingRequest, CreateZoneOfferRequest, NetworkImpactCustomer,
+    NetworkImpactResponse, NetworkLink, NetworkNode, PaginatedResponse, RankCandidateNodesRequest,
+    RankCandidateNodesResponse, RankedCandidateNode, ResolveZoneRequest, ResolvedZone,
+    ResolvedZoneResponse, ServiceZone, SyncTopologyAssetsResponse, UpdateNetworkLinkRequest,
+    UpdateNetworkNodeRequest, UpdateServiceZoneRequest, UpdateZoneOfferRequest, ZoneNodeBinding,
+    ZoneOffer,
 };
 use crate::services::AuthService;
 use std::collections::{HashMap, HashSet};
@@ -101,6 +102,15 @@ struct SyncCustomerLocationRow {
     longitude: f64,
 }
 
+#[derive(Debug, Clone)]
+struct SnappedPolylinePoint {
+    lng: f64,
+    lat: f64,
+    segment_index: usize,
+    t: f64,
+    distance_sq: f64,
+}
+
 impl NetworkMappingService {
     pub fn new(pool: DbPool, auth_service: AuthService) -> Self {
         Self { pool, auth_service }
@@ -142,6 +152,33 @@ impl NetworkMappingService {
             &[
                 ("network_topology", "manage"),
                 ("network_routers", "manage"),
+            ],
+        )
+        .await
+    }
+
+    async fn require_installation_read(&self, actor_id: &str, tenant_id: &str) -> AppResult<()> {
+        self.check_permission_any(
+            actor_id,
+            tenant_id,
+            &[
+                ("network_topology", "read"),
+                ("network_routers", "read"),
+                ("work_orders", "read"),
+                ("work_orders", "manage"),
+            ],
+        )
+        .await
+    }
+
+    async fn require_installation_manage(&self, actor_id: &str, tenant_id: &str) -> AppResult<()> {
+        self.check_permission_any(
+            actor_id,
+            tenant_id,
+            &[
+                ("network_topology", "manage"),
+                ("network_routers", "manage"),
+                ("work_orders", "manage"),
             ],
         )
         .await
@@ -229,6 +266,222 @@ impl NetworkMappingService {
             )));
         }
         Ok(())
+    }
+
+    fn point_distance_sq(a: [f64; 2], b: [f64; 2]) -> f64 {
+        let dx = a[0] - b[0];
+        let dy = a[1] - b[1];
+        (dx * dx) + (dy * dy)
+    }
+
+    fn coords_approx_equal(a: [f64; 2], b: [f64; 2]) -> bool {
+        Self::point_distance_sq(a, b) <= 1e-16
+    }
+
+    fn parse_line_coords(geometry: &serde_json::Value, field: &str) -> AppResult<Vec<[f64; 2]>> {
+        let obj = geometry
+            .as_object()
+            .ok_or_else(|| AppError::Validation(format!("{field} must be a GeoJSON object")))?;
+        let kind = obj
+            .get("type")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| AppError::Validation(format!("{field}.type is required")))?;
+        let coords = obj
+            .get("coordinates")
+            .ok_or_else(|| AppError::Validation(format!("{field}.coordinates is required")))?;
+
+        let mut out: Vec<[f64; 2]> = Vec::new();
+        match kind {
+            "LineString" => {
+                let arr = coords.as_array().ok_or_else(|| {
+                    AppError::Validation(format!("{field}.coordinates must be an array"))
+                })?;
+                for point in arr {
+                    let pt = point.as_array().ok_or_else(|| {
+                        AppError::Validation(format!("{field}.coordinates contains invalid point"))
+                    })?;
+                    if pt.len() < 2 {
+                        return Err(AppError::Validation(format!(
+                            "{field}.coordinates contains invalid point"
+                        )));
+                    }
+                    let lng = pt[0].as_f64().ok_or_else(|| {
+                        AppError::Validation(format!("{field}.coordinates contains invalid lng"))
+                    })?;
+                    let lat = pt[1].as_f64().ok_or_else(|| {
+                        AppError::Validation(format!("{field}.coordinates contains invalid lat"))
+                    })?;
+                    out.push([lng, lat]);
+                }
+            }
+            "MultiLineString" => {
+                let lines = coords.as_array().ok_or_else(|| {
+                    AppError::Validation(format!("{field}.coordinates must be an array"))
+                })?;
+                for line in lines {
+                    let line_points = line.as_array().ok_or_else(|| {
+                        AppError::Validation(format!(
+                            "{field}.coordinates contains invalid line segment"
+                        ))
+                    })?;
+                    for point in line_points {
+                        let pt = point.as_array().ok_or_else(|| {
+                            AppError::Validation(format!(
+                                "{field}.coordinates contains invalid point"
+                            ))
+                        })?;
+                        if pt.len() < 2 {
+                            return Err(AppError::Validation(format!(
+                                "{field}.coordinates contains invalid point"
+                            )));
+                        }
+                        let lng = pt[0].as_f64().ok_or_else(|| {
+                            AppError::Validation(format!(
+                                "{field}.coordinates contains invalid lng"
+                            ))
+                        })?;
+                        let lat = pt[1].as_f64().ok_or_else(|| {
+                            AppError::Validation(format!(
+                                "{field}.coordinates contains invalid lat"
+                            ))
+                        })?;
+                        let candidate = [lng, lat];
+                        if out
+                            .last()
+                            .copied()
+                            .map(|prev| Self::coords_approx_equal(prev, candidate))
+                            .unwrap_or(false)
+                        {
+                            continue;
+                        }
+                        out.push(candidate);
+                    }
+                }
+            }
+            _ => {
+                return Err(AppError::Validation(format!(
+                    "{field}.type must be LineString or MultiLineString"
+                )));
+            }
+        }
+
+        if out.len() < 2 {
+            return Err(AppError::Validation(format!(
+                "{field} must contain at least 2 coordinates"
+            )));
+        }
+        Ok(out)
+    }
+
+    fn build_line_geometry(coords: &[[f64; 2]]) -> serde_json::Value {
+        serde_json::json!({
+            "type": "LineString",
+            "coordinates": coords.iter().map(|pt| vec![pt[0], pt[1]]).collect::<Vec<_>>(),
+        })
+    }
+
+    fn snap_point_to_polyline(
+        coords: &[[f64; 2]],
+        lng: f64,
+        lat: f64,
+    ) -> Option<SnappedPolylinePoint> {
+        if coords.len() < 2 {
+            return None;
+        }
+
+        let point = [lng, lat];
+        let mut best: Option<SnappedPolylinePoint> = None;
+
+        for segment_index in 0..(coords.len() - 1) {
+            let a = coords[segment_index];
+            let b = coords[segment_index + 1];
+            let abx = b[0] - a[0];
+            let aby = b[1] - a[1];
+            let denom = (abx * abx) + (aby * aby);
+            let t = if denom <= 1e-18 {
+                0.0
+            } else {
+                (((point[0] - a[0]) * abx) + ((point[1] - a[1]) * aby)) / denom
+            }
+            .clamp(0.0, 1.0);
+            let snapped_lng = a[0] + (abx * t);
+            let snapped_lat = a[1] + (aby * t);
+            let distance_sq = Self::point_distance_sq(point, [snapped_lng, snapped_lat]);
+            let candidate = SnappedPolylinePoint {
+                lng: snapped_lng,
+                lat: snapped_lat,
+                segment_index,
+                t,
+                distance_sq,
+            };
+
+            if best
+                .as_ref()
+                .map(|current| candidate.distance_sq < current.distance_sq)
+                .unwrap_or(true)
+            {
+                best = Some(candidate);
+            }
+        }
+
+        best
+    }
+
+    fn dedupe_line_coords(coords: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
+        let mut out: Vec<[f64; 2]> = Vec::with_capacity(coords.len());
+        for point in coords {
+            if out
+                .last()
+                .copied()
+                .map(|prev| Self::coords_approx_equal(prev, point))
+                .unwrap_or(false)
+            {
+                continue;
+            }
+            out.push(point);
+        }
+        out
+    }
+
+    fn split_polyline_at_point(
+        coords: &[[f64; 2]],
+        snapped: &SnappedPolylinePoint,
+    ) -> AppResult<(Vec<[f64; 2]>, Vec<[f64; 2]>)> {
+        if coords.len() < 2 {
+            return Err(AppError::Validation(
+                "Target link geometry is too short".into(),
+            ));
+        }
+
+        let split_point = [snapped.lng, snapped.lat];
+        let start = coords[0];
+        let end = coords[coords.len() - 1];
+
+        if Self::coords_approx_equal(start, split_point)
+            || Self::coords_approx_equal(end, split_point)
+            || (snapped.segment_index == 0 && snapped.t <= 1e-6)
+            || (snapped.segment_index == coords.len() - 2 && snapped.t >= 1.0 - 1e-6)
+        {
+            return Err(AppError::Validation(
+                "Selected point is too close to an existing node. Click the node instead.".into(),
+            ));
+        }
+
+        let mut first = coords[..=snapped.segment_index].to_vec();
+        first.push(split_point);
+        let mut second = vec![split_point];
+        second.extend_from_slice(&coords[(snapped.segment_index + 1)..]);
+
+        let first = Self::dedupe_line_coords(first);
+        let second = Self::dedupe_line_coords(second);
+
+        if first.len() < 2 || second.len() < 2 {
+            return Err(AppError::Validation(
+                "Selected point does not create two valid link segments".into(),
+            ));
+        }
+
+        Ok((first, second))
     }
 
     fn map_geometry_db_error(err: sqlx::Error, field: &str) -> AppError {
@@ -349,6 +602,14 @@ impl NetworkMappingService {
             .get("asset_source")
             .and_then(|v| v.as_str())
             .or_else(|| metadata.get("asset_type").and_then(|v| v.as_str()))
+    }
+
+    fn customer_subscription_to_node_status(status: &str) -> &'static str {
+        match status.trim().to_lowercase().as_str() {
+            "suspended" => "maintenance",
+            "inactive" | "cancelled" => "inactive",
+            _ => "active",
+        }
     }
 
     async fn find_node_by_asset_reference(
@@ -535,7 +796,8 @@ impl NetworkMappingService {
         actor_id: &str,
         tenant_id: &str,
     ) -> AppResult<SyncTopologyAssetsResponse> {
-        self.require_manage(actor_id, tenant_id).await?;
+        self.require_installation_manage(actor_id, tenant_id)
+            .await?;
 
         let routers: Vec<SyncRouterRow> = sqlx::query_as(
             r#"
@@ -575,12 +837,13 @@ impl NetworkMappingService {
               FROM customer_subscriptions cs
               WHERE cs.tenant_id = cl.tenant_id
                 AND cs.location_id = cl.id
-                AND cs.status IN ('active', 'suspended')
+                AND cs.status IN ('active', 'pending_installation', 'suspended')
               ORDER BY
                 CASE cs.status
                   WHEN 'active' THEN 0
-                  WHEN 'suspended' THEN 1
-                  ELSE 2
+                  WHEN 'pending_installation' THEN 1
+                  WHEN 'suspended' THEN 2
+                  ELSE 3
                 END,
                 cs.updated_at DESC,
                 cs.created_at DESC
@@ -653,7 +916,7 @@ impl NetworkMappingService {
                     &row.location_id,
                     name.trim(),
                     "customer_premise",
-                    &row.subscription_status,
+                    Self::customer_subscription_to_node_status(&row.subscription_status),
                     row.latitude,
                     row.longitude,
                     serde_json::json!({
@@ -1176,7 +1439,7 @@ impl NetworkMappingService {
         tenant_id: &str,
         q: ListQuery,
     ) -> AppResult<PaginatedResponse<NetworkNode>> {
-        self.require_read(actor_id, tenant_id).await?;
+        self.require_installation_read(actor_id, tenant_id).await?;
         let search = Self::cleaned_query(q.q);
         let page = q.page.max(1);
         let per_page = q.per_page.clamp(1, 200);
@@ -1268,7 +1531,8 @@ impl NetworkMappingService {
         tenant_id: &str,
         dto: CreateNetworkNodeRequest,
     ) -> AppResult<NetworkNode> {
-        self.require_manage(actor_id, tenant_id).await?;
+        self.require_installation_manage(actor_id, tenant_id)
+            .await?;
         if dto.name.trim().is_empty() {
             return Err(AppError::Validation("name is required".into()));
         }
@@ -1389,7 +1653,7 @@ impl NetworkMappingService {
         tenant_id: &str,
         q: ListQuery,
     ) -> AppResult<PaginatedResponse<NetworkLink>> {
-        self.require_read(actor_id, tenant_id).await?;
+        self.require_installation_read(actor_id, tenant_id).await?;
         let search = Self::cleaned_query(q.q);
         let status_filter = q.status.as_deref().map(Self::normalize_link_status);
         let page = q.page.max(1);
@@ -1486,7 +1750,8 @@ impl NetworkMappingService {
         tenant_id: &str,
         dto: CreateNetworkLinkRequest,
     ) -> AppResult<NetworkLink> {
-        self.require_manage(actor_id, tenant_id).await?;
+        self.require_installation_manage(actor_id, tenant_id)
+            .await?;
         if dto.name.trim().is_empty() {
             return Err(AppError::Validation("name is required".into()));
         }
@@ -1532,6 +1797,229 @@ impl NetworkMappingService {
         .map_err(|e| Self::map_geometry_db_error(e, "geometry"))?;
 
         self.get_link_by_id(tenant_id, &id).await
+    }
+
+    pub async fn connect_node_to_link(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        dto: ConnectNodeToLinkRequest,
+    ) -> AppResult<ConnectNodeToLinkResponse> {
+        self.require_installation_manage(actor_id, tenant_id)
+            .await?;
+        if dto.name.trim().is_empty() {
+            return Err(AppError::Validation("name is required".into()));
+        }
+        Self::validate_lat_lng(dto.split_lat, dto.split_lng, "split_point")?;
+        Self::validate_geojson_geometry(
+            &dto.geometry,
+            &["LineString", "MultiLineString"],
+            "geometry",
+        )?;
+
+        let status = Self::normalize_link_status(dto.status.as_deref().unwrap_or("up"));
+        Self::validate_link_status(&status)?;
+
+        let source_node = self.get_node_by_id(tenant_id, &dto.source_node_id).await?;
+        let target_link = self.get_link_by_id(tenant_id, &dto.target_link_id).await?;
+        if source_node.id == target_link.from_node_id || source_node.id == target_link.to_node_id {
+            return Err(AppError::Validation(
+                "Source node already terminates the selected cable. Click the node instead.".into(),
+            ));
+        }
+
+        let target_coords = Self::parse_line_coords(&target_link.geometry, "target_link.geometry")?;
+        let snapped = Self::snap_point_to_polyline(&target_coords, dto.split_lng, dto.split_lat)
+            .ok_or_else(|| AppError::Validation("Target link geometry is invalid".into()))?;
+        let (updated_target_coords, created_target_coords) =
+            Self::split_polyline_at_point(&target_coords, &snapped)?;
+
+        let junction_node_type = dto
+            .junction_node_type
+            .as_deref()
+            .unwrap_or("junction")
+            .trim()
+            .to_lowercase();
+        if junction_node_type != "junction" && junction_node_type != "splitter" {
+            return Err(AppError::Validation(
+                "junction_node_type must be junction or splitter".into(),
+            ));
+        }
+
+        let junction_id = Uuid::new_v4().to_string();
+        let created_target_link_segment_id = Uuid::new_v4().to_string();
+        let created_connection_link_id = Uuid::new_v4().to_string();
+        let junction_name = dto
+            .junction_name
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string)
+            .unwrap_or_else(|| format!("Junction {}", &target_link.name));
+        let priority = dto.priority.unwrap_or(100);
+
+        let mut connection_metadata = dto.metadata.unwrap_or_else(|| serde_json::json!({}));
+        if let Some(meta) = connection_metadata.as_object_mut() {
+            meta.insert(
+                "generated_by".into(),
+                serde_json::Value::String("connect_node_to_link".into()),
+            );
+            meta.insert(
+                "junction_node_id".into(),
+                serde_json::Value::String(junction_id.clone()),
+            );
+            meta.insert(
+                "target_link_id".into(),
+                serde_json::Value::String(target_link.id.clone()),
+            );
+            meta.insert(
+                "source_node_id".into(),
+                serde_json::Value::String(source_node.id.clone()),
+            );
+        }
+
+        let mut created_target_segment_metadata = target_link.metadata.clone();
+        if let Some(meta) = created_target_segment_metadata.as_object_mut() {
+            meta.insert(
+                "generated_by".into(),
+                serde_json::Value::String("connect_node_to_link".into()),
+            );
+            meta.insert(
+                "split_parent_link_id".into(),
+                serde_json::Value::String(target_link.id.clone()),
+            );
+            meta.insert(
+                "junction_node_id".into(),
+                serde_json::Value::String(junction_id.clone()),
+            );
+        }
+
+        let mut updated_target_link_metadata = target_link.metadata.clone();
+        if let Some(meta) = updated_target_link_metadata.as_object_mut() {
+            meta.insert(
+                "last_split_junction_node_id".into(),
+                serde_json::Value::String(junction_id.clone()),
+            );
+            meta.insert(
+                "last_split_child_link_id".into(),
+                serde_json::Value::String(created_target_link_segment_id.clone()),
+            );
+        }
+
+        let junction_metadata = serde_json::json!({
+            "generated_by": "connect_node_to_link",
+            "generated_reason": "link_split",
+            "target_link_id": target_link.id.clone(),
+            "source_node_id": source_node.id.clone(),
+        });
+
+        let mut tx = self.pool.begin().await.map_err(AppError::Database)?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO network_nodes
+              (id, tenant_id, name, node_type, status, geom, capacity_json, health_json, metadata, created_at, updated_at)
+            VALUES
+              ($1::uuid, $2::uuid, $3, $4, 'active', ST_SetSRID(ST_MakePoint($5, $6), 4326), '{}'::jsonb, '{}'::jsonb, $7, now(), now())
+            "#,
+        )
+        .bind(&junction_id)
+        .bind(tenant_id)
+        .bind(&junction_name)
+        .bind(&junction_node_type)
+        .bind(snapped.lng)
+        .bind(snapped.lat)
+        .bind(junction_metadata)
+        .execute(&mut *tx)
+        .await
+        .map_err(AppError::Database)?;
+
+        sqlx::query(
+            r#"
+            UPDATE network_links
+            SET to_node_id = $1::uuid,
+                geom = ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($2), 4326)),
+                metadata = $3
+            WHERE tenant_id = $4::uuid AND id = $5::uuid
+            "#,
+        )
+        .bind(&junction_id)
+        .bind(Self::build_line_geometry(&updated_target_coords).to_string())
+        .bind(updated_target_link_metadata)
+        .bind(tenant_id)
+        .bind(&target_link.id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| Self::map_geometry_db_error(e, "target_link.geometry"))?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO network_links
+              (id, tenant_id, from_node_id, to_node_id, name, link_type, status, priority,
+               capacity_mbps, utilization_pct, loss_db, latency_ms, geom, metadata, created_at, updated_at)
+            VALUES
+              ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, $6, $7, $8,
+               $9, $10, $11, $12, ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($13), 4326)), $14, now(), now())
+            "#,
+        )
+        .bind(&created_target_link_segment_id)
+        .bind(tenant_id)
+        .bind(&junction_id)
+        .bind(&target_link.to_node_id)
+        .bind(format!("{} (segment)", target_link.name.trim()))
+        .bind(&target_link.link_type)
+        .bind(&target_link.status)
+        .bind(target_link.priority)
+        .bind(target_link.capacity_mbps)
+        .bind(target_link.utilization_pct)
+        .bind(target_link.loss_db)
+        .bind(target_link.latency_ms)
+        .bind(Self::build_line_geometry(&created_target_coords).to_string())
+        .bind(created_target_segment_metadata)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| Self::map_geometry_db_error(e, "target_link.geometry"))?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO network_links
+              (id, tenant_id, from_node_id, to_node_id, name, link_type, status, priority,
+               capacity_mbps, utilization_pct, loss_db, latency_ms, geom, metadata, created_at, updated_at)
+            VALUES
+              ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, $6, $7, $8,
+               $9, $10, $11, $12, ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON($13), 4326)), $14, now(), now())
+            "#,
+        )
+        .bind(&created_connection_link_id)
+        .bind(tenant_id)
+        .bind(&source_node.id)
+        .bind(&junction_id)
+        .bind(dto.name.trim())
+        .bind(&dto.link_type)
+        .bind(status)
+        .bind(priority)
+        .bind(dto.capacity_mbps)
+        .bind(dto.utilization_pct)
+        .bind(dto.loss_db)
+        .bind(dto.latency_ms)
+        .bind(dto.geometry.to_string())
+        .bind(connection_metadata)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| Self::map_geometry_db_error(e, "geometry"))?;
+
+        tx.commit().await.map_err(AppError::Database)?;
+
+        Ok(ConnectNodeToLinkResponse {
+            junction_node: self.get_node_by_id(tenant_id, &junction_id).await?,
+            updated_target_link: self.get_link_by_id(tenant_id, &target_link.id).await?,
+            created_target_link_segment: self
+                .get_link_by_id(tenant_id, &created_target_link_segment_id)
+                .await?,
+            created_connection_link: self
+                .get_link_by_id(tenant_id, &created_connection_link_id)
+                .await?,
+        })
     }
 
     pub async fn update_link(

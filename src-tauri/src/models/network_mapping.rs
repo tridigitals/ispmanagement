@@ -133,6 +133,34 @@ pub struct UpdateNetworkLinkRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConnectNodeToLinkRequest {
+    pub source_node_id: String,
+    pub target_link_id: String,
+    pub name: String,
+    pub link_type: String,
+    pub status: Option<String>,
+    pub priority: Option<i32>,
+    pub capacity_mbps: Option<f64>,
+    pub utilization_pct: Option<f64>,
+    pub loss_db: Option<f64>,
+    pub latency_ms: Option<f64>,
+    pub geometry: serde_json::Value,
+    pub split_lat: f64,
+    pub split_lng: f64,
+    pub junction_name: Option<String>,
+    pub junction_node_type: Option<String>,
+    pub metadata: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConnectNodeToLinkResponse {
+    pub junction_node: NetworkNode,
+    pub updated_target_link: NetworkLink,
+    pub created_target_link_segment: NetworkLink,
+    pub created_connection_link: NetworkLink,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateServiceZoneRequest {
     pub name: String,
     pub zone_type: String,

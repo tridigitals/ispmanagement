@@ -52,6 +52,42 @@ impl PppoeService {
         }
     }
 
+    async fn require_read_or_installation_manage(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+    ) -> AppResult<()> {
+        if self
+            .auth_service
+            .check_permission(actor_id, tenant_id, "pppoe", "read")
+            .await
+            .is_ok()
+        {
+            return Ok(());
+        }
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "work_orders", "manage")
+            .await
+    }
+
+    async fn require_manage_or_installation_manage(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+    ) -> AppResult<()> {
+        if self
+            .auth_service
+            .check_permission(actor_id, tenant_id, "pppoe", "manage")
+            .await
+            .is_ok()
+        {
+            return Ok(());
+        }
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "work_orders", "manage")
+            .await
+    }
+
     async fn is_auto_apply_enabled(&self, tenant_id: &str) -> bool {
         match self
             .settings_service
@@ -774,8 +810,7 @@ impl PppoeService {
         page: u32,
         per_page: u32,
     ) -> AppResult<PaginatedResponse<PppoeAccountPublic>> {
-        self.auth_service
-            .check_permission(actor_id, tenant_id, "pppoe", "read")
+        self.require_read_or_installation_manage(actor_id, tenant_id)
             .await?;
 
         let q = q.unwrap_or_default().trim().to_string();
@@ -830,8 +865,7 @@ impl PppoeService {
         tenant_id: &str,
         id: &str,
     ) -> AppResult<PppoeAccountPublic> {
-        self.auth_service
-            .check_permission(actor_id, tenant_id, "pppoe", "read")
+        self.require_read_or_installation_manage(actor_id, tenant_id)
             .await?;
 
         let account: PppoeAccount =
@@ -853,8 +887,7 @@ impl PppoeService {
         dto: CreatePppoeAccountRequest,
         ip_address: Option<&str>,
     ) -> AppResult<PppoeAccountPublic> {
-        self.auth_service
-            .check_permission(actor_id, tenant_id, "pppoe", "manage")
+        self.require_manage_or_installation_manage(actor_id, tenant_id)
             .await?;
 
         self.ensure_router_access(tenant_id, dto.router_id.as_str())
@@ -1152,8 +1185,7 @@ impl PppoeService {
         id: &str,
         ip_address: Option<&str>,
     ) -> AppResult<PppoeAccountPublic> {
-        self.auth_service
-            .check_permission(actor_id, tenant_id, "pppoe", "manage")
+        self.require_manage_or_installation_manage(actor_id, tenant_id)
             .await?;
 
         let updated = self.apply_account_internal(tenant_id, id).await?;
@@ -1171,6 +1203,67 @@ impl PppoeService {
             .await;
 
         Ok(updated)
+    }
+
+    pub async fn set_location_accounts_disabled_state(
+        &self,
+        tenant_id: &str,
+        location_id: &str,
+        disabled: bool,
+    ) -> AppResult<u64> {
+        let now = Utc::now();
+
+        #[cfg(feature = "postgres")]
+        let account_ids: Vec<String> = sqlx::query_scalar(
+            "SELECT id FROM pppoe_accounts WHERE tenant_id = $1 AND location_id = $2 ORDER BY created_at ASC",
+        )
+        .bind(tenant_id)
+        .bind(location_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        #[cfg(feature = "sqlite")]
+        let account_ids: Vec<String> = sqlx::query_scalar(
+            "SELECT id FROM pppoe_accounts WHERE tenant_id = ? AND location_id = ? ORDER BY created_at ASC",
+        )
+        .bind(tenant_id)
+        .bind(location_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        #[cfg(feature = "postgres")]
+        let rows = sqlx::query(
+            "UPDATE pppoe_accounts SET disabled = $1, updated_at = $2 WHERE tenant_id = $3 AND location_id = $4",
+        )
+        .bind(disabled)
+        .bind(now)
+        .bind(tenant_id)
+        .bind(location_id)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .rows_affected();
+
+        #[cfg(feature = "sqlite")]
+        let rows = sqlx::query(
+            "UPDATE pppoe_accounts SET disabled = ?, updated_at = ? WHERE tenant_id = ? AND location_id = ?",
+        )
+        .bind(disabled)
+        .bind(now.to_rfc3339())
+        .bind(tenant_id)
+        .bind(location_id)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .rows_affected();
+
+        for account_id in account_ids {
+            let _ = self.apply_account_internal(tenant_id, &account_id).await;
+        }
+
+        Ok(rows)
     }
 
     async fn apply_account_internal(

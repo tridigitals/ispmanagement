@@ -512,9 +512,16 @@ impl IspPackageService {
         tenant_id: &str,
         router_id: Option<String>,
     ) -> AppResult<Vec<IspPackageRouterMappingView>> {
-        self.auth_service
+        if self
+            .auth_service
             .check_permission(actor_id, tenant_id, "isp_packages", "read")
-            .await?;
+            .await
+            .is_err()
+        {
+            self.auth_service
+                .check_permission(actor_id, tenant_id, "work_orders", "manage")
+                .await?;
+        }
 
         if let Some(ref rid) = router_id {
             self.ensure_router_access(tenant_id, rid).await?;
@@ -528,12 +535,14 @@ impl IspPackageService {
               m.router_id,
               m.package_id,
               p.name AS package_name,
+              r.name AS router_name,
               m.router_profile_name,
               m.address_pool,
               m.created_at,
               m.updated_at
             FROM isp_package_router_mappings m
             JOIN isp_packages p ON p.id = m.package_id
+            LEFT JOIN mikrotik_routers r ON r.tenant_id = m.tenant_id AND r.id = m.router_id
             WHERE m.tenant_id = $1
               AND ($2 = '' OR m.router_id = $2)
             ORDER BY p.name ASC

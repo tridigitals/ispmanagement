@@ -7,8 +7,11 @@
   import {
     api,
     type AuditLog,
+    type CustomerSubscriptionView,
     type FileRecord,
+    type IspPackageRouterMappingView,
     type InstallationWorkOrderView,
+    type PppoeAccountPublic,
     type TeamMember,
     type WorkOrderRescheduleRequestView,
   } from '$lib/api/client';
@@ -44,6 +47,14 @@
   let showCableMapDrawer = $state(false);
   let installationPhotos = $state<FileRecord[]>([]);
   let uploadingPhotos = $state(false);
+  let installationSubscription = $state<CustomerSubscriptionView | null>(null);
+  let installationPppoeAccount = $state<PppoeAccountPublic | null>(null);
+  let installationPppoeMappings = $state<IspPackageRouterMappingView[]>([]);
+  let loadingInstallationPppoe = $state(false);
+  let savingInstallationPppoe = $state(false);
+  let installationPppoeUsername = $state('');
+  let installationPppoePassword = $state('');
+  let installationPppoeComment = $state('');
   let onsiteFocusIndex = $state<number | null>(null);
   let canManageWorkOrders = $derived($can('manage', 'work_orders'));
   let canReadAuditLogs = $derived($can('read', 'audit_logs'));
@@ -370,12 +381,13 @@
     activeRow = row;
     formAssignee = row.assigned_to || '';
     formSchedule = row.scheduled_at ? toLocalInputValue(row.scheduled_at) : '';
-    formNotes = '';
+    formNotes = extractEditableNotes(row.notes);
     detailOpen = true;
-    checkCable = false;
-    checkOnt = false;
-    checkPppoe = false;
-    checkSpeed = false;
+    const checklist = parseChecklistStateFromNotes(row.notes);
+    checkCable = checklist.cable;
+    checkOnt = checklist.ont;
+    checkPppoe = checklist.pppoe;
+    checkSpeed = checklist.speed;
     showCableMapDrawer = false;
     installationPhotos = parsePhotoIdsFromNotes(row.notes).map((id, index) => ({
       id,
@@ -396,6 +408,7 @@
     rescheduleOverrideAt = '';
     void loadWorkOrderTimeline(row.id);
     void loadRescheduleRequest(row.id);
+    void loadInstallationPppoeContext(row);
   }
 
   function closeDetail() {
@@ -414,6 +427,14 @@
     installationPhotos = [];
     uploadingPhotos = false;
     showCableMapDrawer = false;
+    installationSubscription = null;
+    installationPppoeAccount = null;
+    installationPppoeMappings = [];
+    loadingInstallationPppoe = false;
+    savingInstallationPppoe = false;
+    installationPppoeUsername = '';
+    installationPppoePassword = '';
+    installationPppoeComment = '';
     onsiteFocusIndex = null;
   }
 
@@ -469,6 +490,196 @@
       `${checkSpeed ? '[x]' : '[ ]'} Speed test passed`,
     ];
     return `Installation checklist:\n${lines.join('\n')}`;
+  }
+
+  function parseChecklistStateFromNotes(notes: string | null | undefined) {
+    const raw = String(notes || '');
+    const hasChecked = (label: string) => {
+      const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp(`\\[x\\]\\s+${escaped}`, 'i').test(raw);
+    };
+    return {
+      cable: hasChecked('Cable installed'),
+      ont: hasChecked('ONT installed'),
+      pppoe: hasChecked('PPPoE configured'),
+      speed: hasChecked('Speed test passed'),
+    };
+  }
+
+  function stripGeneratedInstallationSections(notes: string | null | undefined) {
+    const raw = String(notes || '').replace(/\r\n/g, '\n');
+    return raw
+      .replace(
+        /(?:^|\n)Installation checklist:\n(?:\[[xX ]\]\s.*(?:\n|$)){1,8}/g,
+        '\n',
+      )
+      .replace(/(?:^|\n)Installation photos:\n(?:- .*(?:\n|$))+/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  function extractEditableNotes(notes: string | null | undefined) {
+    return stripGeneratedInstallationSections(notes);
+  }
+
+  function buildPersistedInstallationNotes() {
+    const extra = stripGeneratedInstallationSections(formNotes);
+    const checklist = buildChecklistNote();
+    const photos = buildInstallationPhotosNote();
+    return [extra, checklist, photos]
+      .filter((part) => part && part.trim().length > 0)
+      .join('\n\n');
+  }
+
+  async function loadInstallationPppoeContext(row: InstallationWorkOrderView) {
+    loadingInstallationPppoe = true;
+    installationSubscription = null;
+    installationPppoeAccount = null;
+    installationPppoeMappings = [];
+    installationPppoeUsername = '';
+    installationPppoePassword = '';
+    installationPppoeComment = '';
+    try {
+      const [subRes, pppoeRes] = await Promise.all([
+        api.customers.subscriptions.list(row.customer_id, { page: 1, per_page: 200 }),
+        api.pppoe.accounts.list({
+          customer_id: row.customer_id,
+          location_id: row.location_id,
+          page: 1,
+          per_page: 50,
+        }),
+      ]);
+      const subscription =
+        ((subRes?.data || []) as CustomerSubscriptionView[]).find((item) => item.id === row.subscription_id) ||
+        null;
+      installationSubscription = subscription;
+      installationPppoeAccount =
+        (((pppoeRes?.data || []) as PppoeAccountPublic[]).find(
+          (item) => item.location_id === row.location_id,
+        ) || null);
+
+      const routerId = subscription?.router_id || row.router_id || installationPppoeAccount?.router_id || '';
+      const packageId = subscription?.package_id || row.package_id || installationPppoeAccount?.package_id || '';
+      if (routerId) {
+        installationPppoeMappings = await api.ispPackages.routerMappings.list({
+          router_id: routerId,
+        });
+      } else if (packageId) {
+        installationPppoeMappings = await api.ispPackages.routerMappings.list();
+      }
+
+      if (installationPppoeAccount) {
+        installationPppoeUsername = installationPppoeAccount.username || '';
+        installationPppoeComment = installationPppoeAccount.comment || '';
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to prepare PPPoE installation form');
+    } finally {
+      loadingInstallationPppoe = false;
+    }
+  }
+
+  const installationPppoeMapping = $derived.by(() => {
+    const subscription = installationSubscription;
+    const packageId =
+      subscription?.package_id || activeRow?.package_id || installationPppoeAccount?.package_id || '';
+    if (!packageId) return null;
+    const routerId =
+      subscription?.router_id || activeRow?.router_id || installationPppoeAccount?.router_id || '';
+    if (routerId) {
+      return (
+        installationPppoeMappings.find(
+          (item) => item.router_id === routerId && item.package_id === packageId,
+        ) || null
+      );
+    }
+    const packageMatches = installationPppoeMappings.filter((item) => item.package_id === packageId);
+    if (packageMatches.length === 1) return packageMatches[0];
+    return null;
+  });
+
+  const installationPppoeRouterLabel = $derived.by(
+    () =>
+      installationSubscription?.router_name ||
+      activeRow?.router_name ||
+      installationPppoeMapping?.router_name ||
+      installationSubscription?.router_id ||
+      activeRow?.router_id ||
+      installationPppoeAccount?.router_id ||
+      '-',
+  );
+
+  async function createInstallationPppoe() {
+    const row = activeRow;
+    const subscription = installationSubscription;
+    const mapping = installationPppoeMapping;
+    const routerId =
+      subscription?.router_id || row?.router_id || installationPppoeAccount?.router_id || mapping?.router_id || '';
+    const packageId =
+      subscription?.package_id || row?.package_id || installationPppoeAccount?.package_id || mapping?.package_id || '';
+    if (!row) {
+      toast.error('Work order context is not ready yet');
+      return;
+    }
+    if (!routerId) {
+      toast.error('Internet service does not have router assigned yet');
+      return;
+    }
+    if (!mapping?.router_profile_name) {
+      toast.error('Router profile mapping for this internet package is not configured');
+      return;
+    }
+    if (!installationPppoeUsername.trim() || !installationPppoePassword) {
+      toast.error('Username and password are required');
+      return;
+    }
+
+    savingInstallationPppoe = true;
+    try {
+      const created = await api.pppoe.accounts.create({
+        router_id: routerId,
+        customer_id: row.customer_id,
+        location_id: row.location_id,
+        username: installationPppoeUsername.trim(),
+        password: installationPppoePassword,
+        package_id: packageId || null,
+        router_profile_name: mapping.router_profile_name,
+        address_pool: mapping.address_pool ?? null,
+        comment: installationPppoeComment.trim() || null,
+      });
+      installationPppoeAccount = created;
+      installationPppoePassword = '';
+      toast.success('PPPoE account created');
+      try {
+        const applied = await api.pppoe.accounts.apply(created.id);
+        installationPppoeAccount = applied;
+        checkPppoe = true;
+        await savePlan();
+        toast.success('PPPoE account applied to router');
+      } catch (applyErr: any) {
+        toast.error(applyErr?.message || 'PPPoE created but failed to apply to router');
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to create PPPoE account');
+    } finally {
+      savingInstallationPppoe = false;
+    }
+  }
+
+  async function applyInstallationPppoe() {
+    if (!installationPppoeAccount) return;
+    savingInstallationPppoe = true;
+    try {
+      const applied = await api.pppoe.accounts.apply(installationPppoeAccount.id);
+      installationPppoeAccount = applied;
+      checkPppoe = true;
+      await savePlan();
+      toast.success('PPPoE account applied to router');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to apply PPPoE account');
+    } finally {
+      savingInstallationPppoe = false;
+    }
   }
 
   function parsePhotoIdsFromNotes(notes: string | null | undefined): string[] {
@@ -572,12 +783,7 @@
     }
     busyId = row.id;
     try {
-      const extra = formNotes.trim();
-      const checklist = buildChecklistNote();
-      const photos = buildInstallationPhotosNote();
-      const note = [extra, checklist, photos]
-        .filter((part) => part && part.trim().length > 0)
-        .join('\n\n');
+      const note = buildPersistedInstallationNotes();
       await api.workOrders.assign(row.id, {
         assigned_to,
         scheduled_at: formSchedule ? new Date(formSchedule).toISOString() : undefined,
@@ -634,7 +840,8 @@
     if (!activeRow) return false;
     return (
       activeRow.status === 'completed' &&
-      activeRow.subscription_status === 'suspended' &&
+      (activeRow.subscription_status === 'pending_installation' ||
+        activeRow.subscription_status === 'suspended') &&
       !activeRow.subscription_starts_at
     );
   });
@@ -699,8 +906,9 @@
     focusOnsiteStep(onsiteActiveIndex + 1);
   }
 
-  function markActiveOnsiteStepDone() {
+  async function markActiveOnsiteStepDone() {
     setOnsiteTaskChecked(onsiteActiveIndex, true);
+    await savePlan();
     if (onsiteActiveIndex < checklistTotal - 1) {
       focusOnsiteStep(onsiteActiveIndex + 1);
     }
@@ -715,7 +923,7 @@
     if (!activeRow || creatingInvoiceId) return;
     creatingInvoiceId = activeRow.id;
     try {
-      const invoice = await api.payment.createInvoiceForCustomerSubscription(activeRow.subscription_id);
+      const invoice = await api.payment.createInvoiceForInstallationWorkOrder(activeRow.id);
       toast.success(
         tr(
           'admin.network.installations.invoice_created',
@@ -1205,11 +1413,118 @@
                     workOrderId={activeRow.id}
                     customerId={activeRow.customer_id}
                     locationId={activeRow.location_id}
-                    initialFromNodeId={activeRow.selected_node_id}
+                    preferredTargetNodeId={activeRow.selected_node_id}
                     on:saved={handleCableMapSaved}
                   />
                 </div>
               {/if}
+            {/if}
+            {#if onsiteActiveTask.key === 'pppoe'}
+              <section class="pppoe-install-card">
+                <div class="pppoe-install-head">
+                  <div>
+                    <strong>PPPoE Provisioning</strong>
+                    <p>Username/password diisi teknisi. Router dan profile mengikuti service internet aktif.</p>
+                  </div>
+                  {#if installationPppoeAccount}
+                    <span class="status progress">Configured</span>
+                  {/if}
+                </div>
+
+                {#if loadingInstallationPppoe}
+                  <p class="helper-text">{tr('common.loading', 'Loading...')}</p>
+                {:else if !installationSubscription}
+                  <p class="helper-text">Subscription internet untuk work order ini belum ditemukan.</p>
+                {:else}
+                  <div class="form-grid two-col compact">
+                    <label>
+                      Router
+                      <input
+                        class="input"
+                        value={installationPppoeRouterLabel}
+                        readonly
+                      />
+                    </label>
+                    <label>
+                      Profile
+                      <input
+                        class="input"
+                        value={installationPppoeMapping?.router_profile_name || '-'}
+                        readonly
+                      />
+                    </label>
+                    <label>
+                      Package
+                      <input
+                        class="input"
+                        value={activeRow.package_name || installationSubscription.package_name || installationSubscription.package_id || '-'}
+                        readonly
+                      />
+                    </label>
+                    <label>
+                      Address Pool
+                      <input
+                        class="input"
+                        value={installationPppoeMapping?.address_pool || '-'}
+                        readonly
+                      />
+                    </label>
+                    <label>
+                      Username
+                      <input class="input" bind:value={installationPppoeUsername} placeholder="pppoe username" />
+                    </label>
+                    <label>
+                      Password
+                      <input class="input" type="password" bind:value={installationPppoePassword} placeholder="pppoe password" />
+                    </label>
+                  </div>
+                  <label class="notes">
+                    Comment
+                    <input class="input" bind:value={installationPppoeComment} placeholder="Optional PPPoE comment" />
+                  </label>
+
+                  {#if installationPppoeAccount}
+                    <div class="pppoe-existing">
+                      <span>Existing PPPoE:</span>
+                      <strong>{installationPppoeAccount.username}</strong>
+                      <span>{installationPppoeAccount.router_profile_name || installationPppoeMapping?.router_profile_name || '-'}</span>
+                    </div>
+                  {/if}
+
+                  <div class="modal-actions">
+                    {#if !installationPppoeAccount}
+                      <button
+                        class="btn ghost"
+                        type="button"
+                        onclick={createInstallationPppoe}
+                        disabled={
+                          savingInstallationPppoe ||
+                          !(
+                            installationSubscription?.router_id ||
+                            activeRow?.router_id ||
+                            installationPppoeAccount?.router_id ||
+                            installationPppoeMapping?.router_id
+                          ) ||
+                          !installationPppoeMapping?.router_profile_name ||
+                          !installationPppoeUsername.trim() ||
+                          !installationPppoePassword
+                        }
+                      >
+                        {savingInstallationPppoe ? tr('common.loading', 'Loading...') : 'Create PPPoE'}
+                      </button>
+                    {:else}
+                      <button
+                        class="btn ghost"
+                        type="button"
+                        onclick={applyInstallationPppoe}
+                        disabled={savingInstallationPppoe}
+                      >
+                        {savingInstallationPppoe ? tr('common.loading', 'Loading...') : 'Apply to Router'}
+                      </button>
+                    {/if}
+                  </div>
+                {/if}
+              </section>
             {/if}
             <fieldset class="checklist single-step">
               <legend>
@@ -1340,14 +1655,19 @@
             <p class="step-help">
               {activeRow.status === 'completed'
                 ? isAwaitingFirstPayment
-                  ? tr(
-                      'admin.network.installations.final_waiting_payment',
-                      'Installation is complete. Service is waiting first payment before activation.',
-                    )
+                  ? activeRow.has_customer_package_invoice
+                    ? tr(
+                        'admin.network.installations.final_waiting_payment_invoice_exists',
+                        'Installation is complete. First invoice already exists and service is waiting payment before activation.',
+                      )
+                    : tr(
+                        'admin.network.installations.final_waiting_payment',
+                        'Installation is complete. Service is waiting first payment before activation.',
+                      )
                   : tr('admin.network.installations.final_completed', 'Installation has been completed and service is active.')
                 : tr('admin.network.installations.final_cancelled', 'Installation has been cancelled.')}
             </p>
-            {#if activeRow.status === 'completed' && isAwaitingFirstPayment}
+            {#if activeRow.status === 'completed' && isAwaitingFirstPayment && !activeRow.has_customer_package_invoice}
               <div class="modal-actions">
                 <button
                   class="btn ghost"
@@ -1375,13 +1695,6 @@
             {/if}
           {/if}
         </section>
-      {/if}
-
-      {#if activeRow.notes}
-        <div class="history">
-          <h3>{tr('admin.network.installations.history', 'Latest Notes')}</h3>
-          <pre>{activeRow.notes}</pre>
-        </div>
       {/if}
 
       {#if canReadAuditLogs}
@@ -2066,14 +2379,6 @@
   .history h3 {
     margin: 0 0 8px;
     font-size: 0.95rem;
-  }
-  .history pre {
-    margin: 0;
-    white-space: pre-wrap;
-    word-break: break-word;
-    font-family: inherit;
-    font-size: 0.9rem;
-    color: #b8c7e8;
   }
   .timeline-list {
     display: grid;

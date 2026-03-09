@@ -1,11 +1,12 @@
 use crate::error::{AppError, AppResult};
 use crate::http::AppState;
 use crate::models::{
-    ComputePathRequest, CoverageCheckRequest, CreateNetworkLinkRequest, CreateNetworkNodeRequest,
-    CreateServiceZoneRequest, CreateZoneNodeBindingRequest, CreateZoneOfferRequest,
-    NetworkImpactResponse, PaginatedResponse, RankCandidateNodesRequest, ResolveZoneRequest,
-    SyncTopologyAssetsResponse, UpdateNetworkLinkRequest, UpdateNetworkNodeRequest,
-    UpdateServiceZoneRequest, UpdateZoneOfferRequest,
+    ComputePathRequest, ConnectNodeToLinkRequest, ConnectNodeToLinkResponse, CoverageCheckRequest,
+    CreateNetworkLinkRequest, CreateNetworkNodeRequest, CreateServiceZoneRequest,
+    CreateZoneNodeBindingRequest, CreateZoneOfferRequest, NetworkImpactResponse, PaginatedResponse,
+    RankCandidateNodesRequest, ResolveZoneRequest, SyncTopologyAssetsResponse,
+    UpdateNetworkLinkRequest, UpdateNetworkNodeRequest, UpdateServiceZoneRequest,
+    UpdateZoneOfferRequest,
 };
 use crate::services::network_mapping_service::ListQuery;
 use axum::{
@@ -21,6 +22,7 @@ pub fn router() -> Router<AppState> {
         .route("/nodes", get(list_nodes).post(create_node))
         .route("/nodes/{id}", patch(update_node).delete(delete_node))
         .route("/links", get(list_links).post(create_link))
+        .route("/links/connect-node-to-link", post(connect_node_to_link))
         .route("/links/{id}", patch(update_link).delete(delete_link))
         .route("/zones", get(list_zones).post(create_zone))
         .route("/zones/{id}", patch(update_zone).delete(delete_zone))
@@ -218,6 +220,19 @@ async fn create_link(
     let out = state
         .network_mapping_service
         .create_link(&claims.sub, &tenant_id, dto)
+        .await?;
+    Ok(Json(out))
+}
+
+async fn connect_node_to_link(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(dto): Json<ConnectNodeToLinkRequest>,
+) -> AppResult<Json<ConnectNodeToLinkResponse>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let out = state
+        .network_mapping_service
+        .connect_node_to_link(&claims.sub, &tenant_id, dto)
         .await?;
     Ok(Json(out))
 }

@@ -31,6 +31,10 @@ pub fn router() -> Router<AppState> {
             post(create_invoice_for_customer_subscription),
         )
         .route(
+            "/invoices/installation/create",
+            post(create_invoice_for_installation_work_order),
+        )
+        .route(
             "/invoices/customer-package/generate-due",
             post(generate_due_customer_package_invoices),
         )
@@ -247,6 +251,39 @@ async fn require_payment_manage_access(
     Ok(())
 }
 
+async fn require_work_order_manage_access(
+    state: &AppState,
+    claims: &Claims,
+) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
+    if claims.is_super_admin {
+        return Ok(());
+    }
+
+    let tenant_id = claims.tenant_id.as_deref().ok_or_else(|| {
+        (
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                error: "Tenant context required".to_string(),
+            }),
+        )
+    })?;
+
+    state
+        .auth_service
+        .check_permission(&claims.sub, tenant_id, "work_orders", "manage")
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::FORBIDDEN,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })?;
+
+    Ok(())
+}
+
 async fn get_fx_rate(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -357,6 +394,13 @@ struct CreateInvoiceForPlanBody {
 #[serde(rename_all = "camelCase")]
 struct CreateInvoiceForCustomerSubscriptionBody {
     subscription_id: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+struct CreateInvoiceForInstallationWorkOrderBody {
+    work_order_id: String,
 }
 
 #[derive(Deserialize)]
@@ -619,6 +663,37 @@ async fn create_invoice_for_customer_subscription(
     state
         .payment_service
         .create_invoice_for_customer_subscription(&tenant_id, &body.subscription_id)
+        .await
+        .map(Json)
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })
+}
+
+async fn create_invoice_for_installation_work_order(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(body): Json<CreateInvoiceForInstallationWorkOrderBody>,
+) -> Result<Json<Invoice>, (StatusCode, Json<ErrorResponse>)> {
+    let claims = authenticate(&state, &headers).await?;
+    require_work_order_manage_access(&state, &claims).await?;
+    let tenant_id = claims.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "No tenant context".to_string(),
+            }),
+        )
+    })?;
+
+    state
+        .payment_service
+        .create_invoice_for_installation_work_order(&tenant_id, &body.work_order_id)
         .await
         .map(Json)
         .map_err(|e| {

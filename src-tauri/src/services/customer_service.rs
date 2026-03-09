@@ -15,7 +15,7 @@ use crate::models::{
     WorkOrderRescheduleRequestView,
 };
 use crate::security::secret::encrypt_secret_for;
-use crate::services::{AuditService, AuthService, NotificationService, UserService};
+use crate::services::{AuditService, AuthService, NotificationService, PppoeService, UserService};
 use chrono::{DateTime, Duration, Utc};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
@@ -71,6 +71,7 @@ pub struct CustomerService {
     auth_service: AuthService,
     audit_service: AuditService,
     notification_service: NotificationService,
+    pppoe_service: PppoeService,
     user_service: UserService,
 }
 
@@ -351,6 +352,7 @@ impl CustomerService {
         auth_service: AuthService,
         audit_service: AuditService,
         notification_service: NotificationService,
+        pppoe_service: PppoeService,
         user_service: UserService,
     ) -> Self {
         Self {
@@ -358,6 +360,7 @@ impl CustomerService {
             auth_service,
             audit_service,
             notification_service,
+            pppoe_service,
             user_service,
         }
     }
@@ -3237,9 +3240,23 @@ impl CustomerService {
         page: u32,
         per_page: u32,
     ) -> AppResult<PaginatedResponse<CustomerSubscriptionView>> {
-        self.auth_service
+        if self
+            .auth_service
             .check_permission(actor_id, tenant_id, "customers", "read")
-            .await?;
+            .await
+            .is_err()
+        {
+            if self
+                .auth_service
+                .check_permission(actor_id, tenant_id, "work_orders", "manage")
+                .await
+                .is_err()
+            {
+                self.auth_service
+                    .check_permission(actor_id, tenant_id, "work_orders", "read")
+                    .await?;
+            }
+        }
 
         let offset = (page.saturating_sub(1)) * per_page;
 
@@ -5281,7 +5298,9 @@ impl CustomerService {
         let work_order: Option<InstallationWorkOrderView> = sqlx::query_as(
             r#"
             SELECT
-              wo.id, wo.tenant_id, wo.subscription_id, wo.invoice_id, wo.customer_id, wo.location_id, wo.router_id,
+              wo.id, wo.tenant_id, wo.subscription_id, wo.invoice_id, wo.customer_id, wo.location_id,
+              cs.package_id AS package_id,
+              COALESCE(wo.router_id, cs.router_id) AS router_id,
               wo.status, wo.assigned_to, wo.scheduled_at, wo.completed_at, wo.notes, wo.created_at, wo.updated_at,
               c.name AS customer_name,
               l.label AS location_label,
@@ -5293,6 +5312,15 @@ impl CustomerService {
               csa.status AS assignment_status,
               cs.status AS subscription_status,
               cs.starts_at AS subscription_starts_at,
+              EXISTS(
+                SELECT 1
+                FROM invoices i
+                WHERE i.tenant_id = wo.tenant_id
+                  AND (
+                    i.external_id = 'pkgsub:' || wo.subscription_id
+                    OR i.external_id LIKE 'pkgsub:' || wo.subscription_id || ':%'
+                  )
+              ) AS has_customer_package_invoice,
               csa.selected_zone_id AS selected_zone_id,
               sz.name AS selected_zone_name,
               csa.selected_node_id AS selected_node_id,
@@ -5305,7 +5333,9 @@ impl CustomerService {
             LEFT JOIN customer_locations l ON l.tenant_id = wo.tenant_id AND l.id = wo.location_id
             LEFT JOIN customer_subscriptions cs ON cs.tenant_id = wo.tenant_id AND cs.id = wo.subscription_id
             LEFT JOIN isp_packages p ON p.tenant_id = wo.tenant_id AND p.id = cs.package_id
-            LEFT JOIN mikrotik_routers r ON r.tenant_id = wo.tenant_id AND r.id = wo.router_id
+            LEFT JOIN mikrotik_routers r
+              ON r.tenant_id = wo.tenant_id
+             AND r.id = COALESCE(wo.router_id, cs.router_id)
             LEFT JOIN users u ON u.id = wo.assigned_to
             LEFT JOIN customer_service_assignments csa ON csa.tenant_id = wo.tenant_id AND csa.work_order_id = wo.id
             LEFT JOIN service_zones sz ON sz.tenant_id = wo.tenant_id::uuid AND sz.id::text = csa.selected_zone_id
@@ -5327,7 +5357,9 @@ impl CustomerService {
         let work_order: Option<InstallationWorkOrderView> = sqlx::query_as(
             r#"
             SELECT
-              wo.id, wo.tenant_id, wo.subscription_id, wo.invoice_id, wo.customer_id, wo.location_id, wo.router_id,
+              wo.id, wo.tenant_id, wo.subscription_id, wo.invoice_id, wo.customer_id, wo.location_id,
+              cs.package_id AS package_id,
+              COALESCE(wo.router_id, cs.router_id) AS router_id,
               wo.status, wo.assigned_to, wo.scheduled_at, wo.completed_at, wo.notes, wo.created_at, wo.updated_at,
               c.name AS customer_name,
               l.label AS location_label,
@@ -5339,6 +5371,15 @@ impl CustomerService {
               csa.status AS assignment_status,
               cs.status AS subscription_status,
               cs.starts_at AS subscription_starts_at,
+              EXISTS(
+                SELECT 1
+                FROM invoices i
+                WHERE i.tenant_id = wo.tenant_id
+                  AND (
+                    i.external_id = 'pkgsub:' || wo.subscription_id
+                    OR i.external_id LIKE 'pkgsub:' || wo.subscription_id || ':%'
+                  )
+              ) AS has_customer_package_invoice,
               csa.selected_zone_id AS selected_zone_id,
               sz.name AS selected_zone_name,
               csa.selected_node_id AS selected_node_id,
@@ -5351,7 +5392,9 @@ impl CustomerService {
             LEFT JOIN customer_locations l ON l.tenant_id = wo.tenant_id AND l.id = wo.location_id
             LEFT JOIN customer_subscriptions cs ON cs.tenant_id = wo.tenant_id AND cs.id = wo.subscription_id
             LEFT JOIN isp_packages p ON p.tenant_id = wo.tenant_id AND p.id = cs.package_id
-            LEFT JOIN mikrotik_routers r ON r.tenant_id = wo.tenant_id AND r.id = wo.router_id
+            LEFT JOIN mikrotik_routers r
+              ON r.tenant_id = wo.tenant_id
+             AND r.id = COALESCE(wo.router_id, cs.router_id)
             LEFT JOIN users u ON u.id = wo.assigned_to
             LEFT JOIN customer_service_assignments csa ON csa.tenant_id = wo.tenant_id AND csa.work_order_id = wo.id
             LEFT JOIN service_zones sz ON sz.tenant_id = wo.tenant_id AND sz.id = csa.selected_zone_id
@@ -6146,6 +6189,17 @@ impl CustomerService {
         Ok(())
     }
 
+    async fn set_location_pppoe_disabled_state(
+        &self,
+        tenant_id: &str,
+        location_id: &str,
+        disabled: bool,
+    ) -> AppResult<u64> {
+        self.pppoe_service
+            .set_location_accounts_disabled_state(tenant_id, location_id, disabled)
+            .await
+    }
+
     async fn list_tenant_installation_alert_user_ids(
         &self,
         tenant_id: &str,
@@ -6610,7 +6664,9 @@ impl CustomerService {
         let rows: Vec<InstallationWorkOrderView> = sqlx::query_as(
             r#"
             SELECT
-              wo.id, wo.tenant_id, wo.subscription_id, wo.invoice_id, wo.customer_id, wo.location_id, wo.router_id,
+              wo.id, wo.tenant_id, wo.subscription_id, wo.invoice_id, wo.customer_id, wo.location_id,
+              cs.package_id AS package_id,
+              COALESCE(wo.router_id, cs.router_id) AS router_id,
               wo.status, wo.assigned_to, wo.scheduled_at, wo.completed_at, wo.notes, wo.created_at, wo.updated_at,
               c.name AS customer_name,
               l.label AS location_label,
@@ -6622,6 +6678,15 @@ impl CustomerService {
               csa.status AS assignment_status,
               cs.status AS subscription_status,
               cs.starts_at AS subscription_starts_at,
+              EXISTS(
+                SELECT 1
+                FROM invoices i
+                WHERE i.tenant_id = wo.tenant_id
+                  AND (
+                    i.external_id = 'pkgsub:' || wo.subscription_id
+                    OR i.external_id LIKE 'pkgsub:' || wo.subscription_id || ':%'
+                  )
+              ) AS has_customer_package_invoice,
               csa.selected_zone_id AS selected_zone_id,
               sz.name AS selected_zone_name,
               csa.selected_node_id AS selected_node_id,
@@ -6634,7 +6699,9 @@ impl CustomerService {
             LEFT JOIN customer_locations l ON l.tenant_id = wo.tenant_id AND l.id = wo.location_id
             LEFT JOIN customer_subscriptions cs ON cs.tenant_id = wo.tenant_id AND cs.id = wo.subscription_id
             LEFT JOIN isp_packages p ON p.tenant_id = wo.tenant_id AND p.id = cs.package_id
-            LEFT JOIN mikrotik_routers r ON r.tenant_id = wo.tenant_id AND r.id = wo.router_id
+            LEFT JOIN mikrotik_routers r
+              ON r.tenant_id = wo.tenant_id
+             AND r.id = COALESCE(wo.router_id, cs.router_id)
             LEFT JOIN users u ON u.id = wo.assigned_to
             LEFT JOIN customer_service_assignments csa ON csa.tenant_id = wo.tenant_id AND csa.work_order_id = wo.id
             LEFT JOIN service_zones sz ON sz.tenant_id = wo.tenant_id::uuid AND sz.id::text = csa.selected_zone_id
@@ -6642,7 +6709,14 @@ impl CustomerService {
             WHERE wo.tenant_id = $1
               AND ($2::text IS NULL OR wo.status = $2)
               AND ($3::text IS NULL OR wo.assigned_to = $3)
-              AND ($4::bool OR wo.status NOT IN ('completed', 'cancelled'))
+              AND (
+                $4::bool
+                OR wo.status NOT IN ('completed', 'cancelled')
+                OR (
+                  wo.status = 'completed'
+                  AND LOWER(COALESCE(cs.status, '')) = 'pending_installation'
+                )
+              )
               AND (
                 $5::bool
                 OR wo.assigned_to = $6
@@ -6677,7 +6751,9 @@ impl CustomerService {
         let rows: Vec<InstallationWorkOrderView> = sqlx::query_as(
             r#"
             SELECT
-              wo.id, wo.tenant_id, wo.subscription_id, wo.invoice_id, wo.customer_id, wo.location_id, wo.router_id,
+              wo.id, wo.tenant_id, wo.subscription_id, wo.invoice_id, wo.customer_id, wo.location_id,
+              cs.package_id AS package_id,
+              COALESCE(wo.router_id, cs.router_id) AS router_id,
               wo.status, wo.assigned_to, wo.scheduled_at, wo.completed_at, wo.notes, wo.created_at, wo.updated_at,
               c.name AS customer_name,
               l.label AS location_label,
@@ -6689,6 +6765,15 @@ impl CustomerService {
               csa.status AS assignment_status,
               cs.status AS subscription_status,
               cs.starts_at AS subscription_starts_at,
+              EXISTS(
+                SELECT 1
+                FROM invoices i
+                WHERE i.tenant_id = wo.tenant_id
+                  AND (
+                    i.external_id = 'pkgsub:' || wo.subscription_id
+                    OR i.external_id LIKE 'pkgsub:' || wo.subscription_id || ':%'
+                  )
+              ) AS has_customer_package_invoice,
               csa.selected_zone_id AS selected_zone_id,
               sz.name AS selected_zone_name,
               csa.selected_node_id AS selected_node_id,
@@ -6701,7 +6786,9 @@ impl CustomerService {
             LEFT JOIN customer_locations l ON l.tenant_id = wo.tenant_id AND l.id = wo.location_id
             LEFT JOIN customer_subscriptions cs ON cs.tenant_id = wo.tenant_id AND cs.id = wo.subscription_id
             LEFT JOIN isp_packages p ON p.tenant_id = wo.tenant_id AND p.id = cs.package_id
-            LEFT JOIN mikrotik_routers r ON r.tenant_id = wo.tenant_id AND r.id = wo.router_id
+            LEFT JOIN mikrotik_routers r
+              ON r.tenant_id = wo.tenant_id
+             AND r.id = COALESCE(wo.router_id, cs.router_id)
             LEFT JOIN users u ON u.id = wo.assigned_to
             LEFT JOIN customer_service_assignments csa ON csa.tenant_id = wo.tenant_id AND csa.work_order_id = wo.id
             LEFT JOIN service_zones sz ON sz.tenant_id = wo.tenant_id AND sz.id = csa.selected_zone_id
@@ -6709,7 +6796,14 @@ impl CustomerService {
             WHERE wo.tenant_id = ?
               AND (? IS NULL OR wo.status = ?)
               AND (? IS NULL OR wo.assigned_to = ?)
-              AND (? = 1 OR wo.status NOT IN ('completed', 'cancelled'))
+              AND (
+                ? = 1
+                OR wo.status NOT IN ('completed', 'cancelled')
+                OR (
+                  wo.status = 'completed'
+                  AND LOWER(COALESCE(cs.status, '')) = 'pending_installation'
+                )
+              )
               AND (
                 ? = 1
                 OR wo.assigned_to = ?
@@ -6759,16 +6853,16 @@ impl CustomerService {
             .check_permission(actor_id, tenant_id, "work_orders", "manage")
             .await?;
 
+        let current = self
+            .get_installation_work_order_row(tenant_id, work_order_id)
+            .await?;
         let is_admin_owner = self.is_actor_admin_or_owner(tenant_id, actor_id).await?;
         if !is_admin_owner {
-            // Technician is allowed to save schedule/notes for own pending work order,
+            // Technician is allowed to save schedule/notes for own pending or in-progress work order,
             // but cannot reassign to another user.
-            let current = self
-                .get_installation_work_order_row(tenant_id, work_order_id)
-                .await?;
-            if current.status != "pending" {
+            if current.status != "pending" && current.status != "in_progress" {
                 return Err(AppError::Validation(
-                    "Only pending work order can be updated".to_string(),
+                    "Only pending or in-progress work order can be updated".to_string(),
                 ));
             }
 
@@ -6800,7 +6894,11 @@ impl CustomerService {
             actor_id,
             tenant_id,
             work_order_id,
-            Some("pending"),
+            if current.status == "pending" {
+                Some("pending")
+            } else {
+                None
+            },
             Some(assigned_to),
             scheduled_at,
             notes,
@@ -7133,11 +7231,18 @@ impl CustomerService {
                     .bind(&s.id)
                     .execute(&self.pool)
                     .await?;
+
+                    let _ = self
+                        .set_location_pppoe_disabled_state(tenant_id, &s.location_id, false)
+                        .await;
                 } else {
-                    s.status = "suspended".to_string();
+                    s.status = "pending_installation".to_string();
                     s.updated_at = now;
-                    self.set_customer_subscription_status(tenant_id, &s.id, "suspended")
+                    self.set_customer_subscription_status(tenant_id, &s.id, "pending_installation")
                         .await?;
+                    let _ = self
+                        .set_location_pppoe_disabled_state(tenant_id, &s.location_id, true)
+                        .await;
                 }
 
                 let _ = self

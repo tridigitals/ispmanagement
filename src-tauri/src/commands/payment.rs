@@ -55,6 +55,23 @@ async fn require_payment_manage_access(
         .map_err(|e| e.to_string())
 }
 
+async fn require_work_order_manage_access(
+    auth_service: &AuthService,
+    claims: &Claims,
+) -> Result<(), String> {
+    if claims.is_super_admin {
+        return Ok(());
+    }
+    let tenant_id = claims
+        .tenant_id
+        .as_deref()
+        .ok_or_else(|| "Tenant context required".to_string())?;
+    auth_service
+        .check_permission(&claims.sub, tenant_id, "work_orders", "manage")
+        .await
+        .map_err(|e| e.to_string())
+}
+
 async fn authorize_invoice_access(
     claims: &Claims,
     payment_service: &PaymentService,
@@ -241,6 +258,26 @@ pub async fn create_invoice_for_customer_subscription(
 
     payment_service
         .create_invoice_for_customer_subscription(&tenant_id, &subscription_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn create_invoice_for_installation_work_order(
+    token: String,
+    work_order_id: String,
+    auth_service: State<'_, AuthService>,
+    payment_service: State<'_, PaymentService>,
+) -> Result<Invoice, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    require_work_order_manage_access(&auth_service, &claims).await?;
+    let tenant_id = claims.tenant_id.ok_or("No tenant context")?;
+
+    payment_service
+        .create_invoice_for_installation_work_order(&tenant_id, &work_order_id)
         .await
         .map_err(|e| e.to_string())
 }

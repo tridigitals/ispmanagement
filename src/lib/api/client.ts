@@ -331,6 +331,10 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
         method: 'POST',
         path: '/payment/invoices/customer-package/create',
       },
+      create_invoice_for_installation_work_order: {
+        method: 'POST',
+        path: '/payment/invoices/installation/create',
+      },
       generate_due_customer_package_invoices: {
         method: 'POST',
         path: '/payment/invoices/customer-package/generate-due',
@@ -495,6 +499,10 @@ async function safeInvoke<T>(command: string, args?: any): Promise<T> {
       delete_network_node: { method: 'DELETE', path: '/admin/network-mapping/nodes/:id' },
       list_network_links: { method: 'GET', path: '/admin/network-mapping/links' },
       create_network_link: { method: 'POST', path: '/admin/network-mapping/links' },
+      connect_network_node_to_link: {
+        method: 'POST',
+        path: '/admin/network-mapping/links/connect-node-to-link',
+      },
       update_network_link: { method: 'PATCH', path: '/admin/network-mapping/links/:id' },
       delete_network_link: { method: 'DELETE', path: '/admin/network-mapping/links/:id' },
       list_service_zones: { method: 'GET', path: '/admin/network-mapping/zones' },
@@ -1093,6 +1101,7 @@ export interface InstallationWorkOrderView {
   invoice_id: string | null;
   customer_id: string;
   location_id: string;
+  package_id: string | null;
   router_id: string | null;
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | string;
   assigned_to: string | null;
@@ -1111,6 +1120,7 @@ export interface InstallationWorkOrderView {
   assignment_status: string | null;
   subscription_status: string | null;
   subscription_starts_at: string | null;
+  has_customer_package_invoice: boolean;
   selected_zone_id: string | null;
   selected_zone_name: string | null;
   selected_node_id: string | null;
@@ -1176,6 +1186,7 @@ export interface IspPackageRouterMappingView {
   router_id: string;
   package_id: string;
   package_name: string;
+  router_name: string | null;
   router_profile_name: string;
   address_pool: string | null;
   created_at: string;
@@ -2535,8 +2546,27 @@ export const networkMapping = {
         ...(params || {}),
         __signal: options?.signal,
       }),
-    create: (dto: any): Promise<any> =>
+      create: (dto: any): Promise<any> =>
       safeInvoke('create_network_link', { token: getTokenOrThrow(), ...dto }),
+    connectNodeToLink: (dto: {
+      source_node_id: string;
+      target_link_id: string;
+      name: string;
+      link_type: string;
+      status?: string;
+      priority?: number;
+      capacity_mbps?: number | null;
+      utilization_pct?: number | null;
+      loss_db?: number | null;
+      latency_ms?: number | null;
+      geometry: GeoJSON.Geometry;
+      split_lat: number;
+      split_lng: number;
+      junction_name?: string;
+      junction_node_type?: string;
+      metadata?: Record<string, any>;
+    }): Promise<any> =>
+      safeInvoke('connect_network_node_to_link', { token: getTokenOrThrow(), ...dto }),
     update: (id: string, dto: any): Promise<any> =>
       safeInvoke('update_network_link', { token: getTokenOrThrow(), id, ...dto }),
     delete: (id: string): Promise<void> =>
@@ -3114,6 +3144,13 @@ export const payment = {
       token: getTokenOrThrow(),
       subscriptionId,
       subscription_id: subscriptionId,
+    }),
+
+  createInvoiceForInstallationWorkOrder: (workOrderId: string): Promise<Invoice> =>
+    safeInvoke('create_invoice_for_installation_work_order', {
+      token: getTokenOrThrow(),
+      workOrderId,
+      work_order_id: workOrderId,
     }),
 
   getInvoice: (id: string): Promise<Invoice> =>

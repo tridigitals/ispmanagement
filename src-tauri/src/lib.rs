@@ -269,10 +269,12 @@ pub fn run() {
                     auth_service.clone(),
                     audit_service.clone(),
                     notification_service.clone(),
+                    pppoe_service.clone(),
                     user_service.clone(),
                 );
                 customer_service.start_installation_sla_scheduler();
-                let payment_service = PaymentService::new(pool.clone(), notification_service.clone());
+                let payment_service =
+                    PaymentService::new(pool.clone(), notification_service.clone(), pppoe_service.clone());
                 payment_service.start_customer_invoice_scheduler();
 
                 // MikroTik monitoring (tenant-scoped)
@@ -475,6 +477,7 @@ pub fn run() {
                                     delete_bank_account,
                                     create_invoice_for_plan,
                                     create_invoice_for_customer_subscription,
+                                    create_invoice_for_installation_work_order,
                                     generate_due_customer_package_invoices,
                                     list_billing_collection_logs,
                                     list_invoice_reminder_logs,

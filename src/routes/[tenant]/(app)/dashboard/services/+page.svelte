@@ -9,6 +9,7 @@
     api,
     type CustomerSubscriptionView,
     type CustomerPortalInstallationTrackerResponse,
+    type Invoice,
     type InstallationWorkOrderView,
     type WorkOrderRescheduleRequestView,
   } from '$lib/api/client';
@@ -39,6 +40,7 @@
   let trackerSub = $state<CustomerSubscriptionView | null>(null);
   let trackerWo = $state<InstallationWorkOrderView | null>(null);
   let trackerReschedule = $state<WorkOrderRescheduleRequestView | null>(null);
+  let trackerInvoice = $state<Invoice | null>(null);
   let trackerError = $state('');
   let rescheduleAt = $state('');
   let rescheduleReason = $state('');
@@ -211,6 +213,14 @@
     };
   }
 
+  function invoiceActionLabel(status?: string | null, startsAt?: string | null) {
+    const normalized = String(status || '').toLowerCase();
+    if (normalized === 'suspended' && !startsAt) {
+      return tt('dashboard.services_portal.actions.pay_invoice', 'Pay Invoice');
+    }
+    return tt('dashboard.services_portal.actions.view_invoices', 'View Invoices');
+  }
+
   function setStatusFilter(filter: StatusFilter) {
     statusFilter = filter;
     page = 0;
@@ -356,6 +366,50 @@
     return null;
   }
 
+  function installationInvoiceForSubscription(invoices: Invoice[], subscriptionId: string) {
+    const prefix = `pkgsub:${subscriptionId}`;
+    const related = invoices
+      .filter((invoice) => {
+        const externalId = String(invoice.external_id || '');
+        return externalId === prefix || externalId.startsWith(`${prefix}:`);
+      })
+      .sort((a, b) => {
+        const aTime = new Date(a.created_at || a.due_date || 0).getTime();
+        const bTime = new Date(b.created_at || b.due_date || 0).getTime();
+        return bTime - aTime;
+      });
+    if (related.length === 0) return null;
+    return (
+      related.find((invoice) =>
+        ['pending', 'verification_pending', 'failed', 'expired'].includes(
+          String(invoice.status || '').toLowerCase(),
+        ),
+      ) || related[0]
+    );
+  }
+
+  function invoiceStatusTone(status?: string | null) {
+    const s = String(status || '').toLowerCase();
+    if (s === 'paid') return 'approved';
+    if (s === 'pending' || s === 'verification_pending') return 'pending';
+    if (s === 'failed' || s === 'expired' || s === 'cancelled') return 'rejected';
+    return 'pending';
+  }
+
+  async function openSubscriptionInvoice(subscriptionId: string) {
+    try {
+      const invoices = await api.payment.listCustomerPackageInvoices();
+      const invoice = installationInvoiceForSubscription(invoices, subscriptionId);
+      if (invoice?.id) {
+        await goto(`/pay/${invoice.id}`);
+        return;
+      }
+      await goto('/dashboard/invoices');
+    } catch {
+      await goto('/dashboard/invoices');
+    }
+  }
+
   async function openTracker(sub: CustomerSubscriptionView) {
     trackerOpen = true;
     trackerLoading = true;
@@ -363,16 +417,20 @@
     trackerSub = sub;
     trackerWo = null;
     trackerReschedule = null;
+    trackerInvoice = null;
     rescheduleReason = '';
     rescheduleAt = '';
     try {
-      const res: CustomerPortalInstallationTrackerResponse = await api.customers.portal.installationTracker(
-        sub.id,
-      );
-      trackerSub = res.subscription;
-      trackerWo = res.work_order;
-      trackerReschedule = res.reschedule_request;
-      rescheduleAt = toLocalInputValue(res.work_order?.scheduled_at || null);
+      const [res, invoices] = await Promise.all([
+        api.customers.portal.installationTracker(sub.id),
+        api.payment.listCustomerPackageInvoices().catch(() => [] as Invoice[]),
+      ]);
+      const trackerRes = res as CustomerPortalInstallationTrackerResponse;
+      trackerInvoice = installationInvoiceForSubscription(invoices, sub.id);
+      trackerSub = trackerRes.subscription;
+      trackerWo = trackerRes.work_order;
+      trackerReschedule = trackerRes.reschedule_request;
+      rescheduleAt = toLocalInputValue(trackerRes.work_order?.scheduled_at || null);
     } catch (e: any) {
       trackerError = e?.message || 'Failed to load installation tracker';
     } finally {
@@ -387,6 +445,7 @@
     trackerSub = null;
     trackerWo = null;
     trackerReschedule = null;
+    trackerInvoice = null;
     rescheduleAt = '';
     rescheduleReason = '';
     rescheduleBusy = false;
@@ -639,9 +698,9 @@
                       : tt('dashboard.services_portal.actions.request_reopen', 'Request Reopen')}
                   </button>
                 {/if}
-                <button class="table-action-btn" type="button" onclick={() => goto('/dashboard/invoices')}>
+                <button class="table-action-btn" type="button" onclick={() => openSubscriptionInvoice(item.id)}>
                   <Icon name="file-text" size={14} />
-                  {tt('dashboard.services_portal.actions.view_invoices', 'View Invoices')}
+                  {invoiceActionLabel(item.status, item.starts_at)}
                 </button>
                 {#if canTrackInstallation(item)}
                   <button class="table-action-btn" type="button" onclick={() => openTracker(item)}>
@@ -716,9 +775,9 @@
                     : tt('dashboard.services_portal.actions.request_reopen', 'Request Reopen')}
                 </button>
               {/if}
-              <button class="text-btn" type="button" onclick={() => goto('/dashboard/invoices')}>
+              <button class="text-btn" type="button" onclick={() => openSubscriptionInvoice(sub.id)}>
                 <Icon name="file-text" size={14} />
-                {tt('dashboard.services_portal.actions.view_invoices', 'View Invoices')}
+                {invoiceActionLabel(sub.status, sub.starts_at)}
               </button>
               {#if canTrackInstallation(sub)}
                 <button class="text-btn" type="button" onclick={() => openTracker(sub)}>
@@ -827,6 +886,45 @@
           </div>
         </div>
 
+        {#if trackerInvoice}
+          <section class="reschedule-status">
+            <div class="reschedule-status-head">
+              <h4>Invoice</h4>
+              <span class={`request-status ${invoiceStatusTone(trackerInvoice.status)}`}>
+                {String(trackerInvoice.status || 'pending').toUpperCase()}
+              </span>
+            </div>
+            <div class="reschedule-status-grid">
+              <div>
+                <small>Invoice Number</small>
+                <strong>{trackerInvoice.invoice_number || '-'}</strong>
+              </div>
+              <div>
+                <small>Amount</small>
+                <strong>{formatCurrency(Number(trackerInvoice.amount || 0), trackerInvoice.currency_code)}</strong>
+              </div>
+              <div>
+                <small>Due Date</small>
+                <strong>{formatDate(trackerInvoice.due_date)}</strong>
+              </div>
+              <div>
+                <small>Paid At</small>
+                <strong>{formatDate(trackerInvoice.paid_at)}</strong>
+              </div>
+            </div>
+            <div class="reschedule-actions">
+              <button
+                class="btn ghost"
+                type="button"
+                onclick={() => (trackerInvoice?.id ? goto(`/pay/${trackerInvoice.id}`) : openSubscriptionInvoice(trackerSub?.id || ''))}
+              >
+                <Icon name="file-text" size={14} />
+                {invoiceActionLabel(trackerSub?.status, trackerSub?.starts_at)}
+              </button>
+            </div>
+          </section>
+        {/if}
+
         {#if trackerReschedule}
           <section class="reschedule-status">
             <div class="reschedule-status-head">
@@ -919,12 +1017,6 @@
           </section>
         {/if}
 
-        {#if trackerWo?.notes}
-          <section class="tracker-notes">
-            <h4>{tt('dashboard.services_portal.tracker.latest_notes', 'Latest Notes')}</h4>
-            <pre>{trackerWo.notes}</pre>
-          </section>
-        {/if}
       {/if}
     </section>
   </div>
