@@ -1502,7 +1502,6 @@
                           !(
                             installationSubscription?.router_id ||
                             activeRow?.router_id ||
-                            installationPppoeAccount?.router_id ||
                             installationPppoeMapping?.router_id
                           ) ||
                           !installationPppoeMapping?.router_profile_name ||

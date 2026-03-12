@@ -3092,6 +3092,7 @@
         "title": "Network Topology Map",
         "subtitle": "Visualize nodes, links, and service zones in current viewport.",
         "back_to_noc": "Back to NOC",
+        "back_to_installation": "Back to Installation",
         "bbox": "Viewport bbox",
         "stats": {
           "nodes": "Nodes",

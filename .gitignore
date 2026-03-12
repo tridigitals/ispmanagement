@@ -10,3 +10,6 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 _tmp_*
 static/pdfjs/
+.codex/
+.specify/
+src-tauri/target/

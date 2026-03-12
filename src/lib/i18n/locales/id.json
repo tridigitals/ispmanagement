@@ -2878,6 +2878,7 @@
         "title": "Peta Topologi Jaringan",
         "subtitle": "Visualisasi node, link, dan zona layanan pada viewport saat ini.",
         "back_to_noc": "Kembali ke NOC",
+        "back_to_installation": "Kembali ke Instalasi",
         "bbox": "BBox viewport",
         "stats": {
           "nodes": "Node",
