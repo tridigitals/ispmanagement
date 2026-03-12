@@ -6,62 +6,126 @@
   import { can, tenant, user } from '$lib/stores/auth';
   import { api, type PaginatedResponse } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
-  import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
-  import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
-  import Modal from '$lib/components/ui/Modal.svelte';
+  import NetworkMapLinkModal from '$lib/components/network/NetworkMapLinkModal.svelte';
+  import NetworkMapManager from '$lib/components/network/NetworkMapManager.svelte';
+  import NetworkMapNodePanel from '$lib/components/network/NetworkMapNodePanel.svelte';
+  import NetworkMapOverview from '$lib/components/network/NetworkMapOverview.svelte';
+  import NetworkMapZoneModal from '$lib/components/network/NetworkMapZoneModal.svelte';
+  import {
+    buildLinkDraftForm,
+    buildZoneDraftForm,
+    createNetworkZoneBinding,
+    deleteNetworkLink,
+    deleteNetworkNode,
+    deleteNetworkZone,
+    deleteNetworkZoneBinding,
+    loadNetworkZoneBindings,
+    saveNetworkLink,
+    saveNetworkNode,
+    saveNetworkZone,
+  } from '$lib/components/network/networkMapActions';
+  import {
+    buildDefaultLineGeometry,
+    buildDeleteConfirmCopy,
+    currentDraftPathCoords,
+  } from '$lib/components/network/networkMapInteractionUtils';
+  import { handleCanvasMapClick } from '$lib/components/network/networkMapCanvasInteractions';
+  import {
+    createZoneBindingCrud,
+    loadZoneBindingsCrud,
+    removeCrud,
+    submitLinkCrud,
+    submitNodeCrud,
+    submitZoneCrud,
+  } from '$lib/components/network/networkMapCrud';
+  import {
+    applyPickedNodeMarker,
+    buildDefaultZoneGeometry,
+    buildLinkDraftPreviewCollections,
+    buildLinkGeometryDraftText,
+    clearDraftNodeMarker,
+  } from '$lib/components/network/networkMapDrafts';
+  import {
+    buildConnectFromNodeResult,
+    buildHandlePickedLinkNodeResult,
+    buildSetLinkDrawModeResult,
+    buildStraightLinkGeometryText,
+    buildToggleLinkPickResult,
+    createEditLinkForm,
+    createLinkForm,
+    type LinkPickDrawMode,
+  } from '$lib/components/network/networkMapLinkPicking';
+  import { openLinkPopup, openNodePopup, openRouterPopup } from '$lib/components/network/networkMapPopups';
+  import {
+    applyCachedMapData,
+    applyFetchedMapData,
+    buildMapDataCacheKey,
+    extractMapRows,
+    fetchNetworkMapData,
+    getCachedMapData,
+    setCachedMapData,
+    syncTopologyAssetsIfNeeded,
+    type NetworkMapCacheEntry,
+  } from '$lib/components/network/networkMapData';
+  import {
+    buildBaseMapStyle,
+    emptyFeatureCollection,
+    registerMapSourcesAndLayers,
+    SOURCE_CUSTOMERS,
+    SOURCE_LINK_DRAFT,
+    SOURCE_LINK_DRAFT_POINTS,
+    SOURCE_LINKS,
+    SOURCE_NODES,
+    SOURCE_ROUTERS,
+    SOURCE_ZONES,
+  } from '$lib/components/network/networkMapLayers';
+  import {
+    createMapTextButtonControl,
+    expandCustomerCluster,
+    registerInteractiveLayerHover,
+    registerPrimaryLayerClicks,
+  } from '$lib/components/network/networkMapInit';
+  import {
+    fitMapToMarkers,
+    hideMyLocationMarker,
+    showMyLocationMarker,
+    syncMyLocationControlButton,
+    syncViewModeControlButton,
+  } from '$lib/components/network/networkMapRuntime';
+  import {
+    asNumber,
+    computeLinkHealth,
+    customersToFeatureCollection,
+    ensureNodeTypeIconsRegistered,
+    escapeHtml,
+    filterRoutersForOverlay,
+    getLinkFieldConfig,
+    isCustomerNodeType,
+    isSystemManagedNode,
+    linkStatusOptions,
+    linkTypeOptions,
+    linksToFeatureCollection,
+    nodeTypeLabel,
+    nodeTypeOptions,
+    nodesToFeatureCollection,
+    parseGeometryText,
+    prettyGeometry,
+    routersToFeatureCollection,
+    statusTone,
+    systemManagedNodeSourceLabel,
+    zonesToFeatureCollection,
+    type LinkFieldConfig,
+    type NMLink,
+    type NMNode,
+    type NMRouter,
+    type NMZone,
+  } from '$lib/components/network/networkMapUtils';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import Select2 from '$lib/components/ui/Select2.svelte';
   import Icon from '$lib/components/ui/Icon.svelte';
   import MapCanvasShell from '$lib/components/network/MapCanvasShell.svelte';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import 'maplibre-gl/dist/maplibre-gl.css';
-
-  type NMNode = {
-    id: string;
-    name: string;
-    node_type: string;
-    status: string;
-    lat: number;
-    lng: number;
-    metadata?: Record<string, any>;
-  };
-
-  type NMLink = {
-    id: string;
-    name: string;
-    link_type: string;
-    status: string;
-    from_node_id?: string;
-    to_node_id?: string;
-    priority?: number;
-    capacity_mbps?: number | null;
-    utilization_pct?: number | null;
-    loss_db?: number | null;
-    latency_ms?: number | null;
-    geometry: GeoJSON.Geometry;
-  };
-
-  type NMZone = {
-    id: string;
-    name: string;
-    zone_type: string;
-    status: string;
-    geometry: GeoJSON.Geometry;
-  };
-
-  type NMRouter = {
-    id: string;
-    name: string;
-    host: string;
-    port: number;
-    is_online: boolean;
-    enabled: boolean;
-    identity?: string | null;
-    ros_version?: string | null;
-    latency_ms?: number | null;
-    latitude?: number | null;
-    longitude?: number | null;
-  };
 
   type MaplibreModule = typeof import('maplibre-gl');
   type MapInstance = import('maplibre-gl').Map;
@@ -178,13 +242,7 @@
   let lastAssetSyncAt = 0;
   const dataCache = new Map<
     string,
-    {
-      at: number;
-      nodes: PaginatedResponse<any>;
-      links: PaginatedResponse<any>;
-      zones: PaginatedResponse<any>;
-      routers: NMRouter[];
-    }
+    NetworkMapCacheEntry
   >();
   const dataCacheTtlMs = 20_000;
   const dataCacheMaxEntries = 40;
@@ -194,114 +252,7 @@
   const standardMaxZoom = 19;
   const satelliteMaxZoom = hasHiResSatellite ? 21 : 18;
 
-  const SOURCE_NODES = 'nm-nodes';
-  const SOURCE_CUSTOMERS = 'nm-customers';
-  const SOURCE_LINKS = 'nm-links';
-  const SOURCE_ZONES = 'nm-zones';
-  const SOURCE_ROUTERS = 'nm-routers';
-  const SOURCE_LINK_DRAFT = 'nm-link-draft';
-  const SOURCE_LINK_DRAFT_POINTS = 'nm-link-draft-points';
   const canManageTopology = $derived($can('manage', 'network_topology') || $can('manage', 'network_routers'));
-  const nodeTypeOptions = [
-    { label: 'Core', value: 'core' },
-    { label: 'POP', value: 'pop' },
-    { label: 'OLT', value: 'olt' },
-    { label: 'Router', value: 'router' },
-    { label: 'Switch', value: 'switch' },
-    { label: 'Tower', value: 'tower' },
-    { label: 'AP', value: 'ap' },
-    { label: 'ODC', value: 'odc' },
-    { label: 'ODP', value: 'odp' },
-    { label: 'Splitter', value: 'splitter' },
-    { label: 'Junction', value: 'junction' },
-    { label: 'Customer Premise', value: 'customer_premise' },
-    { label: 'Customer Endpoint', value: 'customer_endpoint' },
-  ];
-  const linkTypeOptions = [
-    { label: 'Fiber', value: 'fiber' },
-    { label: 'Wireless PTP', value: 'wireless_ptp' },
-    { label: 'Wireless PTMP', value: 'wireless_ptmp' },
-    { label: 'LAN', value: 'lan' },
-    { label: 'VLAN Tunnel', value: 'vlan_tunnel' },
-    { label: 'Backhaul', value: 'backhaul' },
-  ];
-  const linkStatusOptions = [
-    { label: 'Planning', value: 'planning' },
-    { label: 'Up', value: 'up' },
-    { label: 'Down', value: 'down' },
-    { label: 'Degraded', value: 'degraded' },
-    { label: 'Maintenance', value: 'maintenance' },
-    { label: 'Retired', value: 'retired' },
-  ];
-  type LinkFieldConfig = {
-    capacityLabel: string;
-    utilizationLabel: string;
-    latencyLabel: string;
-    lossLabel: string;
-    showLoss: boolean;
-    helper: string;
-  };
-
-  function getLinkFieldConfig(linkType: string): LinkFieldConfig {
-    switch (linkType) {
-      case 'fiber':
-        return {
-          capacityLabel: 'Capacity (Mbps)',
-          utilizationLabel: 'Utilization (%)',
-          latencyLabel: 'Latency (ms)',
-          lossLabel: 'Optical Loss (dB)',
-          showLoss: true,
-          helper: 'Fiber links track optical loss and latency for quality monitoring.',
-        };
-      case 'wireless_ptp':
-      case 'wireless_ptmp':
-        return {
-          capacityLabel: 'Throughput Capacity (Mbps)',
-          utilizationLabel: 'Channel Utilization (%)',
-          latencyLabel: 'Latency (ms)',
-          lossLabel: 'Signal Loss (dB)',
-          showLoss: true,
-          helper: 'Wireless links track channel utilization, latency, and signal loss.',
-        };
-      case 'lan':
-        return {
-          capacityLabel: 'Port Capacity (Mbps)',
-          utilizationLabel: 'Port Utilization (%)',
-          latencyLabel: 'Latency (ms)',
-          lossLabel: 'Loss (dB)',
-          showLoss: false,
-          helper: 'LAN links focus on port capacity and utilization.',
-        };
-      case 'vlan_tunnel':
-        return {
-          capacityLabel: 'Tunnel Capacity (Mbps)',
-          utilizationLabel: 'Tunnel Utilization (%)',
-          latencyLabel: 'Tunnel Latency (ms)',
-          lossLabel: 'Loss (dB)',
-          showLoss: false,
-          helper: 'VLAN tunnels focus on tunnel throughput and latency.',
-        };
-      case 'backhaul':
-        return {
-          capacityLabel: 'Backhaul Capacity (Mbps)',
-          utilizationLabel: 'Backhaul Utilization (%)',
-          latencyLabel: 'Backhaul Latency (ms)',
-          lossLabel: 'Backhaul Loss (dB)',
-          showLoss: true,
-          helper: 'Backhaul links should track end-to-end latency and link loss.',
-        };
-      default:
-        return {
-          capacityLabel: 'Capacity (Mbps)',
-          utilizationLabel: 'Utilization (%)',
-          latencyLabel: 'Latency (ms)',
-          lossLabel: 'Loss (dB)',
-          showLoss: true,
-          helper: 'Link quality metrics adapt based on selected type.',
-        };
-    }
-  }
-
   const linkFieldConfig = $derived.by(() => getLinkFieldConfig(linkForm.link_type));
 
   const tenantCtx = $derived.by(() =>
@@ -450,439 +401,48 @@
     }
   }
 
-  function escapeHtml(input: unknown): string {
-    return String(input ?? '-')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#039;');
-  }
-
-  function statusTone(statusRaw: unknown): 'ok' | 'warn' | 'muted' {
-    const s = String(statusRaw || '').toLowerCase();
-    if (s === 'active' || s === 'up') return 'ok';
-    if (s === 'maintenance' || s === 'degraded') return 'warn';
-    return 'muted';
-  }
-
-  function drawNodePictogram(
-    ctx: CanvasRenderingContext2D,
-    type: string,
-    cx: number,
-    cy: number,
-    size: number,
-  ) {
-    const s = size;
-    ctx.save();
-    ctx.strokeStyle = '#ffffff';
-    ctx.fillStyle = '#ffffff';
-    ctx.lineWidth = Math.max(2, s * 0.11);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    switch (type) {
-      case 'router': {
-        ctx.strokeRect(cx - s * 0.48, cy - s * 0.26, s * 0.96, s * 0.52);
-        ctx.beginPath();
-        ctx.arc(cx - s * 0.2, cy, s * 0.05, 0, Math.PI * 2);
-        ctx.arc(cx, cy, s * 0.05, 0, Math.PI * 2);
-        ctx.arc(cx + s * 0.2, cy, s * 0.05, 0, Math.PI * 2);
-        ctx.fill();
-        break;
-      }
-      case 'switch': {
-        ctx.strokeRect(cx - s * 0.5, cy - s * 0.26, s, s * 0.52);
-        ctx.beginPath();
-        ctx.moveTo(cx - s * 0.35, cy - s * 0.06);
-        ctx.lineTo(cx + s * 0.35, cy - s * 0.06);
-        ctx.moveTo(cx - s * 0.35, cy + s * 0.08);
-        ctx.lineTo(cx + s * 0.35, cy + s * 0.08);
-        ctx.stroke();
-        break;
-      }
-      case 'tower': {
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - s * 0.52);
-        ctx.lineTo(cx - s * 0.28, cy + s * 0.42);
-        ctx.lineTo(cx + s * 0.28, cy + s * 0.42);
-        ctx.closePath();
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(cx - s * 0.18, cy + s * 0.12);
-        ctx.lineTo(cx + s * 0.18, cy + s * 0.12);
-        ctx.moveTo(cx - s * 0.11, cy - s * 0.12);
-        ctx.lineTo(cx + s * 0.11, cy - s * 0.12);
-        ctx.stroke();
-        break;
-      }
-      case 'ap': {
-        ctx.beginPath();
-        ctx.arc(cx, cy + s * 0.22, s * 0.05, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(cx, cy + s * 0.22, s * 0.22, -Math.PI * 0.95, -Math.PI * 0.05);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(cx, cy + s * 0.22, s * 0.36, -Math.PI * 0.9, -Math.PI * 0.1);
-        ctx.stroke();
-        break;
-      }
-      case 'olt': {
-        ctx.strokeRect(cx - s * 0.5, cy - s * 0.34, s, s * 0.68);
-        for (let i = -1; i <= 1; i++) {
-          ctx.beginPath();
-          ctx.arc(cx + i * s * 0.2, cy - s * 0.08, s * 0.045, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.moveTo(cx + i * s * 0.22, cy + s * 0.12);
-          ctx.lineTo(cx + i * s * 0.22, cy + s * 0.24);
-          ctx.stroke();
-        }
-        break;
-      }
-      case 'splitter': {
-        ctx.beginPath();
-        ctx.moveTo(cx - s * 0.45, cy);
-        ctx.lineTo(cx - s * 0.05, cy);
-        ctx.moveTo(cx - s * 0.05, cy);
-        ctx.lineTo(cx + s * 0.3, cy - s * 0.22);
-        ctx.moveTo(cx - s * 0.05, cy);
-        ctx.lineTo(cx + s * 0.3, cy + s * 0.22);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(cx - s * 0.05, cy, s * 0.06, 0, Math.PI * 2);
-        ctx.fill();
-        break;
-      }
-      case 'junction': {
-        ctx.beginPath();
-        ctx.arc(cx, cy, s * 0.08, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.moveTo(cx - s * 0.34, cy);
-        ctx.lineTo(cx - s * 0.1, cy);
-        ctx.moveTo(cx + s * 0.1, cy);
-        ctx.lineTo(cx + s * 0.34, cy);
-        ctx.moveTo(cx, cy - s * 0.34);
-        ctx.lineTo(cx, cy - s * 0.1);
-        ctx.moveTo(cx, cy + s * 0.1);
-        ctx.lineTo(cx, cy + s * 0.34);
-        ctx.stroke();
-        break;
-      }
-      case 'odc': {
-        ctx.strokeRect(cx - s * 0.34, cy - s * 0.38, s * 0.68, s * 0.76);
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - s * 0.26);
-        ctx.lineTo(cx, cy + s * 0.26);
-        ctx.moveTo(cx - s * 0.18, cy);
-        ctx.lineTo(cx + s * 0.18, cy);
-        ctx.stroke();
-        break;
-      }
-      case 'odp': {
-        ctx.beginPath();
-        ctx.arc(cx, cy - s * 0.06, s * 0.18, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.strokeRect(cx - s * 0.22, cy + s * 0.08, s * 0.44, s * 0.24);
-        break;
-      }
-      case 'pop': {
-        ctx.strokeRect(cx - s * 0.4, cy - s * 0.4, s * 0.8, s * 0.8);
-        ctx.beginPath();
-        for (let r = -1; r <= 1; r++) {
-          for (let c = -1; c <= 1; c++) {
-            ctx.rect(cx + c * s * 0.18 - s * 0.035, cy + r * s * 0.18 - s * 0.035, s * 0.07, s * 0.07);
-          }
-        }
-        ctx.fill();
-        break;
-      }
-      case 'core': {
-        ctx.beginPath();
-        ctx.arc(cx, cy, s * 0.14, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.moveTo(cx - s * 0.42, cy);
-        ctx.lineTo(cx - s * 0.18, cy);
-        ctx.moveTo(cx + s * 0.18, cy);
-        ctx.lineTo(cx + s * 0.42, cy);
-        ctx.moveTo(cx, cy - s * 0.42);
-        ctx.lineTo(cx, cy - s * 0.18);
-        ctx.moveTo(cx, cy + s * 0.18);
-        ctx.lineTo(cx, cy + s * 0.42);
-        ctx.stroke();
-        break;
-      }
-      case 'customer_premise':
-      case 'customer_endpoint': {
-        ctx.beginPath();
-        ctx.moveTo(cx - s * 0.42, cy + s * 0.08);
-        ctx.lineTo(cx, cy - s * 0.34);
-        ctx.lineTo(cx + s * 0.42, cy + s * 0.08);
-        ctx.stroke();
-        ctx.strokeRect(cx - s * 0.3, cy + s * 0.08, s * 0.6, s * 0.34);
-        break;
-      }
-      default: {
-        ctx.strokeRect(cx - s * 0.48, cy - s * 0.26, s * 0.96, s * 0.52);
-        break;
-      }
-    }
-
-    ctx.restore();
-  }
-
-  function buildNodeIconImage(bg: string, type: string): ImageData {
-    const size = 64;
-    const c = document.createElement('canvas');
-    c.width = size;
-    c.height = size;
-    const ctx = c.getContext('2d');
-    if (!ctx) return new ImageData(size, size);
-
-    const r = size / 2;
-    ctx.clearRect(0, 0, size, size);
-    ctx.beginPath();
-    ctx.arc(r, r + 1.2, r - 2, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.35)';
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(r, r, r - 3, 0, Math.PI * 2);
-    ctx.fillStyle = bg;
-    ctx.fill();
-    ctx.lineWidth = 2.6;
-    ctx.strokeStyle = 'rgba(255,255,255,0.92)';
-    ctx.stroke();
-
-    drawNodePictogram(ctx, type, r, r, size * 0.56);
-    return ctx.getImageData(0, 0, size, size);
-  }
-
-  function ensureNodeTypeIconsRegistered() {
-    if (!map) return;
-    const defs: Array<{ id: string; bg: string; type: string }> = [
-      { id: 'nm-node-icon-core', bg: '#4f46e5', type: 'core' },
-      { id: 'nm-node-icon-pop', bg: '#0ea5e9', type: 'pop' },
-      { id: 'nm-node-icon-olt', bg: '#22c55e', type: 'olt' },
-      { id: 'nm-node-icon-router', bg: '#3b82f6', type: 'router' },
-      { id: 'nm-node-icon-switch', bg: '#2563eb', type: 'switch' },
-      { id: 'nm-node-icon-tower', bg: '#f59e0b', type: 'tower' },
-      { id: 'nm-node-icon-ap', bg: '#ef4444', type: 'ap' },
-      { id: 'nm-node-icon-odc', bg: '#0f766e', type: 'odc' },
-      { id: 'nm-node-icon-odp', bg: '#14b8a6', type: 'odp' },
-      { id: 'nm-node-icon-splitter', bg: '#a855f7', type: 'splitter' },
-      { id: 'nm-node-icon-junction', bg: '#f97316', type: 'junction' },
-      { id: 'nm-node-icon-customer', bg: '#06b6d4', type: 'customer_premise' },
-    ];
-    for (const d of defs) {
-      if (!map.hasImage(d.id)) {
-        map.addImage(d.id, buildNodeIconImage(d.bg, d.type), { pixelRatio: 2 });
-      }
-    }
-  }
-
-  function isCustomerNodeType(nodeType: string) {
-    return nodeType === 'customer_endpoint' || nodeType === 'customer_premise';
-  }
-
-  function isSystemManagedNode(row: NMNode | null | undefined) {
-    return !!row?.metadata?.system_managed;
-  }
-
-  function systemManagedNodeSourceLabel(row: NMNode | null | undefined) {
-    const source = String(row?.metadata?.asset_source || row?.metadata?.asset_type || '').trim();
-    if (source === 'mikrotik_router') return 'Router map';
-    if (source === 'customer_location') return 'Customer location map';
-    return source ? 'Synced asset' : '';
-  }
-
-  function buildSyncedAssetKeySet(rows: NMNode[]) {
-    const keys = new Set<string>();
-    for (const row of rows || []) {
-      const assetType = String(row.metadata?.asset_type || '').trim();
-      const assetId = String(row.metadata?.asset_id || '').trim();
-      if (assetType && assetId) keys.add(`${assetType}:${assetId}`);
-    }
-    return keys;
-  }
-
-  function filterRoutersForOverlay(rows: NMRouter[], nodes: NMNode[]) {
-    const syncedKeys = buildSyncedAssetKeySet(nodes);
-    return (rows || []).filter((row) => !syncedKeys.has(`mikrotik_router:${row.id}`));
-  }
-
   function handleNodeLayerClick(e: any) {
     if (!map || !e.features?.[0] || !maplibre) return;
     const props = e.features[0].properties || {};
-    const coords = (e.features[0].geometry as GeoJSON.Point).coordinates;
     const nodeId = String(props.id || '');
-    const node = nodeRows.find((x) => x.id === nodeId);
-    const managed = isSystemManagedNode(node);
-    const managedSource = systemManagedNodeSourceLabel(node);
     if (linkPickMode) {
       handleLinkPickNode(nodeId);
       return;
     }
-    const popupUid = `nm-popup-${Math.random().toString(36).slice(2, 10)}`;
-    const connectBtnId = `${popupUid}-connect`;
-    const editBtnId = `${popupUid}-edit`;
-    const closeBtnId = `${popupUid}-close`;
-    const status = escapeHtml(props.status || '-');
-    const tone = statusTone(props.status);
-    const name = escapeHtml(props.name || '-');
-    const nodeType = escapeHtml(props.node_type || '-');
-    const sourceDetail = managedSource ? `<div class="nm-popup-label">Source</div><div class="nm-popup-value">${escapeHtml(managedSource)}</div>` : '';
-    activeNodePopup?.remove();
-    const popup = new maplibre.Popup({ closeButton: false, closeOnClick: true })
-      .setLngLat(coords as [number, number])
-      .setHTML(`
-        <div class="nm-popup-card">
-          <div class="nm-popup-head">
-            <div class="nm-popup-title">${name}</div>
-            <span class="nm-popup-badge ${tone}">${status}</span>
-          </div>
-          <div class="nm-popup-grid">
-            <div class="nm-popup-label">Type</div>
-            <div class="nm-popup-value">${nodeType}</div>
-            ${sourceDetail}
-          </div>
-          <div class="nm-popup-actions">
-            <button id="${connectBtnId}" class="nm-popup-btn primary" type="button">Connect</button>
-            ${managed ? '' : `<button id="${editBtnId}" class="nm-popup-btn" type="button">Edit</button>`}
-            <button id="${closeBtnId}" class="nm-popup-btn" type="button">Close</button>
-          </div>
-        </div>
-      `);
-
-    popup.on('open', () => {
-      const connectBtn = document.getElementById(connectBtnId) as HTMLButtonElement | null;
-      const editBtn = document.getElementById(editBtnId) as HTMLButtonElement | null;
-      const closeBtn = document.getElementById(closeBtnId) as HTMLButtonElement | null;
-
-      connectBtn?.addEventListener('click', () => {
-        popup.remove();
-        startConnectFromNode(nodeId);
-      });
-      editBtn?.addEventListener('click', () => {
-        popup.remove();
-        if (node) openEditNodeModal(node);
-      });
-      closeBtn?.addEventListener('click', () => {
-        popup.remove();
-      });
+    openNodePopup({
+      map,
+      maplibre,
+      feature: e.features[0],
+      nodeRows,
+      activePopup: activeNodePopup,
+      setActivePopup: (popup) => (activeNodePopup = popup),
+      onConnect: startConnectFromNode,
+      onEdit: openEditNodeModal,
     });
-    popup.on('close', () => {
-      if (activeNodePopup === popup) activeNodePopup = null;
-    });
-    activeNodePopup = popup;
-    popup.addTo(map);
   }
 
   function handleLinkLayerClick(e: any) {
     if (!map || !e.features?.[0] || !maplibre || linkPickMode) return;
-    const props = e.features[0].properties || {};
-    const linkId = String(props.id || '');
-    const link = linkRows.find((x) => x.id === linkId);
-    if (!link) return;
-
-    const popupUid = `nm-link-popup-${Math.random().toString(36).slice(2, 10)}`;
-    const deleteBtnId = `${popupUid}-delete`;
-    const closeBtnId = `${popupUid}-close`;
-
-    const p = e.lngLat;
-    const name = escapeHtml(link.name || '-');
-    const status = escapeHtml(link.status || '-');
-    const type = escapeHtml(link.link_type || '-');
-    const health = computeLinkHealth(link);
-    const popup = new maplibre.Popup({ closeButton: false, closeOnClick: true })
-      .setLngLat([p.lng, p.lat])
-      .setHTML(`
-        <div class="nm-popup-card">
-          <div class="nm-popup-head">
-            <div class="nm-popup-title">${name}</div>
-            <span class="nm-popup-badge ${health.tone === 'good' ? 'ok' : health.tone === 'warn' ? 'warn' : 'muted'}">${health.score}</span>
-          </div>
-          <div class="nm-popup-grid">
-            <div class="nm-popup-label">Type</div>
-            <div class="nm-popup-value">${type}</div>
-            <div class="nm-popup-label">Status</div>
-            <div class="nm-popup-value">${status}</div>
-            <div class="nm-popup-label">Endpoints</div>
-            <div class="nm-popup-value mono">${escapeHtml(link.from_node_id || '-')} → ${escapeHtml(link.to_node_id || '-')}</div>
-          </div>
-          <div class="nm-popup-actions">
-            <button id="${deleteBtnId}" class="nm-popup-btn danger" type="button">Delete</button>
-            <button id="${closeBtnId}" class="nm-popup-btn" type="button">Close</button>
-          </div>
-        </div>
-      `);
-
-    popup.on('open', () => {
-      const deleteBtn = document.getElementById(deleteBtnId) as HTMLButtonElement | null;
-      const closeBtn = document.getElementById(closeBtnId) as HTMLButtonElement | null;
-      deleteBtn?.addEventListener('click', () => {
-        popup.remove();
-        openDeleteConfirm('link', linkId, link.name);
-      });
-      closeBtn?.addEventListener('click', () => popup.remove());
+    openLinkPopup({
+      map,
+      maplibre,
+      feature: e.features[0],
+      lngLat: e.lngLat,
+      linkRows,
+      onDelete: (linkId, linkName) => openDeleteConfirm('link', linkId, linkName),
     });
-    popup.addTo(map);
   }
 
   function handleRouterLayerClick(e: any) {
     if (!map || !e.features?.[0] || !maplibre) return;
-    const props = e.features[0].properties || {};
-    const coords = (e.features[0].geometry as GeoJSON.Point).coordinates;
-    const routerId = String(props.id || '');
-    const status = props.is_online ? 'online' : 'offline';
-    const tone: 'ok' | 'muted' = props.is_online ? 'ok' : 'muted';
-    const name = escapeHtml(props.name || '-');
-    const host = escapeHtml(props.host || '-');
-    const port = escapeHtml(props.port || '-');
-    const latency = props.latency_ms != null ? `${escapeHtml(props.latency_ms)} ms` : '-';
-    const popupUid = `nm-router-popup-${Math.random().toString(36).slice(2, 10)}`;
-    const openBtnId = `${popupUid}-open`;
-    const closeBtnId = `${popupUid}-close`;
-
-    activeNodePopup?.remove();
-    const popup = new maplibre.Popup({ closeButton: false, closeOnClick: true })
-      .setLngLat(coords as [number, number])
-      .setHTML(`
-        <div class="nm-popup-card">
-          <div class="nm-popup-head">
-            <div class="nm-popup-title">${name}</div>
-            <span class="nm-popup-badge ${tone}">${status}</span>
-          </div>
-          <div class="nm-popup-grid">
-            <div class="nm-popup-label">Host</div>
-            <div class="nm-popup-value mono">${host}:${port}</div>
-            <div class="nm-popup-label">Latency</div>
-            <div class="nm-popup-value">${latency}</div>
-          </div>
-          <div class="nm-popup-actions">
-            <button id="${openBtnId}" class="nm-popup-btn primary" type="button">Open Router</button>
-            <button id="${closeBtnId}" class="nm-popup-btn" type="button">Close</button>
-          </div>
-        </div>
-      `);
-
-    popup.on('open', () => {
-      const openBtn = document.getElementById(openBtnId) as HTMLButtonElement | null;
-      const closeBtn = document.getElementById(closeBtnId) as HTMLButtonElement | null;
-      openBtn?.addEventListener('click', () => {
-        popup.remove();
-        void goto(`${tenantPrefix}/admin/network/routers/${routerId}`);
-      });
-      closeBtn?.addEventListener('click', () => popup.remove());
+    openRouterPopup({
+      map,
+      maplibre,
+      feature: e.features[0],
+      activePopup: activeNodePopup,
+      setActivePopup: (popup) => (activeNodePopup = popup),
+      onOpenRouter: (routerId) => void goto(`${tenantPrefix}/admin/network/routers/${routerId}`),
     });
-    popup.on('close', () => {
-      if (activeNodePopup === popup) activeNodePopup = null;
-    });
-    activeNodePopup = popup;
-    popup.addTo(map);
   }
 
   async function initMap() {
@@ -892,31 +452,12 @@
 
       map = new maplibre.Map({
         container: mapEl,
-        style: {
-          version: 8,
-          sources: {
-            osm: {
-              type: 'raster',
-              tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-              tileSize: 256,
-              maxzoom: standardMaxZoom,
-              attribution: '© OpenStreetMap contributors',
-            },
-            satellite: {
-              type: 'raster',
-              tiles: hasHiResSatellite
-                ? [`https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${mapTilerKey}`]
-                : ['https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-              tileSize: 256,
-              maxzoom: satelliteMaxZoom,
-              attribution: hasHiResSatellite ? '© MapTiler © OpenStreetMap contributors' : '© Esri',
-            },
-          },
-          layers: [
-            { id: 'base-standard', type: 'raster', source: 'osm' },
-            { id: 'base-satellite', type: 'raster', source: 'satellite', layout: { visibility: 'none' } },
-          ],
-        },
+        style: buildBaseMapStyle({
+          hasHiResSatellite,
+          mapTilerKey,
+          standardMaxZoom,
+          satelliteMaxZoom,
+        }),
         center: [106.8456, -6.2088],
         zoom: 10,
         maxZoom: standardMaxZoom,
@@ -925,440 +466,86 @@
 
       map.addControl(new maplibre.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
       map.addControl(
-        {
-          onAdd: () => {
-            const wrap = document.createElement('div');
-            wrap.className = 'maplibregl-ctrl maplibregl-ctrl-group';
-
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'maplibregl-ctrl-icon nm-location-ctrl';
-            btn.onclick = () => {
-              if (myLocationVisible) hideMyLocation();
-              else void showMyLocation();
-            };
-            wrap.appendChild(btn);
+        createMapTextButtonControl({
+          className: 'nm-location-ctrl',
+          onClick: () => {
+            if (myLocationVisible) hideMyLocation();
+            else void showMyLocation();
+          },
+          onMount: (btn) => {
             myLocationControlBtn = btn;
             syncMyLocationControlUi();
-            return wrap;
           },
-          onRemove: () => {
+          onUnmount: () => {
             myLocationControlBtn = null;
           },
-        },
+        }),
         'top-right',
       );
 
       map.addControl(
-        {
-          onAdd: () => {
-            const wrap = document.createElement('div');
-            wrap.className = 'maplibregl-ctrl maplibregl-ctrl-group';
-
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'maplibregl-ctrl-icon nm-viewmode-ctrl';
-            btn.onclick = () => {
-              viewMode = viewMode === 'standard' ? 'satellite' : 'standard';
-            };
-            wrap.appendChild(btn);
+        createMapTextButtonControl({
+          className: 'nm-viewmode-ctrl',
+          onClick: () => {
+            viewMode = viewMode === 'standard' ? 'satellite' : 'standard';
+          },
+          onMount: (btn) => {
             viewModeControlBtn = btn;
             syncViewModeControlUi();
-            return wrap;
           },
-          onRemove: () => {
+          onUnmount: () => {
             viewModeControlBtn = null;
           },
-        },
+        }),
         'top-right',
       );
 
       map.on('load', async () => {
         if (!map) return;
-        ensureNodeTypeIconsRegistered();
-        map.addSource(SOURCE_ZONES, { type: 'geojson', data: emptyFeatureCollection() });
-        map.addSource(SOURCE_LINKS, { type: 'geojson', data: emptyFeatureCollection() });
-        map.addSource(SOURCE_NODES, { type: 'geojson', data: emptyFeatureCollection() });
-        map.addSource(SOURCE_ROUTERS, { type: 'geojson', data: emptyFeatureCollection() });
-        map.addSource(SOURCE_CUSTOMERS, {
-          type: 'geojson',
-          data: emptyFeatureCollection(),
-          cluster: true,
-          clusterMaxZoom: 14,
-          clusterRadius: 54,
-        });
-        map.addSource(SOURCE_LINK_DRAFT, { type: 'geojson', data: emptyFeatureCollection() });
-        map.addSource(SOURCE_LINK_DRAFT_POINTS, { type: 'geojson', data: emptyFeatureCollection() });
+        ensureNodeTypeIconsRegistered(map);
+        registerMapSourcesAndLayers(map);
 
-        map.addLayer({
-          id: 'nm-zones-fill',
-          type: 'fill',
-          source: SOURCE_ZONES,
-          paint: {
-            'fill-color': '#1fb6ff',
-            'fill-opacity': 0.12,
+        registerPrimaryLayerClicks({
+          map,
+          onNodeClick: handleNodeLayerClick,
+          onRouterClick: handleRouterLayerClick,
+          onLinkClick: handleLinkLayerClick,
+          onCustomerClusterClick: async (e) => {
+            if (!map || !maplibre || !e.features?.[0]) return;
+            try {
+              await expandCustomerCluster({
+                map,
+                feature: e.features[0],
+                sourceId: SOURCE_CUSTOMERS,
+              });
+            } catch (error) {
+              console.error(error);
+            }
           },
         });
-
-        map.addLayer({
-          id: 'nm-zones-outline',
-          type: 'line',
-          source: SOURCE_ZONES,
-          paint: {
-            'line-color': '#1fb6ff',
-            'line-width': 2,
-            'line-opacity': 0.9,
-          },
-        });
-
-        map.addLayer({
-          id: 'nm-links-line',
-          type: 'line',
-          source: SOURCE_LINKS,
-          filter: [
-            'all',
-            ['!=', ['get', 'status'], 'maintenance'],
-            ['!=', ['get', 'status'], 'planning'],
-          ],
-          paint: {
-            'line-color': [
-              'match',
-              ['get', 'health_tone'],
-              'bad',
-              '#ef4444',
-              'warn',
-              '#f59e0b',
-              '#3f8cff',
-            ],
-            'line-width': 2.5,
-            'line-opacity': 0.95,
-          },
-        });
-        map.addLayer({
-          id: 'nm-links-line-dashed',
-          type: 'line',
-          source: SOURCE_LINKS,
-          filter: ['in', ['get', 'status'], ['literal', ['maintenance', 'planning']]],
-          paint: {
-            'line-color': [
-              'match',
-              ['get', 'health_tone'],
-              'bad',
-              '#ef4444',
-              'warn',
-              '#f59e0b',
-              '#3f8cff',
-            ],
-            'line-width': 2.5,
-            'line-opacity': 0.95,
-            'line-dasharray': [1.4, 1.2],
-          },
-        });
-
-        map.addLayer({
-          id: 'nm-nodes-circle',
-          type: 'circle',
-          source: SOURCE_NODES,
-          filter: ['all', ['!=', ['get', 'node_type'], 'customer_endpoint'], ['!=', ['get', 'node_type'], 'customer_premise']],
-          paint: {
-            'circle-radius': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              8,
-              6,
-              11,
-              8,
-              14,
-              10.5,
-            ],
-            'circle-color': [
-              'match',
-              ['get', 'status'],
-              'active',
-              '#16a34a',
-              'maintenance',
-              '#f59e0b',
-              '#64748b',
-            ],
-            'circle-stroke-width': 1.6,
-            'circle-stroke-color': '#e2e8f0',
-          },
-        });
-
-        map.addLayer({
-          id: 'nm-nodes-icons',
-          type: 'symbol',
-          source: SOURCE_NODES,
-          filter: ['all', ['!=', ['get', 'node_type'], 'customer_endpoint'], ['!=', ['get', 'node_type'], 'customer_premise']],
-          layout: {
-            'icon-image': [
-              'match',
-              ['get', 'node_type'],
-              'core',
-              'nm-node-icon-core',
-              'pop',
-              'nm-node-icon-pop',
-              'olt',
-              'nm-node-icon-olt',
-              'router',
-              'nm-node-icon-router',
-              'switch',
-              'nm-node-icon-switch',
-              'tower',
-              'nm-node-icon-tower',
-              'ap',
-              'nm-node-icon-ap',
-              'odc',
-              'nm-node-icon-odc',
-              'odp',
-              'nm-node-icon-odp',
-              'splitter',
-              'nm-node-icon-splitter',
-              'junction',
-              'nm-node-icon-junction',
-              'customer_premise',
-              'nm-node-icon-customer',
-              'customer_endpoint',
-              'nm-node-icon-customer',
-              'nm-node-icon-router',
-            ],
-            'icon-size': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              8,
-              0.58,
-              11,
-              0.72,
-              14,
-              0.88,
-            ],
-            'icon-allow-overlap': true,
-            'icon-ignore-placement': true,
-          },
-        });
-
-        map.addLayer({
-          id: 'nm-routers-circle',
-          type: 'circle',
-          source: SOURCE_ROUTERS,
-          paint: {
-            'circle-radius': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              8,
-              7,
-              11,
-              9,
-              14,
-              11.5,
-            ],
-            'circle-color': ['case', ['==', ['get', 'is_online'], true], '#16a34a', '#ef4444'],
-            'circle-stroke-width': 2,
-            'circle-stroke-color': '#e2e8f0',
-          },
-        });
-
-        map.addLayer({
-          id: 'nm-routers-icon',
-          type: 'symbol',
-          source: SOURCE_ROUTERS,
-          layout: {
-            'icon-image': 'nm-node-icon-router',
-            'icon-size': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              8,
-              0.72,
-              11,
-              0.86,
-              14,
-              1,
-            ],
-            'icon-allow-overlap': true,
-            'icon-ignore-placement': true,
-          },
-        });
-
-        map.addLayer({
-          id: 'nm-customers-cluster-circle',
-          type: 'circle',
-          source: SOURCE_CUSTOMERS,
-          filter: ['has', 'point_count'],
-          paint: {
-            'circle-color': [
-              'step',
-              ['get', 'point_count'],
-              '#06b6d4',
-              20,
-              '#3b82f6',
-              60,
-              '#6366f1',
-            ],
-            'circle-radius': [
-              'step',
-              ['get', 'point_count'],
-              16,
-              20,
-              20,
-              60,
-              24,
-            ],
-            'circle-stroke-width': 1.6,
-            'circle-stroke-color': '#e2e8f0',
-          },
-        });
-
-        map.addLayer({
-          id: 'nm-customers-cluster-count',
-          type: 'symbol',
-          source: SOURCE_CUSTOMERS,
-          filter: ['has', 'point_count'],
-          layout: {
-            'text-field': ['to-string', ['get', 'point_count_abbreviated']],
-            'text-size': 11,
-            'text-allow-overlap': true,
-          },
-          paint: {
-            'text-color': '#f8fafc',
-          },
-        });
-
-        map.addLayer({
-          id: 'nm-customers-point',
-          type: 'symbol',
-          source: SOURCE_CUSTOMERS,
-          filter: ['!', ['has', 'point_count']],
-          layout: {
-            'icon-image': 'nm-node-icon-customer',
-            'icon-size': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              8,
-              0.64,
-              11,
-              0.8,
-              14,
-              0.94,
-            ],
-            'icon-allow-overlap': true,
-            'icon-ignore-placement': true,
-          },
-        });
-
-        map.addLayer({
-          id: 'nm-link-draft-line',
-          type: 'line',
-          source: SOURCE_LINK_DRAFT,
-          paint: {
-            'line-color': '#38bdf8',
-            'line-width': 3,
-            'line-opacity': 0.9,
-            'line-dasharray': [1.5, 1.2],
-          },
-        });
-
-        map.addLayer({
-          id: 'nm-link-draft-points',
-          type: 'circle',
-          source: SOURCE_LINK_DRAFT_POINTS,
-          paint: {
-            'circle-radius': 4.5,
-            'circle-color': '#38bdf8',
-            'circle-stroke-color': '#0b1020',
-            'circle-stroke-width': 1.2,
-          },
-        });
-
-        map.on('click', 'nm-nodes-circle', handleNodeLayerClick);
-        map.on('click', 'nm-nodes-icons', handleNodeLayerClick);
-        map.on('click', 'nm-routers-circle', handleRouterLayerClick);
-        map.on('click', 'nm-routers-icon', handleRouterLayerClick);
-        map.on('click', 'nm-customers-point', handleNodeLayerClick);
-        map.on('click', 'nm-customers-cluster-circle', async (e) => {
-          if (!map || !maplibre || !e.features?.[0]) return;
-          const feature = e.features[0];
-          const clusterId = feature.properties?.cluster_id;
-          const src = map.getSource(SOURCE_CUSTOMERS) as import('maplibre-gl').GeoJSONSource | undefined;
-          if (!src || clusterId == null) return;
-          try {
-            const zoom = await src.getClusterExpansionZoom(clusterId);
-            if (!map) return;
-            const coords = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
-            map.easeTo({ center: coords, zoom: Math.max(zoom, map.getZoom() + 1), duration: 280 });
-          } catch (error) {
-            console.error(error);
-          }
-        });
-        map.on('click', 'nm-links-line', handleLinkLayerClick);
-        map.on('click', 'nm-links-line-dashed', handleLinkLayerClick);
 
         map.on('click', (e) => {
           if (!map) return;
-          if (linkPickMode && linkPickDrawMode === 'path' && linkForm.from_node_id) {
-            const hitNode =
-              map.queryRenderedFeatures(e.point, {
-                layers: [
-                  'nm-nodes-circle',
-                  'nm-nodes-icons',
-                  'nm-routers-circle',
-                  'nm-routers-icon',
-                  'nm-customers-point',
-                ],
-              }).length > 0;
-            if (!hitNode) {
-              const snapped = snapLinkPointToNearestNode(e.lngLat.lng, e.lngLat.lat);
-              const nextPoint: [number, number] = snapped
-                ? [snapped.lng, snapped.lat]
-                : [e.lngLat.lng, e.lngLat.lat];
-              linkPathBendPoints = [...linkPathBendPoints, nextPoint];
+          const result = handleCanvasMapClick({
+            map,
+            event: e,
+            linkPickMode,
+            linkPickDrawMode,
+            linkForm,
+            linkSnapToNodeEnabled,
+            nodeRows,
+            nodePickMode,
+            onAddLinkPathPoint: (point) => {
+              linkPathBendPoints = [...linkPathBendPoints, point];
               refreshLinkGeometryDraft();
               syncLinkDraftPreview();
-              return;
-            }
-          }
-          if (!nodePickMode) return;
-          // Ignore node popup click when user clicks existing node circle.
-          const hitNode =
-            map.queryRenderedFeatures(e.point, {
-              layers: [
-                'nm-nodes-circle',
-                'nm-nodes-icons',
-                'nm-routers-circle',
-                'nm-routers-icon',
-                'nm-customers-point',
-              ],
-            }).length > 0;
-          if (hitNode) return;
-          applyPickedNodeCoordinates(e.lngLat.lng, e.lngLat.lat);
+            },
+            onApplyPickedNodeCoordinates: applyPickedNodeCoordinates,
+          });
+          if (result.handled) return;
         });
 
-        for (const layerId of [
-          'nm-zones-fill',
-          'nm-zones-outline',
-          'nm-links-line',
-          'nm-links-line-dashed',
-          'nm-nodes-circle',
-          'nm-nodes-icons',
-          'nm-routers-circle',
-          'nm-routers-icon',
-          'nm-customers-cluster-circle',
-          'nm-customers-cluster-count',
-          'nm-customers-point',
-          'nm-link-draft-line',
-          'nm-link-draft-points',
-        ]) {
-          map.on('mouseenter', layerId, () => {
-            if (map) map.getCanvas().style.cursor = 'pointer';
-          });
-          map.on('mouseleave', layerId, () => {
-            if (map) map.getCanvas().style.cursor = '';
-          });
-        }
+        registerInteractiveLayerHover(map);
 
         map.on('moveend', scheduleRefresh);
         mapReady = true;
@@ -1375,10 +562,6 @@
     } finally {
       loading = false;
     }
-  }
-
-  function emptyFeatureCollection(): GeoJSON.FeatureCollection {
-    return { type: 'FeatureCollection', features: [] };
   }
 
   function currentBboxString(): string | null {
@@ -1420,27 +603,17 @@
   }
 
   async function syncTopologyAssets(manual = false) {
-    if (!canManageTopology || syncingAssetNodes) return false;
-    const now = Date.now();
-    if (!manual && now - lastAssetSyncAt < assetSyncTtlMs) return false;
-
     syncingAssetNodes = true;
     try {
-      const result = await api.networkMapping.assets.sync();
-      lastAssetSyncAt = Date.now();
-      if (manual) {
-        toast.success(
-          `Topology sync selesai. Router: ${result.router_nodes_created + result.router_nodes_updated}, Customer: ${result.customer_nodes_created + result.customer_nodes_updated}.`,
-        );
-      }
-      return result.total_nodes_touched > 0;
-    } catch (e: any) {
-      if (manual) {
-        toast.error(e?.message || 'Failed to sync topology assets');
-      } else {
-        console.error(e);
-      }
-      return false;
+      const result = await syncTopologyAssetsIfNeeded({
+        canManageTopology,
+        syncingAssetNodes: false,
+        manual,
+        lastAssetSyncAt,
+        assetSyncTtlMs,
+      });
+      lastAssetSyncAt = result.lastSyncedAt;
+      return result.changed;
     } finally {
       syncingAssetNodes = false;
     }
@@ -1471,30 +644,33 @@
       };
 
       const zoomSig = map ? map.getZoom().toFixed(2) : '0.00';
-      const cacheKey = JSON.stringify({
-        q: params.q || '',
-        status: params.status || '',
-        kind: params.kind || '',
-        bbox: params.bbox,
-        zoom: zoomSig,
-      });
-      const cached = shouldBypassCache ? undefined : dataCache.get(cacheKey);
-      if (cached && Date.now() - cached.at <= dataCacheTtlMs) {
+      const cacheKey = buildMapDataCacheKey(params, zoomSig);
+      const cached = shouldBypassCache
+        ? undefined
+        : getCachedMapData(dataCache, cacheKey, dataCacheTtlMs);
+      if (cached) {
         if (requestId !== lastRequestId) return;
-        nodeRows = (cached.nodes.data || []) as NMNode[];
-        linkRows = (cached.links.data || []) as NMLink[];
-        zoneRows = (cached.zones.data || []) as NMZone[];
-        routerRows = (cached.routers || []) as NMRouter[];
-        const routerOverlayRows = filterRoutersForOverlay(routerRows, nodeRows);
-        nodeCount = cached.nodes.total || cached.nodes.data?.length || 0;
-        linkCount = cached.links.total || cached.links.data?.length || 0;
-        zoneCount = cached.zones.total || cached.zones.data?.length || 0;
-        setSourceData(SOURCE_NODES, nodesToFeatureCollection(cached.nodes.data as NMNode[]));
-        setSourceData(SOURCE_CUSTOMERS, customersToFeatureCollection(cached.nodes.data as NMNode[]));
-        setSourceData(SOURCE_LINKS, linksToFeatureCollection(cached.links.data as NMLink[]));
-        setSourceData(SOURCE_ZONES, zonesToFeatureCollection(cached.zones.data as NMZone[]));
-        setSourceData(SOURCE_ROUTERS, routersToFeatureCollection(routerOverlayRows));
-        fitMapToAllMarkersOnFirstLoad(nodeRows, routerOverlayRows);
+        applyCachedMapData({
+          cached,
+          setRows: (rows) => {
+            nodeRows = rows.nodeRows;
+            linkRows = rows.linkRows;
+            zoneRows = rows.zoneRows;
+            routerRows = rows.routerRows;
+            nodeCount = rows.nodeCount;
+            linkCount = rows.linkCount;
+            zoneCount = rows.zoneCount;
+          },
+          setSourceData,
+          sourceIds: {
+            nodes: SOURCE_NODES,
+            customers: SOURCE_CUSTOMERS,
+            links: SOURCE_LINKS,
+            zones: SOURCE_ZONES,
+            routers: SOURCE_ROUTERS,
+          },
+          fitToMarkers: fitMapToAllMarkersOnFirstLoad,
+        });
         return;
       }
 
@@ -1502,44 +678,47 @@
       const abortController = new AbortController();
       activeDataAbortController = abortController;
 
-      const [nodesRes, linksRes, zonesRes, routersRes] = await Promise.all([
-        api.networkMapping.nodes.list(params, { signal: abortController.signal }),
-        api.networkMapping.links.list(params, { signal: abortController.signal }),
-        api.networkMapping.zones.list(params, { signal: abortController.signal }),
-        api.mikrotik.routers.list(),
-      ]);
+      const result = await fetchNetworkMapData(params, abortController.signal);
 
       // Drop stale responses when user moves map quickly.
       if (requestId !== lastRequestId) return;
       if (abortController.signal.aborted) return;
 
-      nodeRows = (nodesRes.data || []) as NMNode[];
-      linkRows = (linksRes.data || []) as NMLink[];
-      zoneRows = (zonesRes.data || []) as NMZone[];
-      routerRows = (routersRes || []) as NMRouter[];
-      const routerOverlayRows = filterRoutersForOverlay(routerRows, nodeRows);
-      nodeCount = nodesRes.total || nodesRes.data?.length || 0;
-      linkCount = linksRes.total || linksRes.data?.length || 0;
-      zoneCount = zonesRes.total || zonesRes.data?.length || 0;
+      const rows = extractMapRows(result);
 
-      dataCache.set(cacheKey, {
-        at: Date.now(),
-        nodes: nodesRes,
-        links: linksRes,
-        zones: zonesRes,
-        routers: (routersRes || []) as NMRouter[],
+      setCachedMapData(
+        dataCache,
+        cacheKey,
+        {
+          nodes: result.nodesRes,
+          links: result.linksRes,
+          zones: result.zonesRes,
+          routers: result.routersRes,
+        },
+        dataCacheMaxEntries,
+      );
+
+      applyFetchedMapData({
+        result,
+        setRows: (nextRows) => {
+          nodeRows = nextRows.nodeRows;
+          linkRows = nextRows.linkRows;
+          zoneRows = nextRows.zoneRows;
+          routerRows = nextRows.routerRows;
+          nodeCount = nextRows.nodeCount;
+          linkCount = nextRows.linkCount;
+          zoneCount = nextRows.zoneCount;
+        },
+        setSourceData,
+        sourceIds: {
+          nodes: SOURCE_NODES,
+          customers: SOURCE_CUSTOMERS,
+          links: SOURCE_LINKS,
+          zones: SOURCE_ZONES,
+          routers: SOURCE_ROUTERS,
+        },
+        fitToMarkers: fitMapToAllMarkersOnFirstLoad,
       });
-      if (dataCache.size > dataCacheMaxEntries) {
-        const oldestKey = dataCache.keys().next().value as string | undefined;
-        if (oldestKey) dataCache.delete(oldestKey);
-      }
-
-      setSourceData(SOURCE_NODES, nodesToFeatureCollection(nodesRes.data as NMNode[]));
-      setSourceData(SOURCE_CUSTOMERS, customersToFeatureCollection(nodesRes.data as NMNode[]));
-      setSourceData(SOURCE_LINKS, linksToFeatureCollection(linksRes.data as NMLink[]));
-      setSourceData(SOURCE_ZONES, zonesToFeatureCollection(zonesRes.data as NMZone[]));
-      setSourceData(SOURCE_ROUTERS, routersToFeatureCollection(routerOverlayRows));
-      fitMapToAllMarkersOnFirstLoad(nodeRows, routerOverlayRows);
     } catch (e: any) {
       if ((e?.message || '').includes('Request canceled')) return;
       console.error(e);
@@ -1550,34 +729,16 @@
   }
 
   function fitMapToAllMarkersOnFirstLoad(nodes: NMNode[], routers: NMRouter[]) {
-    if (!map || didInitialFitToMarkers) return;
-    const points: Array<[number, number]> = [];
-    for (const row of nodes || []) {
-      if (Number.isFinite(row.lng) && Number.isFinite(row.lat)) {
-        points.push([row.lng, row.lat]);
-      }
-    }
-    for (const row of routers || []) {
-      if (row.longitude == null || row.latitude == null) continue;
-      if (Number.isFinite(row.longitude) && Number.isFinite(row.latitude)) {
-        points.push([row.longitude, row.latitude]);
-      }
-    }
-    if (installationTargetCoord) {
-      points.push(installationTargetCoord);
-    }
-    if (!points.length) return;
-    if (!maplibre) return;
-    const bounds = points.reduce(
-      (acc, point) => acc.extend(point),
-      new maplibre.LngLatBounds(points[0], points[0]),
-    );
-    didInitialFitToMarkers = true;
-    map.fitBounds(bounds, {
-      padding: { top: 80, right: 80, bottom: 80, left: 80 },
-      maxZoom: 15,
-      duration: 600,
+    if (!map || !maplibre) return;
+    const didFit = fitMapToMarkers({
+      map,
+      maplibre,
+      didInitialFitToMarkers,
+      nodes,
+      routers,
+      installationTargetCoord,
     });
+    if (didFit) didInitialFitToMarkers = true;
   }
 
   function setSourceData(sourceId: string, data: GeoJSON.FeatureCollection) {
@@ -1590,134 +751,6 @@
   function setLayerVisibility(layerId: string, visible: boolean) {
     if (!map || !map.getLayer(layerId)) return;
     map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
-  }
-
-  function nodesToFeatureCollection(rows: NMNode[]): GeoJSON.FeatureCollection {
-    return {
-      type: 'FeatureCollection',
-      features: (rows || []).map((row) => ({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [row.lng, row.lat] },
-        properties: {
-          id: row.id,
-          name: row.name,
-          node_type: row.node_type,
-          status: row.status,
-          system_managed: !!row.metadata?.system_managed,
-          asset_source: String(row.metadata?.asset_source || ''),
-        },
-      })),
-    };
-  }
-
-  function linksToFeatureCollection(rows: NMLink[]): GeoJSON.FeatureCollection {
-    return {
-      type: 'FeatureCollection',
-      features: (rows || []).map((row) => ({
-        type: 'Feature',
-        geometry: row.geometry,
-        properties: {
-          id: row.id,
-          name: row.name,
-          link_type: row.link_type,
-          status: row.status,
-          health_score: computeLinkHealth(row).score,
-          health_tone: computeLinkHealth(row).tone,
-        },
-      })),
-    };
-  }
-
-  function customersToFeatureCollection(rows: NMNode[]): GeoJSON.FeatureCollection {
-    return {
-      type: 'FeatureCollection',
-      features: (rows || [])
-        .filter((row) => isCustomerNodeType(row.node_type))
-        .map((row) => ({
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: [row.lng, row.lat] },
-          properties: {
-            id: row.id,
-            name: row.name,
-            node_type: row.node_type,
-            status: row.status,
-            system_managed: !!row.metadata?.system_managed,
-            asset_source: String(row.metadata?.asset_source || ''),
-          },
-        })),
-    };
-  }
-
-  function routersToFeatureCollection(rows: NMRouter[]): GeoJSON.FeatureCollection {
-    return {
-      type: 'FeatureCollection',
-      features: (rows || [])
-        .filter((row) => row.latitude != null && row.longitude != null)
-        .map((row) => ({
-          type: 'Feature',
-          geometry: {
-            type: 'Point',
-            coordinates: [Number(row.longitude), Number(row.latitude)],
-          },
-          properties: {
-            id: row.id,
-            name: row.name,
-            host: row.host,
-            port: row.port,
-            is_online: !!row.is_online,
-            latency_ms: row.latency_ms ?? null,
-          },
-        })),
-    };
-  }
-
-  function computeLinkHealth(row: NMLink): { score: number; tone: 'good' | 'warn' | 'bad' } {
-    const statusRaw = String(row.status || '').toLowerCase();
-    if (statusRaw === 'down' || statusRaw === 'retired') return { score: 5, tone: 'bad' };
-    let score = 100;
-
-    if (statusRaw === 'maintenance') score -= 32;
-    if (statusRaw === 'degraded') score -= 20;
-    if (statusRaw === 'planning') score -= 10;
-    if (statusRaw === 'inactive') score -= 12;
-
-    const util = row.utilization_pct ?? null;
-    const latency = row.latency_ms ?? null;
-    const loss = row.loss_db ?? null;
-    if (util != null) {
-      if (util >= 90) score -= 40;
-      else if (util >= 75) score -= 20;
-      else if (util >= 60) score -= 10;
-    }
-    if (latency != null) {
-      if (latency > 40) score -= 15;
-      else if (latency > 20) score -= 8;
-    }
-    if (loss != null) {
-      if (loss > 3) score -= 25;
-      else if (loss > 1) score -= 12;
-      else if (loss > 0.3) score -= 6;
-    }
-
-    score = Math.max(0, Math.min(100, score));
-    const tone: 'good' | 'warn' | 'bad' = score >= 80 ? 'good' : score >= 60 ? 'warn' : 'bad';
-    return { score, tone };
-  }
-
-  function zonesToFeatureCollection(rows: NMZone[]): GeoJSON.FeatureCollection {
-    return {
-      type: 'FeatureCollection',
-      features: (rows || []).map((row) => ({
-        type: 'Feature',
-        geometry: row.geometry,
-        properties: {
-          id: row.id,
-          name: row.name,
-          zone_type: row.zone_type,
-          status: row.status,
-        },
-      })),
-    };
   }
 
   function syncLayerVisibility() {
@@ -1759,34 +792,16 @@
 
   async function showMyLocation() {
     if (!map || !maplibre || mapUnavailable || locating) return;
-    if (!navigator.geolocation) {
-      myLocationError = 'Geolocation is not supported by this browser.';
-      return;
-    }
 
     locating = true;
     myLocationError = '';
     try {
-      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 12000,
-          maximumAge: 30000,
-        });
+      myLocationMarker = await showMyLocationMarker({
+        map,
+        maplibre,
+        existingMarker: myLocationMarker,
       });
-
-      const lng = pos.coords.longitude;
-      const lat = pos.coords.latitude;
-
-      if (!myLocationMarker) {
-        const el = document.createElement('div');
-        el.className = 'my-location-dot';
-        myLocationMarker = new maplibre.Marker({ element: el, anchor: 'center' });
-      }
-
-      myLocationMarker.setLngLat([lng, lat]).addTo(map);
       myLocationVisible = true;
-      map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), speed: 1.1 });
     } catch (e: any) {
       myLocationError = e?.message || 'Unable to get current location.';
       console.error(e);
@@ -1796,162 +811,51 @@
   }
 
   function hideMyLocation() {
-    myLocationMarker?.remove();
+    hideMyLocationMarker(myLocationMarker);
     myLocationVisible = false;
     myLocationError = '';
   }
 
   function syncMyLocationControlUi() {
-    if (!myLocationControlBtn) return;
     const showLabel = $t('admin.network.map.location.show') || 'My Location';
     const hideLabel = $t('admin.network.map.location.hide') || 'Hide My Location';
-    const label = myLocationVisible ? hideLabel : showLabel;
-
-    myLocationControlBtn.disabled = locating || mapUnavailable;
-    myLocationControlBtn.title = label;
-    myLocationControlBtn.setAttribute('aria-label', label);
-    myLocationControlBtn.textContent = locating ? '↻' : '◎';
-    myLocationControlBtn.classList.toggle('active', myLocationVisible);
-    myLocationControlBtn.classList.toggle('loading', locating);
+    syncMyLocationControlButton({
+      button: myLocationControlBtn,
+      label: myLocationVisible ? hideLabel : showLabel,
+      locating,
+      mapUnavailable,
+      myLocationVisible,
+    });
   }
 
   function syncViewModeControlUi() {
-    const btn = viewModeControlBtn;
-    if (!btn) return;
-    const isSat = viewMode === 'satellite';
-    const label = isSat ? 'Switch to standard map' : 'Switch to satellite map';
-    btn.title = label;
-    btn.setAttribute('aria-label', label);
-    btn.textContent = isSat ? 'SAT' : 'MAP';
-    btn.classList.toggle('active', isSat);
-  }
-
-  function asNumber(input: string): number | undefined {
-    const value = Number.parseFloat(input);
-    return Number.isFinite(value) ? value : undefined;
-  }
-
-  function prettyGeometry(value: GeoJSON.Geometry): string {
-    return JSON.stringify(value, null, 2);
-  }
-
-  function parseGeometryText(text: string): GeoJSON.Geometry {
-    const parsed = JSON.parse(text || '{}');
-    if (!parsed || typeof parsed !== 'object' || !parsed.type) {
-      throw new Error('Geometry JSON is invalid');
-    }
-    return parsed as GeoJSON.Geometry;
+    syncViewModeControlButton({
+      button: viewModeControlBtn,
+      isSatellite: viewMode === 'satellite',
+    });
   }
 
   function defaultZoneGeometry() {
-    if (map) {
-      const b = map.getBounds();
-      const w = b.getWest();
-      const s = b.getSouth();
-      const e = b.getEast();
-      const n = b.getNorth();
-      const padLng = (e - w) * 0.2;
-      const padLat = (n - s) * 0.2;
-      return {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [w + padLng, s + padLat],
-            [w + padLng, n - padLat],
-            [e - padLng, n - padLat],
-            [e - padLng, s + padLat],
-            [w + padLng, s + padLat],
-          ],
-        ],
-      } as GeoJSON.Polygon;
-    }
-    return {
-      type: 'Polygon',
-      coordinates: [
-        [
-          [106.81, -6.24],
-          [106.81, -6.17],
-          [106.92, -6.17],
-          [106.92, -6.24],
-          [106.81, -6.24],
-        ],
-      ],
-    } as GeoJSON.Polygon;
-  }
-
-  function buildDefaultLineGeometry(fromId: string, toId: string): GeoJSON.Geometry {
-    const from = nodeRows.find((x) => x.id === fromId);
-    const to = nodeRows.find((x) => x.id === toId);
-    if (!from || !to) {
-      return {
-        type: 'LineString',
-        coordinates: [
-          [106.84, -6.2],
-          [106.87, -6.21],
-        ],
-      };
-    }
-    return {
-      type: 'LineString',
-      coordinates: [
-        [from.lng, from.lat],
-        [to.lng, to.lat],
-      ],
-    };
-  }
-
-  function getNodeCoord(nodeId: string): [number, number] | null {
-    const n = nodeRows.find((x) => x.id === nodeId);
-    return n ? [n.lng, n.lat] : null;
-  }
-
-  function currentDraftPathCoords(includeToNode = false): Array<[number, number]> {
-    const coords: Array<[number, number]> = [];
-    const fromCoord = linkForm.from_node_id ? getNodeCoord(linkForm.from_node_id) : null;
-    if (fromCoord) coords.push(fromCoord);
-    if (linkPathBendPoints.length > 0) coords.push(...linkPathBendPoints);
-    if (includeToNode && linkForm.to_node_id) {
-      const toCoord = getNodeCoord(linkForm.to_node_id);
-      if (toCoord) coords.push(toCoord);
-    }
-    return coords;
+    return buildDefaultZoneGeometry(map);
   }
 
   function refreshLinkGeometryDraft() {
-    const coords =
-      linkPickDrawMode === 'path'
-        ? currentDraftPathCoords(Boolean(linkForm.to_node_id))
-        : ((buildDefaultLineGeometry(linkForm.from_node_id, linkForm.to_node_id) as GeoJSON.LineString)
-            .coordinates as Array<[number, number]>);
-    if (coords.length >= 2) {
-      linkForm.geometryText = prettyGeometry({ type: 'LineString', coordinates: coords });
-    }
+    linkForm.geometryText = buildLinkGeometryDraftText({
+      linkPickDrawMode,
+      nodeRows,
+      linkForm,
+      linkPathBendPoints,
+    });
   }
 
   function syncLinkDraftPreview() {
-    const lineFc: GeoJSON.FeatureCollection = emptyFeatureCollection();
-    const pointsFc: GeoJSON.FeatureCollection = emptyFeatureCollection();
-
-    if (linkPickMode) {
-      const lineCoords =
-        linkPickDrawMode === 'path'
-          ? currentDraftPathCoords(false)
-          : currentDraftPathCoords(Boolean(linkForm.to_node_id));
-      if (lineCoords.length >= 2) {
-        lineFc.features.push({
-          type: 'Feature',
-          geometry: { type: 'LineString', coordinates: lineCoords },
-          properties: {},
-        } as GeoJSON.Feature);
-      }
-      for (const p of lineCoords) {
-        pointsFc.features.push({
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: p },
-          properties: {},
-        } as GeoJSON.Feature);
-      }
-    }
+    const { lineFc, pointsFc } = buildLinkDraftPreviewCollections({
+      linkPickMode,
+      linkPickDrawMode,
+      nodeRows,
+      linkForm,
+      linkPathBendPoints,
+    });
 
     setSourceData(SOURCE_LINK_DRAFT, lineFc);
     setSourceData(SOURCE_LINK_DRAFT_POINTS, pointsFc);
@@ -1961,29 +865,24 @@
 
   function stopNodePickMode(removeMarker = false) {
     nodePickMode = false;
-    if (removeMarker) {
-      draftNodeMarker?.remove();
-      draftNodeMarker = null;
-    }
+    draftNodeMarker = clearDraftNodeMarker(draftNodeMarker, removeMarker);
   }
 
   function applyPickedNodeCoordinates(lng: number, lat: number) {
     nodeForm.lat = lat.toFixed(6);
     nodeForm.lng = lng.toFixed(6);
     if (!maplibre || !map) return;
-    if (!draftNodeMarker) {
-      draftNodeMarker = new maplibre.Marker({ color: '#3f8cff', draggable: true })
-        .setLngLat([lng, lat])
-        .addTo(map);
-      draftNodeMarker.on('dragend', () => {
-        if (!draftNodeMarker) return;
-        const p = draftNodeMarker.getLngLat();
-        nodeForm.lat = p.lat.toFixed(6);
-        nodeForm.lng = p.lng.toFixed(6);
-      });
-      return;
-    }
-    draftNodeMarker.setLngLat([lng, lat]);
+    draftNodeMarker = applyPickedNodeMarker({
+      map,
+      maplibre,
+      marker: draftNodeMarker,
+      lng,
+      lat,
+      onDrag: (nextLng, nextLat) => {
+        nodeForm.lat = nextLat.toFixed(6);
+        nodeForm.lng = nextLng.toFixed(6);
+      },
+    });
   }
 
   function openCreateNodeModal() {
@@ -2022,34 +921,17 @@
   }
 
   async function submitNode() {
-    const lat = asNumber(nodeForm.lat);
-    const lng = asNumber(nodeForm.lng);
-    if (!nodeForm.name.trim() || !nodeForm.node_type.trim() || lat === undefined || lng === undefined) {
-      toast.error('Please fill name, type, latitude and longitude');
-      return;
-    }
-
     savingNode = true;
     try {
-      const payload = {
-        name: nodeForm.name.trim(),
-        node_type: nodeForm.node_type.trim(),
-        status: nodeForm.status || 'active',
-        lat,
-        lng,
-      };
-      if (editingNodeId) {
-        await api.networkMapping.nodes.update(editingNodeId, payload);
-      } else {
-        await api.networkMapping.nodes.create(payload);
-      }
-      toast.success(editingNodeId ? 'Node updated' : 'Node created');
+      const ok = await submitNodeCrud({
+        editingNodeId,
+        nodeForm,
+      });
+      if (!ok) return;
       closeNodeModal();
       invalidateMapDataCache();
       await refreshMapData(true);
       await loadZoneBindings();
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to save node');
     } finally {
       savingNode = false;
     }
@@ -2061,19 +943,7 @@
     linkPickStep = 'from';
     linkPickDrawMode = 'quick';
     linkPathBendPoints = [];
-    linkForm = {
-      name: '',
-      link_type: 'fiber',
-      status: 'up',
-      from_node_id: nodeRows[0]?.id || '',
-      to_node_id: nodeRows[1]?.id || nodeRows[0]?.id || '',
-      priority: '100',
-      capacity_mbps: '',
-      utilization_pct: '',
-      loss_db: '',
-      latency_ms: '',
-      geometryText: prettyGeometry(buildDefaultLineGeometry(nodeRows[0]?.id || '', nodeRows[1]?.id || nodeRows[0]?.id || '')),
-    };
+    linkForm = createLinkForm(nodeRows);
     showLinkModal = true;
     syncLinkDraftPreview();
   }
@@ -2084,41 +954,29 @@
     linkPickDrawMode = 'quick';
     linkPathBendPoints = [];
     editingLinkId = row.id;
-    linkForm = {
-      name: row.name || '',
-      link_type: row.link_type || 'fiber',
-      status: row.status || 'active',
-      from_node_id: row.from_node_id || '',
-      to_node_id: row.to_node_id || '',
-      priority: String(row.priority ?? 100),
-      capacity_mbps: row.capacity_mbps == null ? '' : String(row.capacity_mbps),
-      utilization_pct: row.utilization_pct == null ? '' : String(row.utilization_pct),
-      loss_db: row.loss_db == null ? '' : String(row.loss_db),
-      latency_ms: row.latency_ms == null ? '' : String(row.latency_ms),
-      geometryText: prettyGeometry((row.geometry as GeoJSON.Geometry) || buildDefaultLineGeometry('', '')),
-    };
+    linkForm = createEditLinkForm(row, nodeRows);
     showLinkModal = true;
     syncLinkDraftPreview();
   }
 
   function toggleLinkPickMode() {
-    linkPickMode = !linkPickMode;
-    linkPickStep = 'from';
-    if (linkPickMode) {
-      linkForm.from_node_id = '';
-      linkForm.to_node_id = '';
-      linkPathBendPoints = [];
-      if (linkPickDrawMode === 'quick') {
-        linkForm.geometryText = prettyGeometry(buildDefaultLineGeometry('', ''));
-        toast.info('Quick mode: click source node, then destination node.');
-      } else {
-        linkForm.geometryText = prettyGeometry({
-          type: 'LineString',
-          coordinates: [],
-        } as GeoJSON.LineString);
-        toast.info('Path mode: click source node, add bend points on map, then click destination node.');
-      }
+    const next = buildToggleLinkPickResult({
+      currentEnabled: linkPickMode,
+      drawMode: linkPickDrawMode,
+      nodeRows,
+    });
+    linkPickMode = next.linkPickMode;
+    linkPickStep = next.linkPickStep;
+    linkPathBendPoints = next.linkPathBendPoints;
+    if (next.resetFromNodeId || next.resetToNodeId) {
+      linkForm = {
+        ...linkForm,
+        from_node_id: '',
+        to_node_id: '',
+        geometryText: next.geometryText,
+      };
     }
+    if (next.toastMessage) toast.info(next.toastMessage);
     syncLinkDraftPreview();
   }
 
@@ -2131,24 +989,22 @@
     syncLinkDraftPreview();
   }
 
-  function setLinkPickDrawMode(mode: 'quick' | 'path') {
-    linkPickDrawMode = mode;
-    linkPathBendPoints = [];
-    linkForm.from_node_id = '';
-    linkForm.to_node_id = '';
-    linkPickStep = 'from';
-    if (mode === 'quick') {
-      linkForm.geometryText = prettyGeometry(buildDefaultLineGeometry('', ''));
-    } else {
-      linkForm.geometryText = prettyGeometry({ type: 'LineString', coordinates: [] } as GeoJSON.LineString);
-    }
-    if (linkPickMode) {
-      toast.info(
-        mode === 'quick'
-          ? 'Quick mode active: click source then destination node.'
-          : 'Path mode active: click source node, add bend points, then click destination node.',
-      );
-    }
+  function setLinkPickDrawMode(mode: LinkPickDrawMode) {
+    const next = buildSetLinkDrawModeResult({
+      mode,
+      linkPickMode,
+      nodeRows,
+    });
+    linkPickDrawMode = next.linkPickDrawMode;
+    linkPathBendPoints = next.linkPathBendPoints;
+    linkPickStep = next.linkPickStep;
+    linkForm = {
+      ...linkForm,
+      from_node_id: '',
+      to_node_id: '',
+      geometryText: next.geometryText,
+    };
+    if (next.toastMessage) toast.info(next.toastMessage);
     syncLinkDraftPreview();
   }
 
@@ -2165,51 +1021,6 @@
     syncLinkDraftPreview();
   }
 
-  function snapLinkPointToNearestNode(
-    lng: number,
-    lat: number,
-    maxDistancePx = 16,
-  ): { lng: number; lat: number; nodeId: string; nodeName: string } | null {
-    if (!map || !linkSnapToNodeEnabled || !nodeRows.length) return null;
-    const clickPoint = map.project([lng, lat]);
-    let best:
-      | {
-          row: NMNode;
-          distance: number;
-        }
-      | null = null;
-
-    for (const row of nodeRows) {
-      if (!Number.isFinite(row.lng) || !Number.isFinite(row.lat)) continue;
-      const point = map.project([row.lng, row.lat]);
-      const dx = point.x - clickPoint.x;
-      const dy = point.y - clickPoint.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      if (!best || distance < best.distance) {
-        best = { row, distance };
-      }
-    }
-
-    if (!best || best.distance > maxDistancePx) return null;
-    return {
-      lng: best.row.lng,
-      lat: best.row.lat,
-      nodeId: best.row.id,
-      nodeName: best.row.name || 'Node',
-    };
-  }
-
-  function hasExistingLinkBetweenNodes(fromNodeId: string, toNodeId: string, excludeLinkId?: string | null): boolean {
-    if (!fromNodeId || !toNodeId || fromNodeId === toNodeId) return false;
-    return linkRows.some((row) => {
-      if (excludeLinkId && row.id === excludeLinkId) return false;
-      return (
-        (row.from_node_id === fromNodeId && row.to_node_id === toNodeId) ||
-        (row.from_node_id === toNodeId && row.to_node_id === fromNodeId)
-      );
-    });
-  }
-
   function cancelLinkPicking() {
     if (!linkPickMode) return;
     linkPickMode = false;
@@ -2220,131 +1031,87 @@
   }
 
   function handleLinkPickNode(nodeId: string) {
-    if (!linkPickMode) return;
-    if (linkPickStep === 'from') {
-      linkForm.from_node_id = nodeId;
-      linkForm.to_node_id = '';
-      linkPathBendPoints = [];
-      linkPickStep = 'to';
-      if (linkPickDrawMode === 'quick') {
-        toast.info('Source selected. Click destination node.');
-      } else {
+    const result = buildHandlePickedLinkNodeResult({
+      nodeId,
+      linkPickMode,
+      linkPickStep,
+      linkPickDrawMode,
+      linkRows,
+      nodeRows,
+      linkForm,
+      editingLinkId,
+    });
+    if (result.kind === 'noop') return;
+    if (result.kind === 'error') {
+      toast.error(result.toastMessage);
+      return;
+    }
+
+    linkForm = result.linkForm;
+    if (result.kind === 'picked-from') {
+      linkPathBendPoints = result.linkPathBendPoints;
+      linkPickStep = result.linkPickStep;
+      if (linkPickDrawMode === 'path') {
         refreshLinkGeometryDraft();
-        toast.info('Source selected. Click map to add bend points, then click destination node.');
       }
+      toast.info(result.toastMessage);
       syncLinkDraftPreview();
       return;
     }
-    if (linkForm.from_node_id === nodeId) {
-      toast.error('Destination node must be different.');
-      return;
-    }
-    if (hasExistingLinkBetweenNodes(linkForm.from_node_id, nodeId, editingLinkId)) {
-      toast.error('This node pair already has a link. Choose another destination node.');
-      return;
-    }
-    linkForm.to_node_id = nodeId;
+
+    linkPickMode = result.linkPickMode;
+    linkPickStep = result.linkPickStep;
+    showLinkModal = result.showLinkModal;
     if (linkPickDrawMode === 'quick') {
       useLinkFromNodePoints();
     } else {
       refreshLinkGeometryDraft();
     }
-    linkPickMode = false;
-    linkPickStep = 'from';
-    if (!linkForm.name.trim()) {
-      const fromName = nodeRows.find((x) => x.id === linkForm.from_node_id)?.name || 'Source';
-      const toName = nodeRows.find((x) => x.id === linkForm.to_node_id)?.name || 'Destination';
-      linkForm.name = `Link ${fromName} -> ${toName}`;
-    }
-    showLinkModal = true;
     syncLinkDraftPreview();
-    toast.success('Endpoints selected from map.');
+    toast.success(result.toastMessage);
   }
 
   function startConnectFromNode(nodeId: string) {
     activeNodePopup?.remove();
-    const sourceNode = nodeRows.find((x) => x.id === nodeId);
-    editingLinkId = null;
-    showLinkModal = false;
-    linkPickDrawMode = 'path';
-    linkPickMode = true;
-    linkPickStep = 'to';
-    linkPathBendPoints = [];
-    linkForm = {
-      name: sourceNode ? `Link ${sourceNode.name}` : '',
-      link_type: 'fiber',
-      status: 'up',
-      from_node_id: nodeId,
-      to_node_id: '',
-      priority: '100',
-      capacity_mbps: '',
-      utilization_pct: '',
-      loss_db: '',
-      latency_ms: '',
-      geometryText: prettyGeometry({ type: 'LineString', coordinates: [] } as GeoJSON.LineString),
-    };
+    const next = buildConnectFromNodeResult(nodeId, nodeRows);
+    editingLinkId = next.editingLinkId;
+    showLinkModal = next.showLinkModal;
+    linkPickDrawMode = next.linkPickDrawMode;
+    linkPickMode = next.linkPickMode;
+    linkPickStep = next.linkPickStep;
+    linkPathBendPoints = next.linkPathBendPoints;
+    linkForm = next.linkForm;
     refreshLinkGeometryDraft();
     syncLinkDraftPreview();
     selectedTab = 'links';
-    toast.info('Connect mode active: draw path on map, then click destination marker.');
+    toast.info(next.toastMessage);
   }
 
   function useLinkFromNodePoints() {
-    const geo = buildDefaultLineGeometry(linkForm.from_node_id, linkForm.to_node_id);
-    linkForm.geometryText = prettyGeometry(geo);
+    linkForm.geometryText = buildStraightLinkGeometryText(
+      nodeRows,
+      linkForm.from_node_id,
+      linkForm.to_node_id,
+    );
     syncLinkDraftPreview();
   }
 
   async function submitLink() {
-    if (!linkForm.name.trim() || !linkForm.from_node_id || !linkForm.to_node_id) {
-      toast.error('Please fill name and endpoint nodes');
-      return;
-    }
-    if (linkForm.from_node_id === linkForm.to_node_id) {
-      toast.error('Source and destination must be different nodes.');
-      return;
-    }
-    if (hasExistingLinkBetweenNodes(linkForm.from_node_id, linkForm.to_node_id, editingLinkId)) {
-      toast.error('A link between these nodes already exists.');
-      return;
-    }
-
-    let geometry: GeoJSON.Geometry;
-    try {
-      geometry = parseGeometryText(linkForm.geometryText);
-    } catch (e: any) {
-      toast.error(e?.message || 'Geometry JSON is invalid');
-      return;
-    }
-
     savingLink = true;
     try {
-      const payload = {
-        name: linkForm.name.trim(),
-        link_type: linkForm.link_type || 'fiber',
-        status: linkForm.status || 'up',
-        from_node_id: linkForm.from_node_id,
-        to_node_id: linkForm.to_node_id,
-        priority: Number.parseInt(linkForm.priority || '100', 10),
-        capacity_mbps: asNumber(linkForm.capacity_mbps),
-        utilization_pct: asNumber(linkForm.utilization_pct),
-        loss_db: linkFieldConfig.showLoss ? asNumber(linkForm.loss_db) : null,
-        latency_ms: asNumber(linkForm.latency_ms),
-        geometry,
-      };
-      if (editingLinkId) {
-        await api.networkMapping.links.update(editingLinkId, payload);
-      } else {
-        await api.networkMapping.links.create(payload);
-      }
+      const ok = await submitLinkCrud({
+        editingLinkId,
+        linkForm,
+        linkFieldConfig,
+        hasExistingLinkBetweenNodes: (fromNodeId, toNodeId, excludeLinkId) =>
+          hasExistingLinkBetweenNodes(linkRows, fromNodeId, toNodeId, excludeLinkId),
+      });
+      if (!ok) return;
       emitInstallationRefreshSignal();
       emitWorkOrderUpdatedToParent();
-      toast.success(editingLinkId ? 'Link updated' : 'Link created');
       closeLinkModal();
       invalidateMapDataCache();
       await refreshMapData(true);
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to save link');
     } finally {
       savingLink = false;
     }
@@ -2364,49 +1131,26 @@
 
   function openEditZoneModal(row: NMZone) {
     editingZoneId = row.id;
+    const draft = buildZoneDraftForm(row, defaultZoneGeometry());
     zoneForm = {
-      name: row.name || '',
-      zone_type: row.zone_type || 'coverage',
-      status: row.status || 'active',
-      priority: '100',
-      geometryText: prettyGeometry((row.geometry as GeoJSON.Geometry) || defaultZoneGeometry()),
+      ...draft,
+      geometryText: prettyGeometry(draft.geometry as GeoJSON.Geometry),
     };
     showZoneModal = true;
   }
 
   async function submitZone() {
-    if (!zoneForm.name.trim()) {
-      toast.error('Zone name is required');
-      return;
-    }
-    let geometry: GeoJSON.Geometry;
-    try {
-      geometry = parseGeometryText(zoneForm.geometryText);
-    } catch (e: any) {
-      toast.error(e?.message || 'Geometry JSON is invalid');
-      return;
-    }
     savingZone = true;
     try {
-      const payload = {
-        name: zoneForm.name.trim(),
-        zone_type: zoneForm.zone_type || 'coverage',
-        status: zoneForm.status || 'active',
-        priority: Number.parseInt(zoneForm.priority || '100', 10),
-        geometry,
-      };
-      if (editingZoneId) {
-        await api.networkMapping.zones.update(editingZoneId, payload);
-      } else {
-        await api.networkMapping.zones.create(payload);
-      }
-      toast.success(editingZoneId ? 'Zone updated' : 'Zone created');
+      const ok = await submitZoneCrud({
+        editingZoneId,
+        zoneForm,
+      });
+      if (!ok) return;
       showZoneModal = false;
       invalidateMapDataCache();
       await refreshMapData(true);
       await loadZoneBindings();
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to save zone');
     } finally {
       savingZone = false;
     }
@@ -2415,13 +1159,11 @@
   async function removeNode(id: string) {
     deletingId = id;
     try {
-      await api.networkMapping.nodes.delete(id);
-      toast.success('Node deleted');
+      const ok = await removeCrud({ type: 'node', id });
+      if (!ok) return;
       invalidateMapDataCache();
       await refreshMapData(true);
       await loadZoneBindings();
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to delete node');
     } finally {
       deletingId = null;
     }
@@ -2430,12 +1172,10 @@
   async function removeLink(id: string) {
     deletingId = id;
     try {
-      await api.networkMapping.links.delete(id);
-      toast.success('Link deleted');
+      const ok = await removeCrud({ type: 'link', id });
+      if (!ok) return;
       invalidateMapDataCache();
       await refreshMapData(true);
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to delete link');
     } finally {
       deletingId = null;
     }
@@ -2444,14 +1184,12 @@
   async function removeZone(id: string) {
     deletingId = id;
     try {
-      await api.networkMapping.zones.delete(id);
-      toast.success('Zone deleted');
+      const ok = await removeCrud({ type: 'zone', id });
+      if (!ok) return;
       if (selectedZoneId === id) selectedZoneId = '';
       invalidateMapDataCache();
       await refreshMapData(true);
       await loadZoneBindings();
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to delete zone');
     } finally {
       deletingId = null;
     }
@@ -2460,33 +1198,20 @@
   async function loadZoneBindings() {
     loadingManager = true;
     try {
-      const rows = await api.networkMapping.zoneBindings.list({ zone_id: selectedZoneId || undefined });
-      zoneBindings = rows || [];
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to load zone bindings');
+      const rows = await loadZoneBindingsCrud(selectedZoneId);
+      if (rows) zoneBindings = rows;
     } finally {
       loadingManager = false;
     }
   }
 
   async function createZoneBinding() {
-    if (!bindingForm.zone_id || !bindingForm.node_id) {
-      toast.error('Please choose zone and node');
-      return;
-    }
     savingBinding = true;
     try {
-      await api.networkMapping.zoneBindings.create({
-        zone_id: bindingForm.zone_id,
-        node_id: bindingForm.node_id,
-        is_primary: bindingForm.is_primary,
-        weight: Number.parseInt(bindingForm.weight || '100', 10),
-      });
-      toast.success('Binding created');
+      const ok = await createZoneBindingCrud(bindingForm);
+      if (!ok) return;
       bindingForm = { zone_id: bindingForm.zone_id, node_id: '', is_primary: false, weight: '100' };
       await loadZoneBindings();
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to create binding');
     } finally {
       savingBinding = false;
     }
@@ -2495,11 +1220,9 @@
   async function removeBinding(id: string) {
     deletingId = id;
     try {
-      await api.networkMapping.zoneBindings.delete(id);
-      toast.success('Binding deleted');
+      const ok = await removeCrud({ type: 'binding', id });
+      if (!ok) return;
       await loadZoneBindings();
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to delete binding');
     } finally {
       deletingId = null;
     }
@@ -2512,20 +1235,9 @@
   ) {
     deleteTargetType = targetType;
     deleteTargetId = id;
-    const label = name?.trim() ? `"${name.trim()}"` : 'this item';
-    if (targetType === 'node') {
-      deleteConfirmTitle = 'Delete Node';
-      deleteConfirmMessage = `Delete node ${label}? This action cannot be undone.`;
-    } else if (targetType === 'link') {
-      deleteConfirmTitle = 'Delete Link';
-      deleteConfirmMessage = `Delete link ${label}? This action cannot be undone.`;
-    } else if (targetType === 'zone') {
-      deleteConfirmTitle = 'Delete Zone';
-      deleteConfirmMessage = `Delete zone ${label}? This action cannot be undone.`;
-    } else {
-      deleteConfirmTitle = 'Delete Binding';
-      deleteConfirmMessage = `Delete binding ${label}? This action cannot be undone.`;
-    }
+    const copy = buildDeleteConfirmCopy(targetType, name);
+    deleteConfirmTitle = copy.title;
+    deleteConfirmMessage = copy.message;
     showDeleteConfirm = true;
   }
 
@@ -2579,172 +1291,66 @@
 </script>
 
 <div class="page-content fade-in" class:compact-mode={compactMode}>
-  {#if !compactMode}
-    <NetworkPageHeader
-      title={$t('admin.network.map.title') || 'Network Topology Map'}
-      subtitle={$t('admin.network.map.subtitle') || 'Visualize nodes, links, and service zones in current viewport.'}
-    >
-      {#snippet actions()}
-        {#if fromInstallation}
-          <a class="btn ghost" href={installationReturnUrl}>
-            <Icon name="arrow-left" size={16} />
-            {$t('admin.network.map.back_to_installation') || 'Back to Installation'}
-          </a>
-        {/if}
-        <a class="btn ghost" href={`${tenantPrefix}/admin/network/noc`}>
-          <Icon name="arrow-left" size={16} />
-          {$t('admin.network.map.back_to_noc') || 'Back to NOC'}
-        </a>
-        {#if canManageTopology}
-          <button
-            class="btn ghost"
-            type="button"
-            onclick={async () => {
-              if (await syncTopologyAssets(true)) {
-                invalidateMapDataCache();
-              }
-              await refreshMapData(true);
-            }}
-            disabled={syncingAssetNodes || refreshing || loading}
-          >
-            <Icon name="git-merge" size={16} />
-            {syncingAssetNodes ? 'Syncing...' : 'Sync Router & Customer Nodes'}
-          </button>
-        {/if}
-        <button class="btn" type="button" onclick={() => void refreshMapData()} disabled={refreshing || loading}>
-          <Icon name="refresh-cw" size={16} />
-          {refreshing ? ($t('common.loading') || 'Loading...') : ($t('common.refresh') || 'Refresh')}
-        </button>
-      {/snippet}
-    </NetworkPageHeader>
-  {/if}
-
-  {#if !compactMode}
-    <div class="stats">
-      <div class="stat-card">
-        <div class="stat-top">
-          <span>{$t('admin.network.map.stats.nodes') || 'Nodes'}</span>
-          <Icon name="map-pin" size={16} />
-        </div>
-        <div class="stat-value">{nodeCount}</div>
-      </div>
-      <div class="stat-card tone-ok">
-        <div class="stat-top">
-          <span>{$t('admin.network.map.stats.links') || 'Links'}</span>
-          <Icon name="git-merge" size={16} />
-        </div>
-        <div class="stat-value">{linkCount}</div>
-      </div>
-      <div class="stat-card tone-warn">
-        <div class="stat-top">
-          <span>{$t('admin.network.map.stats.zones') || 'Zones'}</span>
-          <Icon name="layers" size={16} />
-        </div>
-        <div class="stat-value">{zoneCount}</div>
-      </div>
-    </div>
-
-    <div class="filters-wrap">
-      <NetworkFilterPanel>
-      <div class="control">
-        <label for="nm-search">{$t('admin.network.map.filters.search') || 'Search'}</label>
-        <input
-          id="nm-search"
-          class="input"
-          type="text"
-          bind:value={q}
-          placeholder={$t('admin.network.map.filters.search_placeholder') || 'Search node/link/zone...'}
-          onkeydown={(e) => e.key === 'Enter' && void onApplyFilters()}
-        />
-      </div>
-
-      <div class="control">
-        <label for="nm-status">{$t('admin.network.map.filters.status') || 'Status'}</label>
-        <select id="nm-status" class="input" bind:value={status}>
-          <option value="">{$t('admin.network.map.filters.any_status') || 'Any status'}</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-          <option value="maintenance">Maintenance</option>
-          <option value="up">Up</option>
-          <option value="down">Down</option>
-          <option value="degraded">Degraded</option>
-        </select>
-      </div>
-
-      <div class="control">
-        <label for="nm-kind">{$t('admin.network.map.filters.kind') || 'Type'}</label>
-        <select id="nm-kind" class="input" bind:value={kind}>
-          <option value="">{$t('admin.network.map.filters.any_kind') || 'Any type'}</option>
-          <option value="core">Core</option>
-          <option value="pop">POP</option>
-          <option value="olt">OLT</option>
-          <option value="router">Router</option>
-          <option value="switch">Switch</option>
-          <option value="tower">Tower</option>
-          <option value="ap">AP</option>
-          <option value="odc">ODC</option>
-          <option value="odp">ODP</option>
-          <option value="splitter">Splitter</option>
-          <option value="junction">Junction</option>
-          <option value="customer_premise">Customer Premise</option>
-          <option value="customer_endpoint">Customer Endpoint</option>
-          <option value="fiber">Fiber</option>
-          <option value="lan">LAN</option>
-          <option value="wireless">Wireless</option>
-          <option value="ptp_radio">PTP Radio</option>
-        </select>
-      </div>
-
-      <div class="control control-actions">
-        <div class="control-spacer" aria-hidden="true"></div>
-        <button class="btn" type="button" onclick={() => void onApplyFilters()} disabled={refreshing || loading}>
-          <Icon name="check" size={14} />
-          {$t('common.apply') || 'Apply'}
-        </button>
-        <button class="btn ghost" type="button" onclick={onResetFilters} disabled={refreshing || loading}>
-          <Icon name="x-circle" size={14} />
-          {$t('common.reset') || 'Reset'}
-        </button>
-      </div>
-      </NetworkFilterPanel>
-    </div>
-  {/if}
-
-  {#if !compactMode}
-    <div class="toolbar-wrap">
-      <div class="map-toolbar">
-        <div class="layer-toggles">
-          <label class="toggle">
-            <input type="checkbox" bind:checked={nodesVisible} />
-            <span>{$t('admin.network.map.layers.nodes') || 'Nodes'}</span>
-          </label>
-          <label class="toggle">
-            <input type="checkbox" bind:checked={linksVisible} />
-            <span>{$t('admin.network.map.layers.links') || 'Links'}</span>
-          </label>
-          <label class="toggle">
-            <input type="checkbox" bind:checked={zonesVisible} />
-            <span>{$t('admin.network.map.layers.zones') || 'Zones'}</span>
-          </label>
-          <label class="toggle">
-            <input type="checkbox" bind:checked={routersVisible} />
-            <span>Routers</span>
-          </label>
-          <label class="toggle">
-            <input type="checkbox" bind:checked={customersVisible} />
-            <span>Customers</span>
-          </label>
-        </div>
-      </div>
-
-      {#if myLocationError}
-        <div class="location-error">
-          <Icon name="alert-triangle" size={14} />
-          <span>{myLocationError}</span>
-        </div>
-      {/if}
-    </div>
-  {/if}
+  <NetworkMapOverview
+    {compactMode}
+    {fromInstallation}
+    {installationReturnUrl}
+    {tenantPrefix}
+    {canManageTopology}
+    {syncingAssetNodes}
+    {refreshing}
+    {loading}
+    {nodeCount}
+    {linkCount}
+    {zoneCount}
+    {q}
+    {status}
+    {kind}
+    {nodesVisible}
+    {linksVisible}
+    {zonesVisible}
+    {routersVisible}
+    {customersVisible}
+    {myLocationError}
+    title={$t('admin.network.map.title') || 'Network Topology Map'}
+    subtitle={$t('admin.network.map.subtitle') || 'Visualize nodes, links, and service zones in current viewport.'}
+    labels={{
+      backToInstallation: $t('admin.network.map.back_to_installation') || 'Back to Installation',
+      backToNoc: $t('admin.network.map.back_to_noc') || 'Back to NOC',
+      syncing: 'Syncing...',
+      syncAssets: 'Sync Router & Customer Nodes',
+      loading: $t('common.loading') || 'Loading...',
+      refresh: $t('common.refresh') || 'Refresh',
+      nodes: $t('admin.network.map.stats.nodes') || 'Nodes',
+      links: $t('admin.network.map.stats.links') || 'Links',
+      zones: $t('admin.network.map.stats.zones') || 'Zones',
+      search: $t('admin.network.map.filters.search') || 'Search',
+      searchPlaceholder: $t('admin.network.map.filters.search_placeholder') || 'Search node/link/zone...',
+      status: $t('admin.network.map.filters.status') || 'Status',
+      anyStatus: $t('admin.network.map.filters.any_status') || 'Any status',
+      kind: $t('admin.network.map.filters.kind') || 'Type',
+      anyKind: $t('admin.network.map.filters.any_kind') || 'Any type',
+      apply: $t('common.apply') || 'Apply',
+      reset: $t('common.reset') || 'Reset',
+    }}
+    onQChange={(value) => (q = value)}
+    onStatusChange={(value) => (status = value)}
+    onKindChange={(value) => (kind = value)}
+    onApplyFilters={() => void onApplyFilters()}
+    onResetFilters={onResetFilters}
+    onSyncAssets={async () => {
+      if (await syncTopologyAssets(true)) {
+        invalidateMapDataCache();
+      }
+      await refreshMapData(true);
+    }}
+    onRefresh={() => void refreshMapData()}
+    onNodesVisibleChange={(checked) => (nodesVisible = checked)}
+    onLinksVisibleChange={(checked) => (linksVisible = checked)}
+    onZonesVisibleChange={(checked) => (zonesVisible = checked)}
+    onRoutersVisibleChange={(checked) => (routersVisible = checked)}
+    onCustomersVisibleChange={(checked) => (customersVisible = checked)}
+  />
 
   <MapCanvasShell
     bind:mapEl={mapEl}
@@ -2759,67 +1365,16 @@
     height={compactMode ? 'min(76vh, 760px)' : 'min(62vh, 700px)'}
   >
     <svelte:fragment slot="overlay">
-      {#if showCreateNodePanel}
-        <div class="node-create-panel">
-          <div class="panel-head">
-            <div class="panel-title">{editingNodeId ? 'Edit Node' : 'Add Node'}</div>
-            {!editingNodeId
-              ? (nodePickMode
-                  ? 'Pick mode active: click map to set node position, drag marker for precision.'
-                  : 'Pick mode paused.')
-              : 'Edit node details and save changes.'}
-          </div>
-          <div class="form-grid two-col">
-            <label class="field">
-              <span>Name</span>
-              <input class="input" bind:value={nodeForm.name} />
-            </label>
-            <label class="field">
-              <span>Type</span>
-              <Select2
-                bind:value={nodeForm.node_type}
-                options={nodeTypeOptions}
-                width="100%"
-                placeholder="Select node type"
-                searchPlaceholder="Search type..."
-                noResultsText="No type found"
-              />
-            </label>
-            <label class="field">
-              <span>Status</span>
-              <select class="input" bind:value={nodeForm.status}>
-                <option value="active">active</option>
-                <option value="inactive">inactive</option>
-                <option value="maintenance">maintenance</option>
-              </select>
-            </label>
-            {#if !editingNodeId}
-              <label class="field">
-                <span>Latitude</span>
-                <input class="input" type="number" step="0.000001" bind:value={nodeForm.lat} />
-              </label>
-              <label class="field">
-                <span>Longitude</span>
-                <input class="input" type="number" step="0.000001" bind:value={nodeForm.lng} />
-              </label>
-            {:else}
-              <div class="field field-full node-edit-location-hint">
-                <span>Location</span>
-                <div class="hint-card">
-                  Marker is draggable on map. Drag marker to update node position.
-                  <div class="hint-coord">{nodeForm.lat}, {nodeForm.lng}</div>
-                </div>
-              </div>
-            {/if}
-          </div>
-          <div class="node-panel-actions">
-            <button class="btn ghost" type="button" onclick={closeNodeModal} disabled={savingNode}>Cancel</button>
-            <button class="btn" type="button" onclick={() => void submitNode()} disabled={savingNode}>
-              {savingNode ? 'Saving...' : editingNodeId ? 'Update Node' : 'Save Node'}
-            </button>
-          </div>
-        </div>
-      {/if}
+      <NetworkMapNodePanel
+        show={showCreateNodePanel}
+        {editingNodeId}
+        {nodePickMode}
+        {savingNode}
+        {nodeForm}
+        {nodeTypeOptions}
+        onClose={closeNodeModal}
+        onSubmit={() => void submitNode()}
+      />
 
       {#if linkPickMode}
         <div class="map-link-draw-controls">
@@ -2839,429 +1394,69 @@
   </MapCanvasShell>
 
   {#if !compactMode}
-  <div class="manager-wrap">
-    <div class="manager-header">
-      <div class="manager-tabs">
-        <button class:active={selectedTab === 'nodes'} onclick={() => (selectedTab = 'nodes')}>Nodes</button>
-        <button class:active={selectedTab === 'links'} onclick={() => (selectedTab = 'links')}>Links</button>
-        <button class:active={selectedTab === 'zones'} onclick={() => (selectedTab = 'zones')}>Zones</button>
-        <button class:active={selectedTab === 'bindings'} onclick={() => (selectedTab = 'bindings')}>
-          Zone Bindings
-        </button>
-      </div>
-
-      <div class="manager-actions">
-        {#if selectedTab === 'nodes'}
-          <button class="btn" type="button" onclick={openCreateNodeModal}>
-            <Icon name="plus" size={14} />
-            Add Node
-          </button>
-        {:else if selectedTab === 'links'}
-          <button class="btn" type="button" onclick={openCreateLinkModal}>
-            <Icon name="plus" size={14} />
-            Add Link
-          </button>
-        {:else if selectedTab === 'zones'}
-          <button class="btn" type="button" onclick={openCreateZoneModal}>
-            <Icon name="plus" size={14} />
-            Add Zone
-          </button>
-        {/if}
-      </div>
-    </div>
-
-    {#if selectedTab === 'nodes'}
-      <div class="table-wrap">
-        <div class="table-top"><strong>{nodeRows.length}</strong> nodes in viewport</div>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Type</th>
-              <th>Source</th>
-              <th>Status</th>
-              <th>Coordinates</th>
-              <th class="right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#if nodeRows.length === 0}
-              <tr><td colspan="6" class="empty">No nodes</td></tr>
-            {:else}
-              {#each nodeRows as row}
-                <tr>
-                  <td>{row.name}</td>
-                  <td>{row.node_type}</td>
-                  <td>{systemManagedNodeSourceLabel(row) || 'Manual'}</td>
-                  <td>{row.status}</td>
-                  <td>{row.lat.toFixed(6)}, {row.lng.toFixed(6)}</td>
-                  <td class="right">
-                    <button class="btn ghost btn-xs" onclick={() => startConnectFromNode(row.id)}>Connect</button>
-                    <button class="btn ghost btn-xs" onclick={() => openEditNodeModal(row)} disabled={isSystemManagedNode(row)}>
-                      Edit
-                    </button>
-                    <button
-                      class="btn ghost btn-xs danger"
-                      onclick={() => openDeleteConfirm('node', row.id, row.name)}
-                      disabled={deletingId === row.id || isSystemManagedNode(row)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              {/each}
-            {/if}
-          </tbody>
-        </table>
-      </div>
-    {/if}
-
-    {#if selectedTab === 'links'}
-  <div class="table-wrap">
-        <div class="table-top"><strong>{linkRows.length}</strong> links in viewport</div>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Type</th>
-              <th>Status</th>
-              <th>Health</th>
-              <th>Endpoints</th>
-              <th class="right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#if linkRows.length === 0}
-              <tr><td colspan="6" class="empty">No links</td></tr>
-            {:else}
-              {#each linkRows as row}
-                {@const health = computeLinkHealth(row)}
-                <tr>
-                  <td>{row.name}</td>
-                  <td>{row.link_type}</td>
-                  <td>{row.status}</td>
-                  <td>
-                    <span class={`health-pill ${health.tone}`}>{health.score}</span>
-                  </td>
-                  <td>{row.from_node_id || '-'} → {row.to_node_id || '-'}</td>
-                  <td class="right">
-                    <button class="btn ghost btn-xs" onclick={() => openEditLinkModal(row)}>Edit</button>
-                    <button class="btn ghost btn-xs danger" onclick={() => openDeleteConfirm('link', row.id, row.name)} disabled={deletingId === row.id}>Delete</button>
-                  </td>
-                </tr>
-              {/each}
-            {/if}
-          </tbody>
-        </table>
-      </div>
-    {/if}
-
-    {#if selectedTab === 'zones'}
-      <div class="table-wrap">
-        <div class="table-top"><strong>{zoneRows.length}</strong> zones in viewport</div>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Type</th>
-              <th>Status</th>
-              <th class="right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#if zoneRows.length === 0}
-              <tr><td colspan="4" class="empty">No zones</td></tr>
-            {:else}
-              {#each zoneRows as row}
-                <tr>
-                  <td>{row.name}</td>
-                  <td>{row.zone_type}</td>
-                  <td>{row.status}</td>
-                  <td class="right">
-                    <button class="btn ghost btn-xs" onclick={() => openEditZoneModal(row)}>Edit</button>
-                    <button class="btn ghost btn-xs danger" onclick={() => openDeleteConfirm('zone', row.id, row.name)} disabled={deletingId === row.id}>Delete</button>
-                  </td>
-                </tr>
-              {/each}
-            {/if}
-          </tbody>
-        </table>
-      </div>
-    {/if}
-
-    {#if selectedTab === 'bindings'}
-      <div class="bindings-wrap">
-        <div class="binding-form">
-          <div class="control">
-            <label for="zone-id">Zone</label>
-            <select id="zone-id" class="input" bind:value={selectedZoneId}>
-              <option value="">Select zone</option>
-              {#each zoneRows as z}
-                <option value={z.id}>{z.name}</option>
-              {/each}
-            </select>
-          </div>
-          <div class="control">
-            <label for="node-id">Node</label>
-            <select id="node-id" class="input" bind:value={bindingForm.node_id} disabled={!selectedZoneId}>
-              <option value="">Select node</option>
-              {#each nodeRows as n}
-                <option value={n.id}>{n.name}</option>
-              {/each}
-            </select>
-          </div>
-          <div class="control">
-            <label for="binding-weight">Weight</label>
-            <input id="binding-weight" class="input" type="number" min="1" bind:value={bindingForm.weight} />
-          </div>
-          <label class="toggle"><input type="checkbox" bind:checked={bindingForm.is_primary} /> <span>Primary</span></label>
-          <button class="btn" type="button" onclick={() => void createZoneBinding()} disabled={!selectedZoneId || savingBinding}>
-            <Icon name="plus" size={14} />
-            Add Binding
-          </button>
-        </div>
-
-        <div class="table-wrap">
-          <div class="table-top"><strong>{zoneBindings.length}</strong> bindings</div>
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Zone</th>
-                <th>Node</th>
-                <th>Primary</th>
-                <th>Weight</th>
-                <th class="right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#if loadingManager}
-                <tr><td colspan="5" class="empty">Loading...</td></tr>
-              {:else if zoneBindings.length === 0}
-                <tr><td colspan="5" class="empty">No bindings</td></tr>
-              {:else}
-                {#each zoneBindings as row}
-                  <tr>
-                    <td>{zoneRows.find((z) => z.id === row.zone_id)?.name || row.zone_id}</td>
-                    <td>{nodeRows.find((n) => n.id === row.node_id)?.name || row.node_id}</td>
-                    <td>{row.is_primary ? 'Yes' : 'No'}</td>
-                    <td>{row.weight}</td>
-                    <td class="right">
-                      <button class="btn ghost btn-xs danger" onclick={() => openDeleteConfirm('binding', row.id)} disabled={deletingId === row.id}>Delete</button>
-                    </td>
-                  </tr>
-                {/each}
-              {/if}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    {/if}
-  </div>
+    <NetworkMapManager
+      {selectedTab}
+      {nodeRows}
+      {linkRows}
+      {zoneRows}
+      {zoneBindings}
+      {selectedZoneId}
+      {loadingManager}
+      {savingBinding}
+      {deletingId}
+      {bindingForm}
+      onSelectTab={(tab) => (selectedTab = tab)}
+      onOpenCreateNode={openCreateNodeModal}
+      onOpenCreateLink={openCreateLinkModal}
+      onOpenCreateZone={openCreateZoneModal}
+      onStartConnectNode={startConnectFromNode}
+      onOpenEditNode={openEditNodeModal}
+      onOpenEditLink={openEditLinkModal}
+      onOpenEditZone={openEditZoneModal}
+      onOpenDeleteConfirm={openDeleteConfirm}
+      onSelectedZoneChange={(value) => (selectedZoneId = value)}
+      onBindingNodeChange={(value) => (bindingForm = { ...bindingForm, node_id: value })}
+      onBindingWeightChange={(value) => (bindingForm = { ...bindingForm, weight: value })}
+      onBindingPrimaryChange={(checked) => (bindingForm = { ...bindingForm, is_primary: checked })}
+      onCreateBinding={() => void createZoneBinding()}
+    />
   {/if}
 </div>
 
-<Modal
+<NetworkMapLinkModal
   show={showLinkModal}
-  title={editingLinkId ? 'Edit Link' : 'Add Link'}
-  width="860px"
-  onclose={() => !savingLink && closeLinkModal()}
->
-  {#if !editingLinkId}
-    <div class="link-pick-toolbar">
-      <div class="link-pick-mode">
-        <button
-          class={`mode-btn ${linkPickDrawMode === 'quick' ? 'active' : ''}`}
-          type="button"
-          onclick={() => setLinkPickDrawMode('quick')}
-        >
-          Quick
-        </button>
-        <button
-          class={`mode-btn ${linkPickDrawMode === 'path' ? 'active' : ''}`}
-          type="button"
-          onclick={() => setLinkPickDrawMode('path')}
-        >
-          Draw Path
-        </button>
-      </div>
-      {#if linkPickDrawMode === 'path'}
-        <button
-          class={`btn ghost btn-xs ${linkSnapToNodeEnabled ? 'active' : ''}`}
-          type="button"
-          onclick={() => (linkSnapToNodeEnabled = !linkSnapToNodeEnabled)}
-          title="Snap bend points to nearest node"
-        >
-          Snap: {linkSnapToNodeEnabled ? 'On' : 'Off'}
-        </button>
-      {/if}
-      <button
-        class={`btn ghost btn-xs ${linkPickMode ? 'active' : ''}`}
-        type="button"
-        onclick={toggleLinkPickMode}
-      >
-        <Icon name="map-pin" size={14} />
-        {linkPickMode
-          ? `Picking ${linkPickStep === 'from' ? 'source' : 'destination'}...`
-          : linkPickDrawMode === 'quick'
-            ? 'Pick Endpoints on Map'
-            : 'Draw Path on Map'}
-      </button>
-      {#if linkPickMode && linkPickDrawMode === 'path'}
-        <button class="btn ghost btn-xs" type="button" onclick={undoLinkPathPoint} disabled={linkPathBendPoints.length === 0}>
-          <Icon name="arrow-left" size={14} />
-          Undo
-        </button>
-        <button class="btn ghost btn-xs" type="button" onclick={clearLinkPathPoints} disabled={linkPathBendPoints.length === 0}>
-          <Icon name="x-circle" size={14} />
-          Clear
-        </button>
-      {/if}
-    </div>
-      {#if linkPickMode}
-      <div class="link-pick-hint">
-        {#if linkPickDrawMode === 'quick'}
-          Quick: click source node then destination node.
-        {:else if linkPickStep === 'from'}
-          Draw Path: click source node.
-        {:else}
-          Draw Path: click map to add bend points{linkSnapToNodeEnabled ? ' (auto-snap near node)' : ''}, then click destination node.
-        {/if}
-      </div>
-    {/if}
-  {/if}
-  <div class="form-grid two-col">
-    <label class="field">
-      <span>Name</span>
-      <input class="input" bind:value={linkForm.name} />
-    </label>
-    <label class="field">
-      <span>Type</span>
-      <Select2
-        bind:value={linkForm.link_type}
-        options={linkTypeOptions}
-        width="100%"
-        placeholder="Select link type"
-        searchPlaceholder="Search type..."
-        noResultsText="No type found"
-      />
-    </label>
-    <label class="field">
-      <span>Status</span>
-      <Select2
-        bind:value={linkForm.status}
-        options={linkStatusOptions}
-        width="100%"
-        placeholder="Select status"
-        searchPlaceholder="Search status..."
-        noResultsText="No status found"
-      />
-    </label>
-    <label class="field">
-      <span>From Node</span>
-      <select class="input" bind:value={linkForm.from_node_id}>
-        <option value="">Select node</option>
-        {#each nodeRows as n}
-          <option value={n.id}>{n.name}</option>
-        {/each}
-      </select>
-    </label>
-    <label class="field">
-      <span>To Node</span>
-      <select class="input" bind:value={linkForm.to_node_id}>
-        <option value="">Select node</option>
-        {#each nodeRows as n}
-          <option
-            value={n.id}
-            disabled={
-              n.id === linkForm.from_node_id ||
-              hasExistingLinkBetweenNodes(linkForm.from_node_id, n.id, editingLinkId)
-            }
-          >
-            {n.name}
-          </option>
-        {/each}
-      </select>
-    </label>
-    <label class="field">
-      <span>Priority</span>
-      <input class="input" type="number" min="1" bind:value={linkForm.priority} />
-    </label>
-    <div class="field field-full link-type-helper">
-      <Icon name="info" size={14} />
-      <span>{linkFieldConfig.helper}</span>
-    </div>
-    <label class="field">
-      <span>{linkFieldConfig.capacityLabel}</span>
-      <input class="input" type="number" min="0" step="0.01" bind:value={linkForm.capacity_mbps} />
-    </label>
-    <label class="field">
-      <span>{linkFieldConfig.utilizationLabel}</span>
-      <input class="input" type="number" min="0" max="100" step="0.01" bind:value={linkForm.utilization_pct} />
-    </label>
-    {#if linkFieldConfig.showLoss}
-      <label class="field">
-        <span>{linkFieldConfig.lossLabel}</span>
-        <input class="input" type="number" step="0.01" bind:value={linkForm.loss_db} />
-      </label>
-    {/if}
-    <label class="field">
-      <span>{linkFieldConfig.latencyLabel}</span>
-      <input class="input" type="number" min="0" step="0.01" bind:value={linkForm.latency_ms} />
-    </label>
-    <label class="field field-full">
-      <span>Geometry (GeoJSON LineString)</span>
-      <textarea class="input textarea" rows="7" bind:value={linkForm.geometryText}></textarea>
-    </label>
-  </div>
-  <div class="inline-actions">
-    <button class="btn ghost btn-xs" type="button" onclick={useLinkFromNodePoints}>Use straight line from selected nodes</button>
-  </div>
-  {#snippet footer()}
-    <button class="btn ghost" type="button" onclick={closeLinkModal} disabled={savingLink}>Cancel</button>
-    <button class="btn" type="button" onclick={() => void submitLink()} disabled={savingLink}>
-      {savingLink ? 'Saving...' : 'Save'}
-    </button>
-  {/snippet}
-</Modal>
+  {editingLinkId}
+  {savingLink}
+  {linkPickDrawMode}
+  {linkSnapToNodeEnabled}
+  {linkPickMode}
+  {linkPickStep}
+  {linkPathBendPoints}
+  {linkForm}
+  {nodeRows}
+  {linkTypeOptions}
+  {linkStatusOptions}
+  {linkFieldConfig}
+  hasExistingLinkBetweenNodes={(fromNodeId, toNodeId, excludeLinkId) =>
+    hasExistingLinkBetweenNodes(linkRows, fromNodeId, toNodeId, excludeLinkId)}
+  onClose={closeLinkModal}
+  onSubmit={() => void submitLink()}
+  onTogglePickMode={toggleLinkPickMode}
+  onSetDrawMode={setLinkPickDrawMode}
+  onUndoPathPoint={undoLinkPathPoint}
+  onClearPathPoints={clearLinkPathPoints}
+  onUseStraightLine={useLinkFromNodePoints}
+  onToggleSnap={() => (linkSnapToNodeEnabled = !linkSnapToNodeEnabled)}
+/>
 
-<Modal
+<NetworkMapZoneModal
   show={showZoneModal}
-  title={editingZoneId ? 'Edit Zone' : 'Add Zone'}
-  width="860px"
-  onclose={() => !savingZone && (showZoneModal = false)}
->
-  <div class="form-grid two-col">
-    <label class="field">
-      <span>Name</span>
-      <input class="input" bind:value={zoneForm.name} />
-    </label>
-    <label class="field">
-      <span>Type</span>
-      <input class="input" bind:value={zoneForm.zone_type} />
-    </label>
-    <label class="field">
-      <span>Status</span>
-      <select class="input" bind:value={zoneForm.status}>
-        <option value="active">active</option>
-        <option value="inactive">inactive</option>
-      </select>
-    </label>
-    <label class="field">
-      <span>Priority</span>
-      <input class="input" type="number" min="1" bind:value={zoneForm.priority} />
-    </label>
-    <label class="field field-full">
-      <span>Geometry (GeoJSON Polygon/MultiPolygon)</span>
-      <textarea class="input textarea" rows="9" bind:value={zoneForm.geometryText}></textarea>
-    </label>
-  </div>
-  {#snippet footer()}
-    <button class="btn ghost" type="button" onclick={() => (showZoneModal = false)} disabled={savingZone}>Cancel</button>
-    <button class="btn" type="button" onclick={() => void submitZone()} disabled={savingZone}>
-      {savingZone ? 'Saving...' : 'Save'}
-    </button>
-  {/snippet}
-</Modal>
+  {editingZoneId}
+  {savingZone}
+  {zoneForm}
+  onClose={() => (showZoneModal = false)}
+  onSubmit={() => void submitZone()}
+/>
 
 <ConfirmDialog
   show={showDeleteConfirm}
@@ -3596,103 +1791,6 @@
     color: #fbbf24;
   }
 
-  .manager-wrap {
-    margin-top: 14px;
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
-    background: var(--bg-card);
-    overflow: hidden;
-  }
-
-  .manager-header {
-    padding: 10px 12px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  .manager-tabs {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-
-  .manager-tabs button {
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-card) 94%, #0a1020 6%);
-    color: var(--text-secondary);
-    border-radius: 10px;
-    padding: 8px 10px;
-    font-weight: 700;
-    cursor: pointer;
-  }
-
-  .manager-tabs button.active {
-    color: var(--text-primary);
-    border-color: color-mix(in srgb, var(--color-primary) 50%, var(--border-color));
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-primary) 22%, #0b1225 78%) 0%,
-      color-mix(in srgb, var(--color-primary) 14%, #0b1225 86%) 100%
-    );
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 4px 16px rgba(56, 96, 255, 0.2);
-  }
-
-  .manager-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .table-wrap {
-    overflow-x: auto;
-  }
-
-  .table-top {
-    padding: 10px 12px;
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  .table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 720px;
-  }
-
-  .table th,
-  .table td {
-    text-align: left;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--border-color);
-    font-size: 0.88rem;
-  }
-
-  .table th {
-    color: var(--text-secondary);
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    font-size: 0.72rem;
-  }
-
-  .table .right {
-    text-align: right;
-    white-space: nowrap;
-  }
-
-  .table .empty {
-    text-align: center;
-    color: var(--text-secondary);
-    padding: 18px 12px;
-  }
-
   .btn-xs {
     padding: 6px 10px;
     font-size: 0.78rem;
@@ -3702,22 +1800,6 @@
   .btn.danger {
     color: #fca5a5;
     border-color: color-mix(in srgb, #ef4444 55%, var(--border-color));
-  }
-
-  .bindings-wrap {
-    display: grid;
-    gap: 10px;
-    padding: 10px;
-  }
-
-  .binding-form {
-    display: grid;
-    gap: 10px;
-    grid-template-columns: repeat(4, minmax(0, 1fr)) auto auto;
-    align-items: end;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 10px;
   }
 
   .control {
@@ -4143,15 +2225,6 @@
     }
 
     .layer-toggles {
-      grid-template-columns: 1fr;
-    }
-
-    .manager-header {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .binding-form {
       grid-template-columns: 1fr;
     }
 
