@@ -4,6 +4,11 @@
 
   type RouterItem = {
     id: string;
+    name: string;
+    host: string;
+    port: number;
+    identity?: string | null;
+    ros_version?: string | null;
     is_online: boolean;
   };
 

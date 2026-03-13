@@ -18,6 +18,10 @@ const TENANT_KEY = 'auth_tenant';
 // Auth version counter - increments on each refresh to force reactivity
 export const authVersion = writable(0);
 const ACTIVE_TENANT_SLUG_KEY = 'active_tenant_slug';
+const CHECK_AUTH_CACHE_MS = 45_000;
+let checkAuthInFlight: Promise<boolean> | null = null;
+let lastCheckAuthAt = 0;
+let lastCheckAuthResult: boolean | null = null;
 
 function isAuthDebugEnabled(): boolean {
   if (typeof window === 'undefined') return false;
@@ -235,6 +239,8 @@ export function setAuthData(
   if (activeSlug) {
     storage.setItem(ACTIVE_TENANT_SLUG_KEY, activeSlug);
   }
+  lastCheckAuthAt = Date.now();
+  lastCheckAuthResult = true;
 }
 
 export function logout(): void {
@@ -251,9 +257,24 @@ export function logout(): void {
   sessionStorage.removeItem(USER_KEY);
   sessionStorage.removeItem(TENANT_KEY);
   sessionStorage.removeItem(ACTIVE_TENANT_SLUG_KEY);
+  checkAuthInFlight = null;
+  lastCheckAuthAt = 0;
+  lastCheckAuthResult = false;
 }
 
-export async function checkAuth(): Promise<boolean> {
+export async function checkAuth(opts?: { force?: boolean }): Promise<boolean> {
+  const force = opts?.force === true;
+  const now = Date.now();
+  if (!force && checkAuthInFlight) return checkAuthInFlight;
+  if (
+    !force &&
+    lastCheckAuthResult != null &&
+    now - lastCheckAuthAt < CHECK_AUTH_CACHE_MS
+  ) {
+    return lastCheckAuthResult;
+  }
+
+  const run = async (): Promise<boolean> => {
   const currentToken = getStoredToken();
   if (!currentToken) return false;
 
@@ -375,6 +396,18 @@ export async function checkAuth(): Promise<boolean> {
     backendAvailable.set(false);
     return !!getStoredUser();
   }
+  };
+
+  checkAuthInFlight = run()
+    .then((result) => {
+      lastCheckAuthAt = Date.now();
+      lastCheckAuthResult = result;
+      return result;
+    })
+    .finally(() => {
+      checkAuthInFlight = null;
+    });
+  return checkAuthInFlight;
 }
 
 // Get current token (for API calls)

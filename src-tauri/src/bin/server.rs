@@ -116,10 +116,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         auth_service.clone(),
         audit_service.clone(),
         notification_service.clone(),
+        pppoe_service.clone(),
         user_service.clone(),
     );
     customer_service.start_installation_sla_scheduler();
-    let payment_service = PaymentService::new(pool.clone(), notification_service.clone());
+    let payment_service = PaymentService::new(
+        pool.clone(),
+        notification_service.clone(),
+        pppoe_service.clone(),
+    );
     payment_service.start_customer_invoice_scheduler();
     let backup_service = BackupService::new(pool.clone(), app_data_dir.clone());
 

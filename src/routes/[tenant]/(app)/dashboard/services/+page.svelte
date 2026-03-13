@@ -366,6 +366,10 @@
     return null;
   }
 
+  function showRescheduleInfo(status?: string | null) {
+    return String(status || '').toLowerCase() === 'pending_installation';
+  }
+
   function installationInvoiceForSubscription(invoices: Invoice[], subscriptionId: string) {
     const prefix = `pkgsub:${subscriptionId}`;
     const related = invoices
@@ -666,7 +670,7 @@
             {#if column.key === 'package_name'}
               <div class="service-name-cell">
                 <strong>{item.package_name || item.package_id}</strong>
-                {#if rescheduleStatusMeta(item.latest_reschedule_status)}
+                {#if showRescheduleInfo(item.status) && rescheduleStatusMeta(item.latest_reschedule_status)}
                   <span class={`reschedule-chip ${rescheduleStatusMeta(item.latest_reschedule_status)?.tone}`}>
                     {rescheduleStatusMeta(item.latest_reschedule_status)?.label}
                   </span>
@@ -723,7 +727,7 @@
             <div class="service-top">
               <div class="service-top-left">
                 <h3>{sub.package_name || sub.package_id}</h3>
-                {#if rescheduleStatusMeta(sub.latest_reschedule_status)}
+                {#if showRescheduleInfo(sub.status) && rescheduleStatusMeta(sub.latest_reschedule_status)}
                   <span class={`reschedule-chip ${rescheduleStatusMeta(sub.latest_reschedule_status)?.tone}`}>
                     {rescheduleStatusMeta(sub.latest_reschedule_status)?.label}
                   </span>
@@ -925,7 +929,7 @@
           </section>
         {/if}
 
-        {#if trackerReschedule}
+        {#if trackerReschedule && showRescheduleInfo(trackerSub?.status)}
           <section class="reschedule-status">
             <div class="reschedule-status-head">
               <h4>
@@ -1609,8 +1613,7 @@
     gap: 8px;
   }
 
-  .reschedule-box h4,
-  .tracker-notes h4 {
+  .reschedule-box h4 {
     margin: 0;
     color: var(--text-primary);
   }
@@ -1650,15 +1653,6 @@
   .tracker-notes {
     border-top: 1px dashed var(--border-color);
     padding-top: 10px;
-  }
-
-  .tracker-notes pre {
-    margin: 0;
-    color: #c8d2e8;
-    white-space: pre-wrap;
-    word-break: break-word;
-    font-family: inherit;
-    font-size: 0.86rem;
   }
 
   .service-top h3 {

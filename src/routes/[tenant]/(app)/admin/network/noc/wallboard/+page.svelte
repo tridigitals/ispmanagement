@@ -9,6 +9,7 @@
   import WallboardFullDialog from '$lib/components/network/WallboardFullDialog.svelte';
   import WallboardInterfaceTile from '$lib/components/network/WallboardInterfaceTile.svelte';
   import WallboardSlotPicker from '$lib/components/network/WallboardSlotPicker.svelte';
+  import WallboardTopPager from '$lib/components/network/WallboardTopPager.svelte';
   import WallboardThresholdDialog from '$lib/components/network/WallboardThresholdDialog.svelte';
   import WallboardAlertsPanel from '$lib/components/network/WallboardAlertsPanel.svelte';
   import {
@@ -22,18 +23,17 @@
   } from '$lib/components/network/wallboardAlertsActions';
   import WallboardInsightsControls from '$lib/components/network/WallboardInsightsControls.svelte';
   import WallboardInsightsSummary from '$lib/components/network/WallboardInsightsSummary.svelte';
-  import {
-    aggregateHistPoints as aggregateHistPointsValue,
-    applyMetricsZoom as applyMetricsZoomValue,
-    buildHistPoints as buildHistPointsValue,
-    downsampleHistPoints as downsampleHistPointsValue,
+import {
+    aggregateHistPoints,
+    applyMetricsZoom,
+    buildHistPoints,
+    downsampleHistPoints,
     filterMetricsRowsByRange,
-    parseLocalDate as parseLocalDateValue,
-    requiredMetricLimit as requiredMetricLimitValue,
-    resolveMetricsBucket as resolveMetricsBucketValue,
-    type HistPoint,
+    requiredMetricLimit,
+    resolveMetricsBucket,
     type MetricsRange,
   } from '$lib/components/network/wallboardMetrics';
+  import { fetchInterfaceMetricsRows } from '$lib/components/network/wallboardMetricsApi';
   import {
     closeFullPanelState,
     openFullPanelState,
@@ -58,6 +58,48 @@
     loadWallboardRemoteConfig as loadWallboardRemoteConfigValue,
     persistWallboardLocalConfig as persistWallboardLocalConfigValue,
   } from '$lib/components/network/wallboardConfig';
+  import {
+    applyLocalWallboardConfigState,
+    applyRemoteWallboardConfigState,
+    buildLocalWallboardConfigPayload,
+  } from '$lib/components/network/wallboardConfigState';
+  import {
+    thresholdBpsFromInput,
+    thresholdInputFromBps,
+    type ThresholdUnit,
+  } from '$lib/components/network/wallboardThreshold';
+  import {
+    clearSlotAt,
+    mapInterfaceCatalogFromSnapshot,
+    setSlotAt,
+    updateSlotThresholdAt,
+  } from '$lib/components/network/wallboardSlots';
+  import {
+    countActiveRouters,
+    pruneSlotsByRouterIds,
+    resolveAdaptivePollMs,
+  } from '$lib/components/network/wallboardRuntime';
+  import { installWallboardAutoHideListeners } from '$lib/components/network/wallboardUiBehavior';
+  import {
+    createCriticalBeepPlayer,
+    createWakeLockController,
+    toggleFullscreen as toggleFullscreenValue,
+  } from '$lib/components/network/wallboardMedia';
+  import {
+    createWallboardPollingScheduler,
+    installVisibilityListener,
+  } from '$lib/components/network/wallboardPollingScheduler';
+  import {
+    buildMetricsAutoRefreshSig,
+    resolveCriticalBeepEffect,
+    resolveNewAlertIncidents,
+  } from '$lib/components/network/wallboardEffects';
+  import {
+    filterPickerInterfaces,
+    filterPickerRouters,
+    findRouterById,
+  } from '$lib/components/network/wallboardPicker';
+  import { incidentHrefById, incidentHrefForTopIssue } from '$lib/components/network/wallboardLinks';
   import {
     buildAlertStats,
     buildGlobalSummary,
@@ -91,6 +133,7 @@
     type IncidentKind,
     type TrendInfo,
   } from '$lib/components/network/wallboardUtils';
+  import { normalizeSlotsForAutoSpare } from '$lib/components/network/wallboardPager';
   import {
     type LayoutPreset,
     type RotateMode,
@@ -243,38 +286,24 @@
   let fullMetricsRows = $state<any[]>([]);
   let fullMetricsKey = $state('');
   let fullMetricsLimit = $state(0);
+  let fullMetricsInFlightSig = $state('');
   let metricsAutoRefreshSig = $state('');
   let thresholdIndex = $state<number | null>(null);
   let thWarnRxKbps = $state<string>('');
   let thWarnTxKbps = $state<string>('');
-  let thWarnRxUnit = $state<'Kbps' | 'Mbps' | 'Gbps'>('Kbps');
-  let thWarnTxUnit = $state<'Kbps' | 'Mbps' | 'Gbps'>('Kbps');
+  let thWarnRxUnit = $state<ThresholdUnit>('Kbps');
+  let thWarnTxUnit = $state<ThresholdUnit>('Kbps');
 
   // Rate computation
   let liveRates = $state<Record<string, Record<string, LiveRate>>>({});
   let series = $state<Record<string, Record<string, { rx: number[]; tx: number[] }>>>({});
   const lastBytes = new Map<string, { rx: number; tx: number; at: number }>();
 
-  let tick: any = null;
-  let alertTick: any = null;
-  let wakeLock: any = null;
   let livePollInFlight = $state(false);
   let alertSyncInFlight = $state(false);
-  let debugEnabled = $state(false);
-  let debugStats = $state({
-    livePollRuns: 0,
-    liveRouterTargets: 0,
-    livePollSkipped: 0,
-    alertsLoads: 0,
-    incidentsLoads: 0,
-    metricsLoads: 0,
-    metricsFallbackLoads: 0,
-    metricsEmptyResponses: 0,
-    lastMetricsKey: '',
-    lastMetricsAt: 0,
-  });
   let remoteLoaded = $state(false);
   let paused = $state(false);
+  let documentVisible = $state(true);
   let focusMode = $state(true);
   let alertsOpen = $state(false);
   let insightsOpen = $state(false);
@@ -293,6 +322,8 @@
   // Keep previous alert ids/severity in a non-reactive snapshot to avoid effect loops.
   let alertSnapshot: Record<string, string> = {};
   let routerPollState = $state<Record<string, RouterPollState>>({});
+  let lastPollDurationMs = $state(0);
+  let hasPollFailure = $state(false);
 
   const tenantCtx = $derived.by(() =>
     resolveTenantContext({
@@ -331,7 +362,22 @@
   let criticalSoundEnabled = $state(true);
   let lastCriticalSignature = $state('');
   let lastCriticalBeepAt = $state(0);
-  let audioCtx: AudioContext | null = null;
+  const criticalBeepPlayer = createCriticalBeepPlayer();
+  const wakeLockController = createWakeLockController();
+  const pollingScheduler = createWallboardPollingScheduler({
+    pollLiveOnce: () => void pollLiveOnce(),
+    syncAlertsIncidents: () => void syncAlertsIncidents(true),
+    getPollMs: () =>
+      resolveAdaptivePollMs({
+        basePollMs: pollMs,
+        activeRouters: countActiveRouters(slotsAll),
+        lastPollDurationMs,
+        hasPollFailure,
+      }),
+    isPaused: () => paused,
+    isVisible: () => documentVisible,
+    alertsIntervalMs: 10_000,
+  });
 
   const TOOLBAR_HIDE_MS = 10_000;
 
@@ -384,12 +430,10 @@
   }
 
   async function loadAlerts(silent = true) {
-    debugStats = { ...debugStats, alertsLoads: debugStats.alertsLoads + 1 };
     alerts = await loadWallboardAlerts(silent);
   }
 
   async function loadIncidents(silent = true) {
-    debugStats = { ...debugStats, incidentsLoads: debugStats.incidentsLoads + 1 };
     incidents = await loadWallboardIncidents(silent);
   }
 
@@ -504,47 +548,13 @@
     return page * slotCountForLayout(layout) + localIdx;
   }
 
-  function normalizeSlotsAllForAutoSpare(input: (Slot | null)[], size: number): (Slot | null)[] {
-    if (size <= 0) return input;
-    let lastUsed = -1;
-    for (let i = input.length - 1; i >= 0; i--) {
-      if (input[i]) {
-        lastUsed = i;
-        break;
-      }
-    }
-
-    const usedLen = Math.max(0, lastUsed + 1);
-    const basePages = Math.max(1, Math.ceil(usedLen / size));
-    const baseLen = basePages * size;
-    const allFilled = usedLen > 0 && usedLen === baseLen;
-    const targetLen = allFilled ? baseLen + size : baseLen;
-
-    const out = input.slice(0, targetLen);
-    if (out.length < targetLen) {
-      out.push(...Array.from({ length: targetLen - out.length }, () => null));
-    }
-    return out;
-  }
-
   function routerById(id: string) {
-    return rows.find((r) => r.id === id) || null;
+    return findRouterById(rows, id);
   }
 
   function routerLabel(routerId: string) {
     const rr = routerById(routerId);
     return rr?.identity || rr?.name || routerId;
-  }
-
-  function incidentHrefById(id?: string | null) {
-    const rid = String(id || '').trim();
-    if (!rid) return `${tenantPrefix}/admin/network/incidents`;
-    return `${tenantPrefix}/admin/network/incidents?incident=${encodeURIComponent(rid)}`;
-  }
-
-  function incidentHrefForTopIssue(routerId: string, title: string) {
-    const match = incidents.find((x) => x.router_id === routerId && x.title === title);
-    return incidentHrefById(match?.id);
   }
 
   function pushIncident(kind: IncidentKind, message: string, routerId?: string) {
@@ -574,21 +584,11 @@
   }
 
   function pickerRouterList() {
-    const q = pickerRouterSearch.trim().toLowerCase();
-    return filterRows(rows).filter((r) => {
-      if (!q) return true;
-      const hay = `${r.name} ${r.identity || ''} ${r.host}`.toLowerCase();
-      return hay.includes(q);
-    });
+    return filterPickerRouters(rows, statusFilter, pickerRouterSearch);
   }
 
   function pickerInterfaces() {
-    if (!pickerRouterId) return [];
-    const iq = pickerIfaceSearch.trim().toLowerCase();
-    return (ifaceCatalog[pickerRouterId] || []).filter((i) => {
-      if (!iq) return true;
-      return i.name.toLowerCase().includes(iq) || (i.interface_type || '').toLowerCase().includes(iq);
-    });
+    return filterPickerInterfaces(ifaceCatalog, pickerRouterId, pickerIfaceSearch);
   }
 
   function openFull(idx: number) {
@@ -602,10 +602,6 @@
     metricsZoomFrom = next.metricsZoomFrom;
     metricsZoomTo = next.metricsZoomTo;
     metricsSelecting = next.metricsSelecting;
-    void loadFullMetrics(
-      idx,
-      requiredMetricLimit(next.metricsRange, next.metricsFromLocal, next.metricsToLocal),
-    );
   }
 
   function closeFull() {
@@ -616,6 +612,7 @@
     fullMetricsRows = next.fullMetricsRows;
     fullMetricsKey = next.fullMetricsKey;
     fullMetricsLimit = next.fullMetricsLimit;
+    fullMetricsInFlightSig = '';
     metricsFromLocal = next.metricsFromLocal;
     metricsToLocal = next.metricsToLocal;
     metricsPointIdx = next.metricsPointIdx;
@@ -623,10 +620,6 @@
     metricsZoomTo = next.metricsZoomTo;
     metricsSelecting = next.metricsSelecting;
     metricsAutoRefreshSig = '';
-  }
-
-  function requiredMetricLimit(range: MetricsRange, fromLocal: string, toLocal: string) {
-    return requiredMetricLimitValue(range, fromLocal, toLocal);
   }
 
   async function refreshMetricsForCurrentRange() {
@@ -643,34 +636,6 @@
     metricsZoomTo = state.metricsZoomTo;
     metricsFromLocal = state.metricsFromLocal;
     metricsToLocal = state.metricsToLocal;
-    if (state.shouldRefresh) void refreshMetricsForCurrentRange();
-  }
-
-  function parseLocalDate(v: string): number | null {
-    return parseLocalDateValue(v);
-  }
-
-  function filteredFullMetricsRows() {
-    return filterMetricsRowsByRange(fullMetricsRows, metricsFromLocal, metricsToLocal, parseMetricTs);
-  }
-
-  function buildHistPoints(rows: any[]) {
-    return buildHistPointsValue(rows, parseMetricTs);
-  }
-
-  function downsampleHistPoints(
-    rows: HistPoint[],
-    maxPoints: number = 120,
-  ) {
-    return downsampleHistPointsValue(rows, maxPoints);
-  }
-
-  function applyMetricsZoom(
-    rows: HistPoint[],
-    fromMs: number | null,
-    toMs: number | null,
-  ) {
-    return applyMetricsZoomValue(rows, fromMs, toMs, parseMetricTs);
   }
 
   function clearMetricsZoom() {
@@ -717,17 +682,6 @@
     metricsPointIdx = null;
   }
 
-  function resolveMetricsBucket(range: MetricsRange, fromLocal: string, toLocal: string): 'raw' | 'hour' | 'day' {
-    return resolveMetricsBucketValue(range, fromLocal, toLocal);
-  }
-
-  function aggregateHistPoints(
-    rows: HistPoint[],
-    bucket: 'raw' | 'hour' | 'day',
-  ) {
-    return aggregateHistPointsValue(rows, bucket, parseMetricTs);
-  }
-
   function bucketLabel(bucket: 'raw' | 'hour' | 'day') {
     if (bucket === 'raw')
       return $t('admin.network.wallboard.metrics_agg.detail') || 'Detail';
@@ -771,7 +725,6 @@
     fullTab = next.fullTab;
     metricsPointIdx = next.metricsPointIdx;
     metricsSelecting = next.metricsSelecting;
-    if (tab === 'metrics') void refreshMetricsForCurrentRange();
   }
 
   function setMetricsHoverFromMouse(i: number, e: MouseEvent) {
@@ -789,131 +742,41 @@
     metricsTooltipY = next.tooltipY;
   }
 
-  function extractMetricsRows(payload: any): any[] {
-    return Array.isArray(payload)
-      ? payload
-      : Array.isArray(payload?.items)
-        ? payload.items
-        : Array.isArray(payload?.data)
-          ? payload.data
-          : Array.isArray(payload?.rows)
-            ? payload.rows
-            : Array.isArray(payload?.history)
-              ? payload.history
-              : Array.isArray(payload?.metrics)
-                ? payload.metrics
-                : Array.isArray(payload?.result?.items)
-                  ? payload.result.items
-                  : Array.isArray(payload?.result?.data)
-                    ? payload.result.data
-                    : [];
-  }
-
-  function rowInterfaceName(row: any): string {
-    return normalizeIfaceName(
-      String(
-      row?.interface ?? row?.interface_name ?? row?.iface ?? row?.name ?? '',
-      ),
-    );
-  }
-
-  function normalizeIfaceName(v: string): string {
-    return String(v || '')
-      .replace(/[\u200B-\u200D\uFEFF]/g, '')
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, ' ');
-  }
-
-  function matchesIfaceName(rowName: string, target: string): boolean {
-    if (!rowName || !target) return false;
-    if (rowName === target) return true;
-    return rowName.includes(target) || target.includes(rowName);
-  }
-
   async function loadFullMetrics(idx: number, minLimit: number = 240) {
     const s = slotsAll[idx];
     if (!s) return;
 
     const key = `${s.routerId}:${s.iface}`;
+    const requestSig = `${key}:${minLimit}`;
     if (
       fullMetricsKey === key &&
       fullMetricsRows.length > 0 &&
       fullMetricsLimit >= minLimit
     )
       return;
+    if (fullMetricsInFlightSig === requestSig) return;
 
+    fullMetricsInFlightSig = requestSig;
     fullMetricsKey = key;
     fullMetricsLoading = true;
     fullMetricsError = null;
-    debugStats = {
-      ...debugStats,
-      metricsLoads: debugStats.metricsLoads + 1,
-      lastMetricsKey: key,
-      lastMetricsAt: Date.now(),
-    };
 
     try {
-      const payload = await api.mikrotik.routers.interfaceMetrics(s.routerId, {
-        interface: s.iface,
-        limit: minLimit,
+      const rows = await fetchInterfaceMetricsRows({
+        slot: { routerId: s.routerId, iface: s.iface },
+        minLimit,
+        fetchMetrics: (routerId, params) => api.mikrotik.routers.interfaceMetrics(routerId, params),
       });
-      let rows = extractMetricsRows(payload);
-
-      if (rows.length === 0 && s.iface) {
-        debugStats = {
-          ...debugStats,
-          metricsFallbackLoads: debugStats.metricsFallbackLoads + 1,
-        };
-        const fallbackPayload = await api.mikrotik.routers.interfaceMetrics(s.routerId, {
-          limit: minLimit,
-        });
-        const allRows = extractMetricsRows(fallbackPayload);
-        const target = normalizeIfaceName(String(s.iface || ''));
-        const hasIfaceKey = allRows.some((row) => rowInterfaceName(row));
-        if (hasIfaceKey) {
-          const strict = allRows.filter((row) => rowInterfaceName(row) === target);
-          const fuzzy = strict.length
-            ? strict
-            : allRows.filter((row) => matchesIfaceName(rowInterfaceName(row), target));
-          rows = fuzzy.length ? fuzzy : allRows;
-        } else {
-          rows = allRows;
-        }
-        if (debugEnabled) {
-          const first = allRows[0];
-          console.debug('[wallboard.metrics.fallback]', {
-            routerId: s.routerId,
-            iface: s.iface,
-            requestedLimit: minLimit,
-            allRows: allRows.length,
-            filteredRows: rows.length,
-            firstRowKeys: first ? Object.keys(first) : [],
-          });
-        }
-      }
 
       if (fullMetricsKey !== key) return;
       fullMetricsRows = rows;
       fullMetricsLimit = minLimit;
-      if (rows.length === 0) {
-        debugStats = {
-          ...debugStats,
-          metricsEmptyResponses: debugStats.metricsEmptyResponses + 1,
-        };
-        if (debugEnabled) {
-          console.debug('[wallboard.metrics.empty]', {
-            routerId: s.routerId,
-            iface: s.iface,
-            limit: minLimit,
-          });
-        }
-      }
     } catch (e: any) {
       if (fullMetricsKey !== key) return;
       fullMetricsRows = [];
       fullMetricsError = e?.message || String(e);
     } finally {
+      if (fullMetricsInFlightSig === requestSig) fullMetricsInFlightSig = '';
       if (fullMetricsKey === key) fullMetricsLoading = false;
     }
   }
@@ -922,40 +785,12 @@
     const s = slotsAll[idx];
     if (!s) return;
     thresholdIndex = idx;
-    const rx = s.warn_below_rx_bps;
-    const tx = s.warn_below_tx_bps;
-
-    if (rx != null && Number.isFinite(rx) && rx > 0) {
-      if (rx >= 1_000_000_000) {
-        thWarnRxUnit = 'Gbps';
-        thWarnRxKbps = String((rx / 1_000_000_000).toFixed(3).replace(/\.?0+$/, ''));
-      } else if (rx >= 1_000_000) {
-        thWarnRxUnit = 'Mbps';
-        thWarnRxKbps = String((rx / 1_000_000).toFixed(3).replace(/\.?0+$/, ''));
-      } else {
-        thWarnRxUnit = 'Kbps';
-        thWarnRxKbps = String((rx / 1_000).toFixed(3).replace(/\.?0+$/, ''));
-      }
-    } else {
-      thWarnRxUnit = 'Kbps';
-      thWarnRxKbps = '';
-    }
-
-    if (tx != null && Number.isFinite(tx) && tx > 0) {
-      if (tx >= 1_000_000_000) {
-        thWarnTxUnit = 'Gbps';
-        thWarnTxKbps = String((tx / 1_000_000_000).toFixed(3).replace(/\.?0+$/, ''));
-      } else if (tx >= 1_000_000) {
-        thWarnTxUnit = 'Mbps';
-        thWarnTxKbps = String((tx / 1_000_000).toFixed(3).replace(/\.?0+$/, ''));
-      } else {
-        thWarnTxUnit = 'Kbps';
-        thWarnTxKbps = String((tx / 1_000).toFixed(3).replace(/\.?0+$/, ''));
-      }
-    } else {
-      thWarnTxUnit = 'Kbps';
-      thWarnTxKbps = '';
-    }
+    const rx = thresholdInputFromBps(s.warn_below_rx_bps ?? null);
+    const tx = thresholdInputFromBps(s.warn_below_tx_bps ?? null);
+    thWarnRxUnit = rx.unit;
+    thWarnRxKbps = rx.value;
+    thWarnTxUnit = tx.unit;
+    thWarnTxKbps = tx.value;
   }
 
   function closeThreshold() {
@@ -963,24 +798,14 @@
   }
 
   function updateSlotThreshold(idx: number, rxBps: number | null, txBps: number | null) {
-    const s = slotsAll[idx];
-    if (!s) return;
-    slotsAll[idx] = {
-      ...s,
-      warn_below_rx_bps: rxBps,
-      warn_below_tx_bps: txBps,
-    };
+    slotsAll = updateSlotThresholdAt(slotsAll, idx, rxBps, txBps);
     persistConfig();
   }
 
   function saveThreshold() {
     if (thresholdIndex == null) return;
-    const rxK = Number.parseFloat(thWarnRxKbps || '');
-    const txK = Number.parseFloat(thWarnTxKbps || '');
-    const unitMul = (u: 'Kbps' | 'Mbps' | 'Gbps') =>
-      u === 'Gbps' ? 1_000_000_000 : u === 'Mbps' ? 1_000_000 : 1_000;
-    const rxBps = Number.isFinite(rxK) && rxK > 0 ? Math.round(rxK * unitMul(thWarnRxUnit)) : null;
-    const txBps = Number.isFinite(txK) && txK > 0 ? Math.round(txK * unitMul(thWarnTxUnit)) : null;
+    const rxBps = thresholdBpsFromInput(thWarnRxKbps, thWarnRxUnit);
+    const txBps = thresholdBpsFromInput(thWarnTxKbps, thWarnTxUnit);
     updateSlotThreshold(thresholdIndex, rxBps, txBps);
     closeThreshold();
   }
@@ -992,21 +817,14 @@
     warnBelowRxBps?: number | null,
     warnBelowTxBps?: number | null,
   ) {
-    ensureSlotIndex(idx);
-    slotsAll[idx] = {
-      routerId,
-      iface,
-      warn_below_rx_bps: warnBelowRxBps ?? null,
-      warn_below_tx_bps: warnBelowTxBps ?? null,
-    };
+    slotsAll = setSlotAt(slotsAll, idx, routerId, iface, warnBelowRxBps, warnBelowTxBps);
     pickerIndex = null;
     pickerRouterId = null;
     persistConfig();
   }
 
   function clearSlot(idx: number) {
-    ensureSlotIndex(idx);
-    slotsAll[idx] = null;
+    slotsAll = clearSlotAt(slotsAll, idx);
     persistConfig();
   }
 
@@ -1015,13 +833,7 @@
     ifaceLoading[routerId] = true;
     try {
       const snap = await api.mikrotik.routers.snapshot(routerId);
-      const list = ((snap?.interfaces || []) as any[]).map((i) => ({
-        name: String(i?.name || ''),
-        interface_type: (i?.interface_type ?? null) as string | null,
-        running: !!i?.running,
-        disabled: !!i?.disabled,
-      }));
-      ifaceCatalog[routerId] = list.filter((i) => i.name);
+      ifaceCatalog[routerId] = mapInterfaceCatalogFromSnapshot(snap);
     } catch (e: any) {
       toast.error(e?.message || e);
     } finally {
@@ -1030,7 +842,7 @@
   }
 
   function persistConfig() {
-    persistWallboardLocalConfigValue({
+    persistWallboardLocalConfigValue(buildLocalWallboardConfigPayload({
       layout,
       slotsAll,
       rotateMode,
@@ -1039,18 +851,19 @@
       statusFilter,
       pollMs,
       criticalSoundEnabled,
-    });
+    }));
   }
 
   function loadConfig() {
-    const conf = loadWallboardLocalConfigValue();
-    if (conf.layout) layout = conf.layout;
-    if (conf.rotateMode) rotateMode = conf.rotateMode;
-    if (conf.rotateMs != null) rotateMs = conf.rotateMs;
-    if (conf.statusFilter) statusFilter = conf.statusFilter;
-    if (conf.pollMs != null) pollMs = conf.pollMs;
-    if (conf.criticalSoundEnabled != null) criticalSoundEnabled = conf.criticalSoundEnabled;
-    if (conf.slotsAll) slotsAll = conf.slotsAll;
+    applyLocalWallboardConfigState(loadWallboardLocalConfigValue(), {
+      setLayout: (v) => (layout = v),
+      setRotateMode: (v) => (rotateMode = v),
+      setRotateMs: (v) => (rotateMs = v),
+      setStatusFilter: (v) => (statusFilter = v),
+      setPollMs: (v) => (pollMs = v),
+      setCriticalSoundEnabled: (v) => (criticalSoundEnabled = v),
+      setSlotsAll: (v) => (slotsAll = v),
+    });
   }
 
   async function loadRemoteConfig() {
@@ -1058,9 +871,11 @@
       canUseTenantSettings,
       getValue: (key) => api.settings.getValue(key),
     });
-    if (conf.layout) layout = conf.layout;
-    if (conf.slotsAll) slotsAll = conf.slotsAll;
-    remoteLoaded = conf.remoteLoaded;
+    applyRemoteWallboardConfigState(conf, {
+      setLayout: (v) => (layout = v),
+      setSlotsAll: (v) => (slotsAll = v),
+      setRemoteLoaded: (v) => (remoteLoaded = v),
+    });
   }
 
   function schedulePersistRemote() {
@@ -1076,9 +891,7 @@
     try {
       const list = (await api.mikrotik.routers.noc()) as any as NocRow[];
       rows = list;
-      // Clear slots that reference removed routers.
-      const ids = new Set(rows.map((r) => r.id));
-      slotsAll = slotsAll.map((s) => (s && ids.has(s.routerId) ? s : null));
+      slotsAll = pruneSlotsByRouterIds(slotsAll, rows.map((r) => r.id));
     } catch (e: any) {
       toast.error(e?.message || e);
     } finally {
@@ -1087,41 +900,13 @@
     await syncAlertsIncidents(true);
   }
 
-  function filterRows(list: NocRow[]) {
-    return list.filter((r) => {
-      if (statusFilter === 'online' && !r.is_online) return false;
-      if (statusFilter === 'offline' && r.is_online) return false;
-      return true;
-    });
-  }
-
-  function activeRouterCount() {
-    const ids = new Set<string>();
-    for (const s of slotsAll) {
-      if (s?.routerId) ids.add(s.routerId);
-    }
-    return ids.size;
-  }
-
-  function effectivePollMs() {
-    const active = activeRouterCount();
-    if (active >= 10) return Math.max(pollMs, 5000);
-    if (active >= 6) return Math.max(pollMs, 3000);
-    return pollMs;
-  }
-
   async function pollLiveOnce() {
     if (livePollInFlight) {
-      debugStats = { ...debugStats, livePollSkipped: debugStats.livePollSkipped + 1 };
       return;
     }
     livePollInFlight = true;
+    const startedAt = Date.now();
     try {
-      debugStats = {
-        ...debugStats,
-        livePollRuns: debugStats.livePollRuns + 1,
-        liveRouterTargets: debugStats.liveRouterTargets + activeRouterCount(),
-      };
       const next = await pollWallboardLiveOnce({
         paused,
         documentHidden: typeof document !== 'undefined' && document.hidden,
@@ -1139,20 +924,17 @@
       liveRates = next.liveRates;
       series = next.series;
       routerPollState = next.routerPollState;
+      hasPollFailure = Object.values(next.routerPollState).some((state) => state.fails > 0);
       renderNow = next.renderNow;
     } finally {
+      lastPollDurationMs = Date.now() - startedAt;
       livePollInFlight = false;
     }
   }
 
   function setPaused(on: boolean) {
     paused = on;
-    if (paused) {
-      if (tick) clearInterval(tick);
-      tick = null;
-    } else {
-      if (!tick) tick = setInterval(() => void pollLiveOnce(), effectivePollMs());
-    }
+    pollingScheduler.refresh();
   }
 
   function getHoverIndexFromPoint(x: number, y: number) {
@@ -1186,152 +968,16 @@
     alertsOpen = !alertsOpen;
   }
 
-  async function debugProbeMetrics() {
-    const firstIdx = slotsAll.findIndex((s) => !!s?.routerId && !!s?.iface);
-    if (firstIdx < 0) {
-      console.debug('[wallboard.metrics.probe] no configured slot');
-      return;
-    }
-    const s = slotsAll[firstIdx]!;
-    const key = `${s.routerId}:${s.iface}`;
-    debugStats = {
-      ...debugStats,
-      metricsLoads: debugStats.metricsLoads + 1,
-      lastMetricsKey: key,
-      lastMetricsAt: Date.now(),
-    };
-    try {
-      const payload = await api.mikrotik.routers.interfaceMetrics(s.routerId, {
-        interface: s.iface,
-        limit: 200,
-      });
-      const rows = extractMetricsRows(payload);
-      if (rows.length === 0) {
-        debugStats = {
-          ...debugStats,
-          metricsEmptyResponses: debugStats.metricsEmptyResponses + 1,
-        };
-      }
-      const first = rows[0];
-      console.debug('[wallboard.metrics.probe]', {
-        slotIndex: firstIdx,
-        routerId: s.routerId,
-        iface: s.iface,
-        rows: rows.length,
-        firstRowKeys: first ? Object.keys(first) : [],
-        firstRow: first || null,
-      });
-    } catch (e: any) {
-      console.debug('[wallboard.metrics.probe.error]', e?.message || String(e));
-    }
-  }
-
-  function installAutoHideListeners() {
-    if (typeof window === 'undefined') return;
-
-    const onAny = () => showControls();
-    const onPointerDown = (e: PointerEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (!target?.closest?.('.tile-actions')) tileMenuIndex = null;
-      showControls();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (alertsOpen) {
-          alertsOpen = false;
-          return;
-        }
-      }
-      if (e.key.toLowerCase() === 'f' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase() || '';
-        const editing = tag === 'input' || tag === 'textarea' || tag === 'select';
-        if (!editing) {
-          focusMode = !focusMode;
-          e.preventDefault();
-        }
-      }
-      if (e.key === 'Escape') return;
-      showControls();
-    };
-
-    window.addEventListener('mousemove', onAny, { passive: true });
-    window.addEventListener('pointermove', onAny, { passive: true });
-    window.addEventListener('pointerdown', onPointerDown, { passive: true });
-    window.addEventListener('wheel', onAny, { passive: true });
-    window.addEventListener('touchstart', onAny, { passive: true });
-    window.addEventListener('keydown', onKey);
-
-    return () => {
-      window.removeEventListener('mousemove', onAny as any);
-      window.removeEventListener('pointermove', onAny as any);
-      window.removeEventListener('pointerdown', onPointerDown as any);
-      window.removeEventListener('wheel', onAny as any);
-      window.removeEventListener('touchstart', onAny as any);
-      window.removeEventListener('keydown', onKey as any);
-    };
-  }
-
   async function toggleFullscreen() {
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else await document.documentElement.requestFullscreen();
-    } catch {
-      // ignore
-    }
+    await toggleFullscreenValue();
   }
 
   async function playCriticalBeep() {
-    if (!criticalSoundEnabled || typeof window === 'undefined') return;
-    const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
-    if (!AC) return;
-    if (!audioCtx) {
-      audioCtx = new AC();
-    }
-    const ctx = audioCtx;
-    if (!ctx) return;
-    if (ctx.state === 'suspended') {
-      try {
-        await ctx.resume();
-      } catch {
-        return;
-      }
-    }
-
-    const base = ctx.currentTime;
-    const pulse = (start: number, freq: number, gainValue: number, dur = 0.12) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(gainValue, start + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(start);
-      osc.stop(start + dur + 0.02);
-    };
-
-    pulse(base, 740, 0.028, 0.14);
-    pulse(base + 0.18, 660, 0.03, 0.16);
+    await criticalBeepPlayer.play(criticalSoundEnabled);
   }
 
   async function applyWakeLock(on: boolean) {
-    if (typeof navigator === 'undefined') return;
-    // @ts-ignore
-    const wl = navigator.wakeLock;
-    if (!wl) return;
-    try {
-      if (on) {
-        // @ts-ignore
-        wakeLock = await wl.request('screen');
-      } else {
-        await wakeLock?.release?.();
-        wakeLock = null;
-      }
-    } catch {
-      // ignore
-    }
+    await wakeLockController.apply(on);
   }
 
   function applyKiosk(on: boolean) {
@@ -1356,28 +1002,47 @@
     }
 
     loadConfig();
-    if (typeof window !== 'undefined') {
-      const qs = new URLSearchParams(window.location.search);
-      const byQuery = qs.get('wallDebug') === '1';
-      const byStorage = localStorage.getItem('wallboard_debug') === '1';
-      debugEnabled = byQuery || byStorage;
-      if (byQuery) localStorage.setItem('wallboard_debug', '1');
-    }
     ensureSlots();
     // Wallboard is meant for NOC/full window display. Keep kiosk enabled while this route is active.
     kiosk = true;
     applyKiosk(true);
     void loadRemoteConfig();
 
-    uninstallAutoHide = installAutoHideListeners() ?? null;
+    uninstallAutoHide =
+      installWallboardAutoHideListeners({
+        showControls,
+        onPointerDown: (target) => {
+          if (!target?.closest?.('.tile-actions')) tileMenuIndex = null;
+        },
+        onEscape: () => {
+          if (alertsOpen) {
+            alertsOpen = false;
+            return true;
+          }
+          return false;
+        },
+        onToggleFocusMode: () => {
+          focusMode = !focusMode;
+        },
+      }) ?? null;
     showControls();
     isFullscreen = typeof document !== 'undefined' && !!document.fullscreenElement;
 
     const onFullscreenChange = () => {
       isFullscreen = !!document.fullscreenElement;
     };
+    const uninstallVisibility =
+      installVisibilityListener((visible) => {
+        documentVisible = visible;
+        if (documentVisible && !paused) {
+          void pollLiveOnce();
+          void syncAlertsIncidents(true);
+        }
+        pollingScheduler.refresh();
+      }) ?? null;
     if (typeof document !== 'undefined') {
       document.addEventListener('fullscreenchange', onFullscreenChange);
+      documentVisible = !document.hidden;
     }
 
     void (async () => {
@@ -1390,21 +1055,18 @@
       }
     })();
 
-    tick = setInterval(() => void pollLiveOnce(), effectivePollMs());
-    alertTick = setInterval(() => {
-      void syncAlertsIncidents(true);
-    }, 10000);
+    pollingScheduler.refresh();
 
     return () => {
       if (typeof document !== 'undefined') {
         document.removeEventListener('fullscreenchange', onFullscreenChange);
       }
+      uninstallVisibility?.();
     };
   });
 
   onDestroy(() => {
-    if (tick) clearInterval(tick);
-    if (alertTick) clearInterval(alertTick);
+    pollingScheduler.stopAll();
     remotePersister.clearScheduledPersist();
     dndController.dispose();
     // Best-effort flush so layout/slots don't get lost on fast logout/navigation.
@@ -1412,9 +1074,7 @@
     void applyWakeLock(false);
     if (typeof document !== 'undefined') document.body.classList.remove('kiosk-wallboard');
     if (hideHandle) clearTimeout(hideHandle);
-    try {
-      audioCtx?.close?.();
-    } catch {}
+    void criticalBeepPlayer.close();
     try {
       uninstallAutoHide?.();
     } catch {}
@@ -1422,7 +1082,12 @@
 
   $effect(() => {
     if (fullIndex == null || fullTab !== 'metrics') return;
-    const sig = `${fullIndex}|${metricsRange}|${metricsFromLocal}|${metricsToLocal}`;
+    const sig = buildMetricsAutoRefreshSig({
+      fullIndex,
+      metricsRange,
+      metricsFromLocal,
+      metricsToLocal,
+    });
     if (sig === metricsAutoRefreshSig) return;
     metricsAutoRefreshSig = sig;
     void refreshMetricsForCurrentRange();
@@ -1430,14 +1095,13 @@
 
   $effect(() => {
     // restart polling when interval changes or pause changes
-    const nextPollMs = effectivePollMs();
-    if (paused) {
-      if (tick) clearInterval(tick);
-      tick = null;
-      return;
-    }
-    if (tick) clearInterval(tick);
-    tick = setInterval(() => void pollLiveOnce(), nextPollMs);
+    const nextPollMs = resolveAdaptivePollMs({
+      basePollMs: pollMs,
+      activeRouters: countActiveRouters(slotsAll),
+      lastPollDurationMs,
+      hasPollFailure,
+    });
+    pollingScheduler.refresh(nextPollMs);
   });
 
   $effect(() => {
@@ -1456,7 +1120,7 @@
 
     const size = slotCountForLayout(layout);
     ensureSlots();
-    const normalized = normalizeSlotsAllForAutoSpare(slotsAll, size);
+    const normalized = normalizeSlotsForAutoSpare(slotsAll, size);
     if (
       normalized.length !== slotsAll.length ||
       normalized.some((it, idx) => it !== slotsAll[idx])
@@ -1487,59 +1151,29 @@
   });
 
   $effect(() => {
-    const criticalIds = sortedAlerts
-      .filter((a) => String(a.severity || '').toLowerCase() === 'critical')
-      .map((a) => a.id)
-      .sort();
-    const sig = criticalIds.join(',');
-
-    if (!sig) {
-      lastCriticalSignature = '';
-      return;
-    }
-    if (!criticalSoundEnabled || paused) {
-      lastCriticalSignature = sig;
-      return;
-    }
-    if (!lastCriticalSignature) {
-      lastCriticalSignature = sig;
-      return;
-    }
-    if (sig !== lastCriticalSignature) {
-      const now = Date.now();
-      if (now - lastCriticalBeepAt >= 8000) {
-        lastCriticalBeepAt = now;
-        void playCriticalBeep();
-      }
-    }
-    lastCriticalSignature = sig;
+    const next = resolveCriticalBeepEffect({
+      alerts: sortedAlerts,
+      lastSignature: lastCriticalSignature,
+      lastBeepAt: lastCriticalBeepAt,
+      soundEnabled: criticalSoundEnabled,
+      paused,
+      now: Date.now(),
+      minBeepGapMs: 8000,
+    });
+    lastCriticalSignature = next.signature;
+    lastCriticalBeepAt = next.beepAt;
+    if (next.shouldBeep) void playCriticalBeep();
   });
 
   $effect(() => {
-    const current: Record<string, string> = {};
-    for (const a of sortedAlerts) {
-      const sev = String(a.severity || '').toLowerCase();
-      current[a.id] = sev;
+    const next = resolveNewAlertIncidents({
+      alerts: sortedAlerts,
+      previousSnapshot: alertSnapshot,
+    });
+    for (const item of next.newIncidents) {
+      pushIncident(item.severity, item.message, item.routerId);
     }
-
-    const prevKeys = Object.keys(alertSnapshot);
-    if (prevKeys.length === 0) {
-      alertSnapshot = current;
-      return;
-    }
-
-    for (const a of sortedAlerts) {
-      if (alertSnapshot[a.id]) continue;
-      const sev = String(a.severity || '').toLowerCase();
-      if (sev === 'critical' || sev === 'warning') {
-        pushIncident(
-          sev as 'critical' | 'warning',
-          `${a.title || 'Alert'} · ${a.message || ''}`.trim(),
-          a.router_id,
-        );
-      }
-    }
-    alertSnapshot = current;
+    alertSnapshot = next.nextSnapshot;
   });
 </script>
 
@@ -1548,31 +1182,7 @@
   <div class="wb-top" class:hidden={controlsHidden}>
     <div class="controls wall-actions">
       <div class="toolbar-left">
-        {#if pageCount > 1}
-          <div class="top-pager" aria-label={$t('admin.network.wallboard.pager.aria') || 'Pages'}>
-            <button
-              class="top-pager-btn"
-              type="button"
-              onclick={() => (page = Math.max(0, page - 1))}
-              disabled={page === 0}
-              aria-label={$t('admin.network.wallboard.pager.prev') || 'Previous page'}
-            >
-              <Icon name="chevron-left" size={15} />
-            </button>
-            <span class="top-pager-label">
-              {($t('common.page') || 'Page') + ' ' + (page + 1) + '/' + pageCount}
-            </span>
-            <button
-              class="top-pager-btn"
-              type="button"
-              onclick={() => (page = Math.min(pageCount - 1, page + 1))}
-              disabled={page >= pageCount - 1}
-              aria-label={$t('admin.network.wallboard.pager.next') || 'Next page'}
-            >
-              <Icon name="chevron-right" size={15} />
-            </button>
-          </div>
-        {/if}
+        <WallboardTopPager bind:page {pageCount} />
         <button
           class="settings-btn"
           class:has-critical={insightsBadge.level === 'critical'}
@@ -1638,10 +1248,11 @@
             [routerId]: mins === 60 || mins === 240 ? mins : 30,
           };
         }}
-        onGotoTopIssue={(routerId, title) => goto(incidentHrefForTopIssue(routerId, title))}
+        onGotoTopIssue={(routerId, title) =>
+          goto(incidentHrefForTopIssue(incidents, tenantPrefix, routerId, title))}
         onMuteTopIssue={(routerId, mins) => void muteRouterAlerts(routerId, mins)}
         onUnmuteTopIssue={(routerId) => void unmuteRouter(routerId)}
-        onOpenIncident={(incidentId) => goto(incidentHrefById(incidentId))}
+        onOpenIncident={(incidentId) => goto(incidentHrefById(tenantPrefix, incidentId))}
         onAckIncident={(incidentId) => void ackIncident(incidentId)}
         onResolveIncident={(incidentId) => void resolveIncident(incidentId)}
         {routerLabel}
@@ -1763,23 +1374,6 @@
     </button>
   {/if}
 
-  {#if debugEnabled}
-    <div class="wall-debug">
-      <div>poll: {debugStats.livePollRuns} run / {debugStats.liveRouterTargets} router-target</div>
-      <div>poll-skip(overlap): {debugStats.livePollSkipped}</div>
-      <div>alerts: {debugStats.alertsLoads} | incidents: {debugStats.incidentsLoads}</div>
-      <div>
-        metrics: {debugStats.metricsLoads} | fallback: {debugStats.metricsFallbackLoads} | empty:{' '}
-        {debugStats.metricsEmptyResponses}
-      </div>
-      <div>last metrics key: {debugStats.lastMetricsKey || '-'}</div>
-      <div>effective poll: {effectivePollMs()}ms (base {pollMs}ms)</div>
-      <button class="wall-debug-btn" type="button" onclick={() => void debugProbeMetrics()}>
-        probe metrics
-      </button>
-    </div>
-  {/if}
-
 </div>
 
 {#if pickerIndex !== null}
@@ -1826,11 +1420,11 @@
   {@const txPeak = peakBps(tx)}
   {@const rxAvg = avgBps(rx)}
   {@const txAvg = avgBps(tx)}
-  {@const filteredMetricsRows = filteredFullMetricsRows()}
-  {@const histRawRows = buildHistPoints(filteredMetricsRows)}
+  {@const filteredMetricsRows = filterMetricsRowsByRange(fullMetricsRows, metricsFromLocal, metricsToLocal, parseMetricTs)}
+  {@const histRawRows = buildHistPoints(filteredMetricsRows, parseMetricTs)}
   {@const metricsBucket = resolveMetricsBucket(metricsRange, metricsFromLocal, metricsToLocal)}
-  {@const histRows = aggregateHistPoints(histRawRows, metricsBucket)}
-  {@const zoomedHistRows = applyMetricsZoom(histRows, metricsZoomFrom, metricsZoomTo)}
+  {@const histRows = aggregateHistPoints(histRawRows, metricsBucket, parseMetricTs)}
+  {@const zoomedHistRows = applyMetricsZoom(histRows, metricsZoomFrom, metricsZoomTo, parseMetricTs)}
   {@const chartRows = downsampleHistPoints(zoomedHistRows, 120)}
   {@const hasMetricsZoom = metricsZoomFrom != null && metricsZoomTo != null}
   {@const histRx = zoomedHistRows.map((x) => x.rx_bps)}
@@ -1917,13 +1511,11 @@
       metricsFromLocal = value;
       metricsPointIdx = null;
       clearMetricsZoom();
-      void refreshMetricsForCurrentRange();
     }}
     onMetricsToChange={(value) => {
       metricsToLocal = value;
       metricsPointIdx = null;
       clearMetricsZoom();
-      void refreshMetricsForCurrentRange();
     }}
     onBeginMetricsSelection={beginMetricsSelection}
     onMoveMetricsSelection={moveMetricsSelection}
@@ -2077,39 +1669,6 @@
     flex-wrap: wrap;
     margin-left: auto;
   }
-  .top-pager {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
-  }
-  .top-pager-label {
-    font-weight: 850;
-    font-size: 12px;
-    color: var(--text-muted);
-    min-width: 76px;
-    text-align: center;
-    white-space: nowrap;
-  }
-  .top-pager-btn {
-    width: 30px;
-    height: 30px;
-    border-radius: 10px;
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-surface) 80%, transparent);
-    color: var(--text-primary);
-    display: grid;
-    place-items: center;
-    cursor: pointer;
-    padding: 0;
-  }
-  .top-pager-btn:disabled {
-    opacity: 0.55;
-    cursor: default;
-  }
 
   .settings-btn {
     position: relative;
@@ -2216,36 +1775,6 @@
     font-weight: 900;
     line-height: 1;
   }
-  .wall-debug {
-    position: fixed;
-    left: 18px;
-    top: 86px;
-    z-index: 76;
-    min-width: 320px;
-    max-width: min(620px, calc(100vw - 36px));
-    border-radius: 12px;
-    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border-color));
-    background: color-mix(in srgb, var(--bg-surface) 88%, #000 12%);
-    box-shadow: var(--shadow-md);
-    color: var(--text-primary);
-    font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-      'Courier New', monospace;
-    padding: 8px 10px;
-    display: grid;
-    gap: 2px;
-    pointer-events: auto;
-  }
-  .wall-debug-btn {
-    margin-top: 4px;
-    justify-self: start;
-    border-radius: 8px;
-    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border-color));
-    background: color-mix(in srgb, var(--accent) 10%, var(--bg-surface));
-    color: var(--text-primary);
-    padding: 4px 8px;
-    font: inherit;
-    cursor: pointer;
-  }
 
   .empty {
     border: 1px solid var(--border-color);
@@ -2296,13 +1825,6 @@
     );
     overflow: hidden;
     min-height: 0;
-  }
-  .tile.iface-tile {
-    cursor: pointer;
-  }
-  .tile.iface-tile.warn {
-    border-color: color-mix(in srgb, var(--color-danger) 55%, var(--border-color));
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-danger) 20%, transparent);
   }
   .tile.drag-over {
     outline: 2px dashed color-mix(in srgb, var(--accent) 65%, transparent);
@@ -2424,21 +1946,9 @@
       width: auto;
       margin-left: auto;
     }
-    .top-pager {
-      padding: 5px 7px;
-    }
-    .top-pager-label {
-      min-width: 68px;
-      font-size: 11px;
-    }
     .pause-indicator {
       left: 10px;
       bottom: 10px;
-    }
-    .wall-debug {
-      left: 10px;
-      top: 74px;
-      max-width: calc(100vw - 20px);
     }
     .grid {
       grid-template-columns: 1fr;

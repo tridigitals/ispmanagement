@@ -5,6 +5,8 @@ export type WallboardAlertRow = {
   router_id: string;
   severity: string;
   status: string;
+  title: string;
+  message: string;
   last_seen_at?: string | null;
   updated_at?: string | null;
 };
@@ -12,9 +14,12 @@ export type WallboardAlertRow = {
 export type WallboardIncidentRow = {
   id: string;
   router_id: string;
+  interface_name?: string | null;
+  incident_type: string;
   severity: string;
   status: string;
   title: string;
+  message: string;
   last_seen_at?: string | null;
   updated_at?: string | null;
   resolved_at?: string | null;

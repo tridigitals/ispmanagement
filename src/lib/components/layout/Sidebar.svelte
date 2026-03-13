@@ -133,6 +133,12 @@
             show: $can('read_own', 'customers') || canAccessCustomerPackages(),
           },
           {
+            label: $t('sidebar.invoices') || 'Invoices',
+            icon: 'file-text',
+            href: `${tenantPrefix}/dashboard/invoices`,
+            show: true,
+          },
+          {
             label: $t('sidebar.announcements') || 'Announcements',
             icon: 'megaphone',
             href: `${tenantPrefix}/announcements`,

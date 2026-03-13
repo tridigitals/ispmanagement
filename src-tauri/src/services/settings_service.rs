@@ -65,7 +65,7 @@ impl SettingsService {
         Ok(setting.map(|s| s.value))
     }
 
-    async fn get_value_fallback(
+    pub async fn get_value_fallback(
         &self,
         tenant_id: Option<&str>,
         key: &str,

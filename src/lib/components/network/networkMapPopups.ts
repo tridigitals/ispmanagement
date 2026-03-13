@@ -17,11 +17,11 @@ import {
 } from './networkMapUtils';
 
 type PopupInstance = import('maplibre-gl').Popup;
-type PopupFactory = import('maplibre-gl').Popup;
+type MaplibreLike = Pick<typeof import('maplibre-gl'), 'Popup'>;
 
 export function openNodePopup(args: {
   map: import('maplibre-gl').Map;
-  maplibre: { Popup: PopupFactory };
+  maplibre: MaplibreLike;
   feature: { properties?: Record<string, any>; geometry: Geometry };
   nodeRows: NMNode[];
   activePopup: PopupInstance | null;
@@ -84,7 +84,7 @@ export function openNodePopup(args: {
 
 export function openLinkPopup(args: {
   map: import('maplibre-gl').Map;
-  maplibre: { Popup: PopupFactory };
+  maplibre: MaplibreLike;
   feature: { properties?: Record<string, any> };
   lngLat: { lng: number; lat: number };
   linkRows: NMLink[];
@@ -127,7 +127,7 @@ export function openLinkPopup(args: {
 
 export function openRouterPopup(args: {
   map: import('maplibre-gl').Map;
-  maplibre: { Popup: PopupFactory };
+  maplibre: MaplibreLike;
   feature: { properties?: Record<string, any>; geometry: Geometry };
   activePopup: PopupInstance | null;
   setActivePopup: (popup: PopupInstance | null) => void;

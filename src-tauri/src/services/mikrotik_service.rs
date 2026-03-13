@@ -37,7 +37,7 @@ const LATENCY_RISK_MS: i32 = 200;
 const LATENCY_HOT_MS: i32 = 400;
 const OFFLINE_AFTER_SECS: i64 = 60;
 const WALLBOARD_SLOTS_SETTING_KEY: &str = "mikrotik_wallboard_slots_json";
-const WALLBOARD_TRACK_CACHE_TTL_SECS: u64 = 60;
+const WALLBOARD_TRACK_CACHE_TTL_SECS: u64 = 10;
 
 #[derive(Clone, Copy)]
 struct Thresholds {
@@ -60,6 +60,43 @@ pub struct MikrotikService {
 }
 
 impl MikrotikService {
+    fn normalize_interface_name(name: &str) -> String {
+        name.trim()
+            .to_ascii_lowercase()
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric())
+            .collect()
+    }
+
+    fn has_interface_counters(interface: &MikrotikInterfaceSnapshot) -> bool {
+        interface.rx_byte.is_some() || interface.tx_byte.is_some()
+    }
+
+    fn is_active_interface(interface: &MikrotikInterfaceSnapshot) -> bool {
+        interface.running.unwrap_or(false)
+            || (!interface.disabled.unwrap_or(false) && Self::has_interface_counters(interface))
+    }
+
+    fn is_priority_physical_interface(interface: &MikrotikInterfaceSnapshot) -> bool {
+        let normalized = Self::normalize_interface_name(&interface.name);
+        let is_named_physical = normalized.starts_with("ether")
+            || normalized.starts_with("sfp")
+            || normalized.starts_with("combo")
+            || normalized.starts_with("qsfp");
+        let is_typed_physical = interface
+            .interface_type
+            .as_deref()
+            .map(|kind| {
+                let kind = kind.trim().to_ascii_lowercase();
+                matches!(
+                    kind.as_str(),
+                    "ether" | "ethernet" | "sfp" | "combo" | "qsfpplus" | "qsfp28"
+                )
+            })
+            .unwrap_or(false);
+        (is_named_physical || is_typed_physical) && Self::is_active_interface(interface)
+    }
+
     fn validate_router_coordinates(latitude: Option<f64>, longitude: Option<f64>) -> AppResult<()> {
         if let Some(lat) = latitude {
             if !(-90.0..=90.0).contains(&lat) {
@@ -1295,7 +1332,8 @@ impl MikrotikService {
             sqlx::query_as::<_, MikrotikInterfaceMetric>(
                 r#"
                 SELECT * FROM mikrotik_interface_metrics
-                WHERE router_id = $1 AND interface_name = $2
+                WHERE router_id = $1
+                  AND lower(trim(interface_name)) = lower(trim($2))
                 ORDER BY ts DESC
                 LIMIT $3
                 "#,
@@ -2986,28 +3024,60 @@ impl MikrotikService {
         .map_err(|_| anyhow::anyhow!("Connection timed out"))?
         .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
-        let interfaces = self.fetch_interfaces_snapshot(&dev).await?;
+        let snapshot_interfaces = self.fetch_interfaces_snapshot(&dev).await?;
         let untracked_max = std::env::var("MIKROTIK_UNTRACKED_IFACE_MAX")
             .ok()
             .and_then(|v| v.parse::<usize>().ok())
             .filter(|v| *v >= 1 && *v <= 256)
             .unwrap_or(24);
 
+        let priority_max = std::env::var("MIKROTIK_PRIORITY_IFACE_MAX")
+            .ok()
+            .and_then(|v| v.parse::<usize>().ok())
+            .filter(|v| *v >= 1 && *v <= 256)
+            .unwrap_or(16);
+
         let interfaces: Vec<MikrotikInterfaceSnapshot> = match tracked_ifaces {
             // Persist only interfaces selected on wallboard when a tracked list exists.
-            Some(allowed) if !allowed.is_empty() => interfaces
-                .into_iter()
-                .filter(|i| allowed.contains(&i.name))
-                .collect(),
+            Some(allowed) if !allowed.is_empty() => {
+                let normalized_allowed: std::collections::HashSet<String> = allowed
+                    .iter()
+                    .map(|name| Self::normalize_interface_name(name))
+                    .filter(|name| !name.is_empty())
+                    .collect();
+                let mut selected: Vec<MikrotikInterfaceSnapshot> = Vec::new();
+                let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+                for interface in snapshot_interfaces.iter() {
+                    let normalized_name = Self::normalize_interface_name(&interface.name);
+                    if normalized_allowed.contains(&normalized_name) && seen.insert(normalized_name)
+                    {
+                        selected.push(interface.clone());
+                    }
+                }
+
+                for interface in snapshot_interfaces.iter() {
+                    let normalized_name = Self::normalize_interface_name(&interface.name);
+                    if seen.contains(&normalized_name) {
+                        continue;
+                    }
+                    if !Self::is_priority_physical_interface(interface) {
+                        continue;
+                    }
+                    if selected.len() >= normalized_allowed.len().saturating_add(priority_max) {
+                        break;
+                    }
+                    seen.insert(normalized_name);
+                    selected.push(interface.clone());
+                }
+
+                selected
+            }
             // Fallback: if no tracked list is configured, still persist a bounded set so
             // historical charts are available instead of staying empty forever.
-            _ => interfaces
+            _ => snapshot_interfaces
                 .into_iter()
-                .filter(|i| {
-                    i.running.unwrap_or(false)
-                        || (!i.disabled.unwrap_or(false)
-                            && (i.rx_byte.is_some() || i.tx_byte.is_some()))
-                })
+                .filter(Self::is_active_interface)
                 .take(untracked_max)
                 .collect(),
         };
@@ -3170,7 +3240,7 @@ impl MikrotikService {
     ) -> HashMap<String, HashSet<String>> {
         let raw = match self
             .settings_service
-            .get_value(Some(tenant_id), WALLBOARD_SLOTS_SETTING_KEY)
+            .get_value_fallback(Some(tenant_id), WALLBOARD_SLOTS_SETTING_KEY)
             .await
         {
             Ok(v) => v,
@@ -3200,7 +3270,7 @@ impl MikrotikService {
             if let Some(router_id) = it.as_str().map(str::trim).filter(|s| !s.is_empty()) {
                 out.entry(router_id.to_string())
                     .or_default()
-                    .insert("ether1".to_string());
+                    .insert(Self::normalize_interface_name("ether1"));
                 continue;
             }
 
@@ -3220,9 +3290,13 @@ impl MikrotikService {
                 .filter(|s| !s.is_empty());
 
             if let (Some(router_id), Some(iface)) = (router_id, iface) {
+                let normalized_iface = Self::normalize_interface_name(iface);
+                if normalized_iface.is_empty() {
+                    continue;
+                }
                 out.entry(router_id.to_string())
                     .or_default()
-                    .insert(iface.to_string());
+                    .insert(normalized_iface);
             }
         }
 

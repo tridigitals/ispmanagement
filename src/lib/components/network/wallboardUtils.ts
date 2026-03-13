@@ -71,7 +71,7 @@ export function parseMetricTs(ts?: string | null): number | null {
 
 export function formatMetricTs(ts: string | null | undefined) {
   const ms = parseMetricTs(ts);
-  if (!Number.isFinite(ms)) return '—';
+  if (ms == null || !Number.isFinite(ms)) return '—';
   return new Date(ms).toLocaleString();
 }
 

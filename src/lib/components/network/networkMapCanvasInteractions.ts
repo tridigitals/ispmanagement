@@ -10,7 +10,7 @@ const NODE_HIT_LAYERS = [
 
 export function isExistingNodeHit(
   map: import('maplibre-gl').Map,
-  point: { x: number; y: number },
+  point: import('maplibre-gl').PointLike,
 ) {
   return (
     map.queryRenderedFeatures(point, {
