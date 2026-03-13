@@ -93,6 +93,9 @@ export const mikrotik = {
         routerId,
         router_id: routerId,
         interface: params?.interface,
+        interface_name: params?.interface,
+        iface: params?.interface,
+        name: params?.interface,
         limit: params?.limit,
       }),
     interfaceLatest: (routerId: string): Promise<any[]> =>

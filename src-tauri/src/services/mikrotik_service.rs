@@ -2987,13 +2987,29 @@ impl MikrotikService {
         .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
         let interfaces = self.fetch_interfaces_snapshot(&dev).await?;
+        let untracked_max = std::env::var("MIKROTIK_UNTRACKED_IFACE_MAX")
+            .ok()
+            .and_then(|v| v.parse::<usize>().ok())
+            .filter(|v| *v >= 1 && *v <= 256)
+            .unwrap_or(24);
+
         let interfaces: Vec<MikrotikInterfaceSnapshot> = match tracked_ifaces {
-            // Persist only interfaces selected on wallboard.
+            // Persist only interfaces selected on wallboard when a tracked list exists.
             Some(allowed) if !allowed.is_empty() => interfaces
                 .into_iter()
                 .filter(|i| allowed.contains(&i.name))
                 .collect(),
-            _ => Vec::new(),
+            // Fallback: if no tracked list is configured, still persist a bounded set so
+            // historical charts are available instead of staying empty forever.
+            _ => interfaces
+                .into_iter()
+                .filter(|i| {
+                    i.running.unwrap_or(false)
+                        || (!i.disabled.unwrap_or(false)
+                            && (i.rx_byte.is_some() || i.tx_byte.is_some()))
+                })
+                .take(untracked_max)
+                .collect(),
         };
 
         if interfaces.is_empty() {

@@ -15,8 +15,6 @@
     criticalSoundEnabled = true,
     pollMs = $bindable(1000),
     layout = $bindable('3x3' as LayoutPreset),
-    page = $bindable(0),
-    pageCount = 1,
     onRefresh,
     onTogglePaused,
     onToggleFullscreen,
@@ -29,8 +27,6 @@
     criticalSoundEnabled?: boolean;
     pollMs?: number;
     layout?: LayoutPreset;
-    page?: number;
-    pageCount?: number;
     onRefresh?: () => void | Promise<void>;
     onTogglePaused?: () => void;
     onToggleFullscreen?: () => void | Promise<void>;
@@ -106,31 +102,6 @@
     </label>
   </div>
 
-  {#if pageCount > 1}
-    <div class="wbic-pager" aria-label={$t('admin.network.wallboard.pager.aria') || 'Pages'}>
-      <button
-        class="wbic-pager-btn"
-        type="button"
-        onclick={() => (page = Math.max(0, page - 1))}
-        disabled={page === 0}
-        aria-label={$t('admin.network.wallboard.pager.prev') || 'Previous page'}
-      >
-        <Icon name="chevron-left" size={16} />
-      </button>
-      <span class="wbic-pager-label">
-        {($t('common.page') || 'Page') + ' ' + (page + 1) + '/' + pageCount}
-      </span>
-      <button
-        class="wbic-pager-btn"
-        type="button"
-        onclick={() => (page = Math.min(pageCount - 1, page + 1))}
-        disabled={page >= pageCount - 1}
-        aria-label={$t('admin.network.wallboard.pager.next') || 'Next page'}
-      >
-        <Icon name="chevron-right" size={16} />
-      </button>
-    </div>
-  {/if}
 </div>
 
 <style>
@@ -207,38 +178,6 @@
     line-height: 1.2;
     height: 34px;
     outline: none;
-  }
-  .wbic-pager {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--bg-surface) 65%, transparent);
-  }
-  .wbic-pager-label {
-    font-weight: 850;
-    font-size: 13px;
-    color: var(--text-muted);
-    min-width: 88px;
-    text-align: center;
-    white-space: nowrap;
-  }
-  .wbic-pager-btn {
-    width: 34px;
-    height: 34px;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--bg-surface) 80%, transparent);
-    color: var(--text-primary);
-    display: grid;
-    place-items: center;
-    cursor: pointer;
-  }
-  .wbic-pager-btn:disabled {
-    opacity: 0.55;
-    cursor: default;
   }
   .muted {
     color: var(--text-muted);

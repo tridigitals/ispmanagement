@@ -34,6 +34,13 @@ Tujuan: kurangi duplikasi markup/CSS di halaman network agar maintenance lebih c
   - `src/lib/components/network/WallboardAlertsPanel.svelte`
   - dipakai di:
     - `src/routes/[tenant]/(app)/admin/network/noc/wallboard/+page.svelte`
+- [x] Ekstrak util/helpers wallboard ke modul terpisah:
+  - `src/lib/components/network/wallboardUtils.ts`
+  - `src/lib/components/network/wallboardDerivations.ts`
+  - `src/lib/components/network/wallboardAlertsActions.ts`
+  - `src/lib/components/network/wallboardMetrics.ts`
+  - `src/lib/components/network/wallboardMetricsSelection.ts`
+  - `src/lib/components/network/wallboardConfig.ts`
 
 ## Next prioritas tinggi
 
@@ -73,6 +80,59 @@ Tujuan: kurangi duplikasi markup/CSS di halaman network agar maintenance lebih c
 - [ ] Satukan badge/status pill ke komponen reusable kecil
   - Kandidat:
     - `alerts`, `incidents`, `noc`, `routers/[id]`
+
+## Wallboard Refactor Roadmap (Batch Besar)
+
+- [ ] 3. Ekstrak polling engine live metrics per-router
+  - Target file baru:
+    - `src/lib/components/network/wallboardPolling.ts`
+  - Scope:
+    - batching router/interface
+    - retry/backoff state
+    - update `liveRates` + `series`
+    - interface data contract typed
+
+- [ ] 4. Ekstrak drag/drop dan tile interaction state
+  - Target file baru:
+    - `src/lib/components/network/wallboardDnD.ts`
+  - Scope:
+    - start/move/end drag
+    - swap tile
+    - guard slot index + bounds
+
+- [ ] 5. Ekstrak full modal tabs (live/metrics) controller
+  - Target file baru:
+    - `src/lib/components/network/wallboardFullPanel.ts`
+  - Scope:
+    - state transisi tab
+    - open/close/reset behavior
+    - metric range refresh trigger
+
+- [x] 6. Pisahkan visual tile menjadi komponen Svelte
+  - Target file baru:
+    - [x] `src/lib/components/network/WallboardInterfaceTile.svelte`
+  - Scope:
+    - [x] head/meta/status badge
+    - [x] spark mini chart + hover tooltip
+    - [x] action menu per tile
+
+- [x] 7. Pisahkan modal picker/edit threshold jadi komponen
+  - Target file baru:
+    - [x] `src/lib/components/network/WallboardSlotPicker.svelte`
+    - [x] `src/lib/components/network/WallboardThresholdDialog.svelte`
+  - Scope:
+    - [x] router+iface picker
+    - [x] threshold parsing + validation
+
+- [ ] 8. Tambah test untuk helper wallboard
+  - Target file baru:
+    - `src/lib/components/network/wallboardMetrics.test.ts`
+    - `src/lib/components/network/wallboardConfig.test.ts`
+    - `src/lib/components/network/wallboardDerivations.test.ts`
+  - Scope:
+    - parse/aggregate edge cases
+    - config load/save compatibility
+    - sorting/filter deterministic behavior
 
 ## Catatan
 
