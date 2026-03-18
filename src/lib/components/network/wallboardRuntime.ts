@@ -47,3 +47,14 @@ export function resolveAdaptivePollMs(args: {
   if (args.hasPollFailure) next = Math.max(next, 7000);
   return Math.min(15_000, next);
 }
+
+export async function refreshWallboardRows<T extends { id: string }, S extends { routerId: string }>(args: {
+  loadRouters: () => Promise<T[]>;
+  slots: (S | null)[];
+}) {
+  const rows = await args.loadRouters();
+  return {
+    rows,
+    slotsAll: pruneSlotsByRouterIds(args.slots, rows.map((row) => row.id)),
+  };
+}

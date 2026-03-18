@@ -23,7 +23,7 @@
   } from '$lib/components/network/wallboardAlertsActions';
   import WallboardInsightsControls from '$lib/components/network/WallboardInsightsControls.svelte';
   import WallboardInsightsSummary from '$lib/components/network/WallboardInsightsSummary.svelte';
-import {
+  import {
     aggregateHistPoints,
     applyMetricsZoom,
     buildHistPoints,
@@ -33,8 +33,12 @@ import {
     resolveMetricsBucket,
     type MetricsRange,
   } from '$lib/components/network/wallboardMetrics';
-  import { fetchInterfaceMetricsRows } from '$lib/components/network/wallboardMetricsApi';
   import {
+    fetchInterfaceMetricsRows,
+    prepareFullMetricsRequest,
+  } from '$lib/components/network/wallboardMetricsApi';
+  import {
+    clearMetricsZoomState,
     closeFullPanelState,
     openFullPanelState,
     setMetricsRangeState,
@@ -59,24 +63,25 @@ import {
     persistWallboardLocalConfig as persistWallboardLocalConfigValue,
   } from '$lib/components/network/wallboardConfig';
   import {
-    applyLocalWallboardConfigState,
-    applyRemoteWallboardConfigState,
-    buildLocalWallboardConfigPayload,
+    loadLocalWallboardConfigState,
+    loadRemoteWallboardConfigState,
+    persistLocalWallboardConfigState,
   } from '$lib/components/network/wallboardConfigState';
   import {
-    thresholdBpsFromInput,
-    thresholdInputFromBps,
     type ThresholdUnit,
   } from '$lib/components/network/wallboardThreshold';
   import {
-    clearSlotAt,
-    mapInterfaceCatalogFromSnapshot,
-    setSlotAt,
-    updateSlotThresholdAt,
-  } from '$lib/components/network/wallboardSlots';
+    clearSlotState,
+    closeThresholdState,
+    loadInterfaceCatalog,
+    openThresholdState,
+    saveThresholdState,
+    setSlotState,
+    updateSlotThresholdState,
+  } from '$lib/components/network/wallboardSlotActions';
   import {
     countActiveRouters,
-    pruneSlotsByRouterIds,
+    refreshWallboardRows,
     resolveAdaptivePollMs,
   } from '$lib/components/network/wallboardRuntime';
   import { installWallboardAutoHideListeners } from '$lib/components/network/wallboardUiBehavior';
@@ -98,8 +103,25 @@ import {
     filterPickerInterfaces,
     filterPickerRouters,
     findRouterById,
+    openPickerState,
+    closePickerState,
   } from '$lib/components/network/wallboardPicker';
   import { incidentHrefById, incidentHrefForTopIssue } from '$lib/components/network/wallboardLinks';
+  import {
+    buildMetricsCsvRows,
+    bucketHint as bucketHintValue,
+    bucketLabel as bucketLabelValue,
+    ensureSlotIndex as ensureSlotIndexValue,
+    ensureSlotsForLayout,
+    formatWallboardBps,
+    formatWallboardLatency,
+    globalSlotIndex,
+    metricsCsvFilePrefix,
+    routerLabel as routerLabelValue,
+    routerTitle as routerTitleValue,
+    trendBadgeText as trendBadgeTextHelper,
+    trendLabel as trendLabelHelper,
+  } from '$lib/components/network/wallboardPageHelpers';
   import {
     buildAlertStats,
     buildGlobalSummary,
@@ -382,17 +404,15 @@ import {
   const TOOLBAR_HIDE_MS = 10_000;
 
   function formatBps(bps?: number | null) {
-    return formatBpsValue(bps, $t('common.na') || '—');
+    return formatWallboardBps(bps, formatBpsValue, $t('common.na') || '—');
   }
 
   function formatLatency(ms?: number | null) {
-    return formatLatencyValue(ms, $t('common.na') || '—');
+    return formatWallboardLatency(ms, formatLatencyValue, $t('common.na') || '—');
   }
 
   function routerTitle(r: NocRow) {
-    const name = r.identity || r.name;
-    const ros = r.ros_version ? ` • ROS ${r.ros_version}` : '';
-    return `${name}${ros}`;
+    return routerTitleValue(r);
   }
 
   const sortedAlerts = $derived.by(() => sortAlerts(alerts));
@@ -418,11 +438,15 @@ import {
   const insightsBadge = $derived.by(() => buildInsightsBadge(incidentStats));
 
   function trendBadgeText(ti: TrendInfo) {
-    return trendBadgeTextValue(ti, $t('admin.network.wallboard.trend.stable') || 'Stable');
+    return trendBadgeTextHelper(
+      ti,
+      trendBadgeTextValue,
+      $t('admin.network.wallboard.trend.stable') || 'Stable',
+    );
   }
 
   function trendLabel(ti: TrendInfo) {
-    return trendLabelValue(ti, {
+    return trendLabelHelper(ti, trendLabelValue, {
       up: $t('admin.network.wallboard.trend.up') || 'Rising',
       down: $t('admin.network.wallboard.trend.down') || 'Falling',
       stable: $t('admin.network.wallboard.trend.stable') || 'Stable',
@@ -532,29 +556,19 @@ import {
   }
 
   function ensureSlots() {
-    const want = slotCountForLayout(layout);
-    // Never shrink `slotsAll` on layout change (we paginate instead).
-    if (slotsAll.length < want) {
-      slotsAll = [...slotsAll, ...Array.from({ length: want - slotsAll.length }, () => null)];
-    }
+    slotsAll = ensureSlotsForLayout(slotsAll, layout);
   }
 
   function ensureSlotIndex(idx: number) {
-    if (idx < slotsAll.length) return;
-    slotsAll = [...slotsAll, ...Array.from({ length: idx + 1 - slotsAll.length }, () => null)];
+    slotsAll = ensureSlotIndexValue(slotsAll, idx);
   }
 
   function globalIndex(localIdx: number) {
-    return page * slotCountForLayout(layout) + localIdx;
-  }
-
-  function routerById(id: string) {
-    return findRouterById(rows, id);
+    return globalSlotIndex(page, layout, localIdx);
   }
 
   function routerLabel(routerId: string) {
-    const rr = routerById(routerId);
-    return rr?.identity || rr?.name || routerId;
+    return routerLabelValue(rows, routerId);
   }
 
   function pushIncident(kind: IncidentKind, message: string, routerId?: string) {
@@ -569,18 +583,18 @@ import {
   }
 
   function openPicker(idx: number) {
-    pickerIndex = idx;
-    pickerRouterSearch = '';
-    pickerIfaceSearch = '';
-
-    const cur = slotsAll[idx];
-    pickerRouterId = cur?.routerId ?? null;
+    const next = openPickerState(slotsAll, idx);
+    pickerIndex = next.pickerIndex;
+    pickerRouterSearch = next.pickerRouterSearch;
+    pickerIfaceSearch = next.pickerIfaceSearch;
+    pickerRouterId = next.pickerRouterId;
     if (pickerRouterId) void loadInterfaces(pickerRouterId);
   }
 
   function closePicker() {
-    pickerIndex = null;
-    pickerRouterId = null;
+    const next = closePickerState();
+    pickerIndex = next.pickerIndex;
+    pickerRouterId = next.pickerRouterId;
   }
 
   function pickerRouterList() {
@@ -589,6 +603,10 @@ import {
 
   function pickerInterfaces() {
     return filterPickerInterfaces(ifaceCatalog, pickerRouterId, pickerIfaceSearch);
+  }
+
+  function routerById(id: string) {
+    return findRouterById(rows, id);
   }
 
   function openFull(idx: number) {
@@ -639,9 +657,10 @@ import {
   }
 
   function clearMetricsZoom() {
-    metricsZoomFrom = null;
-    metricsZoomTo = null;
-    metricsPointIdx = null;
+    const next = clearMetricsZoomState();
+    metricsZoomFrom = next.metricsZoomFrom;
+    metricsZoomTo = next.metricsZoomTo;
+    metricsPointIdx = next.metricsPointIdx;
   }
 
   function beginMetricsSelection(e: PointerEvent) {
@@ -683,19 +702,19 @@ import {
   }
 
   function bucketLabel(bucket: 'raw' | 'hour' | 'day') {
-    if (bucket === 'raw')
-      return $t('admin.network.wallboard.metrics_agg.detail') || 'Detail';
-    if (bucket === 'hour')
-      return $t('admin.network.wallboard.metrics_agg.hourly') || 'Hourly Average';
-    return $t('admin.network.wallboard.metrics_agg.daily') || 'Daily Average';
+    return bucketLabelValue(bucket, {
+      raw: $t('admin.network.wallboard.metrics_agg.detail') || 'Detail',
+      hour: $t('admin.network.wallboard.metrics_agg.hourly') || 'Hourly Average',
+      day: $t('admin.network.wallboard.metrics_agg.daily') || 'Daily Average',
+    });
   }
 
   function bucketHint(bucket: 'raw' | 'hour' | 'day') {
-    if (bucket === 'raw')
-      return $t('admin.network.wallboard.metrics_agg_hint.detail') || 'without summarization';
-    if (bucket === 'hour')
-      return $t('admin.network.wallboard.metrics_agg_hint.hourly') || 'summarized per hour';
-    return $t('admin.network.wallboard.metrics_agg_hint.daily') || 'summarized per day';
+    return bucketHintValue(bucket, {
+      raw: $t('admin.network.wallboard.metrics_agg_hint.detail') || 'without summarization',
+      hour: $t('admin.network.wallboard.metrics_agg_hint.hourly') || 'summarized per hour',
+      day: $t('admin.network.wallboard.metrics_agg_hint.daily') || 'summarized per day',
+    });
   }
 
   function exportMetricsCsv(
@@ -708,16 +727,10 @@ import {
       toast.error($t('admin.network.wallboard.metrics.export_empty') || 'No metrics data to export.');
       return;
     }
-    const csvRows = rows.map((r) => ({
-      timestamp: r.ts,
-      router: routerName,
-      interface: iface,
-      bucket,
-      rx_bps: r.rx_bps ?? 0,
-      tx_bps: r.tx_bps ?? 0,
-    }));
-    const filePrefix = `metrics-${iface || 'interface'}-${bucket}`;
-    exportCsvRows(csvRows, filePrefix);
+    exportCsvRows(
+      buildMetricsCsvRows(rows, iface, routerName, bucket),
+      metricsCsvFilePrefix(iface, bucket),
+    );
   }
 
   function openFullTab(tab: 'live' | 'metrics') {
@@ -743,71 +756,75 @@ import {
   }
 
   async function loadFullMetrics(idx: number, minLimit: number = 240) {
-    const s = slotsAll[idx];
-    if (!s) return;
+    const slot = slotsAll[idx];
+    const request = prepareFullMetricsRequest({
+      slot,
+      minLimit,
+      currentKey: fullMetricsKey,
+      currentRowsLength: fullMetricsRows.length,
+      currentLimit: fullMetricsLimit,
+      currentInFlightSig: fullMetricsInFlightSig,
+    });
+    if (!request || request.shouldSkip) return;
 
-    const key = `${s.routerId}:${s.iface}`;
-    const requestSig = `${key}:${minLimit}`;
-    if (
-      fullMetricsKey === key &&
-      fullMetricsRows.length > 0 &&
-      fullMetricsLimit >= minLimit
-    )
-      return;
-    if (fullMetricsInFlightSig === requestSig) return;
-
-    fullMetricsInFlightSig = requestSig;
-    fullMetricsKey = key;
+    fullMetricsInFlightSig = request.requestSig;
+    fullMetricsKey = request.key;
     fullMetricsLoading = true;
     fullMetricsError = null;
 
     try {
       const rows = await fetchInterfaceMetricsRows({
-        slot: { routerId: s.routerId, iface: s.iface },
+        slot,
         minLimit,
         fetchMetrics: (routerId, params) => api.mikrotik.routers.interfaceMetrics(routerId, params),
       });
 
-      if (fullMetricsKey !== key) return;
+      if (fullMetricsKey !== request.key) return;
       fullMetricsRows = rows;
       fullMetricsLimit = minLimit;
     } catch (e: any) {
-      if (fullMetricsKey !== key) return;
+      if (fullMetricsKey !== request.key) return;
       fullMetricsRows = [];
       fullMetricsError = e?.message || String(e);
     } finally {
-      if (fullMetricsInFlightSig === requestSig) fullMetricsInFlightSig = '';
-      if (fullMetricsKey === key) fullMetricsLoading = false;
+      if (fullMetricsInFlightSig === request.requestSig) fullMetricsInFlightSig = '';
+      if (fullMetricsKey === request.key) fullMetricsLoading = false;
     }
   }
 
   function openThreshold(idx: number) {
-    const s = slotsAll[idx];
-    if (!s) return;
-    thresholdIndex = idx;
-    const rx = thresholdInputFromBps(s.warn_below_rx_bps ?? null);
-    const tx = thresholdInputFromBps(s.warn_below_tx_bps ?? null);
-    thWarnRxUnit = rx.unit;
-    thWarnRxKbps = rx.value;
-    thWarnTxUnit = tx.unit;
-    thWarnTxKbps = tx.value;
+    const next = openThresholdState(slotsAll, idx);
+    if (!next) return;
+    thresholdIndex = next.thresholdIndex;
+    thWarnRxUnit = next.thWarnRxUnit;
+    thWarnRxKbps = next.thWarnRxKbps;
+    thWarnTxUnit = next.thWarnTxUnit;
+    thWarnTxKbps = next.thWarnTxKbps;
   }
 
   function closeThreshold() {
-    thresholdIndex = null;
+    const next = closeThresholdState();
+    thresholdIndex = next.thresholdIndex;
   }
 
   function updateSlotThreshold(idx: number, rxBps: number | null, txBps: number | null) {
-    slotsAll = updateSlotThresholdAt(slotsAll, idx, rxBps, txBps);
+    slotsAll = updateSlotThresholdState(slotsAll, idx, rxBps, txBps).slotsAll;
     persistConfig();
   }
 
   function saveThreshold() {
-    if (thresholdIndex == null) return;
-    const rxBps = thresholdBpsFromInput(thWarnRxKbps, thWarnRxUnit);
-    const txBps = thresholdBpsFromInput(thWarnTxKbps, thWarnTxUnit);
-    updateSlotThreshold(thresholdIndex, rxBps, txBps);
-    closeThreshold();
+    const next = saveThresholdState({
+      slots: slotsAll,
+      thresholdIndex,
+      thWarnRxKbps,
+      thWarnRxUnit,
+      thWarnTxKbps,
+      thWarnTxUnit,
+    });
+    if (!next) return;
+    slotsAll = next.slotsAll;
+    thresholdIndex = next.thresholdIndex;
+    persistConfig();
   }
 
   function setSlot(
@@ -817,14 +834,15 @@ import {
     warnBelowRxBps?: number | null,
     warnBelowTxBps?: number | null,
   ) {
-    slotsAll = setSlotAt(slotsAll, idx, routerId, iface, warnBelowRxBps, warnBelowTxBps);
-    pickerIndex = null;
-    pickerRouterId = null;
+    const next = setSlotState(slotsAll, idx, routerId, iface, warnBelowRxBps, warnBelowTxBps);
+    slotsAll = next.slotsAll;
+    pickerIndex = next.pickerIndex;
+    pickerRouterId = next.pickerRouterId;
     persistConfig();
   }
 
   function clearSlot(idx: number) {
-    slotsAll = clearSlotAt(slotsAll, idx);
+    slotsAll = clearSlotState(slotsAll, idx).slotsAll;
     persistConfig();
   }
 
@@ -832,8 +850,12 @@ import {
     if (ifaceCatalog[routerId]?.length) return;
     ifaceLoading[routerId] = true;
     try {
-      const snap = await api.mikrotik.routers.snapshot(routerId);
-      ifaceCatalog[routerId] = mapInterfaceCatalogFromSnapshot(snap);
+      const next = await loadInterfaceCatalog({
+        routerId,
+        ifaceCatalog,
+        fetchSnapshot: (id) => api.mikrotik.routers.snapshot(id),
+      });
+      ifaceCatalog = next.ifaceCatalog;
     } catch (e: any) {
       toast.error(e?.message || e);
     } finally {
@@ -842,7 +864,7 @@ import {
   }
 
   function persistConfig() {
-    persistWallboardLocalConfigValue(buildLocalWallboardConfigPayload({
+    persistLocalWallboardConfigState({
       layout,
       slotsAll,
       rotateMode,
@@ -851,11 +873,12 @@ import {
       statusFilter,
       pollMs,
       criticalSoundEnabled,
-    }));
+      persist: persistWallboardLocalConfigValue,
+    });
   }
 
   function loadConfig() {
-    applyLocalWallboardConfigState(loadWallboardLocalConfigValue(), {
+    loadLocalWallboardConfigState(loadWallboardLocalConfigValue, {
       setLayout: (v) => (layout = v),
       setRotateMode: (v) => (rotateMode = v),
       setRotateMs: (v) => (rotateMs = v),
@@ -867,15 +890,18 @@ import {
   }
 
   async function loadRemoteConfig() {
-    const conf = await loadWallboardRemoteConfigValue({
-      canUseTenantSettings,
-      getValue: (key) => api.settings.getValue(key),
-    });
-    applyRemoteWallboardConfigState(conf, {
+    await loadRemoteWallboardConfigState(
+      () =>
+        loadWallboardRemoteConfigValue({
+          canUseTenantSettings,
+          getValue: (key) => api.settings.getValue(key),
+        }),
+      {
       setLayout: (v) => (layout = v),
       setSlotsAll: (v) => (slotsAll = v),
       setRemoteLoaded: (v) => (remoteLoaded = v),
-    });
+      },
+    );
   }
 
   function schedulePersistRemote() {
@@ -889,9 +915,12 @@ import {
   async function refresh() {
     refreshing = true;
     try {
-      const list = (await api.mikrotik.routers.noc()) as any as NocRow[];
-      rows = list;
-      slotsAll = pruneSlotsByRouterIds(slotsAll, rows.map((r) => r.id));
+      const next = await refreshWallboardRows({
+        loadRouters: () => api.mikrotik.routers.noc() as Promise<NocRow[]>,
+        slots: slotsAll,
+      });
+      rows = next.rows;
+      slotsAll = next.slotsAll;
     } catch (e: any) {
       toast.error(e?.message || e);
     } finally {

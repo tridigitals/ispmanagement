@@ -78,3 +78,11 @@ export function setMetricsRangeState(next: MetricsRange, now: Date = new Date())
     shouldRefresh: next !== 'custom',
   };
 }
+
+export function clearMetricsZoomState() {
+  return {
+    metricsZoomFrom: null as number | null,
+    metricsZoomTo: null as number | null,
+    metricsPointIdx: null as number | null,
+  };
+}

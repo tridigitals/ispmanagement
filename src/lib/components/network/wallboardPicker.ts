@@ -14,6 +14,30 @@ type InterfaceLike = {
   disabled: boolean;
 };
 
+type PickerSlotLike = {
+  routerId: string;
+};
+
+export function openPickerState<T extends PickerSlotLike>(
+  slots: (T | null)[],
+  idx: number,
+) {
+  const current = slots[idx];
+  return {
+    pickerIndex: idx,
+    pickerRouterSearch: '',
+    pickerIfaceSearch: '',
+    pickerRouterId: current?.routerId ?? null,
+  };
+}
+
+export function closePickerState() {
+  return {
+    pickerIndex: null as number | null,
+    pickerRouterId: null as string | null,
+  };
+}
+
 export function filterPickerRouters(
   rows: RouterLike[],
   status: 'all' | 'offline' | 'online',

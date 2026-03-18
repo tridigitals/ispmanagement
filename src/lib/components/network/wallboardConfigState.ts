@@ -56,3 +56,39 @@ export function buildLocalWallboardConfigPayload(args: {
     criticalSoundEnabled: args.criticalSoundEnabled,
   };
 }
+
+export function persistLocalWallboardConfigState(
+  args: Parameters<typeof buildLocalWallboardConfigPayload>[0] & {
+    persist: (payload: ReturnType<typeof buildLocalWallboardConfigPayload>) => void;
+  },
+) {
+  args.persist(
+    buildLocalWallboardConfigPayload({
+      layout: args.layout,
+      slotsAll: args.slotsAll,
+      rotateMode: args.rotateMode,
+      rotateMs: args.rotateMs,
+      focusMode: args.focusMode,
+      statusFilter: args.statusFilter,
+      pollMs: args.pollMs,
+      criticalSoundEnabled: args.criticalSoundEnabled,
+    }),
+  );
+}
+
+export function loadLocalWallboardConfigState(
+  loadConfig: () => LocalWallboardConfig,
+  setters: WallboardConfigSetters,
+) {
+  applyLocalWallboardConfigState(loadConfig(), setters);
+}
+
+export async function loadRemoteWallboardConfigState(
+  loadConfig: () => Promise<{ layout?: LayoutPreset; slotsAll?: (WallboardSlot | null)[]; remoteLoaded: true }>,
+  setters: Pick<WallboardConfigSetters, 'setLayout' | 'setSlotsAll'> & {
+    setRemoteLoaded: (v: boolean) => void;
+  },
+) {
+  const conf = await loadConfig();
+  applyRemoteWallboardConfigState(conf, setters);
+}

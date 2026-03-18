@@ -3,6 +3,29 @@ export type WallboardMetricsSlotRef = {
   iface: string;
 };
 
+export function prepareFullMetricsRequest(args: {
+  slot: WallboardMetricsSlotRef | null;
+  minLimit: number;
+  currentKey: string;
+  currentRowsLength: number;
+  currentLimit: number;
+  currentInFlightSig: string;
+}) {
+  if (!args.slot) return null;
+
+  const key = `${args.slot.routerId}:${args.slot.iface}`;
+  const requestSig = `${key}:${args.minLimit}`;
+  const hasEnoughCachedRows =
+    args.currentKey === key && args.currentRowsLength > 0 && args.currentLimit >= args.minLimit;
+  const isDuplicateInFlight = args.currentInFlightSig === requestSig;
+
+  return {
+    key,
+    requestSig,
+    shouldSkip: hasEnoughCachedRows || isDuplicateInFlight,
+  };
+}
+
 export function extractMetricsRows(payload: any): any[] {
   return Array.isArray(payload)
     ? payload
