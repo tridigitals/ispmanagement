@@ -35,8 +35,8 @@ pub struct EmailOutboxItem {
 impl EmailOutboxItem {
     pub fn with_retry_visibility(mut self) -> Self {
         self.last_attempted_at = self.derive_last_attempted_at();
-        self.next_retry_at = self.derive_next_retry_at();
         self.retryable = self.derive_retryable();
+        self.next_retry_at = self.derive_next_retry_at();
         self.delivery_status_summary = self.derive_delivery_status_summary();
         self
     }
