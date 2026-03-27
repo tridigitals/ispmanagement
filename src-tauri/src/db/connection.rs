@@ -1659,25 +1659,15 @@ pub async fn seed_plans(pool: &DbPool) -> Result<(), sqlx::Error> {
 
 #[cfg(all(test, feature = "postgres"))]
 mod tests {
-    //! Task 2.1 limitation rationale:
+    //! Task 2.1 characterization tests focus on observable behavior only.
     //!
-    //! These tests combine two layers of characterization:
-    //! 1) source-contract checks (`connection_source`) for bootstrap SQL contracts, and
-    //! 2) behavior-level checks that run only when a live Postgres URL is explicitly provided.
-    //!
-    //! This repository task scope intentionally avoids introducing a mandatory Postgres harness,
-    //! because that would expand beyond `connection.rs` and alter CI/runtime assumptions. Without
-    //! an always-on harness in this scope, source-contract assertions are the stable baseline for
-    //! verifying bootstrap intent, while opt-in live-DB tests provide best-effort observable
-    //! behavior validation when `CONNECTION_TEST_DATABASE_URL` is available.
+    //! - Fast tests validate deterministic URL/build/configuration behavior without a live database.
+    //! - Live Postgres behavior tests are explicit opt-in (`#[ignore]` + env-gated) to avoid
+    //!   false confidence during normal test runs.
     use super::*;
     use std::sync::{Mutex, OnceLock};
 
     const BEHAVIOR_DB_URL_ENV: &str = "CONNECTION_TEST_DATABASE_URL";
-
-    fn connection_source() -> &'static str {
-        include_str!("connection.rs")
-    }
 
     fn behavior_db_url() -> Option<String> {
         env::var(BEHAVIOR_DB_URL_ENV)
@@ -1691,44 +1681,35 @@ mod tests {
         LOCK.get_or_init(|| Mutex::new(())).lock().expect("env lock")
     }
 
-    struct EnvSnapshot {
-        database_url: Option<String>,
-        postgres_user: Option<String>,
-        postgres_password: Option<String>,
-        postgres_db: Option<String>,
-        postgres_host: Option<String>,
-        postgres_port: Option<String>,
-        postgres_sslmode: Option<String>,
+    const ENV_KEYS: [&str; 7] = [
+        "DATABASE_URL",
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "POSTGRES_DB",
+        "POSTGRES_HOST",
+        "POSTGRES_PORT",
+        "POSTGRES_SSLMODE",
+    ];
+
+    struct EnvRestoreGuard {
+        snapshot: Vec<(&'static str, Option<String>)>,
     }
 
-    impl EnvSnapshot {
-        fn capture() -> Self {
-            Self {
-                database_url: env::var("DATABASE_URL").ok(),
-                postgres_user: env::var("POSTGRES_USER").ok(),
-                postgres_password: env::var("POSTGRES_PASSWORD").ok(),
-                postgres_db: env::var("POSTGRES_DB").ok(),
-                postgres_host: env::var("POSTGRES_HOST").ok(),
-                postgres_port: env::var("POSTGRES_PORT").ok(),
-                postgres_sslmode: env::var("POSTGRES_SSLMODE").ok(),
-            }
+    impl EnvRestoreGuard {
+        fn capture(keys: &[&'static str]) -> Self {
+            let snapshot = keys.iter().map(|&k| (k, env::var(k).ok())).collect();
+            Self { snapshot }
         }
+    }
 
-        fn restore(self) {
-            fn set_or_remove(key: &str, value: Option<String>) {
+    impl Drop for EnvRestoreGuard {
+        fn drop(&mut self) {
+            for (key, value) in &self.snapshot {
                 match value {
                     Some(v) => env::set_var(key, v),
                     None => env::remove_var(key),
                 }
             }
-
-            set_or_remove("DATABASE_URL", self.database_url);
-            set_or_remove("POSTGRES_USER", self.postgres_user);
-            set_or_remove("POSTGRES_PASSWORD", self.postgres_password);
-            set_or_remove("POSTGRES_DB", self.postgres_db);
-            set_or_remove("POSTGRES_HOST", self.postgres_host);
-            set_or_remove("POSTGRES_PORT", self.postgres_port);
-            set_or_remove("POSTGRES_SSLMODE", self.postgres_sslmode);
         }
     }
 
@@ -1743,7 +1724,7 @@ mod tests {
     #[test]
     fn build_postgres_url_from_env_uses_defaults_and_percent_encoding() {
         let _guard = env_lock();
-        let snapshot = EnvSnapshot::capture();
+        let _env_restore = EnvRestoreGuard::capture(&ENV_KEYS);
 
         env::remove_var("DATABASE_URL");
         env::set_var("POSTGRES_USER", "alice name");
@@ -1760,13 +1741,12 @@ mod tests {
             "postgres://alice%20name:p%40ss%2Fword@localhost:5432/main%20db"
         );
 
-        snapshot.restore();
     }
 
     #[test]
     fn build_postgres_url_from_env_adds_trimmed_sslmode_when_present() {
         let _guard = env_lock();
-        let snapshot = EnvSnapshot::capture();
+        let _env_restore = EnvRestoreGuard::capture(&ENV_KEYS);
 
         env::remove_var("DATABASE_URL");
         env::set_var("POSTGRES_USER", "user");
@@ -1783,13 +1763,12 @@ mod tests {
             "postgres://user:pass@db.internal:5433/app?sslmode=require%20mode"
         );
 
-        snapshot.restore();
     }
 
     #[tokio::test]
     async fn init_db_returns_configuration_error_when_database_url_and_postgres_env_absent() {
         let _guard = env_lock();
-        let snapshot = EnvSnapshot::capture();
+        let _env_restore = EnvRestoreGuard::capture(&ENV_KEYS);
 
         env::remove_var("DATABASE_URL");
         env::remove_var("POSTGRES_USER");
@@ -1809,42 +1788,12 @@ mod tests {
             other => panic!("expected configuration error, got: {other}"),
         }
 
-        snapshot.restore();
-    }
-    #[test]
-    fn seed_defaults_contract_keeps_global_setting_insert_idempotent() {
-        let source = connection_source();
-
-        assert!(
-            source.contains("pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error>"),
-            "seed_defaults definition changed unexpectedly"
-        );
-        assert!(
-            source.contains("ON CONFLICT (key) WHERE tenant_id IS NULL DO NOTHING"),
-            "seed_defaults must preserve idempotent insert contract for global settings"
-        );
-    }
-
-    #[test]
-    fn seed_defaults_contract_seeds_app_name_from_env_with_fallback() {
-        let source = connection_source();
-
-        assert!(
-            source.contains(
-                "let app_name = env::var(\"APP_NAME\").unwrap_or_else(|_| \"SaaS Boilerplate\".to_string());"
-            ),
-            "seed_defaults must keep APP_NAME override contract"
-        );
-        assert!(
-            source.contains("(\"app_name\", app_name.as_str(), \"Application name\")"),
-            "seed_defaults must seed app_name setting"
-        );
     }
 
     #[tokio::test]
     async fn init_db_with_database_url_does_not_require_postgres_component_env() {
         let _guard = env_lock();
-        let snapshot = EnvSnapshot::capture();
+        let _env_restore = EnvRestoreGuard::capture(&ENV_KEYS);
 
         env::set_var("DATABASE_URL", "postgres://postgres:postgres@127.0.0.1:1/test");
         env::remove_var("POSTGRES_USER");
@@ -1864,9 +1813,10 @@ mod tests {
             );
         }
 
-        snapshot.restore();
     }
+
     #[tokio::test]
+    #[ignore = "requires explicit live Postgres opt-in via CONNECTION_TEST_DATABASE_URL"]
     async fn seed_defaults_idempotence_observable_with_opt_in_live_postgres() -> Result<(), sqlx::Error>
     {
         let Some(database_url) = behavior_db_url() else {
@@ -1904,6 +1854,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires explicit live Postgres opt-in via CONNECTION_TEST_DATABASE_URL"]
     async fn init_db_success_path_observable_with_opt_in_live_postgres() -> Result<(), sqlx::Error> {
         let Some(database_url) = behavior_db_url() else {
             eprintln!(
@@ -1914,7 +1865,7 @@ mod tests {
         };
 
         let _guard = env_lock();
-        let snapshot = EnvSnapshot::capture();
+        let _env_restore = EnvRestoreGuard::capture(&ENV_KEYS);
 
         env::set_var("DATABASE_URL", &database_url);
         env::remove_var("POSTGRES_USER");
@@ -1924,10 +1875,7 @@ mod tests {
         env::remove_var("POSTGRES_PORT");
         env::remove_var("POSTGRES_SSLMODE");
 
-        let init_result = init_db(PathBuf::from(".")).await;
-        snapshot.restore();
-
-        let pool = init_result?;
+        let pool = init_db(PathBuf::from(".")).await?;
         let app_name_exists: bool = sqlx::query_scalar(
             "SELECT EXISTS(SELECT 1 FROM settings WHERE tenant_id IS NULL AND key = 'app_name')",
         )
