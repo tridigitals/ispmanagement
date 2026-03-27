@@ -15,6 +15,9 @@ use sha2::{Digest, Sha512};
 use std::collections::HashSet;
 use uuid::Uuid;
 
+use crate::services::subscription_lifecycle::{
+    resolve_activation_status, SubscriptionLifecycleStatus,
+};
 use crate::services::{NotificationService, PppoeService};
 
 const CUSTOMER_PACKAGE_INVOICE_PREFIX: &str = "pkgsub:";
@@ -23,6 +26,27 @@ const BILLING_AUTO_SUSPEND_GRACE_DAYS_KEY: &str = "billing_auto_suspend_grace_da
 const BILLING_AUTO_RESUME_ON_PAYMENT_KEY: &str = "billing_auto_resume_on_payment";
 const BILLING_REMINDER_ENABLED_KEY: &str = "billing_reminder_enabled";
 const BILLING_REMINDER_SCHEDULE_KEY: &str = "billing_reminder_schedule";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MidtransTransitionDecision {
+    Apply,
+    SkipDuplicate,
+    SkipDowngrade,
+    SkipPendingAfterFailed,
+}
+
+fn decide_midtrans_transition(current_status: &str, incoming_status: &str) -> MidtransTransitionDecision {
+    if current_status == incoming_status {
+        return MidtransTransitionDecision::SkipDuplicate;
+    }
+    if current_status == "paid" && incoming_status != "paid" {
+        return MidtransTransitionDecision::SkipDowngrade;
+    }
+    if current_status == "failed" && incoming_status == "pending" {
+        return MidtransTransitionDecision::SkipPendingAfterFailed;
+    }
+    MidtransTransitionDecision::Apply
+}
 
 fn is_customer_package_invoice_external_id(external_id: Option<&str>) -> bool {
     external_id
@@ -79,30 +103,6 @@ fn filter_installation_request_user_ids(rows: Vec<(String, Option<String>)>) -> 
     set.into_iter().collect()
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum PostPaidSubscriptionAction {
-    QueueInstallation,
-    ResumeIfSuspended,
-    SkipCancelled,
-}
-
-fn resolve_post_paid_subscription_action(
-    has_previous_paid: bool,
-    current_status: &str,
-    installation_completed: bool,
-) -> PostPaidSubscriptionAction {
-    if current_status == "cancelled" {
-        return PostPaidSubscriptionAction::SkipCancelled;
-    }
-
-    if !has_previous_paid {
-        if installation_completed {
-            return PostPaidSubscriptionAction::ResumeIfSuspended;
-        }
-        return PostPaidSubscriptionAction::QueueInstallation;
-    }
-    PostPaidSubscriptionAction::ResumeIfSuspended
-}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct BulkGenerateInvoicesResult {
@@ -1869,7 +1869,7 @@ impl PaymentService {
         // 5. Update Local Status
         // Only update if it changed
         if payment_status != invoice.status {
-            self.process_midtrans_notification(&invoice.invoice_number, payment_status)
+            self.process_midtrans_notification(&invoice.invoice_number, payment_status, None, None)
                 .await?;
         }
 
@@ -1993,8 +1993,16 @@ impl PaymentService {
         &self,
         invoice_number: &str,
         status: &str,
+        request_id: Option<&str>,
+        callback_ref: Option<&str>,
     ) -> AppResult<()> {
-        // 1. Get Invoice
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        // 1. Get Invoice inside transaction boundary.
         #[cfg(feature = "postgres")]
         let invoice: Option<Invoice> = sqlx::query_as::<_, Invoice>(
             r#"
@@ -2004,19 +2012,22 @@ impl PaymentService {
                 currency_code, base_currency_code,
                 fx_rate::FLOAT8 as fx_rate, fx_source, fx_fetched_at,
                 status, description, due_date, paid_at, payment_method, proof_attachment, external_id, merchant_id, rejection_reason, created_at, updated_at
-            FROM invoices WHERE invoice_number = $1
-            "#
+            FROM invoices
+            WHERE invoice_number = $1
+            FOR UPDATE
+            "#,
         )
         .bind(invoice_number)
-        .fetch_optional(&self.pool).await.map_err(|e| AppError::Internal(e.to_string()))?;
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
 
         #[cfg(feature = "sqlite")]
-        let invoice: Option<Invoice> =
-            sqlx::query_as("SELECT * FROM invoices WHERE invoice_number = ?")
-                .bind(invoice_number)
-                .fetch_optional(&self.pool)
-                .await
-                .map_err(|e| AppError::Internal(e.to_string()))?;
+        let invoice: Option<Invoice> = sqlx::query_as("SELECT * FROM invoices WHERE invoice_number = ?")
+            .bind(invoice_number)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
         let invoice = match invoice {
             Some(i) => i,
@@ -2029,28 +2040,75 @@ impl PaymentService {
         };
 
         let current_status = invoice.status.as_str();
-        if current_status == status {
-            println!(
-                "DEBUG: Duplicate Midtrans notification ignored. Invoice={}, status={}",
-                invoice.invoice_number, status
-            );
-            return Ok(());
-        }
-
-        if current_status == "paid" && status != "paid" {
-            println!(
-                "DEBUG: Ignoring Midtrans status downgrade. Invoice={}, current={}, incoming={}",
-                invoice.invoice_number, current_status, status
-            );
-            return Ok(());
-        }
-
-        if current_status == "failed" && status == "pending" {
-            println!(
-                "DEBUG: Ignoring Midtrans pending after failed. Invoice={}",
-                invoice.invoice_number
-            );
-            return Ok(());
+        match decide_midtrans_transition(current_status, status) {
+            MidtransTransitionDecision::Apply => {}
+            MidtransTransitionDecision::SkipDuplicate => {
+                let _ = tx.commit().await;
+                let reason = format!(
+                    "Duplicate Midtrans callback ignored (request_id={}, callback_ref={})",
+                    request_id.unwrap_or("-"),
+                    callback_ref.unwrap_or("-")
+                );
+                let _ = self
+                    .insert_billing_collection_log(
+                        &invoice.tenant_id,
+                        &invoice.id,
+                        Self::parse_customer_subscription_id(invoice.external_id.as_deref())
+                            .as_deref(),
+                        "payment_callback",
+                        "skipped",
+                        Some(&reason),
+                        "system",
+                        None,
+                    )
+                    .await;
+                return Ok(());
+            }
+            MidtransTransitionDecision::SkipDowngrade => {
+                let _ = tx.commit().await;
+                let reason = format!(
+                    "Midtrans status downgrade ignored (current={}, incoming={}, request_id={})",
+                    current_status,
+                    status,
+                    request_id.unwrap_or("-")
+                );
+                let _ = self
+                    .insert_billing_collection_log(
+                        &invoice.tenant_id,
+                        &invoice.id,
+                        Self::parse_customer_subscription_id(invoice.external_id.as_deref())
+                            .as_deref(),
+                        "payment_callback",
+                        "skipped",
+                        Some(&reason),
+                        "system",
+                        None,
+                    )
+                    .await;
+                return Ok(());
+            }
+            MidtransTransitionDecision::SkipPendingAfterFailed => {
+                let _ = tx.commit().await;
+                let reason = format!(
+                    "Pending after failed ignored (request_id={}, callback_ref={})",
+                    request_id.unwrap_or("-"),
+                    callback_ref.unwrap_or("-")
+                );
+                let _ = self
+                    .insert_billing_collection_log(
+                        &invoice.tenant_id,
+                        &invoice.id,
+                        Self::parse_customer_subscription_id(invoice.external_id.as_deref())
+                            .as_deref(),
+                        "payment_callback",
+                        "skipped",
+                        Some(&reason),
+                        "system",
+                        None,
+                    )
+                    .await;
+                return Ok(());
+            }
         }
 
         // 2. Update Status
@@ -2058,28 +2116,88 @@ impl PaymentService {
         let paid_at = if status == "paid" { Some(now) } else { None };
 
         #[cfg(feature = "postgres")]
-        sqlx::query("UPDATE invoices SET status = $1, paid_at = $2, rejection_reason = CASE WHEN $1 = 'paid' THEN NULL ELSE rejection_reason END, updated_at = $3 WHERE id = $4")
+        let rows = sqlx::query("UPDATE invoices SET status = $1, paid_at = $2, rejection_reason = CASE WHEN $1 = 'paid' THEN NULL ELSE rejection_reason END, updated_at = $3 WHERE id = $4 AND status = $5")
             .bind(status)
             .bind(paid_at)
             .bind(now)
             .bind(&invoice.id)
-            .execute(&self.pool)
+            .bind(current_status)
+            .execute(&mut *tx)
             .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .rows_affected();
 
         #[cfg(feature = "sqlite")]
-        {
+        let rows = {
             let paid_str = paid_at.map(|t| t.to_rfc3339());
-            sqlx::query("UPDATE invoices SET status = ?, paid_at = ?, rejection_reason = CASE WHEN ? = 'paid' THEN NULL ELSE rejection_reason END, updated_at = ? WHERE id = ?")
+            sqlx::query("UPDATE invoices SET status = ?, paid_at = ?, rejection_reason = CASE WHEN ? = 'paid' THEN NULL ELSE rejection_reason END, updated_at = ? WHERE id = ? AND status = ?")
                 .bind(status)
                 .bind(paid_str)
                 .bind(status)
                 .bind(now.to_rfc3339())
                 .bind(&invoice.id)
-                .execute(&self.pool)
+                .bind(current_status)
+                .execute(&mut *tx)
                 .await
-                .map_err(|e| AppError::Internal(e.to_string()))?;
+                .map_err(|e| AppError::Internal(e.to_string()))?
+                .rows_affected()
+        };
+
+        tx.commit()
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        if rows == 0 {
+            let reason = format!(
+                "Callback skipped by conditional update (invoice={}, from={}, to={}, request_id={}, callback_ref={})",
+                invoice.invoice_number,
+                current_status,
+                status,
+                request_id.unwrap_or("-"),
+                callback_ref.unwrap_or("-")
+            );
+            let _ = self
+                .insert_billing_collection_log(
+                    &invoice.tenant_id,
+                    &invoice.id,
+                    Self::parse_customer_subscription_id(invoice.external_id.as_deref()).as_deref(),
+                    "payment_callback",
+                    "skipped",
+                    Some(&reason),
+                    "system",
+                    None,
+                )
+                .await;
+            return Ok(());
         }
+
+        let callback_reason = format!(
+            "Processed Midtrans callback (status={}, request_id={}, callback_ref={})",
+            status,
+            request_id.unwrap_or("-"),
+            callback_ref.unwrap_or("-")
+        );
+        let _ = self
+            .insert_billing_collection_log(
+                &invoice.tenant_id,
+                &invoice.id,
+                Self::parse_customer_subscription_id(invoice.external_id.as_deref()).as_deref(),
+                "payment_callback",
+                "success",
+                Some(&callback_reason),
+                "system",
+                None,
+            )
+            .await;
+
+        tracing::info!(
+            request_id = request_id.unwrap_or("-"),
+            callback_ref = callback_ref.unwrap_or("-"),
+            invoice_number = invoice.invoice_number,
+            previous_status = current_status,
+            new_status = status,
+            "Midtrans callback state transition committed"
+        );
 
         // 3. Activate Subscription if Paid
         if status == "paid" {
@@ -2634,7 +2752,7 @@ impl PaymentService {
 
         // 2. Reuse process_midtrans_notification logic
         // process_midtrans_notification(&self, invoice: &Invoice, status: &str)
-        self.process_midtrans_notification(&invoice.invoice_number, status)
+        self.process_midtrans_notification(&invoice.invoice_number, status, None, None)
             .await?;
 
         #[cfg(feature = "postgres")]
@@ -2757,14 +2875,6 @@ impl PaymentService {
             return Ok(());
         };
 
-        let has_previous_paid = self
-            .has_previous_paid_customer_package_invoice(
-                &invoice.tenant_id,
-                &subscription_id,
-                &invoice.id,
-            )
-            .await?;
-
         let current_status = self
             .get_customer_subscription_status(&invoice.tenant_id, &subscription_id)
             .await?;
@@ -2775,76 +2885,62 @@ impl PaymentService {
             ));
         };
 
+        let current = SubscriptionLifecycleStatus::parse(&current_status)
+            .map_err(|e| AppError::Validation(e.to_string()))?;
+        if current == SubscriptionLifecycleStatus::Cancelled {
+            let _ = self
+                .insert_billing_collection_log(
+                    &invoice.tenant_id,
+                    &invoice.id,
+                    Some(&subscription_id),
+                    "installation",
+                    "skipped",
+                    Some("Subscription is cancelled"),
+                    "system",
+                    None,
+                )
+                .await;
+            return Ok(());
+        }
+
         let installation_completed = self
             .has_completed_installation_work_order(&invoice.tenant_id, &subscription_id)
             .await?;
 
-        tracing::info!(
-            "customer paid flow: tenant={}, invoice={}, subscription={}, status={}, has_previous_paid={}, installation_completed={}",
-            invoice.tenant_id,
-            invoice.invoice_number,
-            subscription_id,
-            current_status,
-            has_previous_paid,
-            installation_completed
-        );
+        let resolved = self
+            .resolve_subscription_after_activation_event(
+                &invoice.tenant_id,
+                &subscription_id,
+                true,
+                installation_completed,
+            )
+            .await?;
 
-        match resolve_post_paid_subscription_action(
-            has_previous_paid,
-            &current_status,
-            installation_completed,
-        ) {
-            PostPaidSubscriptionAction::SkipCancelled => {
-                tracing::info!(
-                    "customer paid flow: skip installation because subscription is cancelled (tenant={}, invoice={}, subscription={})",
-                    invoice.tenant_id,
-                    invoice.invoice_number,
-                    subscription_id
-                );
-                let _ = self
-                    .insert_billing_collection_log(
-                        &invoice.tenant_id,
-                        &invoice.id,
-                        Some(&subscription_id),
-                        "installation",
-                        "skipped",
-                        Some("Subscription is cancelled"),
-                        "system",
-                        None,
-                    )
-                    .await;
-                return Ok(());
-            }
-            PostPaidSubscriptionAction::QueueInstallation => {
-                // Installation queueing must happen for first successful payment,
-                // independent from auto-resume setting.
-                self.set_customer_subscription_status(
-                    &invoice.tenant_id,
-                    &subscription_id,
-                    "pending_installation",
-                )
-                .await?;
-                let (_work_order_id, work_order_created) = self
+        let should_disable_pppoe = resolved != SubscriptionLifecycleStatus::Active;
+        let _ = self
+            .set_subscription_pppoe_disabled_state(
+                &invoice.tenant_id,
+                &subscription_id,
+                should_disable_pppoe,
+            )
+            .await;
+
+        match resolved {
+            SubscriptionLifecycleStatus::PendingInstallation => {
+                let (work_order_id, work_order_created) = self
                     .ensure_installation_work_order(
                         &invoice.tenant_id,
                         &subscription_id,
                         &invoice.id,
                     )
                     .await?;
-                tracing::info!(
-                    "customer paid flow: created/ensured installation work order (tenant={}, invoice={}, subscription={}, work_order={})",
-                    invoice.tenant_id,
-                    invoice.invoice_number,
-                    subscription_id,
-                    _work_order_id
-                );
 
                 match self
                     .upsert_customer_service_assignment_from_paid_invoice(
                         &invoice.tenant_id,
                         &subscription_id,
                         &invoice.id,
-                        &_work_order_id,
+                        &work_order_id,
                     )
                     .await
                 {
@@ -2863,13 +2959,6 @@ impl PaymentService {
                             .await;
                     }
                     Err(e) => {
-                        tracing::warn!(
-                            "failed to store customer assignment: tenant={}, invoice={}, subscription={}, error={}",
-                            invoice.tenant_id,
-                            invoice.id,
-                            subscription_id,
-                            e
-                        );
                         let _ = self
                             .insert_billing_collection_log(
                                 &invoice.tenant_id,
@@ -2892,7 +2981,7 @@ impl PaymentService {
                         Some(&subscription_id),
                         "installation",
                         "success",
-                        Some("First paid invoice: subscription moved to pending_installation"),
+                        Some("Payment confirmed: subscription pending installation"),
                         "system",
                         None,
                     )
@@ -2909,116 +2998,36 @@ impl PaymentService {
                         .notify_new_installation_request(
                             &invoice.tenant_id,
                             &invoice.invoice_number,
-                            &_work_order_id,
+                            &work_order_id,
                         )
                         .await;
                 }
-
-                return Ok(());
             }
-            PostPaidSubscriptionAction::ResumeIfSuspended => {}
-        }
-
-        let force_activation_after_install = !has_previous_paid && installation_completed;
-        let settings = self
-            .resolve_billing_collection_settings(Some(&invoice.tenant_id))
-            .await;
-        if !force_activation_after_install && !settings.auto_resume_on_payment {
-            let _ = self
-                .insert_billing_collection_log(
-                    &invoice.tenant_id,
-                    &invoice.id,
-                    Some(&subscription_id),
-                    "resume",
-                    "skipped",
-                    Some("Auto resume disabled by setting"),
-                    "system",
-                    None,
-                )
-                .await;
-            return Ok(());
-        }
-
-        let resumed_from_suspended = self
-            .update_customer_subscription_status_if(
-                &invoice.tenant_id,
-                &subscription_id,
-                "suspended",
-                "active",
-            )
-            .await?;
-        let resumed_from_pending_installation = if resumed_from_suspended {
-            false
-        } else {
-            self.update_customer_subscription_status_if(
-                &invoice.tenant_id,
-                &subscription_id,
-                "pending_installation",
-                "active",
-            )
-            .await?
-        };
-
-        if resumed_from_suspended || resumed_from_pending_installation {
-            let _ = self
-                .set_subscription_pppoe_disabled_state(&invoice.tenant_id, &subscription_id, false)
-                .await;
-            let resume_reason = if resumed_from_pending_installation {
-                "Subscription activated after completed installation and payment"
-            } else {
-                "Subscription resumed because invoice is paid"
-            };
-
-            tracing::info!(
-                "customer paid flow: activated subscription (tenant={}, invoice={}, subscription={}, from={})",
-                invoice.tenant_id,
-                invoice.invoice_number,
-                subscription_id,
-                if resumed_from_pending_installation {
-                    "pending_installation"
-                } else {
-                    "suspended"
-                }
-            );
-            let _ = self
-                .insert_billing_collection_log(
-                    &invoice.tenant_id,
-                    &invoice.id,
-                    Some(&subscription_id),
-                    "resume",
-                    "success",
-                    Some(resume_reason),
-                    "system",
-                    None,
-                )
-                .await;
-            let _ = self
-                .notify_subscription_resumed(
-                    &invoice.tenant_id,
-                    &subscription_id,
-                    &invoice.id,
-                    &invoice.invoice_number,
-                )
-                .await;
-        } else {
-            tracing::info!(
-                "customer paid flow: no activation performed because subscription not suspended/pending_installation (tenant={}, invoice={}, subscription={})",
-                invoice.tenant_id,
-                invoice.invoice_number,
-                subscription_id
-            );
-            let _ = self
-                .insert_billing_collection_log(
-                    &invoice.tenant_id,
-                    &invoice.id,
-                    Some(&subscription_id),
-                    "resume",
-                    "skipped",
-                    Some("Subscription is not suspended or pending_installation"),
-                    "system",
-                    None,
-                )
-                .await;
+            SubscriptionLifecycleStatus::Active => {
+                let _ = self
+                    .insert_billing_collection_log(
+                        &invoice.tenant_id,
+                        &invoice.id,
+                        Some(&subscription_id),
+                        "resume",
+                        "success",
+                        Some("Subscription activated after payment + completed installation"),
+                        "system",
+                        None,
+                    )
+                    .await;
+                let _ = self
+                    .notify_subscription_resumed(
+                        &invoice.tenant_id,
+                        &subscription_id,
+                        &invoice.id,
+                        &invoice.invoice_number,
+                    )
+                    .await;
+            }
+            SubscriptionLifecycleStatus::InstallationDoneAwaitingPayment
+            | SubscriptionLifecycleStatus::Suspended
+            | SubscriptionLifecycleStatus::Cancelled => {}
         }
 
         Ok(())
@@ -3519,6 +3528,46 @@ impl PaymentService {
         Ok(exists)
     }
 
+    async fn resolve_subscription_after_activation_event(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        payment_paid: bool,
+        installation_completed: bool,
+    ) -> AppResult<SubscriptionLifecycleStatus> {
+        let current_status = self
+            .get_customer_subscription_status(tenant_id, subscription_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Customer subscription not found".to_string()))?;
+
+        let current = SubscriptionLifecycleStatus::parse(&current_status)
+            .map_err(|e| AppError::Validation(e.to_string()))?;
+        if current == SubscriptionLifecycleStatus::Cancelled {
+            return Ok(current);
+        }
+
+        let target = resolve_activation_status(current, installation_completed, payment_paid)
+            .map_err(|e| AppError::Validation(e.to_string()))?;
+
+        if target != current {
+            let updated = self
+                .set_customer_subscription_status(
+                    tenant_id,
+                    subscription_id,
+                    current.as_str(),
+                    target.as_str(),
+                )
+                .await?;
+            if !updated {
+                return Err(AppError::Validation(
+                    "Subscription status changed concurrently; retry activation flow".to_string(),
+                ));
+            }
+        }
+
+        Ok(target)
+    }
+
     async fn update_customer_subscription_status_if(
         &self,
         tenant_id: &str,
@@ -3564,13 +3613,14 @@ impl PaymentService {
             SET status = $1,
                 starts_at = CASE WHEN $1 = 'active' THEN COALESCE(starts_at, $2) ELSE starts_at END,
                 updated_at = $2
-            WHERE tenant_id = $3 AND id = $4
+            WHERE tenant_id = $3 AND id = $4 AND status = $5
             "#,
         )
         .bind(new_status)
         .bind(now)
         .bind(tenant_id)
         .bind(subscription_id)
+        .bind(expected_status)
         .execute(&self.pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?
@@ -3583,7 +3633,7 @@ impl PaymentService {
             SET status = ?,
                 starts_at = CASE WHEN ? = 'active' THEN COALESCE(starts_at, ?) ELSE starts_at END,
                 updated_at = ?
-            WHERE tenant_id = ? AND id = ?
+            WHERE tenant_id = ? AND id = ? AND status = ?
             "#,
         )
         .bind(new_status)
@@ -3592,6 +3642,7 @@ impl PaymentService {
         .bind(now.to_rfc3339())
         .bind(tenant_id)
         .bind(subscription_id)
+        .bind(expected_status)
         .execute(&self.pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?
@@ -3676,17 +3727,19 @@ impl PaymentService {
         &self,
         tenant_id: &str,
         subscription_id: &str,
+        expected_status: &str,
         new_status: &str,
     ) -> AppResult<bool> {
         let now = Utc::now();
         #[cfg(feature = "postgres")]
         let rows = sqlx::query(
-            "UPDATE customer_subscriptions SET status = $1, updated_at = $2 WHERE tenant_id = $3 AND id = $4",
+            "UPDATE customer_subscriptions SET status = $1, updated_at = $2 WHERE tenant_id = $3 AND id = $4 AND status = $5",
         )
         .bind(new_status)
         .bind(now)
         .bind(tenant_id)
         .bind(subscription_id)
+        .bind(expected_status)
         .execute(&self.pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?
@@ -3694,12 +3747,13 @@ impl PaymentService {
 
         #[cfg(feature = "sqlite")]
         let rows = sqlx::query(
-            "UPDATE customer_subscriptions SET status = ?, updated_at = ? WHERE tenant_id = ? AND id = ?",
+            "UPDATE customer_subscriptions SET status = ?, updated_at = ? WHERE tenant_id = ? AND id = ? AND status = ?",
         )
         .bind(new_status)
         .bind(now.to_rfc3339())
         .bind(tenant_id)
         .bind(subscription_id)
+        .bind(expected_status)
         .execute(&self.pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?
@@ -4677,9 +4731,12 @@ impl PaymentService {
 #[cfg(test)]
 mod tests {
     use super::{
-        filter_installation_request_user_ids, filter_owner_admin_user_ids,
-        is_customer_package_invoice_external_id, is_owner_admin_or_technician_role,
-        is_owner_or_admin_role, resolve_post_paid_subscription_action, PostPaidSubscriptionAction,
+        decide_midtrans_transition, filter_installation_request_user_ids,
+        filter_owner_admin_user_ids, is_customer_package_invoice_external_id,
+        is_owner_admin_or_technician_role, is_owner_or_admin_role, MidtransTransitionDecision,
+    };
+    use crate::services::subscription_lifecycle::{
+        resolve_activation_status, SubscriptionLifecycleStatus,
     };
 
     #[test]
@@ -4764,32 +4821,58 @@ mod tests {
     }
 
     #[test]
-    fn first_paid_subscription_is_queued_for_installation() {
-        let action = resolve_post_paid_subscription_action(false, "active", false);
-        assert_eq!(action, PostPaidSubscriptionAction::QueueInstallation);
+    fn activation_resolution_paid_before_install_keeps_pending_installation() {
+        let status = resolve_activation_status(
+            SubscriptionLifecycleStatus::PendingInstallation,
+            false,
+            true,
+        )
+        .expect("paid-before-install should remain pending_installation");
+        assert_eq!(status, SubscriptionLifecycleStatus::PendingInstallation);
     }
 
     #[test]
-    fn first_paid_pending_installation_is_queued_for_installation() {
-        let action = resolve_post_paid_subscription_action(false, "pending_installation", false);
-        assert_eq!(action, PostPaidSubscriptionAction::QueueInstallation);
+    fn activation_resolution_install_done_unpaid_waits_for_payment() {
+        let status = resolve_activation_status(
+            SubscriptionLifecycleStatus::PendingInstallation,
+            true,
+            false,
+        )
+        .expect("install-complete and unpaid should wait for payment");
+        assert_eq!(
+            status,
+            SubscriptionLifecycleStatus::InstallationDoneAwaitingPayment
+        );
     }
 
     #[test]
-    fn paid_overdue_subscription_uses_resume_flow() {
-        let action = resolve_post_paid_subscription_action(true, "suspended", false);
-        assert_eq!(action, PostPaidSubscriptionAction::ResumeIfSuspended);
+    fn activation_resolution_install_done_and_paid_is_active() {
+        let status = resolve_activation_status(
+            SubscriptionLifecycleStatus::PendingInstallation,
+            true,
+            true,
+        )
+        .expect("install-complete and paid should become active");
+        assert_eq!(status, SubscriptionLifecycleStatus::Active);
     }
 
     #[test]
-    fn first_paid_cancelled_subscription_skips_installation_flow() {
-        let action = resolve_post_paid_subscription_action(false, "cancelled", false);
-        assert_eq!(action, PostPaidSubscriptionAction::SkipCancelled);
-    }
-
-    #[test]
-    fn first_paid_after_completed_installation_uses_resume_flow() {
-        let action = resolve_post_paid_subscription_action(false, "suspended", true);
-        assert_eq!(action, PostPaidSubscriptionAction::ResumeIfSuspended);
+    fn midtrans_transition_decision_prevents_duplicate_or_downgrade_side_effects() {
+        assert_eq!(
+            decide_midtrans_transition("paid", "paid"),
+            MidtransTransitionDecision::SkipDuplicate
+        );
+        assert_eq!(
+            decide_midtrans_transition("paid", "pending"),
+            MidtransTransitionDecision::SkipDowngrade
+        );
+        assert_eq!(
+            decide_midtrans_transition("failed", "pending"),
+            MidtransTransitionDecision::SkipPendingAfterFailed
+        );
+        assert_eq!(
+            decide_midtrans_transition("pending", "paid"),
+            MidtransTransitionDecision::Apply
+        );
     }
 }

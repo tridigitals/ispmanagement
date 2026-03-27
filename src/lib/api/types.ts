@@ -308,7 +308,7 @@ export interface CustomerSubscription {
   billing_cycle: 'monthly' | 'yearly' | string;
   price: number;
   currency_code: string;
-  status: 'active' | 'pending_installation' | 'suspended' | 'cancelled' | string;
+  status: 'active' | 'pending_installation' | 'installation_done_awaiting_payment' | 'suspended' | 'cancelled' | string;
   starts_at: string | null;
   ends_at: string | null;
   notes: string | null;
@@ -332,6 +332,24 @@ export interface CustomerPortalSubscriptionStats {
   active: number;
   pending_installation: number;
   needs_attention: number;
+}
+
+
+export interface CustomerLifecycleStageMetric {
+  stage: string;
+  count: number;
+}
+
+export interface CustomerLifecycleAgingBucket {
+  bucket: string;
+  count: number;
+}
+
+export interface CustomerLifecycleObservability {
+  generated_at: string;
+  lifecycle_funnel: CustomerLifecycleStageMetric[];
+  work_order_funnel: CustomerLifecycleStageMetric[];
+  aging_buckets: CustomerLifecycleAgingBucket[];
 }
 
 export interface InstallationWorkOrderView {
@@ -590,6 +608,10 @@ export interface EmailOutboxItem {
   sent_at: string | null;
   created_at: string;
   updated_at: string;
+  last_attempted_at: string | null;
+  next_retry_at: string | null;
+  retryable: boolean;
+  delivery_status_summary: string;
 }
 
 export interface EmailOutboxStats {

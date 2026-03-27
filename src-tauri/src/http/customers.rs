@@ -1,20 +1,21 @@
 use crate::error::{AppError, AppResult};
 use crate::http::auth::extract_ip;
-use crate::http::AppState;
+use crate::http::{middleware::CorrelationId, AppState};
 use crate::models::{
     AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
     CreateCustomerRegistrationInviteRequest, CreateCustomerRequest,
     CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
-    CreateMyCustomerLocationRequest, Customer, CustomerLocation, CustomerPortalSubscriptionStats,
-    CustomerPortalUser, CustomerRegistrationInviteCreateResponse, CustomerRegistrationInvitePolicy,
-    CustomerRegistrationInviteSummary, CustomerRegistrationInviteView, CustomerSubscription,
-    CustomerSubscriptionView, InstallationWorkOrder, InstallationWorkOrderView, Invoice,
-    IspPackage, PaginatedResponse, PortalCheckoutSubscriptionRequest,
-    UpdateCustomerLocationRequest, UpdateCustomerRegistrationInvitePolicyRequest,
-    UpdateCustomerRequest, UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
+    CreateMyCustomerLocationRequest, Customer, CustomerLifecycleObservability, CustomerLocation,
+    CustomerPortalSubscriptionStats, CustomerPortalUser, CustomerRegistrationInviteCreateResponse,
+    CustomerRegistrationInvitePolicy, CustomerRegistrationInviteSummary,
+    CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionView,
+    InstallationWorkOrder, InstallationWorkOrderView, Invoice, IspPackage,
+    PaginatedResponse, PortalCheckoutSubscriptionRequest, UpdateCustomerLocationRequest,
+    UpdateCustomerRegistrationInvitePolicyRequest, UpdateCustomerRequest,
+    UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
 };
 use axum::{
-    extract::{ConnectInfo, Path, Query, State},
+    extract::{ConnectInfo, Extension, Path, Query, State},
     http::HeaderMap,
     routing::{delete, get, post},
     Json, Router,
@@ -43,6 +44,10 @@ pub fn router() -> Router<AppState> {
         .route(
             "/invites/{invite_id}",
             delete(revoke_customer_registration_invite),
+        )
+        .route(
+            "/observability/lifecycle",
+            get(get_lifecycle_observability),
         )
         .route(
             "/{id}",
@@ -140,6 +145,11 @@ struct ListSubscriptionQuery {
 }
 
 #[derive(Debug, Deserialize)]
+struct LifecycleObservabilityQuery {
+    customer_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
 struct ListMySubscriptionQuery {
     page: Option<u32>,
     per_page: Option<u32>,
@@ -191,6 +201,21 @@ async fn list_customers(
         )
         .await?;
     Ok(Json(resp))
+}
+
+
+// GET /api/customers/observability/lifecycle?customer_id=...
+async fn get_lifecycle_observability(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<LifecycleObservabilityQuery>,
+) -> AppResult<Json<CustomerLifecycleObservability>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    let metrics = state
+        .customer_service
+        .get_lifecycle_observability(&claims.sub, &tenant_id, q.customer_id.as_deref())
+        .await?;
+    Ok(Json(metrics))
 }
 
 // GET /api/customers/{id}
@@ -603,12 +628,14 @@ async fn get_my_subscription_stats(
 // POST /api/customers/portal/checkout
 async fn portal_checkout_subscription(
     State(state): State<AppState>,
+    Extension(correlation_id): Extension<CorrelationId>,
     headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(dto): Json<PortalCheckoutSubscriptionRequest>,
 ) -> AppResult<Json<PortalCheckoutResponse>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     let ip = extract_ip(&headers, addr);
+    tracing::info!(request_id = correlation_id.as_str(), customer_user_id = %claims.sub, "Portal checkout subscription request");
 
     let subscription = state
         .customer_service
@@ -629,12 +656,14 @@ async fn portal_checkout_subscription(
 // POST /api/customers/portal/order-request
 async fn portal_order_request_subscription(
     State(state): State<AppState>,
+    Extension(correlation_id): Extension<CorrelationId>,
     headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(dto): Json<PortalCheckoutSubscriptionRequest>,
 ) -> AppResult<Json<PortalOrderRequestResponse>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     let ip = extract_ip(&headers, addr);
+    tracing::info!(request_id = correlation_id.as_str(), customer_user_id = %claims.sub, "Portal order request subscription");
 
     let (subscription, work_order) = state
         .customer_service
@@ -680,6 +709,7 @@ async fn portal_get_installation_tracker(
 // POST /api/customers/portal/my-subscriptions/{subscription_id}/reopen-request
 async fn portal_reopen_order_request_subscription(
     State(state): State<AppState>,
+    Extension(correlation_id): Extension<CorrelationId>,
     headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(subscription_id): Path<String>,
@@ -687,6 +717,7 @@ async fn portal_reopen_order_request_subscription(
 ) -> AppResult<Json<PortalOrderRequestResponse>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     let ip = extract_ip(&headers, addr);
+    tracing::info!(request_id = correlation_id.as_str(), subscription_id = %subscription_id, customer_user_id = %claims.sub, "Portal reopen order request subscription");
 
     let (subscription, work_order) = state
         .customer_service
@@ -708,6 +739,7 @@ async fn portal_reopen_order_request_subscription(
 // POST /api/customers/portal/my-subscriptions/{subscription_id}/reschedule-request
 async fn portal_reschedule_order_request_subscription(
     State(state): State<AppState>,
+    Extension(correlation_id): Extension<CorrelationId>,
     headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(subscription_id): Path<String>,
@@ -715,6 +747,7 @@ async fn portal_reschedule_order_request_subscription(
 ) -> AppResult<Json<PortalOrderRequestResponse>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     let ip = extract_ip(&headers, addr);
+    tracing::info!(request_id = correlation_id.as_str(), subscription_id = %subscription_id, customer_user_id = %claims.sub, "Portal reschedule order request subscription");
 
     let (subscription, work_order) = state
         .customer_service

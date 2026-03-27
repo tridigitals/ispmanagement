@@ -185,7 +185,10 @@ async fn list_email_outbox(
             .build_query_as()
             .fetch_all(&state.auth_service.pool)
             .await
-            .map_err(AppError::Database)?;
+            .map_err(AppError::Database)?
+            .into_iter()
+            .map(EmailOutboxItem::with_retry_visibility)
+            .collect();
 
         (rows, total)
     };
@@ -252,7 +255,7 @@ async fn get_email_outbox(
         .await
         .map_err(AppError::Database)?;
 
-        let Some(item) = row else {
+        let Some(item) = row.map(EmailOutboxItem::with_retry_visibility) else {
             return Err(AppError::NotFound("Outbox item not found".to_string()));
         };
 

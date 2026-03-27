@@ -2,11 +2,12 @@ use crate::models::{
     AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
     CreateCustomerRegistrationInviteRequest, CreateCustomerRequest,
     CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
-    CreateMyCustomerLocationRequest, Customer, CustomerLocation, CustomerPortalSubscriptionStats,
-    CustomerPortalUser, CustomerRegistrationInviteCreateResponse, CustomerRegistrationInvitePolicy,
-    CustomerRegistrationInviteSummary, CustomerRegistrationInviteView, CustomerSubscription,
-    CustomerSubscriptionView, InstallationWorkOrder, InstallationWorkOrderView, Invoice,
-    IspPackage, PaginatedResponse, PortalCheckoutSubscriptionRequest, TeamMemberWithUser,
+    CreateMyCustomerLocationRequest, Customer, CustomerLifecycleObservability, CustomerLocation,
+    CustomerPortalSubscriptionStats, CustomerPortalUser, CustomerRegistrationInviteCreateResponse,
+    CustomerRegistrationInvitePolicy, CustomerRegistrationInviteSummary,
+    CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionView,
+    InstallationWorkOrder, InstallationWorkOrderView, Invoice, IspPackage,
+    PaginatedResponse, PortalCheckoutSubscriptionRequest, TeamMemberWithUser,
     UpdateCustomerLocationRequest, UpdateCustomerRegistrationInvitePolicyRequest,
     UpdateCustomerRequest, UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
 };
@@ -738,6 +739,28 @@ pub async fn create_my_customer_subscription_invoice(
         subscription,
         invoice,
     })
+}
+
+
+#[tauri::command]
+pub async fn get_customer_lifecycle_observability(
+    token: String,
+    customer_id: Option<String>,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<CustomerLifecycleObservability, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    customers
+        .get_lifecycle_observability(&claims.sub, &tenant_id, customer_id.as_deref())
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

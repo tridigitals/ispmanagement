@@ -10,6 +10,7 @@
     api,
     type AuditLog,
     type Customer,
+    type CustomerLifecycleObservability,
     type CustomerLocation,
     type CustomerSubscriptionView,
     type Invoice,
@@ -49,6 +50,8 @@
   // Subscriptions
   let subscriptions = $state<CustomerSubscriptionView[]>([]);
   let loadingSubscriptions = $state(false);
+  let lifecycleObservability = $state<CustomerLifecycleObservability | null>(null);
+  let loadingLifecycleObservability = $state(false);
   let timelineLogs = $state<AuditLog[]>([]);
   let timelineType = $state<'all' | 'customer' | 'location' | 'subscription'>('all');
   let loadingTimeline = $state(false);
@@ -438,14 +441,42 @@
 
   async function loadSubscriptions() {
     loadingSubscriptions = true;
+    loadingLifecycleObservability = true;
     try {
-      const res = await api.customers.subscriptions.list(customerId, { page: 1, per_page: 200 });
+      const [res, metrics] = await Promise.all([
+        api.customers.subscriptions.list(customerId, { page: 1, per_page: 200 }),
+        api.customers.observability.lifecycle(customerId),
+      ]);
       subscriptions = res.data || [];
+      lifecycleObservability = metrics;
     } catch (e: any) {
       toast.error(`Failed to load subscriptions: ${e?.message || e}`);
     } finally {
       loadingSubscriptions = false;
+      loadingLifecycleObservability = false;
     }
+  }
+
+  function subscriptionStatusLabel(status: string): string {
+    const map: Record<string, string> = {
+      active: get(t)('common.active') || 'Active',
+      pending_installation: 'Menunggu instalasi',
+      installation_done_awaiting_payment: 'Instalasi selesai, menunggu pembayaran',
+      suspended: get(t)('common.suspended') || 'Suspended',
+      cancelled: get(t)('common.cancelled') || 'Cancelled',
+    };
+    return map[status] || status;
+  }
+
+  function metricCount(stage: string, source: 'lifecycle' | 'work_order' = 'lifecycle'): number {
+    const items = source === 'lifecycle'
+      ? lifecycleObservability?.lifecycle_funnel || []
+      : lifecycleObservability?.work_order_funnel || [];
+    return items.find((item) => item.stage === stage)?.count || 0;
+  }
+
+  function agingBucketCount(bucket: string): number {
+    return lifecycleObservability?.aging_buckets.find((item) => item.bucket === bucket)?.count || 0;
   }
 
   function readActiveTabFromUrl(): CustomerDetailTab | null {
@@ -1327,6 +1358,63 @@
           </div>
         </div>
 
+        <div class="lifecycle-observability card">
+          <div class="observability-head">
+            <div>
+              <h4>Lifecycle observability</h4>
+              <p class="subtitle">Operational funnel and aging snapshot for this customer's activations.</p>
+            </div>
+            <span class="meta-pill">
+              <Icon name="activity" size={14} />
+              {#if loadingLifecycleObservability}
+                Loading...
+              {:else if lifecycleObservability?.generated_at}
+                {`Updated ${timeAgo(lifecycleObservability.generated_at)}`}
+              {:else}
+                Waiting for data
+              {/if}
+            </span>
+          </div>
+
+          <div class="observability-grid">
+            <div class="metric-tile">
+              <span class="metric-label">Pending installation</span>
+              <strong>{metricCount('pending_installation')}</strong>
+            </div>
+            <div class="metric-tile emphasis">
+              <span class="metric-label">Awaiting payment after install</span>
+              <strong>{metricCount('installation_done_awaiting_payment')}</strong>
+            </div>
+            <div class="metric-tile">
+              <span class="metric-label">Active</span>
+              <strong>{metricCount('active')}</strong>
+            </div>
+            <div class="metric-tile">
+              <span class="metric-label">Cancelled</span>
+              <strong>{metricCount('cancelled')}</strong>
+            </div>
+            <div class="metric-tile">
+              <span class="metric-label">WO pending</span>
+              <strong>{metricCount('pending', 'work_order')}</strong>
+            </div>
+            <div class="metric-tile">
+              <span class="metric-label">WO in progress</span>
+              <strong>{metricCount('in_progress', 'work_order')}</strong>
+            </div>
+            <div class="metric-tile">
+              <span class="metric-label">WO completed</span>
+              <strong>{metricCount('completed', 'work_order')}</strong>
+            </div>
+          </div>
+
+          <div class="aging-row">
+            <span class="aging-pill">0-1d: {agingBucketCount('0-1d')}</span>
+            <span class="aging-pill">2-3d: {agingBucketCount('2-3d')}</span>
+            <span class="aging-pill">4-7d: {agingBucketCount('4-7d')}</span>
+            <span class="aging-pill">>7d: {agingBucketCount('>7d')}</span>
+          </div>
+        </div>
+
         <Table
           columns={subscriptionColumns}
           data={subscriptions}
@@ -1338,7 +1426,7 @@
             {@const row = item as CustomerSubscriptionView}
             {#if key === 'package'}
               <div class="name">{row.package_name || row.package_id}</div>
-              <div class="sub">{row.status}</div>
+              <div class="sub">{subscriptionStatusLabel(row.status)}</div>
             {:else if key === 'billing'}
               <div class="name">{row.billing_cycle}</div>
               <div class="sub mono">{row.currency_code} {Number(row.price || 0).toLocaleString()}</div>
@@ -2501,6 +2589,75 @@
     align-items: flex-start;
     gap: 1rem;
     margin-bottom: 1rem;
+  }
+
+  .lifecycle-observability {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border: 1px solid color-mix(in srgb, var(--border-color), transparent 20%);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--bg-surface), transparent 8%);
+  }
+
+  .observability-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .observability-head h4 {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .observability-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .metric-tile {
+    border-radius: 14px;
+    padding: 0.85rem 0.9rem;
+    border: 1px solid color-mix(in srgb, var(--border-color), transparent 18%);
+    background: color-mix(in srgb, var(--bg-surface), transparent 5%);
+  }
+
+  .metric-tile.emphasis {
+    border-color: rgba(245, 158, 11, 0.35);
+    background: rgba(245, 158, 11, 0.08);
+  }
+
+  .metric-label {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.35rem;
+  }
+
+  .metric-tile strong {
+    font-size: 1.4rem;
+    line-height: 1;
+  }
+
+  .aging-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.9rem;
+  }
+
+  .aging-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.34rem 0.7rem;
+    background: color-mix(in srgb, var(--bg-surface), transparent 4%);
+    border: 1px solid color-mix(in srgb, var(--border-color), transparent 20%);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
   }
 
   .form {

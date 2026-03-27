@@ -133,7 +133,10 @@ pub async fn list_email_outbox(
             .build_query_as()
             .fetch_all(&auth_service.pool)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| e.to_string())?
+            .into_iter()
+            .map(EmailOutboxItem::with_retry_visibility)
+            .collect();
 
         (rows, total)
     };
@@ -414,7 +417,7 @@ pub async fn get_email_outbox(
         .await
         .map_err(|e| e.to_string())?;
 
-        let Some(item) = row else {
+        let Some(item) = row.map(EmailOutboxItem::with_retry_visibility) else {
             return Err("Not found".to_string());
         };
 

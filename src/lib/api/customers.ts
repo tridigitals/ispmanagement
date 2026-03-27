@@ -1,6 +1,7 @@
 import { getTokenOrThrow, safeInvoke } from './core';
 import type {
   Customer,
+  CustomerLifecycleObservability,
   CustomerLocation,
   CustomerPortalCheckoutResponse,
   CustomerPortalInstallationTrackerResponse,
@@ -36,6 +37,15 @@ export const customers = {
       customerId,
       customer_id: customerId,
     }),
+
+  observability: {
+    lifecycle: (customerId?: string): Promise<CustomerLifecycleObservability> =>
+      safeInvoke('get_customer_lifecycle_observability', {
+        token: getTokenOrThrow(),
+        customerId,
+        customer_id: customerId,
+      }),
+  },
 
   create: (dto: {
     name: string;

@@ -562,6 +562,7 @@ pub fn run() {
                                     get_my_customer_subscription_installation_tracker,
                                     request_my_customer_subscription_reschedule,
                                     create_my_customer_subscription_invoice,
+                                    get_customer_lifecycle_observability,
                                     list_customer_subscriptions,
                                     create_customer_subscription,
                                     update_customer_subscription,

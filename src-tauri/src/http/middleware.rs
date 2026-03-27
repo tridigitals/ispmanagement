@@ -20,6 +20,7 @@ use crate::services::metrics_service::MetricsService;
 use crate::services::rate_limiter::RateLimiter;
 use crate::{http::AppState, services::rate_limiter::RateLimitInfo};
 use chrono::Utc;
+use uuid::Uuid;
 
 /// Rate limiter configuration for different endpoint types
 #[derive(Clone)]
@@ -40,6 +41,40 @@ impl RateLimitConfig {
             window_secs,
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct CorrelationId(String);
+
+impl CorrelationId {
+    pub fn new(value: String) -> Self {
+        Self(value)
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+pub async fn correlation_id_middleware(mut request: Request<Body>, next: Next) -> Response {
+    let request_id = request
+        .headers()
+        .get("x-request-id")
+        .and_then(|v| v.to_str().ok())
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| Uuid::new_v4().to_string());
+
+    request
+        .extensions_mut()
+        .insert(CorrelationId::new(request_id.clone()));
+
+    let mut response = next.run(request).await;
+    if let Ok(value) = HeaderValue::from_str(&request_id) {
+        response.headers_mut().insert("x-request-id", value);
+    }
+    response
 }
 
 async fn rate_limit_key_for_request(
@@ -361,6 +396,78 @@ pub async fn security_headers_middleware(request: Request<Body>, next: Next) -> 
     );
 
     response
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{correlation_id_middleware, CorrelationId};
+    use axum::{
+        body::Body,
+        extract::Extension,
+        http::{Request, StatusCode},
+        middleware::from_fn,
+        response::IntoResponse,
+        routing::get,
+        Router,
+    };
+    use tower::ServiceExt;
+
+    async fn echo_request_id(Extension(correlation_id): Extension<CorrelationId>) -> impl IntoResponse {
+        correlation_id.as_str().to_string()
+    }
+
+    #[tokio::test]
+    async fn middleware_preserves_incoming_request_id() {
+        let app = Router::new()
+            .route("/", get(echo_request_id))
+            .layer(from_fn(correlation_id_middleware));
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/")
+                    .header("x-request-id", "req-123")
+                    .body(Body::empty())
+                    .expect("request should build"),
+            )
+            .await
+            .expect("request should succeed");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response
+                .headers()
+                .get("x-request-id")
+                .and_then(|v| v.to_str().ok()),
+            Some("req-123")
+        );
+    }
+
+    #[tokio::test]
+    async fn middleware_generates_request_id_when_missing() {
+        let app = Router::new()
+            .route("/", get(echo_request_id))
+            .layer(from_fn(correlation_id_middleware));
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/")
+                    .body(Body::empty())
+                    .expect("request should build"),
+            )
+            .await
+            .expect("request should succeed");
+
+        let generated = response
+            .headers()
+            .get("x-request-id")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert!(!generated.is_empty());
+    }
 }
 
 /// Request metrics middleware

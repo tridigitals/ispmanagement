@@ -1,13 +1,13 @@
 //! Payment HTTP Handlers (Webhooks)
 
-use crate::http::AppState;
+use crate::http::{middleware::CorrelationId, AppState};
 use crate::models::{
     BankAccount, BillingCollectionLogView, CreateBankAccountRequest, Invoice,
     InvoiceReminderLogView,
 };
 use crate::services::{BillingCollectionRunResult, BulkGenerateInvoicesResult, Claims};
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Extension, Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
     routing::{delete, get, post},
@@ -1105,10 +1105,14 @@ async fn delete_bank_account(
 
 async fn midtrans_notification(
     State(state): State<AppState>,
+    Extension(correlation_id): Extension<CorrelationId>,
     Json(payload): Json<Value>,
 ) -> impl IntoResponse {
     let payment_service = &state.payment_service;
-    tracing::info!("Received Midtrans notification");
+    tracing::info!(
+        request_id = correlation_id.as_str(),
+        "Received Midtrans notification"
+    );
 
     // 1. Extract fields
     let order_id = payload["order_id"].as_str().unwrap_or("");
@@ -1161,12 +1165,22 @@ async fn midtrans_notification(
 
     // 4. Update Invoice Status
     match payment_service
-        .process_midtrans_notification(order_id, payment_status)
+        .process_midtrans_notification(
+            order_id,
+            payment_status,
+            Some(correlation_id.as_str()),
+            Some(signature_key),
+        )
         .await
     {
         Ok(_) => (StatusCode::OK, "OK"),
         Err(e) => {
-            eprintln!("Failed to process notification: {}", e);
+            tracing::error!(
+                request_id = correlation_id.as_str(),
+                order_id,
+                error = %e,
+                "Failed to process notification"
+            );
             (StatusCode::INTERNAL_SERVER_ERROR, "Processing Error")
         }
     }

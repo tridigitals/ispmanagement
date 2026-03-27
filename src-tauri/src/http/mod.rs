@@ -365,8 +365,12 @@ pub async fn start_server(
             USER_AGENT,
             HeaderName::from_static("x-requested-with"),
             HeaderName::from_static("x-csrf-token"),
+            HeaderName::from_static("x-request-id"),
         ])
-        .expose_headers([HeaderName::from_static("content-disposition")]);
+        .expose_headers([
+            HeaderName::from_static("content-disposition"),
+            HeaderName::from_static("x-request-id"),
+        ]);
 
     // Build router
 
@@ -601,6 +605,9 @@ pub async fn start_server(
             TimeoutLayer::new(Duration::from_secs(3600))
         }) // 1 Hour Timeout for large uploads
         .layer(axum::middleware::from_fn(middleware::metrics_middleware))
+        .layer(axum::middleware::from_fn(
+            middleware::correlation_id_middleware,
+        ))
         .layer(axum::Extension(state.metrics_service.clone()))
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),

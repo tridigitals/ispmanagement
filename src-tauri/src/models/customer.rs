@@ -233,7 +233,7 @@ pub struct CustomerSubscription {
     #[sqlx(try_from = "f64")]
     pub price: f64,
     pub currency_code: String,
-    pub status: String, // active | pending_installation | suspended | cancelled
+    pub status: String, // active | pending_installation | installation_done_awaiting_payment | suspended | cancelled
     pub starts_at: Option<DateTime<Utc>>,
     pub ends_at: Option<DateTime<Utc>>,
     pub notes: Option<String>,
@@ -275,6 +275,26 @@ pub struct CustomerPortalSubscriptionStats {
     pub active: i64,
     pub pending_installation: i64,
     pub needs_attention: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomerLifecycleStageMetric {
+    pub stage: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomerLifecycleAgingBucket {
+    pub bucket: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomerLifecycleObservability {
+    pub generated_at: DateTime<Utc>,
+    pub lifecycle_funnel: Vec<CustomerLifecycleStageMetric>,
+    pub work_order_funnel: Vec<CustomerLifecycleStageMetric>,
+    pub aging_buckets: Vec<CustomerLifecycleAgingBucket>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]

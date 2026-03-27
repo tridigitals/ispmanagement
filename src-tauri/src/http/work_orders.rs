@@ -1,13 +1,13 @@
 use crate::error::{AppError, AppResult};
 use crate::http::auth::extract_ip;
-use crate::http::AppState;
+use crate::http::{middleware::CorrelationId, AppState};
 use crate::models::{
     AssignInstallationWorkOrderRequest, InstallationWorkOrder, InstallationWorkOrderView,
     TeamMemberWithUser, UpdateInstallationWorkOrderStatusRequest,
     WorkOrderRescheduleDecisionRequest, WorkOrderRescheduleRequestView,
 };
 use axum::{
-    extract::{ConnectInfo, Path, Query, State},
+    extract::{ConnectInfo, Extension, Path, Query, State},
     http::HeaderMap,
     routing::{get, post},
     Json, Router,
@@ -101,6 +101,7 @@ async fn list_work_order_assignees(
 
 async fn assign_work_order(
     State(state): State<AppState>,
+    Extension(correlation_id): Extension<CorrelationId>,
     headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(id): Path<String>,
@@ -108,6 +109,7 @@ async fn assign_work_order(
 ) -> AppResult<Json<InstallationWorkOrder>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     let ip = extract_ip(&headers, addr);
+    tracing::info!(request_id = correlation_id.as_str(), work_order_id = %id, "Assign installation work order request");
     let row = state
         .customer_service
         .assign_installation_work_order(
@@ -125,6 +127,7 @@ async fn assign_work_order(
 
 async fn claim_work_order(
     State(state): State<AppState>,
+    Extension(correlation_id): Extension<CorrelationId>,
     headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(id): Path<String>,
@@ -132,6 +135,7 @@ async fn claim_work_order(
 ) -> AppResult<Json<InstallationWorkOrder>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     let ip = extract_ip(&headers, addr);
+    tracing::info!(request_id = correlation_id.as_str(), work_order_id = %id, "Claim installation work order request");
     let row = state
         .customer_service
         .claim_installation_work_order(&claims.sub, &tenant_id, &id, dto.notes, Some(&ip))
@@ -141,6 +145,7 @@ async fn claim_work_order(
 
 async fn release_work_order(
     State(state): State<AppState>,
+    Extension(correlation_id): Extension<CorrelationId>,
     headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(id): Path<String>,
@@ -148,6 +153,7 @@ async fn release_work_order(
 ) -> AppResult<Json<InstallationWorkOrder>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     let ip = extract_ip(&headers, addr);
+    tracing::info!(request_id = correlation_id.as_str(), work_order_id = %id, "Release installation work order request");
     let row = state
         .customer_service
         .release_installation_work_order(&claims.sub, &tenant_id, &id, dto.notes, Some(&ip))
@@ -157,6 +163,7 @@ async fn release_work_order(
 
 async fn start_work_order(
     State(state): State<AppState>,
+    Extension(correlation_id): Extension<CorrelationId>,
     headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(id): Path<String>,
@@ -164,6 +171,7 @@ async fn start_work_order(
 ) -> AppResult<Json<InstallationWorkOrder>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     let ip = extract_ip(&headers, addr);
+    tracing::info!(request_id = correlation_id.as_str(), work_order_id = %id, "Start installation work order request");
     let row = state
         .customer_service
         .start_installation_work_order(&claims.sub, &tenant_id, &id, dto.notes, Some(&ip))
@@ -173,6 +181,7 @@ async fn start_work_order(
 
 async fn complete_work_order(
     State(state): State<AppState>,
+    Extension(correlation_id): Extension<CorrelationId>,
     headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(id): Path<String>,
@@ -180,6 +189,7 @@ async fn complete_work_order(
 ) -> AppResult<Json<InstallationWorkOrder>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     let ip = extract_ip(&headers, addr);
+    tracing::info!(request_id = correlation_id.as_str(), work_order_id = %id, "Complete installation work order request");
     let row = state
         .customer_service
         .complete_installation_work_order(&claims.sub, &tenant_id, &id, dto.notes, Some(&ip))
@@ -189,6 +199,7 @@ async fn complete_work_order(
 
 async fn cancel_work_order(
     State(state): State<AppState>,
+    Extension(correlation_id): Extension<CorrelationId>,
     headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(id): Path<String>,
@@ -196,6 +207,7 @@ async fn cancel_work_order(
 ) -> AppResult<Json<InstallationWorkOrder>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     let ip = extract_ip(&headers, addr);
+    tracing::info!(request_id = correlation_id.as_str(), work_order_id = %id, "Cancel installation work order request");
     let row = state
         .customer_service
         .cancel_installation_work_order(&claims.sub, &tenant_id, &id, dto.notes, Some(&ip))
@@ -205,6 +217,7 @@ async fn cancel_work_order(
 
 async fn reopen_work_order(
     State(state): State<AppState>,
+    Extension(correlation_id): Extension<CorrelationId>,
     headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(id): Path<String>,
@@ -212,6 +225,7 @@ async fn reopen_work_order(
 ) -> AppResult<Json<InstallationWorkOrder>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     let ip = extract_ip(&headers, addr);
+    tracing::info!(request_id = correlation_id.as_str(), work_order_id = %id, "Reopen installation work order request");
     let row = state
         .customer_service
         .reopen_installation_work_order(&claims.sub, &tenant_id, &id, dto.notes, Some(&ip))
@@ -234,6 +248,7 @@ async fn get_pending_reschedule_request(
 
 async fn approve_reschedule_request(
     State(state): State<AppState>,
+    Extension(correlation_id): Extension<CorrelationId>,
     headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(id): Path<String>,
@@ -241,6 +256,7 @@ async fn approve_reschedule_request(
 ) -> AppResult<Json<InstallationWorkOrder>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     let ip = extract_ip(&headers, addr);
+    tracing::info!(request_id = correlation_id.as_str(), work_order_id = %id, "Approve installation reschedule request");
     let row = state
         .customer_service
         .approve_work_order_reschedule_request(&claims.sub, &tenant_id, &id, dto, Some(&ip))
@@ -250,6 +266,7 @@ async fn approve_reschedule_request(
 
 async fn reject_reschedule_request(
     State(state): State<AppState>,
+    Extension(correlation_id): Extension<CorrelationId>,
     headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(id): Path<String>,
@@ -257,6 +274,7 @@ async fn reject_reschedule_request(
 ) -> AppResult<Json<InstallationWorkOrder>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     let ip = extract_ip(&headers, addr);
+    tracing::info!(request_id = correlation_id.as_str(), work_order_id = %id, "Reject installation reschedule request");
     let row = state
         .customer_service
         .reject_work_order_reschedule_request(&claims.sub, &tenant_id, &id, dto, Some(&ip))
