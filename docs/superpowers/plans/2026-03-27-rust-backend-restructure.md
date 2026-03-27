@@ -433,6 +433,15 @@ Expected:
 - No new command → HTTP coupling.
 - Targeted tests + workspace check passed.
 
+**Phase 3 freeze note (Task 3.3, 2026-03-27):**
+- Completed commits:
+  - Task 3.1: `ce06b4f` (`test(rust): strengthen bootstrap and router sequencing characterization`)
+  - Task 3.2: `f5cc2fb` (`refactor(bootstrap): extract app/http internals with stable behavior`)
+- Verification summary:
+  - `cargo test http --lib` ✅
+  - `cargo check --workspace` ✅
+- Scope boundary confirmed: no Phase 4 files were touched; Phase 3 changes remain within `src-tauri/src/bootstrap/**`, `src-tauri/src/http/mod.rs`, `src-tauri/src/lib.rs`, plus this plan freeze note.
+
 ---
 
 ## Phase 4 — Payment Service Split
