@@ -660,3 +660,74 @@ async fn get_app_version() -> axum::Json<serde_json::Value> {
         "version": env!("CARGO_PKG_VERSION")
     }))
 }
+
+#[cfg(test)]
+fn http_router_build_sequence_markers() -> Vec<&'static str> {
+    vec![
+        "/",
+        "/api/install/check",
+        "/api/install",
+        "nest:/api/plans",
+        "nest:/api/payment",
+        "nest:/api/notifications",
+        "nest:/api/email-outbox",
+        "nest:/api/admin/mikrotik",
+        "nest:/api/announcements",
+        "nest:/api/customers",
+        "nest:/api/admin/work-orders",
+        "nest:/api/admin/pppoe",
+        "nest:/api/admin/isp-packages",
+        "nest:/api/admin/network-mapping",
+        "nest:/api/backups",
+        "/api/version",
+        "layer:default_body_limit",
+        "layer:timeout",
+        "layer:metrics",
+        "layer:correlation_id",
+        "layer:metrics_extension",
+        "layer:security_enforcer",
+        "layer:security_headers",
+        "layer:cors",
+        "state:app_state",
+    ]
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn http_router_build_sequence_keeps_layering_after_routes() {
+        let markers = super::http_router_build_sequence_markers();
+
+        let routes_complete = markers
+            .iter()
+            .position(|marker| *marker == "/api/version")
+            .expect("/api/version marker must exist");
+        let first_layer = markers
+            .iter()
+            .position(|marker| marker.starts_with("layer:"))
+            .expect("at least one layer marker must exist");
+
+        assert!(
+            routes_complete < first_layer,
+            "all route markers should appear before layer markers"
+        );
+    }
+
+    #[test]
+    fn http_router_build_keeps_thin_adapter_mount_points() {
+        let markers = super::http_router_build_sequence_markers();
+
+        for expected_mount in [
+            "nest:/api/plans",
+            "nest:/api/payment",
+            "nest:/api/notifications",
+            "nest:/api/admin/network-mapping",
+            "nest:/api/backups",
+        ] {
+            assert!(
+                markers.contains(&expected_mount),
+                "expected mount marker {expected_mount}"
+            );
+        }
+    }
+}

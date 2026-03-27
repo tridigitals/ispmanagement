@@ -644,3 +644,90 @@ fn show_error_dialog(message: &str) {
         .args(["-NoProfile", "-Command", &script])
         .spawn();
 }
+
+#[cfg(test)]
+fn desktop_bootstrap_sequence_markers() -> Vec<&'static str> {
+    vec![
+        "init:db",
+        "seed:defaults",
+        "seed:rbac_permissions",
+        "seed:rbac_roles",
+        "scheduler:backup",
+        "scheduler:email_outbox_sender",
+        "scheduler:installation_sla",
+        "scheduler:customer_invoice",
+        "scheduler:mikrotik_poller",
+        "scheduler:announcement",
+        "seed:default_features",
+        "manage:auth_service",
+        "manage:user_service",
+        "manage:customer_service",
+        "manage:pppoe_service",
+        "manage:isp_package_service",
+        "manage:network_mapping_service",
+        "manage:settings_service",
+        "manage:email_service",
+        "manage:team_service",
+        "manage:audit_service",
+        "manage:role_service",
+        "manage:system_service",
+        "manage:plan_service",
+        "manage:storage_service",
+        "manage:backup_service",
+        "manage:payment_service",
+        "manage:notification_service",
+        "manage:email_outbox_service",
+        "manage:mikrotik_service",
+        "manage:ws_hub",
+        "manage:metrics_service",
+        "spawn:http::start_server",
+    ]
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn http_bootstrap_runs_after_state_management_boundary() {
+        let markers = super::desktop_bootstrap_sequence_markers();
+
+        let manage_start = markers
+            .iter()
+            .position(|marker| *marker == "manage:auth_service")
+            .expect("manage marker must exist");
+        let http_spawn = markers
+            .iter()
+            .position(|marker| *marker == "spawn:http::start_server")
+            .expect("http spawn marker must exist");
+
+        assert!(
+            manage_start < http_spawn,
+            "state management should happen before HTTP bootstrap spawn"
+        );
+    }
+
+    #[test]
+    fn bootstrap_scheduler_boundaries_are_locked_before_http_spawn() {
+        let markers = super::desktop_bootstrap_sequence_markers();
+
+        let backup_scheduler = markers
+            .iter()
+            .position(|marker| *marker == "scheduler:backup")
+            .expect("backup scheduler marker must exist");
+        let email_outbox_sender = markers
+            .iter()
+            .position(|marker| *marker == "scheduler:email_outbox_sender")
+            .expect("email outbox sender marker must exist");
+        let announcement_scheduler = markers
+            .iter()
+            .position(|marker| *marker == "scheduler:announcement")
+            .expect("announcement scheduler marker must exist");
+        let http_spawn = markers
+            .iter()
+            .position(|marker| *marker == "spawn:http::start_server")
+            .expect("http spawn marker must exist");
+
+        assert!(backup_scheduler < http_spawn);
+        assert!(email_outbox_sender < http_spawn);
+        assert!(announcement_scheduler < http_spawn);
+    }
+}
