@@ -1212,6 +1212,44 @@ async fn fetch_attachments_map_pg(
         };
         map.entry(r.message_id).or_default().push(fr);
     }
-
+    
     Ok(map)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{normalize_priority, normalize_status};
+
+    #[test]
+    fn normalize_priority_preserves_allowed_values_and_defaults_invalid() {
+        assert_eq!(normalize_priority(Some("low".to_string())), "low");
+        assert_eq!(normalize_priority(Some("urgent".to_string())), "urgent");
+        assert_eq!(normalize_priority(Some("invalid".to_string())), "normal");
+        assert_eq!(normalize_priority(None), "normal");
+    }
+
+    #[test]
+    fn normalize_status_accepts_known_and_rejects_unknown() {
+        assert_eq!(normalize_status(Some("open".to_string())), Some("open".to_string()));
+        assert_eq!(
+            normalize_status(Some("pending".to_string())),
+            Some("pending".to_string())
+        );
+        assert_eq!(normalize_status(Some("other".to_string())), None);
+        assert_eq!(normalize_status(None), None);
+    }
+
+    #[cfg(feature = "postgres")]
+    #[tokio::test]
+    async fn fetch_attachments_map_pg_empty_message_ids_returns_empty_without_db_hit() {
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .connect_lazy("postgres://postgres:postgres@127.0.0.1/test_db")
+            .expect("lazy postgres pool should be constructible");
+
+        let map = super::fetch_attachments_map_pg(&pool, "tenant-1", "ticket-1", &[])
+            .await
+            .expect("empty message ids should short-circuit");
+
+        assert!(map.is_empty());
+    }
 }

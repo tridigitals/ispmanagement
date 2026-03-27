@@ -1185,6 +1185,40 @@ async fn fetch_attachments_map_pg(
         };
         map.entry(r.message_id).or_default().push(fr);
     }
-
+    
     Ok(map)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ListParams;
+    use axum::extract::Query;
+    use axum::http::Uri;
+
+    #[test]
+    fn list_params_query_parsing_characterizes_http_request_shape() {
+        let uri: Uri = "/?status=open&search=router&page=2&per_page=50"
+            .parse()
+            .expect("valid uri");
+        let Query(params) = Query::<ListParams>::try_from_uri(&uri).expect("params parse");
+
+        assert_eq!(params.status.as_deref(), Some("open"));
+        assert_eq!(params.search.as_deref(), Some("router"));
+        assert_eq!(params.page, Some(2));
+        assert_eq!(params.per_page, Some(50));
+    }
+
+    #[cfg(feature = "postgres")]
+    #[tokio::test]
+    async fn fetch_attachments_map_pg_empty_message_ids_returns_empty_without_db_hit() {
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .connect_lazy("postgres://postgres:postgres@127.0.0.1/test_db")
+            .expect("lazy postgres pool should be constructible");
+
+        let map = super::fetch_attachments_map_pg(&pool, "tenant-1", "ticket-1", &[])
+            .await
+            .expect("empty message ids should short-circuit");
+
+        assert!(map.is_empty());
+    }
 }

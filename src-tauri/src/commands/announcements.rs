@@ -1314,3 +1314,80 @@ pub async fn process_due_announcements_command(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        ann_changed_fields, ann_snapshot_json, norm_audience, norm_format, norm_mode,
+        norm_severity, strip_html_tags,
+    };
+    use crate::models::Announcement;
+    use chrono::{TimeZone, Utc};
+
+    fn sample_announcement() -> Announcement {
+        let ts = Utc
+            .with_ymd_and_hms(2026, 3, 27, 0, 0, 0)
+            .single()
+            .expect("valid UTC timestamp");
+        Announcement {
+            id: "ann-1".to_string(),
+            tenant_id: Some("tenant-1".to_string()),
+            created_by: Some("user-1".to_string()),
+            cover_file_id: Some("file-1".to_string()),
+            title: "Maintenance".to_string(),
+            body: "<p>Hello</p>   world".to_string(),
+            severity: "info".to_string(),
+            audience: "all".to_string(),
+            mode: "post".to_string(),
+            format: "html".to_string(),
+            deliver_in_app: true,
+            deliver_email: false,
+            deliver_email_force: true,
+            starts_at: ts,
+            ends_at: Some(ts),
+            notified_at: Some(ts),
+            created_at: ts,
+            updated_at: ts,
+        }
+    }
+
+    #[test]
+    fn strip_html_tags_collapses_whitespace_and_removes_tags() {
+        let input = "<div>hello <b>rust</b>\n\t world</div>";
+        assert_eq!(strip_html_tags(input), "hello rust world");
+    }
+
+    #[test]
+    fn normalization_helpers_preserve_valid_and_default_invalid_values() {
+        assert_eq!(norm_severity(Some("warning".to_string())), "warning");
+        assert_eq!(norm_severity(Some("oops".to_string())), "info");
+
+        assert_eq!(norm_audience(Some("admins".to_string())), "admins");
+        assert_eq!(norm_audience(None), "all");
+
+        assert_eq!(norm_mode(Some("banner".to_string())), "banner");
+        assert_eq!(norm_mode(Some("invalid".to_string())), "post");
+
+        assert_eq!(norm_format(Some("markdown".to_string())), "markdown");
+        assert_eq!(norm_format(None), "plain");
+    }
+
+    #[test]
+    fn ann_snapshot_json_and_changed_fields_characterize_mapping_shape() {
+        let before = sample_announcement();
+        let mut after = before.clone();
+        after.title = "Maintenance window".to_string();
+        after.deliver_email = true;
+        after.ends_at = None;
+
+        let changed = ann_changed_fields(&before, &after);
+        assert_eq!(changed, vec!["title", "deliver_email", "ends_at"]);
+
+        let snapshot = ann_snapshot_json(&before);
+        assert_eq!(snapshot["id"], "ann-1");
+        assert_eq!(snapshot["tenant_id"], "tenant-1");
+        assert_eq!(snapshot["deliver_in_app"], true);
+        assert_eq!(snapshot["deliver_email"], false);
+        assert_eq!(snapshot["starts_at"], "2026-03-27T00:00:00+00:00");
+    }
+}

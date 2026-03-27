@@ -1356,6 +1356,110 @@ pub async fn process_due_announcements(state: &AppState) -> Result<(), String> {
         .execute(&state.auth_service.pool)
         .await;
     }
-
+    
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        ann_changed_fields, ann_snapshot_json, norm_audience, norm_format, norm_mode,
+        norm_severity, strip_html_tags, ListAdminParams, ListRecentParams,
+    };
+    use crate::models::Announcement;
+    use axum::extract::Query;
+    use axum::http::Uri;
+    use chrono::{TimeZone, Utc};
+
+    fn sample_announcement() -> Announcement {
+        let ts = Utc
+            .with_ymd_and_hms(2026, 3, 27, 0, 0, 0)
+            .single()
+            .expect("valid UTC timestamp");
+        Announcement {
+            id: "ann-1".to_string(),
+            tenant_id: Some("tenant-1".to_string()),
+            created_by: Some("user-1".to_string()),
+            cover_file_id: Some("file-1".to_string()),
+            title: "Maintenance".to_string(),
+            body: "<p>Hello</p>   world".to_string(),
+            severity: "info".to_string(),
+            audience: "all".to_string(),
+            mode: "post".to_string(),
+            format: "html".to_string(),
+            deliver_in_app: true,
+            deliver_email: false,
+            deliver_email_force: true,
+            starts_at: ts,
+            ends_at: Some(ts),
+            notified_at: Some(ts),
+            created_at: ts,
+            updated_at: ts,
+        }
+    }
+
+    #[test]
+    fn helpers_match_existing_adapter_normalization_behavior() {
+        assert_eq!(strip_html_tags("<b>a</b>   b"), "a b");
+
+        assert_eq!(norm_severity(Some("error".to_string())), "error");
+        assert_eq!(norm_severity(Some("bad".to_string())), "info");
+
+        assert_eq!(norm_audience(Some("admins".to_string())), "admins");
+        assert_eq!(norm_audience(Some("bad".to_string())), "all");
+
+        assert_eq!(norm_mode(Some("banner".to_string())), "banner");
+        assert_eq!(norm_mode(None), "post");
+
+        assert_eq!(norm_format(Some("html".to_string())), "html");
+        assert_eq!(norm_format(Some("bad".to_string())), "plain");
+    }
+
+    #[test]
+    fn snapshot_and_changed_fields_lock_payload_shape() {
+        let before = sample_announcement();
+        let mut after = before.clone();
+        after.title = "Maintenance window".to_string();
+        after.deliver_email = true;
+        after.ends_at = None;
+
+        assert_eq!(
+            ann_changed_fields(&before, &after),
+            vec!["title", "deliver_email", "ends_at"]
+        );
+
+        let snapshot = ann_snapshot_json(&before);
+        assert_eq!(snapshot["id"], "ann-1");
+        assert_eq!(snapshot["deliver_in_app"], true);
+        assert_eq!(snapshot["deliver_email"], false);
+        assert_eq!(snapshot["starts_at"], "2026-03-27T00:00:00+00:00");
+    }
+
+    #[test]
+    fn query_params_parsing_characterizes_http_request_contract() {
+        let uri_recent: Uri = "/?page=2&per_page=10&search=alert&severity=warning&mode=banner"
+            .parse()
+            .expect("valid uri");
+        let Query(recent) =
+            Query::<ListRecentParams>::try_from_uri(&uri_recent).expect("recent params parse");
+        assert_eq!(recent.page, Some(2));
+        assert_eq!(recent.per_page, Some(10));
+        assert_eq!(recent.search.as_deref(), Some("alert"));
+        assert_eq!(recent.severity.as_deref(), Some("warning"));
+        assert_eq!(recent.mode.as_deref(), Some("banner"));
+
+        let uri_admin: Uri =
+            "/?scope=tenant&page=3&per_page=25&search=maint&severity=info&mode=post&status=active"
+                .parse()
+                .expect("valid uri");
+        let Query(admin) =
+            Query::<ListAdminParams>::try_from_uri(&uri_admin).expect("admin params parse");
+        assert_eq!(admin.scope.as_deref(), Some("tenant"));
+        assert_eq!(admin.page, Some(3));
+        assert_eq!(admin.per_page, Some(25));
+        assert_eq!(admin.search.as_deref(), Some("maint"));
+        assert_eq!(admin.severity.as_deref(), Some("info"));
+        assert_eq!(admin.mode.as_deref(), Some("post"));
+        assert_eq!(admin.status.as_deref(), Some("active"));
+    }
 }
