@@ -1659,11 +1659,31 @@ pub async fn seed_plans(pool: &DbPool) -> Result<(), sqlx::Error> {
 
 #[cfg(all(test, feature = "postgres"))]
 mod tests {
+    //! Task 2.1 limitation rationale:
+    //!
+    //! These tests combine two layers of characterization:
+    //! 1) source-contract checks (`connection_source`) for bootstrap SQL contracts, and
+    //! 2) behavior-level checks that run only when a live Postgres URL is explicitly provided.
+    //!
+    //! This repository task scope intentionally avoids introducing a mandatory Postgres harness,
+    //! because that would expand beyond `connection.rs` and alter CI/runtime assumptions. Without
+    //! an always-on harness in this scope, source-contract assertions are the stable baseline for
+    //! verifying bootstrap intent, while opt-in live-DB tests provide best-effort observable
+    //! behavior validation when `CONNECTION_TEST_DATABASE_URL` is available.
     use super::*;
     use std::sync::{Mutex, OnceLock};
 
+    const BEHAVIOR_DB_URL_ENV: &str = "CONNECTION_TEST_DATABASE_URL";
+
     fn connection_source() -> &'static str {
         include_str!("connection.rs")
+    }
+
+    fn behavior_db_url() -> Option<String> {
+        env::var(BEHAVIOR_DB_URL_ENV)
+            .ok()
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty())
     }
 
     fn env_lock() -> std::sync::MutexGuard<'static, ()> {
@@ -1845,5 +1865,80 @@ mod tests {
         }
 
         snapshot.restore();
+    }
+    #[tokio::test]
+    async fn seed_defaults_idempotence_observable_with_opt_in_live_postgres() -> Result<(), sqlx::Error>
+    {
+        let Some(database_url) = behavior_db_url() else {
+            eprintln!(
+                "skipping behavior test: set {} to run against a live Postgres database",
+                BEHAVIOR_DB_URL_ENV
+            );
+            return Ok(());
+        };
+
+        let pool = PgPool::connect(&database_url).await?;
+
+        let before_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM settings WHERE tenant_id IS NULL AND key = 'app_name'",
+        )
+        .fetch_one(&pool)
+        .await?;
+
+        seed_defaults(&pool).await?;
+        seed_defaults(&pool).await?;
+
+        let after_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM settings WHERE tenant_id IS NULL AND key = 'app_name'",
+        )
+        .fetch_one(&pool)
+        .await?;
+
+        assert_eq!(
+            after_count,
+            std::cmp::max(before_count, 1),
+            "seed_defaults should remain idempotent for global app_name setting"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn init_db_success_path_observable_with_opt_in_live_postgres() -> Result<(), sqlx::Error> {
+        let Some(database_url) = behavior_db_url() else {
+            eprintln!(
+                "skipping behavior test: set {} to run against a live Postgres database",
+                BEHAVIOR_DB_URL_ENV
+            );
+            return Ok(());
+        };
+
+        let _guard = env_lock();
+        let snapshot = EnvSnapshot::capture();
+
+        env::set_var("DATABASE_URL", &database_url);
+        env::remove_var("POSTGRES_USER");
+        env::remove_var("POSTGRES_PASSWORD");
+        env::remove_var("POSTGRES_DB");
+        env::remove_var("POSTGRES_HOST");
+        env::remove_var("POSTGRES_PORT");
+        env::remove_var("POSTGRES_SSLMODE");
+
+        let init_result = init_db(PathBuf::from(".")).await;
+        snapshot.restore();
+
+        let pool = init_result?;
+        let app_name_exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM settings WHERE tenant_id IS NULL AND key = 'app_name')",
+        )
+        .fetch_one(&pool)
+        .await?;
+
+        assert!(
+            app_name_exists,
+            "init_db success path should leave seeded global app_name setting"
+        );
+
+        Ok(())
     }
 }
