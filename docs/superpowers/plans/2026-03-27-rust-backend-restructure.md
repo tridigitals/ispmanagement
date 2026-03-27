@@ -527,6 +527,27 @@ Expected:
 - Local dedup only within payment scope.
 - Targeted tests + workspace check passed.
 
+**Phase 4 freeze note (Task 4.3, 2026-03-27):**
+- Completed commits:
+  - Task 4.1: `9524acb` (`test(payment): add HTTP characterization tests for current behavior`)
+  - Task 4.2: `b508c52` (`refactor(payment): extract payment service internals into module structure`)
+- Payment split map and local dedup summary:
+  - `src-tauri/src/services/payment_service.rs` was converted to facade at `src-tauri/src/services/payment_service/mod.rs`.
+  - Internal units introduced and wired via the facade: `core.rs`, `repository.rs`, `dto.rs`, `mapper.rs`, `validation.rs`, `integration.rs`.
+  - `src-tauri/src/services/mod.rs` updated only to keep stable module export wiring.
+  - Dedup/extraction remained local to payment service internals; no cross-module opportunistic refactors were included.
+- Acceptance verification summary (Task 4.3 rerun):
+  - `cd src-tauri && cargo test payment_service --lib` ✅ passed (`9 passed; 0 failed; 0 ignored; 0 measured; 57 filtered out`).
+  - `cd src-tauri && cargo check --workspace` ✅ passed (workspace check completed successfully).
+  - Observed warnings (non-blocking, pre-existing in phase scope): `has_previous_paid_customer_package_invoice` flagged as `dead_code` in `src-tauri/src/services/payment_service/mod.rs`.
+- HTTP/command payload drift check:
+  - No command or HTTP adapter files were changed by Task 4.2.
+  - Payment service public API remained stable (`BillingCollectionRunResult`, `BulkGenerateInvoicesResult`, `PaymentService`).
+- Rollback anchor (if gate failure is detected after this freeze checkpoint):
+  - `git restore --staged --worktree src-tauri/src/services/payment_service/mod.rs src-tauri/src/services/payment_service/core.rs src-tauri/src/services/payment_service/repository.rs src-tauri/src/services/payment_service/dto.rs src-tauri/src/services/payment_service/mapper.rs src-tauri/src/services/payment_service/validation.rs src-tauri/src/services/payment_service/integration.rs src-tauri/src/services/mod.rs`
+  - `git clean -fd src-tauri/src/services/payment_service`
+  - `cd src-tauri && cargo test payment_service --lib`
+
 ---
 
 ## Phase 5 — Mikrotik Service Split
