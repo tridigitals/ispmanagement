@@ -952,6 +952,33 @@ Expected:
 - No auth policy redesign introduced.
 - Targeted tests + workspace check passed.
 
+**Phase 8 freeze note (Task 8.3, 2026-03-27):**
+- Completed commits:
+  - `3ee5e14` — `test(auth-service): add phase 8.1 characterization coverage`
+  - `5dbdcdd` — `refactor(auth_service): split internals with stable facade and no behavior change`
+  - `2ea360c` — `chore(services): annotate auth_service split in services module`
+- Auth split map and mitigation notes:
+  - `src-tauri/src/services/auth_service/mod.rs` is the stable facade preserving `AuthService` constructor/public surface while delegating internals.
+  - Domain/auth flow logic remains isolated in `src-tauri/src/services/auth_service/core.rs`; persistence + token/data access remains isolated in `src-tauri/src/services/auth_service/repository.rs`.
+  - DTO shaping/mapping/validation/integration boundaries are explicit in `src-tauri/src/services/auth_service/dto.rs`, `src-tauri/src/services/auth_service/mapper.rs`, `src-tauri/src/services/auth_service/validation.rs`, and `src-tauri/src/services/auth_service/integration.rs`.
+  - `src-tauri/src/services/mod.rs` change is limited to module annotation/wiring continuity for the extracted auth module.
+- Freeze/acceptance verification summary (Task 8.3 gate rerun):
+  - `git status --short` ✅ clean working tree.
+  - `cd src-tauri && cargo test auth_service --lib` ✅ passed (`4 passed; 0 failed; 0 ignored; 0 measured; 82 filtered out`).
+  - `cd src-tauri && cargo check --workspace` ✅ passed.
+  - Scope drift check (`git diff --name-only 3ee5e14..HEAD -- src-tauri/src/commands/** src-tauri/src/http/** src-tauri/src/lib.rs`) ✅ no output (no adapter/bootstrap contract drift from Phase 8 baseline).
+- Auth policy drift check:
+  - No command or HTTP adapter files changed in Phase 8 commit range; no auth policy redesign surface introduced.
+- Rollback checkpoint / anchor for Phase 8 (if any post-freeze regression appears):
+  - Target rollback anchor: `3ee5e14`.
+  - Path-scoped rollback (preferred):
+    - `git restore --staged --worktree src-tauri/src/services/auth_service/mod.rs src-tauri/src/services/auth_service/core.rs src-tauri/src/services/auth_service/repository.rs src-tauri/src/services/auth_service/dto.rs src-tauri/src/services/auth_service/mapper.rs src-tauri/src/services/auth_service/validation.rs src-tauri/src/services/auth_service/integration.rs src-tauri/src/services/mod.rs`
+    - `git clean -fd src-tauri/src/services/auth_service`
+    - `cd src-tauri && cargo test auth_service --lib`
+  - Commit-level rollback option (if full Phase 8 unwind is required):
+    - `git reset --hard 3ee5e14`
+    - `cd src-tauri && cargo test auth_service --lib`
+
 ---
 
 ## Cross-Phase Verification Gate (Run at End of Every Phase)
