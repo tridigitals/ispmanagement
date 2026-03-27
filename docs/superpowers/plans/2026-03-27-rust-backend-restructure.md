@@ -631,6 +631,25 @@ Expected:
 - Integration/repository/validation boundaries are explicit.
 - Targeted tests + workspace check passed.
 
+**Phase 5 freeze note (Task 5.3, 2026-03-27):**
+- Completed commits:
+  - Task 5.1: `4263a54` (`test(payment-commands): add characterization coverage for datetime parsing and package invoice classification`)
+  - Task 5.2: `30de853` (`refactor(commands-payment): extract access and helper modules with stable behavior`)
+- Task evidence / touched paths:
+  - Task 5.1 touched: `src-tauri/src/commands/payment.rs`
+  - Task 5.2 touched: `src-tauri/src/commands/payment.rs`, `src-tauri/src/commands/payment/access.rs`, `src-tauri/src/commands/payment/helpers.rs`
+  - Extraction scope remained command/payment-only for this gate; no production feature changes introduced.
+- Acceptance verification summary (Task 5.3 rerun):
+  - `cd src-tauri && cargo test commands::payment --lib` ✅ passed (`4 passed; 0 failed; 0 ignored; 0 measured; 66 filtered out`).
+  - `cd src-tauri && cargo check --workspace` ✅ passed.
+  - Non-blocking warning observed (pre-existing outside Task 5.3 doc scope): `has_previous_paid_customer_package_invoice` reported as `dead_code` in `src-tauri/src/services/payment_service/mod.rs`.
+- Rollback checkpoint / anchor for Phase 5 command-payment extraction (if any post-freeze regression appears):
+  - `git restore --staged --worktree src-tauri/src/commands/payment.rs src-tauri/src/commands/payment/access.rs src-tauri/src/commands/payment/helpers.rs`
+  - `git clean -fd src-tauri/src/commands/payment`
+  - `cd src-tauri && cargo test commands::payment --lib`
+- Risk note:
+  - Residual risk is limited to command-layer payment parsing/helper extraction boundaries; mitigated by characterization tests and unchanged command signatures.
+
 ---
 
 ## Phase 6 — Customer Service Split
