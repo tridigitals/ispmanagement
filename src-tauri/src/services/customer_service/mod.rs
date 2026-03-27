@@ -1,10 +1,15 @@
+mod core;
+mod dto;
 mod helpers;
 mod lifecycle;
-mod registration;
-mod subscriptions;
-mod work_orders;
+mod mapper;
 mod portal;
+mod registration;
+mod repository;
 mod reschedule;
+mod subscriptions;
+mod validation;
+mod work_orders;
 
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
