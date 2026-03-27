@@ -13,3 +13,4 @@ static/pdfjs/
 .codex/
 .specify/
 src-tauri/target/
+.worktrees/
