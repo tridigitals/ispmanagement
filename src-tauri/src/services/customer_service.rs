@@ -3691,6 +3691,7 @@ impl CustomerService {
 #[cfg(test)]
 mod tests {
     use super::{CustomerService, InstallationSlaBreachType};
+    use crate::error::AppError;
     use crate::models::CustomerLifecycleObservability;
     use chrono::{Duration, Utc};
 
@@ -3811,5 +3812,81 @@ mod tests {
         assert_eq!(work_order_count(&metrics, "in_progress"), 4);
         assert_eq!(aging_bucket_count(&metrics, ">7d"), 1);
         assert_eq!(lifecycle_count(&metrics, "cancelled"), 0);
+    }
+
+    #[test]
+    fn normalizers_lock_subscription_and_work_order_status_semantics() {
+        assert_eq!(
+            CustomerService::normalize_subscription_status(" ACTIVE ").unwrap(),
+            "active"
+        );
+        assert_eq!(
+            CustomerService::normalize_subscription_status("pending_installation").unwrap(),
+            "pending_installation"
+        );
+
+        let sub_err = CustomerService::normalize_subscription_status("draft").unwrap_err();
+        assert!(matches!(sub_err, AppError::Validation(_)));
+
+        assert_eq!(
+            CustomerService::normalize_work_order_status(" In_Progress ").unwrap(),
+            "in_progress"
+        );
+        assert_eq!(
+            CustomerService::normalize_work_order_status("cancelled").unwrap(),
+            "cancelled"
+        );
+
+        let wo_err = CustomerService::normalize_work_order_status("queued").unwrap_err();
+        assert!(matches!(wo_err, AppError::Validation(_)));
+    }
+
+    #[test]
+    fn invite_policy_and_token_hash_helpers_are_stable() {
+        assert_eq!(
+            CustomerService::parse_invite_policy_u32(Some(" 48 ".to_string()), 24, 1, 720),
+            48
+        );
+        assert_eq!(
+            CustomerService::parse_invite_policy_u32(Some("9999".to_string()), 24, 1, 720),
+            720
+        );
+        assert_eq!(
+            CustomerService::parse_invite_policy_u32(Some("not-a-number".to_string()), 24, 1, 720),
+            24
+        );
+
+        let token = CustomerService::build_registration_invite_token();
+        assert_eq!(token.len(), 64);
+
+        let hash = CustomerService::hash_registration_invite_token("invite-token");
+        assert_eq!(hash.len(), 64);
+        assert_eq!(
+            hash,
+            CustomerService::hash_registration_invite_token("invite-token")
+        );
+    }
+
+    #[test]
+    fn portal_and_reschedule_helpers_preserve_validation_contracts() {
+        let parsed =
+            CustomerService::parse_optional_datetime(Some("2026-03-27".to_string())).unwrap();
+        assert_eq!(
+            parsed.unwrap().format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+            "2026-03-27T00:00:00Z"
+        );
+
+        let invalid =
+            CustomerService::parse_optional_datetime(Some("27/03/2026 10:00".to_string()))
+                .unwrap_err();
+        assert!(matches!(invalid, AppError::Validation(_)));
+
+        assert_eq!(
+            CustomerService::validate_location_coordinates(Some(-6.2), Some(106.8)).unwrap(),
+            (-6.2, 106.8)
+        );
+
+        let missing = CustomerService::validate_location_coordinates(None, Some(106.8)).unwrap_err();
+        assert!(matches!(missing, AppError::Validation(_)));
     }
 }
