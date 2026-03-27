@@ -745,6 +745,29 @@ Expected:
 - Existing customer behavior contracts remain unchanged.
 - Targeted tests + workspace check passed.
 
+**Phase 6 freeze note (Task 6.3, 2026-03-27):**
+- Completed commits:
+  - `78b20dd` — `test(customer-service): expand Phase 6.1 characterization coverage`
+  - `8f82bb7` — `refactor(customer-service): convert to facade directory with internal boundaries`
+  - `aab9809` — `refactor(customer-service): isolate task 6.2 boundary responsibilities`
+- Extraction map and local dedup notes:
+  - `src-tauri/src/services/customer_service/mod.rs` now remains the stable facade for `CustomerService` constructor and public methods.
+  - Business flow orchestration remains in `src-tauri/src/services/customer_service/core.rs`; SQL/storage access remains in `src-tauri/src/services/customer_service/repository.rs`.
+  - DTO shaping is isolated in `src-tauri/src/services/customer_service/dto.rs`, mapper logic in `src-tauri/src/services/customer_service/mapper.rs`, and validation checks in `src-tauri/src/services/customer_service/validation.rs`.
+  - Existing helper/domain units (`helpers.rs`, `lifecycle.rs`, `portal.rs`, `registration.rs`, `reschedule.rs`, `subscriptions.rs`, `work_orders.rs`) remain extracted and consumed internally through facade composition without adapter contract changes.
+  - `src-tauri/src/services/mod.rs` continues to expose customer service through the same module entrypoint (`pub mod customer_service;`) for unchanged command/HTTP integration.
+- Adapter contract confirmation:
+  - Command/HTTP adapters continue to consume unchanged customer service outputs; no new command → HTTP dependency edges introduced in this phase.
+- Acceptance verification summary (Task 6.3 rerun):
+  - `cd src-tauri && cargo test customer_service --lib` ✅ passed.
+  - `cd src-tauri && cargo check --workspace` ✅ passed.
+- Rollback checkpoint / anchor for Phase 6 customer-service extraction (if any post-freeze regression appears):
+  - `git restore --staged --worktree src-tauri/src/services/customer_service/mod.rs src-tauri/src/services/customer_service/core.rs src-tauri/src/services/customer_service/repository.rs src-tauri/src/services/customer_service/dto.rs src-tauri/src/services/customer_service/mapper.rs src-tauri/src/services/customer_service/validation.rs src-tauri/src/services/customer_service/helpers.rs src-tauri/src/services/customer_service/lifecycle.rs src-tauri/src/services/customer_service/portal.rs src-tauri/src/services/customer_service/registration.rs src-tauri/src/services/customer_service/reschedule.rs src-tauri/src/services/customer_service/subscriptions.rs src-tauri/src/services/customer_service/work_orders.rs src-tauri/src/services/mod.rs`
+  - `git clean -fd src-tauri/src/services/customer_service`
+  - `cd src-tauri && cargo test customer_service --lib`
+- Risk note:
+  - Residual risk is limited to customer-service internal delegation boundaries (`mod.rs` ↔ `core.rs`/`repository.rs`), mitigated by characterization coverage and unchanged public facade contracts.
+
 ---
 
 ## Phase 7 — Network Mapping Service Split
