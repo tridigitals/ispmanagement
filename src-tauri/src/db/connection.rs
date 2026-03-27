@@ -1662,6 +1662,10 @@ mod tests {
     use super::*;
     use std::sync::{Mutex, OnceLock};
 
+    fn connection_source() -> &'static str {
+        include_str!("connection.rs")
+    }
+
     fn env_lock() -> std::sync::MutexGuard<'static, ()> {
         static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
         LOCK.get_or_init(|| Mutex::new(())).lock().expect("env lock")
@@ -1783,6 +1787,61 @@ mod tests {
                 assert!(text.contains("Missing POSTGRES_USER"), "unexpected error: {text}");
             }
             other => panic!("expected configuration error, got: {other}"),
+        }
+
+        snapshot.restore();
+    }
+    #[test]
+    fn seed_defaults_contract_keeps_global_setting_insert_idempotent() {
+        let source = connection_source();
+
+        assert!(
+            source.contains("pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error>"),
+            "seed_defaults definition changed unexpectedly"
+        );
+        assert!(
+            source.contains("ON CONFLICT (key) WHERE tenant_id IS NULL DO NOTHING"),
+            "seed_defaults must preserve idempotent insert contract for global settings"
+        );
+    }
+
+    #[test]
+    fn seed_defaults_contract_seeds_app_name_from_env_with_fallback() {
+        let source = connection_source();
+
+        assert!(
+            source.contains(
+                "let app_name = env::var(\"APP_NAME\").unwrap_or_else(|_| \"SaaS Boilerplate\".to_string());"
+            ),
+            "seed_defaults must keep APP_NAME override contract"
+        );
+        assert!(
+            source.contains("(\"app_name\", app_name.as_str(), \"Application name\")"),
+            "seed_defaults must seed app_name setting"
+        );
+    }
+
+    #[tokio::test]
+    async fn init_db_with_database_url_does_not_require_postgres_component_env() {
+        let _guard = env_lock();
+        let snapshot = EnvSnapshot::capture();
+
+        env::set_var("DATABASE_URL", "postgres://postgres:postgres@127.0.0.1:1/test");
+        env::remove_var("POSTGRES_USER");
+        env::remove_var("POSTGRES_PASSWORD");
+        env::remove_var("POSTGRES_DB");
+        env::remove_var("POSTGRES_HOST");
+        env::remove_var("POSTGRES_PORT");
+        env::remove_var("POSTGRES_SSLMODE");
+
+        let err = init_db(PathBuf::from(".")).await.expect_err("expected connection failure");
+
+        if let sqlx::Error::Configuration(msg) = err {
+            let text = msg.to_string();
+            assert!(
+                !text.contains("Missing POSTGRES_"),
+                "DATABASE_URL path should not fail on missing POSTGRES_* env vars: {text}"
+            );
         }
 
         snapshot.restore();
