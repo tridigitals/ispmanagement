@@ -646,88 +646,90 @@ fn show_error_dialog(message: &str) {
 }
 
 #[cfg(test)]
-fn desktop_bootstrap_sequence_markers() -> Vec<&'static str> {
-    vec![
-        "init:db",
-        "seed:defaults",
-        "seed:rbac_permissions",
-        "seed:rbac_roles",
-        "scheduler:backup",
-        "scheduler:email_outbox_sender",
-        "scheduler:installation_sla",
-        "scheduler:customer_invoice",
-        "scheduler:mikrotik_poller",
-        "scheduler:announcement",
-        "seed:default_features",
-        "manage:auth_service",
-        "manage:user_service",
-        "manage:customer_service",
-        "manage:pppoe_service",
-        "manage:isp_package_service",
-        "manage:network_mapping_service",
-        "manage:settings_service",
-        "manage:email_service",
-        "manage:team_service",
-        "manage:audit_service",
-        "manage:role_service",
-        "manage:system_service",
-        "manage:plan_service",
-        "manage:storage_service",
-        "manage:backup_service",
-        "manage:payment_service",
-        "manage:notification_service",
-        "manage:email_outbox_service",
-        "manage:mikrotik_service",
-        "manage:ws_hub",
-        "manage:metrics_service",
-        "spawn:http::start_server",
-    ]
+fn run_source() -> &'static str {
+    include_str!("lib.rs")
+}
+
+#[cfg(test)]
+fn run_bootstrap_async_block_source() -> &'static str {
+    let source = run_source();
+    let start = source
+        .find("let init_result: Result<(), String> = tauri::async_runtime::block_on(async {")
+        .expect("run() must initialize backend in setup block");
+    let tail = &source[start..];
+    let end = tail
+        .find("if let Err(e) = init_result")
+        .expect("run() must handle backend init result after async bootstrap block");
+
+    &tail[..end]
 }
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn http_bootstrap_runs_after_state_management_boundary() {
-        let markers = super::desktop_bootstrap_sequence_markers();
-
-        let manage_start = markers
-            .iter()
-            .position(|marker| *marker == "manage:auth_service")
-            .expect("manage marker must exist");
-        let http_spawn = markers
-            .iter()
-            .position(|marker| *marker == "spawn:http::start_server")
-            .expect("http spawn marker must exist");
+    fn assert_relative_order(source: &str, first: &str, second: &str) {
+        let first_index = source
+            .find(first)
+            .unwrap_or_else(|| panic!("expected snippet not found: {first}"));
+        let second_index = source
+            .find(second)
+            .unwrap_or_else(|| panic!("expected snippet not found: {second}"));
 
         assert!(
-            manage_start < http_spawn,
-            "state management should happen before HTTP bootstrap spawn"
+            first_index < second_index,
+            "expected `{first}` to appear before `{second}` in run() bootstrap block"
         );
     }
 
     #[test]
-    fn bootstrap_scheduler_boundaries_are_locked_before_http_spawn() {
-        let markers = super::desktop_bootstrap_sequence_markers();
+    fn run_bootstrap_initializes_database_before_seeding_and_rbac() {
+        let bootstrap = super::run_bootstrap_async_block_source();
 
-        let backup_scheduler = markers
-            .iter()
-            .position(|marker| *marker == "scheduler:backup")
-            .expect("backup scheduler marker must exist");
-        let email_outbox_sender = markers
-            .iter()
-            .position(|marker| *marker == "scheduler:email_outbox_sender")
-            .expect("email outbox sender marker must exist");
-        let announcement_scheduler = markers
-            .iter()
-            .position(|marker| *marker == "scheduler:announcement")
-            .expect("announcement scheduler marker must exist");
-        let http_spawn = markers
-            .iter()
-            .position(|marker| *marker == "spawn:http::start_server")
-            .expect("http spawn marker must exist");
+        assert_relative_order(bootstrap, "let pool = init_db(", "seed_defaults(&pool)");
+        assert_relative_order(
+            bootstrap,
+            "seed_defaults(&pool)",
+            "role_service.seed_permissions()",
+        );
+        assert_relative_order(
+            bootstrap,
+            "role_service.seed_permissions()",
+            "role_service.seed_roles()",
+        );
+    }
 
-        assert!(backup_scheduler < http_spawn);
-        assert!(email_outbox_sender < http_spawn);
-        assert!(announcement_scheduler < http_spawn);
+    #[test]
+    fn run_bootstrap_starts_http_only_after_scheduler_and_state_management_contracts() {
+        let bootstrap = super::run_bootstrap_async_block_source();
+
+        assert_relative_order(
+            bootstrap,
+            "scheduler.start().await;",
+            "tauri::async_runtime::spawn(async move {",
+        );
+        assert_relative_order(
+            bootstrap,
+            "email_outbox_service.start_sender().await;",
+            "tauri::async_runtime::spawn(async move {",
+        );
+        assert_relative_order(
+            bootstrap,
+            "announcement_scheduler.start().await;",
+            "tauri::async_runtime::spawn(async move {",
+        );
+        assert_relative_order(
+            bootstrap,
+            "app_handle.manage(auth_service.clone());",
+            "app_handle.manage(metrics_service.clone());",
+        );
+        assert_relative_order(
+            bootstrap,
+            "app_handle.manage(metrics_service.clone());",
+            "tauri::async_runtime::spawn(async move {",
+        );
+        assert_relative_order(
+            bootstrap,
+            "tauri::async_runtime::spawn(async move {",
+            "http::start_server(",
+        );
     }
 }

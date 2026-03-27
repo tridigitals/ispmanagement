@@ -662,71 +662,96 @@ async fn get_app_version() -> axum::Json<serde_json::Value> {
 }
 
 #[cfg(test)]
-fn http_router_build_sequence_markers() -> Vec<&'static str> {
-    vec![
-        "/",
-        "/api/install/check",
-        "/api/install",
-        "nest:/api/plans",
-        "nest:/api/payment",
-        "nest:/api/notifications",
-        "nest:/api/email-outbox",
-        "nest:/api/admin/mikrotik",
-        "nest:/api/announcements",
-        "nest:/api/customers",
-        "nest:/api/admin/work-orders",
-        "nest:/api/admin/pppoe",
-        "nest:/api/admin/isp-packages",
-        "nest:/api/admin/network-mapping",
-        "nest:/api/backups",
-        "/api/version",
-        "layer:default_body_limit",
-        "layer:timeout",
-        "layer:metrics",
-        "layer:correlation_id",
-        "layer:metrics_extension",
-        "layer:security_enforcer",
-        "layer:security_headers",
-        "layer:cors",
-        "state:app_state",
-    ]
+fn start_server_source() -> &'static str {
+    include_str!("mod.rs")
+}
+
+#[cfg(test)]
+fn router_build_chain_source() -> &'static str {
+    let source = start_server_source();
+    let start = source
+        .find("let app = Router::new()")
+        .expect("start_server() must construct the router");
+    let tail = &source[start..];
+    let end = tail
+        .find("// Determine port")
+        .expect("start_server() must determine port after router build");
+
+    &tail[..end]
 }
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn http_router_build_sequence_keeps_layering_after_routes() {
-        let markers = super::http_router_build_sequence_markers();
-
-        let routes_complete = markers
-            .iter()
-            .position(|marker| *marker == "/api/version")
-            .expect("/api/version marker must exist");
-        let first_layer = markers
-            .iter()
-            .position(|marker| marker.starts_with("layer:"))
-            .expect("at least one layer marker must exist");
+    fn assert_relative_order(source: &str, first: &str, second: &str) {
+        let first_index = source
+            .find(first)
+            .unwrap_or_else(|| panic!("expected snippet not found: {first}"));
+        let second_index = source
+            .find(second)
+            .unwrap_or_else(|| panic!("expected snippet not found: {second}"));
 
         assert!(
-            routes_complete < first_layer,
-            "all route markers should appear before layer markers"
+            first_index < second_index,
+            "expected `{first}` to appear before `{second}` in start_server() router chain"
         );
     }
 
     #[test]
-    fn http_router_build_keeps_thin_adapter_mount_points() {
-        let markers = super::http_router_build_sequence_markers();
+    fn start_server_builds_routes_before_layer_stack_and_state() {
+        let router_chain = super::router_build_chain_source();
 
-        for expected_mount in [
-            "nest:/api/plans",
-            "nest:/api/payment",
-            "nest:/api/notifications",
-            "nest:/api/admin/network-mapping",
-            "nest:/api/backups",
+        assert_relative_order(
+            router_chain,
+            ".route(\"/api/version\", get(get_app_version))",
+            ".layer(DefaultBodyLimit::max(1024 * 1024 * 1024))",
+        );
+        assert_relative_order(
+            router_chain,
+            ".layer(DefaultBodyLimit::max(1024 * 1024 * 1024))",
+            "TimeoutLayer::new(Duration::from_secs(3600))",
+        );
+        assert_relative_order(
+            router_chain,
+            "TimeoutLayer::new(Duration::from_secs(3600))",
+            "middleware::metrics_middleware",
+        );
+        assert_relative_order(
+            router_chain,
+            "middleware::metrics_middleware",
+            "middleware::correlation_id_middleware",
+        );
+        assert_relative_order(
+            router_chain,
+            "middleware::correlation_id_middleware",
+            "middleware::security_enforcer_middleware",
+        );
+        assert_relative_order(
+            router_chain,
+            "middleware::security_enforcer_middleware",
+            "middleware::security_headers_middleware",
+        );
+        assert_relative_order(
+            router_chain,
+            "middleware::security_headers_middleware",
+            ".layer(cors)",
+        );
+        assert_relative_order(router_chain, ".layer(cors)", ".with_state(state);");
+    }
+
+    #[test]
+    fn start_server_keeps_thin_adapter_mount_points_in_main_router() {
+        let router_chain = super::router_build_chain_source();
+
+        for mount in [
+            ".nest(\"/api/plans\", plans::plan_routes())",
+            ".nest(\"/api/payment\", payment::router())",
+            ".nest(\"/api/notifications\", notifications::router())",
+            ".nest(\"/api/admin/network-mapping\", network_mapping::router())",
+            ".nest(\"/api/backups\", backup::router())",
         ] {
             assert!(
-                markers.contains(&expected_mount),
-                "expected mount marker {expected_mount}"
+                router_chain.contains(mount),
+                "expected router chain to include mount: {mount}"
             );
         }
     }
