@@ -1,18 +1,15 @@
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    ComputePathRequest, ComputePathResponse, ComputedPathHop, ConnectNodeToLinkRequest,
-    ConnectNodeToLinkResponse, CoverageCheckRequest, CoverageCheckResponse,
-    CreateNetworkLinkRequest, CreateNetworkNodeRequest, CreateServiceZoneRequest,
-    CreateZoneNodeBindingRequest, CreateZoneOfferRequest, NetworkImpactCustomer,
+    ComputePathRequest, ComputePathResponse, ConnectNodeToLinkRequest, ConnectNodeToLinkResponse,
+    CoverageCheckRequest, CoverageCheckResponse, CreateNetworkLinkRequest, CreateNetworkNodeRequest,
+    CreateServiceZoneRequest, CreateZoneNodeBindingRequest, CreateZoneOfferRequest,
     NetworkImpactResponse, NetworkLink, NetworkNode, PaginatedResponse, RankCandidateNodesRequest,
-    RankCandidateNodesResponse, RankedCandidateNode, ResolveZoneRequest, ResolvedZone,
-    ResolvedZoneResponse, ServiceZone, SyncTopologyAssetsResponse, UpdateNetworkLinkRequest,
-    UpdateNetworkNodeRequest, UpdateServiceZoneRequest, UpdateZoneOfferRequest, ZoneNodeBinding,
-    ZoneOffer,
+    RankCandidateNodesResponse, ResolveZoneRequest, ResolvedZone, ResolvedZoneResponse,
+    ServiceZone, SyncTopologyAssetsResponse, UpdateNetworkLinkRequest, UpdateNetworkNodeRequest,
+    UpdateServiceZoneRequest, UpdateZoneOfferRequest, ZoneNodeBinding, ZoneOffer,
 };
 use crate::services::AuthService;
-use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 
 mod core;
@@ -23,11 +20,6 @@ mod repository;
 mod validation;
 
 pub use dto::ListQuery;
-
-use self::dto::{
-    CandidateNodeRow, NodeStatusRow, PathEdge, PathLinkRow, SyncCustomerLocationRow,
-    SyncRouterRow, UuidTextRow,
-};
 
 #[derive(Clone)]
 pub struct NetworkMappingService {
@@ -153,160 +145,7 @@ impl NetworkMappingService {
         actor_id: &str,
         tenant_id: &str,
     ) -> AppResult<SyncTopologyAssetsResponse> {
-        self.require_installation_manage(actor_id, tenant_id)
-            .await?;
-
-        let routers: Vec<SyncRouterRow> = sqlx::query_as(
-            r#"
-            SELECT
-              id::text AS id,
-              name,
-              enabled,
-              latitude::float8 AS latitude,
-              longitude::float8 AS longitude
-            FROM mikrotik_routers
-            WHERE tenant_id = $1::text
-              AND latitude IS NOT NULL
-              AND longitude IS NOT NULL
-            "#,
-        )
-        .bind(tenant_id)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
-
-        let customer_locations: Vec<SyncCustomerLocationRow> = sqlx::query_as(
-            r#"
-            SELECT
-              cl.id::text AS location_id,
-              cl.customer_id::text AS customer_id,
-              c.name AS customer_name,
-              COALESCE(NULLIF(BTRIM(cl.label), ''), c.name || ' Location') AS label,
-              svc.subscription_status AS subscription_status,
-              cl.latitude::float8 AS latitude,
-              cl.longitude::float8 AS longitude
-            FROM customer_locations cl
-            INNER JOIN customers c
-              ON c.tenant_id::text = cl.tenant_id::text
-             AND c.id::text = cl.customer_id::text
-            INNER JOIN LATERAL (
-              SELECT cs.status AS subscription_status
-              FROM customer_subscriptions cs
-              WHERE cs.tenant_id = cl.tenant_id
-                AND cs.location_id = cl.id
-                AND cs.status IN ('active', 'pending_installation', 'suspended')
-              ORDER BY
-                CASE cs.status
-                  WHEN 'active' THEN 0
-                  WHEN 'pending_installation' THEN 1
-                  WHEN 'suspended' THEN 2
-                  ELSE 3
-                END,
-                cs.updated_at DESC,
-                cs.created_at DESC
-              LIMIT 1
-            ) svc ON TRUE
-            WHERE cl.tenant_id = $1::text
-              AND cl.latitude IS NOT NULL
-              AND cl.longitude IS NOT NULL
-            "#,
-        )
-        .bind(tenant_id)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
-
-        let eligible_customer_location_ids: Vec<String> = customer_locations
-            .iter()
-            .map(|row| row.location_id.clone())
-            .collect();
-        let pruned_customer_nodes = self
-            .prune_system_managed_nodes_not_in_assets(
-                tenant_id,
-                "customer_location",
-                &eligible_customer_location_ids,
-            )
-            .await?;
-
-        let mut router_nodes_created = 0_i64;
-        let mut router_nodes_updated = 0_i64;
-        let mut customer_nodes_created = 0_i64;
-        let mut customer_nodes_updated = 0_i64;
-
-        for row in routers {
-            let created = self
-                .upsert_system_managed_node(
-                    tenant_id,
-                    "mikrotik_router",
-                    &row.id,
-                    row.name.trim(),
-                    "router",
-                    if row.enabled { "active" } else { "inactive" },
-                    row.latitude,
-                    row.longitude,
-                    serde_json::json!({
-                        "system_managed": true,
-                        "asset_source": "mikrotik_router",
-                        "asset_type": "mikrotik_router",
-                        "asset_id": row.id,
-                        "router_id": row.id,
-                    }),
-                )
-                .await?;
-            if created {
-                router_nodes_created += 1;
-            } else {
-                router_nodes_updated += 1;
-            }
-        }
-
-        for row in customer_locations {
-            let name = if row.customer_name.trim() == row.label.trim() {
-                row.label.clone()
-            } else {
-                format!("{} - {}", row.customer_name.trim(), row.label.trim())
-            };
-            let created = self
-                .upsert_system_managed_node(
-                    tenant_id,
-                    "customer_location",
-                    &row.location_id,
-                    name.trim(),
-                    "customer_premise",
-                    Self::customer_subscription_to_node_status(&row.subscription_status),
-                    row.latitude,
-                    row.longitude,
-                    serde_json::json!({
-                        "system_managed": true,
-                        "asset_source": "customer_location",
-                        "asset_type": "customer_location",
-                        "asset_id": row.location_id,
-                        "location_id": row.location_id,
-                        "customer_id": row.customer_id,
-                        "customer_name": row.customer_name,
-                        "location_label": row.label,
-                        "subscription_status": row.subscription_status,
-                    }),
-                )
-                .await?;
-            if created {
-                customer_nodes_created += 1;
-            } else {
-                customer_nodes_updated += 1;
-            }
-        }
-
-        Ok(SyncTopologyAssetsResponse {
-            router_nodes_created,
-            router_nodes_updated,
-            customer_nodes_created,
-            customer_nodes_updated,
-            total_nodes_touched: router_nodes_created
-                + router_nodes_updated
-                + customer_nodes_created
-                + customer_nodes_updated
-                + pruned_customer_nodes as i64,
-        })
+        self.sync_topology_asset_nodes_flow(actor_id, tenant_id).await
     }
 
     pub async fn rank_candidate_nodes(
@@ -315,136 +154,7 @@ impl NetworkMappingService {
         tenant_id: &str,
         dto: RankCandidateNodesRequest,
     ) -> AppResult<RankCandidateNodesResponse> {
-        self.require_read(actor_id, tenant_id).await?;
-
-        if dto.lat.is_some() ^ dto.lng.is_some() {
-            return Err(AppError::Validation(
-                "lat and lng must be provided together".into(),
-            ));
-        }
-        if let (Some(lat), Some(lng)) = (dto.lat, dto.lng) {
-            Self::validate_lat_lng(lat, lng, "candidate")?;
-        }
-
-        let limit = dto.limit.unwrap_or(10).clamp(1, 100) as i64;
-        let node_types = dto.node_types.filter(|v| !v.is_empty());
-        let require_active_nodes = dto.require_active_nodes.unwrap_or(true);
-        let zone_id = dto.zone_id.clone();
-        let has_point = dto.lat.is_some() && dto.lng.is_some();
-
-        let rows: Vec<CandidateNodeRow> = sqlx::query_as(
-            r#"
-            SELECT
-              n.id::text AS node_id,
-              n.name,
-              n.node_type,
-              n.status,
-              n.capacity_json,
-              n.health_json,
-              CASE
-                WHEN $2::bool = true
-                THEN ST_Distance(
-                  geography(n.geom),
-                  geography(ST_SetSRID(ST_MakePoint($3::float8, $4::float8), 4326))
-                )::float8
-                ELSE NULL
-              END AS distance_m,
-              AVG(l.utilization_pct::float8) FILTER (WHERE l.utilization_pct IS NOT NULL) AS avg_link_utilization_pct,
-              COALESCE(COUNT(l.id) FILTER (WHERE l.status = 'down'), 0)::bigint AS down_links,
-              COALESCE(COUNT(l.id), 0)::bigint AS link_count
-            FROM network_nodes n
-            LEFT JOIN network_links l
-              ON l.tenant_id = n.tenant_id
-             AND (l.from_node_id = n.id OR l.to_node_id = n.id)
-            WHERE n.tenant_id = $1::uuid
-              AND ($5::bool = false OR n.status = 'active')
-              AND ($6::text[] IS NULL OR n.node_type = ANY($6::text[]))
-              AND (
-                $7::uuid IS NULL
-                OR EXISTS (
-                  SELECT 1
-                  FROM zone_node_bindings znb
-                  WHERE znb.tenant_id = n.tenant_id
-                    AND znb.zone_id = $7::uuid
-                    AND znb.node_id = n.id
-                )
-              )
-            GROUP BY n.id
-            LIMIT 400
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(has_point)
-        .bind(dto.lng)
-        .bind(dto.lat)
-        .bind(require_active_nodes)
-        .bind(node_types)
-        .bind(zone_id)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
-
-        let mut items: Vec<RankedCandidateNode> = rows
-            .into_iter()
-            .map(|row| {
-                let health_score = Self::compute_health_score(&row.status, &row.health_json);
-                let capacity_score =
-                    Self::compute_capacity_score(&row.capacity_json, row.avg_link_utilization_pct);
-                let distance_score = Self::compute_distance_score(row.distance_m);
-                let distance_component = distance_score.unwrap_or(60.0);
-
-                let stability_penalty =
-                    (row.down_links as f64 * 7.5) + if row.link_count == 0 { 12.0 } else { 0.0 };
-                let base_score =
-                    (health_score * 0.45) + (capacity_score * 0.35) + (distance_component * 0.20);
-                let score = (base_score - stability_penalty).clamp(0.0, 100.0);
-                let reason = format!(
-                    "health {:.0}, capacity {:.0}{}{}",
-                    health_score,
-                    capacity_score,
-                    match distance_score {
-                        Some(s) => format!(", distance {:.0}", s),
-                        None => String::new(),
-                    },
-                    if row.down_links > 0 {
-                        format!(", penalty: {} down link(s)", row.down_links)
-                    } else {
-                        String::new()
-                    }
-                );
-
-                RankedCandidateNode {
-                    node_id: row.node_id,
-                    name: row.name,
-                    node_type: row.node_type,
-                    status: row.status,
-                    score,
-                    health_score,
-                    capacity_score,
-                    distance_score,
-                    distance_m: row.distance_m,
-                    avg_link_utilization_pct: row.avg_link_utilization_pct,
-                    down_links: row.down_links,
-                    link_count: row.link_count,
-                    reason,
-                }
-            })
-            .collect();
-
-        items.sort_by(|a, b| {
-            b.score
-                .partial_cmp(&a.score)
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then_with(|| {
-                    a.distance_m
-                        .unwrap_or(f64::INFINITY)
-                        .partial_cmp(&b.distance_m.unwrap_or(f64::INFINITY))
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                })
-        });
-        items.truncate(limit as usize);
-
-        Ok(RankCandidateNodesResponse { items })
+        self.rank_candidate_nodes_flow(actor_id, tenant_id, dto).await
     }
 
     pub async fn compute_path(
@@ -453,304 +163,7 @@ impl NetworkMappingService {
         tenant_id: &str,
         dto: ComputePathRequest,
     ) -> AppResult<ComputePathResponse> {
-        self.require_read(actor_id, tenant_id).await?;
-        let source_id = dto.source_node_id.clone();
-        let target_id = dto.target_node_id.clone();
-
-        if source_id == target_id {
-            return Err(AppError::Validation(
-                "source_node_id and target_node_id must be different".into(),
-            ));
-        }
-
-        let node_rows: Vec<NodeStatusRow> = sqlx::query_as(
-            r#"
-            SELECT id::text AS id, status
-            FROM network_nodes
-            WHERE tenant_id = $1::uuid
-              AND id::text IN ($2, $3)
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(&source_id)
-        .bind(&target_id)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
-
-        if node_rows.len() < 2 {
-            return Err(AppError::Validation(
-                "source_node_id or target_node_id not found".into(),
-            ));
-        }
-
-        let source_status = node_rows
-            .iter()
-            .find(|n| n.id == source_id)
-            .map(|n| n.status.clone())
-            .unwrap_or_else(|| "inactive".to_string());
-        let target_status = node_rows
-            .iter()
-            .find(|n| n.id == target_id)
-            .map(|n| n.status.clone())
-            .unwrap_or_else(|| "inactive".to_string());
-
-        let require_active_nodes = dto.require_active_nodes.unwrap_or(true);
-        if require_active_nodes && (source_status != "active" || target_status != "active") {
-            return Ok(ComputePathResponse {
-                found: false,
-                source_node_id: source_id.clone(),
-                target_node_id: target_id.clone(),
-                node_ids: vec![],
-                link_ids: vec![],
-                hops: vec![],
-                total_cost: None,
-                total_distance_m: None,
-            });
-        }
-
-        let allowed_statuses = if let Some(v) = dto.allowed_statuses {
-            if v.is_empty() {
-                None
-            } else {
-                Some(v)
-            }
-        } else {
-            Some(vec!["up".to_string(), "degraded".to_string()])
-        };
-        let allowed_link_types = dto.allowed_link_types.filter(|v| !v.is_empty());
-        let exclude_link_ids = dto.exclude_link_ids.filter(|v| !v.is_empty());
-
-        let links: Vec<PathLinkRow> = sqlx::query_as(
-            r#"
-            SELECT
-              id::text AS id,
-              from_node_id::text AS from_node_id,
-              to_node_id::text AS to_node_id,
-              name,
-              link_type,
-              status,
-              COALESCE(ST_Length(geography(geom)), 0)::float8 AS distance_m,
-              utilization_pct::float8 AS utilization_pct,
-              loss_db::float8 AS loss_db,
-              latency_ms::float8 AS latency_ms
-            FROM network_links
-            WHERE tenant_id = $1::uuid
-              AND ($2::text[] IS NULL OR link_type = ANY($2::text[]))
-              AND ($3::text[] IS NULL OR status = ANY($3::text[]))
-              AND ($4::text[] IS NULL OR NOT (id::text = ANY($4::text[])))
-              AND ($5::float8 IS NULL OR utilization_pct IS NULL OR utilization_pct::float8 <= $5::float8)
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(allowed_link_types)
-        .bind(allowed_statuses)
-        .bind(exclude_link_ids)
-        .bind(dto.max_utilization_pct)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
-
-        if links.is_empty() {
-            return Ok(ComputePathResponse {
-                found: false,
-                source_node_id: source_id.clone(),
-                target_node_id: target_id.clone(),
-                node_ids: vec![],
-                link_ids: vec![],
-                hops: vec![],
-                total_cost: None,
-                total_distance_m: None,
-            });
-        }
-
-        let node_status_rows: Vec<NodeStatusRow> = sqlx::query_as(
-            r#"
-            SELECT id::text AS id, status
-            FROM network_nodes
-            WHERE tenant_id = $1::uuid
-            "#,
-        )
-        .bind(tenant_id)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
-        let node_statuses: HashMap<String, String> = node_status_rows
-            .into_iter()
-            .map(|r| (r.id, r.status))
-            .collect();
-
-        let mut adjacency: HashMap<String, Vec<PathEdge>> = HashMap::new();
-        for link in links {
-            if require_active_nodes {
-                let from_active = node_statuses
-                    .get(&link.from_node_id)
-                    .map(|s| s == "active")
-                    .unwrap_or(false);
-                let to_active = node_statuses
-                    .get(&link.to_node_id)
-                    .map(|s| s == "active")
-                    .unwrap_or(false);
-                if !from_active || !to_active {
-                    continue;
-                }
-            }
-
-            let cost = Self::link_cost(&link);
-            let forward = PathEdge {
-                link_id: link.id.clone(),
-                from_node_id: link.from_node_id.clone(),
-                to_node_id: link.to_node_id.clone(),
-                name: link.name.clone(),
-                link_type: link.link_type.clone(),
-                status: link.status.clone(),
-                distance_m: link.distance_m,
-                cost,
-            };
-            let backward = PathEdge {
-                link_id: link.id.clone(),
-                from_node_id: link.to_node_id.clone(),
-                to_node_id: link.from_node_id.clone(),
-                name: link.name,
-                link_type: link.link_type,
-                status: link.status,
-                distance_m: link.distance_m,
-                cost,
-            };
-            adjacency
-                .entry(forward.from_node_id.clone())
-                .or_default()
-                .push(forward);
-            adjacency
-                .entry(backward.from_node_id.clone())
-                .or_default()
-                .push(backward);
-        }
-
-        if !adjacency.contains_key(&source_id) {
-            return Ok(ComputePathResponse {
-                found: false,
-                source_node_id: source_id.clone(),
-                target_node_id: target_id.clone(),
-                node_ids: vec![],
-                link_ids: vec![],
-                hops: vec![],
-                total_cost: None,
-                total_distance_m: None,
-            });
-        }
-
-        let max_hops = dto.max_hops.unwrap_or(64).max(1) as usize;
-        let mut dist: HashMap<String, f64> = HashMap::new();
-        let mut hop_count: HashMap<String, usize> = HashMap::new();
-        let mut prev: HashMap<String, PathEdge> = HashMap::new();
-        let mut frontier: Vec<(String, f64)> = vec![(source_id.clone(), 0.0)];
-        dist.insert(source_id.clone(), 0.0);
-        hop_count.insert(source_id.clone(), 0);
-
-        while !frontier.is_empty() {
-            let mut min_idx = 0usize;
-            for i in 1..frontier.len() {
-                if frontier[i].1 < frontier[min_idx].1 {
-                    min_idx = i;
-                }
-            }
-            let (node, cost_here) = frontier.swap_remove(min_idx);
-            let best = *dist.get(&node).unwrap_or(&f64::INFINITY);
-            if cost_here > best {
-                continue;
-            }
-            if node == target_id {
-                break;
-            }
-
-            let current_hops = *hop_count.get(&node).unwrap_or(&0);
-            if current_hops >= max_hops {
-                continue;
-            }
-
-            for edge in adjacency.get(&node).cloned().unwrap_or_default() {
-                let next = edge.to_node_id.clone();
-                let next_hops = current_hops + 1;
-                if next_hops > max_hops {
-                    continue;
-                }
-                let candidate = cost_here + edge.cost;
-                let current_best = *dist.get(&next).unwrap_or(&f64::INFINITY);
-                if candidate + 1e-9 < current_best {
-                    dist.insert(next.clone(), candidate);
-                    hop_count.insert(next.clone(), next_hops);
-                    prev.insert(next.clone(), edge);
-                    frontier.push((next, candidate));
-                }
-            }
-        }
-
-        let Some(total_cost) = dist.get(&target_id).copied() else {
-            return Ok(ComputePathResponse {
-                found: false,
-                source_node_id: source_id.clone(),
-                target_node_id: target_id.clone(),
-                node_ids: vec![],
-                link_ids: vec![],
-                hops: vec![],
-                total_cost: None,
-                total_distance_m: None,
-            });
-        };
-
-        let mut reversed: Vec<PathEdge> = Vec::new();
-        let mut cursor = target_id.clone();
-        while cursor != source_id {
-            let Some(step) = prev.get(&cursor).cloned() else {
-                return Ok(ComputePathResponse {
-                    found: false,
-                    source_node_id: source_id.clone(),
-                    target_node_id: target_id.clone(),
-                    node_ids: vec![],
-                    link_ids: vec![],
-                    hops: vec![],
-                    total_cost: None,
-                    total_distance_m: None,
-                });
-            };
-            cursor = step.from_node_id.clone();
-            reversed.push(step);
-        }
-        reversed.reverse();
-
-        let mut node_ids = vec![source_id.clone()];
-        let mut link_ids = Vec::with_capacity(reversed.len());
-        let mut hops = Vec::with_capacity(reversed.len());
-        let mut total_distance = 0.0;
-
-        for (idx, step) in reversed.into_iter().enumerate() {
-            total_distance += step.distance_m;
-            link_ids.push(step.link_id.clone());
-            node_ids.push(step.to_node_id.clone());
-            hops.push(ComputedPathHop {
-                seq_no: idx as i32 + 1,
-                link_id: step.link_id,
-                from_node_id: step.from_node_id,
-                to_node_id: step.to_node_id,
-                name: step.name,
-                link_type: step.link_type,
-                status: step.status,
-                distance_m: step.distance_m,
-                cost: step.cost,
-            });
-        }
-
-        Ok(ComputePathResponse {
-            found: true,
-            source_node_id: source_id,
-            target_node_id: target_id,
-            node_ids,
-            link_ids,
-            hops,
-            total_cost: Some(total_cost),
-            total_distance_m: Some(total_distance),
-        })
+        self.compute_path_flow(actor_id, tenant_id, dto).await
     }
 
     pub async fn list_nodes(
@@ -1929,170 +1342,16 @@ impl NetworkMappingService {
         link_id: Option<String>,
         router_id: Option<String>,
     ) -> AppResult<NetworkImpactResponse> {
-        self.require_read(actor_id, tenant_id).await?;
-
-        let mut node_ids = HashSet::<String>::new();
-        let mut link_ids = HashSet::<String>::new();
-
-        if let Some(id) = node_id.filter(|v| !v.trim().is_empty()) {
-            node_ids.insert(id.trim().to_string());
-        }
-        if let Some(id) = link_id.filter(|v| !v.trim().is_empty()) {
-            link_ids.insert(id.trim().to_string());
-        }
-
-        if let Some(router_id) = router_id.filter(|v| !v.trim().is_empty()) {
-            let router_id = router_id.trim().to_string();
-            let resolved_nodes: Vec<UuidTextRow> = sqlx::query_as(
-                r#"
-                SELECT id::text AS id
-                FROM network_nodes
-                WHERE tenant_id = $1::uuid
-                  AND (
-                    id::text = $2::text
-                    OR metadata->>'router_id' = $2::text
-                    OR metadata->>'routerId' = $2::text
-                    OR metadata->>'mikrotik_router_id' = $2::text
-                    OR metadata->>'mikrotikRouterId' = $2::text
-                  )
-                "#,
-            )
-            .bind(tenant_id)
-            .bind(&router_id)
-            .fetch_all(&self.pool)
+        self.list_impacted_customers_flow(actor_id, tenant_id, node_id, link_id, router_id)
             .await
-            .map_err(AppError::Database)?;
-
-            for row in resolved_nodes {
-                node_ids.insert(row.id);
-            }
-        }
-
-        let node_vec = node_ids.into_iter().collect::<Vec<_>>();
-
-        if !node_vec.is_empty() {
-            let connected_links: Vec<UuidTextRow> = sqlx::query_as(
-                r#"
-                SELECT id::text AS id
-                FROM network_links
-                WHERE tenant_id = $1::uuid
-                  AND (
-                    from_node_id::text = ANY($2::text[])
-                    OR to_node_id::text = ANY($2::text[])
-                  )
-                "#,
-            )
-            .bind(tenant_id)
-            .bind(&node_vec)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(AppError::Database)?;
-
-            for row in connected_links {
-                link_ids.insert(row.id);
-            }
-        }
-
-        let link_vec = link_ids.into_iter().collect::<Vec<_>>();
-        if node_vec.is_empty() && link_vec.is_empty() {
-            return Ok(NetworkImpactResponse {
-                node_ids: node_vec,
-                link_ids: link_vec,
-                customers: vec![],
-            });
-        }
-
-        let rows: Vec<NetworkImpactCustomer> = sqlx::query_as(
-            r#"
-            SELECT
-              csa.id::text AS assignment_id,
-              csa.status AS assignment_status,
-              csa.invoice_id::text AS invoice_id,
-              csa.subscription_id::text AS subscription_id,
-              cs.status AS subscription_status,
-              wo.id::text AS work_order_id,
-              wo.status AS work_order_status,
-              c.id::text AS customer_id,
-              c.name AS customer_name,
-              cl.id::text AS location_id,
-              cl.label AS location_label,
-              csa.selected_node_id AS selected_node_id,
-              nn.name AS selected_node_name,
-              (
-                ($2::text[] IS NOT NULL AND csa.selected_node_id = ANY($2::text[]))
-                OR ($2::text[] IS NOT NULL AND EXISTS (
-                  SELECT 1
-                  FROM jsonb_array_elements_text(csa.path_node_ids) n(node_id)
-                  WHERE n.node_id = ANY($2::text[])
-                ))
-              ) AS impacted_via_node,
-              (
-                $3::text[] IS NOT NULL AND EXISTS (
-                  SELECT 1
-                  FROM jsonb_array_elements_text(csa.path_link_ids) l(link_id)
-                  WHERE l.link_id = ANY($3::text[])
-                )
-              ) AS impacted_via_link,
-              csa.updated_at AS updated_at
-            FROM customer_service_assignments csa
-            JOIN customers c
-              ON c.tenant_id = csa.tenant_id AND c.id = csa.customer_id
-            JOIN customer_locations cl
-              ON cl.tenant_id = csa.tenant_id AND cl.id = csa.location_id
-            LEFT JOIN customer_subscriptions cs
-              ON cs.tenant_id = csa.tenant_id AND cs.id = csa.subscription_id
-            LEFT JOIN installation_work_orders wo
-              ON wo.tenant_id = csa.tenant_id AND wo.id = csa.work_order_id
-            LEFT JOIN network_nodes nn
-              ON nn.tenant_id = csa.tenant_id::uuid AND nn.id::text = csa.selected_node_id
-            WHERE csa.tenant_id = $1::text
-              AND (
-                ($2::text[] IS NOT NULL AND (
-                  csa.selected_node_id = ANY($2::text[])
-                  OR EXISTS (
-                    SELECT 1
-                    FROM jsonb_array_elements_text(csa.path_node_ids) n(node_id)
-                    WHERE n.node_id = ANY($2::text[])
-                  )
-                ))
-                OR
-                ($3::text[] IS NOT NULL AND EXISTS (
-                  SELECT 1
-                  FROM jsonb_array_elements_text(csa.path_link_ids) l(link_id)
-                  WHERE l.link_id = ANY($3::text[])
-                ))
-              )
-            ORDER BY csa.updated_at DESC
-            LIMIT 300
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(if node_vec.is_empty() {
-            None
-        } else {
-            Some(node_vec.clone())
-        })
-        .bind(if link_vec.is_empty() {
-            None
-        } else {
-            Some(link_vec.clone())
-        })
-        .fetch_all(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
-
-        Ok(NetworkImpactResponse {
-            node_ids: node_vec,
-            link_ids: link_vec,
-            customers: rows,
-        })
     }
 
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{NetworkMappingService, PathLinkRow};
+    use super::dto::{CandidateNodeRow, PathLinkRow};
+    use super::NetworkMappingService;
     use crate::error::AppError;
 
     #[test]
@@ -2243,5 +1502,43 @@ mod tests {
         let db_err = sqlx::Error::Protocol("connection reset by peer".to_string());
         let mapped_db = NetworkMappingService::map_geometry_db_error(db_err, "geometry");
         assert!(matches!(mapped_db, AppError::Database(_)));
+    }
+    #[test]
+    fn mapper_candidate_row_transforms_into_ranked_item() {
+        let ranked = NetworkMappingService::candidate_row_to_ranked(CandidateNodeRow {
+            node_id: "node-1".into(),
+            name: "Node 1".into(),
+            node_type: "router".into(),
+            status: "active".into(),
+            capacity_json: serde_json::json!({"available_mbps": 25, "total_mbps": 100}),
+            health_json: serde_json::json!({}),
+            distance_m: Some(1200.0),
+            avg_link_utilization_pct: Some(30.0),
+            down_links: 1,
+            link_count: 4,
+        });
+
+        assert_eq!(ranked.node_id, "node-1");
+        assert_eq!(ranked.name, "Node 1");
+        assert_eq!(ranked.node_type, "router");
+        assert_eq!(ranked.status, "active");
+        assert!(ranked.score >= 0.0 && ranked.score <= 100.0);
+        assert!(ranked.reason.contains("health"));
+    }
+
+    #[test]
+    fn mapper_builds_not_found_path_response_shape() {
+        let source = "source-node".to_string();
+        let target = "target-node".to_string();
+        let out = NetworkMappingService::build_path_not_found_response(source.clone(), target.clone());
+
+        assert!(!out.found);
+        assert_eq!(out.source_node_id, source);
+        assert_eq!(out.target_node_id, target);
+        assert!(out.node_ids.is_empty());
+        assert!(out.link_ids.is_empty());
+        assert!(out.hops.is_empty());
+        assert!(out.total_cost.is_none());
+        assert!(out.total_distance_m.is_none());
     }
 }
