@@ -1656,3 +1656,135 @@ pub async fn seed_plans(pool: &DbPool) -> Result<(), sqlx::Error> {
 
     Ok(())
 }
+
+#[cfg(all(test, feature = "postgres"))]
+mod tests {
+    use super::*;
+    use std::sync::{Mutex, OnceLock};
+
+    fn env_lock() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(())).lock().expect("env lock")
+    }
+
+    struct EnvSnapshot {
+        database_url: Option<String>,
+        postgres_user: Option<String>,
+        postgres_password: Option<String>,
+        postgres_db: Option<String>,
+        postgres_host: Option<String>,
+        postgres_port: Option<String>,
+        postgres_sslmode: Option<String>,
+    }
+
+    impl EnvSnapshot {
+        fn capture() -> Self {
+            Self {
+                database_url: env::var("DATABASE_URL").ok(),
+                postgres_user: env::var("POSTGRES_USER").ok(),
+                postgres_password: env::var("POSTGRES_PASSWORD").ok(),
+                postgres_db: env::var("POSTGRES_DB").ok(),
+                postgres_host: env::var("POSTGRES_HOST").ok(),
+                postgres_port: env::var("POSTGRES_PORT").ok(),
+                postgres_sslmode: env::var("POSTGRES_SSLMODE").ok(),
+            }
+        }
+
+        fn restore(self) {
+            fn set_or_remove(key: &str, value: Option<String>) {
+                match value {
+                    Some(v) => env::set_var(key, v),
+                    None => env::remove_var(key),
+                }
+            }
+
+            set_or_remove("DATABASE_URL", self.database_url);
+            set_or_remove("POSTGRES_USER", self.postgres_user);
+            set_or_remove("POSTGRES_PASSWORD", self.postgres_password);
+            set_or_remove("POSTGRES_DB", self.postgres_db);
+            set_or_remove("POSTGRES_HOST", self.postgres_host);
+            set_or_remove("POSTGRES_PORT", self.postgres_port);
+            set_or_remove("POSTGRES_SSLMODE", self.postgres_sslmode);
+        }
+    }
+
+    #[test]
+    fn percent_encode_component_encodes_reserved_characters() {
+        assert_eq!(
+            percent_encode_component("user name:p@ss/word"),
+            "user%20name%3Ap%40ss%2Fword"
+        );
+    }
+
+    #[test]
+    fn build_postgres_url_from_env_uses_defaults_and_percent_encoding() {
+        let _guard = env_lock();
+        let snapshot = EnvSnapshot::capture();
+
+        env::remove_var("DATABASE_URL");
+        env::set_var("POSTGRES_USER", "alice name");
+        env::set_var("POSTGRES_PASSWORD", "p@ss/word");
+        env::set_var("POSTGRES_DB", "main db");
+        env::remove_var("POSTGRES_HOST");
+        env::remove_var("POSTGRES_PORT");
+        env::remove_var("POSTGRES_SSLMODE");
+
+        let url = build_postgres_url_from_env().expect("postgres url");
+
+        assert_eq!(
+            url,
+            "postgres://alice%20name:p%40ss%2Fword@localhost:5432/main%20db"
+        );
+
+        snapshot.restore();
+    }
+
+    #[test]
+    fn build_postgres_url_from_env_adds_trimmed_sslmode_when_present() {
+        let _guard = env_lock();
+        let snapshot = EnvSnapshot::capture();
+
+        env::remove_var("DATABASE_URL");
+        env::set_var("POSTGRES_USER", "user");
+        env::set_var("POSTGRES_PASSWORD", "pass");
+        env::set_var("POSTGRES_DB", "app");
+        env::set_var("POSTGRES_HOST", "db.internal");
+        env::set_var("POSTGRES_PORT", "5433");
+        env::set_var("POSTGRES_SSLMODE", " require mode ");
+
+        let url = build_postgres_url_from_env().expect("postgres url with sslmode");
+
+        assert_eq!(
+            url,
+            "postgres://user:pass@db.internal:5433/app?sslmode=require%20mode"
+        );
+
+        snapshot.restore();
+    }
+
+    #[tokio::test]
+    async fn init_db_returns_configuration_error_when_database_url_and_postgres_env_absent() {
+        let _guard = env_lock();
+        let snapshot = EnvSnapshot::capture();
+
+        env::remove_var("DATABASE_URL");
+        env::remove_var("POSTGRES_USER");
+        env::remove_var("POSTGRES_PASSWORD");
+        env::remove_var("POSTGRES_DB");
+        env::remove_var("POSTGRES_HOST");
+        env::remove_var("POSTGRES_PORT");
+        env::remove_var("POSTGRES_SSLMODE");
+
+        let err = init_db(PathBuf::from(".")).await.expect_err("expected config error");
+
+        match err {
+            sqlx::Error::Configuration(msg) => {
+                let text = msg.to_string();
+                assert!(text.contains("Missing POSTGRES_USER"), "unexpected error: {text}");
+            }
+            other => panic!("expected configuration error, got: {other}"),
+        }
+
+        snapshot.restore();
+    }
+}
