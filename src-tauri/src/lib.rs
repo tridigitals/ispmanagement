@@ -3,6 +3,7 @@
 //! This is the core library for the Tauri application.
 //! It wires together all modules: database, services, and commands.
 
+pub mod bootstrap;
 pub mod db;
 pub mod error;
 pub mod http;
@@ -13,19 +14,6 @@ pub mod services;
 #[cfg(feature = "desktop")]
 pub mod commands;
 
-#[cfg(feature = "desktop")]
-use db::connection::{init_db, seed_defaults};
-#[cfg(feature = "desktop")]
-use services::backup::BackupScheduler;
-#[cfg(feature = "desktop")]
-use services::metrics_service::MetricsService;
-#[cfg(feature = "desktop")]
-use services::{
-    AnnouncementScheduler, AuditService, AuthService, BackupService, CustomerService,
-    EmailOutboxService, EmailService, IspPackageService, MikrotikService, NetworkMappingService,
-    NotificationService, PaymentService, PlanService, PppoeService, RoleService, SettingsService,
-    SystemService, TeamService, UserService,
-};
 #[cfg(feature = "desktop")]
 use tracing::info;
 #[cfg(feature = "desktop")]
@@ -187,175 +175,8 @@ pub fn run() {
             // We use block_on here to ensure services are ready before the window starts
             // and potentially calls commands that require these managed states.
             let init_result: Result<(), String> = tauri::async_runtime::block_on(async {
-                // Initialize database
-                info!("Attempting to initialize database...");
-                let pool = init_db(app_data_dir.clone())
+                crate::bootstrap::app::initialize_backend(app_handle.clone(), app_data_dir.clone())
                     .await
-                    .map_err(|e| format!("Failed to initialize database: {}", e))?;
-                info!("Database initialized.");
-
-                // Seed default settings
-                seed_defaults(&pool)
-                    .await
-                    .map_err(|e| format!("Failed to seed default settings: {}", e))?;
-                info!("Default settings seeded.");
-
-                // Create services - AuditService must be first
-                let plan_service = PlanService::new(pool.clone());
-                let audit_service = AuditService::new(pool.clone(), Some(plan_service.clone()));
-                // RoleService needs AuditService
-                let role_service = RoleService::new(pool.clone(), audit_service.clone());
-
-                // Seed RBAC permissions and roles using RoleService instance
-                role_service.seed_permissions()
-                    .await
-                    .map_err(|e| format!("Failed to seed permissions: {}", e))?;
-                role_service.seed_roles()
-                    .await
-                    .map_err(|e| format!("Failed to seed roles: {}", e))?;
-                info!("RBAC permissions and roles seeded.");
-
-                // Get JWT secret from settings
-                let jwt_secret = sqlx::query_scalar::<_, String>(
-                    "SELECT value FROM settings WHERE key = 'jwt_secret' AND tenant_id IS NULL"
-                )
-                .fetch_one(&pool)
-                .await
-                .unwrap_or_else(|_| uuid::Uuid::new_v4().to_string());
-                info!("JWT Secret loaded.");
-
-                // Initialize App Data Dir for Storage
-                let app_data_dir = app_handle.path().app_data_dir().unwrap_or(std::path::PathBuf::from("app_data"));
-
-                let settings_service = SettingsService::new(pool.clone(), audit_service.clone());
-                let email_service = EmailService::new(settings_service.clone());
-                let auth_service = AuthService::new(pool.clone(), jwt_secret, email_service.clone(), audit_service.clone(), settings_service.clone());
-                let user_service = UserService::new(pool.clone(), audit_service.clone());
-                let pppoe_service =
-                    PppoeService::new(
-                        pool.clone(),
-                        auth_service.clone(),
-                        audit_service.clone(),
-                        settings_service.clone(),
-                    );
-                let isp_package_service =
-                    IspPackageService::new(pool.clone(), auth_service.clone(), audit_service.clone());
-                let network_mapping_service =
-                    NetworkMappingService::new(pool.clone(), auth_service.clone());
-                let team_service = TeamService::new(pool.clone(), auth_service.clone(), audit_service.clone(), plan_service.clone());
-                let metrics_service = std::sync::Arc::new(MetricsService::new());
-                let system_service = SystemService::new(pool.clone(), metrics_service.clone());
-                let storage_service = crate::services::StorageService::new(pool.clone(), plan_service.clone(), app_data_dir.clone());
-                let backup_service = BackupService::new(pool.clone(), app_data_dir.clone());
-
-                // Start Backup Scheduler
-                let scheduler = BackupScheduler::new(pool.clone(), backup_service.clone(), settings_service.clone());
-                scheduler.start().await;
-
-                // Create WebSocket hub for real-time sync (shared between HTTP and Tauri)
-                let ws_hub = std::sync::Arc::new(http::WsHub::new());
-
-                let email_outbox_service =
-                    EmailOutboxService::new(pool.clone(), settings_service.clone(), email_service.clone());
-                email_outbox_service.start_sender().await;
-
-                let notification_service = NotificationService::new(
-                    pool.clone(),
-                    ws_hub.clone(),
-                    email_outbox_service.clone(),
-                );
-                let customer_service = CustomerService::new(
-                    pool.clone(),
-                    auth_service.clone(),
-                    audit_service.clone(),
-                    notification_service.clone(),
-                    pppoe_service.clone(),
-                    user_service.clone(),
-                );
-                customer_service.start_installation_sla_scheduler();
-                let payment_service =
-                    PaymentService::new(pool.clone(), notification_service.clone(), pppoe_service.clone());
-                payment_service.start_customer_invoice_scheduler();
-
-                // MikroTik monitoring (tenant-scoped)
-                let mikrotik_service =
-                    MikrotikService::new(
-                        pool.clone(),
-                        notification_service.clone(),
-                        audit_service.clone(),
-                        settings_service.clone(),
-                    );
-                std::sync::Arc::new(mikrotik_service.clone()).start_poller();
-
-                // Start Announcement Scheduler (scheduled broadcasts -> notifications)
-                let announcement_scheduler =
-                    AnnouncementScheduler::new(pool.clone(), notification_service.clone(), audit_service.clone());
-                announcement_scheduler.start().await;
-
-                // Seed default features
-                plan_service.seed_default_features()
-                    .await
-                    .map_err(|e| format!("Failed to seed default features: {}", e))?;
-                info!("Default features seeded.");
-
-                // Manage state - Crucial: This must happen before setup returns
-                app_handle.manage(auth_service.clone());
-                app_handle.manage(user_service.clone());
-                app_handle.manage(customer_service.clone());
-                app_handle.manage(pppoe_service.clone());
-                app_handle.manage(isp_package_service.clone());
-                app_handle.manage(network_mapping_service.clone());
-                app_handle.manage(settings_service.clone());
-                app_handle.manage(email_service.clone());
-                app_handle.manage(team_service.clone());
-                app_handle.manage(audit_service.clone());
-                app_handle.manage(role_service.clone());
-                app_handle.manage(system_service.clone());
-                app_handle.manage(plan_service.clone());
-                app_handle.manage(storage_service.clone());
-                app_handle.manage(backup_service.clone());
-                app_handle.manage(payment_service.clone());
-                app_handle.manage(notification_service.clone());
-                app_handle.manage(email_outbox_service.clone());
-                app_handle.manage(mikrotik_service.clone());
-                app_handle.manage(ws_hub.clone());
-                app_handle.manage(metrics_service.clone());
-                info!("Services added to Tauri state.");
-
-
-                // Start HTTP Server (This can run in background)
-                let app_dir = app_data_dir.clone();
-                tauri::async_runtime::spawn(async move {
-                    http::start_server(
-                        auth_service,
-                        user_service,
-                        settings_service,
-                        email_service,
-                        team_service,
-                        role_service,
-                        audit_service,
-                        system_service,
-                        plan_service,
-                        storage_service,
-                        payment_service,
-                        notification_service,
-                        mikrotik_service,
-                        customer_service,
-                        pppoe_service,
-                        isp_package_service,
-                        network_mapping_service,
-                        backup_service,
-                        ws_hub,
-                        app_dir,
-                        3000,
-                        pool.clone(),
-                        metrics_service,
-                    ).await;
-                });
-
-
-                info!("Services initialized successfully");
-                Ok(())
             });
 
             if let Err(e) = init_result {
@@ -643,4 +464,36 @@ fn show_error_dialog(message: &str) {
     let _ = std::process::Command::new("powershell")
         .args(["-NoProfile", "-Command", &script])
         .spawn();
+}
+
+#[cfg(test)]
+fn run_source() -> &'static str {
+    include_str!("lib.rs")
+}
+
+#[cfg(test)]
+fn run_bootstrap_async_block_source() -> &'static str {
+    let source = run_source();
+    let start = source
+        .find("let init_result: Result<(), String> = tauri::async_runtime::block_on(async {")
+        .expect("run() must initialize backend in setup block");
+    let tail = &source[start..];
+    let end = tail
+        .find("if let Err(e) = init_result")
+        .expect("run() must handle backend init result after async bootstrap block");
+
+    &tail[..end]
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn run_bootstrap_delegates_to_bootstrap_app_module() {
+        let bootstrap = super::run_bootstrap_async_block_source();
+
+        assert!(
+            bootstrap.contains("crate::bootstrap::app::initialize_backend(app_handle.clone(), app_data_dir.clone())"),
+            "run() bootstrap block must delegate to bootstrap::app::initialize_backend"
+        );
+    }
 }

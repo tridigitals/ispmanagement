@@ -10,142 +10,10 @@ use std::collections::HashSet;
 use tauri::State;
 use uuid::Uuid;
 
-fn strip_html_tags(input: &str) -> String {
-    let mut out = String::with_capacity(input.len());
-    let mut in_tag = false;
-    for ch in input.chars() {
-        match ch {
-            '<' => in_tag = true,
-            '>' => in_tag = false,
-            _ if !in_tag => out.push(ch),
-            _ => {}
-        }
-    }
-    out.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-fn ann_snapshot_json(ann: &Announcement) -> serde_json::Value {
-    serde_json::json!({
-        "id": ann.id,
-        "tenant_id": ann.tenant_id,
-        "created_by": ann.created_by,
-        "cover_file_id": ann.cover_file_id,
-        "title": ann.title,
-        "severity": ann.severity,
-        "audience": ann.audience,
-        "mode": ann.mode,
-        "format": ann.format,
-        "deliver_in_app": ann.deliver_in_app,
-        "deliver_email": ann.deliver_email,
-        "deliver_email_force": ann.deliver_email_force,
-        "starts_at": ann.starts_at.to_rfc3339(),
-        "ends_at": ann.ends_at.map(|d| d.to_rfc3339()),
-        "notified_at": ann.notified_at.map(|d| d.to_rfc3339()),
-        "created_at": ann.created_at.to_rfc3339(),
-        "updated_at": ann.updated_at.to_rfc3339(),
-    })
-}
-
-fn ann_changed_fields(before: &Announcement, after: &Announcement) -> Vec<&'static str> {
-    let mut out = Vec::new();
-    if before.cover_file_id != after.cover_file_id {
-        out.push("cover_file_id");
-    }
-    if before.title != after.title {
-        out.push("title");
-    }
-    if before.body != after.body {
-        out.push("body");
-    }
-    if before.severity != after.severity {
-        out.push("severity");
-    }
-    if before.audience != after.audience {
-        out.push("audience");
-    }
-    if before.mode != after.mode {
-        out.push("mode");
-    }
-    if before.format != after.format {
-        out.push("format");
-    }
-    if before.deliver_in_app != after.deliver_in_app {
-        out.push("deliver_in_app");
-    }
-    if before.deliver_email != after.deliver_email {
-        out.push("deliver_email");
-    }
-    if before.deliver_email_force != after.deliver_email_force {
-        out.push("deliver_email_force");
-    }
-    if before.starts_at != after.starts_at {
-        out.push("starts_at");
-    }
-    if before.ends_at != after.ends_at {
-        out.push("ends_at");
-    }
-    out
-}
-
-fn norm_severity(s: Option<String>) -> String {
-    match s.as_deref() {
-        Some("info") | Some("success") | Some("warning") | Some("error") => s.unwrap(),
-        _ => "info".to_string(),
-    }
-}
-
-fn norm_audience(a: Option<String>) -> String {
-    match a.as_deref() {
-        Some("all") | Some("admins") => a.unwrap(),
-        _ => "all".to_string(),
-    }
-}
-
-fn norm_mode(m: Option<String>) -> String {
-    match m.as_deref() {
-        Some("post") | Some("banner") => m.unwrap(),
-        _ => "post".to_string(),
-    }
-}
-
-fn norm_format(f: Option<String>) -> String {
-    match f.as_deref() {
-        Some("plain") | Some("markdown") | Some("html") => f.unwrap(),
-        _ => "plain".to_string(),
-    }
-}
-
-#[cfg(feature = "postgres")]
-async fn tenant_admin_user_ids(
-    pool: &sqlx::Pool<sqlx::Postgres>,
-    tenant_id: &str,
-) -> Result<Vec<String>, sqlx::Error> {
-    sqlx::query_scalar(
-        r#"
-        SELECT DISTINCT tm.user_id
-        FROM tenant_members tm
-        JOIN role_permissions rp ON rp.role_id = tm.role_id
-        WHERE tm.tenant_id = $1
-          AND tm.role_id IS NOT NULL
-          AND rp.permission_id = ANY($2)
-    "#,
-    )
-    .bind(tenant_id)
-    .bind(["admin:access", "admin:*", "*"])
-    .fetch_all(pool)
-    .await
-}
-
-#[cfg(feature = "postgres")]
-async fn tenant_user_ids(
-    pool: &sqlx::Pool<sqlx::Postgres>,
-    tenant_id: &str,
-) -> Result<Vec<String>, sqlx::Error> {
-    sqlx::query_scalar("SELECT DISTINCT user_id FROM tenant_members WHERE tenant_id = $1")
-        .bind(tenant_id)
-        .fetch_all(pool)
-        .await
-}
+use super::announcements_support_common::{
+    ann_changed_fields, ann_snapshot_json, norm_audience, norm_format, norm_mode, norm_severity,
+    strip_html_tags, tenant_admin_user_ids, tenant_user_ids,
+};
 
 async fn send_announcement_notifications(
     pool: &crate::db::DbPool,
@@ -1313,4 +1181,81 @@ pub async fn process_due_announcements_command(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        ann_changed_fields, ann_snapshot_json, norm_audience, norm_format, norm_mode,
+        norm_severity, strip_html_tags,
+    };
+    use crate::models::Announcement;
+    use chrono::{TimeZone, Utc};
+
+    fn sample_announcement() -> Announcement {
+        let ts = Utc
+            .with_ymd_and_hms(2026, 3, 27, 0, 0, 0)
+            .single()
+            .expect("valid UTC timestamp");
+        Announcement {
+            id: "ann-1".to_string(),
+            tenant_id: Some("tenant-1".to_string()),
+            created_by: Some("user-1".to_string()),
+            cover_file_id: Some("file-1".to_string()),
+            title: "Maintenance".to_string(),
+            body: "<p>Hello</p>   world".to_string(),
+            severity: "info".to_string(),
+            audience: "all".to_string(),
+            mode: "post".to_string(),
+            format: "html".to_string(),
+            deliver_in_app: true,
+            deliver_email: false,
+            deliver_email_force: true,
+            starts_at: ts,
+            ends_at: Some(ts),
+            notified_at: Some(ts),
+            created_at: ts,
+            updated_at: ts,
+        }
+    }
+
+    #[test]
+    fn strip_html_tags_collapses_whitespace_and_removes_tags() {
+        let input = "<div>hello <b>rust</b>\n\t world</div>";
+        assert_eq!(strip_html_tags(input), "hello rust world");
+    }
+
+    #[test]
+    fn normalization_helpers_preserve_valid_and_default_invalid_values() {
+        assert_eq!(norm_severity(Some("warning".to_string())), "warning");
+        assert_eq!(norm_severity(Some("oops".to_string())), "info");
+
+        assert_eq!(norm_audience(Some("admins".to_string())), "admins");
+        assert_eq!(norm_audience(None), "all");
+
+        assert_eq!(norm_mode(Some("banner".to_string())), "banner");
+        assert_eq!(norm_mode(Some("invalid".to_string())), "post");
+
+        assert_eq!(norm_format(Some("markdown".to_string())), "markdown");
+        assert_eq!(norm_format(None), "plain");
+    }
+
+    #[test]
+    fn ann_snapshot_json_and_changed_fields_characterize_mapping_shape() {
+        let before = sample_announcement();
+        let mut after = before.clone();
+        after.title = "Maintenance window".to_string();
+        after.deliver_email = true;
+        after.ends_at = None;
+
+        let changed = ann_changed_fields(&before, &after);
+        assert_eq!(changed, vec!["title", "deliver_email", "ends_at"]);
+
+        let snapshot = ann_snapshot_json(&before);
+        assert_eq!(snapshot["id"], "ann-1");
+        assert_eq!(snapshot["tenant_id"], "tenant-1");
+        assert_eq!(snapshot["deliver_in_app"], true);
+        assert_eq!(snapshot["deliver_email"], false);
+        assert_eq!(snapshot["starts_at"], "2026-03-27T00:00:00+00:00");
+    }
 }

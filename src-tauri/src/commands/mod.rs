@@ -1,6 +1,7 @@
 //! Commands module
 
 pub mod announcements;
+pub mod announcements_support_common;
 pub mod audit;
 pub mod auth;
 pub mod backup;

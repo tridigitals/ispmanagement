@@ -12,26 +12,9 @@ use std::collections::HashSet;
 use tauri::State;
 use uuid::Uuid;
 
-#[cfg(feature = "postgres")]
-async fn support_admin_user_ids(
-    pool: &sqlx::Pool<sqlx::Postgres>,
-    tenant_id: &str,
-) -> Result<Vec<String>, sqlx::Error> {
-    sqlx::query_scalar(
-        r#"
-        SELECT DISTINCT tm.user_id
-        FROM tenant_members tm
-        JOIN role_permissions rp ON rp.role_id = tm.role_id
-        WHERE tm.tenant_id = $1
-          AND tm.role_id IS NOT NULL
-          AND rp.permission_id = ANY($2)
-    "#,
-    )
-    .bind(tenant_id)
-    .bind(["support:read_all", "support:reply"])
-    .fetch_all(pool)
-    .await
-}
+use super::announcements_support_common::{
+    normalize_priority, normalize_status, support_admin_user_ids,
+};
 
 #[cfg(feature = "postgres")]
 async fn notify_support_admins_new_ticket(
@@ -195,20 +178,6 @@ pub struct SupportTicketStats {
     pub open: i64,
     pub pending: i64,
     pub closed: i64,
-}
-
-fn normalize_priority(p: Option<String>) -> String {
-    match p.as_deref() {
-        Some("low") | Some("normal") | Some("high") | Some("urgent") => p.unwrap(),
-        _ => "normal".to_string(),
-    }
-}
-
-fn normalize_status(s: Option<String>) -> Option<String> {
-    match s.as_deref() {
-        Some("open") | Some("pending") | Some("closed") => s,
-        _ => None,
-    }
 }
 
 #[tauri::command]
@@ -1212,6 +1181,44 @@ async fn fetch_attachments_map_pg(
         };
         map.entry(r.message_id).or_default().push(fr);
     }
-
+    
     Ok(map)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{normalize_priority, normalize_status};
+
+    #[test]
+    fn normalize_priority_preserves_allowed_values_and_defaults_invalid() {
+        assert_eq!(normalize_priority(Some("low".to_string())), "low");
+        assert_eq!(normalize_priority(Some("urgent".to_string())), "urgent");
+        assert_eq!(normalize_priority(Some("invalid".to_string())), "normal");
+        assert_eq!(normalize_priority(None), "normal");
+    }
+
+    #[test]
+    fn normalize_status_accepts_known_and_rejects_unknown() {
+        assert_eq!(normalize_status(Some("open".to_string())), Some("open".to_string()));
+        assert_eq!(
+            normalize_status(Some("pending".to_string())),
+            Some("pending".to_string())
+        );
+        assert_eq!(normalize_status(Some("other".to_string())), None);
+        assert_eq!(normalize_status(None), None);
+    }
+
+    #[cfg(feature = "postgres")]
+    #[tokio::test]
+    async fn fetch_attachments_map_pg_empty_message_ids_returns_empty_without_db_hit() {
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .connect_lazy("postgres://postgres:postgres@127.0.0.1/test_db")
+            .expect("lazy postgres pool should be constructible");
+
+        let map = super::fetch_attachments_map_pg(&pool, "tenant-1", "ticket-1", &[])
+            .await
+            .expect("empty message ids should short-circuit");
+
+        assert!(map.is_empty());
+    }
 }

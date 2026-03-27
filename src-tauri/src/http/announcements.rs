@@ -14,110 +14,10 @@ use serde::Deserialize;
 use std::collections::HashSet;
 use uuid::Uuid;
 
-fn strip_html_tags(input: &str) -> String {
-    let mut out = String::with_capacity(input.len());
-    let mut in_tag = false;
-    for ch in input.chars() {
-        match ch {
-            '<' => in_tag = true,
-            '>' => in_tag = false,
-            _ if !in_tag => out.push(ch),
-            _ => {}
-        }
-    }
-    out.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-fn ann_snapshot_json(ann: &Announcement) -> serde_json::Value {
-    serde_json::json!({
-        "id": ann.id,
-        "tenant_id": ann.tenant_id,
-        "created_by": ann.created_by,
-        "cover_file_id": ann.cover_file_id,
-        "title": ann.title,
-        "severity": ann.severity,
-        "audience": ann.audience,
-        "mode": ann.mode,
-        "format": ann.format,
-        "deliver_in_app": ann.deliver_in_app,
-        "deliver_email": ann.deliver_email,
-        "deliver_email_force": ann.deliver_email_force,
-        "starts_at": ann.starts_at.to_rfc3339(),
-        "ends_at": ann.ends_at.map(|d| d.to_rfc3339()),
-        "notified_at": ann.notified_at.map(|d| d.to_rfc3339()),
-        "created_at": ann.created_at.to_rfc3339(),
-        "updated_at": ann.updated_at.to_rfc3339(),
-    })
-}
-
-fn ann_changed_fields(before: &Announcement, after: &Announcement) -> Vec<&'static str> {
-    let mut out = Vec::new();
-    if before.cover_file_id != after.cover_file_id {
-        out.push("cover_file_id");
-    }
-    if before.title != after.title {
-        out.push("title");
-    }
-    if before.body != after.body {
-        out.push("body");
-    }
-    if before.severity != after.severity {
-        out.push("severity");
-    }
-    if before.audience != after.audience {
-        out.push("audience");
-    }
-    if before.mode != after.mode {
-        out.push("mode");
-    }
-    if before.format != after.format {
-        out.push("format");
-    }
-    if before.deliver_in_app != after.deliver_in_app {
-        out.push("deliver_in_app");
-    }
-    if before.deliver_email != after.deliver_email {
-        out.push("deliver_email");
-    }
-    if before.deliver_email_force != after.deliver_email_force {
-        out.push("deliver_email_force");
-    }
-    if before.starts_at != after.starts_at {
-        out.push("starts_at");
-    }
-    if before.ends_at != after.ends_at {
-        out.push("ends_at");
-    }
-    out
-}
-
-fn norm_severity(s: Option<String>) -> String {
-    match s.as_deref() {
-        Some("info") | Some("success") | Some("warning") | Some("error") => s.unwrap(),
-        _ => "info".to_string(),
-    }
-}
-
-fn norm_audience(a: Option<String>) -> String {
-    match a.as_deref() {
-        Some("all") | Some("admins") => a.unwrap(),
-        _ => "all".to_string(),
-    }
-}
-
-fn norm_mode(m: Option<String>) -> String {
-    match m.as_deref() {
-        Some("post") | Some("banner") => m.unwrap(),
-        _ => "post".to_string(),
-    }
-}
-
-fn norm_format(f: Option<String>) -> String {
-    match f.as_deref() {
-        Some("plain") | Some("markdown") | Some("html") => f.unwrap(),
-        _ => "plain".to_string(),
-    }
-}
+use super::announcements_support_common::{
+    ann_changed_fields, ann_snapshot_json, norm_audience, norm_format, norm_mode, norm_severity,
+    strip_html_tags, tenant_admin_user_ids, tenant_user_ids,
+};
 
 async fn auth_claims(
     state: &AppState,
@@ -130,38 +30,6 @@ async fn auth_claims(
         .ok_or(crate::error::AppError::Unauthorized)?;
 
     state.auth_service.validate_token(token).await
-}
-
-#[cfg(feature = "postgres")]
-async fn tenant_admin_user_ids(
-    pool: &sqlx::Pool<sqlx::Postgres>,
-    tenant_id: &str,
-) -> Result<Vec<String>, sqlx::Error> {
-    sqlx::query_scalar(
-        r#"
-        SELECT DISTINCT tm.user_id
-        FROM tenant_members tm
-        JOIN role_permissions rp ON rp.role_id = tm.role_id
-        WHERE tm.tenant_id = $1
-          AND tm.role_id IS NOT NULL
-          AND rp.permission_id = ANY($2)
-    "#,
-    )
-    .bind(tenant_id)
-    .bind(["admin:access", "admin:*", "*"])
-    .fetch_all(pool)
-    .await
-}
-
-#[cfg(feature = "postgres")]
-async fn tenant_user_ids(
-    pool: &sqlx::Pool<sqlx::Postgres>,
-    tenant_id: &str,
-) -> Result<Vec<String>, sqlx::Error> {
-    sqlx::query_scalar("SELECT DISTINCT user_id FROM tenant_members WHERE tenant_id = $1")
-        .bind(tenant_id)
-        .fetch_all(pool)
-        .await
 }
 
 #[derive(Deserialize)]
@@ -1356,6 +1224,110 @@ pub async fn process_due_announcements(state: &AppState) -> Result<(), String> {
         .execute(&state.auth_service.pool)
         .await;
     }
-
+    
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        ann_changed_fields, ann_snapshot_json, norm_audience, norm_format, norm_mode,
+        norm_severity, strip_html_tags, ListAdminParams, ListRecentParams,
+    };
+    use crate::models::Announcement;
+    use axum::extract::Query;
+    use axum::http::Uri;
+    use chrono::{TimeZone, Utc};
+
+    fn sample_announcement() -> Announcement {
+        let ts = Utc
+            .with_ymd_and_hms(2026, 3, 27, 0, 0, 0)
+            .single()
+            .expect("valid UTC timestamp");
+        Announcement {
+            id: "ann-1".to_string(),
+            tenant_id: Some("tenant-1".to_string()),
+            created_by: Some("user-1".to_string()),
+            cover_file_id: Some("file-1".to_string()),
+            title: "Maintenance".to_string(),
+            body: "<p>Hello</p>   world".to_string(),
+            severity: "info".to_string(),
+            audience: "all".to_string(),
+            mode: "post".to_string(),
+            format: "html".to_string(),
+            deliver_in_app: true,
+            deliver_email: false,
+            deliver_email_force: true,
+            starts_at: ts,
+            ends_at: Some(ts),
+            notified_at: Some(ts),
+            created_at: ts,
+            updated_at: ts,
+        }
+    }
+
+    #[test]
+    fn helpers_match_existing_adapter_normalization_behavior() {
+        assert_eq!(strip_html_tags("<b>a</b>   b"), "a b");
+
+        assert_eq!(norm_severity(Some("error".to_string())), "error");
+        assert_eq!(norm_severity(Some("bad".to_string())), "info");
+
+        assert_eq!(norm_audience(Some("admins".to_string())), "admins");
+        assert_eq!(norm_audience(Some("bad".to_string())), "all");
+
+        assert_eq!(norm_mode(Some("banner".to_string())), "banner");
+        assert_eq!(norm_mode(None), "post");
+
+        assert_eq!(norm_format(Some("html".to_string())), "html");
+        assert_eq!(norm_format(Some("bad".to_string())), "plain");
+    }
+
+    #[test]
+    fn snapshot_and_changed_fields_lock_payload_shape() {
+        let before = sample_announcement();
+        let mut after = before.clone();
+        after.title = "Maintenance window".to_string();
+        after.deliver_email = true;
+        after.ends_at = None;
+
+        assert_eq!(
+            ann_changed_fields(&before, &after),
+            vec!["title", "deliver_email", "ends_at"]
+        );
+
+        let snapshot = ann_snapshot_json(&before);
+        assert_eq!(snapshot["id"], "ann-1");
+        assert_eq!(snapshot["deliver_in_app"], true);
+        assert_eq!(snapshot["deliver_email"], false);
+        assert_eq!(snapshot["starts_at"], "2026-03-27T00:00:00+00:00");
+    }
+
+    #[test]
+    fn query_params_parsing_characterizes_http_request_contract() {
+        let uri_recent: Uri = "/?page=2&per_page=10&search=alert&severity=warning&mode=banner"
+            .parse()
+            .expect("valid uri");
+        let Query(recent) =
+            Query::<ListRecentParams>::try_from_uri(&uri_recent).expect("recent params parse");
+        assert_eq!(recent.page, Some(2));
+        assert_eq!(recent.per_page, Some(10));
+        assert_eq!(recent.search.as_deref(), Some("alert"));
+        assert_eq!(recent.severity.as_deref(), Some("warning"));
+        assert_eq!(recent.mode.as_deref(), Some("banner"));
+
+        let uri_admin: Uri =
+            "/?scope=tenant&page=3&per_page=25&search=maint&severity=info&mode=post&status=active"
+                .parse()
+                .expect("valid uri");
+        let Query(admin) =
+            Query::<ListAdminParams>::try_from_uri(&uri_admin).expect("admin params parse");
+        assert_eq!(admin.scope.as_deref(), Some("tenant"));
+        assert_eq!(admin.page, Some(3));
+        assert_eq!(admin.per_page, Some(25));
+        assert_eq!(admin.search.as_deref(), Some("maint"));
+        assert_eq!(admin.severity.as_deref(), Some("info"));
+        assert_eq!(admin.mode.as_deref(), Some("post"));
+        assert_eq!(admin.status.as_deref(), Some("active"));
+    }
 }

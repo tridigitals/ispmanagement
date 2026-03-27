@@ -1,6 +1,7 @@
 //! Services module
 
 pub mod alert_service;
+// Auth service was split into `auth_service/` focused units; keep facade export stable.
 pub mod auth_service;
 pub mod cache;
 pub mod email_outbox_service;

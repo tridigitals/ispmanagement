@@ -1,369 +1,6 @@
-mod helpers;
-mod lifecycle;
-mod registration;
-mod subscriptions;
-mod work_orders;
-mod portal;
-mod reschedule;
-
-use crate::db::DbPool;
-use crate::error::{AppError, AppResult};
-use crate::models::{
-    AddCustomerPortalUserRequest, CreateCustomerLocationRequest, CreateCustomerPortalUserRequest,
-    CreateCustomerRegistrationInviteRequest, CreateCustomerRequest,
-    CreateCustomerSubscriptionRequest, CreateCustomerWithPortalRequest,
-    CreateMyCustomerLocationRequest, Customer, CustomerLifecycleAgingBucket,
-    CustomerLifecycleObservability, CustomerLifecycleStageMetric, CustomerLocation,
-    CustomerPortalSubscriptionStats, CustomerPortalUser, CustomerRegistrationInviteCreateResponse,
-    CustomerRegistrationInvitePolicy, CustomerRegistrationInviteSummary,
-    CustomerRegistrationInviteValidationView, CustomerRegistrationInviteView,
-    CustomerSubscription, CustomerSubscriptionView, CustomerUser, InstallationWorkOrder,
-    InstallationWorkOrderView, IspPackage, PaginatedResponse, PortalCheckoutSubscriptionRequest,
-    TeamMemberWithUser, UpdateCustomerLocationRequest,
-    UpdateCustomerRegistrationInvitePolicyRequest, UpdateCustomerRequest,
-    UpdateCustomerSubscriptionRequest, WorkOrderRescheduleDecisionRequest,
-    WorkOrderRescheduleRequestView,
-};
-use crate::security::secret::encrypt_secret_for;
-use crate::services::subscription_lifecycle::{
-    resolve_activation_status, transition_status, SubscriptionLifecycleEvent,
-    SubscriptionLifecycleStatus,
-};
-use crate::services::{AuditService, AuthService, NotificationService, PppoeService, UserService};
-use chrono::{DateTime, Duration, Utc};
-use tracing::warn;
-use uuid::Uuid;
-
-const PURPOSE_PPPOE: &str = "pppoe_secrets";
-const INVITE_DEFAULT_EXPIRES_HOURS: u32 = 24;
-const INVITE_DEFAULT_MAX_USES: u32 = 1;
-const INVITE_DEFAULT_EXPIRES_KEY: &str = "customer_invite_default_expires_hours";
-const INVITE_DEFAULT_MAX_USES_KEY: &str = "customer_invite_default_max_uses";
-const CUSTOMER_PACKAGE_INVOICE_PREFIX: &str = "pkgsub:";
-const INSTALLATION_SLA_REMINDER_ENABLED_KEY: &str = "installation_sla_reminder_enabled";
-const INSTALLATION_SLA_OVERDUE_MINUTES_KEY: &str = "installation_sla_overdue_minutes";
-const INSTALLATION_SLA_REMINDER_COOLDOWN_MINUTES_KEY: &str =
-    "installation_sla_reminder_cooldown_minutes";
-const INSTALLATION_SLA_SCHEDULER_INTERVAL_MINUTES_KEY: &str =
-    "installation_sla_scheduler_interval_minutes";
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum InstallationSlaBreachType {
-    ScheduledOverdue,
-    PendingUnscheduled,
-}
-
-#[derive(Debug, Clone, sqlx::FromRow)]
-struct OverdueInstallationReminderRow {
-    work_order_id: String,
-    status: String,
-    scheduled_at: Option<DateTime<Utc>>,
-    created_at: DateTime<Utc>,
-    customer_name: Option<String>,
-    location_label: Option<String>,
-    package_name: Option<String>,
-}
-
-#[derive(sqlx::FromRow)]
-struct InviteSummaryRow {
-    total: i64,
-    active: i64,
-    revoked: i64,
-    expired: i64,
-    used_up: i64,
-    total_uses: i64,
-    total_capacity: i64,
-    created_last_30d: i64,
-    used_last_30d: i64,
-}
-
-#[derive(Debug, Clone, sqlx::FromRow)]
-struct LifecycleStageRow {
-    stage: String,
-    count: i64,
-}
-
-#[derive(Debug, Clone, sqlx::FromRow)]
-struct AgingBucketRow {
-    bucket: String,
-    count: i64,
-}
-
-#[derive(Clone)]
-pub struct CustomerService {
-    pool: DbPool,
-    auth_service: AuthService,
-    audit_service: AuditService,
-    notification_service: NotificationService,
-    pppoe_service: PppoeService,
-    user_service: UserService,
-}
+use super::*;
 
 impl CustomerService {
-    async fn get_installation_work_order_row(
-        &self,
-        tenant_id: &str,
-        work_order_id: &str,
-    ) -> AppResult<InstallationWorkOrder> {
-        #[cfg(feature = "postgres")]
-        let row: Option<InstallationWorkOrder> = sqlx::query_as(
-            r#"
-            SELECT id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, assigned_to, scheduled_at, completed_at, notes, created_at, updated_at
-            FROM installation_work_orders
-            WHERE tenant_id = $1 AND id = $2
-            LIMIT 1
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(work_order_id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        #[cfg(feature = "sqlite")]
-        let row: Option<InstallationWorkOrder> = sqlx::query_as(
-            r#"
-            SELECT id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, assigned_to, scheduled_at, completed_at, notes, created_at, updated_at
-            FROM installation_work_orders
-            WHERE tenant_id = ? AND id = ?
-            LIMIT 1
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(work_order_id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        row.ok_or_else(|| AppError::NotFound("Work order not found".to_string()))
-    }
-
-    async fn is_actor_admin_or_owner(&self, tenant_id: &str, actor_id: &str) -> AppResult<bool> {
-        #[cfg(feature = "postgres")]
-        let role_name: Option<String> = sqlx::query_scalar(
-            r#"
-            SELECT LOWER(COALESCE(r.name, tm.role, ''))
-            FROM tenant_members tm
-            LEFT JOIN roles r ON r.id = tm.role_id
-            WHERE tm.tenant_id = $1 AND tm.user_id = $2
-            LIMIT 1
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(actor_id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        #[cfg(feature = "sqlite")]
-        let role_name: Option<String> = sqlx::query_scalar(
-            r#"
-            SELECT LOWER(COALESCE(r.name, tm.role, ''))
-            FROM tenant_members tm
-            LEFT JOIN roles r ON r.id = tm.role_id
-            WHERE tm.tenant_id = ? AND tm.user_id = ?
-            LIMIT 1
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(actor_id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        Ok(matches!(
-            role_name.as_deref(),
-            Some("owner") | Some("admin")
-        ))
-    }
-
-    async fn is_installation_assignee_eligible(
-        &self,
-        tenant_id: &str,
-        user_id: &str,
-    ) -> AppResult<bool> {
-        #[cfg(feature = "postgres")]
-        let eligible: bool = sqlx::query_scalar(
-            r#"
-            SELECT EXISTS(
-              SELECT 1
-              FROM tenant_members tm
-              JOIN users u ON u.id = tm.user_id
-              LEFT JOIN roles r ON r.id = tm.role_id
-              WHERE tm.tenant_id = $1
-                AND tm.user_id = $2
-                AND u.is_active = TRUE
-                AND (
-                  EXISTS(
-                    SELECT 1
-                    FROM role_permissions rp
-                    JOIN permissions p ON p.id = rp.permission_id
-                    WHERE rp.role_id = tm.role_id
-                      AND p.resource = 'work_orders'
-                      AND p.action = 'manage'
-                  )
-                  OR LOWER(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin', 'technician', 'teknisi')
-                )
-            )
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(user_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        #[cfg(feature = "sqlite")]
-        let eligible: bool = {
-            let raw: i64 = sqlx::query_scalar(
-                r#"
-                SELECT EXISTS(
-                  SELECT 1
-                  FROM tenant_members tm
-                  JOIN users u ON u.id = tm.user_id
-                  LEFT JOIN roles r ON r.id = tm.role_id
-                  WHERE tm.tenant_id = ?
-                    AND tm.user_id = ?
-                    AND u.is_active = 1
-                    AND (
-                      EXISTS(
-                        SELECT 1
-                        FROM role_permissions rp
-                        JOIN permissions p ON p.id = rp.permission_id
-                        WHERE rp.role_id = tm.role_id
-                          AND p.resource = 'work_orders'
-                          AND p.action = 'manage'
-                      )
-                      OR LOWER(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin', 'technician', 'teknisi')
-                    )
-                )
-                "#,
-            )
-            .bind(tenant_id)
-            .bind(user_id)
-            .fetch_one(&self.pool)
-            .await?;
-            raw != 0
-        };
-
-        Ok(eligible)
-    }
-
-    pub async fn list_installation_assignees(
-        &self,
-        actor_id: &str,
-        tenant_id: &str,
-    ) -> AppResult<Vec<TeamMemberWithUser>> {
-        self.auth_service
-            .check_permission(actor_id, tenant_id, "work_orders", "manage")
-            .await?;
-
-        #[cfg(feature = "postgres")]
-        let rows: Vec<TeamMemberWithUser> = sqlx::query_as(
-            r#"
-            SELECT
-              tm.id,
-              tm.user_id,
-              u.name,
-              u.email,
-              tm.role,
-              tm.role_id,
-              r.name AS role_name,
-              u.is_active,
-              tm.created_at
-            FROM tenant_members tm
-            JOIN users u ON tm.user_id = u.id
-            LEFT JOIN roles r ON tm.role_id = r.id
-            WHERE tm.tenant_id = $1
-              AND u.is_active = TRUE
-              AND (
-                EXISTS(
-                  SELECT 1
-                  FROM role_permissions rp
-                  JOIN permissions p ON p.id = rp.permission_id
-                  WHERE rp.role_id = tm.role_id
-                    AND p.resource = 'work_orders'
-                    AND p.action = 'manage'
-                )
-                OR LOWER(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin', 'technician', 'teknisi')
-              )
-            ORDER BY LOWER(u.name), LOWER(u.email)
-            "#,
-        )
-        .bind(tenant_id)
-        .fetch_all(&self.pool)
-        .await?;
-
-        #[cfg(feature = "sqlite")]
-        let rows: Vec<TeamMemberWithUser> = sqlx::query_as(
-            r#"
-            SELECT
-              tm.id,
-              tm.user_id,
-              u.name,
-              u.email,
-              tm.role,
-              tm.role_id,
-              r.name AS role_name,
-              u.is_active,
-              tm.created_at
-            FROM tenant_members tm
-            JOIN users u ON tm.user_id = u.id
-            LEFT JOIN roles r ON tm.role_id = r.id
-            WHERE tm.tenant_id = ?
-              AND u.is_active = 1
-              AND (
-                EXISTS(
-                  SELECT 1
-                  FROM role_permissions rp
-                  JOIN permissions p ON p.id = rp.permission_id
-                  WHERE rp.role_id = tm.role_id
-                    AND p.resource = 'work_orders'
-                    AND p.action = 'manage'
-                )
-                OR LOWER(COALESCE(r.name, tm.role, '')) IN ('owner', 'admin', 'technician', 'teknisi')
-              )
-            ORDER BY LOWER(u.name), LOWER(u.email)
-            "#,
-        )
-        .bind(tenant_id)
-        .fetch_all(&self.pool)
-        .await?;
-
-        Ok(rows)
-    }
-
-
-    pub fn new(
-        pool: DbPool,
-        auth_service: AuthService,
-        audit_service: AuditService,
-        notification_service: NotificationService,
-        pppoe_service: PppoeService,
-        user_service: UserService,
-    ) -> Self {
-        Self {
-            pool,
-            auth_service,
-            audit_service,
-            notification_service,
-            pppoe_service,
-            user_service,
-        }
-    }
-
-    pub fn start_installation_sla_scheduler(&self) {
-        let svc = self.clone();
-        tokio::spawn(async move {
-            tracing::info!("Installation SLA reminder scheduler started.");
-            loop {
-                if let Err(err) = svc.run_installation_sla_reminders_for_all_tenants().await {
-                    tracing::warn!("installation SLA reminder scheduler failed: {}", err);
-                }
-                let interval_minutes = svc
-                    .resolve_installation_sla_scheduler_interval_minutes()
-                    .await;
-                let sleep_secs = (interval_minutes.max(5) as u64) * 60;
-                tokio::time::sleep(std::time::Duration::from_secs(sleep_secs)).await;
-            }
-        });
-    }
-
     pub async fn run_installation_sla_reminders_for_all_tenants(&self) -> AppResult<u64> {
         if !self.resolve_installation_sla_reminder_enabled().await {
             return Ok(0);
@@ -401,584 +38,6 @@ impl CustomerService {
 
         Ok(sent)
     }
-
-    async fn get_system_role_id_by_name(&self, name: &str) -> AppResult<String> {
-        #[cfg(feature = "postgres")]
-        let row: Option<(String,)> =
-            sqlx::query_as("SELECT id FROM roles WHERE tenant_id IS NULL AND name = $1")
-                .bind(name)
-                .fetch_optional(&self.pool)
-                .await?;
-
-        #[cfg(feature = "sqlite")]
-        let row: Option<(String,)> =
-            sqlx::query_as("SELECT id FROM roles WHERE tenant_id IS NULL AND name = ?")
-                .bind(name)
-                .fetch_optional(&self.pool)
-                .await?;
-
-        row.map(|(id,)| id).ok_or_else(|| {
-            AppError::Internal(format!(
-                "Missing system role '{}'. Ensure RoleService seeds default roles.",
-                name
-            ))
-        })
-    }
-
-    async fn ensure_tenant_member_role(
-        &self,
-        tenant_id: &str,
-        user_id: &str,
-        role_id: &str,
-    ) -> AppResult<()> {
-        // If user already has membership in this tenant, do not overwrite role.
-        #[cfg(feature = "postgres")]
-        let exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM tenant_members WHERE tenant_id = $1 AND user_id = $2)",
-        )
-        .bind(tenant_id)
-        .bind(user_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        #[cfg(feature = "sqlite")]
-        let exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM tenant_members WHERE tenant_id = ? AND user_id = ?)",
-        )
-        .bind(tenant_id)
-        .bind(user_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        if exists {
-            return Ok(());
-        }
-
-        let id = Uuid::new_v4().to_string();
-        let now = Utc::now();
-
-        #[cfg(feature = "postgres")]
-        sqlx::query(
-            "INSERT INTO tenant_members (id, tenant_id, user_id, role, role_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
-        )
-        .bind(&id)
-        .bind(tenant_id)
-        .bind(user_id)
-        .bind("customer")
-        .bind(role_id)
-        .bind(now)
-        .execute(&self.pool)
-        .await?;
-
-        #[cfg(feature = "sqlite")]
-        sqlx::query(
-            "INSERT INTO tenant_members (id, tenant_id, user_id, role, role_id, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        )
-        .bind(&id)
-        .bind(tenant_id)
-        .bind(user_id)
-        .bind("customer")
-        .bind(role_id)
-        .bind(now.to_rfc3339())
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
-    }
-
-    async fn resolve_installation_sla_overdue_minutes(&self) -> i64 {
-        let raw = self
-            .read_global_setting_value(INSTALLATION_SLA_OVERDUE_MINUTES_KEY)
-            .await
-            .ok()
-            .flatten();
-        Self::parse_setting_i64(raw, 120, 15, 7 * 24 * 60)
-    }
-
-    async fn resolve_installation_sla_reminder_cooldown_minutes(&self) -> i64 {
-        let raw = self
-            .read_global_setting_value(INSTALLATION_SLA_REMINDER_COOLDOWN_MINUTES_KEY)
-            .await
-            .ok()
-            .flatten();
-        Self::parse_setting_i64(raw, 180, 15, 7 * 24 * 60)
-    }
-
-    async fn resolve_installation_sla_scheduler_interval_minutes(&self) -> i64 {
-        let default_global = self
-            .read_global_setting_value(INSTALLATION_SLA_SCHEDULER_INTERVAL_MINUTES_KEY)
-            .await
-            .ok()
-            .flatten();
-        let default_global = Self::parse_setting_i64(default_global, 15, 5, 24 * 60);
-
-        #[cfg(feature = "postgres")]
-        let tenant_values: Vec<String> = sqlx::query_scalar(
-            r#"
-            SELECT s.value
-            FROM settings s
-            INNER JOIN tenants t ON t.id = s.tenant_id
-            WHERE s.key = $1
-              AND t.is_active = true
-            "#,
-        )
-        .bind(INSTALLATION_SLA_SCHEDULER_INTERVAL_MINUTES_KEY)
-        .fetch_all(&self.pool)
-        .await
-        .unwrap_or_default();
-
-        #[cfg(feature = "sqlite")]
-        let tenant_values: Vec<String> = sqlx::query_scalar(
-            r#"
-            SELECT s.value
-            FROM settings s
-            INNER JOIN tenants t ON t.id = s.tenant_id
-            WHERE s.key = ?
-              AND t.is_active = 1
-            "#,
-        )
-        .bind(INSTALLATION_SLA_SCHEDULER_INTERVAL_MINUTES_KEY)
-        .fetch_all(&self.pool)
-        .await
-        .unwrap_or_default();
-
-        tenant_values
-            .into_iter()
-            .filter_map(|v| v.parse::<i64>().ok())
-            .map(|v| v.clamp(5, 24 * 60))
-            .min()
-            .unwrap_or(default_global)
-    }
-
-    async fn upsert_tenant_setting_value(
-        &self,
-        tenant_id: &str,
-        key: &str,
-        value: &str,
-        description: &str,
-    ) -> AppResult<()> {
-        let now = Utc::now();
-
-        #[cfg(feature = "postgres")]
-        let update_res = sqlx::query(
-            "UPDATE settings SET value = $1, description = $2, updated_at = $3 WHERE tenant_id = $4 AND key = $5",
-        )
-        .bind(value)
-        .bind(description)
-        .bind(now)
-        .bind(tenant_id)
-        .bind(key)
-        .execute(&self.pool)
-        .await?;
-
-        #[cfg(feature = "sqlite")]
-        let update_res = sqlx::query(
-            "UPDATE settings SET value = ?, description = ?, updated_at = ? WHERE tenant_id = ? AND key = ?",
-        )
-        .bind(value)
-        .bind(description)
-        .bind(now.to_rfc3339())
-        .bind(tenant_id)
-        .bind(key)
-        .execute(&self.pool)
-        .await?;
-
-        if update_res.rows_affected() == 0 {
-            let id = Uuid::new_v4().to_string();
-
-            #[cfg(feature = "postgres")]
-            sqlx::query(
-                "INSERT INTO settings (id, tenant_id, key, value, description, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$6)",
-            )
-            .bind(&id)
-            .bind(tenant_id)
-            .bind(key)
-            .bind(value)
-            .bind(description)
-            .bind(now)
-            .execute(&self.pool)
-            .await?;
-
-            #[cfg(feature = "sqlite")]
-            sqlx::query(
-                "INSERT INTO settings (id, tenant_id, key, value, description, created_at, updated_at) VALUES (?,?,?,?,?,?,?)",
-            )
-            .bind(&id)
-            .bind(tenant_id)
-            .bind(key)
-            .bind(value)
-            .bind(description)
-            .bind(now.to_rfc3339())
-            .bind(now.to_rfc3339())
-            .execute(&self.pool)
-            .await?;
-        }
-
-        Ok(())
-    }
-
-    async fn resolve_invite_policy_for_tenant(
-        &self,
-        tenant_id: &str,
-    ) -> AppResult<CustomerRegistrationInvitePolicy> {
-        let expires_raw = self
-            .read_tenant_setting_value(tenant_id, INVITE_DEFAULT_EXPIRES_KEY)
-            .await?;
-        let max_uses_raw = self
-            .read_tenant_setting_value(tenant_id, INVITE_DEFAULT_MAX_USES_KEY)
-            .await?;
-
-        Ok(CustomerRegistrationInvitePolicy {
-            default_expires_in_hours: Self::parse_invite_policy_u32(
-                expires_raw,
-                INVITE_DEFAULT_EXPIRES_HOURS,
-                1,
-                24 * 30,
-            ),
-            default_max_uses: Self::parse_invite_policy_u32(
-                max_uses_raw,
-                INVITE_DEFAULT_MAX_USES,
-                1,
-                100,
-            ),
-        })
-    }
-
-    fn build_auto_pppoe_username(
-        customer_name: &str,
-        customer_id: &str,
-        location_id: &str,
-    ) -> String {
-        let mut slug = String::new();
-        for ch in customer_name.trim().chars() {
-            if ch.is_ascii_alphanumeric() {
-                slug.push(ch.to_ascii_lowercase());
-            } else if (ch.is_ascii_whitespace() || ch == '-' || ch == '_')
-                && !slug.ends_with('-')
-                && !slug.is_empty()
-            {
-                slug.push('-');
-            }
-            if slug.len() >= 14 {
-                break;
-            }
-        }
-        let slug = slug.trim_matches('-');
-        let base = if slug.is_empty() { "cust" } else { slug };
-        let c4 = customer_id.chars().rev().take(4).collect::<String>();
-        let l4 = location_id.chars().rev().take(4).collect::<String>();
-        format!(
-            "{}-{}{}",
-            base,
-            c4.chars().rev().collect::<String>(),
-            l4.chars().rev().collect::<String>()
-        )
-    }
-
-    async fn auto_provision_pppoe_for_subscription(
-        &self,
-        actor_id: &str,
-        tenant_id: &str,
-        sub: &CustomerSubscription,
-        ip_address: Option<&str>,
-    ) -> AppResult<()> {
-        if sub.status != "active" {
-            return Ok(());
-        }
-        let Some(router_id) = sub.router_id.as_deref() else {
-            return Ok(());
-        };
-        if router_id.trim().is_empty() {
-            return Ok(());
-        }
-
-        #[derive(sqlx::FromRow)]
-        struct MappingRow {
-            router_profile_name: String,
-            address_pool: Option<String>,
-        }
-
-        #[cfg(feature = "postgres")]
-        let mapping: Option<MappingRow> = sqlx::query_as(
-            r#"
-            SELECT router_profile_name, address_pool
-            FROM isp_package_router_mappings
-            WHERE tenant_id = $1 AND router_id = $2 AND package_id = $3
-            LIMIT 1
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(router_id)
-        .bind(&sub.package_id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        #[cfg(feature = "sqlite")]
-        let mapping: Option<MappingRow> = sqlx::query_as(
-            r#"
-            SELECT router_profile_name, address_pool
-            FROM isp_package_router_mappings
-            WHERE tenant_id = ? AND router_id = ? AND package_id = ?
-            LIMIT 1
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(router_id)
-        .bind(&sub.package_id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        let mapping = mapping.ok_or_else(|| {
-            AppError::Validation(
-                "PPPoE auto-provision requires package mapping (router profile) for selected router"
-                    .to_string(),
-            )
-        })?;
-
-        #[cfg(feature = "postgres")]
-        let customer_name: String =
-            sqlx::query_scalar("SELECT name FROM customers WHERE tenant_id = $1 AND id = $2")
-                .bind(tenant_id)
-                .bind(&sub.customer_id)
-                .fetch_optional(&self.pool)
-                .await?
-                .unwrap_or_else(|| "customer".to_string());
-
-        #[cfg(feature = "sqlite")]
-        let customer_name: String =
-            sqlx::query_scalar("SELECT name FROM customers WHERE tenant_id = ? AND id = ?")
-                .bind(tenant_id)
-                .bind(&sub.customer_id)
-                .fetch_optional(&self.pool)
-                .await?
-                .unwrap_or_else(|| "customer".to_string());
-
-        let username =
-            Self::build_auto_pppoe_username(&customer_name, &sub.customer_id, &sub.location_id);
-
-        #[cfg(feature = "postgres")]
-        let username_conflict: bool = sqlx::query_scalar(
-            r#"
-            SELECT EXISTS(
-              SELECT 1 FROM pppoe_accounts
-              WHERE tenant_id = $1
-                AND username = $2
-                AND (customer_id <> $3 OR location_id <> $4 OR router_id <> $5)
-            )
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(&username)
-        .bind(&sub.customer_id)
-        .bind(&sub.location_id)
-        .bind(router_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        #[cfg(feature = "sqlite")]
-        let username_conflict: bool = sqlx::query_scalar(
-            r#"
-            SELECT EXISTS(
-              SELECT 1 FROM pppoe_accounts
-              WHERE tenant_id = ?
-                AND username = ?
-                AND (customer_id <> ? OR location_id <> ? OR router_id <> ?)
-            )
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(&username)
-        .bind(&sub.customer_id)
-        .bind(&sub.location_id)
-        .bind(router_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        if username_conflict {
-            return Err(AppError::Validation(format!(
-                "PPPoE username conflict detected across tenant routers: {}",
-                username
-            )));
-        }
-
-        #[derive(sqlx::FromRow)]
-        struct ExistingPppoe {
-            id: String,
-        }
-
-        #[cfg(feature = "postgres")]
-        let existing: Option<ExistingPppoe> = sqlx::query_as(
-            r#"
-            SELECT id FROM pppoe_accounts
-            WHERE tenant_id = $1
-              AND customer_id = $2
-              AND location_id = $3
-              AND router_id = $4
-            ORDER BY updated_at DESC
-            LIMIT 1
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(&sub.customer_id)
-        .bind(&sub.location_id)
-        .bind(router_id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        #[cfg(feature = "sqlite")]
-        let existing: Option<ExistingPppoe> = sqlx::query_as(
-            r#"
-            SELECT id FROM pppoe_accounts
-            WHERE tenant_id = ?
-              AND customer_id = ?
-              AND location_id = ?
-              AND router_id = ?
-            ORDER BY updated_at DESC
-            LIMIT 1
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(&sub.customer_id)
-        .bind(&sub.location_id)
-        .bind(router_id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        let now = Utc::now();
-        let note = format!(
-            "Auto-provisioned from active subscription {}. Pending apply.",
-            sub.id
-        );
-
-        if let Some(ex) = existing {
-            #[cfg(feature = "postgres")]
-            sqlx::query(
-                r#"
-                UPDATE pppoe_accounts
-                SET username = $1,
-                    package_id = $2,
-                    router_profile_name = $3,
-                    remote_address = NULL,
-                    address_pool = $4,
-                    disabled = true,
-                    comment = $5,
-                    updated_at = $6
-                WHERE tenant_id = $7 AND id = $8
-                "#,
-            )
-            .bind(&username)
-            .bind(&sub.package_id)
-            .bind(&mapping.router_profile_name)
-            .bind(&mapping.address_pool)
-            .bind(&note)
-            .bind(now)
-            .bind(tenant_id)
-            .bind(&ex.id)
-            .execute(&self.pool)
-            .await?;
-
-            #[cfg(feature = "sqlite")]
-            sqlx::query(
-                r#"
-                UPDATE pppoe_accounts
-                SET username = ?,
-                    package_id = ?,
-                    router_profile_name = ?,
-                    remote_address = NULL,
-                    address_pool = ?,
-                    disabled = 1,
-                    comment = ?,
-                    updated_at = ?
-                WHERE tenant_id = ? AND id = ?
-                "#,
-            )
-            .bind(&username)
-            .bind(&sub.package_id)
-            .bind(&mapping.router_profile_name)
-            .bind(&mapping.address_pool)
-            .bind(&note)
-            .bind(now)
-            .bind(tenant_id)
-            .bind(&ex.id)
-            .execute(&self.pool)
-            .await?;
-        } else {
-            let pwd_seed = Uuid::new_v4().simple().to_string();
-            let password_raw = format!("Pppoe#{}", &pwd_seed[..10]);
-            let password_enc = encrypt_secret_for(PURPOSE_PPPOE, &password_raw)?;
-            let id = Uuid::new_v4().to_string();
-
-            #[cfg(feature = "postgres")]
-            sqlx::query(
-                r#"
-                INSERT INTO pppoe_accounts
-                  (id, tenant_id, router_id, customer_id, location_id, username, password_enc, package_id, profile_id, router_profile_name,
-                   remote_address, address_pool, disabled, comment, router_present, router_secret_id, last_sync_at, last_error, created_at, updated_at)
-                VALUES
-                  ($1,$2,$3,$4,$5,$6,$7,$8,NULL,$9,NULL,$10,true,$11,false,NULL,NULL,NULL,$12,$13)
-                "#,
-            )
-            .bind(&id)
-            .bind(tenant_id)
-            .bind(router_id)
-            .bind(&sub.customer_id)
-            .bind(&sub.location_id)
-            .bind(&username)
-            .bind(&password_enc)
-            .bind(&sub.package_id)
-            .bind(&mapping.router_profile_name)
-            .bind(&mapping.address_pool)
-            .bind(&note)
-            .bind(now)
-            .bind(now)
-            .execute(&self.pool)
-            .await?;
-
-            #[cfg(feature = "sqlite")]
-            sqlx::query(
-                r#"
-                INSERT INTO pppoe_accounts
-                  (id, tenant_id, router_id, customer_id, location_id, username, password_enc, package_id, profile_id, router_profile_name,
-                   remote_address, address_pool, disabled, comment, router_present, router_secret_id, last_sync_at, last_error, created_at, updated_at)
-                VALUES
-                  (?,?,?,?,?,?,?,?,NULL,?,NULL,?,1,?,0,NULL,NULL,NULL,?,?)
-                "#,
-            )
-            .bind(&id)
-            .bind(tenant_id)
-            .bind(router_id)
-            .bind(&sub.customer_id)
-            .bind(&sub.location_id)
-            .bind(&username)
-            .bind(&password_enc)
-            .bind(&sub.package_id)
-            .bind(&mapping.router_profile_name)
-            .bind(&mapping.address_pool)
-            .bind(&note)
-            .bind(now)
-            .bind(now)
-            .execute(&self.pool)
-            .await?;
-        }
-
-        self.audit_service
-            .log(
-                Some(actor_id),
-                Some(tenant_id),
-                "PPPOE_AUTO_PROVISION",
-                "pppoe",
-                Some(&sub.id),
-                Some("Auto provisioned PPPoE draft from active subscription"),
-                ip_address,
-            )
-            .await;
-
-        Ok(())
-    }
-
-    // =========================
-    // Admin: Customers
-    // =========================
 
     pub async fn list_customers(
         &self,
@@ -3044,26 +2103,7 @@ impl CustomerService {
         Ok(rows)
     }
 
-    fn validate_location_coordinates(
-        latitude: Option<f64>,
-        longitude: Option<f64>,
-    ) -> AppResult<(f64, f64)> {
-        let lat = latitude
-            .ok_or_else(|| AppError::Validation("Location map point is required".to_string()))?;
-        let lng = longitude
-            .ok_or_else(|| AppError::Validation("Location map point is required".to_string()))?;
-        if !(-90.0..=90.0).contains(&lat) {
-            return Err(AppError::Validation(
-                "Latitude must be between -90 and 90".to_string(),
-            ));
-        }
-        if !(-180.0..=180.0).contains(&lng) {
-            return Err(AppError::Validation(
-                "Longitude must be between -180 and 180".to_string(),
-            ));
-        }
-        Ok((lat, lng))
-    }
+
 
     async fn get_my_location_or_404(
         &self,
@@ -3451,191 +2491,308 @@ impl CustomerService {
         Ok(rows)
     }
 
-    async fn ensure_installation_work_order_for_subscription(
+    pub(super) async fn auto_provision_pppoe_for_subscription(
         &self,
+        actor_id: &str,
         tenant_id: &str,
         sub: &CustomerSubscription,
-    ) -> AppResult<(InstallationWorkOrder, bool)> {
-        #[cfg(feature = "postgres")]
-        let existing: Option<InstallationWorkOrder> = sqlx::query_as(
-            r#"
-            SELECT id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, assigned_to, scheduled_at, completed_at, notes, created_at, updated_at
-            FROM installation_work_orders
-            WHERE tenant_id = $1
-              AND subscription_id = $2
-              AND status IN ('pending', 'in_progress')
-            ORDER BY created_at DESC
-            LIMIT 1
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(&sub.id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        #[cfg(feature = "sqlite")]
-        let existing: Option<InstallationWorkOrder> = sqlx::query_as(
-            r#"
-            SELECT id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, assigned_to, scheduled_at, completed_at, notes, created_at, updated_at
-            FROM installation_work_orders
-            WHERE tenant_id = ?
-              AND subscription_id = ?
-              AND status IN ('pending', 'in_progress')
-            ORDER BY created_at DESC
-            LIMIT 1
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(&sub.id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        if let Some(row) = existing {
-            return Ok((row, false));
+        ip_address: Option<&str>,
+    ) -> AppResult<()> {
+        if sub.status != "active" {
+            return Ok(());
+        }
+        let Some(router_id) = sub.router_id.as_deref() else {
+            return Ok(());
+        };
+        if router_id.trim().is_empty() {
+            return Ok(());
         }
 
-        let id = Uuid::new_v4().to_string();
+        #[derive(sqlx::FromRow)]
+        struct MappingRow {
+            router_profile_name: String,
+            address_pool: Option<String>,
+        }
+
+        #[cfg(feature = "postgres")]
+        let mapping: Option<MappingRow> = sqlx::query_as(
+            r#"
+            SELECT router_profile_name, address_pool
+            FROM isp_package_router_mappings
+            WHERE tenant_id = $1 AND router_id = $2 AND package_id = $3
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(&sub.package_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let mapping: Option<MappingRow> = sqlx::query_as(
+            r#"
+            SELECT router_profile_name, address_pool
+            FROM isp_package_router_mappings
+            WHERE tenant_id = ? AND router_id = ? AND package_id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(&sub.package_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let mapping = mapping.ok_or_else(|| {
+            AppError::Validation(
+                "PPPoE auto-provision requires package mapping (router profile) for selected router"
+                    .to_string(),
+            )
+        })?;
+
+        #[cfg(feature = "postgres")]
+        let customer_name: String =
+            sqlx::query_scalar("SELECT name FROM customers WHERE tenant_id = $1 AND id = $2")
+                .bind(tenant_id)
+                .bind(&sub.customer_id)
+                .fetch_optional(&self.pool)
+                .await?
+                .unwrap_or_else(|| "customer".to_string());
+
+        #[cfg(feature = "sqlite")]
+        let customer_name: String =
+            sqlx::query_scalar("SELECT name FROM customers WHERE tenant_id = ? AND id = ?")
+                .bind(tenant_id)
+                .bind(&sub.customer_id)
+                .fetch_optional(&self.pool)
+                .await?
+                .unwrap_or_else(|| "customer".to_string());
+
+        let username =
+            Self::build_auto_pppoe_username(&customer_name, &sub.customer_id, &sub.location_id);
+
+        #[cfg(feature = "postgres")]
+        let username_conflict: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1 FROM pppoe_accounts
+              WHERE tenant_id = $1
+                AND username = $2
+                AND (customer_id <> $3 OR location_id <> $4 OR router_id <> $5)
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&username)
+        .bind(&sub.customer_id)
+        .bind(&sub.location_id)
+        .bind(router_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let username_conflict: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1 FROM pppoe_accounts
+              WHERE tenant_id = ?
+                AND username = ?
+                AND (customer_id <> ? OR location_id <> ? OR router_id <> ?)
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&username)
+        .bind(&sub.customer_id)
+        .bind(&sub.location_id)
+        .bind(router_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        if username_conflict {
+            return Err(AppError::Validation(format!(
+                "PPPoE username conflict detected across tenant routers: {}",
+                username
+            )));
+        }
+
+        #[derive(sqlx::FromRow)]
+        struct ExistingPppoe {
+            id: String,
+        }
+
+        #[cfg(feature = "postgres")]
+        let existing: Option<ExistingPppoe> = sqlx::query_as(
+            r#"
+            SELECT id FROM pppoe_accounts
+            WHERE tenant_id = $1
+              AND customer_id = $2
+              AND location_id = $3
+              AND router_id = $4
+            ORDER BY updated_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&sub.customer_id)
+        .bind(&sub.location_id)
+        .bind(router_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let existing: Option<ExistingPppoe> = sqlx::query_as(
+            r#"
+            SELECT id FROM pppoe_accounts
+            WHERE tenant_id = ?
+              AND customer_id = ?
+              AND location_id = ?
+              AND router_id = ?
+            ORDER BY updated_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&sub.customer_id)
+        .bind(&sub.location_id)
+        .bind(router_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
         let now = Utc::now();
-        let notes = Some(
-            "Created from customer order request; awaiting assignment and schedule.".to_string(),
+        let note = format!(
+            "Auto-provisioned from active subscription {}. Pending apply.",
+            sub.id
         );
 
-        #[cfg(feature = "postgres")]
-        sqlx::query(
-            r#"
-            INSERT INTO installation_work_orders
-              (id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, notes, created_at, updated_at)
-            VALUES
-              ($1,$2,$3,NULL,$4,$5,$6,'pending',$7,$8,$9)
-            "#,
-        )
-        .bind(&id)
-        .bind(tenant_id)
-        .bind(&sub.id)
-        .bind(&sub.customer_id)
-        .bind(&sub.location_id)
-        .bind(&sub.router_id)
-        .bind(&notes)
-        .bind(now)
-        .bind(now)
-        .execute(&self.pool)
-        .await?;
+        if let Some(ex) = existing {
+            #[cfg(feature = "postgres")]
+            sqlx::query(
+                r#"
+                UPDATE pppoe_accounts
+                SET username = $1,
+                    package_id = $2,
+                    router_profile_name = $3,
+                    remote_address = NULL,
+                    address_pool = $4,
+                    disabled = true,
+                    comment = $5,
+                    updated_at = $6
+                WHERE tenant_id = $7 AND id = $8
+                "#,
+            )
+            .bind(&username)
+            .bind(&sub.package_id)
+            .bind(&mapping.router_profile_name)
+            .bind(&mapping.address_pool)
+            .bind(&note)
+            .bind(now)
+            .bind(tenant_id)
+            .bind(&ex.id)
+            .execute(&self.pool)
+            .await?;
 
-        #[cfg(feature = "sqlite")]
-        sqlx::query(
-            r#"
-            INSERT INTO installation_work_orders
-              (id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, notes, created_at, updated_at)
-            VALUES
-              (?,?,?,NULL,?,?,?,'pending',?,?,?)
-            "#,
-        )
-        .bind(&id)
-        .bind(tenant_id)
-        .bind(&sub.id)
-        .bind(&sub.customer_id)
-        .bind(&sub.location_id)
-        .bind(&sub.router_id)
-        .bind(notes.clone())
-        .bind(now.to_rfc3339())
-        .bind(now.to_rfc3339())
-        .execute(&self.pool)
-        .await?;
+            #[cfg(feature = "sqlite")]
+            sqlx::query(
+                r#"
+                UPDATE pppoe_accounts
+                SET username = ?,
+                    package_id = ?,
+                    router_profile_name = ?,
+                    remote_address = NULL,
+                    address_pool = ?,
+                    disabled = 1,
+                    comment = ?,
+                    updated_at = ?
+                WHERE tenant_id = ? AND id = ?
+                "#,
+            )
+            .bind(&username)
+            .bind(&sub.package_id)
+            .bind(&mapping.router_profile_name)
+            .bind(&mapping.address_pool)
+            .bind(&note)
+            .bind(now)
+            .bind(tenant_id)
+            .bind(&ex.id)
+            .execute(&self.pool)
+            .await?;
+        } else {
+            let pwd_seed = Uuid::new_v4().simple().to_string();
+            let password_raw = format!("Pppoe#{}", &pwd_seed[..10]);
+            let password_enc = encrypt_secret_for(PURPOSE_PPPOE, &password_raw)?;
+            let id = Uuid::new_v4().to_string();
 
-        #[cfg(feature = "postgres")]
-        let row: InstallationWorkOrder = sqlx::query_as(
-            r#"
-            SELECT id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, assigned_to, scheduled_at, completed_at, notes, created_at, updated_at
-            FROM installation_work_orders
-            WHERE tenant_id = $1 AND id = $2
-            LIMIT 1
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(&id)
-        .fetch_one(&self.pool)
-        .await?;
+            #[cfg(feature = "postgres")]
+            sqlx::query(
+                r#"
+                INSERT INTO pppoe_accounts
+                  (id, tenant_id, router_id, customer_id, location_id, username, password_enc, package_id, profile_id, router_profile_name,
+                   remote_address, address_pool, disabled, comment, router_present, router_secret_id, last_sync_at, last_error, created_at, updated_at)
+                VALUES
+                  ($1,$2,$3,$4,$5,$6,$7,$8,NULL,$9,NULL,$10,true,$11,false,NULL,NULL,NULL,$12,$13)
+                "#,
+            )
+            .bind(&id)
+            .bind(tenant_id)
+            .bind(router_id)
+            .bind(&sub.customer_id)
+            .bind(&sub.location_id)
+            .bind(&username)
+            .bind(&password_enc)
+            .bind(&sub.package_id)
+            .bind(&mapping.router_profile_name)
+            .bind(&mapping.address_pool)
+            .bind(&note)
+            .bind(now)
+            .bind(now)
+            .execute(&self.pool)
+            .await?;
 
-        #[cfg(feature = "sqlite")]
-        let row: InstallationWorkOrder = sqlx::query_as(
-            r#"
-            SELECT id, tenant_id, subscription_id, invoice_id, customer_id, location_id, router_id, status, assigned_to, scheduled_at, completed_at, notes, created_at, updated_at
-            FROM installation_work_orders
-            WHERE tenant_id = ? AND id = ?
-            LIMIT 1
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(&id)
-        .fetch_one(&self.pool)
-        .await?;
+            #[cfg(feature = "sqlite")]
+            sqlx::query(
+                r#"
+                INSERT INTO pppoe_accounts
+                  (id, tenant_id, router_id, customer_id, location_id, username, password_enc, package_id, profile_id, router_profile_name,
+                   remote_address, address_pool, disabled, comment, router_present, router_secret_id, last_sync_at, last_error, created_at, updated_at)
+                VALUES
+                  (?,?,?,?,?,?,?,?,NULL,?,NULL,?,1,?,0,NULL,NULL,NULL,?,?)
+                "#,
+            )
+            .bind(&id)
+            .bind(tenant_id)
+            .bind(router_id)
+            .bind(&sub.customer_id)
+            .bind(&sub.location_id)
+            .bind(&username)
+            .bind(&password_enc)
+            .bind(&sub.package_id)
+            .bind(&mapping.router_profile_name)
+            .bind(&mapping.address_pool)
+            .bind(&note)
+            .bind(now)
+            .bind(now)
+            .execute(&self.pool)
+            .await?;
+        }
 
-        Ok((row, true))
+        self.audit_service
+            .log(
+                Some(actor_id),
+                Some(tenant_id),
+                "PPPOE_AUTO_PROVISION",
+                "pppoe",
+                Some(&sub.id),
+                Some("Auto provisioned PPPoE draft from active subscription"),
+                ip_address,
+            )
+            .await;
+
+        Ok(())
     }
 
-    async fn has_paid_customer_package_invoice_for_subscription(
-        &self,
-        tenant_id: &str,
-        subscription_id: &str,
-    ) -> AppResult<bool> {
-        #[cfg(feature = "postgres")]
-        let exists: bool = sqlx::query_scalar(
-            r#"
-            SELECT EXISTS(
-              SELECT 1
-              FROM invoices
-              WHERE tenant_id = $1
-                AND status = 'paid'
-                AND (
-                    external_id = $2
-                    OR external_id LIKE $3
-                )
-            )
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(format!(
-            "{}{}",
-            CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id
-        ))
-        .bind(format!(
-            "{}{}:%",
-            CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id
-        ))
-        .fetch_one(&self.pool)
-        .await?;
-
-        #[cfg(feature = "sqlite")]
-        let exists: bool = sqlx::query_scalar(
-            r#"
-            SELECT EXISTS(
-              SELECT 1
-              FROM invoices
-              WHERE tenant_id = ?
-                AND status = 'paid'
-                AND (
-                    external_id = ?
-                    OR external_id LIKE ?
-                )
-            )
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(format!(
-            "{}{}",
-            CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id
-        ))
-        .bind(format!(
-            "{}{}:%",
-            CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id
-        ))
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(exists)
-    }
-
-    async fn transition_customer_subscription_status(
+    pub(super) async fn transition_customer_subscription_status(
         &self,
         tenant_id: &str,
         subscription_id: &str,
@@ -3683,133 +2840,5 @@ impl CustomerService {
         }
 
         Ok(target)
-    }
-
-
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{CustomerService, InstallationSlaBreachType};
-    use crate::models::CustomerLifecycleObservability;
-    use chrono::{Duration, Utc};
-
-    fn lifecycle_count(metrics: &CustomerLifecycleObservability, stage: &str) -> i64 {
-        metrics
-            .lifecycle_funnel
-            .iter()
-            .find(|item| item.stage == stage)
-            .map(|item| item.count)
-            .unwrap_or_default()
-    }
-
-    fn work_order_count(metrics: &CustomerLifecycleObservability, stage: &str) -> i64 {
-        metrics
-            .work_order_funnel
-            .iter()
-            .find(|item| item.stage == stage)
-            .map(|item| item.count)
-            .unwrap_or_default()
-    }
-
-    fn aging_bucket_count(metrics: &CustomerLifecycleObservability, bucket: &str) -> i64 {
-        metrics
-            .aging_buckets
-            .iter()
-            .find(|item| item.bucket == bucket)
-            .map(|item| item.count)
-            .unwrap_or_default()
-    }
-
-    #[test]
-    fn detect_installation_sla_breach_for_scheduled_work_order() {
-        let now = Utc::now();
-        let created_at = now - Duration::hours(3);
-        let scheduled_at = Some(now - Duration::minutes(121));
-
-        let got = CustomerService::detect_installation_sla_breach(
-            "pending",
-            scheduled_at,
-            created_at,
-            now,
-            120,
-            240,
-        );
-        assert_eq!(got, Some(InstallationSlaBreachType::ScheduledOverdue));
-    }
-
-    #[test]
-    fn detect_installation_sla_breach_for_unscheduled_pending_work_order() {
-        let now = Utc::now();
-        let created_at = now - Duration::minutes(241);
-
-        let got = CustomerService::detect_installation_sla_breach(
-            "pending", None, created_at, now, 120, 240,
-        );
-        assert_eq!(got, Some(InstallationSlaBreachType::PendingUnscheduled));
-    }
-
-    #[test]
-    fn no_sla_breach_for_completed_or_fresh_work_order() {
-        let now = Utc::now();
-        let created_at = now - Duration::minutes(20);
-        let scheduled_at = Some(now - Duration::minutes(10));
-
-        let completed = CustomerService::detect_installation_sla_breach(
-            "completed",
-            scheduled_at,
-            created_at,
-            now,
-            120,
-            240,
-        );
-        assert_eq!(completed, None);
-
-        let fresh_pending = CustomerService::detect_installation_sla_breach(
-            "pending", None, created_at, now, 120, 240,
-        );
-        assert_eq!(fresh_pending, None);
-    }
-
-    #[test]
-    fn elapsed_duration_formatter_is_human_readable() {
-        assert_eq!(CustomerService::format_elapsed_duration(45), "45m");
-        assert_eq!(CustomerService::format_elapsed_duration(120), "2h");
-        assert_eq!(CustomerService::format_elapsed_duration(145), "2h 25m");
-        assert_eq!(CustomerService::format_elapsed_duration(26 * 60), "1d 2h");
-    }
-
-    #[test]
-    fn lifecycle_observability_helpers_extract_counts() {
-        let metrics = CustomerLifecycleObservability {
-            generated_at: Utc::now(),
-            lifecycle_funnel: vec![
-                crate::models::CustomerLifecycleStageMetric {
-                    stage: "pending_installation".to_string(),
-                    count: 3,
-                },
-                crate::models::CustomerLifecycleStageMetric {
-                    stage: "installation_done_awaiting_payment".to_string(),
-                    count: 2,
-                },
-            ],
-            work_order_funnel: vec![crate::models::CustomerLifecycleStageMetric {
-                stage: "in_progress".to_string(),
-                count: 4,
-            }],
-            aging_buckets: vec![crate::models::CustomerLifecycleAgingBucket {
-                bucket: ">7d".to_string(),
-                count: 1,
-            }],
-        };
-
-        assert_eq!(lifecycle_count(&metrics, "pending_installation"), 3);
-        assert_eq!(
-            lifecycle_count(&metrics, "installation_done_awaiting_payment"),
-            2
-        );
-        assert_eq!(work_order_count(&metrics, "in_progress"), 4);
-        assert_eq!(aging_bucket_count(&metrics, ">7d"), 1);
-        assert_eq!(lifecycle_count(&metrics, "cancelled"), 0);
     }
 }

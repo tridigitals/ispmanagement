@@ -15,28 +15,10 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use uuid::Uuid;
 
-#[cfg(feature = "postgres")]
-async fn support_admin_user_ids(
-    pool: &sqlx::Pool<sqlx::Postgres>,
-    tenant_id: &str,
-) -> Result<Vec<String>, sqlx::Error> {
-    // Any user who can view/manage all tickets should be notified.
-    // We key off permissions (RBAC) rather than hardcoded roles.
-    sqlx::query_scalar(
-        r#"
-        SELECT DISTINCT tm.user_id
-        FROM tenant_members tm
-        JOIN role_permissions rp ON rp.role_id = tm.role_id
-        WHERE tm.tenant_id = $1
-          AND tm.role_id IS NOT NULL
-          AND rp.permission_id = ANY($2)
-    "#,
-    )
-    .bind(tenant_id)
-    .bind(["support:read_all", "support:reply"])
-    .fetch_all(pool)
-    .await
-}
+use super::announcements_support_common::{
+    normalize_priority, normalize_priority_optional_lowercase, normalize_status,
+    support_admin_user_ids,
+};
 
 #[cfg(feature = "postgres")]
 async fn notify_support_admins_new_ticket(
@@ -262,10 +244,7 @@ pub async fn list_support_tickets(
             .await?;
     }
 
-    let st = match params.status.as_deref() {
-        Some("open") | Some("pending") | Some("closed") => params.status,
-        _ => None,
-    };
+    let st = normalize_status(params.status);
 
     let page = params.page.unwrap_or(1).max(1);
     let per_page = params.per_page.unwrap_or(20).clamp(1, 100);
@@ -492,10 +471,7 @@ pub async fn create_support_ticket(
     let now = Utc::now();
     let ticket_id = Uuid::new_v4().to_string();
     let msg_id = Uuid::new_v4().to_string();
-    let priority = match dto.priority.as_deref() {
-        Some("low") | Some("normal") | Some("high") | Some("urgent") => dto.priority.unwrap(),
-        _ => "normal".to_string(),
-    };
+    let priority = normalize_priority(dto.priority);
 
     let mut tx = state.auth_service.pool.begin().await?;
     state
@@ -900,17 +876,8 @@ pub async fn update_support_ticket(
         .await?;
 
     let now = Utc::now();
-    let status = match dto.status.as_deref() {
-        Some("open") | Some("pending") | Some("closed") => dto.status,
-        _ => None,
-    };
-    let priority = dto.priority.and_then(|p| {
-        let p = p.to_lowercase();
-        match p.as_str() {
-            "low" | "normal" | "high" | "urgent" => Some(p),
-            _ => None,
-        }
-    });
+    let status = normalize_status(dto.status);
+    let priority = normalize_priority_optional_lowercase(dto.priority);
 
     if status.is_some() || priority.is_some() {
         state
@@ -1185,6 +1152,40 @@ async fn fetch_attachments_map_pg(
         };
         map.entry(r.message_id).or_default().push(fr);
     }
-
+    
     Ok(map)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ListParams;
+    use axum::extract::Query;
+    use axum::http::Uri;
+
+    #[test]
+    fn list_params_query_parsing_characterizes_http_request_shape() {
+        let uri: Uri = "/?status=open&search=router&page=2&per_page=50"
+            .parse()
+            .expect("valid uri");
+        let Query(params) = Query::<ListParams>::try_from_uri(&uri).expect("params parse");
+
+        assert_eq!(params.status.as_deref(), Some("open"));
+        assert_eq!(params.search.as_deref(), Some("router"));
+        assert_eq!(params.page, Some(2));
+        assert_eq!(params.per_page, Some(50));
+    }
+
+    #[cfg(feature = "postgres")]
+    #[tokio::test]
+    async fn fetch_attachments_map_pg_empty_message_ids_returns_empty_without_db_hit() {
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .connect_lazy("postgres://postgres:postgres@127.0.0.1/test_db")
+            .expect("lazy postgres pool should be constructible");
+
+        let map = super::fetch_attachments_map_pg(&pool, "tenant-1", "ticket-1", &[])
+            .await
+            .expect("empty message ids should short-circuit");
+
+        assert!(map.is_empty());
+    }
 }

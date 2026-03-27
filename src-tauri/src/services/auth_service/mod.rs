@@ -1,8 +1,17 @@
 //! Authentication Service
 
+mod core;
+mod dto;
+mod integration;
+mod mapper;
+mod repository;
+mod validation;
+
+pub use dto::{AuthResponse, AuthSettings, Claims, PasswordValidationResult};
+
 use crate::db::connection::DbPool;
 use crate::error::{AppError, AppResult};
-use crate::models::{LoginDto, RegisterDto, TrustedDevice, User, UserResponse};
+use crate::models::{LoginDto, RegisterDto, TrustedDevice, User};
 use crate::services::{AuditService, EmailService, SettingsService};
 use argon2::{
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
@@ -11,82 +20,11 @@ use argon2::{
 use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use rand::rngs::OsRng;
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use totp_rs::{Algorithm, Secret, TOTP};
 use tracing::{info, warn};
 use uuid::Uuid;
-
-/// JWT Claims structure
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
-    pub sub: String, // user_id
-    pub email: String,
-    pub role: String,
-    pub tenant_id: Option<String>,
-    pub is_super_admin: bool,
-    pub exp: usize, // expiration timestamp
-    pub iat: usize, // issued at
-}
-
-/// Authentication response
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub struct AuthResponse {
-    pub user: UserResponse,
-    pub tenant: Option<crate::models::tenant::Tenant>,
-    pub token: Option<String>,
-    pub expires_at: Option<String>,
-    pub message: Option<String>,
-    pub requires_2fa: Option<bool>,
-    pub requires_2fa_setup: Option<bool>,
-    pub temp_token: Option<String>,
-    pub available_2fa_methods: Option<Vec<String>>,
-}
-
-/// Password validation result
-#[derive(Debug, Serialize)]
-pub struct PasswordValidationResult {
-    pub valid: bool,
-    pub errors: Vec<String>,
-}
-
-/// Auth settings from database
-#[derive(Debug, Clone, Serialize)]
-pub struct AuthSettings {
-    pub jwt_expiry_hours: i64,
-    pub session_timeout_minutes: i64,
-    pub password_min_length: usize,
-    pub password_require_uppercase: bool,
-    pub password_require_number: bool,
-    pub password_require_special: bool,
-    pub max_login_attempts: i32,
-    pub lockout_duration_minutes: i64,
-    pub allow_registration: bool,
-    pub logout_all_on_password_change: bool,
-    pub require_email_verification: bool,
-    pub main_domain: Option<String>,
-}
-
-impl Default for AuthSettings {
-    fn default() -> Self {
-        Self {
-            jwt_expiry_hours: 24,
-            session_timeout_minutes: 60,
-            password_min_length: 8,
-            password_require_uppercase: true,
-            password_require_number: true,
-            password_require_special: false,
-            max_login_attempts: 5,
-            lockout_duration_minutes: 15,
-            allow_registration: false,
-            logout_all_on_password_change: true,
-            require_email_verification: false,
-            main_domain: std::env::var("APP_MAIN_DOMAIN").ok(),
-        }
-    }
-}
 
 /// Auth service for handling authentication
 #[derive(Clone)]
@@ -137,71 +75,7 @@ impl AuthService {
 
     /// Fetch auth settings from database (internal helper)
     async fn fetch_auth_settings_from_db(&self) -> AuthSettings {
-        let mut settings = AuthSettings::default();
-
-        // Batch query: fetch all auth settings at once
-        let rows: Vec<(String, String)> = sqlx::query_as(
-            "SELECT key, value FROM settings WHERE tenant_id IS NULL AND key LIKE 'auth_%' OR key IN ('max_login_attempts', 'lockout_duration_minutes', 'app_main_domain')"
-        )
-        .fetch_all(&self.pool)
-        .await
-        .unwrap_or_default();
-
-        // Build a hashmap for easy lookup
-        let settings_map: std::collections::HashMap<String, String> = rows.into_iter().collect();
-
-        // Apply settings from the map
-        if let Some(val) = settings_map.get("auth_jwt_expiry_hours") {
-            settings.jwt_expiry_hours = val.parse().unwrap_or(24);
-        }
-        if let Some(val) = settings_map.get("auth_session_timeout_minutes") {
-            settings.session_timeout_minutes = val.parse().unwrap_or(60);
-        }
-        if let Some(val) = settings_map.get("auth_password_min_length") {
-            settings.password_min_length = val.parse().unwrap_or(8);
-        }
-        if let Some(val) = settings_map.get("auth_password_require_uppercase") {
-            settings.password_require_uppercase = val == "true";
-        }
-        if let Some(val) = settings_map.get("auth_password_require_number") {
-            settings.password_require_number = val == "true";
-        }
-        if let Some(val) = settings_map.get("auth_password_require_special") {
-            settings.password_require_special = val == "true";
-        }
-
-        // max_login_attempts with fallback
-        if let Some(val) = settings_map.get("auth_max_login_attempts") {
-            settings.max_login_attempts = val.parse().unwrap_or(5);
-        } else if let Some(val) = settings_map.get("max_login_attempts") {
-            settings.max_login_attempts = val.parse().unwrap_or(5);
-        }
-
-        // lockout_duration_minutes with fallback
-        if let Some(val) = settings_map.get("auth_lockout_duration_minutes") {
-            settings.lockout_duration_minutes = val.parse().unwrap_or(15);
-        } else if let Some(val) = settings_map.get("lockout_duration_minutes") {
-            settings.lockout_duration_minutes = val.parse().unwrap_or(15);
-        }
-
-        if let Some(val) = settings_map.get("auth_allow_registration") {
-            settings.allow_registration = val == "true";
-        }
-        if let Some(val) = settings_map.get("auth_logout_all_on_password_change") {
-            settings.logout_all_on_password_change = val == "true";
-        }
-        if let Some(val) = settings_map.get("auth_require_email_verification") {
-            settings.require_email_verification = val == "true";
-        }
-
-        // main_domain: DB overrides ENV
-        if let Some(val) = settings_map.get("app_main_domain") {
-            if !val.is_empty() {
-                settings.main_domain = Some(val.clone());
-            }
-        }
-
-        settings
+        repository::fetch_auth_settings_from_db(&self.pool).await
     }
 
     /// Invalidate auth settings cache (call when settings are updated)
@@ -240,34 +114,7 @@ impl AuthService {
         password: &str,
         settings: &AuthSettings,
     ) -> PasswordValidationResult {
-        let mut errors = Vec::new();
-
-        if password.len() < settings.password_min_length {
-            errors.push(format!(
-                "Password must be at least {} characters",
-                settings.password_min_length
-            ));
-        }
-
-        if settings.password_require_uppercase && !password.chars().any(|c| c.is_uppercase()) {
-            errors.push("Password must contain at least one uppercase letter".to_string());
-        }
-
-        if settings.password_require_number && !password.chars().any(|c| c.is_numeric()) {
-            errors.push("Password must contain at least one number".to_string());
-        }
-
-        if settings.password_require_special {
-            let special_chars = "!@#$%^&*()_+-=[]{}|;:',.<>?/`~";
-            if !password.chars().any(|c| special_chars.contains(c)) {
-                errors.push("Password must contain at least one special character".to_string());
-            }
-        }
-
-        PasswordValidationResult {
-            valid: errors.is_empty(),
-            errors,
-        }
+        validation::validate_password(password, settings)
     }
 
     /// Hash password using Argon2
@@ -305,42 +152,20 @@ impl AuthService {
         let jwt_expires_at = now + Duration::hours(jwt_expiry_hours);
         let session_expires_at = now + Duration::minutes(session_timeout_minutes);
 
-        let claims = Claims {
-            sub: user.id.clone(),
-            email: user.email.clone(),
-            role: user.role.clone(),
-            tenant_id: tenant_id.clone(),
-            is_super_admin: user.is_super_admin,
-            exp: jwt_expires_at.timestamp() as usize,
-            iat: now.timestamp() as usize,
-        };
+        let claims = core::build_login_claims(user, tenant_id.clone(), now, jwt_expires_at);
+        let token = integration::encode_jwt(&claims, secret.as_str())?;
 
-        let token = encode(
-            &Header::default(),
-            &claims,
-            &EncodingKey::from_secret(secret.as_bytes()),
+        let session_id = Uuid::new_v4().to_string();
+        repository::insert_session(
+            &self.pool,
+            &session_id,
+            &user.id,
+            tenant_id.as_deref(),
+            &token,
+            session_expires_at,
+            now,
         )
-        .map_err(|e| AppError::Internal(format!("Token generation failed: {}", e)))?;
-
-        // Store session in database
-        let session_id = uuid::Uuid::new_v4().to_string();
-        let query = sqlx::query(
-            "INSERT INTO sessions (id, user_id, tenant_id, token, expires_at, created_at) VALUES ($1, $2, $3, $4, $5, $6)"
-        )
-        .bind(&session_id)
-        .bind(&user.id)
-        .bind(&tenant_id)
-        .bind(&token);
-
-        #[cfg(feature = "postgres")]
-        let query = query.bind(session_expires_at).bind(now);
-
-        #[cfg(not(feature = "postgres"))]
-        let query = query
-            .bind(session_expires_at.to_rfc3339())
-            .bind(now.to_rfc3339());
-
-        query.execute(&self.pool).await?;
+        .await?;
 
         Ok((token, session_expires_at.to_rfc3339()))
     }
@@ -1353,11 +1178,7 @@ impl AuthService {
 
     /// Get user by ID
     pub async fn get_user_by_id(&self, user_id: &str) -> AppResult<User> {
-        sqlx::query_as("SELECT * FROM users WHERE id = $1")
-            .bind(user_id)
-            .fetch_optional(&self.pool)
-            .await?
-            .ok_or(AppError::UserNotFound)
+        repository::get_user_by_id(&self.pool, user_id).await
     }
 
     /// Get enriched user response (with tenant role and permissions)
@@ -1396,10 +1217,7 @@ impl AuthService {
                     .await
                     .unwrap_or(None);
 
-            if let Some((slug, domain)) = tenant_info {
-                user_response.tenant_slug = Some(slug);
-                user_response.tenant_custom_domain = domain;
-            }
+            mapper::apply_tenant_info(&mut user_response, tenant_info);
         }
 
         Ok(user_response)
@@ -2359,15 +2177,7 @@ impl AuthService {
         user_agent: Option<&str>,
         ip_address: Option<&str>,
     ) -> String {
-        use sha2::{Digest, Sha256};
-        let combined = format!(
-            "{}:{}",
-            user_agent.unwrap_or("unknown"),
-            ip_address.unwrap_or("unknown")
-        );
-        let mut hasher = Sha256::new();
-        hasher.update(combined.as_bytes());
-        format!("{:x}", hasher.finalize())
+        core::generate_device_fingerprint(user_agent, ip_address)
     }
 
     /// Check if device is trusted for the user
@@ -2578,5 +2388,144 @@ impl AuthService {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{AuthService, AuthSettings, Claims};
+    use crate::error::AppError;
+    use crate::services::{AuditService, EmailService, SettingsService};
+    use chrono::{Duration, Utc};
+    use jsonwebtoken::{encode, EncodingKey, Header};
+
+    fn build_test_service(jwt_secret: &str) -> AuthService {
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .connect_lazy("postgres://postgres:postgres@127.0.0.1/test_db")
+            .expect("lazy postgres pool should be constructible");
+
+        let audit_service = AuditService::new(pool.clone(), None);
+        let settings_service = SettingsService::new(pool.clone(), audit_service.clone());
+        let email_service = EmailService::new(settings_service.clone());
+
+        AuthService::new(
+            pool,
+            jwt_secret.to_string(),
+            email_service,
+            audit_service,
+            settings_service,
+        )
+    }
+
+    fn build_claims(exp: usize, role: &str) -> Claims {
+        Claims {
+            sub: "user-1".to_string(),
+            email: "user@example.com".to_string(),
+            role: role.to_string(),
+            tenant_id: Some("tenant-1".to_string()),
+            is_super_admin: false,
+            exp,
+            iat: Utc::now().timestamp() as usize,
+        }
+    }
+
+    #[tokio::test]
+    async fn password_validation_characterization_respects_policy_flags() {
+        let service = build_test_service("secret");
+        let settings = AuthSettings {
+            password_min_length: 10,
+            password_require_uppercase: true,
+            password_require_number: true,
+            password_require_special: true,
+            ..AuthSettings::default()
+        };
+
+        let invalid = service.validate_password("short", &settings);
+        assert!(!invalid.valid);
+        assert!(invalid
+            .errors
+            .iter()
+            .any(|e| e.contains("at least 10 characters")));
+        assert!(invalid
+            .errors
+            .iter()
+            .any(|e| e.contains("uppercase letter")));
+        assert!(invalid.errors.iter().any(|e| e.contains("one number")));
+        assert!(invalid
+            .errors
+            .iter()
+            .any(|e| e.contains("special character")));
+
+        let valid = service.validate_password("ValidPass1!", &settings);
+        assert!(valid.valid);
+        assert!(valid.errors.is_empty());
+    }
+
+    #[tokio::test]
+    async fn validate_2fa_token_characterization_distinguishes_expired_and_invalid_signature() {
+        let service = build_test_service("phase8-secret");
+
+        let expired_claims =
+            build_claims((Utc::now() - Duration::minutes(10)).timestamp() as usize, "2fa_pending");
+        let expired_token = encode(
+            &Header::default(),
+            &expired_claims,
+            &EncodingKey::from_secret("phase8-secret".as_bytes()),
+        )
+        .expect("expired token should be encodable");
+
+        let wrong_secret_token = encode(
+            &Header::default(),
+            &build_claims((Utc::now() + Duration::minutes(5)).timestamp() as usize, "2fa_pending"),
+            &EncodingKey::from_secret("different-secret".as_bytes()),
+        )
+        .expect("wrong-secret token should be encodable");
+
+        let expired_err = service
+            .validate_2fa_token(&expired_token)
+            .await
+            .expect_err("expired token should fail");
+        assert!(matches!(expired_err, AppError::TokenExpired));
+
+        let invalid_err = service
+            .validate_2fa_token(&wrong_secret_token)
+            .await
+            .expect_err("wrong-signature token should fail");
+        assert!(matches!(invalid_err, AppError::InvalidToken));
+    }
+
+    #[tokio::test]
+    async fn validate_2fa_token_characterization_accepts_valid_token_and_claims_shape() {
+        let service = build_test_service("phase8-secret");
+
+        let expected = build_claims((Utc::now() + Duration::minutes(5)).timestamp() as usize, "2fa_pending");
+        let token = encode(
+            &Header::default(),
+            &expected,
+            &EncodingKey::from_secret("phase8-secret".as_bytes()),
+        )
+        .expect("valid token should be encodable");
+
+        let claims = service
+            .validate_2fa_token(&token)
+            .await
+            .expect("valid token should decode");
+
+        assert_eq!(claims.sub, expected.sub);
+        assert_eq!(claims.email, expected.email);
+        assert_eq!(claims.role, "2fa_pending");
+        assert_eq!(claims.tenant_id, expected.tenant_id);
+        assert!(!claims.is_super_admin);
+    }
+
+    #[test]
+    fn device_fingerprint_characterization_is_stable_per_input_pair() {
+        let fp_one = AuthService::generate_device_fingerprint(Some("agent-a"), Some("10.0.0.1"));
+        let fp_two = AuthService::generate_device_fingerprint(Some("agent-a"), Some("10.0.0.1"));
+        let fp_other = AuthService::generate_device_fingerprint(Some("agent-b"), Some("10.0.0.1"));
+
+        assert_eq!(fp_one.len(), 64);
+        assert_eq!(fp_one, fp_two);
+        assert_ne!(fp_one, fp_other);
     }
 }

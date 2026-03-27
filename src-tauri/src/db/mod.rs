@@ -1,4 +1,5 @@
 //! Database module
+//! Exposes connection facade and db helpers.
 
 pub mod connection;
 pub mod factory;
