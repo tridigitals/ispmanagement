@@ -583,3 +583,78 @@ pub async fn verify_customer_package_payment(
         .await
         .map_err(|e| e.to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{is_customer_package_invoice, parse_datetime_opt};
+    use crate::models::Invoice;
+    use chrono::{TimeZone, Utc};
+
+    fn sample_invoice(external_id: Option<&str>) -> Invoice {
+        let ts = Utc
+            .with_ymd_and_hms(2026, 3, 27, 0, 0, 0)
+            .single()
+            .expect("valid UTC timestamp");
+
+        Invoice {
+            id: "inv-1".to_string(),
+            tenant_id: "tenant-1".to_string(),
+            invoice_number: "INV-1".to_string(),
+            amount: 100_000.0,
+            currency_code: "IDR".to_string(),
+            base_currency_code: "IDR".to_string(),
+            fx_rate: None,
+            fx_source: None,
+            fx_fetched_at: None,
+            status: "pending".to_string(),
+            description: Some("sample".to_string()),
+            due_date: ts,
+            paid_at: None,
+            payment_method: None,
+            external_id: external_id.map(str::to_string),
+            merchant_id: None,
+            proof_attachment: None,
+            rejection_reason: None,
+            created_at: ts,
+            updated_at: ts,
+        }
+    }
+
+    #[test]
+    fn parse_datetime_opt_accepts_none_and_blank_as_absent() {
+        let none_result = parse_datetime_opt(None, "from").expect("none should parse");
+        let blank_result = parse_datetime_opt(Some("   ".to_string()), "from")
+            .expect("blank should parse as absent");
+
+        assert_eq!(none_result, None);
+        assert_eq!(blank_result, None);
+    }
+
+    #[test]
+    fn parse_datetime_opt_parses_rfc3339_and_normalizes_to_utc() {
+        let parsed = parse_datetime_opt(Some("2026-03-27T07:00:00+07:00".to_string()), "from")
+            .expect("datetime should parse")
+            .expect("datetime should be present");
+
+        assert_eq!(parsed, Utc.with_ymd_and_hms(2026, 3, 27, 0, 0, 0).unwrap());
+    }
+
+    #[test]
+    fn parse_datetime_opt_rejects_invalid_format_with_field_specific_message() {
+        let err = parse_datetime_opt(Some("2026/03/27 00:00:00".to_string()), "to")
+            .expect_err("invalid datetime must fail");
+
+        assert_eq!(err, "to must be ISO-8601 datetime (RFC3339)");
+    }
+
+    #[test]
+    fn is_customer_package_invoice_only_accepts_pkgsub_prefixed_external_id() {
+        let customer_package = sample_invoice(Some("pkgsub:sub-1"));
+        let tenant_plan = sample_invoice(Some("plan:plan-1:monthly"));
+        let no_external_id = sample_invoice(None);
+
+        assert!(is_customer_package_invoice(&customer_package));
+        assert!(!is_customer_package_invoice(&tenant_plan));
+        assert!(!is_customer_package_invoice(&no_external_id));
+    }
+}
