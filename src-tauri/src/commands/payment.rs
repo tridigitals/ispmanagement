@@ -1,14 +1,21 @@
 //! Payment Commands
 
+mod access;
+mod helpers;
+
 use crate::models::{
     BankAccount, BillingCollectionLogView, CreateBankAccountRequest, Invoice,
     InvoiceReminderLogView,
 };
 use crate::services::{
-    AuthService, BillingCollectionRunResult, BulkGenerateInvoicesResult, Claims, PaymentService,
-    PlanService,
+    AuthService, BillingCollectionRunResult, BulkGenerateInvoicesResult, PaymentService, PlanService,
+};
+use access::{
+    authorize_invoice_access, require_payment_manage_access, require_payment_read_access,
+    require_work_order_manage_access,
 };
 use chrono::{DateTime, Utc};
+use helpers::{is_customer_package_invoice, parse_datetime_opt};
 use serde::Serialize;
 use tauri::State;
 
@@ -19,100 +26,6 @@ pub struct FxRateResponse {
     pub rate: f64,
     pub source: String,
     pub fetched_at: DateTime<Utc>,
-}
-
-async fn require_payment_read_access(
-    auth_service: &AuthService,
-    claims: &Claims,
-) -> Result<(), String> {
-    if claims.is_super_admin {
-        return Ok(());
-    }
-    let tenant_id = claims
-        .tenant_id
-        .as_deref()
-        .ok_or_else(|| "Tenant context required".to_string())?;
-    auth_service
-        .check_permission(&claims.sub, tenant_id, "billing", "read")
-        .await
-        .map_err(|e| e.to_string())
-}
-
-async fn require_payment_manage_access(
-    auth_service: &AuthService,
-    claims: &Claims,
-) -> Result<(), String> {
-    if claims.is_super_admin {
-        return Ok(());
-    }
-    let tenant_id = claims
-        .tenant_id
-        .as_deref()
-        .ok_or_else(|| "Tenant context required".to_string())?;
-    auth_service
-        .check_permission(&claims.sub, tenant_id, "billing", "manage")
-        .await
-        .map_err(|e| e.to_string())
-}
-
-async fn require_work_order_manage_access(
-    auth_service: &AuthService,
-    claims: &Claims,
-) -> Result<(), String> {
-    if claims.is_super_admin {
-        return Ok(());
-    }
-    let tenant_id = claims
-        .tenant_id
-        .as_deref()
-        .ok_or_else(|| "Tenant context required".to_string())?;
-    auth_service
-        .check_permission(&claims.sub, tenant_id, "work_orders", "manage")
-        .await
-        .map_err(|e| e.to_string())
-}
-
-async fn authorize_invoice_access(
-    claims: &Claims,
-    payment_service: &PaymentService,
-    invoice_id: &str,
-) -> Result<Invoice, String> {
-    let invoice = payment_service
-        .get_invoice(invoice_id)
-        .await
-        .map_err(|e| e.to_string())?;
-    if claims.is_super_admin {
-        return Ok(invoice);
-    }
-    let tenant_id = claims
-        .tenant_id
-        .as_deref()
-        .ok_or_else(|| "Tenant context required".to_string())?;
-    if tenant_id != invoice.tenant_id {
-        return Err("Invoice access denied".to_string());
-    }
-    Ok(invoice)
-}
-
-fn is_customer_package_invoice(invoice: &Invoice) -> bool {
-    invoice
-        .external_id
-        .as_deref()
-        .map(|v| v.starts_with("pkgsub:"))
-        .unwrap_or(false)
-}
-
-fn parse_datetime_opt(input: Option<String>, field: &str) -> Result<Option<DateTime<Utc>>, String> {
-    let Some(raw) = input
-        .map(|v| v.trim().to_string())
-        .filter(|v| !v.is_empty())
-    else {
-        return Ok(None);
-    };
-
-    chrono::DateTime::parse_from_rfc3339(&raw)
-        .map(|dt| Some(dt.with_timezone(&Utc)))
-        .map_err(|_| format!("{field} must be ISO-8601 datetime (RFC3339)"))
 }
 
 #[tauri::command]
