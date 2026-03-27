@@ -1,5 +1,12 @@
 //! Payment Service - Manages invoices and bank accounts
 
+mod core;
+mod dto;
+mod integration;
+mod mapper;
+mod repository;
+mod validation;
+
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
@@ -20,88 +27,21 @@ use crate::services::subscription_lifecycle::{
 };
 use crate::services::{NotificationService, PppoeService};
 
-const CUSTOMER_PACKAGE_INVOICE_PREFIX: &str = "pkgsub:";
 const BILLING_AUTO_SUSPEND_ENABLED_KEY: &str = "billing_auto_suspend_enabled";
 const BILLING_AUTO_SUSPEND_GRACE_DAYS_KEY: &str = "billing_auto_suspend_grace_days";
 const BILLING_AUTO_RESUME_ON_PAYMENT_KEY: &str = "billing_auto_resume_on_payment";
 const BILLING_REMINDER_ENABLED_KEY: &str = "billing_reminder_enabled";
 const BILLING_REMINDER_SCHEDULE_KEY: &str = "billing_reminder_schedule";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum MidtransTransitionDecision {
-    Apply,
-    SkipDuplicate,
-    SkipDowngrade,
-    SkipPendingAfterFailed,
-}
-
-fn decide_midtrans_transition(current_status: &str, incoming_status: &str) -> MidtransTransitionDecision {
-    if current_status == incoming_status {
-        return MidtransTransitionDecision::SkipDuplicate;
-    }
-    if current_status == "paid" && incoming_status != "paid" {
-        return MidtransTransitionDecision::SkipDowngrade;
-    }
-    if current_status == "failed" && incoming_status == "pending" {
-        return MidtransTransitionDecision::SkipPendingAfterFailed;
-    }
-    MidtransTransitionDecision::Apply
-}
-
-fn is_customer_package_invoice_external_id(external_id: Option<&str>) -> bool {
-    external_id
-        .map(|v| v.starts_with(CUSTOMER_PACKAGE_INVOICE_PREFIX))
-        .unwrap_or(false)
-}
-
-fn is_manual_payment_invoice(invoice: &Invoice) -> bool {
-    let method = invoice
-        .payment_method
-        .as_deref()
-        .unwrap_or_default()
-        .trim()
-        .to_ascii_lowercase();
-    invoice.status == "verification_pending"
-        || invoice.proof_attachment.is_some()
-        || method.contains("bank")
-        || method.contains("manual")
-}
-
-fn is_owner_or_admin_role(role: Option<&str>) -> bool {
-    role.map(|r| {
-        let normalized = r.trim().to_ascii_lowercase();
-        normalized == "owner" || normalized == "admin"
-    })
-    .unwrap_or(false)
-}
-
-fn is_owner_admin_or_technician_role(role: Option<&str>) -> bool {
-    role.map(|r| {
-        let normalized = r.trim().to_ascii_lowercase();
-        normalized == "owner" || normalized == "admin" || normalized == "technician"
-    })
-    .unwrap_or(false)
-}
-
-fn filter_owner_admin_user_ids(rows: Vec<(String, Option<String>)>) -> Vec<String> {
-    let mut set = HashSet::new();
-    for (user_id, role) in rows {
-        if is_owner_or_admin_role(role.as_deref()) {
-            set.insert(user_id);
-        }
-    }
-    set.into_iter().collect()
-}
-
-fn filter_installation_request_user_ids(rows: Vec<(String, Option<String>)>) -> Vec<String> {
-    let mut set = HashSet::new();
-    for (user_id, role) in rows {
-        if is_owner_admin_or_technician_role(role.as_deref()) {
-            set.insert(user_id);
-        }
-    }
-    set.into_iter().collect()
-}
+use self::core::{
+    decide_midtrans_transition, is_customer_package_invoice_external_id,
+    is_manual_payment_invoice, MidtransTransitionDecision, CUSTOMER_PACKAGE_INVOICE_PREFIX,
+};
+use self::dto::{AssignmentCandidateNodeRow, AssignmentSubscriptionRef};
+use self::mapper::{filter_installation_request_user_ids, filter_owner_admin_user_ids};
+use self::validation::is_owner_or_admin_role;
+#[cfg(test)]
+use self::validation::is_owner_admin_or_technician_role;
 
 
 #[derive(Debug, Clone, Serialize)]
@@ -145,29 +85,6 @@ impl Default for BillingCollectionSettings {
             ],
         }
     }
-}
-
-#[derive(Debug, Clone, sqlx::FromRow)]
-struct AssignmentSubscriptionRef {
-    customer_id: String,
-    location_id: String,
-    router_id: Option<String>,
-    latitude: Option<f64>,
-    longitude: Option<f64>,
-}
-
-#[derive(Debug, Clone, sqlx::FromRow)]
-struct AssignmentCandidateNodeRow {
-    node_id: String,
-    name: String,
-    node_type: String,
-    status: String,
-    capacity_json: serde_json::Value,
-    health_json: serde_json::Value,
-    distance_m: Option<f64>,
-    avg_link_utilization_pct: Option<f64>,
-    down_links: i64,
-    link_count: i64,
 }
 
 #[derive(Clone)]
@@ -454,7 +371,7 @@ impl PaymentService {
             "#,
         ))
         .bind(tenant_id)
-        .bind(format!("{}%", CUSTOMER_PACKAGE_INVOICE_PREFIX))
+        .bind(format!("{}%", core::CUSTOMER_PACKAGE_INVOICE_PREFIX))
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
@@ -464,7 +381,7 @@ impl PaymentService {
             "SELECT * FROM invoices WHERE tenant_id = ? AND external_id LIKE ? ORDER BY {sort_column} {sort_direction}"
         ))
         .bind(tenant_id)
-        .bind(format!("{}%", CUSTOMER_PACKAGE_INVOICE_PREFIX))
+        .bind(format!("{}%", core::CUSTOMER_PACKAGE_INVOICE_PREFIX))
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
@@ -718,7 +635,7 @@ impl PaymentService {
         let period_key = Self::billing_period_key(&billing_cycle, starts_at.as_ref(), period_ref)?;
         let external_id = format!(
             "{}{}:{}",
-            CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id, period_key
+            core::CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id, period_key
         );
 
         #[cfg(feature = "postgres")]
@@ -1083,7 +1000,7 @@ impl PaymentService {
             result.evaluated_count += 1;
 
             let Some(subscription_id) =
-                Self::parse_customer_subscription_id(external_id.as_deref())
+                core::parse_customer_subscription_id(external_id.as_deref())
             else {
                 let _ = self
                     .insert_billing_collection_log(
@@ -1102,7 +1019,7 @@ impl PaymentService {
 
             let due_day = due_date.date_naive();
             let day_offset = (today - due_day).num_days();
-            let reminder_code = Self::reminder_code_for_day_offset(day_offset);
+            let reminder_code = core::reminder_code_for_day_offset(day_offset);
 
             if settings.reminder_enabled && settings.reminder_schedule.contains(&reminder_code) {
                 let already_sent = self
@@ -2053,7 +1970,7 @@ impl PaymentService {
                     .insert_billing_collection_log(
                         &invoice.tenant_id,
                         &invoice.id,
-                        Self::parse_customer_subscription_id(invoice.external_id.as_deref())
+                        core::parse_customer_subscription_id(invoice.external_id.as_deref())
                             .as_deref(),
                         "payment_callback",
                         "skipped",
@@ -2076,7 +1993,7 @@ impl PaymentService {
                     .insert_billing_collection_log(
                         &invoice.tenant_id,
                         &invoice.id,
-                        Self::parse_customer_subscription_id(invoice.external_id.as_deref())
+                        core::parse_customer_subscription_id(invoice.external_id.as_deref())
                             .as_deref(),
                         "payment_callback",
                         "skipped",
@@ -2098,7 +2015,7 @@ impl PaymentService {
                     .insert_billing_collection_log(
                         &invoice.tenant_id,
                         &invoice.id,
-                        Self::parse_customer_subscription_id(invoice.external_id.as_deref())
+                        core::parse_customer_subscription_id(invoice.external_id.as_deref())
                             .as_deref(),
                         "payment_callback",
                         "skipped",
@@ -2160,7 +2077,7 @@ impl PaymentService {
                 .insert_billing_collection_log(
                     &invoice.tenant_id,
                     &invoice.id,
-                    Self::parse_customer_subscription_id(invoice.external_id.as_deref()).as_deref(),
+                    core::parse_customer_subscription_id(invoice.external_id.as_deref()).as_deref(),
                     "payment_callback",
                     "skipped",
                     Some(&reason),
@@ -2181,7 +2098,7 @@ impl PaymentService {
             .insert_billing_collection_log(
                 &invoice.tenant_id,
                 &invoice.id,
-                Self::parse_customer_subscription_id(invoice.external_id.as_deref()).as_deref(),
+                core::parse_customer_subscription_id(invoice.external_id.as_deref()).as_deref(),
                 "payment_callback",
                 "success",
                 Some(&callback_reason),
@@ -2302,7 +2219,7 @@ impl PaymentService {
             if is_customer_package {
                 if manual_failure {
                     let subscription_id =
-                        Self::parse_customer_subscription_id(invoice.external_id.as_deref());
+                        core::parse_customer_subscription_id(invoice.external_id.as_deref());
                     if let Some(subscription_id) = subscription_id {
                         let customer_user_ids = self
                             .list_customer_user_ids_for_subscription(
@@ -2794,83 +2711,12 @@ impl PaymentService {
         total.failed_count += partial.failed_count;
     }
 
-    fn parse_customer_subscription_id(external_id: Option<&str>) -> Option<String> {
-        let rest = external_id?.strip_prefix(CUSTOMER_PACKAGE_INVOICE_PREFIX)?;
-        let id = rest.split(':').next()?.trim();
-        if id.is_empty() {
-            return None;
-        }
-        Some(id.to_string())
-    }
-
-    fn reminder_code_for_day_offset(day_offset: i64) -> String {
-        if day_offset >= 0 {
-            format!("H+{}", day_offset)
-        } else {
-            format!("H{}", day_offset)
-        }
-    }
-
-    fn json_number(value: &serde_json::Value, key: &str) -> Option<f64> {
-        value.get(key).and_then(|v| {
-            v.as_f64()
-                .or_else(|| v.as_i64().map(|n| n as f64))
-                .or_else(|| v.as_u64().map(|n| n as f64))
-                .or_else(|| v.as_str().and_then(|s| s.trim().parse::<f64>().ok()))
-        })
-    }
-
-    fn assignment_health_score(status: &str, health_json: &serde_json::Value) -> f64 {
-        if let Some(score) = Self::json_number(health_json, "score") {
-            return score.clamp(0.0, 100.0);
-        }
-        if let Some(score) = Self::json_number(health_json, "health_score") {
-            return score.clamp(0.0, 100.0);
-        }
-        match status {
-            "active" => 85.0,
-            "maintenance" => 60.0,
-            _ => 40.0,
-        }
-    }
-
-    fn assignment_capacity_score(
-        capacity_json: &serde_json::Value,
-        avg_link_utilization_pct: Option<f64>,
-    ) -> f64 {
-        if let Some(free_pct) = Self::json_number(capacity_json, "free_pct") {
-            return free_pct.clamp(0.0, 100.0);
-        }
-        if let Some(util_pct) = Self::json_number(capacity_json, "utilization_pct") {
-            return (100.0 - util_pct).clamp(0.0, 100.0);
-        }
-        if let (Some(avail), Some(total)) = (
-            Self::json_number(capacity_json, "available_mbps"),
-            Self::json_number(capacity_json, "total_mbps"),
-        ) {
-            if total > 0.0 {
-                return ((avail / total) * 100.0).clamp(0.0, 100.0);
-            }
-        }
-        if let Some(util) = avg_link_utilization_pct {
-            return (100.0 - util).clamp(0.0, 100.0);
-        }
-        60.0
-    }
-
-    fn assignment_distance_score(distance_m: Option<f64>) -> Option<f64> {
-        distance_m.map(|distance| {
-            let normalized = (distance / 50_000.0).clamp(0.0, 1.0);
-            (100.0 - (normalized * 100.0)).clamp(0.0, 100.0)
-        })
-    }
-
     async fn try_auto_resume_customer_subscription_from_paid_invoice(
         &self,
         invoice: &Invoice,
     ) -> AppResult<()> {
         let Some(subscription_id) =
-            Self::parse_customer_subscription_id(invoice.external_id.as_deref())
+            core::parse_customer_subscription_id(invoice.external_id.as_deref())
         else {
             return Ok(());
         };
@@ -3986,10 +3832,10 @@ impl PaymentService {
 
         let mut ranked: Vec<(f64, serde_json::Value)> = Vec::new();
         for row in candidates {
-            let health_score = Self::assignment_health_score(&row.status, &row.health_json);
+            let health_score = core::assignment_health_score(&row.status, &row.health_json);
             let capacity_score =
-                Self::assignment_capacity_score(&row.capacity_json, row.avg_link_utilization_pct);
-            let distance_score = Self::assignment_distance_score(row.distance_m).unwrap_or(60.0);
+                core::assignment_capacity_score(&row.capacity_json, row.avg_link_utilization_pct);
+            let distance_score = core::assignment_distance_score(row.distance_m).unwrap_or(60.0);
             let stability_penalty =
                 (row.down_links as f64 * 7.5) + if row.link_count == 0 { 12.0 } else { 0.0 };
             let score = ((health_score * 0.45) + (capacity_score * 0.35) + (distance_score * 0.20)
