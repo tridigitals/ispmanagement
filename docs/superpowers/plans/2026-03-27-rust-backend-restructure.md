@@ -347,6 +347,15 @@ Expected:
 - Internal split implemented with stable facade.
 - Targeted tests + workspace check passed.
 
+**Phase 2 freeze note (Task 2.3, 2026-03-27):**
+- Completed commits:
+  - Task 2.1: `1c35e85` (`test(db): replace brittle connection source assertions with behavior checks`)
+  - Task 2.2: `fd65a61` (`refactor(db): split connection module into facade and focused units`)
+- Verification summary:
+  - `cargo test connection --lib` ✅
+  - `cargo check --workspace` ✅
+- Scope boundary confirmed: no Phase 3 files were touched; changes remain in Phase 2 DB scope (`src-tauri/src/db/**`) plus this plan freeze note.
+
 ---
 
 ## Phase 3 — App/HTTP Bootstrap Split
