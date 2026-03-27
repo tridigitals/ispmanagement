@@ -2880,3 +2880,159 @@ impl NetworkMappingService {
         .ok_or_else(|| AppError::NotFound("Zone offer not found".into()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{NetworkMappingService, PathLinkRow};
+    use crate::error::AppError;
+
+    #[test]
+    fn link_status_normalization_and_validation_contract() {
+        assert_eq!(NetworkMappingService::normalize_link_status("active"), "up");
+        assert_eq!(NetworkMappingService::normalize_link_status("inactive"), "down");
+        assert_eq!(NetworkMappingService::normalize_link_status(" maintenance "), "maintenance");
+
+        assert!(NetworkMappingService::validate_link_status("up").is_ok());
+        assert!(NetworkMappingService::validate_link_status("degraded").is_ok());
+
+        let err = NetworkMappingService::validate_link_status("offline").unwrap_err();
+        match err {
+            AppError::Validation(message) => {
+                assert!(message.contains("link status must be one of"));
+            }
+            other => panic!("expected validation error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lat_lng_validation_contract_for_node_and_split_point_inputs() {
+        assert!(NetworkMappingService::validate_lat_lng(0.0, 0.0, "node").is_ok());
+
+        let lat_err = NetworkMappingService::validate_lat_lng(91.0, 0.0, "node").unwrap_err();
+        let lng_err = NetworkMappingService::validate_lat_lng(0.0, 181.0, "split_point").unwrap_err();
+
+        match lat_err {
+            AppError::Validation(message) => {
+                assert!(message.contains("node.lat must be between -90 and 90"));
+            }
+            other => panic!("expected validation error, got {other:?}"),
+        }
+
+        match lng_err {
+            AppError::Validation(message) => {
+                assert!(message.contains("split_point.lng must be between -180 and 180"));
+            }
+            other => panic!("expected validation error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn geometry_validation_and_line_parsing_characterization() {
+        let line = serde_json::json!({
+            "type": "LineString",
+            "coordinates": [[106.0, -6.0], [106.1, -6.1], [106.2, -6.2]],
+        });
+        assert!(NetworkMappingService::validate_geojson_geometry(
+            &line,
+            &["LineString", "MultiLineString"],
+            "geometry"
+        )
+        .is_ok());
+
+        let parsed = NetworkMappingService::parse_line_coords(&line, "geometry")
+            .expect("LineString coordinates should parse");
+        assert_eq!(parsed.len(), 3);
+
+        let unsupported = serde_json::json!({
+            "type": "Polygon",
+            "coordinates": [[[106.0, -6.0], [106.1, -6.1], [106.2, -6.2], [106.0, -6.0]]],
+        });
+        let err = NetworkMappingService::parse_line_coords(&unsupported, "geometry").unwrap_err();
+        assert!(matches!(err, AppError::Validation(_)));
+    }
+
+    #[test]
+    fn split_polyline_rejects_endpoint_and_accepts_mid_segment_split() {
+        let coords = vec![[106.0, -6.0], [106.1, -6.1], [106.2, -6.2]];
+
+        let endpoint_snap = NetworkMappingService::snap_point_to_polyline(&coords, 106.0, -6.0)
+            .expect("endpoint snap should resolve");
+        let endpoint_err =
+            NetworkMappingService::split_polyline_at_point(&coords, &endpoint_snap).unwrap_err();
+        match endpoint_err {
+            AppError::Validation(message) => {
+                assert!(message.contains("too close to an existing node"));
+            }
+            other => panic!("expected validation error, got {other:?}"),
+        }
+
+        let interior_snap = NetworkMappingService::snap_point_to_polyline(&coords, 106.15, -6.15)
+            .expect("interior snap should resolve");
+        let (first, second) = NetworkMappingService::split_polyline_at_point(&coords, &interior_snap)
+            .expect("interior split should succeed");
+        assert!(first.len() >= 2);
+        assert!(second.len() >= 2);
+        assert_eq!(first.last(), second.first());
+    }
+
+    #[test]
+    fn path_cost_and_candidate_scoring_helpers_preserve_existing_shape() {
+        let link = PathLinkRow {
+            id: "link-1".into(),
+            from_node_id: "node-a".into(),
+            to_node_id: "node-b".into(),
+            name: "Core Link".into(),
+            link_type: "fiber".into(),
+            status: "degraded".into(),
+            distance_m: 2_000.0,
+            utilization_pct: Some(40.0),
+            loss_db: Some(1.2),
+            latency_ms: Some(4.0),
+        };
+
+        let cost = NetworkMappingService::link_cost(&link);
+        assert!(cost > 0.0);
+
+        let health = NetworkMappingService::compute_health_score("active", &serde_json::json!({}));
+        let capacity = NetworkMappingService::compute_capacity_score(
+            &serde_json::json!({"available_mbps": 75, "total_mbps": 100}),
+            None,
+        );
+        let distance = NetworkMappingService::compute_distance_score(Some(500.0));
+
+        assert_eq!(health, 85.0);
+        assert_eq!(capacity, 75.0);
+        assert!(distance.is_some());
+    }
+
+    #[test]
+    fn customer_subscription_status_mapping_contract() {
+        assert_eq!(
+            NetworkMappingService::customer_subscription_to_node_status("active"),
+            "active"
+        );
+        assert_eq!(
+            NetworkMappingService::customer_subscription_to_node_status("suspended"),
+            "maintenance"
+        );
+        assert_eq!(
+            NetworkMappingService::customer_subscription_to_node_status("inactive"),
+            "inactive"
+        );
+        assert_eq!(
+            NetworkMappingService::customer_subscription_to_node_status("cancelled"),
+            "inactive"
+        );
+    }
+
+    #[test]
+    fn geometry_db_error_mapping_preserves_validation_vs_database_boundary() {
+        let geo_err = sqlx::Error::Protocol("invalid GeoJSON geometry".to_string());
+        let mapped_geo = NetworkMappingService::map_geometry_db_error(geo_err, "geometry");
+        assert!(matches!(mapped_geo, AppError::Validation(_)));
+
+        let db_err = sqlx::Error::Protocol("connection reset by peer".to_string());
+        let mapped_db = NetworkMappingService::map_geometry_db_error(db_err, "geometry");
+        assert!(matches!(mapped_db, AppError::Database(_)));
+    }
+}
