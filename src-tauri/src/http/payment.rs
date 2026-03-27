@@ -1185,3 +1185,100 @@ async fn midtrans_notification(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        is_customer_role, parse_utc_datetime_query, ListCustomerPackageInvoicesQuery,
+        VerifyCustomerPackagePaymentBody,
+    };
+    use axum::extract::Query;
+    use axum::http::{StatusCode, Uri};
+
+    #[test]
+    fn customer_role_detection_is_trimmed_and_case_insensitive() {
+        assert!(is_customer_role("customer"));
+        assert!(is_customer_role(" Customer "));
+        assert!(is_customer_role("CUSTOMER"));
+
+        assert!(!is_customer_role("admin"));
+        assert!(!is_customer_role(""));
+    }
+
+    #[test]
+    fn verify_customer_package_body_supports_current_invoice_id_aliases() {
+        let camel: VerifyCustomerPackagePaymentBody = serde_json::from_str(
+            r#"{"status":"paid","invoiceId":"inv-1"}"#,
+        )
+        .expect("invoiceId payload should deserialize");
+        assert_eq!(camel.invoice_id.as_deref(), Some("inv-1"));
+
+        let snake: VerifyCustomerPackagePaymentBody = serde_json::from_str(
+            r#"{"status":"paid","invoice_id":"inv-2"}"#,
+        )
+        .expect("invoice_id payload should deserialize");
+        assert_eq!(snake.invoice_id.as_deref(), Some("inv-2"));
+
+        let short_alias: VerifyCustomerPackagePaymentBody =
+            serde_json::from_str(r#"{"status":"paid","id":"inv-3"}"#)
+                .expect("id payload should deserialize");
+        assert_eq!(short_alias.invoice_id.as_deref(), Some("inv-3"));
+    }
+
+    #[test]
+    fn parse_utc_datetime_query_handles_empty_invalid_and_valid_values() {
+        let none_res = parse_utc_datetime_query(None, "from");
+        assert!(none_res.is_ok());
+        match none_res {
+            Ok(v) => assert_eq!(v, None),
+            Err(_) => panic!("None should parse"),
+        }
+
+        let blank_res = parse_utc_datetime_query(Some("   ".to_string()), "to");
+        assert!(blank_res.is_ok());
+        match blank_res {
+            Ok(v) => assert_eq!(v, None),
+            Err(_) => panic!("blank should parse"),
+        }
+
+        let err = parse_utc_datetime_query(Some("not-a-date".to_string()), "from")
+            .expect_err("invalid datetime should fail");
+        assert_eq!(err.0, StatusCode::BAD_REQUEST);
+        assert_eq!(
+            err.1 .0.error,
+            "from must be ISO-8601 datetime (RFC3339)"
+        );
+
+        let parsed_res = parse_utc_datetime_query(Some("2026-03-27T11:22:33+07:00".to_string()), "from");
+        assert!(parsed_res.is_ok());
+        let parsed = match parsed_res {
+            Ok(Some(dt)) => dt,
+            Ok(None) => panic!("valid datetime should be Some"),
+            Err(_) => panic!("valid datetime should parse"),
+        };
+        assert_eq!(parsed.to_rfc3339(), "2026-03-27T04:22:33+00:00");
+    }
+
+    #[test]
+    fn list_customer_package_query_parsing_characterizes_current_http_shape() {
+        let uri: Uri = "/?sort_by=due_date&sort_dir=desc"
+            .parse()
+            .expect("valid uri");
+        let Query(params) = Query::<ListCustomerPackageInvoicesQuery>::try_from_uri(&uri)
+            .expect("params parse");
+
+        assert_eq!(params.sort_by.as_deref(), Some("due_date"));
+        assert_eq!(params.sort_dir.as_deref(), Some("desc"));
+
+        let camel_uri: Uri = "/?sortBy=due_date&sortDir=asc"
+            .parse()
+            .expect("valid uri");
+        let camel_parse = Query::<ListCustomerPackageInvoicesQuery>::try_from_uri(&camel_uri);
+        assert!(camel_parse.is_err());
+        let err_text = match camel_parse {
+            Ok(_) => panic!("camelCase params should be rejected by deny_unknown_fields"),
+            Err(err) => err.to_string(),
+        };
+        assert!(err_text.contains("unknown field `sortBy`"));
+    }
+}
