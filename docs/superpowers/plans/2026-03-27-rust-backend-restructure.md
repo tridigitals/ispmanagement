@@ -850,6 +850,26 @@ Expected:
 - No behavior changes in mapping workflows.
 - Targeted tests + workspace check passed.
 
+**Phase 7 freeze note (Task 7.3, 2026-03-27):**
+- Completed commits:
+  - `004842d` — `test(network-mapping): add phase 7.1 characterization safety-net coverage`
+  - `e1cac9d` — `refactor(network-mapping): split service into facade and internal units`
+  - `321e342` — `refactor(network-mapping): thin facade via mapper/integration flows`
+- Extraction map and mitigation notes:
+  - `src-tauri/src/services/network_mapping_service/mod.rs` is the stable facade preserving `NetworkMappingService` public API while delegating internals.
+  - Domain orchestration remains isolated in `src-tauri/src/services/network_mapping_service/core.rs`; storage access remains isolated in `src-tauri/src/services/network_mapping_service/repository.rs`.
+  - DTO shaping/translation/validation are split into `src-tauri/src/services/network_mapping_service/dto.rs`, `src-tauri/src/services/network_mapping_service/mapper.rs`, and `src-tauri/src/services/network_mapping_service/validation.rs`; integration helpers remain in `src-tauri/src/services/network_mapping_service/integration.rs`.
+  - No adapter surface drift detected: no file deltas across `src-tauri/src/commands/**`, `src-tauri/src/http/**`, `src-tauri/src/lib.rs`, or `src-tauri/src/services/mod.rs` between Phase 7.1 baseline and `321e342`.
+- Acceptance verification summary (Task 7.3 gate rerun):
+  - `cd src-tauri && cargo test network_mapping_service --lib` ✅ passed (9 passed, 0 failed).
+  - `cd src-tauri && cargo check --workspace` ✅ passed.
+- Rollback checkpoint / anchor for Phase 7 network-mapping extraction (if any post-freeze regression appears):
+  - `git restore --staged --worktree src-tauri/src/services/network_mapping_service/mod.rs src-tauri/src/services/network_mapping_service/core.rs src-tauri/src/services/network_mapping_service/repository.rs src-tauri/src/services/network_mapping_service/dto.rs src-tauri/src/services/network_mapping_service/mapper.rs src-tauri/src/services/network_mapping_service/validation.rs src-tauri/src/services/network_mapping_service/integration.rs src-tauri/src/services/mod.rs`
+  - `git clean -fd src-tauri/src/services/network_mapping_service`
+  - `cd src-tauri && cargo test network_mapping_service --lib`
+- Risk note:
+  - Residual risk is limited to internal delegation edges (`mod.rs` ↔ `core.rs`/`repository.rs`/`mapper.rs`/`integration.rs`), mitigated by characterization tests and unchanged adapter-facing surfaces.
+
 ---
 
 ## Phase 8 — Auth Service Split
