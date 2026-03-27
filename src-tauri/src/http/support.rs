@@ -15,28 +15,10 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use uuid::Uuid;
 
-#[cfg(feature = "postgres")]
-async fn support_admin_user_ids(
-    pool: &sqlx::Pool<sqlx::Postgres>,
-    tenant_id: &str,
-) -> Result<Vec<String>, sqlx::Error> {
-    // Any user who can view/manage all tickets should be notified.
-    // We key off permissions (RBAC) rather than hardcoded roles.
-    sqlx::query_scalar(
-        r#"
-        SELECT DISTINCT tm.user_id
-        FROM tenant_members tm
-        JOIN role_permissions rp ON rp.role_id = tm.role_id
-        WHERE tm.tenant_id = $1
-          AND tm.role_id IS NOT NULL
-          AND rp.permission_id = ANY($2)
-    "#,
-    )
-    .bind(tenant_id)
-    .bind(["support:read_all", "support:reply"])
-    .fetch_all(pool)
-    .await
-}
+use super::announcements_support_common::{
+    normalize_priority, normalize_priority_optional_lowercase, normalize_status,
+    support_admin_user_ids,
+};
 
 #[cfg(feature = "postgres")]
 async fn notify_support_admins_new_ticket(
@@ -262,10 +244,7 @@ pub async fn list_support_tickets(
             .await?;
     }
 
-    let st = match params.status.as_deref() {
-        Some("open") | Some("pending") | Some("closed") => params.status,
-        _ => None,
-    };
+    let st = normalize_status(params.status);
 
     let page = params.page.unwrap_or(1).max(1);
     let per_page = params.per_page.unwrap_or(20).clamp(1, 100);
@@ -492,10 +471,7 @@ pub async fn create_support_ticket(
     let now = Utc::now();
     let ticket_id = Uuid::new_v4().to_string();
     let msg_id = Uuid::new_v4().to_string();
-    let priority = match dto.priority.as_deref() {
-        Some("low") | Some("normal") | Some("high") | Some("urgent") => dto.priority.unwrap(),
-        _ => "normal".to_string(),
-    };
+    let priority = normalize_priority(dto.priority);
 
     let mut tx = state.auth_service.pool.begin().await?;
     state
@@ -900,17 +876,8 @@ pub async fn update_support_ticket(
         .await?;
 
     let now = Utc::now();
-    let status = match dto.status.as_deref() {
-        Some("open") | Some("pending") | Some("closed") => dto.status,
-        _ => None,
-    };
-    let priority = dto.priority.and_then(|p| {
-        let p = p.to_lowercase();
-        match p.as_str() {
-            "low" | "normal" | "high" | "urgent" => Some(p),
-            _ => None,
-        }
-    });
+    let status = normalize_status(dto.status);
+    let priority = normalize_priority_optional_lowercase(dto.priority);
 
     if status.is_some() || priority.is_some() {
         state

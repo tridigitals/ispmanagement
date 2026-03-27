@@ -12,26 +12,9 @@ use std::collections::HashSet;
 use tauri::State;
 use uuid::Uuid;
 
-#[cfg(feature = "postgres")]
-async fn support_admin_user_ids(
-    pool: &sqlx::Pool<sqlx::Postgres>,
-    tenant_id: &str,
-) -> Result<Vec<String>, sqlx::Error> {
-    sqlx::query_scalar(
-        r#"
-        SELECT DISTINCT tm.user_id
-        FROM tenant_members tm
-        JOIN role_permissions rp ON rp.role_id = tm.role_id
-        WHERE tm.tenant_id = $1
-          AND tm.role_id IS NOT NULL
-          AND rp.permission_id = ANY($2)
-    "#,
-    )
-    .bind(tenant_id)
-    .bind(["support:read_all", "support:reply"])
-    .fetch_all(pool)
-    .await
-}
+use super::announcements_support_common::{
+    normalize_priority, normalize_status, support_admin_user_ids,
+};
 
 #[cfg(feature = "postgres")]
 async fn notify_support_admins_new_ticket(
@@ -195,20 +178,6 @@ pub struct SupportTicketStats {
     pub open: i64,
     pub pending: i64,
     pub closed: i64,
-}
-
-fn normalize_priority(p: Option<String>) -> String {
-    match p.as_deref() {
-        Some("low") | Some("normal") | Some("high") | Some("urgent") => p.unwrap(),
-        _ => "normal".to_string(),
-    }
-}
-
-fn normalize_status(s: Option<String>) -> Option<String> {
-    match s.as_deref() {
-        Some("open") | Some("pending") | Some("closed") => s,
-        _ => None,
-    }
 }
 
 #[tauri::command]
