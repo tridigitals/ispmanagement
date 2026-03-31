@@ -4337,6 +4337,17 @@ mod tests {
     }
 
     #[test]
+    fn env_examples_document_mikrotik_log_retention_days() {
+        let root_env = std::fs::read_to_string("../.env.example").unwrap();
+        let server_env = std::fs::read_to_string("../deploy/systemd/server.env.example").unwrap();
+
+        assert!(root_env.contains("MIKROTIK_LOG_RETENTION_DAYS=90"));
+        assert!(server_env.contains("MIKROTIK_LOG_RETENTION_DAYS=90"));
+        assert!(root_env.contains("1..3650"));
+        assert!(server_env.contains("1..3650"));
+    }
+
+    #[test]
     fn prune_keeps_logs_at_or_newer_than_retention_cutoff() {
         let now = DateTime::parse_from_rfc3339("2026-03-31T00:00:00Z")
             .unwrap()
