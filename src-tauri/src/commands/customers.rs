@@ -6,10 +6,10 @@ use crate::models::{
     CustomerPortalSubscriptionStats, CustomerPortalUser, CustomerRegistrationInviteCreateResponse,
     CustomerRegistrationInvitePolicy, CustomerRegistrationInviteSummary,
     CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionView,
-    InstallationWorkOrder, InstallationWorkOrderView, Invoice, IspPackage,
-    PaginatedResponse, PortalCheckoutSubscriptionRequest, TeamMemberWithUser,
-    UpdateCustomerLocationRequest, UpdateCustomerRegistrationInvitePolicyRequest,
-    UpdateCustomerRequest, UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
+    InstallationWorkOrder, InstallationWorkOrderView, Invoice, IspPackage, PaginatedResponse,
+    PortalCheckoutSubscriptionRequest, TeamMemberWithUser, UpdateCustomerLocationRequest,
+    UpdateCustomerRegistrationInvitePolicyRequest, UpdateCustomerRequest,
+    UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
 };
 use crate::services::{AuthService, CustomerService, PaymentService};
 use tauri::State;
@@ -740,7 +740,6 @@ pub async fn create_my_customer_subscription_invoice(
         invoice,
     })
 }
-
 
 #[tauri::command]
 pub async fn get_customer_lifecycle_observability(

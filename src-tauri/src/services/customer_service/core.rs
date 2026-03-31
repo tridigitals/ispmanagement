@@ -802,7 +802,6 @@ impl CustomerService {
         })
     }
 
-
     pub async fn update_customer(
         &self,
         actor_id: &str,
@@ -2018,8 +2017,6 @@ impl CustomerService {
         })
     }
 
-
-
     // =========================
     // Portal: Self-service
     // =========================
@@ -2102,8 +2099,6 @@ impl CustomerService {
 
         Ok(rows)
     }
-
-
 
     async fn get_my_location_or_404(
         &self,
@@ -2820,8 +2815,8 @@ impl CustomerService {
             .ok_or_else(|| AppError::NotFound("Customer subscription not found".to_string()))?;
         let current = SubscriptionLifecycleStatus::parse(&current_raw)
             .map_err(|e| AppError::Validation(e.to_string()))?;
-        let target = transition_status(current, event)
-            .map_err(|e| AppError::Validation(e.to_string()))?;
+        let target =
+            transition_status(current, event).map_err(|e| AppError::Validation(e.to_string()))?;
 
         if target != current {
             let updated = self

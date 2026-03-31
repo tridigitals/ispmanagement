@@ -54,6 +54,10 @@ const commandMap: Record<string, { method: string; path: string }> = {
   create_customer_with_portal: { method: 'POST', path: '/customers/with-portal' },
   update_customer: { method: 'PUT', path: '/customers/:customerId' },
   delete_customer: { method: 'DELETE', path: '/customers/:customerId' },
+  get_customer_lifecycle_observability: {
+    method: 'GET',
+    path: '/customers/observability/lifecycle',
+  },
   list_customer_registration_invites: { method: 'GET', path: '/customers/invites' },
   create_customer_registration_invite: { method: 'POST', path: '/customers/invites' },
   get_customer_registration_invite_policy: { method: 'GET', path: '/customers/invites/policy' },

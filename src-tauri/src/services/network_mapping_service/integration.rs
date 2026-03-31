@@ -1,5 +1,5 @@
-use super::NetworkMappingService;
 use super::dto::{SyncCustomerLocationRow, SyncRouterRow, UuidTextRow};
+use super::NetworkMappingService;
 use crate::error::{AppError, AppResult};
 use crate::models::{NetworkImpactCustomer, NetworkImpactResponse, SyncTopologyAssetsResponse};
 use std::collections::HashSet;

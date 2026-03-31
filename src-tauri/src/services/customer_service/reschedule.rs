@@ -1,7 +1,6 @@
 use super::*;
 
 impl CustomerService {
-
     pub async fn get_pending_work_order_reschedule_request(
         &self,
         actor_id: &str,

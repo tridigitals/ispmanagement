@@ -159,7 +159,9 @@ impl CustomerService {
         Some(out)
     }
 
-    pub(super) fn parse_optional_datetime(input: Option<String>) -> AppResult<Option<DateTime<Utc>>> {
+    pub(super) fn parse_optional_datetime(
+        input: Option<String>,
+    ) -> AppResult<Option<DateTime<Utc>>> {
         let Some(raw) = input else {
             return Ok(None);
         };

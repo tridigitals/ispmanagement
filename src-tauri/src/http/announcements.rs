@@ -1224,7 +1224,7 @@ pub async fn process_due_announcements(state: &AppState) -> Result<(), String> {
         .execute(&state.auth_service.pool)
         .await;
     }
-    
+
     Ok(())
 }
 

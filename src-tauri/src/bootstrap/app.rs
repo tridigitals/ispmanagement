@@ -93,8 +93,11 @@ pub async fn initialize_backend<R: tauri::Runtime>(
     );
     let metrics_service = std::sync::Arc::new(MetricsService::new());
     let system_service = SystemService::new(pool.clone(), metrics_service.clone());
-    let storage_service =
-        crate::services::StorageService::new(pool.clone(), plan_service.clone(), app_data_dir.clone());
+    let storage_service = crate::services::StorageService::new(
+        pool.clone(),
+        plan_service.clone(),
+        app_data_dir.clone(),
+    );
     let backup_service = BackupService::new(pool.clone(), app_data_dir.clone());
 
     // Start Backup Scheduler
@@ -108,15 +111,15 @@ pub async fn initialize_backend<R: tauri::Runtime>(
     // Create WebSocket hub for real-time sync (shared between HTTP and Tauri)
     let ws_hub = std::sync::Arc::new(crate::http::WsHub::new());
 
-    let email_outbox_service =
-        EmailOutboxService::new(pool.clone(), settings_service.clone(), email_service.clone());
+    let email_outbox_service = EmailOutboxService::new(
+        pool.clone(),
+        settings_service.clone(),
+        email_service.clone(),
+    );
     email_outbox_service.start_sender().await;
 
-    let notification_service = NotificationService::new(
-        pool.clone(),
-        ws_hub.clone(),
-        email_outbox_service.clone(),
-    );
+    let notification_service =
+        NotificationService::new(pool.clone(), ws_hub.clone(), email_outbox_service.clone());
     let customer_service = CustomerService::new(
         pool.clone(),
         auth_service.clone(),
@@ -126,8 +129,11 @@ pub async fn initialize_backend<R: tauri::Runtime>(
         user_service.clone(),
     );
     customer_service.start_installation_sla_scheduler();
-    let payment_service =
-        PaymentService::new(pool.clone(), notification_service.clone(), pppoe_service.clone());
+    let payment_service = PaymentService::new(
+        pool.clone(),
+        notification_service.clone(),
+        pppoe_service.clone(),
+    );
     payment_service.start_customer_invoice_scheduler();
 
     // MikroTik monitoring (tenant-scoped)

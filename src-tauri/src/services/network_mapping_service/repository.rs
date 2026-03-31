@@ -4,7 +4,6 @@ use crate::models::{NetworkLink, NetworkNode, ServiceZone, ZoneOffer};
 use uuid::Uuid;
 
 impl NetworkMappingService {
-
     pub(super) async fn find_node_by_asset_reference(
         &self,
         tenant_id: &str,
@@ -63,7 +62,6 @@ impl NetworkMappingService {
         .await
         .map_err(AppError::Database)
     }
-
 
     pub(super) async fn upsert_system_managed_node(
         &self,
@@ -142,7 +140,6 @@ impl NetworkMappingService {
         Ok(true)
     }
 
-
     pub(super) async fn prune_system_managed_nodes_not_in_assets(
         &self,
         tenant_id: &str,
@@ -186,7 +183,6 @@ impl NetworkMappingService {
         Ok(rows_affected)
     }
 
-
     pub(super) async fn ensure_link_pair_available(
         &self,
         tenant_id: &str,
@@ -224,7 +220,6 @@ impl NetworkMappingService {
         Ok(())
     }
 
-
     pub(super) async fn get_node_by_id(&self, tenant_id: &str, id: &str) -> AppResult<NetworkNode> {
         sqlx::query_as(
             r#"
@@ -252,7 +247,6 @@ impl NetworkMappingService {
         .map_err(AppError::Database)?
         .ok_or_else(|| AppError::NotFound("Node not found".into()))
     }
-
 
     pub(super) async fn get_link_by_id(&self, tenant_id: &str, id: &str) -> AppResult<NetworkLink> {
         sqlx::query_as(
@@ -286,7 +280,6 @@ impl NetworkMappingService {
         .ok_or_else(|| AppError::NotFound("Link not found".into()))
     }
 
-
     pub(super) async fn get_zone_by_id(&self, tenant_id: &str, id: &str) -> AppResult<ServiceZone> {
         sqlx::query_as(
             r#"
@@ -313,8 +306,11 @@ impl NetworkMappingService {
         .ok_or_else(|| AppError::NotFound("Zone not found".into()))
     }
 
-
-    pub(super) async fn get_zone_offer_by_id(&self, tenant_id: &str, id: &str) -> AppResult<ZoneOffer> {
+    pub(super) async fn get_zone_offer_by_id(
+        &self,
+        tenant_id: &str,
+        id: &str,
+    ) -> AppResult<ZoneOffer> {
         sqlx::query_as(
             r#"
             SELECT
@@ -339,5 +335,4 @@ impl NetworkMappingService {
         .map_err(AppError::Database)?
         .ok_or_else(|| AppError::NotFound("Zone offer not found".into()))
     }
-
 }

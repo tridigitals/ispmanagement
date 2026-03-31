@@ -8,7 +8,8 @@ use crate::models::{
     InvoiceReminderLogView,
 };
 use crate::services::{
-    AuthService, BillingCollectionRunResult, BulkGenerateInvoicesResult, PaymentService, PlanService,
+    AuthService, BillingCollectionRunResult, BulkGenerateInvoicesResult, PaymentService,
+    PlanService,
 };
 use access::{
     authorize_invoice_access, require_payment_manage_access, require_payment_read_access,

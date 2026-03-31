@@ -54,7 +54,11 @@ impl EmailOutboxItem {
     }
 
     fn derive_next_retry_at(&self) -> Option<DateTime<Utc>> {
-        if self.status == "queued" && self.attempts > 0 && self.last_error.is_some() && self.retryable {
+        if self.status == "queued"
+            && self.attempts > 0
+            && self.last_error.is_some()
+            && self.retryable
+        {
             Some(self.scheduled_at)
         } else {
             None
@@ -67,8 +71,16 @@ impl EmailOutboxItem {
 
     fn derive_delivery_status_summary(&self) -> String {
         match self.status.as_str() {
-            "sent" => format!("Delivered after {} attempt{}", self.attempts.max(1), if self.attempts.max(1) == 1 { "" } else { "s" }),
-            "sending" => format!("Sending (attempt {} of {})", self.attempts.max(1), self.max_attempts.max(1)),
+            "sent" => format!(
+                "Delivered after {} attempt{}",
+                self.attempts.max(1),
+                if self.attempts.max(1) == 1 { "" } else { "s" }
+            ),
+            "sending" => format!(
+                "Sending (attempt {} of {})",
+                self.attempts.max(1),
+                self.max_attempts.max(1)
+            ),
             "failed" if self.retryable => format!(
                 "Failed on attempt {} of {}; retry available",
                 self.attempts.max(1),
@@ -84,8 +96,16 @@ impl EmailOutboxItem {
                 self.attempts,
                 self.max_attempts.max(1)
             ),
-            "queued" => format!("Queued for initial delivery (0 of {} attempts used)", self.max_attempts.max(1)),
-            other => format!("{} ({} of {} attempts used)", other, self.attempts.max(0), self.max_attempts.max(1)),
+            "queued" => format!(
+                "Queued for initial delivery (0 of {} attempts used)",
+                self.max_attempts.max(1)
+            ),
+            other => format!(
+                "{} ({} of {} attempts used)",
+                other,
+                self.attempts.max(0),
+                self.max_attempts.max(1)
+            ),
         }
     }
 }
@@ -105,7 +125,12 @@ mod tests {
     use super::EmailOutboxItem;
     use chrono::{Duration, Utc};
 
-    fn sample_item(status: &str, attempts: i32, max_attempts: i32, has_error: bool) -> EmailOutboxItem {
+    fn sample_item(
+        status: &str,
+        attempts: i32,
+        max_attempts: i32,
+        has_error: bool,
+    ) -> EmailOutboxItem {
         let now = Utc::now();
         EmailOutboxItem {
             id: "outbox-1".to_string(),
@@ -136,7 +161,10 @@ mod tests {
         assert_eq!(item.last_attempted_at, Some(item.updated_at));
         assert_eq!(item.next_retry_at, Some(item.scheduled_at));
         assert!(item.retryable);
-        assert_eq!(item.delivery_status_summary, "Retry scheduled after failed attempt 2 of 5");
+        assert_eq!(
+            item.delivery_status_summary,
+            "Retry scheduled after failed attempt 2 of 5"
+        );
     }
 
     #[test]

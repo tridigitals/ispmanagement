@@ -9,8 +9,8 @@ use crate::models::{
     CustomerPortalSubscriptionStats, CustomerPortalUser, CustomerRegistrationInviteCreateResponse,
     CustomerRegistrationInvitePolicy, CustomerRegistrationInviteSummary,
     CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionView,
-    InstallationWorkOrder, InstallationWorkOrderView, Invoice, IspPackage,
-    PaginatedResponse, PortalCheckoutSubscriptionRequest, UpdateCustomerLocationRequest,
+    InstallationWorkOrder, InstallationWorkOrderView, Invoice, IspPackage, PaginatedResponse,
+    PortalCheckoutSubscriptionRequest, UpdateCustomerLocationRequest,
     UpdateCustomerRegistrationInvitePolicyRequest, UpdateCustomerRequest,
     UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
 };
@@ -45,10 +45,7 @@ pub fn router() -> Router<AppState> {
             "/invites/{invite_id}",
             delete(revoke_customer_registration_invite),
         )
-        .route(
-            "/observability/lifecycle",
-            get(get_lifecycle_observability),
-        )
+        .route("/observability/lifecycle", get(get_lifecycle_observability))
         .route(
             "/{id}",
             get(get_customer)
@@ -202,7 +199,6 @@ async fn list_customers(
         .await?;
     Ok(Json(resp))
 }
-
 
 // GET /api/customers/observability/lifecycle?customer_id=...
 async fn get_lifecycle_observability(

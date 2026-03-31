@@ -580,7 +580,11 @@ impl CustomerService {
 
                 let should_disable_pppoe = resolved != SubscriptionLifecycleStatus::Active;
                 let _ = self
-                    .set_location_pppoe_disabled_state(tenant_id, &s.location_id, should_disable_pppoe)
+                    .set_location_pppoe_disabled_state(
+                        tenant_id,
+                        &s.location_id,
+                        should_disable_pppoe,
+                    )
                     .await;
 
                 let _ = self

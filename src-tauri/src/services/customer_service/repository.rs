@@ -37,7 +37,11 @@ impl CustomerService {
         row.ok_or_else(|| AppError::NotFound("Work order not found".to_string()))
     }
 
-    pub(super) async fn is_actor_admin_or_owner(&self, tenant_id: &str, actor_id: &str) -> AppResult<bool> {
+    pub(super) async fn is_actor_admin_or_owner(
+        &self,
+        tenant_id: &str,
+        actor_id: &str,
+    ) -> AppResult<bool> {
         #[cfg(feature = "postgres")]
         let role_name: Option<String> = sqlx::query_scalar(
             r#"

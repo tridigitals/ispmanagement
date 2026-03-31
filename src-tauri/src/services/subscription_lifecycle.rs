@@ -108,17 +108,16 @@ pub fn transition_status(
                 event,
             }),
         },
-        SubscriptionLifecycleEvent::PaymentPaid | SubscriptionLifecycleEvent::InstallationCompleted => {
-            match current {
-                SubscriptionLifecycleStatus::Cancelled => {
-                    Err(LifecycleTransitionError::IllegalTransition {
-                        from: current,
-                        event,
-                    })
-                }
-                _ => Ok(current),
+        SubscriptionLifecycleEvent::PaymentPaid
+        | SubscriptionLifecycleEvent::InstallationCompleted => match current {
+            SubscriptionLifecycleStatus::Cancelled => {
+                Err(LifecycleTransitionError::IllegalTransition {
+                    from: current,
+                    event,
+                })
             }
-        }
+            _ => Ok(current),
+        },
     }
 }
 
@@ -208,12 +207,9 @@ mod tests {
 
     #[test]
     fn activation_resolution_install_done_and_paid_is_active() {
-        let target = resolve_activation_status(
-            SubscriptionLifecycleStatus::PendingInstallation,
-            true,
-            true,
-        )
-        .expect("install-complete paid should resolve to active");
+        let target =
+            resolve_activation_status(SubscriptionLifecycleStatus::PendingInstallation, true, true)
+                .expect("install-complete paid should resolve to active");
         assert_eq!(target, SubscriptionLifecycleStatus::Active);
     }
 }

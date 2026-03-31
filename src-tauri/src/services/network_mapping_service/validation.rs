@@ -2,7 +2,6 @@ use super::NetworkMappingService;
 use crate::error::{AppError, AppResult};
 
 impl NetworkMappingService {
-
     pub(super) fn validate_lat_lng(lat: f64, lng: f64, field: &str) -> AppResult<()> {
         if !(-90.0..=90.0).contains(&lat) {
             return Err(AppError::Validation(format!(
@@ -16,7 +15,6 @@ impl NetworkMappingService {
         }
         Ok(())
     }
-
 
     pub(super) fn validate_geojson_geometry(
         geometry: &serde_json::Value,
@@ -44,7 +42,6 @@ impl NetworkMappingService {
         Ok(())
     }
 
-
     pub(super) fn map_geometry_db_error(err: sqlx::Error, field: &str) -> AppError {
         let msg = err.to_string().to_lowercase();
         if msg.contains("st_geomfromgeojson")
@@ -58,7 +55,6 @@ impl NetworkMappingService {
         AppError::Database(err)
     }
 
-
     pub(super) fn normalize_link_status(input: &str) -> String {
         match input.trim().to_lowercase().as_str() {
             "active" => "up".to_string(),
@@ -66,7 +62,6 @@ impl NetworkMappingService {
             other => other.to_string(),
         }
     }
-
 
     pub(super) fn validate_link_status(status: &str) -> AppResult<()> {
         match status {
@@ -77,6 +72,4 @@ impl NetworkMappingService {
             )),
         }
     }
-
-
 }

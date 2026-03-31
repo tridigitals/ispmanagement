@@ -1,5 +1,5 @@
-use super::NetworkMappingService;
 use super::dto::{CandidateNodeRow, NodeStatusRow, PathEdge, PathLinkRow};
+use super::NetworkMappingService;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     ComputePathRequest, ComputePathResponse, ComputedPathHop, RankCandidateNodesRequest,
@@ -15,7 +15,8 @@ impl NetworkMappingService {
         let distance_score = Self::compute_distance_score(row.distance_m);
         let distance_component = distance_score.unwrap_or(60.0);
 
-        let stability_penalty = (row.down_links as f64 * 7.5) + if row.link_count == 0 { 12.0 } else { 0.0 };
+        let stability_penalty =
+            (row.down_links as f64 * 7.5) + if row.link_count == 0 { 12.0 } else { 0.0 };
         let base_score =
             (health_score * 0.45) + (capacity_score * 0.35) + (distance_component * 0.20);
         let score = (base_score - stability_penalty).clamp(0.0, 100.0);
@@ -182,8 +183,10 @@ impl NetworkMappingService {
         .await
         .map_err(AppError::Database)?;
 
-        let mut items: Vec<RankedCandidateNode> =
-            rows.into_iter().map(Self::candidate_row_to_ranked).collect();
+        let mut items: Vec<RankedCandidateNode> = rows
+            .into_iter()
+            .map(Self::candidate_row_to_ranked)
+            .collect();
 
         items.sort_by(|a, b| {
             b.score
@@ -317,8 +320,10 @@ impl NetworkMappingService {
         .fetch_all(&self.pool)
         .await
         .map_err(AppError::Database)?;
-        let node_statuses: HashMap<String, String> =
-            node_status_rows.into_iter().map(|r| (r.id, r.status)).collect();
+        let node_statuses: HashMap<String, String> = node_status_rows
+            .into_iter()
+            .map(|r| (r.id, r.status))
+            .collect();
 
         let mut adjacency: HashMap<String, Vec<PathEdge>> = HashMap::new();
         for link in links {
@@ -442,10 +447,7 @@ impl NetworkMappingService {
         reversed.reverse();
 
         Ok(Self::build_path_found_response(
-            source_id,
-            target_id,
-            total_cost,
-            reversed,
+            source_id, target_id, total_cost, reversed,
         ))
     }
 }

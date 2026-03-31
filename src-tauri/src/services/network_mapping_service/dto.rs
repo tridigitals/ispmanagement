@@ -87,4 +87,3 @@ pub(super) struct SnappedPolylinePoint {
     pub(super) t: f64,
     pub(super) distance_sq: f64,
 }
-

@@ -49,7 +49,9 @@ mod tests {
 
     fn env_lock() -> std::sync::MutexGuard<'static, ()> {
         static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(())).lock().expect("env lock")
+        LOCK.get_or_init(|| Mutex::new(()))
+            .lock()
+            .expect("env lock")
     }
 
     const ENV_KEYS: [&str; 7] = [
@@ -111,7 +113,6 @@ mod tests {
             url,
             "postgres://alice%20name:p%40ss%2Fword@localhost:5432/main%20db"
         );
-
     }
 
     #[test]
@@ -133,7 +134,6 @@ mod tests {
             url,
             "postgres://user:pass@db.internal:5433/app?sslmode=require%20mode"
         );
-
     }
 
     #[tokio::test]
@@ -149,16 +149,20 @@ mod tests {
         env::remove_var("POSTGRES_PORT");
         env::remove_var("POSTGRES_SSLMODE");
 
-        let err = init_db(PathBuf::from(".")).await.expect_err("expected config error");
+        let err = init_db(PathBuf::from("."))
+            .await
+            .expect_err("expected config error");
 
         match err {
             sqlx::Error::Configuration(msg) => {
                 let text = msg.to_string();
-                assert!(text.contains("Missing POSTGRES_USER"), "unexpected error: {text}");
+                assert!(
+                    text.contains("Missing POSTGRES_USER"),
+                    "unexpected error: {text}"
+                );
             }
             other => panic!("expected configuration error, got: {other}"),
         }
-
     }
 
     #[tokio::test]
@@ -166,7 +170,10 @@ mod tests {
         let _guard = env_lock();
         let _env_restore = EnvRestoreGuard::capture(&ENV_KEYS);
 
-        env::set_var("DATABASE_URL", "postgres://postgres:postgres@127.0.0.1:1/test");
+        env::set_var(
+            "DATABASE_URL",
+            "postgres://postgres:postgres@127.0.0.1:1/test",
+        );
         env::remove_var("POSTGRES_USER");
         env::remove_var("POSTGRES_PASSWORD");
         env::remove_var("POSTGRES_DB");
@@ -174,7 +181,9 @@ mod tests {
         env::remove_var("POSTGRES_PORT");
         env::remove_var("POSTGRES_SSLMODE");
 
-        let err = init_db(PathBuf::from(".")).await.expect_err("expected connection failure");
+        let err = init_db(PathBuf::from("."))
+            .await
+            .expect_err("expected connection failure");
 
         if let sqlx::Error::Configuration(msg) = err {
             let text = msg.to_string();
@@ -183,13 +192,12 @@ mod tests {
                 "DATABASE_URL path should not fail on missing POSTGRES_* env vars: {text}"
             );
         }
-
     }
 
     #[tokio::test]
     #[ignore = "requires explicit live Postgres opt-in via CONNECTION_TEST_DATABASE_URL"]
-    async fn seed_defaults_idempotence_observable_with_opt_in_live_postgres() -> Result<(), sqlx::Error>
-    {
+    async fn seed_defaults_idempotence_observable_with_opt_in_live_postgres(
+    ) -> Result<(), sqlx::Error> {
         let Some(database_url) = behavior_db_url() else {
             eprintln!(
                 "skipping behavior test: set {} to run against a live Postgres database",
@@ -226,7 +234,8 @@ mod tests {
 
     #[tokio::test]
     #[ignore = "requires explicit live Postgres opt-in via CONNECTION_TEST_DATABASE_URL"]
-    async fn init_db_success_path_observable_with_opt_in_live_postgres() -> Result<(), sqlx::Error> {
+    async fn init_db_success_path_observable_with_opt_in_live_postgres() -> Result<(), sqlx::Error>
+    {
         let Some(database_url) = behavior_db_url() else {
             eprintln!(
                 "skipping behavior test: set {} to run against a live Postgres database",

@@ -1,13 +1,11 @@
-use super::NetworkMappingService;
 use super::dto::{PathLinkRow, SnappedPolylinePoint};
+use super::NetworkMappingService;
 use crate::error::{AppError, AppResult};
 
 impl NetworkMappingService {
-
     pub(super) fn cleaned_query(q: Option<String>) -> String {
         q.unwrap_or_default().trim().to_string()
     }
-
 
     pub(super) fn point_distance_sq(a: [f64; 2], b: [f64; 2]) -> f64 {
         let dx = a[0] - b[0];
@@ -15,13 +13,14 @@ impl NetworkMappingService {
         (dx * dx) + (dy * dy)
     }
 
-
     pub(super) fn coords_approx_equal(a: [f64; 2], b: [f64; 2]) -> bool {
         Self::point_distance_sq(a, b) <= 1e-16
     }
 
-
-    pub(super) fn parse_line_coords(geometry: &serde_json::Value, field: &str) -> AppResult<Vec<[f64; 2]>> {
+    pub(super) fn parse_line_coords(
+        geometry: &serde_json::Value,
+        field: &str,
+    ) -> AppResult<Vec<[f64; 2]>> {
         let obj = geometry
             .as_object()
             .ok_or_else(|| AppError::Validation(format!("{field} must be a GeoJSON object")))?;
@@ -116,14 +115,12 @@ impl NetworkMappingService {
         Ok(out)
     }
 
-
     pub(super) fn build_line_geometry(coords: &[[f64; 2]]) -> serde_json::Value {
         serde_json::json!({
             "type": "LineString",
             "coordinates": coords.iter().map(|pt| vec![pt[0], pt[1]]).collect::<Vec<_>>(),
         })
     }
-
 
     pub(super) fn snap_point_to_polyline(
         coords: &[[f64; 2]],
@@ -172,7 +169,6 @@ impl NetworkMappingService {
         best
     }
 
-
     pub(super) fn dedupe_line_coords(coords: Vec<[f64; 2]>) -> Vec<[f64; 2]> {
         let mut out: Vec<[f64; 2]> = Vec::with_capacity(coords.len());
         for point in coords {
@@ -188,7 +184,6 @@ impl NetworkMappingService {
         }
         out
     }
-
 
     pub(super) fn split_polyline_at_point(
         coords: &[[f64; 2]],
@@ -231,7 +226,6 @@ impl NetworkMappingService {
         Ok((first, second))
     }
 
-
     pub(super) fn link_cost(link: &PathLinkRow) -> f64 {
         let distance_km = (link.distance_m.max(0.0)) / 1000.0;
         let latency_component = link.latency_ms.unwrap_or(0.0) * 0.2;
@@ -246,7 +240,6 @@ impl NetworkMappingService {
             .max(0.0001)
     }
 
-
     pub(super) fn json_number(value: &serde_json::Value, key: &str) -> Option<f64> {
         value.get(key).and_then(|v| {
             v.as_f64()
@@ -256,7 +249,6 @@ impl NetworkMappingService {
         })
     }
 
-
     pub(super) fn clamp_0_100(v: f64) -> f64 {
         if v.is_nan() {
             0.0
@@ -264,7 +256,6 @@ impl NetworkMappingService {
             v.clamp(0.0, 100.0)
         }
     }
-
 
     pub(super) fn compute_health_score(status: &str, health_json: &serde_json::Value) -> f64 {
         if let Some(score) = Self::json_number(health_json, "score") {
@@ -279,7 +270,6 @@ impl NetworkMappingService {
             _ => 40.0,
         }
     }
-
 
     pub(super) fn compute_capacity_score(
         capacity_json: &serde_json::Value,
@@ -304,14 +294,12 @@ impl NetworkMappingService {
         60.0
     }
 
-
     pub(super) fn compute_distance_score(distance_m: Option<f64>) -> Option<f64> {
         distance_m.map(|distance| {
             let normalized = (distance / 50_000.0).clamp(0.0, 1.0);
             Self::clamp_0_100(100.0 - (normalized * 100.0))
         })
     }
-
 
     pub(super) fn is_system_managed_node(metadata: &serde_json::Value) -> bool {
         metadata
@@ -320,14 +308,12 @@ impl NetworkMappingService {
             .unwrap_or(false)
     }
 
-
     pub(super) fn system_managed_node_source_label(metadata: &serde_json::Value) -> Option<&str> {
         metadata
             .get("asset_source")
             .and_then(|v| v.as_str())
             .or_else(|| metadata.get("asset_type").and_then(|v| v.as_str()))
     }
-
 
     pub(super) fn customer_subscription_to_node_status(status: &str) -> &'static str {
         match status.trim().to_lowercase().as_str() {
@@ -336,6 +322,4 @@ impl NetworkMappingService {
             _ => "active",
         }
     }
-
-
 }

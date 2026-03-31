@@ -412,7 +412,9 @@ mod tests {
     };
     use tower::ServiceExt;
 
-    async fn echo_request_id(Extension(correlation_id): Extension<CorrelationId>) -> impl IntoResponse {
+    async fn echo_request_id(
+        Extension(correlation_id): Extension<CorrelationId>,
+    ) -> impl IntoResponse {
         correlation_id.as_str().to_string()
     }
 

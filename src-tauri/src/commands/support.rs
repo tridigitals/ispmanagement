@@ -1181,7 +1181,7 @@ async fn fetch_attachments_map_pg(
         };
         map.entry(r.message_id).or_default().push(fr);
     }
-    
+
     Ok(map)
 }
 
@@ -1199,7 +1199,10 @@ mod tests {
 
     #[test]
     fn normalize_status_accepts_known_and_rejects_unknown() {
-        assert_eq!(normalize_status(Some("open".to_string())), Some("open".to_string()));
+        assert_eq!(
+            normalize_status(Some("open".to_string())),
+            Some("open".to_string())
+        );
         assert_eq!(
             normalize_status(Some("pending".to_string())),
             Some("pending".to_string())

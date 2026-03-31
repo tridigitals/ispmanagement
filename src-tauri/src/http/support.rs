@@ -1152,7 +1152,7 @@ async fn fetch_attachments_map_pg(
         };
         map.entry(r.message_id).or_default().push(fr);
     }
-    
+
     Ok(map)
 }
 

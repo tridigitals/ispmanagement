@@ -25,10 +25,10 @@ use std::path::PathBuf;
 use std::{collections::HashMap, time::Instant};
 
 use crate::http::{
-    announcements, audit, auth, backup, customers, email_outbox, install, isp_packages,
-    middleware, mikrotik, network_mapping, notifications, payment, plans, pppoe, public, roles,
-    settings, storage, superadmin, support, system, team, tenant, users, websocket, work_orders,
-    AppState, SecurityRuntimeConfig, WsHub,
+    announcements, audit, auth, backup, customers, email_outbox, install, isp_packages, middleware,
+    mikrotik, network_mapping, notifications, payment, plans, pppoe, public, roles, settings,
+    storage, superadmin, support, system, team, tenant, users, websocket, work_orders, AppState,
+    SecurityRuntimeConfig, WsHub,
 };
 
 type IpBlockMap = HashMap<String, chrono::DateTime<chrono::Utc>>;
@@ -151,7 +151,8 @@ pub async fn start_server_impl(
     }
 
     // Initialize and spawn AlertService for error alerting via email
-    let alert_service = crate::services::AlertService::new(email_service.clone(), settings_service.clone());
+    let alert_service =
+        crate::services::AlertService::new(email_service.clone(), settings_service.clone());
     let alert_metrics = metrics_service.clone();
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(60));

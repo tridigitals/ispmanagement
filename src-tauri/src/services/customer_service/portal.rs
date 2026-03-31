@@ -1,7 +1,6 @@
 use super::*;
 
 impl CustomerService {
-
     pub async fn list_my_subscriptions(
         &self,
         actor_id: &str,

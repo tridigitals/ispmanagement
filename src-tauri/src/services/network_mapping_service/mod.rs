@@ -1,17 +1,3 @@
-use crate::db::DbPool;
-use crate::error::{AppError, AppResult};
-use crate::models::{
-    ComputePathRequest, ComputePathResponse, ConnectNodeToLinkRequest, ConnectNodeToLinkResponse,
-    CoverageCheckRequest, CoverageCheckResponse, CreateNetworkLinkRequest, CreateNetworkNodeRequest,
-    CreateServiceZoneRequest, CreateZoneNodeBindingRequest, CreateZoneOfferRequest,
-    NetworkImpactResponse, NetworkLink, NetworkNode, PaginatedResponse, RankCandidateNodesRequest,
-    RankCandidateNodesResponse, ResolveZoneRequest, ResolvedZone, ResolvedZoneResponse,
-    ServiceZone, SyncTopologyAssetsResponse, UpdateNetworkLinkRequest, UpdateNetworkNodeRequest,
-    UpdateServiceZoneRequest, UpdateZoneOfferRequest, ZoneNodeBinding, ZoneOffer,
-};
-use crate::services::AuthService;
-use uuid::Uuid;
-
 mod core;
 mod dto;
 mod integration;
@@ -20,6 +6,21 @@ mod repository;
 mod validation;
 
 pub use dto::ListQuery;
+
+use crate::db::DbPool;
+use crate::error::{AppError, AppResult};
+use crate::models::{
+    ComputePathRequest, ComputePathResponse, ConnectNodeToLinkRequest, ConnectNodeToLinkResponse,
+    CoverageCheckRequest, CoverageCheckResponse, CreateNetworkLinkRequest,
+    CreateNetworkNodeRequest, CreateServiceZoneRequest, CreateZoneNodeBindingRequest,
+    CreateZoneOfferRequest, NetworkImpactResponse, NetworkLink, NetworkNode, PaginatedResponse,
+    RankCandidateNodesRequest, RankCandidateNodesResponse, ResolveZoneRequest, ResolvedZone,
+    ResolvedZoneResponse, ServiceZone, SyncTopologyAssetsResponse, UpdateNetworkLinkRequest,
+    UpdateNetworkNodeRequest, UpdateServiceZoneRequest, UpdateZoneOfferRequest, ZoneNodeBinding,
+    ZoneOffer,
+};
+use crate::services::AuthService;
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct NetworkMappingService {
@@ -145,7 +146,8 @@ impl NetworkMappingService {
         actor_id: &str,
         tenant_id: &str,
     ) -> AppResult<SyncTopologyAssetsResponse> {
-        self.sync_topology_asset_nodes_flow(actor_id, tenant_id).await
+        self.sync_topology_asset_nodes_flow(actor_id, tenant_id)
+            .await
     }
 
     pub async fn rank_candidate_nodes(
@@ -154,7 +156,8 @@ impl NetworkMappingService {
         tenant_id: &str,
         dto: RankCandidateNodesRequest,
     ) -> AppResult<RankCandidateNodesResponse> {
-        self.rank_candidate_nodes_flow(actor_id, tenant_id, dto).await
+        self.rank_candidate_nodes_flow(actor_id, tenant_id, dto)
+            .await
     }
 
     pub async fn compute_path(
@@ -1345,7 +1348,6 @@ impl NetworkMappingService {
         self.list_impacted_customers_flow(actor_id, tenant_id, node_id, link_id, router_id)
             .await
     }
-
 }
 
 #[cfg(test)]
@@ -1357,8 +1359,14 @@ mod tests {
     #[test]
     fn link_status_normalization_and_validation_contract() {
         assert_eq!(NetworkMappingService::normalize_link_status("active"), "up");
-        assert_eq!(NetworkMappingService::normalize_link_status("inactive"), "down");
-        assert_eq!(NetworkMappingService::normalize_link_status(" maintenance "), "maintenance");
+        assert_eq!(
+            NetworkMappingService::normalize_link_status("inactive"),
+            "down"
+        );
+        assert_eq!(
+            NetworkMappingService::normalize_link_status(" maintenance "),
+            "maintenance"
+        );
 
         assert!(NetworkMappingService::validate_link_status("up").is_ok());
         assert!(NetworkMappingService::validate_link_status("degraded").is_ok());
@@ -1377,7 +1385,8 @@ mod tests {
         assert!(NetworkMappingService::validate_lat_lng(0.0, 0.0, "node").is_ok());
 
         let lat_err = NetworkMappingService::validate_lat_lng(91.0, 0.0, "node").unwrap_err();
-        let lng_err = NetworkMappingService::validate_lat_lng(0.0, 181.0, "split_point").unwrap_err();
+        let lng_err =
+            NetworkMappingService::validate_lat_lng(0.0, 181.0, "split_point").unwrap_err();
 
         match lat_err {
             AppError::Validation(message) => {
@@ -1436,8 +1445,9 @@ mod tests {
 
         let interior_snap = NetworkMappingService::snap_point_to_polyline(&coords, 106.15, -6.15)
             .expect("interior snap should resolve");
-        let (first, second) = NetworkMappingService::split_polyline_at_point(&coords, &interior_snap)
-            .expect("interior split should succeed");
+        let (first, second) =
+            NetworkMappingService::split_polyline_at_point(&coords, &interior_snap)
+                .expect("interior split should succeed");
         assert!(first.len() >= 2);
         assert!(second.len() >= 2);
         assert_eq!(first.last(), second.first());
@@ -1530,7 +1540,8 @@ mod tests {
     fn mapper_builds_not_found_path_response_shape() {
         let source = "source-node".to_string();
         let target = "target-node".to_string();
-        let out = NetworkMappingService::build_path_not_found_response(source.clone(), target.clone());
+        let out =
+            NetworkMappingService::build_path_not_found_response(source.clone(), target.clone());
 
         assert!(!out.found);
         assert_eq!(out.source_node_id, source);

@@ -500,7 +500,6 @@ impl CustomerService {
         Ok(exists)
     }
 
-
     pub(super) async fn list_customer_user_ids_for_subscription(
         &self,
         tenant_id: &str,
