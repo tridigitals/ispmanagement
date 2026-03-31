@@ -8,6 +8,10 @@ use crate::models::{
     UpdateMikrotikIncidentRequest, UpdateMikrotikRouterRequest,
 };
 use crate::services::{AuditService, AuthService, MikrotikService};
+use crate::services::mikrotik_service::{
+    MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL, MIKROTIK_LOGS_DEFAULT_PAGE,
+    MIKROTIK_LOGS_DEFAULT_PER_PAGE,
+};
 use tauri::State;
 
 #[tauri::command]
@@ -150,9 +154,9 @@ pub async fn list_mikrotik_logs(
             level,
             topic,
             q,
-            page.unwrap_or(1),
-            per_page.unwrap_or(25),
-            include_total.unwrap_or(false),
+            page.unwrap_or(MIKROTIK_LOGS_DEFAULT_PAGE),
+            per_page.unwrap_or(MIKROTIK_LOGS_DEFAULT_PER_PAGE),
+            include_total.unwrap_or(MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL),
         )
         .await
         .map_err(|e| e.to_string())

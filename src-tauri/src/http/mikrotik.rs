@@ -7,6 +7,10 @@ use crate::models::{
     PaginatedResponse, SimulateMikrotikIncidentRequest, UpdateMikrotikIncidentRequest,
     UpdateMikrotikRouterRequest,
 };
+use crate::services::mikrotik_service::{
+    MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL, MIKROTIK_LOGS_DEFAULT_PAGE,
+    MIKROTIK_LOGS_DEFAULT_PER_PAGE,
+};
 use axum::{
     extract::{Path, Query, State},
     http::HeaderMap,
@@ -340,9 +344,10 @@ async fn list_logs(
             q.level,
             q.topic,
             q.q,
-            q.page.unwrap_or(1),
-            q.per_page.unwrap_or(25),
-            q.include_total.unwrap_or(false),
+            q.page.unwrap_or(MIKROTIK_LOGS_DEFAULT_PAGE),
+            q.per_page.unwrap_or(MIKROTIK_LOGS_DEFAULT_PER_PAGE),
+            q.include_total
+                .unwrap_or(MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL),
         )
         .await?;
     Ok(Json(rows))

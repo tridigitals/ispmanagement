@@ -38,6 +38,9 @@ const LATENCY_HOT_MS: i32 = 400;
 const OFFLINE_AFTER_SECS: i64 = 60;
 const WALLBOARD_SLOTS_SETTING_KEY: &str = "mikrotik_wallboard_slots_json";
 const WALLBOARD_TRACK_CACHE_TTL_SECS: u64 = 10;
+pub(crate) const MIKROTIK_LOGS_DEFAULT_PAGE: u32 = 1;
+pub(crate) const MIKROTIK_LOGS_DEFAULT_PER_PAGE: u32 = 25;
+pub(crate) const MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL: bool = false;
 
 #[derive(Clone, Copy)]
 struct Thresholds {
@@ -660,19 +663,7 @@ impl MikrotikService {
         let q = q.unwrap_or_default().trim().to_string();
         let offset = (page.saturating_sub(1)) * per_page;
 
-        let data: Vec<MikrotikLogEntry> = sqlx::query_as(
-            r#"
-            SELECT l.*
-            FROM mikrotik_logs l
-            WHERE l.tenant_id = $1
-              AND ($2::text IS NULL OR l.router_id = $2)
-              AND ($3::text IS NULL OR l.level = $3)
-              AND ($4::text IS NULL OR l.topics ILIKE '%' || $4 || '%')
-              AND ($5 = '' OR l.message ILIKE '%' || $5 || '%')
-            ORDER BY l.logged_at DESC, l.updated_at DESC
-            LIMIT $6 OFFSET $7
-            "#,
-        )
+        let data: Vec<MikrotikLogEntry> = sqlx::query_as(mikrotik_log_list_sql())
         .bind(tenant_id)
         .bind(&router_id)
         .bind(&level)
@@ -727,35 +718,74 @@ impl MikrotikService {
             .await?
             .ok_or_else(|| AppError::NotFound("Router not found".to_string()))?;
 
-        let dev = self
-            .connect_device(&router)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
-        let cmd = CommandBuilder::new().command("/log/print").build();
-        let mut rx = dev
-            .send_command(cmd)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
-
         let mut raw_rows: Vec<(Option<String>, Option<String>, Option<String>, String)> =
             Vec::new();
-        while let Some(res) = rx.recv().await {
-            let r = res.map_err(|e| AppError::Internal(e.to_string()))?;
-            if let CommandResponse::Reply(reply) = r {
-                let message = reply
-                    .attributes
-                    .get("message")
-                    .and_then(|v| v.clone())
-                    .unwrap_or_default();
-                if message.trim().is_empty() {
-                    continue;
+
+        #[cfg(test)]
+        if let Some(rows) = test_sync_rows_override_from_env() {
+            raw_rows = rows;
+        } else {
+            let dev = self
+                .connect_device(&router)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+            let cmd = CommandBuilder::new().command("/log/print").build();
+            let mut rx = dev
+                .send_command(cmd)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+
+            while let Some(res) = rx.recv().await {
+                let r = res.map_err(|e| AppError::Internal(e.to_string()))?;
+                if let CommandResponse::Reply(reply) = r {
+                    let message = reply
+                        .attributes
+                        .get("message")
+                        .and_then(|v| v.clone())
+                        .unwrap_or_default();
+                    if message.trim().is_empty() {
+                        continue;
+                    }
+                    raw_rows.push((
+                        reply.attributes.get(".id").and_then(|v| v.clone()),
+                        reply.attributes.get("time").and_then(|v| v.clone()),
+                        reply.attributes.get("topics").and_then(|v| v.clone()),
+                        message,
+                    ));
                 }
-                raw_rows.push((
-                    reply.attributes.get(".id").and_then(|v| v.clone()),
-                    reply.attributes.get("time").and_then(|v| v.clone()),
-                    reply.attributes.get("topics").and_then(|v| v.clone()),
-                    message,
-                ));
+            }
+        }
+
+        #[cfg(not(test))]
+        {
+            let dev = self
+                .connect_device(&router)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+            let cmd = CommandBuilder::new().command("/log/print").build();
+            let mut rx = dev
+                .send_command(cmd)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+
+            while let Some(res) = rx.recv().await {
+                let r = res.map_err(|e| AppError::Internal(e.to_string()))?;
+                if let CommandResponse::Reply(reply) = r {
+                    let message = reply
+                        .attributes
+                        .get("message")
+                        .and_then(|v| v.clone())
+                        .unwrap_or_default();
+                    if message.trim().is_empty() {
+                        continue;
+                    }
+                    raw_rows.push((
+                        reply.attributes.get(".id").and_then(|v| v.clone()),
+                        reply.attributes.get("time").and_then(|v| v.clone()),
+                        reply.attributes.get("topics").and_then(|v| v.clone()),
+                        message,
+                    ));
+                }
             }
         }
 
@@ -830,13 +860,14 @@ impl MikrotikService {
         // Prune by retention cutoff (time-based) instead of fixed row cap.
         let retention_days = mikrotik_log_retention_days_from_env();
         let retention_cutoff = mikrotik_log_retention_cutoff(now, retention_days);
-        sqlx::query(mikrotik_log_prune_sql())
-            .bind(tenant_id)
-            .bind(router_id)
-            .bind(retention_cutoff)
-            .execute(&self.pool)
-            .await
-            .map_err(AppError::Database)?;
+        propagate_prune_query_result(
+            sqlx::query(mikrotik_log_prune_sql())
+                .bind(tenant_id)
+                .bind(router_id)
+                .bind(retention_cutoff)
+                .execute(&self.pool)
+                .await,
+        )?;
 
         Ok(MikrotikLogSyncResult {
             seen: raw_rows.len() as u32,
@@ -4149,6 +4180,20 @@ fn mikrotik_log_retention_cutoff(now: DateTime<Utc>, retention_days: i64) -> Dat
     now - ChronoDuration::days(retention_days)
 }
 
+fn mikrotik_log_list_sql() -> &'static str {
+    r#"
+    SELECT l.*
+    FROM mikrotik_logs l
+    WHERE l.tenant_id = $1
+      AND ($2::text IS NULL OR l.router_id = $2)
+      AND ($3::text IS NULL OR l.level = $3)
+      AND ($4::text IS NULL OR l.topics ILIKE '%' || $4 || '%')
+      AND ($5 = '' OR l.message ILIKE '%' || $5 || '%')
+    ORDER BY l.logged_at DESC, l.updated_at DESC
+    LIMIT $6 OFFSET $7
+    "#
+}
+
 fn mikrotik_log_prune_sql() -> &'static str {
     r#"
     DELETE FROM mikrotik_logs
@@ -4158,14 +4203,90 @@ fn mikrotik_log_prune_sql() -> &'static str {
     "#
 }
 
+
+fn propagate_prune_query_result<T>(result: Result<T, sqlx::Error>) -> AppResult<T> {
+    result.map_err(AppError::Database)
+}
+
 #[cfg(test)]
 fn should_prune_log_by_retention_cutoff(logged_at: DateTime<Utc>, cutoff: DateTime<Utc>) -> bool {
     logged_at < cutoff
 }
 
 #[cfg(test)]
+fn test_sync_rows_override_from_env() -> Option<Vec<(Option<String>, Option<String>, Option<String>, String)>> {
+    match std::env::var("MIKROTIK_TEST_SYNC_USE_EMPTY_ROWS") {
+        Ok(v) if v.trim() == "1" => Some(Vec::new()),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
+    use crate::http::WsHub;
+    use crate::services::{AuditService, EmailOutboxService, EmailService, NotificationService};
+    use sqlx::postgres::PgPoolOptions;
+    use std::sync::Arc;
+
+    fn test_database_url() -> String {
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+            let host = std::env::var("POSTGRES_HOST").unwrap_or_else(|_| "localhost".to_string());
+            let port = std::env::var("POSTGRES_PORT").unwrap_or_else(|_| "55432".to_string());
+            let user = std::env::var("POSTGRES_USER").unwrap_or_else(|_| "ispmanagement".to_string());
+            let password =
+                std::env::var("POSTGRES_PASSWORD").unwrap_or_else(|_| "postgres".to_string());
+            let db = std::env::var("POSTGRES_DB").unwrap_or_else(|_| "ispmanagement".to_string());
+            format!("postgres://{}:{}@{}:{}/{}", user, password, host, port, db)
+        })
+    }
+
+    async fn test_pool() -> sqlx::PgPool {
+        PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&test_database_url())
+            .await
+            .expect("test should connect to postgres")
+    }
+
+    fn test_router_password() -> String {
+        std::env::var("MIKROTIK_TEST_ROUTER_PASSWORD").unwrap_or_else(|_| uuid::Uuid::new_v4().to_string())
+    }
+
+    fn test_mikrotik_service(pool: sqlx::PgPool) -> MikrotikService {
+        let audit_service = AuditService::new(pool.clone(), None);
+        let settings_service = SettingsService::new(pool.clone(), audit_service.clone());
+        let email_service = EmailService::new(settings_service.clone());
+        let email_outbox_service =
+            EmailOutboxService::new(pool.clone(), settings_service.clone(), email_service);
+        let notification_service =
+            NotificationService::new(pool.clone(), Arc::new(WsHub::new()), email_outbox_service);
+
+        MikrotikService::new(pool, notification_service, audit_service, settings_service)
+    }
+
+    struct EnvVarGuard {
+        key: &'static str,
+        old: Option<String>,
+    }
+
+    impl EnvVarGuard {
+        fn set(key: &'static str, value: &str) -> Self {
+            let old = std::env::var(key).ok();
+            std::env::set_var(key, value);
+            Self { key, old }
+        }
+    }
+
+    impl Drop for EnvVarGuard {
+        fn drop(&mut self) {
+            if let Some(value) = self.old.as_ref() {
+                std::env::set_var(self.key, value);
+            } else {
+                std::env::remove_var(self.key);
+            }
+        }
+    }
 
     #[test]
     fn mikrotik_log_retention_days_env_validation() {
@@ -4200,5 +4321,296 @@ mod tests {
         let sql = mikrotik_log_prune_sql();
         assert!(sql.contains("logged_at < $3"));
         assert!(!sql.contains("OFFSET 5000"));
+    }
+
+    #[test]
+    fn sync_logs_returns_error_when_prune_query_fails() {
+        let result = propagate_prune_query_result::<()>(Err(sqlx::Error::Protocol(
+            "forced prune failure".into(),
+        )));
+
+        assert!(result.is_err(), "sync should fail if prune query fails");
+    }
+
+    #[test]
+    fn list_logs_pagination_order_and_defaults_remain_unchanged() {
+        let sql = mikrotik_log_list_sql();
+        assert!(sql.contains("ORDER BY l.logged_at DESC, l.updated_at DESC"));
+        assert!(sql.contains("LIMIT $6 OFFSET $7"));
+        assert_eq!(MIKROTIK_LOGS_DEFAULT_PAGE, 1);
+        assert_eq!(MIKROTIK_LOGS_DEFAULT_PER_PAGE, 25);
+        assert!(!MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL);
+    }
+
+    #[tokio::test]
+    async fn sync_logs_for_router_prunes_retention_window_without_fixed_5000_cap() {
+        let _retention_guard = EnvVarGuard::set("MIKROTIK_LOG_RETENTION_DAYS", "30");
+        let _sync_stub_guard = EnvVarGuard::set("MIKROTIK_TEST_SYNC_USE_EMPTY_ROWS", "1");
+
+        let pool = test_pool().await;
+        let service = test_mikrotik_service(pool.clone());
+
+        let tenant_id = "tenant-sync-path-retention";
+        let router_id = "router-sync-path-retention";
+        let now = Utc::now();
+        sqlx::query(
+            r#"
+            INSERT INTO tenants (id, name, slug, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (id) DO NOTHING
+            "#,
+        )
+        .bind(tenant_id)
+        .bind("Sync Path Tenant")
+        .bind("sync-path-tenant")
+        .bind(now)
+        .bind(now)
+        .execute(&pool)
+        .await
+        .expect("seed tenant");
+
+        sqlx::query(
+            r#"
+            INSERT INTO mikrotik_routers
+              (id, tenant_id, name, host, port, username, password, use_tls, enabled, is_online, created_at, updated_at)
+            VALUES
+              ($1, $2, $3, $4, $5, $6, $7, false, true, false, $8, $9)
+            ON CONFLICT (id) DO NOTHING
+            "#,
+        )
+        .bind(router_id)
+        .bind(tenant_id)
+        .bind("Sync Path Router")
+        .bind("127.0.0.1")
+        .bind(8728_i32)
+        .bind("admin")
+        .bind(test_router_password())
+        .bind(now)
+        .bind(now)
+        .execute(&pool)
+        .await
+        .expect("seed router");
+
+        let old_logged_at = now - ChronoDuration::days(40);
+        let fresh_logged_at = now - ChronoDuration::days(1);
+
+        sqlx::query(
+            r#"
+            INSERT INTO mikrotik_logs (id, tenant_id, router_id, logged_at, message, created_at, updated_at)
+            SELECT 'old-sync-path-' || gs::text, $1, $2, $3, 'old log', $4, $4
+            FROM generate_series(1, 5001) AS gs
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(old_logged_at)
+        .bind(now)
+        .execute(&pool)
+        .await
+        .expect("seed >5000 old logs");
+
+        sqlx::query(
+            r#"
+            INSERT INTO mikrotik_logs (id, tenant_id, router_id, logged_at, message, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            "#,
+        )
+        .bind("fresh-sync-path")
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(fresh_logged_at)
+        .bind("fresh log")
+        .bind(now)
+        .bind(now)
+        .execute(&pool)
+        .await
+        .expect("seed fresh log");
+
+        let result = service
+            .sync_logs_for_router(tenant_id, router_id, 100)
+            .await
+            .expect("sync logs via service path");
+
+        assert_eq!(result.seen, 0, "stubbed sync path should use empty fetched rows");
+        assert_eq!(result.upserted, 0, "stubbed sync path should not upsert new rows");
+
+        let remaining_old_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM mikrotik_logs WHERE tenant_id = $1 AND router_id = $2 AND id LIKE 'old-sync-path-%'",
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .fetch_one(&pool)
+        .await
+        .expect("count old logs after sync");
+
+        let fresh_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM mikrotik_logs WHERE tenant_id = $1 AND router_id = $2 AND id = 'fresh-sync-path'",
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .fetch_one(&pool)
+        .await
+        .expect("count fresh logs after sync");
+
+        assert_eq!(remaining_old_count, 0, "all old rows should be pruned via sync path");
+        assert_eq!(fresh_count, 1, "fresh row should be retained via sync path");
+
+        sqlx::query("DELETE FROM mikrotik_logs WHERE tenant_id = $1 AND router_id = $2")
+            .bind(tenant_id)
+            .bind(router_id)
+            .execute(&pool)
+            .await
+            .expect("cleanup logs");
+        sqlx::query("DELETE FROM mikrotik_routers WHERE id = $1")
+            .bind(router_id)
+            .execute(&pool)
+            .await
+            .expect("cleanup router");
+        sqlx::query("DELETE FROM tenants WHERE id = $1")
+            .bind(tenant_id)
+            .execute(&pool)
+            .await
+            .expect("cleanup tenant");
+    }
+
+    #[tokio::test]
+    async fn sync_logs_prunes_only_records_older_than_retention_cutoff() {
+        let pool = test_pool().await;
+        let mut tx = pool.begin().await.expect("begin tx");
+
+        sqlx::query(
+            r#"
+            CREATE TEMP TABLE mikrotik_logs (
+                id text PRIMARY KEY,
+                tenant_id text NOT NULL,
+                router_id text NOT NULL,
+                logged_at timestamptz NOT NULL
+            ) ON COMMIT DROP
+            "#,
+        )
+        .execute(&mut *tx)
+        .await
+        .expect("create temp mikrotik_logs");
+
+        let tenant_id = "tenant-sync-retention";
+        let router_id = "router-sync-retention";
+        let now = DateTime::parse_from_rfc3339("2026-03-31T00:00:00Z")
+            .expect("valid now timestamp")
+            .with_timezone(&Utc);
+        let cutoff = mikrotik_log_retention_cutoff(now, 30);
+
+        sqlx::query(
+            r#"
+            INSERT INTO mikrotik_logs (id, tenant_id, router_id, logged_at)
+            VALUES ($1, $2, $3, $4), ($5, $2, $3, $6), ($7, $2, $3, $8)
+            "#,
+        )
+        .bind("old")
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(cutoff - ChronoDuration::seconds(1))
+        .bind("at_cutoff")
+        .bind(cutoff)
+        .bind("newer")
+        .bind(cutoff + ChronoDuration::seconds(1))
+        .execute(&mut *tx)
+        .await
+        .expect("seed logs around cutoff");
+
+        sqlx::query(mikrotik_log_prune_sql())
+            .bind(tenant_id)
+            .bind(router_id)
+            .bind(cutoff)
+            .execute(&mut *tx)
+            .await
+            .expect("prune by retention cutoff");
+
+        let remaining_ids: Vec<String> = sqlx::query_scalar(
+            "SELECT id FROM mikrotik_logs ORDER BY id ASC",
+        )
+        .fetch_all(&mut *tx)
+        .await
+        .expect("fetch remaining ids");
+
+        assert_eq!(remaining_ids, vec!["at_cutoff".to_string(), "newer".to_string()]);
+
+        tx.rollback().await.expect("rollback tx");
+    }
+
+    #[tokio::test]
+    async fn sync_logs_does_not_apply_fixed_5000_cap_anymore() {
+        let pool = test_pool().await;
+        let mut tx = pool.begin().await.expect("begin tx");
+
+        sqlx::query(
+            r#"
+            CREATE TEMP TABLE mikrotik_logs (
+                id text PRIMARY KEY,
+                tenant_id text NOT NULL,
+                router_id text NOT NULL,
+                logged_at timestamptz NOT NULL
+            ) ON COMMIT DROP
+            "#,
+        )
+        .execute(&mut *tx)
+        .await
+        .expect("create temp mikrotik_logs");
+
+        let tenant_id = "tenant-sync-no-cap";
+        let router_id = "router-sync-no-cap";
+        let now = DateTime::parse_from_rfc3339("2026-03-31T00:00:00Z")
+            .expect("valid now timestamp")
+            .with_timezone(&Utc);
+        let cutoff = mikrotik_log_retention_cutoff(now, 30);
+        let older_than_cutoff = cutoff - ChronoDuration::seconds(1);
+
+        sqlx::query(
+            r#"
+            INSERT INTO mikrotik_logs (id, tenant_id, router_id, logged_at)
+            SELECT 'old-' || gs::text, $1, $2, $3
+            FROM generate_series(1, 5001) AS gs
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(older_than_cutoff)
+        .execute(&mut *tx)
+        .await
+        .expect("seed >5000 old logs");
+
+        sqlx::query(
+            "INSERT INTO mikrotik_logs (id, tenant_id, router_id, logged_at) VALUES ($1, $2, $3, $4)",
+        )
+        .bind("kept")
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(cutoff)
+        .execute(&mut *tx)
+        .await
+        .expect("seed cutoff log to keep");
+
+        sqlx::query(mikrotik_log_prune_sql())
+            .bind(tenant_id)
+            .bind(router_id)
+            .bind(cutoff)
+            .execute(&mut *tx)
+            .await
+            .expect("prune old logs");
+
+        let remaining_old_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM mikrotik_logs WHERE id LIKE 'old-%'",
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .expect("count remaining old logs");
+        let kept_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM mikrotik_logs WHERE id = 'kept'")
+            .fetch_one(&mut *tx)
+            .await
+            .expect("count kept logs");
+
+        assert_eq!(remaining_old_count, 0, "all old rows should be pruned, not capped");
+        assert_eq!(kept_count, 1, "row at cutoff should remain");
+
+        tx.rollback().await.expect("rollback tx");
     }
 }
