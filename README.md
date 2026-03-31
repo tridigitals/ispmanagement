@@ -2,6 +2,14 @@
 
 A production-ready, multi-tenant SaaS boilerplate built with **Rust**, **Tauri 2**, and **SvelteKit 5**.
 
+## 🤖 AI Workflow Docs
+
+Contributor quickstart for the integrated super-roo workflow:
+
+- [`docs/ai-workflow/bootstrap.md`](docs/ai-workflow/bootstrap.md)
+
+---
+
 ## ✨ Features
 
 ### 🔐 Authentication & Security
