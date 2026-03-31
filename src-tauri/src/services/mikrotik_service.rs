@@ -827,24 +827,16 @@ impl MikrotikService {
             upserted += 1;
         }
 
-        // Keep log table bounded per-router to avoid unbounded growth.
-        sqlx::query(
-            r#"
-            DELETE FROM mikrotik_logs
-            WHERE id IN (
-              SELECT id
-              FROM mikrotik_logs
-              WHERE tenant_id = $1 AND router_id = $2
-              ORDER BY logged_at DESC, updated_at DESC
-              OFFSET 5000
-            )
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(router_id)
-        .execute(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
+        // Prune by retention cutoff (time-based) instead of fixed row cap.
+        let retention_days = mikrotik_log_retention_days_from_env();
+        let retention_cutoff = mikrotik_log_retention_cutoff(now, retention_days);
+        sqlx::query(mikrotik_log_prune_sql())
+            .bind(tenant_id)
+            .bind(router_id)
+            .bind(retention_cutoff)
+            .execute(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
 
         Ok(MikrotikLogSyncResult {
             seen: raw_rows.len() as u32,
@@ -4153,6 +4145,24 @@ fn mikrotik_log_retention_days_from_env() -> i64 {
     days
 }
 
+fn mikrotik_log_retention_cutoff(now: DateTime<Utc>, retention_days: i64) -> DateTime<Utc> {
+    now - ChronoDuration::days(retention_days)
+}
+
+fn mikrotik_log_prune_sql() -> &'static str {
+    r#"
+    DELETE FROM mikrotik_logs
+    WHERE tenant_id = $1
+      AND router_id = $2
+      AND logged_at < $3
+    "#
+}
+
+#[cfg(test)]
+fn should_prune_log_by_retention_cutoff(logged_at: DateTime<Utc>, cutoff: DateTime<Utc>) -> bool {
+    logged_at < cutoff
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4165,5 +4175,30 @@ mod tests {
         assert_eq!(resolve_mikrotik_log_retention_days(Some("-5")), 90);
         assert_eq!(resolve_mikrotik_log_retention_days(Some("3651")), 90);
         assert_eq!(resolve_mikrotik_log_retention_days(Some("30")), 30);
+    }
+
+    #[test]
+    fn prune_keeps_logs_at_or_newer_than_retention_cutoff() {
+        let now = DateTime::parse_from_rfc3339("2026-03-31T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let cutoff = mikrotik_log_retention_cutoff(now, 30);
+
+        assert!(should_prune_log_by_retention_cutoff(
+            cutoff - ChronoDuration::seconds(1),
+            cutoff
+        ));
+        assert!(!should_prune_log_by_retention_cutoff(cutoff, cutoff));
+        assert!(!should_prune_log_by_retention_cutoff(
+            cutoff + ChronoDuration::seconds(1),
+            cutoff
+        ));
+    }
+
+    #[test]
+    fn prune_sql_uses_retention_cutoff_without_fixed_5000_cap() {
+        let sql = mikrotik_log_prune_sql();
+        assert!(sql.contains("logged_at < $3"));
+        assert!(!sql.contains("OFFSET 5000"));
     }
 }
