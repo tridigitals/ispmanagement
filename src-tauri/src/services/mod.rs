@@ -26,8 +26,8 @@ pub mod notification_service;
 pub mod payment_service;
 pub mod plan_service;
 pub mod pppoe_service;
-pub mod subscription_lifecycle;
 pub mod storage_service;
+pub mod subscription_lifecycle;
 pub mod system_service;
 
 pub use alert_service::AlertService;

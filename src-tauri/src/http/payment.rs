@@ -1207,16 +1207,14 @@ mod tests {
 
     #[test]
     fn verify_customer_package_body_supports_current_invoice_id_aliases() {
-        let camel: VerifyCustomerPackagePaymentBody = serde_json::from_str(
-            r#"{"status":"paid","invoiceId":"inv-1"}"#,
-        )
-        .expect("invoiceId payload should deserialize");
+        let camel: VerifyCustomerPackagePaymentBody =
+            serde_json::from_str(r#"{"status":"paid","invoiceId":"inv-1"}"#)
+                .expect("invoiceId payload should deserialize");
         assert_eq!(camel.invoice_id.as_deref(), Some("inv-1"));
 
-        let snake: VerifyCustomerPackagePaymentBody = serde_json::from_str(
-            r#"{"status":"paid","invoice_id":"inv-2"}"#,
-        )
-        .expect("invoice_id payload should deserialize");
+        let snake: VerifyCustomerPackagePaymentBody =
+            serde_json::from_str(r#"{"status":"paid","invoice_id":"inv-2"}"#)
+                .expect("invoice_id payload should deserialize");
         assert_eq!(snake.invoice_id.as_deref(), Some("inv-2"));
 
         let short_alias: VerifyCustomerPackagePaymentBody =
@@ -1244,12 +1242,10 @@ mod tests {
         let err = parse_utc_datetime_query(Some("not-a-date".to_string()), "from")
             .expect_err("invalid datetime should fail");
         assert_eq!(err.0, StatusCode::BAD_REQUEST);
-        assert_eq!(
-            err.1 .0.error,
-            "from must be ISO-8601 datetime (RFC3339)"
-        );
+        assert_eq!(err.1 .0.error, "from must be ISO-8601 datetime (RFC3339)");
 
-        let parsed_res = parse_utc_datetime_query(Some("2026-03-27T11:22:33+07:00".to_string()), "from");
+        let parsed_res =
+            parse_utc_datetime_query(Some("2026-03-27T11:22:33+07:00".to_string()), "from");
         assert!(parsed_res.is_ok());
         let parsed = match parsed_res {
             Ok(Some(dt)) => dt,
@@ -1264,15 +1260,13 @@ mod tests {
         let uri: Uri = "/?sort_by=due_date&sort_dir=desc"
             .parse()
             .expect("valid uri");
-        let Query(params) = Query::<ListCustomerPackageInvoicesQuery>::try_from_uri(&uri)
-            .expect("params parse");
+        let Query(params) =
+            Query::<ListCustomerPackageInvoicesQuery>::try_from_uri(&uri).expect("params parse");
 
         assert_eq!(params.sort_by.as_deref(), Some("due_date"));
         assert_eq!(params.sort_dir.as_deref(), Some("desc"));
 
-        let camel_uri: Uri = "/?sortBy=due_date&sortDir=asc"
-            .parse()
-            .expect("valid uri");
+        let camel_uri: Uri = "/?sortBy=due_date&sortDir=asc".parse().expect("valid uri");
         let camel_parse = Query::<ListCustomerPackageInvoicesQuery>::try_from_uri(&camel_uri);
         assert!(camel_parse.is_err());
         let err_text = match camel_parse {
