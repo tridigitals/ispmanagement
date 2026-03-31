@@ -4134,3 +4134,36 @@ fn parse_uptime_to_secs(s: &str) -> i64 {
     }
     total
 }
+
+fn resolve_mikrotik_log_retention_days(raw: Option<&str>) -> i64 {
+    match raw.and_then(|v| v.trim().parse::<i64>().ok()) {
+        Some(days) if (1..=3650).contains(&days) => days,
+        _ => 90,
+    }
+}
+
+fn mikrotik_log_retention_days_from_env() -> i64 {
+    let raw = std::env::var("MIKROTIK_LOG_RETENTION_DAYS").ok();
+    let days = resolve_mikrotik_log_retention_days(raw.as_deref());
+    tracing::debug!(
+        target: "mikrotik_retention",
+        retention_days = days,
+        "Resolved MikroTik log retention days"
+    );
+    days
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mikrotik_log_retention_days_env_validation() {
+        assert_eq!(resolve_mikrotik_log_retention_days(None), 90);
+        assert_eq!(resolve_mikrotik_log_retention_days(Some("abc")), 90);
+        assert_eq!(resolve_mikrotik_log_retention_days(Some("0")), 90);
+        assert_eq!(resolve_mikrotik_log_retention_days(Some("-5")), 90);
+        assert_eq!(resolve_mikrotik_log_retention_days(Some("3651")), 90);
+        assert_eq!(resolve_mikrotik_log_retention_days(Some("30")), 30);
+    }
+}
