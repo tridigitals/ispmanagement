@@ -860,6 +860,14 @@ impl MikrotikService {
         // Prune by retention cutoff (time-based) instead of fixed row cap.
         let retention_days = mikrotik_log_retention_days_from_env();
         let retention_cutoff = mikrotik_log_retention_cutoff(now, retention_days);
+
+        #[cfg(test)]
+        if test_sync_force_prune_error_from_env() {
+            return Err(AppError::Database(sqlx::Error::Protocol(
+                "MIKROTIK_TEST_SYNC_FORCE_PRUNE_ERROR".to_string(),
+            )));
+        }
+
         propagate_prune_query_result(
             sqlx::query(mikrotik_log_prune_sql())
                 .bind(tenant_id)
@@ -4222,6 +4230,14 @@ fn test_sync_rows_override_from_env() -> Option<Vec<(Option<String>, Option<Stri
 }
 
 #[cfg(test)]
+fn test_sync_force_prune_error_from_env() -> bool {
+    match std::env::var("MIKROTIK_TEST_SYNC_FORCE_PRUNE_ERROR") {
+        Ok(v) if v.trim() == "1" => true,
+        _ => false,
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::http::WsHub;
@@ -4326,6 +4342,7 @@ mod tests {
     #[tokio::test]
     async fn sync_logs_returns_error_when_prune_query_fails() {
         let _sync_stub_guard = EnvVarGuard::set("MIKROTIK_TEST_SYNC_USE_EMPTY_ROWS", "1");
+        let _prune_error_guard = EnvVarGuard::set("MIKROTIK_TEST_SYNC_FORCE_PRUNE_ERROR", "1");
 
         let pool = test_pool().await;
         let service = test_mikrotik_service(pool.clone());
@@ -4372,22 +4389,12 @@ mod tests {
         .await
         .expect("seed router");
 
-        sqlx::query("ALTER TABLE mikrotik_logs RENAME COLUMN logged_at TO logged_at_backup")
-            .execute(&pool)
-            .await
-            .expect("temporarily break prune query path");
-
         let sync_result = service.sync_logs_for_router(tenant_id, router_id, 100).await;
-
-        sqlx::query("ALTER TABLE mikrotik_logs RENAME COLUMN logged_at_backup TO logged_at")
-            .execute(&pool)
-            .await
-            .expect("restore logged_at column after test");
 
         let err = sync_result.expect_err("sync should fail when prune query fails on real path");
         assert!(
-            err.to_string().contains("logged_at"),
-            "expected prune failure mentioning logged_at, got: {err}"
+            err.to_string().contains("MIKROTIK_TEST_SYNC_FORCE_PRUNE_ERROR"),
+            "expected forced prune failure marker, got: {err}"
         );
 
         sqlx::query("DELETE FROM mikrotik_routers WHERE id = $1")
