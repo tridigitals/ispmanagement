@@ -4866,8 +4866,10 @@ mod tests {
             .await
             .expect("disable seqscan for deterministic planner assertions");
 
-        let tenant_id = "tenant-retention-index-plan";
-        let router_id = "router-retention-index-plan";
+        let run_id = uuid::Uuid::new_v4().to_string();
+        let tenant_id = format!("tenant-retention-index-plan-{run_id}");
+        let router_id = format!("router-retention-index-plan-{run_id}");
+        let tenant_slug = format!("retention-index-tenant-{run_id}");
         let now = Utc::now();
         let cutoff = now - ChronoDuration::days(90);
 
@@ -4878,9 +4880,9 @@ mod tests {
             ON CONFLICT (id) DO NOTHING
             "#,
         )
-        .bind(tenant_id)
+        .bind(&tenant_id)
         .bind("Retention Index Tenant")
-        .bind("retention-index-tenant")
+        .bind(&tenant_slug)
         .bind(now)
         .bind(now)
         .execute(&mut *tx)
@@ -4896,8 +4898,8 @@ mod tests {
             ON CONFLICT (id) DO NOTHING
             "#,
         )
-        .bind(router_id)
-        .bind(tenant_id)
+        .bind(&router_id)
+        .bind(&tenant_id)
         .bind("Retention Index Router")
         .bind("127.0.0.1")
         .bind(8728_i32)
@@ -4913,7 +4915,7 @@ mod tests {
             r#"
             INSERT INTO mikrotik_logs (id, tenant_id, router_id, logged_at, message, created_at, updated_at)
             SELECT
-              'retention-plan-log-' || gs::text,
+              $5 || '-retention-plan-log-' || gs::text,
               $1,
               $2,
               $3 - make_interval(secs => gs::int),
@@ -4923,47 +4925,41 @@ mod tests {
             FROM generate_series(1, 500) AS gs
             "#,
         )
-        .bind(tenant_id)
-        .bind(router_id)
+        .bind(&tenant_id)
+        .bind(&router_id)
         .bind(now)
         .bind(now)
+        .bind(&run_id)
         .execute(&mut *tx)
         .await
         .expect("seed logs for planner checks");
 
-        let prune_plan_rows: Vec<String> = sqlx::query_scalar(
-            r#"
-            EXPLAIN (FORMAT TEXT)
-            DELETE FROM mikrotik_logs
-            WHERE tenant_id = $1
-              AND router_id = $2
-              AND logged_at < $3
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(router_id)
-        .bind(cutoff)
-        .fetch_all(&mut *tx)
-        .await
-        .expect("explain prune query");
+        let prune_explain_sql = format!("EXPLAIN (FORMAT TEXT) {}", mikrotik_log_prune_sql());
+        let prune_plan_rows: Vec<String> = sqlx::query_scalar(prune_explain_sql.as_str())
+            .bind(&tenant_id)
+            .bind(&router_id)
+            .bind(cutoff)
+            .fetch_all(&mut *tx)
+            .await
+            .expect("explain prune query");
         let prune_plan = prune_plan_rows.join("\n");
 
-        let list_plan_rows: Vec<String> = sqlx::query_scalar(
-            r#"
-            EXPLAIN (FORMAT TEXT)
-            SELECT l.*
-            FROM mikrotik_logs l
-            WHERE l.tenant_id = $1
-              AND l.router_id = $2
-            ORDER BY l.logged_at DESC, l.updated_at DESC
-            LIMIT 25 OFFSET 0
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(router_id)
-        .fetch_all(&mut *tx)
-        .await
-        .expect("explain paginated list query");
+        let list_explain_sql = format!("EXPLAIN (FORMAT TEXT) {}", mikrotik_log_list_sql());
+        let router_filter = Some(router_id.clone());
+        let level_filter: Option<String> = None;
+        let topic_filter: Option<String> = None;
+        let search = String::new();
+        let list_plan_rows: Vec<String> = sqlx::query_scalar(list_explain_sql.as_str())
+            .bind(&tenant_id)
+            .bind(&router_filter)
+            .bind(&level_filter)
+            .bind(&topic_filter)
+            .bind(&search)
+            .bind(25_i64)
+            .bind(0_i64)
+            .fetch_all(&mut *tx)
+            .await
+            .expect("explain paginated list query");
         let list_plan = list_plan_rows.join("\n");
 
         assert!(
