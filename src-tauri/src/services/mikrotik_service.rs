@@ -4855,4 +4855,126 @@ mod tests {
 
         tx.rollback().await.expect("rollback tx");
     }
+
+    #[tokio::test]
+    async fn mikrotik_log_queries_use_retention_indexes() {
+        let pool = test_pool().await;
+        let mut tx = pool.begin().await.expect("begin tx");
+
+        sqlx::query("SET LOCAL enable_seqscan = off")
+            .execute(&mut *tx)
+            .await
+            .expect("disable seqscan for deterministic planner assertions");
+
+        let tenant_id = "tenant-retention-index-plan";
+        let router_id = "router-retention-index-plan";
+        let now = Utc::now();
+        let cutoff = now - ChronoDuration::days(90);
+
+        sqlx::query(
+            r#"
+            INSERT INTO tenants (id, name, slug, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (id) DO NOTHING
+            "#,
+        )
+        .bind(tenant_id)
+        .bind("Retention Index Tenant")
+        .bind("retention-index-tenant")
+        .bind(now)
+        .bind(now)
+        .execute(&mut *tx)
+        .await
+        .expect("seed tenant");
+
+        sqlx::query(
+            r#"
+            INSERT INTO mikrotik_routers
+              (id, tenant_id, name, host, port, username, password, use_tls, enabled, is_online, created_at, updated_at)
+            VALUES
+              ($1, $2, $3, $4, $5, $6, $7, false, true, false, $8, $9)
+            ON CONFLICT (id) DO NOTHING
+            "#,
+        )
+        .bind(router_id)
+        .bind(tenant_id)
+        .bind("Retention Index Router")
+        .bind("127.0.0.1")
+        .bind(8728_i32)
+        .bind("admin")
+        .bind(test_router_password())
+        .bind(now)
+        .bind(now)
+        .execute(&mut *tx)
+        .await
+        .expect("seed router");
+
+        sqlx::query(
+            r#"
+            INSERT INTO mikrotik_logs (id, tenant_id, router_id, logged_at, message, created_at, updated_at)
+            SELECT
+              'retention-plan-log-' || gs::text,
+              $1,
+              $2,
+              $3 - make_interval(secs => gs::int),
+              'retention plan log ' || gs::text,
+              $4,
+              $4
+            FROM generate_series(1, 500) AS gs
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(now)
+        .bind(now)
+        .execute(&mut *tx)
+        .await
+        .expect("seed logs for planner checks");
+
+        let prune_plan_rows: Vec<String> = sqlx::query_scalar(
+            r#"
+            EXPLAIN (FORMAT TEXT)
+            DELETE FROM mikrotik_logs
+            WHERE tenant_id = $1
+              AND router_id = $2
+              AND logged_at < $3
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(cutoff)
+        .fetch_all(&mut *tx)
+        .await
+        .expect("explain prune query");
+        let prune_plan = prune_plan_rows.join("\n");
+
+        let list_plan_rows: Vec<String> = sqlx::query_scalar(
+            r#"
+            EXPLAIN (FORMAT TEXT)
+            SELECT l.*
+            FROM mikrotik_logs l
+            WHERE l.tenant_id = $1
+              AND l.router_id = $2
+            ORDER BY l.logged_at DESC, l.updated_at DESC
+            LIMIT 25 OFFSET 0
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .fetch_all(&mut *tx)
+        .await
+        .expect("explain paginated list query");
+        let list_plan = list_plan_rows.join("\n");
+
+        assert!(
+            prune_plan.contains("idx_mikrotik_logs_tenant_router_logged_at"),
+            "expected prune plan to use retention cutoff index, got:\n{prune_plan}"
+        );
+        assert!(
+            list_plan.contains("idx_mikrotik_logs_tenant_router_logged_updated"),
+            "expected list plan to use pagination ordering index, got:\n{list_plan}"
+        );
+
+        tx.rollback().await.expect("rollback tx");
+    }
 }

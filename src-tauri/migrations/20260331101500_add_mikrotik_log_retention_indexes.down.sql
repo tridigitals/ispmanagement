@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS public.idx_mikrotik_logs_tenant_router_logged_updated;
+DROP INDEX IF EXISTS public.idx_mikrotik_logs_tenant_router_logged_at;
