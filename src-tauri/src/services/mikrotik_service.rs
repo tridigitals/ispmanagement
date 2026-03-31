@@ -4323,23 +4323,232 @@ mod tests {
         assert!(!sql.contains("OFFSET 5000"));
     }
 
-    #[test]
-    fn sync_logs_returns_error_when_prune_query_fails() {
-        let result = propagate_prune_query_result::<()>(Err(sqlx::Error::Protocol(
-            "forced prune failure".into(),
-        )));
+    #[tokio::test]
+    async fn sync_logs_returns_error_when_prune_query_fails() {
+        let _sync_stub_guard = EnvVarGuard::set("MIKROTIK_TEST_SYNC_USE_EMPTY_ROWS", "1");
 
-        assert!(result.is_err(), "sync should fail if prune query fails");
+        let pool = test_pool().await;
+        let service = test_mikrotik_service(pool.clone());
+
+        let tenant_id = "tenant-sync-prune-error";
+        let router_id = "router-sync-prune-error";
+        let now = Utc::now();
+
+        sqlx::query(
+            r#"
+            INSERT INTO tenants (id, name, slug, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (id) DO NOTHING
+            "#,
+        )
+        .bind(tenant_id)
+        .bind("Sync Prune Error Tenant")
+        .bind("sync-prune-error-tenant")
+        .bind(now)
+        .bind(now)
+        .execute(&pool)
+        .await
+        .expect("seed tenant");
+
+        sqlx::query(
+            r#"
+            INSERT INTO mikrotik_routers
+              (id, tenant_id, name, host, port, username, password, use_tls, enabled, is_online, created_at, updated_at)
+            VALUES
+              ($1, $2, $3, $4, $5, $6, $7, false, true, false, $8, $9)
+            ON CONFLICT (id) DO NOTHING
+            "#,
+        )
+        .bind(router_id)
+        .bind(tenant_id)
+        .bind("Sync Prune Error Router")
+        .bind("127.0.0.1")
+        .bind(8728_i32)
+        .bind("admin")
+        .bind(test_router_password())
+        .bind(now)
+        .bind(now)
+        .execute(&pool)
+        .await
+        .expect("seed router");
+
+        sqlx::query("ALTER TABLE mikrotik_logs RENAME COLUMN logged_at TO logged_at_backup")
+            .execute(&pool)
+            .await
+            .expect("temporarily break prune query path");
+
+        let sync_result = service.sync_logs_for_router(tenant_id, router_id, 100).await;
+
+        sqlx::query("ALTER TABLE mikrotik_logs RENAME COLUMN logged_at_backup TO logged_at")
+            .execute(&pool)
+            .await
+            .expect("restore logged_at column after test");
+
+        let err = sync_result.expect_err("sync should fail when prune query fails on real path");
+        assert!(
+            err.to_string().contains("logged_at"),
+            "expected prune failure mentioning logged_at, got: {err}"
+        );
+
+        sqlx::query("DELETE FROM mikrotik_routers WHERE id = $1")
+            .bind(router_id)
+            .execute(&pool)
+            .await
+            .expect("cleanup router");
+        sqlx::query("DELETE FROM tenants WHERE id = $1")
+            .bind(tenant_id)
+            .execute(&pool)
+            .await
+            .expect("cleanup tenant");
     }
 
-    #[test]
-    fn list_logs_pagination_order_and_defaults_remain_unchanged() {
-        let sql = mikrotik_log_list_sql();
-        assert!(sql.contains("ORDER BY l.logged_at DESC, l.updated_at DESC"));
-        assert!(sql.contains("LIMIT $6 OFFSET $7"));
+    #[tokio::test]
+    async fn list_logs_pagination_order_and_defaults_remain_unchanged() {
+        let pool = test_pool().await;
+        let service = test_mikrotik_service(pool.clone());
+
         assert_eq!(MIKROTIK_LOGS_DEFAULT_PAGE, 1);
         assert_eq!(MIKROTIK_LOGS_DEFAULT_PER_PAGE, 25);
         assert!(!MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL);
+
+        let tenant_id = "tenant-list-logs-pagination";
+        let router_id = "router-list-logs-pagination";
+        let now = Utc::now();
+
+        sqlx::query(
+            r#"
+            INSERT INTO tenants (id, name, slug, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (id) DO NOTHING
+            "#,
+        )
+        .bind(tenant_id)
+        .bind("List Logs Pagination Tenant")
+        .bind("list-logs-pagination-tenant")
+        .bind(now)
+        .bind(now)
+        .execute(&pool)
+        .await
+        .expect("seed tenant");
+
+        sqlx::query(
+            r#"
+            INSERT INTO mikrotik_routers
+              (id, tenant_id, name, host, port, username, password, use_tls, enabled, is_online, created_at, updated_at)
+            VALUES
+              ($1, $2, $3, $4, $5, $6, $7, false, true, false, $8, $9)
+            ON CONFLICT (id) DO NOTHING
+            "#,
+        )
+        .bind(router_id)
+        .bind(tenant_id)
+        .bind("List Logs Pagination Router")
+        .bind("127.0.0.1")
+        .bind(8728_i32)
+        .bind("admin")
+        .bind(test_router_password())
+        .bind(now)
+        .bind(now)
+        .execute(&pool)
+        .await
+        .expect("seed router");
+
+        sqlx::query(
+            r#"
+            INSERT INTO mikrotik_logs (id, tenant_id, router_id, logged_at, message, created_at, updated_at)
+            VALUES
+              ('tie-newer-updated', $1, $2, $3, 'tie newer updated', $4, $4),
+              ('tie-older-updated', $1, $2, $3, 'tie older updated', $5, $5)
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(now + ChronoDuration::minutes(1))
+        .bind(now)
+        .bind(now - ChronoDuration::seconds(1))
+        .execute(&pool)
+        .await
+        .expect("seed tie-breaker logs");
+
+        sqlx::query(
+            r#"
+            INSERT INTO mikrotik_logs (id, tenant_id, router_id, logged_at, message, created_at, updated_at)
+            SELECT
+              'page-log-' || gs::text,
+              $1,
+              $2,
+              $3 - make_interval(secs => gs::int),
+              'page log ' || gs::text,
+              $4,
+              $4
+            FROM generate_series(1, 30) AS gs
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(now)
+        .bind(now)
+        .execute(&pool)
+        .await
+        .expect("seed paginated logs");
+
+        let page_1 = service
+            .list_logs(
+                tenant_id,
+                Some(router_id.to_string()),
+                None,
+                None,
+                None,
+                MIKROTIK_LOGS_DEFAULT_PAGE,
+                MIKROTIK_LOGS_DEFAULT_PER_PAGE,
+                MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL,
+            )
+            .await
+            .expect("list logs page 1");
+
+        assert_eq!(page_1.page, 1);
+        assert_eq!(page_1.per_page, 25);
+        assert_eq!(page_1.total, -1, "default include_total=false should keep total sentinel");
+        assert_eq!(page_1.data.len(), 25);
+        assert_eq!(page_1.data[0].id, "tie-newer-updated");
+        assert_eq!(page_1.data[1].id, "tie-older-updated");
+        assert_eq!(page_1.data[2].id, "page-log-1");
+        assert_eq!(page_1.data[24].id, "page-log-23");
+
+        let page_2 = service
+            .list_logs(
+                tenant_id,
+                Some(router_id.to_string()),
+                None,
+                None,
+                None,
+                2,
+                MIKROTIK_LOGS_DEFAULT_PER_PAGE,
+                MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL,
+            )
+            .await
+            .expect("list logs page 2");
+
+        assert_eq!(page_2.data.len(), 7);
+        assert_eq!(page_2.data[0].id, "page-log-24");
+        assert_eq!(page_2.data[6].id, "page-log-30");
+
+        sqlx::query("DELETE FROM mikrotik_logs WHERE tenant_id = $1 AND router_id = $2")
+            .bind(tenant_id)
+            .bind(router_id)
+            .execute(&pool)
+            .await
+            .expect("cleanup logs");
+        sqlx::query("DELETE FROM mikrotik_routers WHERE id = $1")
+            .bind(router_id)
+            .execute(&pool)
+            .await
+            .expect("cleanup router");
+        sqlx::query("DELETE FROM tenants WHERE id = $1")
+            .bind(tenant_id)
+            .execute(&pool)
+            .await
+            .expect("cleanup tenant");
     }
 
     #[tokio::test]
