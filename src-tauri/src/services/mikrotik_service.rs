@@ -52,6 +52,16 @@ struct Thresholds {
     offline_after_secs: i64,
 }
 
+#[cfg(test)]
+type SyncLogRawRow = (Option<String>, Option<String>, Option<String>, String);
+
+#[cfg(test)]
+#[derive(Clone, Default)]
+struct TestSyncLogsInjection {
+    rows_override: Option<Vec<SyncLogRawRow>>,
+    force_prune_error: bool,
+}
+
 #[derive(Clone)]
 pub struct MikrotikService {
     pool: DbPool,
@@ -60,6 +70,8 @@ pub struct MikrotikService {
     settings_service: SettingsService,
     wallboard_track_cache:
         Arc<std::sync::RwLock<HashMap<String, (Instant, HashMap<String, HashSet<String>>)>>>,
+    #[cfg(test)]
+    test_sync_logs_injection: Arc<std::sync::RwLock<Option<TestSyncLogsInjection>>>,
 }
 
 impl MikrotikService {
@@ -147,7 +159,33 @@ impl MikrotikService {
             audit_service,
             settings_service,
             wallboard_track_cache: Arc::new(std::sync::RwLock::new(HashMap::new())),
+            #[cfg(test)]
+            test_sync_logs_injection: Arc::new(std::sync::RwLock::new(None)),
         }
+    }
+
+    #[cfg(test)]
+    fn configure_test_sync_logs_injection(&self, injection: TestSyncLogsInjection) {
+        if let Ok(mut guard) = self.test_sync_logs_injection.write() {
+            *guard = Some(injection);
+        }
+    }
+
+    #[cfg(test)]
+    fn test_sync_rows_override(&self) -> Option<Vec<SyncLogRawRow>> {
+        self.test_sync_logs_injection
+            .read()
+            .ok()
+            .and_then(|guard| guard.as_ref().and_then(|injection| injection.rows_override.clone()))
+    }
+
+    #[cfg(test)]
+    fn test_sync_force_prune_error(&self) -> bool {
+        self.test_sync_logs_injection
+            .read()
+            .ok()
+            .and_then(|guard| guard.as_ref().map(|injection| injection.force_prune_error))
+            .unwrap_or(false)
     }
 
     pub async fn list_routers(&self, tenant_id: &str) -> AppResult<Vec<MikrotikRouter>> {
@@ -722,7 +760,7 @@ impl MikrotikService {
             Vec::new();
 
         #[cfg(test)]
-        if let Some(rows) = test_sync_rows_override_from_env() {
+        if let Some(rows) = self.test_sync_rows_override() {
             raw_rows = rows;
         } else {
             let dev = self
@@ -862,7 +900,7 @@ impl MikrotikService {
         let retention_cutoff = mikrotik_log_retention_cutoff(now, retention_days);
 
         #[cfg(test)]
-        if test_sync_force_prune_error_from_env() {
+        if self.test_sync_force_prune_error() {
             return Err(AppError::Database(sqlx::Error::Protocol(
                 "MIKROTIK_TEST_SYNC_FORCE_PRUNE_ERROR".to_string(),
             )));
@@ -4222,22 +4260,6 @@ fn should_prune_log_by_retention_cutoff(logged_at: DateTime<Utc>, cutoff: DateTi
 }
 
 #[cfg(test)]
-fn test_sync_rows_override_from_env() -> Option<Vec<(Option<String>, Option<String>, Option<String>, String)>> {
-    match std::env::var("MIKROTIK_TEST_SYNC_USE_EMPTY_ROWS") {
-        Ok(v) if v.trim() == "1" => Some(Vec::new()),
-        _ => None,
-    }
-}
-
-#[cfg(test)]
-fn test_sync_force_prune_error_from_env() -> bool {
-    match std::env::var("MIKROTIK_TEST_SYNC_FORCE_PRUNE_ERROR") {
-        Ok(v) if v.trim() == "1" => true,
-        _ => false,
-    }
-}
-
-#[cfg(test)]
 mod tests {
     use super::*;
     use crate::http::WsHub;
@@ -4341,11 +4363,12 @@ mod tests {
 
     #[tokio::test]
     async fn sync_logs_returns_error_when_prune_query_fails() {
-        let _sync_stub_guard = EnvVarGuard::set("MIKROTIK_TEST_SYNC_USE_EMPTY_ROWS", "1");
-        let _prune_error_guard = EnvVarGuard::set("MIKROTIK_TEST_SYNC_FORCE_PRUNE_ERROR", "1");
-
         let pool = test_pool().await;
         let service = test_mikrotik_service(pool.clone());
+        service.configure_test_sync_logs_injection(TestSyncLogsInjection {
+            rows_override: Some(Vec::new()),
+            force_prune_error: true,
+        });
 
         let tenant_id = "tenant-sync-prune-error";
         let router_id = "router-sync-prune-error";
@@ -4561,10 +4584,13 @@ mod tests {
     #[tokio::test]
     async fn sync_logs_for_router_prunes_retention_window_without_fixed_5000_cap() {
         let _retention_guard = EnvVarGuard::set("MIKROTIK_LOG_RETENTION_DAYS", "30");
-        let _sync_stub_guard = EnvVarGuard::set("MIKROTIK_TEST_SYNC_USE_EMPTY_ROWS", "1");
 
         let pool = test_pool().await;
         let service = test_mikrotik_service(pool.clone());
+        service.configure_test_sync_logs_injection(TestSyncLogsInjection {
+            rows_override: Some(Vec::new()),
+            force_prune_error: false,
+        });
 
         let tenant_id = "tenant-sync-path-retention";
         let router_id = "router-sync-path-retention";
