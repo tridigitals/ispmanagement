@@ -2,7 +2,9 @@ use super::AppState;
 use crate::http::auth::extract_ip;
 use crate::models::Tenant;
 use crate::commands::superadmin::{
+    SuperadminManagedRadiusMapping, SuperadminManagedRadiusMappingListResponse,
     SuperadminManagedRadiusServer, SuperadminManagedRadiusServerListResponse,
+    SuperadminManagedRadiusSecretValue,
     SuperadminManagedRadiusUser, SuperadminManagedRadiusUserListResponse,
 };
 use axum::{
@@ -14,6 +16,9 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::net::SocketAddr;
+
+const DEFAULT_RADIUS_AUTH_PORT: i32 = 1812;
+const DEFAULT_RADIUS_ACCT_PORT: i32 = 1813;
 
 #[derive(Serialize)]
 pub struct TenantListResponse {
@@ -31,6 +36,65 @@ pub struct CreateTenantRequest {
     pub owner_email: String,
     pub owner_password: String,
     pub plan_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct ManagedRadiusServerRequest {
+    pub tenant_id: String,
+    pub name: String,
+    pub db_host: String,
+    pub db_port: Option<i32>,
+    pub db_name: String,
+    pub db_user: String,
+    pub db_password: Option<String>,
+    pub is_active: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct ManagedRadiusServerActiveRequest {
+    pub tenant_id: String,
+    pub is_active: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct ManagedRadiusMappingRequest {
+    pub tenant_id: String,
+    pub radius_server_id: String,
+    pub router_id: String,
+    pub nas_name: String,
+    pub nas_ip_or_cidr: String,
+    pub shortname: Option<String>,
+    pub shared_secret: Option<String>,
+    pub is_active: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct ManagedRadiusMappingActiveRequest {
+    pub tenant_id: String,
+    pub is_active: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct ManagedRadiusSecretRequest {
+    pub tenant_id: String,
+    pub shared_secret: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct ManagedRadiusRevealSecretRequest {
+    pub tenant_id: String,
 }
 
 // ...
@@ -97,9 +161,9 @@ pub async fn list_managed_radius_servers(
           s.tenant_id,
           t.name AS tenant_name,
           s.name,
-          s.host,
-          s.auth_port,
-          s.acct_port,
+          s.db_host AS host,
+          $1::integer AS auth_port,
+          $2::integer AS acct_port,
           s.db_host,
           s.db_port,
           s.db_name,
@@ -114,11 +178,13 @@ pub async fn list_managed_radius_servers(
          AND n.tenant_id = s.tenant_id
          AND n.is_active = true
         GROUP BY
-          s.id, s.tenant_id, t.name, s.name, s.host, s.auth_port, s.acct_port,
+          s.id, s.tenant_id, t.name, s.name, s.db_host,
           s.db_host, s.db_port, s.db_name, s.is_active, s.updated_at
         ORDER BY s.updated_at DESC, s.name ASC
         "#,
     )
+    .bind(DEFAULT_RADIUS_AUTH_PORT)
+    .bind(DEFAULT_RADIUS_ACCT_PORT)
     .fetch_all(&mut *tx)
     .await?;
 
@@ -177,6 +243,406 @@ pub async fn list_managed_radius_users(
     Ok(Json(SuperadminManagedRadiusUserListResponse {
         data: users,
         total,
+    }))
+}
+
+pub async fn list_managed_radius_mappings(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<SuperadminManagedRadiusMappingListResponse>, crate::error::AppError> {
+    let claims = check_super_admin(&state, &headers).await?;
+    let mut tx = state.auth_service.pool.begin().await?;
+    state.auth_service.apply_rls_context_tx(&mut tx, &claims).await?;
+
+    let rows = sqlx::query_as::<_, (
+        String,
+        String,
+        String,
+        String,
+        String,
+        String,
+        i32,
+        i32,
+        String,
+        Option<String>,
+        String,
+        String,
+        Option<String>,
+        String,
+        bool,
+        chrono::DateTime<chrono::Utc>,
+    )>(
+        r#"
+        SELECT
+          n.id,
+          n.tenant_id,
+          t.name AS tenant_name,
+          n.radius_server_id,
+          s.name AS server_name,
+          s.db_host AS radius_host,
+          $1::integer AS auth_port,
+          $2::integer AS acct_port,
+          n.router_id,
+          r.name AS router_name,
+          n.nas_name,
+          n.nas_ip_or_cidr,
+          n.shortname,
+          n.shared_secret_enc,
+          n.is_active,
+          n.updated_at
+        FROM managed_radius_nas n
+        INNER JOIN tenants t
+          ON t.id = n.tenant_id
+        INNER JOIN managed_radius_servers s
+          ON s.id = n.radius_server_id
+         AND s.tenant_id = n.tenant_id
+        LEFT JOIN mikrotik_routers r
+          ON r.id = n.router_id
+         AND r.tenant_id = n.tenant_id
+        ORDER BY n.updated_at DESC, n.nas_name ASC
+        "#,
+    )
+    .bind(DEFAULT_RADIUS_AUTH_PORT)
+    .bind(DEFAULT_RADIUS_ACCT_PORT)
+    .fetch_all(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    let mut data = Vec::with_capacity(rows.len());
+    for row in rows {
+        let shared_secret = state
+            .managed_radius_service
+            .reveal_mapping_secret(&row.1, &row.0)
+            .await?;
+        data.push(SuperadminManagedRadiusMapping {
+            id: row.0,
+            tenant_id: row.1,
+            tenant_name: row.2,
+            radius_server_id: row.3,
+            server_name: row.4,
+            radius_host: row.5,
+            auth_port: row.6,
+            acct_port: row.7,
+            router_id: row.8,
+            router_name: row.9,
+            nas_name: row.10,
+            nas_ip_or_cidr: row.11,
+            shortname: row.12,
+            shared_secret_masked:
+                crate::services::ManagedRadiusService::mask_shared_secret_for_display(
+                    &shared_secret,
+                ),
+            is_active: row.14,
+            updated_at: row.15,
+        });
+    }
+
+    let total = data.len() as i64;
+    Ok(Json(SuperadminManagedRadiusMappingListResponse { data, total }))
+}
+
+pub async fn create_managed_radius_server(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Json(payload): Json<ManagedRadiusServerRequest>,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let claims = check_super_admin(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+
+    let server = state
+        .managed_radius_service
+        .create_server(crate::services::managed_radius_service::ManagedRadiusServerUpsert {
+            tenant_id: payload.tenant_id.clone(),
+            name: payload.name,
+            db_host: payload.db_host,
+            db_port: payload.db_port,
+            db_name: payload.db_name,
+            db_user: payload.db_user,
+            db_password: payload.db_password,
+            is_active: payload.is_active,
+        })
+        .await?;
+
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&payload.tenant_id),
+            "MANAGED_RADIUS_SERVER_CREATED",
+            "managed_radius_server",
+            Some(&server.id),
+            Some("Managed RADIUS server created by Superadmin"),
+            Some(&ip),
+        )
+        .await;
+
+    Ok(Json(json!({"ok": true, "id": server.id})))
+}
+
+pub async fn update_managed_radius_server(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(id): Path<String>,
+    Json(payload): Json<ManagedRadiusServerRequest>,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let claims = check_super_admin(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+
+    state
+        .managed_radius_service
+        .update_server(
+            &id,
+            crate::services::managed_radius_service::ManagedRadiusServerUpsert {
+                tenant_id: payload.tenant_id.clone(),
+                name: payload.name,
+                db_host: payload.db_host,
+                db_port: payload.db_port,
+                db_name: payload.db_name,
+                db_user: payload.db_user,
+                db_password: payload.db_password,
+                is_active: payload.is_active,
+            },
+        )
+        .await?;
+
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&payload.tenant_id),
+            "MANAGED_RADIUS_SERVER_UPDATED",
+            "managed_radius_server",
+            Some(&id),
+            Some("Managed RADIUS server updated by Superadmin"),
+            Some(&ip),
+        )
+        .await;
+
+    Ok(Json(json!({"ok": true})))
+}
+
+pub async fn set_managed_radius_server_active(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(id): Path<String>,
+    Json(payload): Json<ManagedRadiusServerActiveRequest>,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let claims = check_super_admin(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+
+    state
+        .managed_radius_service
+        .set_server_active(&payload.tenant_id, &id, payload.is_active)
+        .await?;
+
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&payload.tenant_id),
+            if payload.is_active {
+                "MANAGED_RADIUS_SERVER_ACTIVATED"
+            } else {
+                "MANAGED_RADIUS_SERVER_DEACTIVATED"
+            },
+            "managed_radius_server",
+            Some(&id),
+            Some("Managed RADIUS server active state changed by Superadmin"),
+            Some(&ip),
+        )
+        .await;
+
+    Ok(Json(json!({"ok": true})))
+}
+
+pub async fn create_managed_radius_mapping(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Json(payload): Json<ManagedRadiusMappingRequest>,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let claims = check_super_admin(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+
+    let mapping = state
+        .managed_radius_service
+        .create_mapping(crate::services::managed_radius_service::ManagedRadiusNasUpsert {
+            tenant_id: payload.tenant_id.clone(),
+            radius_server_id: payload.radius_server_id,
+            router_id: payload.router_id,
+            nas_name: payload.nas_name,
+            nas_ip_or_cidr: payload.nas_ip_or_cidr,
+            shortname: payload.shortname,
+            shared_secret: payload.shared_secret,
+            is_active: payload.is_active,
+        })
+        .await?;
+
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&payload.tenant_id),
+            "MANAGED_RADIUS_MAPPING_CREATED",
+            "managed_radius_mapping",
+            Some(&mapping.id),
+            Some("Managed RADIUS mapping created by Superadmin"),
+            Some(&ip),
+        )
+        .await;
+
+    Ok(Json(json!({"ok": true, "id": mapping.id})))
+}
+
+pub async fn update_managed_radius_mapping(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(id): Path<String>,
+    Json(payload): Json<ManagedRadiusMappingRequest>,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let claims = check_super_admin(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+
+    state
+        .managed_radius_service
+        .update_mapping(
+            &id,
+            crate::services::managed_radius_service::ManagedRadiusNasUpsert {
+                tenant_id: payload.tenant_id.clone(),
+                radius_server_id: payload.radius_server_id,
+                router_id: payload.router_id,
+                nas_name: payload.nas_name,
+                nas_ip_or_cidr: payload.nas_ip_or_cidr,
+                shortname: payload.shortname,
+                shared_secret: payload.shared_secret,
+                is_active: payload.is_active,
+            },
+        )
+        .await?;
+
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&payload.tenant_id),
+            "MANAGED_RADIUS_MAPPING_UPDATED",
+            "managed_radius_mapping",
+            Some(&id),
+            Some("Managed RADIUS mapping updated by Superadmin"),
+            Some(&ip),
+        )
+        .await;
+
+    Ok(Json(json!({"ok": true})))
+}
+
+pub async fn set_managed_radius_mapping_active(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(id): Path<String>,
+    Json(payload): Json<ManagedRadiusMappingActiveRequest>,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let claims = check_super_admin(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+
+    state
+        .managed_radius_service
+        .set_mapping_active(&payload.tenant_id, &id, payload.is_active)
+        .await?;
+
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&payload.tenant_id),
+            if payload.is_active {
+                "MANAGED_RADIUS_MAPPING_ACTIVATED"
+            } else {
+                "MANAGED_RADIUS_MAPPING_DEACTIVATED"
+            },
+            "managed_radius_mapping",
+            Some(&id),
+            Some("Managed RADIUS mapping active state changed by Superadmin"),
+            Some(&ip),
+        )
+        .await;
+
+    Ok(Json(json!({"ok": true})))
+}
+
+pub async fn rotate_managed_radius_mapping_secret(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(id): Path<String>,
+    Json(payload): Json<ManagedRadiusSecretRequest>,
+) -> Result<Json<SuperadminManagedRadiusSecretValue>, crate::error::AppError> {
+    let claims = check_super_admin(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+
+    let secret = state
+        .managed_radius_service
+        .rotate_mapping_secret(&payload.tenant_id, &id, payload.shared_secret)
+        .await?;
+
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&payload.tenant_id),
+            "MANAGED_RADIUS_MAPPING_SECRET_ROTATED",
+            "managed_radius_mapping",
+            Some(&id),
+            Some("Managed RADIUS mapping secret rotated by Superadmin"),
+            Some(&ip),
+        )
+        .await;
+
+    Ok(Json(SuperadminManagedRadiusSecretValue {
+        shared_secret_masked:
+            crate::services::ManagedRadiusService::mask_shared_secret_for_display(&secret),
+        shared_secret: secret,
+    }))
+}
+
+pub async fn reveal_managed_radius_mapping_secret(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(id): Path<String>,
+    Json(payload): Json<ManagedRadiusRevealSecretRequest>,
+) -> Result<Json<SuperadminManagedRadiusSecretValue>, crate::error::AppError> {
+    let claims = check_super_admin(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+
+    let secret = state
+        .managed_radius_service
+        .reveal_mapping_secret(&payload.tenant_id, &id)
+        .await?;
+
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&payload.tenant_id),
+            "MANAGED_RADIUS_MAPPING_SECRET_REVEALED",
+            "managed_radius_mapping",
+            Some(&id),
+            Some("Managed RADIUS mapping secret revealed by Superadmin"),
+            Some(&ip),
+        )
+        .await;
+
+    Ok(Json(SuperadminManagedRadiusSecretValue {
+        shared_secret_masked:
+            crate::services::ManagedRadiusService::mask_shared_secret_for_display(&secret),
+        shared_secret: secret,
     }))
 }
 

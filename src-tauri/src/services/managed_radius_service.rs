@@ -60,6 +60,30 @@ pub struct ManagedRadiusApplyResult {
     pub radius_identity: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct ManagedRadiusServerUpsert {
+    pub tenant_id: String,
+    pub name: String,
+    pub db_host: String,
+    pub db_port: Option<i32>,
+    pub db_name: String,
+    pub db_user: String,
+    pub db_password: Option<String>,
+    pub is_active: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct ManagedRadiusNasUpsert {
+    pub tenant_id: String,
+    pub radius_server_id: String,
+    pub router_id: String,
+    pub nas_name: String,
+    pub nas_ip_or_cidr: String,
+    pub shortname: Option<String>,
+    pub shared_secret: Option<String>,
+    pub is_active: bool,
+}
+
 #[derive(Clone)]
 pub struct ManagedRadiusService {
     pool: DbPool,
@@ -335,6 +359,381 @@ impl ManagedRadiusService {
         encrypt_secret_for(PURPOSE_MANAGED_RADIUS_SHARED_SECRET, plaintext)
     }
 
+    pub fn mask_shared_secret_for_display(secret: &str) -> String {
+        mask_shared_secret(secret)
+    }
+
+    pub fn generate_shared_secret_for_display() -> String {
+        generate_managed_radius_shared_secret()
+    }
+
+    pub async fn create_server(&self, input: ManagedRadiusServerUpsert) -> AppResult<ManagedRadiusServer> {
+        let tenant_id = required_trimmed("tenant_id", &input.tenant_id)?;
+        let name = required_trimmed("name", &input.name)?;
+        let db_host = required_trimmed("db_host", &input.db_host)?;
+        let db_name = required_trimmed("db_name", &input.db_name)?;
+        let db_user = required_trimmed("db_user", &input.db_user)?;
+        let db_port = normalize_managed_radius_db_port(input.db_port);
+        let db_password = normalize_optional_secret_input(input.db_password.as_deref())
+            .ok_or_else(|| AppError::Validation("db_password is required".into()))?;
+        let db_password_enc = Self::encrypt_db_password(&db_password)?;
+        let now = Utc::now();
+        let id = Uuid::new_v4().to_string();
+
+        let mut tx = self.pool.begin().await.map_err(AppError::Database)?;
+        if input.is_active {
+            sqlx::query("UPDATE managed_radius_servers SET is_active = false, updated_at = $2 WHERE tenant_id = $1")
+                .bind(tenant_id)
+                .bind(now)
+                .execute(&mut *tx)
+                .await
+                .map_err(AppError::Database)?;
+        }
+
+        let server = sqlx::query_as::<_, ManagedRadiusServer>(
+            r#"
+            INSERT INTO managed_radius_servers (
+              id, tenant_id, name, db_host, db_port, db_name, db_user, db_password_enc, is_active, created_at, updated_at
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(tenant_id)
+        .bind(name)
+        .bind(db_host)
+        .bind(db_port)
+        .bind(db_name)
+        .bind(db_user)
+        .bind(db_password_enc)
+        .bind(input.is_active)
+        .bind(now)
+        .bind(now)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(AppError::Database)?;
+
+        tx.commit().await.map_err(AppError::Database)?;
+        Ok(server)
+    }
+
+    pub async fn update_server(
+        &self,
+        server_id: &str,
+        input: ManagedRadiusServerUpsert,
+    ) -> AppResult<ManagedRadiusServer> {
+        let tenant_id = required_trimmed("tenant_id", &input.tenant_id)?;
+        let name = required_trimmed("name", &input.name)?;
+        let db_host = required_trimmed("db_host", &input.db_host)?;
+        let db_name = required_trimmed("db_name", &input.db_name)?;
+        let db_user = required_trimmed("db_user", &input.db_user)?;
+        let db_port = normalize_managed_radius_db_port(input.db_port);
+
+        let existing = sqlx::query_as::<_, ManagedRadiusServer>(
+            "SELECT * FROM managed_radius_servers WHERE id = $1 AND tenant_id = $2",
+        )
+        .bind(server_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or_else(|| AppError::NotFound("Managed RADIUS server not found".into()))?;
+
+        let db_password_enc = match normalize_optional_secret_input(input.db_password.as_deref()) {
+            Some(password) => Self::encrypt_db_password(&password)?,
+            None => existing.db_password_enc,
+        };
+
+        let now = Utc::now();
+        let mut tx = self.pool.begin().await.map_err(AppError::Database)?;
+        if input.is_active {
+            sqlx::query(
+                "UPDATE managed_radius_servers SET is_active = false, updated_at = $2 WHERE tenant_id = $1 AND id <> $3",
+            )
+            .bind(tenant_id)
+            .bind(now)
+            .bind(server_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(AppError::Database)?;
+        }
+
+        let server = sqlx::query_as::<_, ManagedRadiusServer>(
+            r#"
+            UPDATE managed_radius_servers
+            SET name = $1,
+                db_host = $2,
+                db_port = $3,
+                db_name = $4,
+                db_user = $5,
+                db_password_enc = $6,
+                is_active = $7,
+                updated_at = $8
+            WHERE id = $9 AND tenant_id = $10
+            RETURNING *
+            "#,
+        )
+        .bind(name)
+        .bind(db_host)
+        .bind(db_port)
+        .bind(db_name)
+        .bind(db_user)
+        .bind(db_password_enc)
+        .bind(input.is_active)
+        .bind(now)
+        .bind(server_id)
+        .bind(tenant_id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(AppError::Database)?;
+
+        tx.commit().await.map_err(AppError::Database)?;
+        Ok(server)
+    }
+
+    pub async fn set_server_active(
+        &self,
+        tenant_id: &str,
+        server_id: &str,
+        is_active: bool,
+    ) -> AppResult<ManagedRadiusServer> {
+        let tenant_id = required_trimmed("tenant_id", tenant_id)?;
+        let now = Utc::now();
+        let mut tx = self.pool.begin().await.map_err(AppError::Database)?;
+
+        if is_active {
+            sqlx::query("UPDATE managed_radius_servers SET is_active = false, updated_at = $2 WHERE tenant_id = $1 AND id <> $3")
+                .bind(tenant_id)
+                .bind(now)
+                .bind(server_id)
+                .execute(&mut *tx)
+                .await
+                .map_err(AppError::Database)?;
+        }
+
+        let server = sqlx::query_as::<_, ManagedRadiusServer>(
+            "UPDATE managed_radius_servers SET is_active = $1, updated_at = $2 WHERE id = $3 AND tenant_id = $4 RETURNING *",
+        )
+        .bind(is_active)
+        .bind(now)
+        .bind(server_id)
+        .bind(tenant_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or_else(|| AppError::NotFound("Managed RADIUS server not found".into()))?;
+
+        tx.commit().await.map_err(AppError::Database)?;
+        Ok(server)
+    }
+
+    pub async fn create_mapping(&self, input: ManagedRadiusNasUpsert) -> AppResult<ManagedRadiusNas> {
+        let tenant_id = required_trimmed("tenant_id", &input.tenant_id)?;
+        let radius_server_id = required_trimmed("radius_server_id", &input.radius_server_id)?;
+        let router_id = required_trimmed("router_id", &input.router_id)?;
+        let nas_name = required_trimmed("nas_name", &input.nas_name)?;
+        let nas_ip_or_cidr = required_trimmed("nas_ip_or_cidr", &input.nas_ip_or_cidr)?;
+        let shortname = normalize_optional_secret_input(input.shortname.as_deref());
+        self.ensure_server_and_router_belong_to_tenant(tenant_id, radius_server_id, router_id)
+            .await?;
+
+        let shared_secret = normalize_optional_secret_input(input.shared_secret.as_deref())
+            .unwrap_or_else(generate_managed_radius_shared_secret);
+        let shared_secret_enc = Self::encrypt_shared_secret(&shared_secret)?;
+        let now = Utc::now();
+
+        sqlx::query_as::<_, ManagedRadiusNas>(
+            r#"
+            INSERT INTO managed_radius_nas (
+              id, tenant_id, router_id, radius_server_id, nas_name, nas_ip_or_cidr, shared_secret_enc, shortname, is_active, created_at, updated_at
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+            RETURNING *
+            "#,
+        )
+        .bind(Uuid::new_v4().to_string())
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(radius_server_id)
+        .bind(nas_name)
+        .bind(nas_ip_or_cidr)
+        .bind(shared_secret_enc)
+        .bind(shortname)
+        .bind(input.is_active)
+        .bind(now)
+        .bind(now)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(AppError::Database)
+    }
+
+    pub async fn update_mapping(
+        &self,
+        mapping_id: &str,
+        input: ManagedRadiusNasUpsert,
+    ) -> AppResult<ManagedRadiusNas> {
+        let tenant_id = required_trimmed("tenant_id", &input.tenant_id)?;
+        let radius_server_id = required_trimmed("radius_server_id", &input.radius_server_id)?;
+        let router_id = required_trimmed("router_id", &input.router_id)?;
+        let nas_name = required_trimmed("nas_name", &input.nas_name)?;
+        let nas_ip_or_cidr = required_trimmed("nas_ip_or_cidr", &input.nas_ip_or_cidr)?;
+        let shortname = normalize_optional_secret_input(input.shortname.as_deref());
+        self.ensure_server_and_router_belong_to_tenant(tenant_id, radius_server_id, router_id)
+            .await?;
+
+        let existing = sqlx::query_as::<_, ManagedRadiusNas>(
+            "SELECT * FROM managed_radius_nas WHERE id = $1 AND tenant_id = $2",
+        )
+        .bind(mapping_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or_else(|| AppError::NotFound("Managed RADIUS mapping not found".into()))?;
+
+        let shared_secret_enc = match normalize_optional_secret_input(input.shared_secret.as_deref()) {
+            Some(secret) => Self::encrypt_shared_secret(&secret)?,
+            None => existing.shared_secret_enc,
+        };
+        let now = Utc::now();
+
+        sqlx::query_as::<_, ManagedRadiusNas>(
+            r#"
+            UPDATE managed_radius_nas
+            SET router_id = $1,
+                radius_server_id = $2,
+                nas_name = $3,
+                nas_ip_or_cidr = $4,
+                shared_secret_enc = $5,
+                shortname = $6,
+                is_active = $7,
+                updated_at = $8
+            WHERE id = $9 AND tenant_id = $10
+            RETURNING *
+            "#,
+        )
+        .bind(router_id)
+        .bind(radius_server_id)
+        .bind(nas_name)
+        .bind(nas_ip_or_cidr)
+        .bind(shared_secret_enc)
+        .bind(shortname)
+        .bind(input.is_active)
+        .bind(now)
+        .bind(mapping_id)
+        .bind(tenant_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(AppError::Database)
+    }
+
+    pub async fn set_mapping_active(
+        &self,
+        tenant_id: &str,
+        mapping_id: &str,
+        is_active: bool,
+    ) -> AppResult<ManagedRadiusNas> {
+        let tenant_id = required_trimmed("tenant_id", tenant_id)?;
+        let now = Utc::now();
+        sqlx::query_as::<_, ManagedRadiusNas>(
+            "UPDATE managed_radius_nas SET is_active = $1, updated_at = $2 WHERE id = $3 AND tenant_id = $4 RETURNING *",
+        )
+        .bind(is_active)
+        .bind(now)
+        .bind(mapping_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or_else(|| AppError::NotFound("Managed RADIUS mapping not found".into()))
+    }
+
+    pub async fn rotate_mapping_secret(
+        &self,
+        tenant_id: &str,
+        mapping_id: &str,
+        shared_secret: Option<String>,
+    ) -> AppResult<String> {
+        let tenant_id = required_trimmed("tenant_id", tenant_id)?;
+        let next_secret = normalize_optional_secret_input(shared_secret.as_deref())
+            .unwrap_or_else(generate_managed_radius_shared_secret);
+        let next_secret_enc = Self::encrypt_shared_secret(&next_secret)?;
+        let now = Utc::now();
+
+        let updated = sqlx::query("UPDATE managed_radius_nas SET shared_secret_enc = $1, updated_at = $2 WHERE id = $3 AND tenant_id = $4")
+            .bind(next_secret_enc)
+            .bind(now)
+            .bind(mapping_id)
+            .bind(tenant_id)
+            .execute(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
+
+        if updated.rows_affected() == 0 {
+            return Err(AppError::NotFound("Managed RADIUS mapping not found".into()));
+        }
+
+        Ok(next_secret)
+    }
+
+    pub async fn reveal_mapping_secret(
+        &self,
+        tenant_id: &str,
+        mapping_id: &str,
+    ) -> AppResult<String> {
+        let tenant_id = required_trimmed("tenant_id", tenant_id)?;
+        let stored = sqlx::query_scalar::<_, String>(
+            "SELECT shared_secret_enc FROM managed_radius_nas WHERE id = $1 AND tenant_id = $2",
+        )
+        .bind(mapping_id)
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or_else(|| AppError::NotFound("Managed RADIUS mapping not found".into()))?;
+
+        decrypt_secret_opt_for(PURPOSE_MANAGED_RADIUS_SHARED_SECRET, &stored)?
+            .ok_or_else(|| AppError::Configuration("Managed RADIUS secret is unavailable".into()))
+    }
+
+    async fn ensure_server_and_router_belong_to_tenant(
+        &self,
+        tenant_id: &str,
+        radius_server_id: &str,
+        router_id: &str,
+    ) -> AppResult<()> {
+        let server_exists = sqlx::query_scalar::<_, bool>(
+            "SELECT count(*) > 0 FROM managed_radius_servers WHERE id = $1 AND tenant_id = $2",
+        )
+        .bind(radius_server_id)
+        .bind(tenant_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        if !server_exists {
+            return Err(AppError::Validation(
+                "Managed RADIUS server does not belong to the selected tenant".into(),
+            ));
+        }
+
+        let router_exists = sqlx::query_scalar::<_, bool>(
+            "SELECT count(*) > 0 FROM mikrotik_routers WHERE id = $1 AND tenant_id = $2",
+        )
+        .bind(router_id)
+        .bind(tenant_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        if !router_exists {
+            return Err(AppError::Validation(
+                "Router does not belong to the selected tenant".into(),
+            ));
+        }
+
+        Ok(())
+    }
+
     pub async fn get_router_setup(
         &self,
         tenant_id: &str,
@@ -440,6 +839,34 @@ fn resolve_radius_port(primary_env: &str, fallback_env: &str, default_port: i32)
         .and_then(|raw| raw.trim().parse::<i32>().ok())
         .filter(|port| *port > 0)
         .unwrap_or(default_port)
+}
+
+fn normalize_managed_radius_db_port(value: Option<i32>) -> i32 {
+    value.filter(|port| *port > 0).unwrap_or(5432)
+}
+
+fn normalize_optional_secret_input(value: Option<&str>) -> Option<String> {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+}
+
+fn required_trimmed<'a>(field: &str, value: &'a str) -> AppResult<&'a str> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Err(AppError::Validation(format!("{field} is required")));
+    }
+    Ok(trimmed)
+}
+
+fn generate_managed_radius_shared_secret() -> String {
+    Uuid::new_v4()
+        .simple()
+        .to_string()
+        .chars()
+        .take(32)
+        .collect()
 }
 
 fn resolve_radius_host(default_host: &str) -> (String, Option<String>) {
@@ -598,5 +1025,29 @@ mod tests {
         let (host, warning) = resolve_radius_host("radius-postgres");
         assert_eq!(host, "radius-postgres");
         assert!(warning.is_some());
+    }
+
+    #[test]
+    fn db_port_defaults_to_postgres_when_missing_or_invalid() {
+        assert_eq!(normalize_managed_radius_db_port(None), 5432);
+        assert_eq!(normalize_managed_radius_db_port(Some(0)), 5432);
+        assert_eq!(normalize_managed_radius_db_port(Some(55433)), 55433);
+    }
+
+    #[test]
+    fn optional_secret_input_treats_blank_values_as_none() {
+        assert_eq!(normalize_optional_secret_input(None), None);
+        assert_eq!(normalize_optional_secret_input(Some("   ")), None);
+        assert_eq!(
+            normalize_optional_secret_input(Some("  abc123  ")),
+            Some("abc123".into())
+        );
+    }
+
+    #[test]
+    fn generated_shared_secret_is_non_empty_and_url_safe() {
+        let secret = generate_managed_radius_shared_secret();
+        assert_eq!(secret.len(), 32);
+        assert!(secret.chars().all(|ch| ch.is_ascii_alphanumeric()));
     }
 }

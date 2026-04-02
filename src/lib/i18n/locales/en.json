@@ -874,17 +874,20 @@
       "loading": "Loading managed RADIUS observability...",
       "stats": {
         "servers": "Servers",
+        "mappings": "NAS Mappings",
         "routers": "Mapped Routers",
         "users": "Users",
         "out_of_sync": "Needs Attention"
       },
       "filters": {
         "search_servers": "Search servers...",
+        "search_mappings": "Search mappings...",
         "search_users": "Search users...",
         "all_statuses": "All statuses",
         "active": "Active",
         "inactive": "Inactive",
         "all_tenants": "All tenants",
+        "all_servers": "All servers",
         "all_routers": "All routers",
         "all_users": "All users",
         "provisioned": "Provisioned",
@@ -892,6 +895,7 @@
       },
       "sections": {
         "servers": "Servers",
+        "mappings": "NAS Mappings",
         "users": "Users"
       },
       "columns": {
@@ -903,10 +907,13 @@
         "status": "Status",
         "routers": "Routers",
         "updated": "Updated",
+        "actions": "Actions",
         "router": "Router",
         "username": "Username",
         "identity": "RADIUS Identity",
         "profile": "Profile",
+        "nas": "NAS",
+        "secret": "Secret",
         "last_sync": "Last Sync",
         "last_error": "Last Error"
       },
@@ -920,6 +927,8 @@
       "empty": {
         "servers_title": "No managed RADIUS servers yet",
         "servers_subtitle": "Managed RADIUS infrastructure will appear here after tenants configure servers and NAS mappings.",
+        "mappings_title": "No NAS mappings yet",
+        "mappings_subtitle": "Create a tenant-scoped server and map a router to start issuing copy-ready MikroTik CLI.",
         "users_title": "No managed RADIUS users yet",
         "users_subtitle": "Managed-RADIUS-backed PPPoE users will appear here after tenant admins apply them."
       },
@@ -927,6 +936,83 @@
         "unknown_router": "Unknown router",
         "none": "None",
         "never": "Never"
+      },
+      "actions": {
+        "new_server": "New server",
+        "new_mapping": "New mapping",
+        "create_server": "Create server",
+        "save_server": "Save server",
+        "create_mapping": "Create mapping",
+        "save_mapping": "Save mapping",
+        "edit": "Edit",
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "view_mappings": "View mappings",
+        "copy_cli": "Copy CLI",
+        "copy_secret": "Copy secret",
+        "reveal_secret": "Reveal secret",
+        "rotate_secret": "Rotate secret",
+        "generate_secret": "Generate"
+      },
+      "form": {
+        "tenant": "Tenant",
+        "server": "Server",
+        "router": "Router",
+        "select_tenant": "Select a tenant",
+        "select_server": "Select a server",
+        "select_router": "Select a router",
+        "server_name": "Server name",
+        "server_name_placeholder": "Primary RADIUS DB",
+        "db_host": "DB host",
+        "db_port": "DB port",
+        "db_name": "DB name",
+        "db_user": "DB user",
+        "db_password": "DB password",
+        "db_password_placeholder": "Encrypted at rest",
+        "db_password_placeholder_edit": "Leave blank to keep current password",
+        "active_server_hint": "Set this server as the active tenant server",
+        "nas_name": "NAS name",
+        "nas_name_placeholder": "router-pop-a",
+        "shortname": "Shortname",
+        "shortname_placeholder": "POP-A",
+        "nas_ip_or_cidr": "NAS IP / CIDR",
+        "shared_secret": "Shared secret",
+        "shared_secret_placeholder": "Leave blank to auto-generate",
+        "active_mapping_hint": "Enable this NAS mapping immediately"
+      },
+      "modals": {
+        "server": {
+          "create_title": "New Managed RADIUS server",
+          "edit_title": "Edit Managed RADIUS server"
+        },
+        "mapping": {
+          "create_title": "New NAS mapping",
+          "edit_title": "Edit NAS mapping"
+        },
+        "secret": {
+          "rotate_title": "Rotate shared secret",
+          "reveal_title": "Reveal shared secret",
+          "mapping": "Mapping",
+          "masked": "Masked secret",
+          "revealed": "Revealed secret",
+          "not_loaded": "Click reveal to load the secret"
+        }
+      },
+      "toasts": {
+        "server_validation": "Complete the server form first",
+        "server_password_required": "Database password is required for new servers",
+        "server_created": "Managed RADIUS server created",
+        "server_updated": "Managed RADIUS server updated",
+        "server_activated": "Server activated",
+        "server_deactivated": "Server deactivated",
+        "mapping_validation": "Complete the mapping form first",
+        "mapping_created": "NAS mapping created",
+        "mapping_updated": "NAS mapping updated",
+        "mapping_activated": "Mapping activated",
+        "mapping_deactivated": "Mapping deactivated",
+        "secret_revealed": "Shared secret loaded",
+        "secret_rotated": "Shared secret rotated",
+        "cli_copied": "RouterOS CLI copied"
       }
     },
     "tenants": {
@@ -2748,6 +2834,7 @@
             "import": "Import"
           },
           "fields": {
+            "source": "Source",
             "include_disabled": "Include disabled",
             "include_disabled_hint": "Also scan secrets that are disabled on the router.",
             "customer_optional": "Assign to customer (optional)",
@@ -2774,6 +2861,9 @@
           "present": "Provisioned",
           "missing": "Not provisioned",
           "disabled": "Disabled"
+        },
+        "fields": {
+          "source": "Account source"
         },
         "filters": {
           "all": "All",
@@ -2865,6 +2955,28 @@
           "traffic": "Traffic",
           "ppp_profiles": "PPP Profiles",
           "ip_pools": "IP Pools"
+        },
+        "managed_radius": {
+          "title": "RADIUS Setup",
+          "subtitle": "Copy MikroTik CLI for PPP authentication",
+          "labels": {
+            "server": "Server",
+            "host": "RADIUS host",
+            "ports": "Ports",
+            "nas_source": "NAS source",
+            "shared_secret": "Shared secret"
+          },
+          "actions": {
+            "show_secret": "Show secret",
+            "hide_secret": "Hide secret",
+            "copy_secret": "Copy secret",
+            "copy_cli": "Copy CLI"
+          },
+          "toasts": {
+            "cli_copied": "RADIUS CLI copied",
+            "secret_copied": "Shared secret copied"
+          },
+          "empty": "Managed RADIUS is not configured for this router yet. The router can still use local MikroTik PPP secrets for now."
         },
         "badges": {
           "online": "Online",

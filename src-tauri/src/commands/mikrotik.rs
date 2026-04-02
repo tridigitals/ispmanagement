@@ -552,10 +552,26 @@ pub async fn get_mikrotik_router_managed_radius_setup(
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "Router not found".to_string())?;
 
-    managed_radius
+    let mut setup = managed_radius
         .get_router_setup(&tenant_id, &router)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    let can_reveal_secret = auth
+        .check_permission(
+            &claims.sub,
+            &tenant_id,
+            "network_routers",
+            "manage_radius_secret",
+        )
+        .await
+        .is_ok();
+
+    if !can_reveal_secret {
+        setup.shared_secret = None;
+    }
+
+    Ok(setup)
 }
 
 #[tauri::command]

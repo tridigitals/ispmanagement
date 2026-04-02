@@ -1,6 +1,9 @@
 use crate::models::Tenant;
-use crate::services::{AuditService, AuthService, PlanService};
+use crate::services::{AuditService, AuthService, ManagedRadiusService, PlanService};
 use tauri::State;
+
+const DEFAULT_RADIUS_AUTH_PORT: i32 = 1812;
+const DEFAULT_RADIUS_ACCT_PORT: i32 = 1813;
 
 #[derive(serde::Serialize)]
 pub struct TenantListResponse {
@@ -54,6 +57,38 @@ pub struct SuperadminManagedRadiusUserListResponse {
     pub total: i64,
 }
 
+#[derive(Debug, serde::Serialize, sqlx::FromRow)]
+pub struct SuperadminManagedRadiusMapping {
+    pub id: String,
+    pub tenant_id: String,
+    pub tenant_name: String,
+    pub radius_server_id: String,
+    pub server_name: String,
+    pub radius_host: String,
+    pub auth_port: i32,
+    pub acct_port: i32,
+    pub router_id: String,
+    pub router_name: Option<String>,
+    pub nas_name: String,
+    pub nas_ip_or_cidr: String,
+    pub shortname: Option<String>,
+    pub shared_secret_masked: String,
+    pub is_active: bool,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(serde::Serialize)]
+pub struct SuperadminManagedRadiusMappingListResponse {
+    pub data: Vec<SuperadminManagedRadiusMapping>,
+    pub total: i64,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct SuperadminManagedRadiusSecretValue {
+    pub shared_secret: String,
+    pub shared_secret_masked: String,
+}
+
 #[tauri::command]
 pub async fn list_tenants(
     token: String,
@@ -103,9 +138,9 @@ pub async fn list_managed_radius_servers(
           s.tenant_id,
           t.name AS tenant_name,
           s.name,
-          s.host,
-          s.auth_port,
-          s.acct_port,
+          s.db_host AS host,
+          $1::integer AS auth_port,
+          $2::integer AS acct_port,
           s.db_host,
           s.db_port,
           s.db_name,
@@ -120,11 +155,13 @@ pub async fn list_managed_radius_servers(
          AND n.tenant_id = s.tenant_id
          AND n.is_active = true
         GROUP BY
-          s.id, s.tenant_id, t.name, s.name, s.host, s.auth_port, s.acct_port,
+          s.id, s.tenant_id, t.name, s.name, s.db_host,
           s.db_host, s.db_port, s.db_name, s.is_active, s.updated_at
         ORDER BY s.updated_at DESC, s.name ASC
         "#,
     )
+    .bind(DEFAULT_RADIUS_AUTH_PORT)
+    .bind(DEFAULT_RADIUS_ACCT_PORT)
     .fetch_all(&auth_service.pool)
     .await
     .map_err(|e| e.to_string())?;
@@ -184,6 +221,468 @@ pub async fn list_managed_radius_users(
     let total = users.len() as i64;
 
     Ok(SuperadminManagedRadiusUserListResponse { data: users, total })
+}
+
+#[tauri::command]
+pub async fn list_managed_radius_mappings(
+    token: String,
+    auth_service: State<'_, AuthService>,
+    managed_radius_service: State<'_, ManagedRadiusService>,
+) -> Result<SuperadminManagedRadiusMappingListResponse, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !claims.is_super_admin {
+        return Err("Unauthorized".to_string());
+    }
+
+    let rows = sqlx::query_as::<_, (
+        String,
+        String,
+        String,
+        String,
+        String,
+        String,
+        i32,
+        i32,
+        String,
+        Option<String>,
+        String,
+        String,
+        Option<String>,
+        String,
+        bool,
+        chrono::DateTime<chrono::Utc>,
+    )>(
+        r#"
+        SELECT
+          n.id,
+          n.tenant_id,
+          t.name AS tenant_name,
+          n.radius_server_id,
+          s.name AS server_name,
+          s.db_host AS radius_host,
+          $1::integer AS auth_port,
+          $2::integer AS acct_port,
+          n.router_id,
+          r.name AS router_name,
+          n.nas_name,
+          n.nas_ip_or_cidr,
+          n.shortname,
+          n.shared_secret_enc,
+          n.is_active,
+          n.updated_at
+        FROM managed_radius_nas n
+        INNER JOIN tenants t
+          ON t.id = n.tenant_id
+        INNER JOIN managed_radius_servers s
+          ON s.id = n.radius_server_id
+         AND s.tenant_id = n.tenant_id
+        LEFT JOIN mikrotik_routers r
+          ON r.id = n.router_id
+         AND r.tenant_id = n.tenant_id
+        ORDER BY n.updated_at DESC, n.nas_name ASC
+        "#,
+    )
+    .bind(DEFAULT_RADIUS_AUTH_PORT)
+    .bind(DEFAULT_RADIUS_ACCT_PORT)
+    .fetch_all(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let mut data = Vec::with_capacity(rows.len());
+    for row in rows {
+        let shared_secret = managed_radius_service
+            .reveal_mapping_secret(&row.1, &row.0)
+            .await
+            .map_err(|e| e.to_string())?;
+        data.push(SuperadminManagedRadiusMapping {
+            id: row.0,
+            tenant_id: row.1,
+            tenant_name: row.2,
+            radius_server_id: row.3,
+            server_name: row.4,
+            radius_host: row.5,
+            auth_port: row.6,
+            acct_port: row.7,
+            router_id: row.8,
+            router_name: row.9,
+            nas_name: row.10,
+            nas_ip_or_cidr: row.11,
+            shortname: row.12,
+            shared_secret_masked: ManagedRadiusService::mask_shared_secret_for_display(
+                &shared_secret,
+            ),
+            is_active: row.14,
+            updated_at: row.15,
+        });
+    }
+
+    let total = data.len() as i64;
+    Ok(SuperadminManagedRadiusMappingListResponse { data, total })
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn create_managed_radius_server(
+    token: String,
+    tenant_id: String,
+    name: String,
+    db_host: String,
+    db_port: Option<i32>,
+    db_name: String,
+    db_user: String,
+    db_password: String,
+    is_active: bool,
+    auth_service: State<'_, AuthService>,
+    managed_radius_service: State<'_, ManagedRadiusService>,
+    audit_service: State<'_, AuditService>,
+) -> Result<(), String> {
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    if !claims.is_super_admin {
+        return Err("Unauthorized".to_string());
+    }
+
+    let server = managed_radius_service
+        .create_server(crate::services::managed_radius_service::ManagedRadiusServerUpsert {
+            tenant_id: tenant_id.clone(),
+            name,
+            db_host,
+            db_port,
+            db_name,
+            db_user,
+            db_password: Some(db_password),
+            is_active,
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+
+    audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "MANAGED_RADIUS_SERVER_CREATED",
+            "managed_radius_server",
+            Some(&server.id),
+            Some("Managed RADIUS server created by Superadmin"),
+            None,
+        )
+        .await;
+
+    Ok(())
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn update_managed_radius_server(
+    token: String,
+    id: String,
+    tenant_id: String,
+    name: String,
+    db_host: String,
+    db_port: Option<i32>,
+    db_name: String,
+    db_user: String,
+    db_password: Option<String>,
+    is_active: bool,
+    auth_service: State<'_, AuthService>,
+    managed_radius_service: State<'_, ManagedRadiusService>,
+    audit_service: State<'_, AuditService>,
+) -> Result<(), String> {
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    if !claims.is_super_admin {
+        return Err("Unauthorized".to_string());
+    }
+
+    managed_radius_service
+        .update_server(
+            &id,
+            crate::services::managed_radius_service::ManagedRadiusServerUpsert {
+                tenant_id: tenant_id.clone(),
+                name,
+                db_host,
+                db_port,
+                db_name,
+                db_user,
+                db_password,
+                is_active,
+            },
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+
+    audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "MANAGED_RADIUS_SERVER_UPDATED",
+            "managed_radius_server",
+            Some(&id),
+            Some("Managed RADIUS server updated by Superadmin"),
+            None,
+        )
+        .await;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn set_managed_radius_server_active(
+    token: String,
+    tenant_id: String,
+    id: String,
+    is_active: bool,
+    auth_service: State<'_, AuthService>,
+    managed_radius_service: State<'_, ManagedRadiusService>,
+    audit_service: State<'_, AuditService>,
+) -> Result<(), String> {
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    if !claims.is_super_admin {
+        return Err("Unauthorized".to_string());
+    }
+
+    managed_radius_service
+        .set_server_active(&tenant_id, &id, is_active)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            if is_active {
+                "MANAGED_RADIUS_SERVER_ACTIVATED"
+            } else {
+                "MANAGED_RADIUS_SERVER_DEACTIVATED"
+            },
+            "managed_radius_server",
+            Some(&id),
+            Some("Managed RADIUS server active state changed by Superadmin"),
+            None,
+        )
+        .await;
+
+    Ok(())
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn create_managed_radius_mapping(
+    token: String,
+    tenant_id: String,
+    radius_server_id: String,
+    router_id: String,
+    nas_name: String,
+    nas_ip_or_cidr: String,
+    shortname: Option<String>,
+    shared_secret: Option<String>,
+    is_active: bool,
+    auth_service: State<'_, AuthService>,
+    managed_radius_service: State<'_, ManagedRadiusService>,
+    audit_service: State<'_, AuditService>,
+) -> Result<(), String> {
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    if !claims.is_super_admin {
+        return Err("Unauthorized".to_string());
+    }
+
+    let mapping = managed_radius_service
+        .create_mapping(crate::services::managed_radius_service::ManagedRadiusNasUpsert {
+            tenant_id: tenant_id.clone(),
+            radius_server_id,
+            router_id,
+            nas_name,
+            nas_ip_or_cidr,
+            shortname,
+            shared_secret,
+            is_active,
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+
+    audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "MANAGED_RADIUS_MAPPING_CREATED",
+            "managed_radius_mapping",
+            Some(&mapping.id),
+            Some("Managed RADIUS mapping created by Superadmin"),
+            None,
+        )
+        .await;
+
+    Ok(())
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn update_managed_radius_mapping(
+    token: String,
+    id: String,
+    tenant_id: String,
+    radius_server_id: String,
+    router_id: String,
+    nas_name: String,
+    nas_ip_or_cidr: String,
+    shortname: Option<String>,
+    shared_secret: Option<String>,
+    is_active: bool,
+    auth_service: State<'_, AuthService>,
+    managed_radius_service: State<'_, ManagedRadiusService>,
+    audit_service: State<'_, AuditService>,
+) -> Result<(), String> {
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    if !claims.is_super_admin {
+        return Err("Unauthorized".to_string());
+    }
+
+    managed_radius_service
+        .update_mapping(
+            &id,
+            crate::services::managed_radius_service::ManagedRadiusNasUpsert {
+                tenant_id: tenant_id.clone(),
+                radius_server_id,
+                router_id,
+                nas_name,
+                nas_ip_or_cidr,
+                shortname,
+                shared_secret,
+                is_active,
+            },
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+
+    audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "MANAGED_RADIUS_MAPPING_UPDATED",
+            "managed_radius_mapping",
+            Some(&id),
+            Some("Managed RADIUS mapping updated by Superadmin"),
+            None,
+        )
+        .await;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn set_managed_radius_mapping_active(
+    token: String,
+    tenant_id: String,
+    id: String,
+    is_active: bool,
+    auth_service: State<'_, AuthService>,
+    managed_radius_service: State<'_, ManagedRadiusService>,
+    audit_service: State<'_, AuditService>,
+) -> Result<(), String> {
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    if !claims.is_super_admin {
+        return Err("Unauthorized".to_string());
+    }
+
+    managed_radius_service
+        .set_mapping_active(&tenant_id, &id, is_active)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            if is_active {
+                "MANAGED_RADIUS_MAPPING_ACTIVATED"
+            } else {
+                "MANAGED_RADIUS_MAPPING_DEACTIVATED"
+            },
+            "managed_radius_mapping",
+            Some(&id),
+            Some("Managed RADIUS mapping active state changed by Superadmin"),
+            None,
+        )
+        .await;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn rotate_managed_radius_mapping_secret(
+    token: String,
+    tenant_id: String,
+    id: String,
+    shared_secret: Option<String>,
+    auth_service: State<'_, AuthService>,
+    managed_radius_service: State<'_, ManagedRadiusService>,
+    audit_service: State<'_, AuditService>,
+) -> Result<SuperadminManagedRadiusSecretValue, String> {
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    if !claims.is_super_admin {
+        return Err("Unauthorized".to_string());
+    }
+
+    let next_secret = managed_radius_service
+        .rotate_mapping_secret(&tenant_id, &id, shared_secret)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "MANAGED_RADIUS_MAPPING_SECRET_ROTATED",
+            "managed_radius_mapping",
+            Some(&id),
+            Some("Managed RADIUS mapping secret rotated by Superadmin"),
+            None,
+        )
+        .await;
+
+    Ok(SuperadminManagedRadiusSecretValue {
+        shared_secret_masked: ManagedRadiusService::mask_shared_secret_for_display(&next_secret),
+        shared_secret: next_secret,
+    })
+}
+
+#[tauri::command]
+pub async fn reveal_managed_radius_mapping_secret(
+    token: String,
+    tenant_id: String,
+    id: String,
+    auth_service: State<'_, AuthService>,
+    managed_radius_service: State<'_, ManagedRadiusService>,
+    audit_service: State<'_, AuditService>,
+) -> Result<SuperadminManagedRadiusSecretValue, String> {
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    if !claims.is_super_admin {
+        return Err("Unauthorized".to_string());
+    }
+
+    let secret = managed_radius_service
+        .reveal_mapping_secret(&tenant_id, &id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "MANAGED_RADIUS_MAPPING_SECRET_REVEALED",
+            "managed_radius_mapping",
+            Some(&id),
+            Some("Managed RADIUS mapping secret revealed by Superadmin"),
+            None,
+        )
+        .await;
+
+    Ok(SuperadminManagedRadiusSecretValue {
+        shared_secret_masked: ManagedRadiusService::mask_shared_secret_for_display(&secret),
+        shared_secret: secret,
+    })
 }
 
 #[tauri::command]

@@ -359,6 +359,11 @@ pub async fn seed_roles(pool: &DbPool) -> Result<(), sqlx::Error> {
         // Network & provisioning
         ("network_routers", "read", "View routers and status"),
         ("network_routers", "manage", "Manage router inventory"),
+        (
+            "network_routers",
+            "manage_radius_secret",
+            "Reveal managed RADIUS shared secrets",
+        ),
         ("network_topology", "read", "View network topology map"),
         ("network_topology", "manage", "Manage network topology map"),
         ("service_zones", "read", "View service zones"),

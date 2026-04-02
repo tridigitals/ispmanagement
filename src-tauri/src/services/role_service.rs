@@ -48,6 +48,11 @@ impl RoleService {
             // Network / Routers (tenant scoped)
             ("network_routers", "read", "View routers and status"),
             ("network_routers", "manage", "Manage router inventory"),
+            (
+                "network_routers",
+                "manage_radius_secret",
+                "Reveal managed RADIUS shared secrets",
+            ),
             // Network Topology / Mapping (tenant scoped)
             ("network_topology", "read", "View network topology map"),
             ("network_topology", "manage", "Manage network topology map"),

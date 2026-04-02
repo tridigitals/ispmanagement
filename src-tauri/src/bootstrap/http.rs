@@ -389,7 +389,35 @@ pub async fn start_server_impl(
         )
         .route(
             "/api/superadmin/radius/servers",
-            get(superadmin::list_managed_radius_servers),
+            get(superadmin::list_managed_radius_servers).post(superadmin::create_managed_radius_server),
+        )
+        .route(
+            "/api/superadmin/radius/servers/{id}",
+            put(superadmin::update_managed_radius_server),
+        )
+        .route(
+            "/api/superadmin/radius/servers/{id}/active",
+            post(superadmin::set_managed_radius_server_active),
+        )
+        .route(
+            "/api/superadmin/radius/mappings",
+            get(superadmin::list_managed_radius_mappings).post(superadmin::create_managed_radius_mapping),
+        )
+        .route(
+            "/api/superadmin/radius/mappings/{id}",
+            put(superadmin::update_managed_radius_mapping),
+        )
+        .route(
+            "/api/superadmin/radius/mappings/{id}/active",
+            post(superadmin::set_managed_radius_mapping_active),
+        )
+        .route(
+            "/api/superadmin/radius/mappings/{id}/secret/rotate",
+            post(superadmin::rotate_managed_radius_mapping_secret),
+        )
+        .route(
+            "/api/superadmin/radius/mappings/{id}/secret/reveal",
+            post(superadmin::reveal_managed_radius_mapping_secret),
         )
         .route(
             "/api/superadmin/radius/users",

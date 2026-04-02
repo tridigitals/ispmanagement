@@ -38,6 +38,27 @@ const commandMap: Record<string, { method: string; path: string }> = {
   delete_my_address: { method: 'DELETE', path: '/users/me/addresses/:addressId' },
   list_tenants: { method: 'GET', path: '/superadmin/tenants' },
   list_managed_radius_servers: { method: 'GET', path: '/superadmin/radius/servers' },
+  create_managed_radius_server: { method: 'POST', path: '/superadmin/radius/servers' },
+  update_managed_radius_server: { method: 'PUT', path: '/superadmin/radius/servers/:id' },
+  set_managed_radius_server_active: {
+    method: 'POST',
+    path: '/superadmin/radius/servers/:id/active',
+  },
+  list_managed_radius_mappings: { method: 'GET', path: '/superadmin/radius/mappings' },
+  create_managed_radius_mapping: { method: 'POST', path: '/superadmin/radius/mappings' },
+  update_managed_radius_mapping: { method: 'PUT', path: '/superadmin/radius/mappings/:id' },
+  set_managed_radius_mapping_active: {
+    method: 'POST',
+    path: '/superadmin/radius/mappings/:id/active',
+  },
+  rotate_managed_radius_mapping_secret: {
+    method: 'POST',
+    path: '/superadmin/radius/mappings/:id/secret/rotate',
+  },
+  reveal_managed_radius_mapping_secret: {
+    method: 'POST',
+    path: '/superadmin/radius/mappings/:id/secret/reveal',
+  },
   list_managed_radius_users: { method: 'GET', path: '/superadmin/radius/users' },
   create_tenant: { method: 'POST', path: '/superadmin/tenants' },
   delete_tenant: { method: 'DELETE', path: '/superadmin/tenants/:id' },

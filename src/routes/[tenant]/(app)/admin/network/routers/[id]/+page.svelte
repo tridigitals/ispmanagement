@@ -138,6 +138,7 @@
   let managedRadiusSetup = $state<ManagedRadiusRouterSetupResponse | null>(null);
   let managedRadiusLoadedFor = $state<string | null>(null);
   let showManagedRadiusSecret = $state(false);
+  let canRevealManagedRadiusSecret = $derived($can('manage_radius_secret', 'network_routers'));
 
   let cpuSeries = $derived.by(() => {
     const pts = metrics
@@ -385,7 +386,9 @@
 
     try {
       await navigator.clipboard.writeText(script);
-      toast.success('CLI RADIUS copied');
+      toast.success(
+        $t('admin.network.routers.managed_radius.toasts.cli_copied') || 'RADIUS CLI copied',
+      );
     } catch (e: any) {
       toast.error(e?.message || e);
     }
@@ -397,7 +400,10 @@
 
     try {
       await navigator.clipboard.writeText(secret);
-      toast.success('Shared secret copied');
+      toast.success(
+        $t('admin.network.routers.managed_radius.toasts.secret_copied') ||
+          'Shared secret copied',
+      );
     } catch (e: any) {
       toast.error(e?.message || e);
     }
@@ -1026,30 +1032,38 @@
         <div class="card full">
           <div class="card-head">
             <div>
-              <h2>RADIUS Setup</h2>
-              <div class="muted">Copy CLI MikroTik for PPP authentication</div>
+              <h2>{$t('admin.network.routers.managed_radius.title') || 'RADIUS Setup'}</h2>
+              <div class="muted">
+                {$t('admin.network.routers.managed_radius.subtitle') ||
+                  'Copy MikroTik CLI for PPP authentication'}
+              </div>
             </div>
             <div class="setup-actions">
-              {#if managedRadiusSetup?.configured && canCopyManagedRadiusSecret(managedRadiusSetup)}
+              {#if managedRadiusSetup?.configured && canRevealManagedRadiusSecret && canCopyManagedRadiusSecret(managedRadiusSetup)}
                 <button
                   class="btn ghost btn-sm"
                   type="button"
                   onclick={() => (showManagedRadiusSecret = !showManagedRadiusSecret)}
                 >
                   <Icon name={showManagedRadiusSecret ? 'eye-off' : 'eye'} size={14} />
-                  {showManagedRadiusSecret ? 'Hide Secret' : 'Show Secret'}
+                  {showManagedRadiusSecret
+                    ? $t('admin.network.routers.managed_radius.actions.hide_secret') ||
+                      'Hide secret'
+                    : $t('admin.network.routers.managed_radius.actions.show_secret') ||
+                      'Show secret'}
                 </button>
 
                 <button class="btn ghost btn-sm" type="button" onclick={copyManagedRadiusSecret}>
                   <Icon name="copy" size={14} />
-                  Copy Secret
+                  {$t('admin.network.routers.managed_radius.actions.copy_secret') ||
+                    'Copy secret'}
                 </button>
               {/if}
 
               {#if managedRadiusSetup?.configured && managedRadiusSetup.cli_script}
                 <button class="btn ghost btn-sm" type="button" onclick={copyManagedRadiusScript}>
                   <Icon name="copy" size={14} />
-                  Copy CLI
+                  {$t('admin.network.routers.managed_radius.actions.copy_cli') || 'Copy CLI'}
                 </button>
               {/if}
             </div>
@@ -1060,25 +1074,36 @@
           {:else if managedRadiusSetup?.configured}
             <div class="setup-grid">
               <div class="row">
-                <span class="muted">Server</span>
+                <span class="muted">
+                  {$t('admin.network.routers.managed_radius.labels.server') || 'Server'}
+                </span>
                 <span class="mono">{managedRadiusSetup.server_name || 'Managed RADIUS'}</span>
               </div>
               <div class="row">
-                <span class="muted">RADIUS host</span>
+                <span class="muted">
+                  {$t('admin.network.routers.managed_radius.labels.host') || 'RADIUS host'}
+                </span>
                 <span class="mono">{managedRadiusSetup.radius_host || '—'}</span>
               </div>
               <div class="row">
-                <span class="muted">Ports</span>
+                <span class="muted">
+                  {$t('admin.network.routers.managed_radius.labels.ports') || 'Ports'}
+                </span>
                 <span class="mono"
                   >auth {managedRadiusSetup.auth_port} / acct {managedRadiusSetup.acct_port}</span
                 >
               </div>
               <div class="row">
-                <span class="muted">NAS source</span>
+                <span class="muted">
+                  {$t('admin.network.routers.managed_radius.labels.nas_source') || 'NAS source'}
+                </span>
                 <span class="mono">{managedRadiusSetup.nas_ip_or_cidr || '—'}</span>
               </div>
               <div class="row">
-                <span class="muted">Shared secret</span>
+                <span class="muted">
+                  {$t('admin.network.routers.managed_radius.labels.shared_secret') ||
+                    'Shared secret'}
+                </span>
                 <span class="mono"
                   >{getManagedRadiusDisplayedSecret(
                     managedRadiusSetup,
@@ -1104,8 +1129,8 @@
             {/if}
           {:else}
             <div class="muted">
-              Managed RADIUS belum dikonfigurasi untuk router ini. Saat ini router masih bisa tetap
-              memakai PPP secret lokal dari MikroTik.
+              {$t('admin.network.routers.managed_radius.empty') ||
+                'Managed RADIUS is not configured for this router yet. The router can still use local MikroTik PPP secrets for now.'}
             </div>
           {/if}
         </div>

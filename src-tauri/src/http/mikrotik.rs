@@ -549,10 +549,26 @@ async fn get_managed_radius_setup(
         .await?
         .ok_or_else(|| AppError::NotFound("Router not found".into()))?;
 
-    let setup = state
+    let mut setup = state
         .managed_radius_service
         .get_router_setup(&tenant_id, &router)
         .await?;
+
+    let can_reveal_secret = state
+        .auth_service
+        .check_permission(
+            &claims.sub,
+            &tenant_id,
+            "network_routers",
+            "manage_radius_secret",
+        )
+        .await
+        .is_ok();
+
+    if !can_reveal_secret {
+        setup.shared_secret = None;
+    }
+
     Ok(Json(setup))
 }
 

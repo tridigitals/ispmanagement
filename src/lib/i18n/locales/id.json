@@ -874,17 +874,20 @@
       "loading": "Memuat observabilitas managed RADIUS...",
       "stats": {
         "servers": "Server",
+        "mappings": "Mapping NAS",
         "routers": "Router Terhubung",
         "users": "User",
         "out_of_sync": "Perlu Perhatian"
       },
       "filters": {
         "search_servers": "Cari server...",
+        "search_mappings": "Cari mapping...",
         "search_users": "Cari user...",
         "all_statuses": "Semua status",
         "active": "Aktif",
         "inactive": "Nonaktif",
         "all_tenants": "Semua tenant",
+        "all_servers": "Semua server",
         "all_routers": "Semua router",
         "all_users": "Semua user",
         "provisioned": "Tersedia",
@@ -892,6 +895,7 @@
       },
       "sections": {
         "servers": "Server",
+        "mappings": "Mapping NAS",
         "users": "User"
       },
       "columns": {
@@ -903,10 +907,13 @@
         "status": "Status",
         "routers": "Router",
         "updated": "Diperbarui",
+        "actions": "Aksi",
         "router": "Router",
         "username": "Username",
         "identity": "Identitas RADIUS",
         "profile": "Profil",
+        "nas": "NAS",
+        "secret": "Secret",
         "last_sync": "Sinkron Terakhir",
         "last_error": "Error Terakhir"
       },
@@ -920,6 +927,8 @@
       "empty": {
         "servers_title": "Belum ada server managed RADIUS",
         "servers_subtitle": "Infrastruktur managed RADIUS akan muncul di sini setelah tenant mengatur server dan mapping NAS.",
+        "mappings_title": "Belum ada mapping NAS",
+        "mappings_subtitle": "Buat server tenant lalu map router agar CLI MikroTik siap-copy langsung tersedia di sini.",
         "users_title": "Belum ada user managed RADIUS",
         "users_subtitle": "User PPPoE dengan sumber managed RADIUS akan muncul di sini setelah tenant admin menerapkannya."
       },
@@ -927,6 +936,83 @@
         "unknown_router": "Router tidak diketahui",
         "none": "Tidak ada",
         "never": "Belum pernah"
+      },
+      "actions": {
+        "new_server": "Server baru",
+        "new_mapping": "Mapping baru",
+        "create_server": "Buat server",
+        "save_server": "Simpan server",
+        "create_mapping": "Buat mapping",
+        "save_mapping": "Simpan mapping",
+        "edit": "Edit",
+        "activate": "Aktifkan",
+        "deactivate": "Nonaktifkan",
+        "view_mappings": "Lihat mapping",
+        "copy_cli": "Salin CLI",
+        "copy_secret": "Salin secret",
+        "reveal_secret": "Tampilkan secret",
+        "rotate_secret": "Putar secret",
+        "generate_secret": "Generate"
+      },
+      "form": {
+        "tenant": "Tenant",
+        "server": "Server",
+        "router": "Router",
+        "select_tenant": "Pilih tenant",
+        "select_server": "Pilih server",
+        "select_router": "Pilih router",
+        "server_name": "Nama server",
+        "server_name_placeholder": "Primary RADIUS DB",
+        "db_host": "Host DB",
+        "db_port": "Port DB",
+        "db_name": "Nama DB",
+        "db_user": "User DB",
+        "db_password": "Password DB",
+        "db_password_placeholder": "Disimpan terenkripsi",
+        "db_password_placeholder_edit": "Biarkan kosong untuk mempertahankan password saat ini",
+        "active_server_hint": "Jadikan server ini server tenant yang aktif",
+        "nas_name": "Nama NAS",
+        "nas_name_placeholder": "router-pop-a",
+        "shortname": "Shortname",
+        "shortname_placeholder": "POP-A",
+        "nas_ip_or_cidr": "IP / CIDR NAS",
+        "shared_secret": "Shared secret",
+        "shared_secret_placeholder": "Kosongkan untuk auto-generate",
+        "active_mapping_hint": "Aktifkan mapping NAS ini sekarang"
+      },
+      "modals": {
+        "server": {
+          "create_title": "Server Managed RADIUS baru",
+          "edit_title": "Edit server Managed RADIUS"
+        },
+        "mapping": {
+          "create_title": "Mapping NAS baru",
+          "edit_title": "Edit mapping NAS"
+        },
+        "secret": {
+          "rotate_title": "Putar shared secret",
+          "reveal_title": "Tampilkan shared secret",
+          "mapping": "Mapping",
+          "masked": "Secret tersamarkan",
+          "revealed": "Secret asli",
+          "not_loaded": "Klik tampilkan untuk memuat secret"
+        }
+      },
+      "toasts": {
+        "server_validation": "Lengkapi form server terlebih dahulu",
+        "server_password_required": "Password database wajib diisi untuk server baru",
+        "server_created": "Server Managed RADIUS berhasil dibuat",
+        "server_updated": "Server Managed RADIUS berhasil diperbarui",
+        "server_activated": "Server berhasil diaktifkan",
+        "server_deactivated": "Server berhasil dinonaktifkan",
+        "mapping_validation": "Lengkapi form mapping terlebih dahulu",
+        "mapping_created": "Mapping NAS berhasil dibuat",
+        "mapping_updated": "Mapping NAS berhasil diperbarui",
+        "mapping_activated": "Mapping berhasil diaktifkan",
+        "mapping_deactivated": "Mapping berhasil dinonaktifkan",
+        "secret_revealed": "Shared secret berhasil dimuat",
+        "secret_rotated": "Shared secret berhasil diputar",
+        "cli_copied": "CLI RouterOS berhasil disalin"
       }
     },
     "tenants": {
@@ -2534,6 +2620,7 @@
             "import": "Import"
           },
           "fields": {
+            "source": "Sumber",
             "include_disabled": "Sertakan yang nonaktif",
             "include_disabled_hint": "Ikut scan secret yang statusnya disabled di router.",
             "customer_optional": "Tetapkan ke pelanggan (opsional)",
@@ -2560,6 +2647,9 @@
           "present": "Sudah diprovisikan",
           "missing": "Belum diprovisikan",
           "disabled": "Nonaktif"
+        },
+        "fields": {
+          "source": "Sumber akun"
         },
         "filters": {
           "all": "Semua",
@@ -2651,6 +2741,28 @@
           "traffic": "Trafik",
           "ppp_profiles": "Profil PPP",
           "ip_pools": "Pool IP"
+        },
+        "managed_radius": {
+          "title": "Setup RADIUS",
+          "subtitle": "Salin CLI MikroTik untuk autentikasi PPP",
+          "labels": {
+            "server": "Server",
+            "host": "Host RADIUS",
+            "ports": "Port",
+            "nas_source": "Sumber NAS",
+            "shared_secret": "Shared secret"
+          },
+          "actions": {
+            "show_secret": "Tampilkan secret",
+            "hide_secret": "Sembunyikan secret",
+            "copy_secret": "Salin secret",
+            "copy_cli": "Salin CLI"
+          },
+          "toasts": {
+            "cli_copied": "CLI RADIUS berhasil disalin",
+            "secret_copied": "Shared secret berhasil disalin"
+          },
+          "empty": "Managed RADIUS belum dikonfigurasi untuk router ini. Saat ini router masih dapat memakai PPP secret lokal MikroTik."
         },
         "badges": {
           "online": "Online",

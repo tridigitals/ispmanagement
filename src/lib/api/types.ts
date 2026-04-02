@@ -75,6 +75,25 @@ export interface SuperadminManagedRadiusServer {
   updated_at: string;
 }
 
+export interface SuperadminManagedRadiusMapping {
+  id: string;
+  tenant_id: string;
+  tenant_name: string;
+  radius_server_id: string;
+  server_name: string;
+  radius_host: string;
+  auth_port: number;
+  acct_port: number;
+  router_id: string;
+  router_name: string | null;
+  nas_name: string;
+  nas_ip_or_cidr: string;
+  shortname: string | null;
+  shared_secret_masked: string;
+  is_active: boolean;
+  updated_at: string;
+}
+
 export interface SuperadminManagedRadiusUser {
   id: string;
   tenant_id: string;
@@ -89,6 +108,33 @@ export interface SuperadminManagedRadiusUser {
   radius_last_error: string | null;
   router_profile_name: string | null;
   updated_at: string;
+}
+
+export interface ManagedRadiusServerPayload {
+  tenant_id: string;
+  name: string;
+  db_host: string;
+  db_port?: number | null;
+  db_name: string;
+  db_user: string;
+  db_password?: string | null;
+  is_active: boolean;
+}
+
+export interface ManagedRadiusMappingPayload {
+  tenant_id: string;
+  radius_server_id: string;
+  router_id: string;
+  nas_name: string;
+  nas_ip_or_cidr: string;
+  shortname?: string | null;
+  shared_secret?: string | null;
+  is_active: boolean;
+}
+
+export interface ManagedRadiusSecretValue {
+  shared_secret: string;
+  shared_secret_masked: string;
 }
 
 export interface AuthResponse {
