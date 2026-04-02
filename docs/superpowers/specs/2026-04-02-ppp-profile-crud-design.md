@@ -1,7 +1,7 @@
 # PPP Profile CRUD Design (2026-04-02)
 
 ## Background / Current State
-- Tenant admin already has a dedicated PPP Profile page at `/admin/network/ppp-profiles`.
+- Tenant admin already has a dedicated PPP Profile page at `/[tenant]/admin/network/ppp-profiles`.
 - The current page is read-oriented: it can list PPP profiles per router and sync them from RouterOS into PostgreSQL.
 - Backend support currently exists only for:
   - listing PPP profiles for a router
@@ -14,7 +14,7 @@
 
 ## Goals / Non-goals
 ### Goals
-- Add full tenant-admin CRUD for PPP profiles from `/admin/network/ppp-profiles`.
+- Add full tenant-admin CRUD for PPP profiles from `/[tenant]/admin/network/ppp-profiles`.
 - Make RouterOS the source of truth for create, update, and delete.
 - Keep PostgreSQL as a synchronized mirror for fast reads, filtering, dependency checks, and cross-module references.
 - Support only the standard, low-risk profile fields in phase one:
@@ -93,6 +93,11 @@ Use a modal or dialog form with standard-safe fields:
 - `rate_limit`
 - `dns_server`
 - `comment`
+
+Edit-mode behavior:
+- show `name` as read-only so the current profile identity remains visible
+- do not allow editing the `name` field in phase one
+- edit submissions should send only mutable fields plus the row ID/router context
 
 The page should continue showing:
 - profile name
@@ -264,6 +269,8 @@ Examples:
 - `dependency_blocked`: delete attempted while counts exist in `pppoe_accounts` or `isp_package_router_mappings`
 - `router_conflict`: mirrored row exists locally but the RouterOS profile cannot be found by the last-synced name
 - `mirror_sync_failed`: RouterOS mutation succeeded but the mirror refresh failed immediately after
+- `validation_error`: malformed or disallowed input such as blank `name` on create or attempted rename on update
+- `router_write_failed`: RouterOS rejected an otherwise valid request or the router operation could not be completed
 
 ## Validation Rules
 ### Required
