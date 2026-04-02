@@ -1,7 +1,7 @@
 <script lang="ts">
   import type {
+    SuperadminManagedRadiusAssignment,
     ManagedRadiusMappingPayload,
-    SuperadminManagedRadiusServer,
     Tenant,
   } from '$lib/api/types';
   import Input from '$lib/components/ui/Input.svelte';
@@ -23,7 +23,7 @@
     isEditing = false,
     mapping = $bindable(),
     tenants = [],
-    servers = [],
+    assignments = [],
     routers = [],
     onGenerateSecret,
     onSubmit,
@@ -33,7 +33,7 @@
     isEditing: boolean;
     mapping: ManagedRadiusMappingPayload;
     tenants: Tenant[];
-    servers: SuperadminManagedRadiusServer[];
+    assignments: SuperadminManagedRadiusAssignment[];
     routers: RouterOption[];
     onGenerateSecret: () => void;
     onSubmit: () => void;
@@ -47,14 +47,14 @@
   );
 
   let serverOptions = $derived(
-    servers
+    assignments
       .filter(
-        (server: SuperadminManagedRadiusServer) =>
-          !mapping.tenant_id || server.tenant_id === mapping.tenant_id,
+        (assignment: SuperadminManagedRadiusAssignment) =>
+          !mapping.tenant_id || assignment.tenant_id === mapping.tenant_id,
       )
-      .map((server: SuperadminManagedRadiusServer) => ({
-        label: `${server.name} (${server.db_host})`,
-        value: server.id,
+      .map((assignment: SuperadminManagedRadiusAssignment) => ({
+        label: `${assignment.server_name} (${assignment.radius_host})`,
+        value: assignment.radius_server_id,
       })),
   );
 
@@ -70,6 +70,13 @@
   );
 
   $effect(() => {
+    const activeAssignment = assignments.find(
+      (assignment: SuperadminManagedRadiusAssignment) => assignment.tenant_id === mapping.tenant_id,
+    );
+    if (activeAssignment) {
+      mapping.radius_server_id = activeAssignment.radius_server_id;
+    }
+
     if (
       mapping.radius_server_id &&
       !serverOptions.some((option: { label: string; value: string }) => option.value === mapping.radius_server_id)
@@ -106,8 +113,8 @@
         label={$t('superadmin.radius.form.server') || 'Server'}
         options={serverOptions}
         bind:value={mapping.radius_server_id}
-        placeholder={$t('superadmin.radius.form.select_server') || 'Select a server'}
-        disabled={loading || !mapping.tenant_id}
+        placeholder={$t('superadmin.radius.form.select_server') || 'Active tenant assignment required'}
+        disabled
       />
       <Select
         label={$t('superadmin.radius.form.router') || 'Router'}

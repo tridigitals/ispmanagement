@@ -44,6 +44,13 @@ const commandMap: Record<string, { method: string; path: string }> = {
     method: 'POST',
     path: '/superadmin/radius/servers/:id/active',
   },
+  list_managed_radius_assignments: { method: 'GET', path: '/superadmin/radius/assignments' },
+  create_managed_radius_assignment: { method: 'POST', path: '/superadmin/radius/assignments' },
+  update_managed_radius_assignment: { method: 'PUT', path: '/superadmin/radius/assignments/:id' },
+  set_managed_radius_assignment_active: {
+    method: 'POST',
+    path: '/superadmin/radius/assignments/:id/active',
+  },
   list_managed_radius_mappings: { method: 'GET', path: '/superadmin/radius/mappings' },
   create_managed_radius_mapping: { method: 'POST', path: '/superadmin/radius/mappings' },
   update_managed_radius_mapping: { method: 'PUT', path: '/superadmin/radius/mappings/:id' },

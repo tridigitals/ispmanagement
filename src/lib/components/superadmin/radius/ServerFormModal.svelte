@@ -1,8 +1,7 @@
 <script lang="ts">
-  import type { ManagedRadiusServerPayload, Tenant } from '$lib/api/types';
+  import type { ManagedRadiusServerPayload } from '$lib/api/types';
   import Input from '$lib/components/ui/Input.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
-  import Select from '$lib/components/ui/Select.svelte';
   import { t } from 'svelte-i18n';
 
   let {
@@ -10,23 +9,14 @@
     loading = false,
     isEditing = false,
     server = $bindable(),
-    tenants = [],
     onSubmit,
   } = $props<{
     show: boolean;
     loading: boolean;
     isEditing: boolean;
     server: ManagedRadiusServerPayload;
-    tenants: Tenant[];
     onSubmit: () => void;
   }>();
-
-  let tenantOptions = $derived(
-    tenants.map((tenant: Tenant) => ({
-      label: tenant.name,
-      value: tenant.id,
-    })),
-  );
 </script>
 
 <Modal
@@ -37,14 +27,6 @@
   width="640px"
 >
   <div class="modal-form">
-    <Select
-      label={$t('superadmin.radius.form.tenant') || 'Tenant'}
-      options={tenantOptions}
-      bind:value={server.tenant_id}
-      placeholder={$t('superadmin.radius.form.select_tenant') || 'Select a tenant'}
-      disabled={loading || isEditing}
-    />
-
     <div class="grid two">
       <Input
         label={$t('superadmin.radius.form.server_name') || 'Server name'}
@@ -93,9 +75,16 @@
       showPasswordToggle
     />
 
+    <Input
+      label={$t('superadmin.radius.form.notes') || 'Notes'}
+      bind:value={server.notes}
+      placeholder={$t('superadmin.radius.form.notes_placeholder') || 'Optional operational note'}
+      disabled={loading}
+    />
+
     <label class="toggle-row">
       <input type="checkbox" bind:checked={server.is_active} disabled={loading} />
-      <span>{$t('superadmin.radius.form.active_server_hint') || 'Set this server as the active tenant server'}</span>
+      <span>{$t('superadmin.radius.form.active_server_hint') || 'Allow this global server to receive tenant assignments'}</span>
     </label>
 
     <div class="modal-actions">

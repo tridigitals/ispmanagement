@@ -874,6 +874,7 @@
       "loading": "Loading managed RADIUS observability...",
       "stats": {
         "servers": "Servers",
+        "assignments": "Assignments",
         "mappings": "NAS Mappings",
         "routers": "Mapped Routers",
         "users": "Users",
@@ -881,6 +882,7 @@
       },
       "filters": {
         "search_servers": "Search servers...",
+        "search_assignments": "Search assignments...",
         "search_mappings": "Search mappings...",
         "search_users": "Search users...",
         "all_statuses": "All statuses",
@@ -895,12 +897,14 @@
       },
       "sections": {
         "servers": "Servers",
+        "assignments": "Tenant Assignments",
         "mappings": "NAS Mappings",
         "users": "Users"
       },
       "columns": {
         "server": "Server",
         "tenant": "Tenant",
+        "tenants": "Tenants",
         "host": "Host",
         "ports": "Ports",
         "database": "Database",
@@ -926,9 +930,11 @@
       },
       "empty": {
         "servers_title": "No managed RADIUS servers yet",
-        "servers_subtitle": "Managed RADIUS infrastructure will appear here after tenants configure servers and NAS mappings.",
+        "servers_subtitle": "Create global RADIUS infrastructure here, then assign tenants and map routers.",
+        "assignments_title": "No tenant assignments yet",
+        "assignments_subtitle": "Assign one active global server per tenant before creating NAS mappings.",
         "mappings_title": "No NAS mappings yet",
-        "mappings_subtitle": "Create a tenant-scoped server and map a router to start issuing copy-ready MikroTik CLI.",
+        "mappings_subtitle": "Create a tenant assignment first, then map a router to start issuing copy-ready MikroTik CLI.",
         "users_title": "No managed RADIUS users yet",
         "users_subtitle": "Managed-RADIUS-backed PPPoE users will appear here after tenant admins apply them."
       },
@@ -939,9 +945,12 @@
       },
       "actions": {
         "new_server": "New server",
+        "new_assignment": "New assignment",
         "new_mapping": "New mapping",
         "create_server": "Create server",
         "save_server": "Save server",
+        "create_assignment": "Create assignment",
+        "save_assignment": "Save assignment",
         "create_mapping": "Create mapping",
         "save_mapping": "Save mapping",
         "edit": "Edit",
@@ -970,7 +979,10 @@
         "db_password": "DB password",
         "db_password_placeholder": "Encrypted at rest",
         "db_password_placeholder_edit": "Leave blank to keep current password",
-        "active_server_hint": "Set this server as the active tenant server",
+        "notes": "Notes",
+        "notes_placeholder": "Optional operational note",
+        "active_server_hint": "Allow this global server to receive tenant assignments",
+        "active_assignment_hint": "Keep this assignment active for the tenant",
         "nas_name": "NAS name",
         "nas_name_placeholder": "router-pop-a",
         "shortname": "Shortname",
@@ -984,6 +996,10 @@
         "server": {
           "create_title": "New Managed RADIUS server",
           "edit_title": "Edit Managed RADIUS server"
+        },
+        "assignment": {
+          "create_title": "New tenant assignment",
+          "edit_title": "Edit tenant assignment"
         },
         "mapping": {
           "create_title": "New NAS mapping",
@@ -1005,6 +1021,11 @@
         "server_updated": "Managed RADIUS server updated",
         "server_activated": "Server activated",
         "server_deactivated": "Server deactivated",
+        "assignment_validation": "Complete the assignment form first",
+        "assignment_created": "Tenant assignment created",
+        "assignment_updated": "Tenant assignment updated",
+        "assignment_activated": "Assignment activated",
+        "assignment_deactivated": "Assignment deactivated",
         "mapping_validation": "Complete the mapping form first",
         "mapping_created": "NAS mapping created",
         "mapping_updated": "NAS mapping updated",

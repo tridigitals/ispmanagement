@@ -874,6 +874,7 @@
       "loading": "Memuat observabilitas managed RADIUS...",
       "stats": {
         "servers": "Server",
+        "assignments": "Assignment",
         "mappings": "Mapping NAS",
         "routers": "Router Terhubung",
         "users": "User",
@@ -881,6 +882,7 @@
       },
       "filters": {
         "search_servers": "Cari server...",
+        "search_assignments": "Cari assignment...",
         "search_mappings": "Cari mapping...",
         "search_users": "Cari user...",
         "all_statuses": "Semua status",
@@ -895,12 +897,14 @@
       },
       "sections": {
         "servers": "Server",
+        "assignments": "Assignment Tenant",
         "mappings": "Mapping NAS",
         "users": "User"
       },
       "columns": {
         "server": "Server",
         "tenant": "Tenant",
+        "tenants": "Tenant",
         "host": "Host",
         "ports": "Port",
         "database": "Database",
@@ -926,9 +930,11 @@
       },
       "empty": {
         "servers_title": "Belum ada server managed RADIUS",
-        "servers_subtitle": "Infrastruktur managed RADIUS akan muncul di sini setelah tenant mengatur server dan mapping NAS.",
+        "servers_subtitle": "Buat infrastruktur RADIUS global di sini, lalu assign tenant dan map router.",
+        "assignments_title": "Belum ada assignment tenant",
+        "assignments_subtitle": "Assign satu server global aktif per tenant sebelum membuat mapping NAS.",
         "mappings_title": "Belum ada mapping NAS",
-        "mappings_subtitle": "Buat server tenant lalu map router agar CLI MikroTik siap-copy langsung tersedia di sini.",
+        "mappings_subtitle": "Buat assignment tenant terlebih dahulu, lalu map router agar CLI MikroTik siap-copy langsung tersedia di sini.",
         "users_title": "Belum ada user managed RADIUS",
         "users_subtitle": "User PPPoE dengan sumber managed RADIUS akan muncul di sini setelah tenant admin menerapkannya."
       },
@@ -939,9 +945,12 @@
       },
       "actions": {
         "new_server": "Server baru",
+        "new_assignment": "Assignment baru",
         "new_mapping": "Mapping baru",
         "create_server": "Buat server",
         "save_server": "Simpan server",
+        "create_assignment": "Buat assignment",
+        "save_assignment": "Simpan assignment",
         "create_mapping": "Buat mapping",
         "save_mapping": "Simpan mapping",
         "edit": "Edit",
@@ -970,7 +979,10 @@
         "db_password": "Password DB",
         "db_password_placeholder": "Disimpan terenkripsi",
         "db_password_placeholder_edit": "Biarkan kosong untuk mempertahankan password saat ini",
-        "active_server_hint": "Jadikan server ini server tenant yang aktif",
+        "notes": "Catatan",
+        "notes_placeholder": "Catatan operasional opsional",
+        "active_server_hint": "Izinkan server global ini menerima assignment tenant",
+        "active_assignment_hint": "Biarkan assignment ini aktif untuk tenant",
         "nas_name": "Nama NAS",
         "nas_name_placeholder": "router-pop-a",
         "shortname": "Shortname",
@@ -984,6 +996,10 @@
         "server": {
           "create_title": "Server Managed RADIUS baru",
           "edit_title": "Edit server Managed RADIUS"
+        },
+        "assignment": {
+          "create_title": "Assignment tenant baru",
+          "edit_title": "Edit assignment tenant"
         },
         "mapping": {
           "create_title": "Mapping NAS baru",
@@ -1005,6 +1021,11 @@
         "server_updated": "Server Managed RADIUS berhasil diperbarui",
         "server_activated": "Server berhasil diaktifkan",
         "server_deactivated": "Server berhasil dinonaktifkan",
+        "assignment_validation": "Lengkapi form assignment terlebih dahulu",
+        "assignment_created": "Assignment tenant berhasil dibuat",
+        "assignment_updated": "Assignment tenant berhasil diperbarui",
+        "assignment_activated": "Assignment berhasil diaktifkan",
+        "assignment_deactivated": "Assignment berhasil dinonaktifkan",
         "mapping_validation": "Lengkapi form mapping terlebih dahulu",
         "mapping_created": "Mapping NAS berhasil dibuat",
         "mapping_updated": "Mapping NAS berhasil diperbarui",
