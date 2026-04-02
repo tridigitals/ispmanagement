@@ -397,6 +397,7 @@
     "dashboard": "Dasbor",
     "overview": "Ringkasan",
     "users": "Pengguna",
+    "radius": "RADIUS",
     "team": "Tim",
     "roles": "Peran",
     "tenants": "Tenant",
@@ -481,6 +482,7 @@
       "superadmin_dashboard": "Super Admin",
       "tenants": "Tenant",
       "users": "Pengguna",
+      "radius": "RADIUS",
       "plans": "Paket",
       "audit_logs": "Log Audit",
       "system": "Sistem",
@@ -863,6 +865,68 @@
         "activated": "Pengguna diaktifkan",
         "deactivated": "Pengguna dinonaktifkan",
         "update_status_failed": "Gagal memperbarui status pengguna: {message}"
+      }
+    },
+    "radius": {
+      "title": "Managed RADIUS",
+      "subtitle": "Pantau infrastruktur RADIUS global dan user PPPoE yang diprovisikan lintas tenant.",
+      "refresh": "Muat ulang",
+      "loading": "Memuat observabilitas managed RADIUS...",
+      "stats": {
+        "servers": "Server",
+        "routers": "Router Terhubung",
+        "users": "User",
+        "out_of_sync": "Perlu Perhatian"
+      },
+      "filters": {
+        "search_servers": "Cari server...",
+        "search_users": "Cari user...",
+        "all_statuses": "Semua status",
+        "active": "Aktif",
+        "inactive": "Nonaktif",
+        "all_tenants": "Semua tenant",
+        "all_routers": "Semua router",
+        "all_users": "Semua user",
+        "provisioned": "Tersedia",
+        "not_provisioned": "Belum tersedia"
+      },
+      "sections": {
+        "servers": "Server",
+        "users": "User"
+      },
+      "columns": {
+        "server": "Server",
+        "tenant": "Tenant",
+        "host": "Host",
+        "ports": "Port",
+        "database": "Database",
+        "status": "Status",
+        "routers": "Router",
+        "updated": "Diperbarui",
+        "router": "Router",
+        "username": "Username",
+        "identity": "Identitas RADIUS",
+        "profile": "Profil",
+        "last_sync": "Sinkron Terakhir",
+        "last_error": "Error Terakhir"
+      },
+      "status": {
+        "active": "Aktif",
+        "inactive": "Nonaktif",
+        "provisioned": "Tersedia",
+        "not_provisioned": "Belum tersedia",
+        "needs_attention": "Perlu perhatian"
+      },
+      "empty": {
+        "servers_title": "Belum ada server managed RADIUS",
+        "servers_subtitle": "Infrastruktur managed RADIUS akan muncul di sini setelah tenant mengatur server dan mapping NAS.",
+        "users_title": "Belum ada user managed RADIUS",
+        "users_subtitle": "User PPPoE dengan sumber managed RADIUS akan muncul di sini setelah tenant admin menerapkannya."
+      },
+      "labels": {
+        "unknown_router": "Router tidak diketahui",
+        "none": "Tidak ada",
+        "never": "Belum pernah"
       }
     },
     "tenants": {

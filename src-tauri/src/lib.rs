@@ -251,6 +251,8 @@ pub fn run() {
                         test_smtp_connection,
                                     // Super Admin commands
                                     list_tenants,
+                                    list_managed_radius_servers,
+                                    list_managed_radius_users,
                                     delete_tenant,
                                     create_tenant,
                                     update_tenant,

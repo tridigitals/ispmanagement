@@ -147,6 +147,19 @@
         </p>
       </button>
 
+      <button class="action-card" onclick={() => goto('/superadmin/radius')}>
+        <div class="action-icon accent-cyan">
+          <Icon name="server" size={18} />
+        </div>
+        <h3>
+          {$t('superadmin.radius.title') || 'Managed RADIUS'}
+        </h3>
+        <p>
+          {$t('superadmin.radius.subtitle') ||
+            'Observe global RADIUS infrastructure and provisioned PPPoE users across tenants.'}
+        </p>
+      </button>
+
       <button class="action-card" onclick={() => goto('/superadmin/audit-logs')}>
         <div class="action-icon accent-emerald">
           <Icon name="activity" size={18} />

@@ -59,6 +59,38 @@ export interface Tenant {
   updated_at: string;
 }
 
+export interface SuperadminManagedRadiusServer {
+  id: string;
+  tenant_id: string;
+  tenant_name: string;
+  name: string;
+  host: string;
+  auth_port: number;
+  acct_port: number;
+  db_host: string;
+  db_port: number;
+  db_name: string;
+  is_active: boolean;
+  router_count: number;
+  updated_at: string;
+}
+
+export interface SuperadminManagedRadiusUser {
+  id: string;
+  tenant_id: string;
+  tenant_name: string;
+  router_id: string;
+  router_name: string | null;
+  username: string;
+  radius_identity: string | null;
+  account_source: 'managed_radius' | 'router' | string;
+  radius_present: boolean;
+  radius_last_sync_at: string | null;
+  radius_last_error: string | null;
+  router_profile_name: string | null;
+  updated_at: string;
+}
+
 export interface AuthResponse {
   user: User;
   tenant?: Tenant;

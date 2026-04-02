@@ -1,6 +1,10 @@
 use super::AppState;
 use crate::http::auth::extract_ip;
 use crate::models::Tenant;
+use crate::commands::superadmin::{
+    SuperadminManagedRadiusServer, SuperadminManagedRadiusServerListResponse,
+    SuperadminManagedRadiusUser, SuperadminManagedRadiusUserListResponse,
+};
 use axum::{
     extract::ConnectInfo,
     extract::{Path, State},
@@ -71,6 +75,107 @@ pub async fn list_tenants(
 
     Ok(Json(TenantListResponse {
         data: tenants,
+        total,
+    }))
+}
+
+pub async fn list_managed_radius_servers(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<SuperadminManagedRadiusServerListResponse>, crate::error::AppError> {
+    let claims = check_super_admin(&state, &headers).await?;
+    let mut tx = state.auth_service.pool.begin().await?;
+    state
+        .auth_service
+        .apply_rls_context_tx(&mut tx, &claims)
+        .await?;
+
+    let servers: Vec<SuperadminManagedRadiusServer> = sqlx::query_as(
+        r#"
+        SELECT
+          s.id,
+          s.tenant_id,
+          t.name AS tenant_name,
+          s.name,
+          s.host,
+          s.auth_port,
+          s.acct_port,
+          s.db_host,
+          s.db_port,
+          s.db_name,
+          s.is_active,
+          COUNT(n.id)::bigint AS router_count,
+          s.updated_at
+        FROM managed_radius_servers s
+        INNER JOIN tenants t
+          ON t.id = s.tenant_id
+        LEFT JOIN managed_radius_nas n
+          ON n.radius_server_id = s.id
+         AND n.tenant_id = s.tenant_id
+         AND n.is_active = true
+        GROUP BY
+          s.id, s.tenant_id, t.name, s.name, s.host, s.auth_port, s.acct_port,
+          s.db_host, s.db_port, s.db_name, s.is_active, s.updated_at
+        ORDER BY s.updated_at DESC, s.name ASC
+        "#,
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+
+    let total = servers.len() as i64;
+    tx.commit().await?;
+
+    Ok(Json(SuperadminManagedRadiusServerListResponse {
+        data: servers,
+        total,
+    }))
+}
+
+pub async fn list_managed_radius_users(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<SuperadminManagedRadiusUserListResponse>, crate::error::AppError> {
+    let claims = check_super_admin(&state, &headers).await?;
+    let mut tx = state.auth_service.pool.begin().await?;
+    state
+        .auth_service
+        .apply_rls_context_tx(&mut tx, &claims)
+        .await?;
+
+    let users: Vec<SuperadminManagedRadiusUser> = sqlx::query_as(
+        r#"
+        SELECT
+          p.id,
+          p.tenant_id,
+          t.name AS tenant_name,
+          p.router_id,
+          r.name AS router_name,
+          p.username,
+          p.radius_identity,
+          p.account_source,
+          p.radius_present,
+          p.radius_last_sync_at,
+          p.radius_last_error,
+          p.router_profile_name,
+          p.updated_at
+        FROM pppoe_accounts p
+        INNER JOIN tenants t
+          ON t.id = p.tenant_id
+        LEFT JOIN mikrotik_routers r
+          ON r.id = p.router_id
+         AND r.tenant_id = p.tenant_id
+        WHERE p.account_source = 'managed_radius'
+        ORDER BY p.updated_at DESC, p.username ASC
+        "#,
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+
+    let total = users.len() as i64;
+    tx.commit().await?;
+
+    Ok(Json(SuperadminManagedRadiusUserListResponse {
+        data: users,
         total,
     }))
 }

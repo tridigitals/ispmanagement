@@ -176,6 +176,11 @@
             href: '/superadmin/tenants',
           },
           { label: $t('sidebar.users') || 'Users', icon: 'users', href: '/superadmin/users' },
+          {
+            label: $t('sidebar.radius') || 'RADIUS',
+            icon: 'server',
+            href: '/superadmin/radius',
+          },
         ],
       },
       {
