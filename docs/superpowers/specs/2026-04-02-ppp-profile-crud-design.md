@@ -77,7 +77,7 @@ Keep the existing router filter as the main working context:
 - no create/edit/delete is allowed unless a router is selected
 
 ### Page actions
-- `Refresh`
+- `Refresh` reloads the current router's mirrored PPP profile list from PostgreSQL only; it must not contact RouterOS
 - `Sync from router`
 - `Add profile`
 
@@ -108,6 +108,7 @@ The page should continue showing:
 - UI first requests dependency information for the selected profile.
 - If dependencies exist, the confirmation action is disabled and the dialog explains what is still using the profile.
 - If no dependencies exist, the dialog requires confirmation and then performs router-first delete.
+- Backend must re-run dependency validation immediately before the RouterOS delete so the safeguard is not only based on the preflight response.
 
 ## API Design
 Extend the existing MikroTik admin surface with PPP profile CRUD endpoints.
@@ -121,6 +122,10 @@ Recommended HTTP routes:
 - `POST /admin/mikrotik/routers/:routerId/ppp-profiles/sync`
 
 The Tauri command layer should mirror the same operations.
+Tauri commands must translate service failures into the same logical error envelope used by HTTP consumers:
+- `code`
+- `message`
+- `details` (optional)
 
 Route identity contract:
 - `:routerId` always identifies the selected router context
@@ -222,6 +227,7 @@ Input:
 Behavior:
 - load the mirrored row first
 - run dependency lookup before touching RouterOS
+- re-run dependency lookup immediately before the RouterOS delete
 - if dependencies exist, return a blocking validation error with dependency counts/details
 - if no dependencies exist, delete the RouterOS profile
 - after router success, sync router PPP profiles into PostgreSQL
