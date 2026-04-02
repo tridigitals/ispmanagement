@@ -28,6 +28,7 @@
 - Reuse existing MikroTik router permissions and page patterns already present in network admin.
 
 ### Non-goals
+- No PPP profile rename behavior in phase one.
 - No advanced RouterOS PPP profile fields in phase one:
   - `only_one`
   - `change_tcp_mss`
@@ -206,7 +207,8 @@ Input:
 Behavior:
 - load the mirrored row first to obtain the current router-scoped profile identity
 - use the current RouterOS profile name to locate the router record being edited
-- allow renaming if the target name is not already used by another profile on the same router
+- treat `name` as immutable in phase one
+- reject update requests that attempt to change `name`
 - apply only the supported standard fields in phase one
 - if the mirrored row exists locally but RouterOS lookup by the stored current name fails, return a conflict-style error and require `Sync from router` before retrying
 - after router success, sync router PPP profiles into PostgreSQL
@@ -247,6 +249,7 @@ Initial error codes:
 - `validation_error`
 - `not_found`
 - `dependency_blocked`
+- `rename_not_allowed`
 - `router_conflict`
 - `router_write_failed`
 - `mirror_sync_failed`
@@ -351,8 +354,8 @@ Example behavior:
 ### Backend tests
 - create rejects blank name
 - create rejects duplicate name on the same router
-- update can change standard fields for an existing profile
-- update rejects rename to an existing profile name on the same router
+- update can change non-name standard fields for an existing profile
+- update rejects any attempt to rename the profile in phase one
 - delete is blocked when PPPoE accounts depend on the profile
 - delete is blocked when package mappings depend on the profile
 - successful create/update/delete triggers mirror refresh behavior
@@ -375,6 +378,7 @@ Example behavior:
 ## Acceptance Criteria
 - Tenant admin can create a PPP profile with the standard-safe fields from `/admin/network/ppp-profiles`.
 - Tenant admin can edit the same standard-safe fields for an existing profile.
+- Tenant admin cannot rename an existing PPP profile in phase one.
 - Tenant admin can delete a profile only when no internal dependencies exist.
 - Every successful create/update/delete applies to RouterOS first and then refreshes the PostgreSQL mirror.
 - The page continues to support manual `Sync from router`.
