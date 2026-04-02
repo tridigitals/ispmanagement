@@ -30,7 +30,6 @@ describe('superadmin api wrapper', () => {
 
     const { superadmin } = await import('./superadmin');
     await superadmin.createManagedRadiusServer({
-      tenant_id: 'tenant-1',
       name: 'Primary',
       db_host: 'radius-db.local',
       db_port: 5432,
@@ -38,12 +37,11 @@ describe('superadmin api wrapper', () => {
       db_user: 'radius',
       db_password: 'secret',
       is_active: true,
+      notes: 'Shared platform radius',
     });
 
     expect(safeInvoke).toHaveBeenCalledWith('create_managed_radius_server', {
       token: 'token-123',
-      tenantId: 'tenant-1',
-      tenant_id: 'tenant-1',
       name: 'Primary',
       dbHost: 'radius-db.local',
       db_host: 'radius-db.local',
@@ -55,6 +53,28 @@ describe('superadmin api wrapper', () => {
       db_user: 'radius',
       dbPassword: 'secret',
       db_password: 'secret',
+      isActive: true,
+      is_active: true,
+      notes: 'Shared platform radius',
+    });
+  });
+
+  it('creates a tenant radius assignment with tenant and server context', async () => {
+    safeInvoke.mockResolvedValue({ ok: true, id: 'assignment-1' });
+
+    const { superadmin } = await import('./superadmin');
+    await superadmin.createManagedRadiusAssignment({
+      tenant_id: 'tenant-1',
+      radius_server_id: 'server-1',
+      is_active: true,
+    });
+
+    expect(safeInvoke).toHaveBeenCalledWith('create_managed_radius_assignment', {
+      token: 'token-123',
+      tenantId: 'tenant-1',
+      tenant_id: 'tenant-1',
+      radiusServerId: 'server-1',
+      radius_server_id: 'server-1',
       isActive: true,
       is_active: true,
     });

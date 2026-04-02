@@ -1,10 +1,12 @@
 import { getTokenOrThrow, safeInvoke } from './core';
 import type {
   AuditLog,
+  ManagedRadiusAssignmentPayload,
   ManagedRadiusMappingPayload,
   ManagedRadiusSecretValue,
   ManagedRadiusServerPayload,
   PaginatedResponse,
+  SuperadminManagedRadiusAssignment,
   SuperadminManagedRadiusMapping,
   SuperadminManagedRadiusServer,
   SuperadminManagedRadiusUser,
@@ -20,8 +22,6 @@ export const superadmin = {
   createManagedRadiusServer: (payload: ManagedRadiusServerPayload): Promise<{ ok: boolean; id: string }> =>
     safeInvoke('create_managed_radius_server', {
       token: getTokenOrThrow(),
-      tenantId: payload.tenant_id,
-      tenant_id: payload.tenant_id,
       name: payload.name,
       dbHost: payload.db_host,
       db_host: payload.db_host,
@@ -35,6 +35,7 @@ export const superadmin = {
       db_password: payload.db_password ?? null,
       isActive: payload.is_active,
       is_active: payload.is_active,
+      notes: payload.notes ?? null,
     }),
 
   updateManagedRadiusServer: (
@@ -44,8 +45,6 @@ export const superadmin = {
     safeInvoke('update_managed_radius_server', {
       token: getTokenOrThrow(),
       id,
-      tenantId: payload.tenant_id,
-      tenant_id: payload.tenant_id,
       name: payload.name,
       dbHost: payload.db_host,
       db_host: payload.db_host,
@@ -59,14 +58,54 @@ export const superadmin = {
       db_password: payload.db_password ?? null,
       isActive: payload.is_active,
       is_active: payload.is_active,
+      notes: payload.notes ?? null,
     }),
 
-  setManagedRadiusServerActive: (
+  setManagedRadiusServerActive: (id: string, isActive: boolean): Promise<{ ok: boolean }> =>
+    safeInvoke('set_managed_radius_server_active', {
+      token: getTokenOrThrow(),
+      id,
+      isActive,
+      is_active: isActive,
+    }),
+
+  listManagedRadiusAssignments: (): Promise<{ data: SuperadminManagedRadiusAssignment[]; total: number }> =>
+    safeInvoke('list_managed_radius_assignments', { token: getTokenOrThrow() }),
+
+  createManagedRadiusAssignment: (
+    payload: ManagedRadiusAssignmentPayload,
+  ): Promise<{ ok: boolean; id: string }> =>
+    safeInvoke('create_managed_radius_assignment', {
+      token: getTokenOrThrow(),
+      tenantId: payload.tenant_id,
+      tenant_id: payload.tenant_id,
+      radiusServerId: payload.radius_server_id,
+      radius_server_id: payload.radius_server_id,
+      isActive: payload.is_active,
+      is_active: payload.is_active,
+    }),
+
+  updateManagedRadiusAssignment: (
+    id: string,
+    payload: ManagedRadiusAssignmentPayload,
+  ): Promise<{ ok: boolean }> =>
+    safeInvoke('update_managed_radius_assignment', {
+      token: getTokenOrThrow(),
+      id,
+      tenantId: payload.tenant_id,
+      tenant_id: payload.tenant_id,
+      radiusServerId: payload.radius_server_id,
+      radius_server_id: payload.radius_server_id,
+      isActive: payload.is_active,
+      is_active: payload.is_active,
+    }),
+
+  setManagedRadiusAssignmentActive: (
     id: string,
     tenantId: string,
     isActive: boolean,
   ): Promise<{ ok: boolean }> =>
-    safeInvoke('set_managed_radius_server_active', {
+    safeInvoke('set_managed_radius_assignment_active', {
       token: getTokenOrThrow(),
       id,
       tenantId,

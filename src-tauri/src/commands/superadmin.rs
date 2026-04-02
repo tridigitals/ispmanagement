@@ -14,8 +14,6 @@ pub struct TenantListResponse {
 #[derive(Debug, serde::Serialize, sqlx::FromRow)]
 pub struct SuperadminManagedRadiusServer {
     pub id: String,
-    pub tenant_id: String,
-    pub tenant_name: String,
     pub name: String,
     pub host: String,
     pub auth_port: i32,
@@ -23,6 +21,23 @@ pub struct SuperadminManagedRadiusServer {
     pub db_host: String,
     pub db_port: i32,
     pub db_name: String,
+    pub is_active: bool,
+    pub notes: Option<String>,
+    pub tenant_count: i64,
+    pub router_count: i64,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, serde::Serialize, sqlx::FromRow)]
+pub struct SuperadminManagedRadiusAssignment {
+    pub id: String,
+    pub tenant_id: String,
+    pub tenant_name: String,
+    pub radius_server_id: String,
+    pub server_name: String,
+    pub radius_host: String,
+    pub auth_port: i32,
+    pub acct_port: i32,
     pub is_active: bool,
     pub router_count: i64,
     pub updated_at: chrono::DateTime<chrono::Utc>,
@@ -48,6 +63,12 @@ pub struct SuperadminManagedRadiusUser {
 #[derive(serde::Serialize)]
 pub struct SuperadminManagedRadiusServerListResponse {
     pub data: Vec<SuperadminManagedRadiusServer>,
+    pub total: i64,
+}
+
+#[derive(serde::Serialize)]
+pub struct SuperadminManagedRadiusAssignmentListResponse {
+    pub data: Vec<SuperadminManagedRadiusAssignment>,
     pub total: i64,
 }
 
@@ -135,8 +156,6 @@ pub async fn list_managed_radius_servers(
         r#"
         SELECT
           s.id,
-          s.tenant_id,
-          t.name AS tenant_name,
           s.name,
           s.db_host AS host,
           $1::integer AS auth_port,
@@ -145,18 +164,19 @@ pub async fn list_managed_radius_servers(
           s.db_port,
           s.db_name,
           s.is_active,
-          COUNT(n.id)::bigint AS router_count,
+          s.notes,
+          COUNT(DISTINCT a.tenant_id)::bigint AS tenant_count,
+          COUNT(DISTINCT n.id)::bigint AS router_count,
           s.updated_at
-        FROM managed_radius_servers s
-        INNER JOIN tenants t
-          ON t.id = s.tenant_id
+        FROM radius_servers s
+        LEFT JOIN tenant_radius_assignments a
+          ON a.radius_server_id = s.id
+         AND a.is_active = true
         LEFT JOIN managed_radius_nas n
           ON n.radius_server_id = s.id
-         AND n.tenant_id = s.tenant_id
          AND n.is_active = true
         GROUP BY
-          s.id, s.tenant_id, t.name, s.name, s.db_host,
-          s.db_host, s.db_port, s.db_name, s.is_active, s.updated_at
+          s.id, s.name, s.db_host, s.db_port, s.db_name, s.is_active, s.notes, s.updated_at
         ORDER BY s.updated_at DESC, s.name ASC
         "#,
     )
@@ -170,6 +190,62 @@ pub async fn list_managed_radius_servers(
 
     Ok(SuperadminManagedRadiusServerListResponse {
         data: servers,
+        total,
+    })
+}
+
+#[tauri::command]
+pub async fn list_managed_radius_assignments(
+    token: String,
+    auth_service: State<'_, AuthService>,
+) -> Result<SuperadminManagedRadiusAssignmentListResponse, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !claims.is_super_admin {
+        return Err("Unauthorized".to_string());
+    }
+
+    let assignments: Vec<SuperadminManagedRadiusAssignment> = sqlx::query_as(
+        r#"
+        SELECT
+          a.id,
+          a.tenant_id,
+          t.name AS tenant_name,
+          a.radius_server_id,
+          s.name AS server_name,
+          s.db_host AS radius_host,
+          $1::integer AS auth_port,
+          $2::integer AS acct_port,
+          a.is_active,
+          COUNT(n.id)::bigint AS router_count,
+          a.updated_at
+        FROM tenant_radius_assignments a
+        INNER JOIN tenants t
+          ON t.id = a.tenant_id
+        INNER JOIN radius_servers s
+          ON s.id = a.radius_server_id
+        LEFT JOIN managed_radius_nas n
+          ON n.tenant_id = a.tenant_id
+         AND n.radius_server_id = a.radius_server_id
+         AND n.is_active = true
+        GROUP BY
+          a.id, a.tenant_id, t.name, a.radius_server_id, s.name, s.db_host, a.is_active, a.updated_at
+        ORDER BY a.updated_at DESC, t.name ASC
+        "#,
+    )
+    .bind(DEFAULT_RADIUS_AUTH_PORT)
+    .bind(DEFAULT_RADIUS_ACCT_PORT)
+    .fetch_all(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let total = assignments.len() as i64;
+
+    Ok(SuperadminManagedRadiusAssignmentListResponse {
+        data: assignments,
         total,
     })
 }
@@ -277,9 +353,8 @@ pub async fn list_managed_radius_mappings(
         FROM managed_radius_nas n
         INNER JOIN tenants t
           ON t.id = n.tenant_id
-        INNER JOIN managed_radius_servers s
+        INNER JOIN radius_servers s
           ON s.id = n.radius_server_id
-         AND s.tenant_id = n.tenant_id
         LEFT JOIN mikrotik_routers r
           ON r.id = n.router_id
          AND r.tenant_id = n.tenant_id
@@ -328,7 +403,6 @@ pub async fn list_managed_radius_mappings(
 #[allow(clippy::too_many_arguments)]
 pub async fn create_managed_radius_server(
     token: String,
-    tenant_id: String,
     name: String,
     db_host: String,
     db_port: Option<i32>,
@@ -336,6 +410,7 @@ pub async fn create_managed_radius_server(
     db_user: String,
     db_password: String,
     is_active: bool,
+    notes: Option<String>,
     auth_service: State<'_, AuthService>,
     managed_radius_service: State<'_, ManagedRadiusService>,
     audit_service: State<'_, AuditService>,
@@ -347,7 +422,6 @@ pub async fn create_managed_radius_server(
 
     let server = managed_radius_service
         .create_server(crate::services::managed_radius_service::ManagedRadiusServerUpsert {
-            tenant_id: tenant_id.clone(),
             name,
             db_host,
             db_port,
@@ -355,6 +429,7 @@ pub async fn create_managed_radius_server(
             db_user,
             db_password: Some(db_password),
             is_active,
+            notes,
         })
         .await
         .map_err(|e| e.to_string())?;
@@ -362,7 +437,7 @@ pub async fn create_managed_radius_server(
     audit_service
         .log(
             Some(&claims.sub),
-            Some(&tenant_id),
+            None,
             "MANAGED_RADIUS_SERVER_CREATED",
             "managed_radius_server",
             Some(&server.id),
@@ -379,7 +454,6 @@ pub async fn create_managed_radius_server(
 pub async fn update_managed_radius_server(
     token: String,
     id: String,
-    tenant_id: String,
     name: String,
     db_host: String,
     db_port: Option<i32>,
@@ -387,6 +461,7 @@ pub async fn update_managed_radius_server(
     db_user: String,
     db_password: Option<String>,
     is_active: bool,
+    notes: Option<String>,
     auth_service: State<'_, AuthService>,
     managed_radius_service: State<'_, ManagedRadiusService>,
     audit_service: State<'_, AuditService>,
@@ -400,7 +475,6 @@ pub async fn update_managed_radius_server(
         .update_server(
             &id,
             crate::services::managed_radius_service::ManagedRadiusServerUpsert {
-                tenant_id: tenant_id.clone(),
                 name,
                 db_host,
                 db_port,
@@ -408,6 +482,7 @@ pub async fn update_managed_radius_server(
                 db_user,
                 db_password,
                 is_active,
+                notes,
             },
         )
         .await
@@ -416,7 +491,7 @@ pub async fn update_managed_radius_server(
     audit_service
         .log(
             Some(&claims.sub),
-            Some(&tenant_id),
+            None,
             "MANAGED_RADIUS_SERVER_UPDATED",
             "managed_radius_server",
             Some(&id),
@@ -431,6 +506,128 @@ pub async fn update_managed_radius_server(
 #[tauri::command]
 pub async fn set_managed_radius_server_active(
     token: String,
+    id: String,
+    is_active: bool,
+    auth_service: State<'_, AuthService>,
+    managed_radius_service: State<'_, ManagedRadiusService>,
+    audit_service: State<'_, AuditService>,
+) -> Result<(), String> {
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    if !claims.is_super_admin {
+        return Err("Unauthorized".to_string());
+    }
+
+    managed_radius_service
+        .set_server_active(&id, is_active)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    audit_service
+        .log(
+            Some(&claims.sub),
+            None,
+            if is_active {
+                "MANAGED_RADIUS_SERVER_ACTIVATED"
+            } else {
+                "MANAGED_RADIUS_SERVER_DEACTIVATED"
+            },
+            "managed_radius_server",
+            Some(&id),
+            Some("Managed RADIUS server active state changed by Superadmin"),
+            None,
+        )
+        .await;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn create_managed_radius_assignment(
+    token: String,
+    tenant_id: String,
+    radius_server_id: String,
+    is_active: bool,
+    auth_service: State<'_, AuthService>,
+    managed_radius_service: State<'_, ManagedRadiusService>,
+    audit_service: State<'_, AuditService>,
+) -> Result<(), String> {
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    if !claims.is_super_admin {
+        return Err("Unauthorized".to_string());
+    }
+
+    let assignment = managed_radius_service
+        .create_assignment(
+            crate::services::managed_radius_service::TenantRadiusAssignmentUpsert {
+                tenant_id: tenant_id.clone(),
+                radius_server_id,
+                is_active,
+            },
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+
+    audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "MANAGED_RADIUS_ASSIGNMENT_CREATED",
+            "managed_radius_assignment",
+            Some(&assignment.id),
+            Some("Managed RADIUS tenant assignment created by Superadmin"),
+            None,
+        )
+        .await;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn update_managed_radius_assignment(
+    token: String,
+    id: String,
+    tenant_id: String,
+    radius_server_id: String,
+    is_active: bool,
+    auth_service: State<'_, AuthService>,
+    managed_radius_service: State<'_, ManagedRadiusService>,
+    audit_service: State<'_, AuditService>,
+) -> Result<(), String> {
+    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    if !claims.is_super_admin {
+        return Err("Unauthorized".to_string());
+    }
+
+    managed_radius_service
+        .update_assignment(
+            &id,
+            crate::services::managed_radius_service::TenantRadiusAssignmentUpsert {
+                tenant_id: tenant_id.clone(),
+                radius_server_id,
+                is_active,
+            },
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+
+    audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "MANAGED_RADIUS_ASSIGNMENT_UPDATED",
+            "managed_radius_assignment",
+            Some(&id),
+            Some("Managed RADIUS tenant assignment updated by Superadmin"),
+            None,
+        )
+        .await;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn set_managed_radius_assignment_active(
+    token: String,
     tenant_id: String,
     id: String,
     is_active: bool,
@@ -444,7 +641,7 @@ pub async fn set_managed_radius_server_active(
     }
 
     managed_radius_service
-        .set_server_active(&tenant_id, &id, is_active)
+        .set_assignment_active(&tenant_id, &id, is_active)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -453,13 +650,13 @@ pub async fn set_managed_radius_server_active(
             Some(&claims.sub),
             Some(&tenant_id),
             if is_active {
-                "MANAGED_RADIUS_SERVER_ACTIVATED"
+                "MANAGED_RADIUS_ASSIGNMENT_ACTIVATED"
             } else {
-                "MANAGED_RADIUS_SERVER_DEACTIVATED"
+                "MANAGED_RADIUS_ASSIGNMENT_DEACTIVATED"
             },
-            "managed_radius_server",
+            "managed_radius_assignment",
             Some(&id),
-            Some("Managed RADIUS server active state changed by Superadmin"),
+            Some("Managed RADIUS tenant assignment active state changed by Superadmin"),
             None,
         )
         .await;

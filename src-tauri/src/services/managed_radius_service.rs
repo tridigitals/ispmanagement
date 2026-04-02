@@ -2,6 +2,7 @@ use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     ManagedRadiusNas, ManagedRadiusRouterSetup, ManagedRadiusServer, MikrotikRouter, PppoeAccount,
+    TenantRadiusAssignment,
 };
 use crate::security::secret::{decrypt_secret_opt_for, encrypt_secret_for};
 use chrono::Utc;
@@ -62,13 +63,20 @@ pub struct ManagedRadiusApplyResult {
 
 #[derive(Debug, Clone)]
 pub struct ManagedRadiusServerUpsert {
-    pub tenant_id: String,
     pub name: String,
     pub db_host: String,
     pub db_port: Option<i32>,
     pub db_name: String,
     pub db_user: String,
     pub db_password: Option<String>,
+    pub is_active: bool,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TenantRadiusAssignmentUpsert {
+    pub tenant_id: String,
+    pub radius_server_id: String,
     pub is_active: bool,
 }
 
@@ -102,11 +110,14 @@ impl ManagedRadiusService {
         let server = sqlx::query_as::<_, ManagedRadiusServer>(
             r#"
             SELECT s.*
-            FROM managed_radius_servers s
+            FROM radius_servers s
+            INNER JOIN tenant_radius_assignments a
+              ON a.radius_server_id = s.id
+             AND a.tenant_id = $1
+             AND a.is_active = true
             INNER JOIN managed_radius_nas n
               ON n.radius_server_id = s.id
-            WHERE s.tenant_id = $1
-              AND n.tenant_id = $1
+            WHERE n.tenant_id = $1
               AND n.router_id = $2
               AND s.is_active = true
               AND n.is_active = true
@@ -146,6 +157,29 @@ impl ManagedRadiusService {
         })?;
 
         Ok((server, nas))
+    }
+
+    async fn get_active_assignment_for_tenant(
+        &self,
+        tenant_id: &str,
+    ) -> AppResult<TenantRadiusAssignment> {
+        sqlx::query_as::<_, TenantRadiusAssignment>(
+            r#"
+            SELECT *
+            FROM tenant_radius_assignments
+            WHERE tenant_id = $1
+              AND is_active = true
+            ORDER BY updated_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or_else(|| {
+            AppError::Configuration("Managed RADIUS tenant assignment is not configured".into())
+        })
     }
 
     async fn connect_radius_db(&self, server: &ManagedRadiusServer) -> AppResult<PgPool> {
@@ -368,7 +402,6 @@ impl ManagedRadiusService {
     }
 
     pub async fn create_server(&self, input: ManagedRadiusServerUpsert) -> AppResult<ManagedRadiusServer> {
-        let tenant_id = required_trimmed("tenant_id", &input.tenant_id)?;
         let name = required_trimmed("name", &input.name)?;
         let db_host = required_trimmed("db_host", &input.db_host)?;
         let db_name = required_trimmed("db_name", &input.db_name)?;
@@ -377,29 +410,19 @@ impl ManagedRadiusService {
         let db_password = normalize_optional_secret_input(input.db_password.as_deref())
             .ok_or_else(|| AppError::Validation("db_password is required".into()))?;
         let db_password_enc = Self::encrypt_db_password(&db_password)?;
+        let notes = normalize_optional_secret_input(input.notes.as_deref());
         let now = Utc::now();
         let id = Uuid::new_v4().to_string();
 
-        let mut tx = self.pool.begin().await.map_err(AppError::Database)?;
-        if input.is_active {
-            sqlx::query("UPDATE managed_radius_servers SET is_active = false, updated_at = $2 WHERE tenant_id = $1")
-                .bind(tenant_id)
-                .bind(now)
-                .execute(&mut *tx)
-                .await
-                .map_err(AppError::Database)?;
-        }
-
         let server = sqlx::query_as::<_, ManagedRadiusServer>(
             r#"
-            INSERT INTO managed_radius_servers (
-              id, tenant_id, name, db_host, db_port, db_name, db_user, db_password_enc, is_active, created_at, updated_at
+            INSERT INTO radius_servers (
+              id, name, db_host, db_port, db_name, db_user, db_password_enc, is_active, notes, created_at, updated_at
             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
             RETURNING *
             "#,
         )
         .bind(id)
-        .bind(tenant_id)
         .bind(name)
         .bind(db_host)
         .bind(db_port)
@@ -407,13 +430,12 @@ impl ManagedRadiusService {
         .bind(db_user)
         .bind(db_password_enc)
         .bind(input.is_active)
+        .bind(notes)
         .bind(now)
         .bind(now)
-        .fetch_one(&mut *tx)
+        .fetch_one(&self.pool)
         .await
         .map_err(AppError::Database)?;
-
-        tx.commit().await.map_err(AppError::Database)?;
         Ok(server)
     }
 
@@ -422,7 +444,6 @@ impl ManagedRadiusService {
         server_id: &str,
         input: ManagedRadiusServerUpsert,
     ) -> AppResult<ManagedRadiusServer> {
-        let tenant_id = required_trimmed("tenant_id", &input.tenant_id)?;
         let name = required_trimmed("name", &input.name)?;
         let db_host = required_trimmed("db_host", &input.db_host)?;
         let db_name = required_trimmed("db_name", &input.db_name)?;
@@ -430,10 +451,9 @@ impl ManagedRadiusService {
         let db_port = normalize_managed_radius_db_port(input.db_port);
 
         let existing = sqlx::query_as::<_, ManagedRadiusServer>(
-            "SELECT * FROM managed_radius_servers WHERE id = $1 AND tenant_id = $2",
+            "SELECT * FROM radius_servers WHERE id = $1",
         )
         .bind(server_id)
-        .bind(tenant_id)
         .fetch_optional(&self.pool)
         .await
         .map_err(AppError::Database)?
@@ -443,24 +463,13 @@ impl ManagedRadiusService {
             Some(password) => Self::encrypt_db_password(&password)?,
             None => existing.db_password_enc,
         };
+        let notes = normalize_optional_secret_input(input.notes.as_deref());
 
         let now = Utc::now();
-        let mut tx = self.pool.begin().await.map_err(AppError::Database)?;
-        if input.is_active {
-            sqlx::query(
-                "UPDATE managed_radius_servers SET is_active = false, updated_at = $2 WHERE tenant_id = $1 AND id <> $3",
-            )
-            .bind(tenant_id)
-            .bind(now)
-            .bind(server_id)
-            .execute(&mut *tx)
-            .await
-            .map_err(AppError::Database)?;
-        }
 
         let server = sqlx::query_as::<_, ManagedRadiusServer>(
             r#"
-            UPDATE managed_radius_servers
+            UPDATE radius_servers
             SET name = $1,
                 db_host = $2,
                 db_port = $3,
@@ -468,8 +477,9 @@ impl ManagedRadiusService {
                 db_user = $5,
                 db_password_enc = $6,
                 is_active = $7,
-                updated_at = $8
-            WHERE id = $9 AND tenant_id = $10
+                notes = $8,
+                updated_at = $9
+            WHERE id = $10
             RETURNING *
             "#,
         )
@@ -480,51 +490,172 @@ impl ManagedRadiusService {
         .bind(db_user)
         .bind(db_password_enc)
         .bind(input.is_active)
+        .bind(notes)
         .bind(now)
         .bind(server_id)
-        .bind(tenant_id)
-        .fetch_one(&mut *tx)
+        .fetch_one(&self.pool)
         .await
         .map_err(AppError::Database)?;
-
-        tx.commit().await.map_err(AppError::Database)?;
         Ok(server)
     }
 
     pub async fn set_server_active(
         &self,
-        tenant_id: &str,
         server_id: &str,
         is_active: bool,
     ) -> AppResult<ManagedRadiusServer> {
+        let now = Utc::now();
+        let server = sqlx::query_as::<_, ManagedRadiusServer>(
+            "UPDATE radius_servers SET is_active = $1, updated_at = $2 WHERE id = $3 RETURNING *",
+        )
+        .bind(is_active)
+        .bind(now)
+        .bind(server_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or_else(|| AppError::NotFound("Managed RADIUS server not found".into()))?;
+        Ok(server)
+    }
+
+    pub async fn create_assignment(
+        &self,
+        input: TenantRadiusAssignmentUpsert,
+    ) -> AppResult<TenantRadiusAssignment> {
+        let tenant_id = required_trimmed("tenant_id", &input.tenant_id)?;
+        let radius_server_id = required_trimmed("radius_server_id", &input.radius_server_id)?;
+        self.ensure_tenant_exists(tenant_id).await?;
+        self.ensure_server_exists(radius_server_id).await?;
+        let now = Utc::now();
+        let mut tx = self.pool.begin().await.map_err(AppError::Database)?;
+
+        if input.is_active {
+            sqlx::query(
+                "UPDATE tenant_radius_assignments SET is_active = false, updated_at = $2 WHERE tenant_id = $1",
+            )
+            .bind(tenant_id)
+            .bind(now)
+            .execute(&mut *tx)
+            .await
+            .map_err(AppError::Database)?;
+        }
+
+        let assignment = sqlx::query_as::<_, TenantRadiusAssignment>(
+            r#"
+            INSERT INTO tenant_radius_assignments (
+              id, tenant_id, radius_server_id, is_active, assigned_at, created_at, updated_at
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7)
+            RETURNING *
+            "#,
+        )
+        .bind(Uuid::new_v4().to_string())
+        .bind(tenant_id)
+        .bind(radius_server_id)
+        .bind(input.is_active)
+        .bind(now)
+        .bind(now)
+        .bind(now)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(AppError::Database)?;
+
+        tx.commit().await.map_err(AppError::Database)?;
+        Ok(assignment)
+    }
+
+    pub async fn update_assignment(
+        &self,
+        assignment_id: &str,
+        input: TenantRadiusAssignmentUpsert,
+    ) -> AppResult<TenantRadiusAssignment> {
+        let tenant_id = required_trimmed("tenant_id", &input.tenant_id)?;
+        let radius_server_id = required_trimmed("radius_server_id", &input.radius_server_id)?;
+        self.ensure_tenant_exists(tenant_id).await?;
+        self.ensure_server_exists(radius_server_id).await?;
+        let now = Utc::now();
+        let mut tx = self.pool.begin().await.map_err(AppError::Database)?;
+
+        if input.is_active {
+            sqlx::query(
+                "UPDATE tenant_radius_assignments SET is_active = false, updated_at = $2 WHERE tenant_id = $1 AND id <> $3",
+            )
+            .bind(tenant_id)
+            .bind(now)
+            .bind(assignment_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(AppError::Database)?;
+        }
+
+        let assignment = sqlx::query_as::<_, TenantRadiusAssignment>(
+            r#"
+            UPDATE tenant_radius_assignments
+            SET tenant_id = $1,
+                radius_server_id = $2,
+                is_active = $3,
+                assigned_at = $4,
+                updated_at = $5
+            WHERE id = $6
+            RETURNING *
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(radius_server_id)
+        .bind(input.is_active)
+        .bind(now)
+        .bind(now)
+        .bind(assignment_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or_else(|| AppError::NotFound("Managed RADIUS assignment not found".into()))?;
+
+        tx.commit().await.map_err(AppError::Database)?;
+        Ok(assignment)
+    }
+
+    pub async fn set_assignment_active(
+        &self,
+        tenant_id: &str,
+        assignment_id: &str,
+        is_active: bool,
+    ) -> AppResult<TenantRadiusAssignment> {
         let tenant_id = required_trimmed("tenant_id", tenant_id)?;
         let now = Utc::now();
         let mut tx = self.pool.begin().await.map_err(AppError::Database)?;
 
         if is_active {
-            sqlx::query("UPDATE managed_radius_servers SET is_active = false, updated_at = $2 WHERE tenant_id = $1 AND id <> $3")
-                .bind(tenant_id)
-                .bind(now)
-                .bind(server_id)
-                .execute(&mut *tx)
-                .await
-                .map_err(AppError::Database)?;
+            sqlx::query(
+                "UPDATE tenant_radius_assignments SET is_active = false, updated_at = $2 WHERE tenant_id = $1 AND id <> $3",
+            )
+            .bind(tenant_id)
+            .bind(now)
+            .bind(assignment_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(AppError::Database)?;
         }
 
-        let server = sqlx::query_as::<_, ManagedRadiusServer>(
-            "UPDATE managed_radius_servers SET is_active = $1, updated_at = $2 WHERE id = $3 AND tenant_id = $4 RETURNING *",
+        let assignment = sqlx::query_as::<_, TenantRadiusAssignment>(
+            r#"
+            UPDATE tenant_radius_assignments
+            SET is_active = $1,
+                updated_at = $2
+            WHERE id = $3 AND tenant_id = $4
+            RETURNING *
+            "#,
         )
         .bind(is_active)
         .bind(now)
-        .bind(server_id)
+        .bind(assignment_id)
         .bind(tenant_id)
         .fetch_optional(&mut *tx)
         .await
         .map_err(AppError::Database)?
-        .ok_or_else(|| AppError::NotFound("Managed RADIUS server not found".into()))?;
+        .ok_or_else(|| AppError::NotFound("Managed RADIUS assignment not found".into()))?;
 
         tx.commit().await.map_err(AppError::Database)?;
-        Ok(server)
+        Ok(assignment)
     }
 
     pub async fn create_mapping(&self, input: ManagedRadiusNasUpsert) -> AppResult<ManagedRadiusNas> {
@@ -701,18 +832,11 @@ impl ManagedRadiusService {
         radius_server_id: &str,
         router_id: &str,
     ) -> AppResult<()> {
-        let server_exists = sqlx::query_scalar::<_, bool>(
-            "SELECT count(*) > 0 FROM managed_radius_servers WHERE id = $1 AND tenant_id = $2",
-        )
-        .bind(radius_server_id)
-        .bind(tenant_id)
-        .fetch_one(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
-
-        if !server_exists {
+        self.ensure_server_exists(radius_server_id).await?;
+        let assignment = self.get_active_assignment_for_tenant(tenant_id).await?;
+        if assignment.radius_server_id != radius_server_id {
             return Err(AppError::Validation(
-                "Managed RADIUS server does not belong to the selected tenant".into(),
+                "Managed RADIUS server must match the tenant's active assignment".into(),
             ));
         }
 
@@ -734,6 +858,39 @@ impl ManagedRadiusService {
         Ok(())
     }
 
+    async fn ensure_server_exists(&self, radius_server_id: &str) -> AppResult<()> {
+        let server_exists = sqlx::query_scalar::<_, bool>(
+            "SELECT count(*) > 0 FROM radius_servers WHERE id = $1",
+        )
+        .bind(radius_server_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        if !server_exists {
+            return Err(AppError::Validation(
+                "Managed RADIUS server does not exist".into(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    async fn ensure_tenant_exists(&self, tenant_id: &str) -> AppResult<()> {
+        let tenant_exists =
+            sqlx::query_scalar::<_, bool>("SELECT count(*) > 0 FROM tenants WHERE id = $1")
+                .bind(tenant_id)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(AppError::Database)?;
+
+        if !tenant_exists {
+            return Err(AppError::Validation("Tenant does not exist".into()));
+        }
+
+        Ok(())
+    }
+
     pub async fn get_router_setup(
         &self,
         tenant_id: &str,
@@ -743,12 +900,15 @@ impl ManagedRadiusService {
             r#"
             SELECT n.*
             FROM managed_radius_nas n
-            INNER JOIN managed_radius_servers s
+            INNER JOIN radius_servers s
               ON s.id = n.radius_server_id
+            INNER JOIN tenant_radius_assignments a
+              ON a.radius_server_id = s.id
+             AND a.tenant_id = n.tenant_id
+             AND a.is_active = true
             WHERE n.tenant_id = $1
               AND n.router_id = $2
               AND n.is_active = true
-              AND s.tenant_id = $1
               AND s.is_active = true
             LIMIT 1
             "#,
@@ -786,15 +946,13 @@ impl ManagedRadiusService {
         let server = sqlx::query_as::<_, ManagedRadiusServer>(
             r#"
             SELECT *
-            FROM managed_radius_servers
+            FROM radius_servers
             WHERE id = $1
-              AND tenant_id = $2
               AND is_active = true
             LIMIT 1
             "#,
         )
         .bind(&nas.radius_server_id)
-        .bind(tenant_id)
         .fetch_one(&self.pool)
         .await
         .map_err(AppError::Database)?;
@@ -936,6 +1094,12 @@ fn mask_shared_secret(secret: &str) -> String {
 mod tests {
     use super::*;
     use crate::models::{PppoeAccount, PppoeAccountSource};
+    use std::sync::{Mutex, OnceLock};
+
+    fn env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
 
     fn sample_account() -> PppoeAccount {
         let now = Utc::now();
@@ -1004,6 +1168,7 @@ mod tests {
 
     #[test]
     fn host_resolution_prefers_public_env() {
+        let _guard = env_lock().lock().expect("env lock");
         unsafe {
             std::env::set_var("MANAGED_RADIUS_HOST", "radius-public.example.com");
             std::env::remove_var("RADIUS_PUBLIC_HOST");
@@ -1018,6 +1183,7 @@ mod tests {
 
     #[test]
     fn host_resolution_falls_back_to_server_host_with_warning() {
+        let _guard = env_lock().lock().expect("env lock");
         unsafe {
             std::env::remove_var("MANAGED_RADIUS_HOST");
             std::env::remove_var("RADIUS_PUBLIC_HOST");

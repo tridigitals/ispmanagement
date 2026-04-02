@@ -61,8 +61,6 @@ export interface Tenant {
 
 export interface SuperadminManagedRadiusServer {
   id: string;
-  tenant_id: string;
-  tenant_name: string;
   name: string;
   host: string;
   auth_port: number;
@@ -70,6 +68,22 @@ export interface SuperadminManagedRadiusServer {
   db_host: string;
   db_port: number;
   db_name: string;
+  is_active: boolean;
+  notes: string | null;
+  tenant_count: number;
+  router_count: number;
+  updated_at: string;
+}
+
+export interface SuperadminManagedRadiusAssignment {
+  id: string;
+  tenant_id: string;
+  tenant_name: string;
+  radius_server_id: string;
+  server_name: string;
+  radius_host: string;
+  auth_port: number;
+  acct_port: number;
   is_active: boolean;
   router_count: number;
   updated_at: string;
@@ -111,13 +125,19 @@ export interface SuperadminManagedRadiusUser {
 }
 
 export interface ManagedRadiusServerPayload {
-  tenant_id: string;
   name: string;
   db_host: string;
   db_port?: number | null;
   db_name: string;
   db_user: string;
   db_password?: string | null;
+  is_active: boolean;
+  notes?: string | null;
+}
+
+export interface ManagedRadiusAssignmentPayload {
+  tenant_id: string;
+  radius_server_id: string;
   is_active: boolean;
 }
 

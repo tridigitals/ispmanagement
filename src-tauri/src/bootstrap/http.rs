@@ -400,6 +400,19 @@ pub async fn start_server_impl(
             post(superadmin::set_managed_radius_server_active),
         )
         .route(
+            "/api/superadmin/radius/assignments",
+            get(superadmin::list_managed_radius_assignments)
+                .post(superadmin::create_managed_radius_assignment),
+        )
+        .route(
+            "/api/superadmin/radius/assignments/{id}",
+            put(superadmin::update_managed_radius_assignment),
+        )
+        .route(
+            "/api/superadmin/radius/assignments/{id}/active",
+            post(superadmin::set_managed_radius_assignment_active),
+        )
+        .route(
             "/api/superadmin/radius/mappings",
             get(superadmin::list_managed_radius_mappings).post(superadmin::create_managed_radius_mapping),
         )

@@ -1,14 +1,17 @@
 <script lang="ts">
   import { api } from '$lib/api/client';
   import type {
+    ManagedRadiusAssignmentPayload,
     ManagedRadiusMappingPayload,
     ManagedRadiusSecretValue,
     ManagedRadiusServerPayload,
+    SuperadminManagedRadiusAssignment,
     SuperadminManagedRadiusMapping,
     SuperadminManagedRadiusServer,
     SuperadminManagedRadiusUser,
     Tenant,
   } from '$lib/api/types';
+  import AssignmentFormModal from '$lib/components/superadmin/radius/AssignmentFormModal.svelte';
   import MappingFormModal from '$lib/components/superadmin/radius/MappingFormModal.svelte';
   import MappingSecretDialog from '$lib/components/superadmin/radius/MappingSecretDialog.svelte';
   import ServerFormModal from '$lib/components/superadmin/radius/ServerFormModal.svelte';
@@ -29,13 +32,19 @@
   };
 
   const DEFAULT_SERVER_FORM = (): ManagedRadiusServerPayload => ({
-    tenant_id: '',
     name: '',
     db_host: '',
     db_port: 5432,
     db_name: 'radius',
     db_user: 'radius',
     db_password: '',
+    is_active: true,
+    notes: '',
+  });
+
+  const DEFAULT_ASSIGNMENT_FORM = (): ManagedRadiusAssignmentPayload => ({
+    tenant_id: '',
+    radius_server_id: '',
     is_active: true,
   });
 
@@ -53,6 +62,7 @@
   let tenants = $state<Tenant[]>([]);
   let routers = $state<RouterOption[]>([]);
   let servers = $state<SuperadminManagedRadiusServer[]>([]);
+  let assignments = $state<SuperadminManagedRadiusAssignment[]>([]);
   let mappings = $state<SuperadminManagedRadiusMapping[]>([]);
   let users = $state<SuperadminManagedRadiusUser[]>([]);
 
@@ -62,6 +72,10 @@
 
   let serverSearch = $state('');
   let serverStatusFilter = $state<'all' | 'active' | 'inactive'>('all');
+
+  let assignmentSearch = $state('');
+  let assignmentTenantFilter = $state('all');
+  let assignmentStatusFilter = $state<'all' | 'active' | 'inactive'>('all');
 
   let mappingSearch = $state('');
   let mappingTenantFilter = $state('all');
@@ -77,6 +91,11 @@
   let savingServer = $state(false);
   let editingServerId = $state<string | null>(null);
   let serverForm = $state<ManagedRadiusServerPayload>(DEFAULT_SERVER_FORM());
+
+  let showAssignmentModal = $state(false);
+  let savingAssignment = $state(false);
+  let editingAssignmentId = $state<string | null>(null);
+  let assignmentForm = $state<ManagedRadiusAssignmentPayload>(DEFAULT_ASSIGNMENT_FORM());
 
   let showMappingModal = $state(false);
   let savingMapping = $state(false);
@@ -101,9 +120,10 @@
 
     error = '';
     try {
-      const [tenantRes, serverRes, mappingRes, userRes, routerRes] = await Promise.all([
+      const [tenantRes, serverRes, assignmentRes, mappingRes, userRes, routerRes] = await Promise.all([
         api.superadmin.listTenants(),
         api.superadmin.listManagedRadiusServers(),
+        api.superadmin.listManagedRadiusAssignments(),
         api.superadmin.listManagedRadiusMappings(),
         api.superadmin.listManagedRadiusUsers(),
         api.mikrotik.routers.list().catch(() => []),
@@ -111,6 +131,7 @@
 
       tenants = tenantRes.data || [];
       servers = serverRes.data || [];
+      assignments = assignmentRes.data || [];
       mappings = mappingRes.data || [];
       users = userRes.data || [];
       routers = (routerRes || []) as RouterOption[];
@@ -168,6 +189,11 @@
     editingServerId = null;
   }
 
+  function resetAssignmentForm() {
+    assignmentForm = DEFAULT_ASSIGNMENT_FORM();
+    editingAssignmentId = null;
+  }
+
   function resetMappingForm() {
     mappingForm = DEFAULT_MAPPING_FORM();
     editingMappingId = null;
@@ -181,7 +207,6 @@
   function openEditServerModal(server: SuperadminManagedRadiusServer) {
     editingServerId = server.id;
     serverForm = {
-      tenant_id: server.tenant_id,
       name: server.name,
       db_host: server.db_host,
       db_port: server.db_port,
@@ -189,12 +214,13 @@
       db_user: '',
       db_password: '',
       is_active: server.is_active,
+      notes: server.notes || '',
     };
     showServerModal = true;
   }
 
   async function submitServerForm() {
-    if (!serverForm.tenant_id || !serverForm.name || !serverForm.db_host || !serverForm.db_name) {
+    if (!serverForm.name || !serverForm.db_host || !serverForm.db_name) {
       toast.error($t('superadmin.radius.toasts.server_validation') || 'Complete the server form first');
       return;
     }
@@ -206,6 +232,7 @@
         db_password: serverForm.db_password?.trim() ? serverForm.db_password : null,
         db_user: serverForm.db_user?.trim() || 'radius',
         db_port: Number(serverForm.db_port) || 5432,
+        notes: serverForm.notes?.trim() || null,
       };
 
       if (editingServerId) {
@@ -234,7 +261,7 @@
 
   async function toggleServerActive(server: SuperadminManagedRadiusServer) {
     try {
-      await api.superadmin.setManagedRadiusServerActive(server.id, server.tenant_id, !server.is_active);
+      await api.superadmin.setManagedRadiusServerActive(server.id, !server.is_active);
       toast.success(
         !server.is_active
           ? $t('superadmin.radius.toasts.server_activated') || 'Server activated'
@@ -243,6 +270,71 @@
       await loadData({ silent: true });
     } catch (err: any) {
       toast.error(err?.message || String(err) || 'Failed to change server state');
+    }
+  }
+
+  function openCreateAssignmentModal() {
+    resetAssignmentForm();
+    showAssignmentModal = true;
+  }
+
+  function openEditAssignmentModal(assignment: SuperadminManagedRadiusAssignment) {
+    editingAssignmentId = assignment.id;
+    assignmentForm = {
+      tenant_id: assignment.tenant_id,
+      radius_server_id: assignment.radius_server_id,
+      is_active: assignment.is_active,
+    };
+    showAssignmentModal = true;
+  }
+
+  async function submitAssignmentForm() {
+    if (!assignmentForm.tenant_id || !assignmentForm.radius_server_id) {
+      toast.error(
+        $t('superadmin.radius.toasts.assignment_validation') || 'Complete the assignment form first',
+      );
+      return;
+    }
+
+    savingAssignment = true;
+    try {
+      if (editingAssignmentId) {
+        await api.superadmin.updateManagedRadiusAssignment(editingAssignmentId, assignmentForm);
+        toast.success(
+          $t('superadmin.radius.toasts.assignment_updated') || 'Tenant assignment updated',
+        );
+      } else {
+        await api.superadmin.createManagedRadiusAssignment(assignmentForm);
+        toast.success(
+          $t('superadmin.radius.toasts.assignment_created') || 'Tenant assignment created',
+        );
+      }
+
+      showAssignmentModal = false;
+      resetAssignmentForm();
+      await loadData({ silent: true });
+    } catch (err: any) {
+      toast.error(err?.message || String(err) || 'Failed to save assignment');
+    } finally {
+      savingAssignment = false;
+    }
+  }
+
+  async function toggleAssignmentActive(assignment: SuperadminManagedRadiusAssignment) {
+    try {
+      await api.superadmin.setManagedRadiusAssignmentActive(
+        assignment.id,
+        assignment.tenant_id,
+        !assignment.is_active,
+      );
+      toast.success(
+        !assignment.is_active
+          ? $t('superadmin.radius.toasts.assignment_activated') || 'Assignment activated'
+          : $t('superadmin.radius.toasts.assignment_deactivated') || 'Assignment deactivated',
+      );
+      await loadData({ silent: true });
+    } catch (err: any) {
+      toast.error(err?.message || String(err) || 'Failed to change assignment state');
     }
   }
 
@@ -413,7 +505,6 @@
   }
 
   function focusMappingsForServer(server: SuperadminManagedRadiusServer) {
-    mappingTenantFilter = server.tenant_id;
     mappingServerFilter = server.id;
   }
 
@@ -440,8 +531,16 @@
 
   const mappingServerOptions = $derived.by(() =>
     servers
-      .filter((server) => mappingTenantFilter === 'all' || server.tenant_id === mappingTenantFilter)
-      .map((server) => ({ id: server.id, name: `${server.name} (${server.tenant_name})` })),
+      .filter((server) =>
+        mappingTenantFilter === 'all'
+          ? true
+          : assignments.some(
+              (assignment) =>
+                assignment.tenant_id === mappingTenantFilter &&
+                assignment.radius_server_id === server.id,
+            ),
+      )
+      .map((server) => ({ id: server.id, name: server.name })),
   );
 
   const filteredServers = $derived.by(() =>
@@ -450,15 +549,34 @@
       const matchesSearch =
         !q ||
         normalized(server.name).includes(q) ||
-        normalized(server.tenant_name).includes(q) ||
         normalized(server.host).includes(q) ||
-        normalized(server.db_host).includes(q);
+        normalized(server.db_host).includes(q) ||
+        normalized(server.notes).includes(q);
 
       const matchesStatus =
         serverStatusFilter === 'all' ||
         (serverStatusFilter === 'active' ? server.is_active : !server.is_active);
 
       return matchesSearch && matchesStatus;
+    }),
+  );
+
+  const filteredAssignments = $derived.by(() =>
+    assignments.filter((assignment) => {
+      const q = normalized(assignmentSearch);
+      const matchesSearch =
+        !q ||
+        normalized(assignment.tenant_name).includes(q) ||
+        normalized(assignment.server_name).includes(q) ||
+        normalized(assignment.radius_host).includes(q);
+
+      const matchesTenant =
+        assignmentTenantFilter === 'all' || assignment.tenant_id === assignmentTenantFilter;
+      const matchesStatus =
+        assignmentStatusFilter === 'all' ||
+        (assignmentStatusFilter === 'active' ? assignment.is_active : !assignment.is_active);
+
+      return matchesSearch && matchesTenant && matchesStatus;
     }),
   );
 
@@ -497,6 +615,7 @@
 
   const stats = $derived.by(() => ({
     servers: servers.length,
+    assignments: assignments.length,
     mappings: mappings.length,
     users: users.length,
     outOfSync: users.filter((user) => !user.radius_present || user.radius_last_error).length,
@@ -516,6 +635,9 @@
     <div class="hero-actions">
       <button class="btn btn-secondary" type="button" onclick={openCreateServerModal}>
         {$t('superadmin.radius.actions.new_server') || 'New server'}
+      </button>
+      <button class="btn btn-secondary" type="button" onclick={openCreateAssignmentModal}>
+        {$t('superadmin.radius.actions.new_assignment') || 'New assignment'}
       </button>
       <button class="btn btn-primary" type="button" onclick={openCreateMappingModal}>
         {$t('superadmin.radius.actions.new_mapping') || 'New mapping'}
@@ -537,6 +659,7 @@
   {:else}
     <div class="stats-grid">
       <StatsCard title={$t('superadmin.radius.stats.servers') || 'Servers'} value={stats.servers} icon="server" />
+      <StatsCard title={$t('superadmin.radius.stats.assignments') || 'Assignments'} value={stats.assignments} icon="layers" color="info" />
       <StatsCard title={$t('superadmin.radius.stats.mappings') || 'NAS Mappings'} value={stats.mappings} icon="network" color="success" />
       <StatsCard title={$t('superadmin.radius.stats.users') || 'Users'} value={stats.users} icon="users" />
       <StatsCard title={$t('superadmin.radius.stats.out_of_sync') || 'Needs Attention'} value={stats.outOfSync} icon="activity" color="warning" />
@@ -561,7 +684,7 @@
       {#if filteredServers.length === 0}
         <div class="empty-state">
           <strong>{$t('superadmin.radius.empty.servers_title') || 'No managed RADIUS servers yet'}</strong>
-          <span>{$t('superadmin.radius.empty.servers_subtitle') || 'Managed RADIUS infrastructure will appear here after tenants configure servers and NAS mappings.'}</span>
+          <span>{$t('superadmin.radius.empty.servers_subtitle') || 'Create global RADIUS infrastructure here, then assign tenants and map routers.'}</span>
         </div>
       {:else}
         <div class="table-wrap">
@@ -569,10 +692,10 @@
             <thead>
               <tr>
                 <th>{$t('superadmin.radius.columns.server') || 'Server'}</th>
-                <th>{$t('superadmin.radius.columns.tenant') || 'Tenant'}</th>
                 <th>{$t('superadmin.radius.columns.host') || 'Host'}</th>
                 <th>{$t('superadmin.radius.columns.database') || 'Database'}</th>
                 <th>{$t('superadmin.radius.columns.status') || 'Status'}</th>
+                <th>{$t('superadmin.radius.columns.tenants') || 'Tenants'}</th>
                 <th>{$t('superadmin.radius.columns.routers') || 'Routers'}</th>
                 <th>{$t('superadmin.radius.columns.updated') || 'Updated'}</th>
                 <th>{$t('superadmin.radius.columns.actions') || 'Actions'}</th>
@@ -581,8 +704,12 @@
             <tbody>
               {#each filteredServers as server}
                 <tr>
-                  <td><div class="primary">{server.name}</div></td>
-                  <td>{server.tenant_name}</td>
+                  <td>
+                    <div class="primary">{server.name}</div>
+                    {#if server.notes}
+                      <div class="muted">{server.notes}</div>
+                    {/if}
+                  </td>
                   <td>{server.host}</td>
                   <td>{server.db_host}:{server.db_port}/{server.db_name}</td>
                   <td>
@@ -592,6 +719,7 @@
                         : $t('superadmin.radius.status.inactive') || 'Inactive'}
                     </span>
                   </td>
+                  <td>{server.tenant_count}</td>
                   <td>{server.router_count}</td>
                   <td>{formatDateTime(server.updated_at)}</td>
                   <td>
@@ -606,6 +734,83 @@
                       </button>
                       <button class="btn-link" type="button" onclick={() => focusMappingsForServer(server)}>
                         {$t('superadmin.radius.actions.view_mappings') || 'View mappings'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      {/if}
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>{$t('superadmin.radius.sections.assignments') || 'Tenant Assignments'}</h2>
+          <p>{filteredAssignments.length} / {assignments.length}</p>
+        </div>
+        <div class="filters filters-wide">
+          <input bind:value={assignmentSearch} placeholder={$t('superadmin.radius.filters.search_assignments') || 'Search assignments...'} />
+          <select bind:value={assignmentTenantFilter}>
+            <option value="all">{$t('superadmin.radius.filters.all_tenants') || 'All tenants'}</option>
+            {#each mappingTenantOptions as tenant}
+              <option value={tenant.id}>{tenant.name}</option>
+            {/each}
+          </select>
+          <select bind:value={assignmentStatusFilter}>
+            <option value="all">{$t('superadmin.radius.filters.all_statuses') || 'All statuses'}</option>
+            <option value="active">{$t('superadmin.radius.filters.active') || 'Active'}</option>
+            <option value="inactive">{$t('superadmin.radius.filters.inactive') || 'Inactive'}</option>
+          </select>
+        </div>
+      </div>
+
+      {#if filteredAssignments.length === 0}
+        <div class="empty-state">
+          <strong>{$t('superadmin.radius.empty.assignments_title') || 'No tenant assignments yet'}</strong>
+          <span>{$t('superadmin.radius.empty.assignments_subtitle') || 'Assign one active global server per tenant before creating NAS mappings.'}</span>
+        </div>
+      {:else}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>{$t('superadmin.radius.columns.tenant') || 'Tenant'}</th>
+                <th>{$t('superadmin.radius.columns.server') || 'Server'}</th>
+                <th>{$t('superadmin.radius.columns.status') || 'Status'}</th>
+                <th>{$t('superadmin.radius.columns.routers') || 'Routers'}</th>
+                <th>{$t('superadmin.radius.columns.updated') || 'Updated'}</th>
+                <th>{$t('superadmin.radius.columns.actions') || 'Actions'}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each filteredAssignments as assignment}
+                <tr>
+                  <td>{assignment.tenant_name}</td>
+                  <td>
+                    <div class="primary">{assignment.server_name}</div>
+                    <div class="muted">{assignment.radius_host}:{assignment.auth_port}/{assignment.acct_port}</div>
+                  </td>
+                  <td>
+                    <span class="badge" class:good={assignment.is_active} class:muted={!assignment.is_active}>
+                      {assignment.is_active
+                        ? $t('superadmin.radius.status.active') || 'Active'
+                        : $t('superadmin.radius.status.inactive') || 'Inactive'}
+                    </span>
+                  </td>
+                  <td>{assignment.router_count}</td>
+                  <td>{formatDateTime(assignment.updated_at)}</td>
+                  <td>
+                    <div class="row-actions">
+                      <button class="btn-link" type="button" onclick={() => openEditAssignmentModal(assignment)}>
+                        {$t('superadmin.radius.actions.edit') || 'Edit'}
+                      </button>
+                      <button class="btn-link" type="button" onclick={() => toggleAssignmentActive(assignment)}>
+                        {assignment.is_active
+                          ? $t('superadmin.radius.actions.deactivate') || 'Deactivate'
+                          : $t('superadmin.radius.actions.activate') || 'Activate'}
                       </button>
                     </div>
                   </td>
@@ -803,8 +1008,17 @@
   loading={savingServer}
   isEditing={Boolean(editingServerId)}
   bind:server={serverForm}
-  {tenants}
   onSubmit={submitServerForm}
+/>
+
+<AssignmentFormModal
+  bind:show={showAssignmentModal}
+  loading={savingAssignment}
+  isEditing={Boolean(editingAssignmentId)}
+  bind:assignment={assignmentForm}
+  {tenants}
+  {servers}
+  onSubmit={submitAssignmentForm}
 />
 
 <MappingFormModal
@@ -813,7 +1027,7 @@
   isEditing={Boolean(editingMappingId)}
   bind:mapping={mappingForm}
   {tenants}
-  {servers}
+  {assignments}
   {routers}
   onGenerateSecret={generateSecretForMappingForm}
   onSubmit={submitMappingForm}

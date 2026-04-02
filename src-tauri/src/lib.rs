@@ -252,6 +252,7 @@ pub fn run() {
                                     // Super Admin commands
                                     list_tenants,
                                     list_managed_radius_servers,
+                                    list_managed_radius_assignments,
                                     list_managed_radius_users,
                                     list_managed_radius_mappings,
                                     delete_tenant,
@@ -260,6 +261,9 @@ pub fn run() {
                                     create_managed_radius_server,
                                     update_managed_radius_server,
                                     set_managed_radius_server_active,
+                                    create_managed_radius_assignment,
+                                    update_managed_radius_assignment,
+                                    set_managed_radius_assignment_active,
                                     create_managed_radius_mapping,
                                     update_managed_radius_mapping,
                                     set_managed_radius_mapping_active,
