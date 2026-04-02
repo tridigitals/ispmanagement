@@ -196,6 +196,8 @@ export const mikrotik = {
       level?: string;
       topic?: string;
       q?: string;
+      month?: number;
+      year?: number;
       page?: number;
       perPage?: number;
       includeTotal?: boolean;
@@ -207,10 +209,35 @@ export const mikrotik = {
         level: params?.level,
         topic: params?.topic,
         q: params?.q,
+        month: params?.month,
+        year: params?.year,
         page: params?.page,
         per_page: params?.perPage,
         include_total: params?.includeTotal,
         includeTotal: params?.includeTotal,
+      }),
+    getRetention: (routerId: string): Promise<{ router_id: string; retention_days: number | null }> =>
+      safeInvoke('get_mikrotik_log_retention', {
+        token: getTokenOrThrow(),
+        router_id: routerId,
+        routerId,
+      }),
+    updateRetention: (
+      routerId: string,
+      retentionDays: number | null,
+    ): Promise<{ router_id: string; retention_days: number | null }> =>
+      safeInvoke('update_mikrotik_log_retention', {
+        token: getTokenOrThrow(),
+        router_id: routerId,
+        routerId,
+        retention_days: retentionDays,
+        retentionDays,
+      }),
+    clear: (routerId: string): Promise<{ router_id: string; deleted: number }> =>
+      safeInvoke('clear_mikrotik_logs', {
+        token: getTokenOrThrow(),
+        router_id: routerId,
+        routerId,
       }),
     sync: (routerId: string, fetchLimit?: number): Promise<any> =>
       safeInvoke('sync_mikrotik_logs', {

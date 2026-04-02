@@ -277,6 +277,15 @@ const commandMap: Record<string, { method: string; path: string }> = {
   list_mikrotik_alerts: { method: 'GET', path: '/admin/mikrotik/alerts' },
   list_mikrotik_incidents: { method: 'GET', path: '/admin/mikrotik/incidents' },
   list_mikrotik_logs: { method: 'GET', path: '/admin/mikrotik/logs' },
+  get_mikrotik_log_retention: {
+    method: 'GET',
+    path: '/admin/mikrotik/routers/:routerId/logs/retention',
+  },
+  update_mikrotik_log_retention: {
+    method: 'PUT',
+    path: '/admin/mikrotik/routers/:routerId/logs/retention',
+  },
+  clear_mikrotik_logs: { method: 'DELETE', path: '/admin/mikrotik/routers/:routerId/logs' },
   ack_mikrotik_alert: { method: 'POST', path: '/admin/mikrotik/alerts/:id/ack' },
   resolve_mikrotik_alert: { method: 'POST', path: '/admin/mikrotik/alerts/:id/resolve' },
   ack_mikrotik_incident: { method: 'POST', path: '/admin/mikrotik/incidents/:id/ack' },

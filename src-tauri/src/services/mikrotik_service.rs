@@ -14,9 +14,10 @@ use crate::error::{AppError, AppResult};
 use crate::models::{
     CreateMikrotikRouterRequest, MikrotikAlert, MikrotikHealthSnapshot, MikrotikIncident,
     MikrotikInterfaceCounter, MikrotikInterfaceMetric, MikrotikInterfaceSnapshot,
-    MikrotikIpAddressSnapshot, MikrotikLogEntry, MikrotikLogSyncResult, MikrotikRouter,
-    MikrotikRouterMetric, MikrotikRouterNocRow, MikrotikRouterSnapshot, MikrotikTestResult,
-    PaginatedResponse, UpdateMikrotikRouterRequest,
+    MikrotikIpAddressSnapshot, MikrotikLogClearResult, MikrotikLogEntry,
+    MikrotikLogRetentionSettings, MikrotikLogSyncResult, MikrotikRouter, MikrotikRouterMetric,
+    MikrotikRouterNocRow, MikrotikRouterSnapshot, MikrotikTestResult, PaginatedResponse,
+    UpdateMikrotikRouterRequest,
 };
 use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
 use crate::services::{AuditService, NotificationService, SettingsService};
@@ -173,10 +174,11 @@ impl MikrotikService {
 
     #[cfg(test)]
     fn test_sync_rows_override(&self) -> Option<Vec<SyncLogRawRow>> {
-        self.test_sync_logs_injection
-            .read()
-            .ok()
-            .and_then(|guard| guard.as_ref().and_then(|injection| injection.rows_override.clone()))
+        self.test_sync_logs_injection.read().ok().and_then(|guard| {
+            guard
+                .as_ref()
+                .and_then(|injection| injection.rows_override.clone())
+        })
     }
 
     #[cfg(test)]
@@ -694,24 +696,30 @@ impl MikrotikService {
         level: Option<String>,
         topic: Option<String>,
         q: Option<String>,
+        month: Option<u32>,
+        year: Option<i32>,
         page: u32,
         per_page: u32,
         include_total: bool,
     ) -> AppResult<PaginatedResponse<MikrotikLogEntry>> {
+        validate_log_calendar_filters(month, year)?;
         let q = q.unwrap_or_default().trim().to_string();
         let offset = (page.saturating_sub(1)) * per_page;
+        let month_i32 = month.map(|v| v as i32);
 
         let data: Vec<MikrotikLogEntry> = sqlx::query_as(mikrotik_log_list_sql())
-        .bind(tenant_id)
-        .bind(&router_id)
-        .bind(&level)
-        .bind(&topic)
-        .bind(&q)
-        .bind(per_page as i64)
-        .bind(offset as i64)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(AppError::Database)?;
+            .bind(tenant_id)
+            .bind(&router_id)
+            .bind(&level)
+            .bind(&topic)
+            .bind(&q)
+            .bind(month_i32)
+            .bind(year)
+            .bind(per_page as i64)
+            .bind(offset as i64)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
 
         let total = if include_total {
             sqlx::query_scalar::<_, i64>(
@@ -723,6 +731,8 @@ impl MikrotikService {
                   AND ($3::text IS NULL OR l.level = $3)
                   AND ($4::text IS NULL OR l.topics ILIKE '%' || $4 || '%')
                   AND ($5 = '' OR l.message ILIKE '%' || $5 || '%')
+                  AND ($6::int4 IS NULL OR EXTRACT(MONTH FROM l.logged_at) = $6)
+                  AND ($7::int4 IS NULL OR EXTRACT(YEAR FROM l.logged_at) = $7)
                 "#,
             )
             .bind(tenant_id)
@@ -730,6 +740,8 @@ impl MikrotikService {
             .bind(&level)
             .bind(&topic)
             .bind(&q)
+            .bind(month_i32)
+            .bind(year)
             .fetch_one(&self.pool)
             .await
             .map_err(AppError::Database)?
@@ -895,8 +907,9 @@ impl MikrotikService {
             upserted += 1;
         }
 
-        // Prune by retention cutoff (time-based) instead of fixed row cap.
-        let retention_days = mikrotik_log_retention_days_from_env();
+        let retention_days = self
+            .get_router_log_retention_days(tenant_id, router_id)
+            .await?;
         let retention_cutoff = mikrotik_log_retention_cutoff(now, retention_days);
 
         #[cfg(test)]
@@ -906,19 +919,121 @@ impl MikrotikService {
             )));
         }
 
-        propagate_prune_query_result(
-            sqlx::query(mikrotik_log_prune_sql())
-                .bind(tenant_id)
-                .bind(router_id)
-                .bind(retention_cutoff)
-                .execute(&self.pool)
-                .await,
-        )?;
+        if let Some(retention_cutoff) = retention_cutoff {
+            propagate_prune_query_result(
+                sqlx::query(mikrotik_log_prune_sql())
+                    .bind(tenant_id)
+                    .bind(router_id)
+                    .bind(retention_cutoff)
+                    .execute(&self.pool)
+                    .await,
+            )?;
+        }
 
         Ok(MikrotikLogSyncResult {
             seen: raw_rows.len() as u32,
             upserted,
         })
+    }
+
+    pub async fn get_router_log_retention(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+    ) -> AppResult<MikrotikLogRetentionSettings> {
+        self.get_router(tenant_id, router_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Router not found".to_string()))?;
+
+        Ok(MikrotikLogRetentionSettings {
+            router_id: router_id.to_string(),
+            retention_days: self
+                .get_router_log_retention_days(tenant_id, router_id)
+                .await?,
+        })
+    }
+
+    pub async fn update_router_log_retention_days(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        retention_days: Option<i64>,
+    ) -> AppResult<MikrotikLogRetentionSettings> {
+        self.get_router(tenant_id, router_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Router not found".to_string()))?;
+
+        validate_router_log_retention_days(retention_days)?;
+        let key = router_log_retention_setting_key(router_id);
+
+        if let Some(retention_days) = retention_days {
+            self.settings_service
+                .upsert(
+                    Some(tenant_id.to_string()),
+                    crate::models::UpsertSettingDto {
+                        key,
+                        value: retention_days.to_string(),
+                        description: Some(format!(
+                            "MikroTik log retention in days for router {router_id}"
+                        )),
+                    },
+                    None,
+                    None,
+                )
+                .await?;
+        } else if self
+            .settings_service
+            .get_value(Some(tenant_id), &key)
+            .await?
+            .is_some()
+        {
+            self.settings_service
+                .delete(Some(tenant_id), &key, None, None)
+                .await?;
+        }
+
+        self.get_router_log_retention(tenant_id, router_id).await
+    }
+
+    pub async fn clear_logs_for_router(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+    ) -> AppResult<MikrotikLogClearResult> {
+        self.get_router(tenant_id, router_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Router not found".to_string()))?;
+
+        let result = sqlx::query(
+            r#"
+            DELETE FROM mikrotik_logs
+            WHERE tenant_id = $1
+              AND router_id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        Ok(MikrotikLogClearResult {
+            router_id: router_id.to_string(),
+            deleted: result.rows_affected(),
+        })
+    }
+
+    async fn get_router_log_retention_days(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+    ) -> AppResult<Option<i64>> {
+        let key = router_log_retention_setting_key(router_id);
+        let raw = self
+            .settings_service
+            .get_value(Some(tenant_id), &key)
+            .await?;
+        Ok(resolve_router_log_retention_days(raw.as_deref()))
     }
 
     pub async fn ack_alert(&self, tenant_id: &str, alert_id: &str, user_id: &str) -> AppResult<()> {
@@ -4204,26 +4319,58 @@ fn parse_uptime_to_secs(s: &str) -> i64 {
     total
 }
 
-fn resolve_mikrotik_log_retention_days(raw: Option<&str>) -> i64 {
-    match raw.and_then(|v| v.trim().parse::<i64>().ok()) {
-        Some(days) if (1..=3650).contains(&days) => days,
-        _ => 90,
+fn resolve_router_log_retention_days(raw: Option<&str>) -> Option<i64> {
+    match raw.map(str::trim) {
+        None | Some("") => None,
+        Some(value) if value.eq_ignore_ascii_case("unlimited") || value == "0" => None,
+        Some("30") => Some(30),
+        Some("90") => Some(90),
+        Some("360") => Some(360),
+        Some(_) => None,
     }
 }
 
-fn mikrotik_log_retention_days_from_env() -> i64 {
-    let raw = std::env::var("MIKROTIK_LOG_RETENTION_DAYS").ok();
-    let days = resolve_mikrotik_log_retention_days(raw.as_deref());
-    tracing::debug!(
-        target: "mikrotik_retention",
-        retention_days = days,
-        "Resolved MikroTik log retention days"
-    );
-    days
+fn validate_router_log_retention_days(retention_days: Option<i64>) -> AppResult<()> {
+    if retention_days.is_none() || matches!(retention_days, Some(30 | 90 | 360)) {
+        Ok(())
+    } else {
+        Err(AppError::Validation(
+            "Router log retention must be unlimited, 30, 90, or 360 days".to_string(),
+        ))
+    }
 }
 
-fn mikrotik_log_retention_cutoff(now: DateTime<Utc>, retention_days: i64) -> DateTime<Utc> {
-    now - ChronoDuration::days(retention_days)
+fn router_log_retention_setting_key(router_id: &str) -> String {
+    format!("mikrotik_logs_retention_days::{router_id}")
+}
+
+fn mikrotik_log_retention_cutoff(
+    now: DateTime<Utc>,
+    retention_days: Option<i64>,
+) -> Option<DateTime<Utc>> {
+    retention_days.map(|days| now - ChronoDuration::days(days))
+}
+
+fn should_skip_log_prune(retention_days: Option<i64>) -> bool {
+    retention_days.is_none()
+}
+
+fn validate_log_calendar_filters(month: Option<u32>, year: Option<i32>) -> AppResult<()> {
+    if let Some(month) = month {
+        if !(1..=12).contains(&month) {
+            return Err(AppError::Validation(
+                "Log month filter must be between 1 and 12".to_string(),
+            ));
+        }
+    }
+    if let Some(year) = year {
+        if !(1970..=9999).contains(&year) {
+            return Err(AppError::Validation(
+                "Log year filter must be between 1970 and 9999".to_string(),
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn mikrotik_log_list_sql() -> &'static str {
@@ -4235,8 +4382,10 @@ fn mikrotik_log_list_sql() -> &'static str {
       AND ($3::text IS NULL OR l.level = $3)
       AND ($4::text IS NULL OR l.topics ILIKE '%' || $4 || '%')
       AND ($5 = '' OR l.message ILIKE '%' || $5 || '%')
+      AND ($6::int4 IS NULL OR EXTRACT(MONTH FROM l.logged_at) = $6)
+      AND ($7::int4 IS NULL OR EXTRACT(YEAR FROM l.logged_at) = $7)
     ORDER BY l.logged_at DESC, l.updated_at DESC
-    LIMIT $6 OFFSET $7
+    LIMIT $8 OFFSET $9
     "#
 }
 
@@ -4248,7 +4397,6 @@ fn mikrotik_log_prune_sql() -> &'static str {
       AND logged_at < $3
     "#
 }
-
 
 fn propagate_prune_query_result<T>(result: Result<T, sqlx::Error>) -> AppResult<T> {
     result.map_err(AppError::Database)
@@ -4271,7 +4419,8 @@ mod tests {
         std::env::var("DATABASE_URL").unwrap_or_else(|_| {
             let host = std::env::var("POSTGRES_HOST").unwrap_or_else(|_| "localhost".to_string());
             let port = std::env::var("POSTGRES_PORT").unwrap_or_else(|_| "55432".to_string());
-            let user = std::env::var("POSTGRES_USER").unwrap_or_else(|_| "ispmanagement".to_string());
+            let user =
+                std::env::var("POSTGRES_USER").unwrap_or_else(|_| "ispmanagement".to_string());
             let password =
                 std::env::var("POSTGRES_PASSWORD").unwrap_or_else(|_| "postgres".to_string());
             let db = std::env::var("POSTGRES_DB").unwrap_or_else(|_| "ispmanagement".to_string());
@@ -4288,7 +4437,8 @@ mod tests {
     }
 
     fn test_router_password() -> String {
-        std::env::var("MIKROTIK_TEST_ROUTER_PASSWORD").unwrap_or_else(|_| uuid::Uuid::new_v4().to_string())
+        std::env::var("MIKROTIK_TEST_ROUTER_PASSWORD")
+            .unwrap_or_else(|_| uuid::Uuid::new_v4().to_string())
     }
 
     fn test_mikrotik_service(pool: sqlx::PgPool) -> MikrotikService {
@@ -4303,48 +4453,25 @@ mod tests {
         MikrotikService::new(pool, notification_service, audit_service, settings_service)
     }
 
-    struct EnvVarGuard {
-        key: &'static str,
-        old: Option<String>,
-    }
-
-    impl EnvVarGuard {
-        fn set(key: &'static str, value: &str) -> Self {
-            let old = std::env::var(key).ok();
-            std::env::set_var(key, value);
-            Self { key, old }
-        }
-    }
-
-    impl Drop for EnvVarGuard {
-        fn drop(&mut self) {
-            if let Some(value) = self.old.as_ref() {
-                std::env::set_var(self.key, value);
-            } else {
-                std::env::remove_var(self.key);
-            }
-        }
+    #[test]
+    fn mikrotik_router_log_retention_validation() {
+        assert_eq!(resolve_router_log_retention_days(None), None);
+        assert_eq!(resolve_router_log_retention_days(Some("unlimited")), None);
+        assert_eq!(resolve_router_log_retention_days(Some("0")), None);
+        assert_eq!(resolve_router_log_retention_days(Some("")), None);
+        assert_eq!(resolve_router_log_retention_days(Some("30")), Some(30));
+        assert_eq!(resolve_router_log_retention_days(Some("90")), Some(90));
+        assert_eq!(resolve_router_log_retention_days(Some("360")), Some(360));
+        assert_eq!(resolve_router_log_retention_days(Some("365")), None);
     }
 
     #[test]
-    fn mikrotik_log_retention_days_env_validation() {
-        assert_eq!(resolve_mikrotik_log_retention_days(None), 90);
-        assert_eq!(resolve_mikrotik_log_retention_days(Some("abc")), 90);
-        assert_eq!(resolve_mikrotik_log_retention_days(Some("0")), 90);
-        assert_eq!(resolve_mikrotik_log_retention_days(Some("-5")), 90);
-        assert_eq!(resolve_mikrotik_log_retention_days(Some("3651")), 90);
-        assert_eq!(resolve_mikrotik_log_retention_days(Some("30")), 30);
-    }
-
-    #[test]
-    fn env_examples_document_mikrotik_log_retention_days() {
-        let root_env = std::fs::read_to_string("../.env.example").unwrap();
-        let server_env = std::fs::read_to_string("../deploy/systemd/server.env.example").unwrap();
-
-        assert!(root_env.contains("MIKROTIK_LOG_RETENTION_DAYS=90"));
-        assert!(server_env.contains("MIKROTIK_LOG_RETENTION_DAYS=90"));
-        assert!(root_env.contains("1..3650"));
-        assert!(server_env.contains("1..3650"));
+    fn prune_is_disabled_for_unlimited_router_retention() {
+        let now = DateTime::parse_from_rfc3339("2026-03-31T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        assert_eq!(mikrotik_log_retention_cutoff(now, None), None);
+        assert!(should_skip_log_prune(None));
     }
 
     #[test]
@@ -4352,7 +4479,8 @@ mod tests {
         let now = DateTime::parse_from_rfc3339("2026-03-31T00:00:00Z")
             .unwrap()
             .with_timezone(&Utc);
-        let cutoff = mikrotik_log_retention_cutoff(now, 30);
+        let cutoff =
+            mikrotik_log_retention_cutoff(now, Some(30)).expect("cutoff for 30d retention");
 
         assert!(should_prune_log_by_retention_cutoff(
             cutoff - ChronoDuration::seconds(1),
@@ -4366,7 +4494,7 @@ mod tests {
     }
 
     #[test]
-    fn prune_sql_uses_retention_cutoff_without_fixed_5000_cap() {
+    fn prune_sql_uses_router_retention_cutoff_without_fixed_5000_cap() {
         let sql = mikrotik_log_prune_sql();
         assert!(sql.contains("logged_at < $3"));
         assert!(!sql.contains("OFFSET 5000"));
@@ -4423,11 +4551,14 @@ mod tests {
         .await
         .expect("seed router");
 
-        let sync_result = service.sync_logs_for_router(tenant_id, router_id, 100).await;
+        let sync_result = service
+            .sync_logs_for_router(tenant_id, router_id, 100)
+            .await;
 
         let err = sync_result.expect_err("sync should fail when prune query fails on real path");
         assert!(
-            err.to_string().contains("MIKROTIK_TEST_SYNC_FORCE_PRUNE_ERROR"),
+            err.to_string()
+                .contains("MIKROTIK_TEST_SYNC_FORCE_PRUNE_ERROR"),
             "expected forced prune failure marker, got: {err}"
         );
 
@@ -4540,6 +4671,8 @@ mod tests {
                 None,
                 None,
                 None,
+                None,
+                None,
                 MIKROTIK_LOGS_DEFAULT_PAGE,
                 MIKROTIK_LOGS_DEFAULT_PER_PAGE,
                 MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL,
@@ -4549,7 +4682,10 @@ mod tests {
 
         assert_eq!(page_1.page, 1);
         assert_eq!(page_1.per_page, 25);
-        assert_eq!(page_1.total, -1, "default include_total=false should keep total sentinel");
+        assert_eq!(
+            page_1.total, -1,
+            "default include_total=false should keep total sentinel"
+        );
         assert_eq!(page_1.data.len(), 25);
         assert_eq!(page_1.data[0].id, "tie-newer-updated");
         assert_eq!(page_1.data[1].id, "tie-older-updated");
@@ -4560,6 +4696,8 @@ mod tests {
             .list_logs(
                 tenant_id,
                 Some(router_id.to_string()),
+                None,
+                None,
                 None,
                 None,
                 None,
@@ -4594,8 +4732,6 @@ mod tests {
 
     #[tokio::test]
     async fn sync_logs_for_router_prunes_retention_window_without_fixed_5000_cap() {
-        let _retention_guard = EnvVarGuard::set("MIKROTIK_LOG_RETENTION_DAYS", "30");
-
         let pool = test_pool().await;
         let service = test_mikrotik_service(pool.clone());
         service.configure_test_sync_logs_injection(TestSyncLogsInjection {
@@ -4644,6 +4780,11 @@ mod tests {
         .await
         .expect("seed router");
 
+        service
+            .update_router_log_retention_days(tenant_id, router_id, Some(30))
+            .await
+            .expect("set router retention to 30d");
+
         let old_logged_at = now - ChronoDuration::days(40);
         let fresh_logged_at = now - ChronoDuration::days(1);
 
@@ -4684,8 +4825,14 @@ mod tests {
             .await
             .expect("sync logs via service path");
 
-        assert_eq!(result.seen, 0, "stubbed sync path should use empty fetched rows");
-        assert_eq!(result.upserted, 0, "stubbed sync path should not upsert new rows");
+        assert_eq!(
+            result.seen, 0,
+            "stubbed sync path should use empty fetched rows"
+        );
+        assert_eq!(
+            result.upserted, 0,
+            "stubbed sync path should not upsert new rows"
+        );
 
         let remaining_old_count: i64 = sqlx::query_scalar(
             "SELECT COUNT(*) FROM mikrotik_logs WHERE tenant_id = $1 AND router_id = $2 AND id LIKE 'old-sync-path-%'",
@@ -4705,7 +4852,10 @@ mod tests {
         .await
         .expect("count fresh logs after sync");
 
-        assert_eq!(remaining_old_count, 0, "all old rows should be pruned via sync path");
+        assert_eq!(
+            remaining_old_count, 0,
+            "all old rows should be pruned via sync path"
+        );
         assert_eq!(fresh_count, 1, "fresh row should be retained via sync path");
 
         sqlx::query("DELETE FROM mikrotik_logs WHERE tenant_id = $1 AND router_id = $2")
@@ -4750,7 +4900,8 @@ mod tests {
         let now = DateTime::parse_from_rfc3339("2026-03-31T00:00:00Z")
             .expect("valid now timestamp")
             .with_timezone(&Utc);
-        let cutoff = mikrotik_log_retention_cutoff(now, 30);
+        let cutoff =
+            mikrotik_log_retention_cutoff(now, Some(30)).expect("cutoff for 30d retention");
 
         sqlx::query(
             r#"
@@ -4778,14 +4929,16 @@ mod tests {
             .await
             .expect("prune by retention cutoff");
 
-        let remaining_ids: Vec<String> = sqlx::query_scalar(
-            "SELECT id FROM mikrotik_logs ORDER BY id ASC",
-        )
-        .fetch_all(&mut *tx)
-        .await
-        .expect("fetch remaining ids");
+        let remaining_ids: Vec<String> =
+            sqlx::query_scalar("SELECT id FROM mikrotik_logs ORDER BY id ASC")
+                .fetch_all(&mut *tx)
+                .await
+                .expect("fetch remaining ids");
 
-        assert_eq!(remaining_ids, vec!["at_cutoff".to_string(), "newer".to_string()]);
+        assert_eq!(
+            remaining_ids,
+            vec!["at_cutoff".to_string(), "newer".to_string()]
+        );
 
         tx.rollback().await.expect("rollback tx");
     }
@@ -4814,7 +4967,8 @@ mod tests {
         let now = DateTime::parse_from_rfc3339("2026-03-31T00:00:00Z")
             .expect("valid now timestamp")
             .with_timezone(&Utc);
-        let cutoff = mikrotik_log_retention_cutoff(now, 30);
+        let cutoff =
+            mikrotik_log_retention_cutoff(now, Some(30)).expect("cutoff for 30d retention");
         let older_than_cutoff = cutoff - ChronoDuration::seconds(1);
 
         sqlx::query(
@@ -4850,21 +5004,230 @@ mod tests {
             .await
             .expect("prune old logs");
 
-        let remaining_old_count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM mikrotik_logs WHERE id LIKE 'old-%'",
-        )
-        .fetch_one(&mut *tx)
-        .await
-        .expect("count remaining old logs");
-        let kept_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM mikrotik_logs WHERE id = 'kept'")
-            .fetch_one(&mut *tx)
-            .await
-            .expect("count kept logs");
+        let remaining_old_count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM mikrotik_logs WHERE id LIKE 'old-%'")
+                .fetch_one(&mut *tx)
+                .await
+                .expect("count remaining old logs");
+        let kept_count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM mikrotik_logs WHERE id = 'kept'")
+                .fetch_one(&mut *tx)
+                .await
+                .expect("count kept logs");
 
-        assert_eq!(remaining_old_count, 0, "all old rows should be pruned, not capped");
+        assert_eq!(
+            remaining_old_count, 0,
+            "all old rows should be pruned, not capped"
+        );
         assert_eq!(kept_count, 1, "row at cutoff should remain");
 
         tx.rollback().await.expect("rollback tx");
+    }
+
+    #[tokio::test]
+    async fn sync_logs_for_router_keeps_all_logs_when_retention_is_unlimited() {
+        let pool = test_pool().await;
+        let service = test_mikrotik_service(pool.clone());
+        service.configure_test_sync_logs_injection(TestSyncLogsInjection {
+            rows_override: Some(Vec::new()),
+            force_prune_error: false,
+        });
+
+        let tenant_id = "tenant-sync-unlimited";
+        let router_id = "router-sync-unlimited";
+        let now = Utc::now();
+        sqlx::query(
+            r#"
+            INSERT INTO tenants (id, name, slug, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (id) DO NOTHING
+            "#,
+        )
+        .bind(tenant_id)
+        .bind("Sync Unlimited Tenant")
+        .bind("sync-unlimited-tenant")
+        .bind(now)
+        .bind(now)
+        .execute(&pool)
+        .await
+        .expect("seed tenant");
+
+        sqlx::query(
+            r#"
+            INSERT INTO mikrotik_routers
+              (id, tenant_id, name, host, port, username, password, use_tls, enabled, is_online, created_at, updated_at)
+            VALUES
+              ($1, $2, $3, $4, $5, $6, $7, false, true, false, $8, $9)
+            ON CONFLICT (id) DO NOTHING
+            "#,
+        )
+        .bind(router_id)
+        .bind(tenant_id)
+        .bind("Sync Unlimited Router")
+        .bind("127.0.0.1")
+        .bind(8728_i32)
+        .bind("admin")
+        .bind(test_router_password())
+        .bind(now)
+        .bind(now)
+        .execute(&pool)
+        .await
+        .expect("seed router");
+
+        let old_logged_at = now - ChronoDuration::days(400);
+
+        sqlx::query(
+            r#"
+            INSERT INTO mikrotik_logs (id, tenant_id, router_id, logged_at, message, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            "#,
+        )
+        .bind("unlimited-old-log")
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(old_logged_at)
+        .bind("very old log")
+        .bind(now)
+        .bind(now)
+        .execute(&pool)
+        .await
+        .expect("seed old log");
+
+        service
+            .sync_logs_for_router(tenant_id, router_id, 100)
+            .await
+            .expect("sync should not prune in unlimited mode");
+
+        let kept_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM mikrotik_logs WHERE tenant_id = $1 AND router_id = $2 AND id = 'unlimited-old-log'",
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .fetch_one(&pool)
+        .await
+        .expect("count unlimited log");
+
+        assert_eq!(kept_count, 1, "unlimited retention should keep old logs");
+
+        sqlx::query("DELETE FROM mikrotik_logs WHERE tenant_id = $1 AND router_id = $2")
+            .bind(tenant_id)
+            .bind(router_id)
+            .execute(&pool)
+            .await
+            .expect("cleanup logs");
+        sqlx::query("DELETE FROM mikrotik_routers WHERE id = $1")
+            .bind(router_id)
+            .execute(&pool)
+            .await
+            .expect("cleanup router");
+        sqlx::query("DELETE FROM tenants WHERE id = $1")
+            .bind(tenant_id)
+            .execute(&pool)
+            .await
+            .expect("cleanup tenant");
+    }
+
+    #[tokio::test]
+    async fn list_logs_supports_calendar_filters() {
+        let pool = test_pool().await;
+        let service = test_mikrotik_service(pool.clone());
+
+        let tenant_id = "tenant-calendar-filters";
+        let router_id = "router-calendar-filters";
+        let base_now = DateTime::parse_from_rfc3339("2026-04-01T00:00:00Z")
+            .expect("valid now timestamp")
+            .with_timezone(&Utc);
+
+        sqlx::query(
+            r#"
+            INSERT INTO tenants (id, name, slug, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (id) DO NOTHING
+            "#,
+        )
+        .bind(tenant_id)
+        .bind("Calendar Filter Tenant")
+        .bind("calendar-filter-tenant")
+        .bind(base_now)
+        .bind(base_now)
+        .execute(&pool)
+        .await
+        .expect("seed tenant");
+
+        sqlx::query(
+            r#"
+            INSERT INTO mikrotik_routers
+              (id, tenant_id, name, host, port, username, password, use_tls, enabled, is_online, created_at, updated_at)
+            VALUES
+              ($1, $2, $3, $4, $5, $6, $7, false, true, false, $8, $9)
+            ON CONFLICT (id) DO NOTHING
+            "#,
+        )
+        .bind(router_id)
+        .bind(tenant_id)
+        .bind("Calendar Filter Router")
+        .bind("127.0.0.1")
+        .bind(8728_i32)
+        .bind("admin")
+        .bind(test_router_password())
+        .bind(base_now)
+        .bind(base_now)
+        .execute(&pool)
+        .await
+        .expect("seed router");
+
+        sqlx::query(
+            r#"
+            INSERT INTO mikrotik_logs (id, tenant_id, router_id, logged_at, message, created_at, updated_at)
+            VALUES
+              ('log-2026-03', $1, $2, '2026-03-15T10:00:00Z', 'march log', $3, $3),
+              ('log-2026-04', $1, $2, '2026-04-02T10:00:00Z', 'april log', $3, $3),
+              ('log-2025-04', $1, $2, '2025-04-02T10:00:00Z', 'old april log', $3, $3)
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(base_now)
+        .execute(&pool)
+        .await
+        .expect("seed calendar logs");
+
+        let res = service
+            .list_logs(
+                tenant_id,
+                Some(router_id.to_string()),
+                None,
+                None,
+                None,
+                Some(4),
+                Some(2026),
+                1,
+                25,
+                true,
+            )
+            .await
+            .expect("list logs with month/year");
+
+        assert_eq!(res.total, 1);
+        assert_eq!(res.data.len(), 1);
+        assert_eq!(res.data[0].id, "log-2026-04");
+
+        sqlx::query("DELETE FROM mikrotik_logs WHERE tenant_id = $1 AND router_id = $2")
+            .bind(tenant_id)
+            .bind(router_id)
+            .execute(&pool)
+            .await
+            .expect("cleanup logs");
+        sqlx::query("DELETE FROM mikrotik_routers WHERE id = $1")
+            .bind(router_id)
+            .execute(&pool)
+            .await
+            .expect("cleanup router");
+        sqlx::query("DELETE FROM tenants WHERE id = $1")
+            .bind(tenant_id)
+            .execute(&pool)
+            .await
+            .expect("cleanup tenant");
     }
 
     #[tokio::test]

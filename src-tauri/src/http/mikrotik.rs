@@ -2,19 +2,18 @@ use crate::error::{AppError, AppResult};
 use crate::http::AppState;
 use crate::models::{
     CreateMikrotikRouterRequest, MikrotikAlert, MikrotikIncident, MikrotikInterfaceCounter,
-    MikrotikInterfaceMetric, MikrotikIpPool, MikrotikLogEntry, MikrotikLogSyncResult,
-    MikrotikPppProfile, MikrotikRouter, MikrotikRouterMetric, MikrotikTestResult,
-    PaginatedResponse, SimulateMikrotikIncidentRequest, UpdateMikrotikIncidentRequest,
-    UpdateMikrotikRouterRequest,
+    MikrotikInterfaceMetric, MikrotikIpPool, MikrotikLogClearResult, MikrotikLogEntry,
+    MikrotikLogRetentionSettings, MikrotikLogSyncResult, MikrotikPppProfile, MikrotikRouter,
+    MikrotikRouterMetric, MikrotikTestResult, PaginatedResponse, SimulateMikrotikIncidentRequest,
+    UpdateMikrotikIncidentRequest, UpdateMikrotikRouterRequest,
 };
 use crate::services::mikrotik_service::{
-    MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL, MIKROTIK_LOGS_DEFAULT_PAGE,
-    MIKROTIK_LOGS_DEFAULT_PER_PAGE,
+    MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL, MIKROTIK_LOGS_DEFAULT_PAGE, MIKROTIK_LOGS_DEFAULT_PER_PAGE,
 };
 use axum::{
     extract::{Path, Query, State},
     http::HeaderMap,
-    routing::{get, post, put},
+    routing::{delete, get, post, put},
     Json, Router,
 };
 use serde::Deserialize;
@@ -41,6 +40,11 @@ pub fn router() -> Router<AppState> {
             get(get_router).put(update_router).delete(delete_router),
         )
         .route("/routers/{id}/logs/sync", post(sync_logs))
+        .route("/routers/{id}/logs", delete(clear_logs))
+        .route(
+            "/routers/{id}/logs/retention",
+            get(get_log_retention).put(update_log_retention),
+        )
         .route("/routers/{id}/ppp-profiles", get(list_ppp_profiles))
         .route("/routers/{id}/ppp-profiles/sync", post(sync_ppp_profiles))
         .route("/routers/{id}/ip-pools", get(list_ip_pools))
@@ -90,6 +94,8 @@ struct LogsQuery {
     level: Option<String>,
     topic: Option<String>,
     q: Option<String>,
+    month: Option<u32>,
+    year: Option<i32>,
     page: Option<u32>,
     per_page: Option<u32>,
     include_total: Option<bool>,
@@ -98,6 +104,11 @@ struct LogsQuery {
 #[derive(Debug, Deserialize)]
 struct SyncLogsBody {
     fetch_limit: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+struct UpdateRetentionBody {
+    retention_days: Option<i64>,
 }
 
 // GET /api/admin/mikrotik/alerts?active_only=true&limit=200
@@ -344,6 +355,8 @@ async fn list_logs(
             q.level,
             q.topic,
             q.q,
+            q.month,
+            q.year,
             q.page.unwrap_or(MIKROTIK_LOGS_DEFAULT_PAGE),
             q.per_page.unwrap_or(MIKROTIK_LOGS_DEFAULT_PER_PAGE),
             q.include_total
@@ -376,6 +389,64 @@ async fn sync_logs(
         .sync_logs_for_router(&tenant_id, &id, fetch_limit)
         .await?;
     Ok(Json(rows))
+}
+
+async fn clear_logs(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<MikrotikLogClearResult>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    let result = state
+        .mikrotik_service
+        .clear_logs_for_router(&tenant_id, &id)
+        .await?;
+
+    Ok(Json(result))
+}
+
+async fn get_log_retention(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<MikrotikLogRetentionSettings>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await?;
+
+    let result = state
+        .mikrotik_service
+        .get_router_log_retention(&tenant_id, &id)
+        .await?;
+
+    Ok(Json(result))
+}
+
+async fn update_log_retention(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    body: Json<UpdateRetentionBody>,
+) -> AppResult<Json<MikrotikLogRetentionSettings>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    let result = state
+        .mikrotik_service
+        .update_router_log_retention_days(&tenant_id, &id, body.retention_days)
+        .await?;
+
+    Ok(Json(result))
 }
 
 // GET /api/admin/mikrotik/routers/{id}

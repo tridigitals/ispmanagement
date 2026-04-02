@@ -419,6 +419,7 @@ pub fn run() {
                                     list_mikrotik_alerts,
                                     list_mikrotik_incidents,
                                     list_mikrotik_logs,
+                                    get_mikrotik_log_retention,
                                     ack_mikrotik_alert,
                                     resolve_mikrotik_alert,
                                     ack_mikrotik_incident,
@@ -441,6 +442,8 @@ pub fn run() {
                                     list_mikrotik_ip_pools,
                                     sync_mikrotik_ip_pools,
                                     sync_mikrotik_logs,
+                                    update_mikrotik_log_retention,
+                                    clear_mikrotik_logs,
                                     // Announcements
                                     list_active_announcements,
                                     list_recent_announcements,

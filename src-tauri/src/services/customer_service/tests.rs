@@ -1,4 +1,3 @@
-
 use super::{CustomerService, InstallationSlaBreachType};
 use crate::error::AppError;
 use crate::models::CustomerLifecycleObservability;

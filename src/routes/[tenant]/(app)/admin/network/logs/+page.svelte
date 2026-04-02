@@ -8,6 +8,7 @@
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
+  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
 
@@ -37,6 +38,8 @@
   let routerId = $state('');
   let level = $state('');
   let topic = $state('');
+  let month = $state('');
+  let year = $state('');
   const FULL_SYNC_FETCH_LIMIT = 25000;
 
   let pageNum = $state(1); // 1-based for API
@@ -46,6 +49,32 @@
   let hasNext = $state(false);
   let total = $state<number>(-1); // optional; fetched only on filter changes
   let lastTotalKey = $state('');
+  let retentionValue = $state('unlimited');
+  let retentionLoading = $state(false);
+  let retentionSaving = $state(false);
+  let clearingLogs = $state(false);
+  let showClearConfirm = $state(false);
+
+  const monthOptions = [
+    { value: '', label: 'All months' },
+    { value: '1', label: 'January' },
+    { value: '2', label: 'February' },
+    { value: '3', label: 'March' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'May' },
+    { value: '6', label: 'June' },
+    { value: '7', label: 'July' },
+    { value: '8', label: 'August' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' },
+  ];
+
+  const yearOptions = $derived.by(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 8 }, (_, index) => String(currentYear - index));
+  });
 
   const columns = $derived.by(() => [
     { key: 'time', label: $t('admin.network.logs.columns.time') || 'Time', width: '180px' },
@@ -112,6 +141,8 @@
       level: level || undefined,
       topic: topic.trim() || undefined,
       q: q.trim() || undefined,
+      month: month ? Number(month) : undefined,
+      year: year ? Number(year) : undefined,
     };
 
     const totalKey = JSON.stringify({
@@ -119,6 +150,8 @@
       level: params.level || '',
       topic: params.topic || '',
       q: params.q || '',
+      month: String(params.month || ''),
+      year: String(params.year || ''),
     });
     const shouldFetchTotal = nextPage === 1 && (totalKey !== lastTotalKey || total < 0);
 
@@ -189,6 +222,58 @@
     return routers.find((r) => r.id === id)?.name || id;
   }
 
+  async function loadRetention(selectedRouterId: string) {
+    if (!selectedRouterId) {
+      retentionValue = 'unlimited';
+      return;
+    }
+
+    retentionLoading = true;
+    try {
+      const res = await api.mikrotik.logs.getRetention(selectedRouterId);
+      retentionValue = res.retention_days ? String(res.retention_days) : 'unlimited';
+    } catch (e: any) {
+      toast.error(e?.message || e);
+      retentionValue = 'unlimited';
+    } finally {
+      retentionLoading = false;
+    }
+  }
+
+  async function saveRetention() {
+    if (!routerId) return;
+    retentionSaving = true;
+    try {
+      const res = await api.mikrotik.logs.updateRetention(
+        routerId,
+        retentionValue === 'unlimited' ? null : Number(retentionValue),
+      );
+      retentionValue = res.retention_days ? String(res.retention_days) : 'unlimited';
+      toast.success('Log retention updated');
+      await loadRowsPage(1);
+    } catch (e: any) {
+      toast.error(e?.message || e);
+      await loadRetention(routerId);
+    } finally {
+      retentionSaving = false;
+    }
+  }
+
+  async function clearLogs() {
+    if (!routerId) return;
+    clearingLogs = true;
+    try {
+      const res = await api.mikrotik.logs.clear(routerId);
+      toast.success(`Cleared ${res.deleted} logs from ${routerName(routerId)}`);
+      showClearConfirm = false;
+      await loadRowsPage(1);
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    } finally {
+      clearingLogs = false;
+    }
+  }
+
   function levelClass(v?: string | null) {
     const x = String(v || '').toLowerCase();
     if (x === 'critical' || x === 'error') return 'crit';
@@ -196,6 +281,12 @@
     if (x === 'debug') return 'debug';
     return 'info';
   }
+
+  $effect(() => {
+    if (!ready) return;
+    const selectedRouterId = routerId;
+    void loadRetention(selectedRouterId);
+  });
 </script>
 
 <div class="page-content fade-in logs-page">
@@ -218,6 +309,15 @@
         <button class="btn" type="button" onclick={syncAll} disabled={syncing || routers.length === 0}>
           <Icon name="database" size={16} />
           {$t('admin.network.logs.actions.sync_all') || 'Sync all routers'}
+        </button>
+        <button
+          class="btn danger"
+          type="button"
+          onclick={() => (showClearConfirm = true)}
+          disabled={!routerId || clearingLogs}
+        >
+          <Icon name="trash-2" size={16} />
+          Clear logs
         </button>
       {/snippet}
     </NetworkPageHeader>
@@ -250,6 +350,25 @@
         <input bind:value={topic} placeholder="system,error,interface..." />
       </label>
 
+      <label>
+        <span>Month</span>
+        <select bind:value={month} onchange={() => void loadRowsPage(1)}>
+          {#each monthOptions as option}
+            <option value={option.value}>{option.label}</option>
+          {/each}
+        </select>
+      </label>
+
+      <label>
+        <span>Year</span>
+        <select bind:value={year} onchange={() => void loadRowsPage(1)}>
+          <option value="">{$t('common.all') || 'All years'}</option>
+          {#each yearOptions as value}
+            <option value={value}>{value}</option>
+          {/each}
+        </select>
+      </label>
+
       <label class="search">
         <span>{$t('common.search') || 'Search'}</span>
         <input
@@ -257,6 +376,34 @@
           placeholder={$t('admin.network.logs.search') || 'Search log message...'}
         />
       </label>
+    </div>
+
+    <div class="retention-panel">
+      <div class="retention-copy">
+        <strong>Router retention</strong>
+        <p>
+          {#if routerId}
+            Sync akan mengambil semua log dari router ini, lalu auto-clear mengikuti retention yang dipilih.
+          {:else}
+            Pilih router dulu untuk atur retention dan clear logs.
+          {/if}
+        </p>
+      </div>
+      <div class="retention-controls">
+        <select bind:value={retentionValue} disabled={!routerId || retentionLoading || retentionSaving} onchange={saveRetention}>
+          <option value="unlimited">Unlimited</option>
+          <option value="30">30 days</option>
+          <option value="90">90 days</option>
+          <option value="360">360 days</option>
+        </select>
+        <span class="muted hint">
+          {#if routerId}
+            {retentionLoading ? 'Loading retention...' : retentionSaving ? 'Saving retention...' : `Applied to ${routerName(routerId)}`}
+          {:else}
+            Router not selected
+          {/if}
+        </span>
+      </div>
     </div>
 
     <div class="table-wrap">
@@ -342,7 +489,7 @@
   }
   .filters {
     display: grid;
-    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    grid-template-columns: repeat(6, minmax(160px, 1fr));
     gap: 0.75rem;
     margin-bottom: 1rem;
   }
@@ -390,6 +537,44 @@
     min-height: 38px;
   }
   .search { grid-column: span 1; }
+  .retention-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: var(--bg-secondary);
+    padding: 0.85rem 1rem;
+    margin-bottom: 1rem;
+  }
+  .retention-copy {
+    display: grid;
+    gap: 0.25rem;
+  }
+  .retention-copy p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+  .retention-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .retention-controls select {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    padding: 0.6rem 0.75rem;
+    min-width: 160px;
+  }
+  .hint {
+    font-size: 0.82rem;
+  }
   .stack { display: grid; gap: 0.2rem; }
   .mono { font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); }
   .muted { color: var(--text-secondary); }
@@ -407,14 +592,37 @@
   .pill.warn { color: #f59e0b; border-color: rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.08); }
   .pill.crit { color: #ef4444; border-color: rgba(239, 68, 68, 0.35); background: rgba(239, 68, 68, 0.08); }
   .pill.debug { color: #a78bfa; border-color: rgba(167, 139, 250, 0.35); background: rgba(167, 139, 250, 0.08); }
+  .btn.danger {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #ef4444;
+  }
 
   @media (max-width: 1100px) {
-    .filters { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+    .filters { grid-template-columns: repeat(3, minmax(160px, 1fr)); }
   }
   @media (max-width: 780px) {
     .logs-page { padding: 0.75rem; }
     .logs-shell { padding: 0.85rem 0.75rem 0.7rem; }
     .head { flex-direction: column; }
     .filters { grid-template-columns: 1fr; }
+    .retention-panel {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .retention-controls {
+      justify-content: flex-start;
+    }
   }
 </style>
+
+<ConfirmDialog
+  show={showClearConfirm}
+  title="Clear router logs?"
+  message={routerId ? `All stored logs for ${routerName(routerId)} will be deleted from the database.` : 'Select a router first.'}
+  confirmText={clearingLogs ? 'Clearing...' : 'Clear logs'}
+  cancelText="Cancel"
+  loading={clearingLogs}
+  onconfirm={clearLogs}
+  oncancel={() => !clearingLogs && (showClearConfirm = false)}
+/>

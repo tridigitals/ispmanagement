@@ -2,16 +2,15 @@
 
 use crate::models::{
     CreateMikrotikRouterRequest, MikrotikAlert, MikrotikIncident, MikrotikInterfaceCounter,
-    MikrotikInterfaceMetric, MikrotikIpPool, MikrotikLogEntry, MikrotikLogSyncResult,
-    MikrotikPppProfile, MikrotikRouter, MikrotikRouterMetric, MikrotikRouterNocRow,
-    MikrotikTestResult, PaginatedResponse, SimulateMikrotikIncidentRequest,
-    UpdateMikrotikIncidentRequest, UpdateMikrotikRouterRequest,
+    MikrotikInterfaceMetric, MikrotikIpPool, MikrotikLogClearResult, MikrotikLogEntry,
+    MikrotikLogRetentionSettings, MikrotikLogSyncResult, MikrotikPppProfile, MikrotikRouter,
+    MikrotikRouterMetric, MikrotikRouterNocRow, MikrotikTestResult, PaginatedResponse,
+    SimulateMikrotikIncidentRequest, UpdateMikrotikIncidentRequest, UpdateMikrotikRouterRequest,
+};
+use crate::services::mikrotik_service::{
+    MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL, MIKROTIK_LOGS_DEFAULT_PAGE, MIKROTIK_LOGS_DEFAULT_PER_PAGE,
 };
 use crate::services::{AuditService, AuthService, MikrotikService};
-use crate::services::mikrotik_service::{
-    MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL, MIKROTIK_LOGS_DEFAULT_PAGE,
-    MIKROTIK_LOGS_DEFAULT_PER_PAGE,
-};
 use tauri::State;
 
 #[tauri::command]
@@ -131,6 +130,8 @@ pub async fn list_mikrotik_logs(
     level: Option<String>,
     topic: Option<String>,
     q: Option<String>,
+    month: Option<u32>,
+    year: Option<i32>,
     page: Option<u32>,
     per_page: Option<u32>,
     include_total: Option<bool>,
@@ -154,10 +155,88 @@ pub async fn list_mikrotik_logs(
             level,
             topic,
             q,
+            month,
+            year,
             page.unwrap_or(MIKROTIK_LOGS_DEFAULT_PAGE),
             per_page.unwrap_or(MIKROTIK_LOGS_DEFAULT_PER_PAGE),
             include_total.unwrap_or(MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL),
         )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_mikrotik_log_retention(
+    token: String,
+    router_id: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<MikrotikLogRetentionSettings, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    mikrotik
+        .get_router_log_retention(&tenant_id, &router_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn update_mikrotik_log_retention(
+    token: String,
+    router_id: String,
+    retention_days: Option<i64>,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<MikrotikLogRetentionSettings, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    mikrotik
+        .update_router_log_retention_days(&tenant_id, &router_id, retention_days)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn clear_mikrotik_logs(
+    token: String,
+    router_id: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+) -> Result<MikrotikLogClearResult, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    mikrotik
+        .clear_logs_for_router(&tenant_id, &router_id)
         .await
         .map_err(|e| e.to_string())
 }

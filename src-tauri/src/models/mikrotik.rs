@@ -143,6 +143,18 @@ pub struct MikrotikTestResult {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MikrotikLogRetentionSettings {
+    pub router_id: String,
+    pub retention_days: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MikrotikLogClearResult {
+    pub router_id: String,
+    pub deleted: u64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct MikrotikRouterMetric {
     pub id: String,
