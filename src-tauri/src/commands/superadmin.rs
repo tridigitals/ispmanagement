@@ -8,6 +8,52 @@ pub struct TenantListResponse {
     pub total: i64,
 }
 
+#[derive(Debug, serde::Serialize, sqlx::FromRow)]
+pub struct SuperadminManagedRadiusServer {
+    pub id: String,
+    pub tenant_id: String,
+    pub tenant_name: String,
+    pub name: String,
+    pub host: String,
+    pub auth_port: i32,
+    pub acct_port: i32,
+    pub db_host: String,
+    pub db_port: i32,
+    pub db_name: String,
+    pub is_active: bool,
+    pub router_count: i64,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, serde::Serialize, sqlx::FromRow)]
+pub struct SuperadminManagedRadiusUser {
+    pub id: String,
+    pub tenant_id: String,
+    pub tenant_name: String,
+    pub router_id: String,
+    pub router_name: Option<String>,
+    pub username: String,
+    pub radius_identity: Option<String>,
+    pub account_source: String,
+    pub radius_present: bool,
+    pub radius_last_sync_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub radius_last_error: Option<String>,
+    pub router_profile_name: Option<String>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(serde::Serialize)]
+pub struct SuperadminManagedRadiusServerListResponse {
+    pub data: Vec<SuperadminManagedRadiusServer>,
+    pub total: i64,
+}
+
+#[derive(serde::Serialize)]
+pub struct SuperadminManagedRadiusUserListResponse {
+    pub data: Vec<SuperadminManagedRadiusUser>,
+    pub total: i64,
+}
+
 #[tauri::command]
 pub async fn list_tenants(
     token: String,
@@ -34,6 +80,110 @@ pub async fn list_tenants(
         data: tenants,
         total,
     })
+}
+
+#[tauri::command]
+pub async fn list_managed_radius_servers(
+    token: String,
+    auth_service: State<'_, AuthService>,
+) -> Result<SuperadminManagedRadiusServerListResponse, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !claims.is_super_admin {
+        return Err("Unauthorized".to_string());
+    }
+
+    let servers: Vec<SuperadminManagedRadiusServer> = sqlx::query_as(
+        r#"
+        SELECT
+          s.id,
+          s.tenant_id,
+          t.name AS tenant_name,
+          s.name,
+          s.host,
+          s.auth_port,
+          s.acct_port,
+          s.db_host,
+          s.db_port,
+          s.db_name,
+          s.is_active,
+          COUNT(n.id)::bigint AS router_count,
+          s.updated_at
+        FROM managed_radius_servers s
+        INNER JOIN tenants t
+          ON t.id = s.tenant_id
+        LEFT JOIN managed_radius_nas n
+          ON n.radius_server_id = s.id
+         AND n.tenant_id = s.tenant_id
+         AND n.is_active = true
+        GROUP BY
+          s.id, s.tenant_id, t.name, s.name, s.host, s.auth_port, s.acct_port,
+          s.db_host, s.db_port, s.db_name, s.is_active, s.updated_at
+        ORDER BY s.updated_at DESC, s.name ASC
+        "#,
+    )
+    .fetch_all(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let total = servers.len() as i64;
+
+    Ok(SuperadminManagedRadiusServerListResponse {
+        data: servers,
+        total,
+    })
+}
+
+#[tauri::command]
+pub async fn list_managed_radius_users(
+    token: String,
+    auth_service: State<'_, AuthService>,
+) -> Result<SuperadminManagedRadiusUserListResponse, String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !claims.is_super_admin {
+        return Err("Unauthorized".to_string());
+    }
+
+    let users: Vec<SuperadminManagedRadiusUser> = sqlx::query_as(
+        r#"
+        SELECT
+          p.id,
+          p.tenant_id,
+          t.name AS tenant_name,
+          p.router_id,
+          r.name AS router_name,
+          p.username,
+          p.radius_identity,
+          p.account_source,
+          p.radius_present,
+          p.radius_last_sync_at,
+          p.radius_last_error,
+          p.router_profile_name,
+          p.updated_at
+        FROM pppoe_accounts p
+        INNER JOIN tenants t
+          ON t.id = p.tenant_id
+        LEFT JOIN mikrotik_routers r
+          ON r.id = p.router_id
+         AND r.tenant_id = p.tenant_id
+        WHERE p.account_source = 'managed_radius'
+        ORDER BY p.updated_at DESC, p.username ASC
+        "#,
+    )
+    .fetch_all(&auth_service.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let total = users.len() as i64;
+
+    Ok(SuperadminManagedRadiusUserListResponse { data: users, total })
 }
 
 #[tauri::command]

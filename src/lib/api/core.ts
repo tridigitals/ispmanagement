@@ -37,6 +37,8 @@ const commandMap: Record<string, { method: string; path: string }> = {
   update_my_address: { method: 'PUT', path: '/users/me/addresses/:addressId' },
   delete_my_address: { method: 'DELETE', path: '/users/me/addresses/:addressId' },
   list_tenants: { method: 'GET', path: '/superadmin/tenants' },
+  list_managed_radius_servers: { method: 'GET', path: '/superadmin/radius/servers' },
+  list_managed_radius_users: { method: 'GET', path: '/superadmin/radius/users' },
   create_tenant: { method: 'POST', path: '/superadmin/tenants' },
   delete_tenant: { method: 'DELETE', path: '/superadmin/tenants/:id' },
   list_audit_logs: { method: 'GET', path: '/superadmin/audit-logs' },

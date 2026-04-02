@@ -16,6 +16,7 @@
       ['/notifications', $t('topbar.titles.notifications') || 'Notifications'],
       ['/superadmin/tenants', $t('topbar.titles.tenants') || 'Tenants'],
       ['/superadmin/users', $t('topbar.titles.users') || 'Users'],
+      ['/superadmin/radius', $t('topbar.titles.radius') || 'RADIUS'],
       ['/superadmin/plans', $t('topbar.titles.plans') || 'Plans'],
       ['/superadmin/invoices', $t('topbar.titles.invoices') || 'Invoices'],
       ['/superadmin/storage', $t('topbar.titles.storage') || 'Storage'],

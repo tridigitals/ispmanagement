@@ -387,6 +387,14 @@ pub async fn start_server_impl(
             "/api/superadmin/tenants/{id}",
             delete(superadmin::delete_tenant).put(superadmin::update_tenant),
         )
+        .route(
+            "/api/superadmin/radius/servers",
+            get(superadmin::list_managed_radius_servers),
+        )
+        .route(
+            "/api/superadmin/radius/users",
+            get(superadmin::list_managed_radius_users),
+        )
         .route("/api/superadmin/audit-logs", get(audit::list_audit_logs))
         .route("/api/admin/audit-logs", get(audit::list_tenant_audit_logs))
         .route("/api/superadmin/system", get(system::get_system_health))

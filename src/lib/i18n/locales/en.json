@@ -397,6 +397,7 @@
     "dashboard": "Dashboard",
     "overview": "Overview",
     "users": "Users",
+    "radius": "RADIUS",
     "team": "Team",
     "roles": "Roles",
     "tenants": "Tenants",
@@ -481,6 +482,7 @@
       "superadmin_dashboard": "Super Admin",
       "tenants": "Tenants",
       "users": "Users",
+      "radius": "RADIUS",
       "plans": "Plans",
       "audit_logs": "Audit Logs",
       "system": "System",
@@ -863,6 +865,68 @@
         "activated": "User activated",
         "deactivated": "User deactivated",
         "update_status_failed": "Failed to update user status: {message}"
+      }
+    },
+    "radius": {
+      "title": "Managed RADIUS",
+      "subtitle": "Observe global RADIUS infrastructure and provisioned PPPoE users across tenants.",
+      "refresh": "Refresh",
+      "loading": "Loading managed RADIUS observability...",
+      "stats": {
+        "servers": "Servers",
+        "routers": "Mapped Routers",
+        "users": "Users",
+        "out_of_sync": "Needs Attention"
+      },
+      "filters": {
+        "search_servers": "Search servers...",
+        "search_users": "Search users...",
+        "all_statuses": "All statuses",
+        "active": "Active",
+        "inactive": "Inactive",
+        "all_tenants": "All tenants",
+        "all_routers": "All routers",
+        "all_users": "All users",
+        "provisioned": "Provisioned",
+        "not_provisioned": "Not provisioned"
+      },
+      "sections": {
+        "servers": "Servers",
+        "users": "Users"
+      },
+      "columns": {
+        "server": "Server",
+        "tenant": "Tenant",
+        "host": "Host",
+        "ports": "Ports",
+        "database": "Database",
+        "status": "Status",
+        "routers": "Routers",
+        "updated": "Updated",
+        "router": "Router",
+        "username": "Username",
+        "identity": "RADIUS Identity",
+        "profile": "Profile",
+        "last_sync": "Last Sync",
+        "last_error": "Last Error"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "provisioned": "Provisioned",
+        "not_provisioned": "Not provisioned",
+        "needs_attention": "Needs attention"
+      },
+      "empty": {
+        "servers_title": "No managed RADIUS servers yet",
+        "servers_subtitle": "Managed RADIUS infrastructure will appear here after tenants configure servers and NAS mappings.",
+        "users_title": "No managed RADIUS users yet",
+        "users_subtitle": "Managed-RADIUS-backed PPPoE users will appear here after tenant admins apply them."
+      },
+      "labels": {
+        "unknown_router": "Unknown router",
+        "none": "None",
+        "never": "Never"
       }
     },
     "tenants": {

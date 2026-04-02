@@ -1,9 +1,20 @@
 import { getTokenOrThrow, safeInvoke } from './core';
-import type { AuditLog, PaginatedResponse } from './types';
+import type {
+  AuditLog,
+  PaginatedResponse,
+  SuperadminManagedRadiusServer,
+  SuperadminManagedRadiusUser,
+} from './types';
 
 export const superadmin = {
   listTenants: (): Promise<{ data: any[]; total: number }> =>
     safeInvoke('list_tenants', { token: getTokenOrThrow() }),
+
+  listManagedRadiusServers: (): Promise<{ data: SuperadminManagedRadiusServer[]; total: number }> =>
+    safeInvoke('list_managed_radius_servers', { token: getTokenOrThrow() }),
+
+  listManagedRadiusUsers: (): Promise<{ data: SuperadminManagedRadiusUser[]; total: number }> =>
+    safeInvoke('list_managed_radius_users', { token: getTokenOrThrow() }),
 
   createTenant: (
     name: string,
