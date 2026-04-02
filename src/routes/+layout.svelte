@@ -91,6 +91,12 @@
 
   onMount(async () => {
     if (typeof window !== 'undefined') {
+      if ($page.url.pathname === '/isp-management' || $page.url.pathname.startsWith('/isp-management/')) {
+        const cleanPath = $page.url.pathname.replace(/^\/isp-management/, '') || '/';
+        goto(`${cleanPath}${$page.url.search}`, { replaceState: true });
+        return;
+      }
+
       // Track real user activity, so idle users still expire by server timeout.
       const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
       for (const ev of events) {

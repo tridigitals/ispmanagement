@@ -183,6 +183,7 @@ pub async fn list_managed_radius_servers(
           s.db_port,
           s.db_name,
           s.is_active,
+          s.is_default,
           s.notes,
           COUNT(DISTINCT a.tenant_id)::bigint AS tenant_count,
           COUNT(DISTINCT n.id)::bigint AS router_count,
@@ -195,8 +196,8 @@ pub async fn list_managed_radius_servers(
           ON n.radius_server_id = s.id
          AND n.is_active = true
         GROUP BY
-          s.id, s.name, s.db_host, s.db_port, s.db_name, s.is_active, s.notes, s.updated_at
-        ORDER BY s.updated_at DESC, s.name ASC
+          s.id, s.name, s.db_host, s.db_port, s.db_name, s.is_active, s.is_default, s.notes, s.updated_at
+        ORDER BY s.is_default DESC, s.updated_at DESC, s.name ASC
         "#,
     )
     .bind(DEFAULT_RADIUS_AUTH_PORT)
@@ -520,6 +521,33 @@ pub async fn set_managed_radius_server_active(
             "managed_radius_server",
             Some(&id),
             Some("Managed RADIUS server active state changed by Superadmin"),
+            Some(&ip),
+        )
+        .await;
+
+    Ok(Json(json!({"ok": true})))
+}
+
+pub async fn set_managed_radius_server_default(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, crate::error::AppError> {
+    let claims = check_super_admin(&state, &headers).await?;
+    let ip = extract_ip(&headers, addr);
+
+    let server = state.managed_radius_service.set_server_default(&id).await?;
+
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            None,
+            "MANAGED_RADIUS_SERVER_SET_DEFAULT",
+            "managed_radius_server",
+            Some(&server.id),
+            Some(&format!("Set managed RADIUS server {} as default", server.name)),
             Some(&ip),
         )
         .await;
@@ -935,6 +963,54 @@ pub async fn create_tenant(
     .await?;
 
     tx.commit().await?;
+
+    let plan_id_to_assign = if let Some(pid) = payload.plan_id.clone() {
+        Some(pid)
+    } else {
+        sqlx::query_scalar("SELECT id FROM plans WHERE is_default = true LIMIT 1")
+            .fetch_optional(&state.auth_service.pool)
+            .await
+            .unwrap_or(None)
+    };
+
+    if let Some(pid) = plan_id_to_assign {
+        if let Err(err) = state.plan_service.assign_plan_to_tenant(&tenant.id, &pid).await {
+            tracing::error!(
+                "Failed to assign plan {} to tenant {} via HTTP flow: {}",
+                pid,
+                tenant.id,
+                err
+            );
+        } else {
+            match state
+                .plan_service
+                .check_feature_access(&tenant.id, "managed_radius")
+                .await
+            {
+                Ok(access) if access.has_access => {
+                    if let Err(err) = state
+                        .managed_radius_service
+                        .auto_assign_default_server_for_tenant(&tenant.id)
+                        .await
+                    {
+                        tracing::error!(
+                            "Failed to auto-assign default Managed RADIUS server for tenant {} via HTTP flow: {}",
+                            tenant.id,
+                            err
+                        );
+                    }
+                }
+                Ok(_) => {}
+                Err(err) => {
+                    tracing::error!(
+                        "Failed to evaluate managed_radius feature access for tenant {} via HTTP flow: {}",
+                        tenant.id,
+                        err
+                    );
+                }
+            }
+        }
+    }
 
     Ok(Json(tenant))
 }

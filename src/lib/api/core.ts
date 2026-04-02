@@ -44,6 +44,10 @@ const commandMap: Record<string, { method: string; path: string }> = {
     method: 'POST',
     path: '/superadmin/radius/servers/:id/active',
   },
+  set_managed_radius_server_default: {
+    method: 'POST',
+    path: '/superadmin/radius/servers/:id/default',
+  },
   list_managed_radius_assignments: { method: 'GET', path: '/superadmin/radius/assignments' },
   create_managed_radius_assignment: { method: 'POST', path: '/superadmin/radius/assignments' },
   update_managed_radius_assignment: { method: 'PUT', path: '/superadmin/radius/assignments/:id' },
@@ -338,6 +342,14 @@ const commandMap: Record<string, { method: string; path: string }> = {
   get_mikrotik_router_managed_radius_setup: {
     method: 'GET',
     path: '/admin/mikrotik/routers/:routerId/managed-radius-setup',
+  },
+  assign_mikrotik_router_managed_radius_default: {
+    method: 'POST',
+    path: '/admin/mikrotik/routers/:routerId/managed-radius-setup/assign-default',
+  },
+  create_mikrotik_router_managed_radius_mapping: {
+    method: 'POST',
+    path: '/admin/mikrotik/routers/:routerId/managed-radius-setup/create-mapping',
   },
   list_mikrotik_router_metrics: {
     method: 'GET',
@@ -686,10 +698,13 @@ export async function safeInvoke<T>(command: string, args?: any): Promise<T> {
 
     throw new Error(`Command '${command}' not implemented in HTTP API yet.`);
   } catch (error: any) {
+    const status = Number((error as any)?.status ?? (error as any)?.response?.status ?? NaN);
+    const normalizedMessage = String(error?.message || error || '').toLowerCase();
     const isAuthError =
+      status === 401 ||
       error.message?.includes('401') ||
-      error.message?.includes('Invalid token') ||
-      error.message?.includes('Unauthorized');
+      normalizedMessage.includes('invalid token') ||
+      normalizedMessage.includes('missing token');
 
     if (isAuthError) {
       handleAuthExpired(`Auth error from ${command}: ${error.message || error}`);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildManagedRadiusTabs,
   buildManagedRadiusRouterOsCli,
   filterManagedRadiusMappings,
   routerToOptionLabel,
@@ -69,5 +70,24 @@ describe('managed radius control plane helpers', () => {
       'Main POP (10.10.10.1)',
     );
     expect(routerToOptionLabel({ name: '', host: '10.10.10.2' })).toBe('10.10.10.2');
+  });
+
+  it('builds managed radius tabs with counts and active state', () => {
+    expect(
+      buildManagedRadiusTabs(
+        {
+          servers: 3,
+          assignments: 4,
+          mappings: 8,
+          users: 22,
+        },
+        'mappings',
+      ),
+    ).toEqual([
+      { id: 'servers', count: 3, active: false },
+      { id: 'assignments', count: 4, active: false },
+      { id: 'mappings', count: 8, active: true },
+      { id: 'users', count: 22, active: false },
+    ]);
   });
 });

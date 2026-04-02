@@ -11,4 +11,4 @@
   });
 </script>
 
-<FileManager mode="admin" showHeader={false} />
+<FileManager mode="tenant" showHeader={false} />

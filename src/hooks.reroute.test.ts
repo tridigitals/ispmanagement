@@ -1,15 +1,55 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { reroute } from '../src/hooks';
+
+class MemoryStorage implements Storage {
+  private map = new Map<string, string>();
+
+  get length(): number {
+    return this.map.size;
+  }
+
+  clear(): void {
+    this.map.clear();
+  }
+
+  getItem(key: string): string | null {
+    return this.map.has(key) ? this.map.get(key)! : null;
+  }
+
+  key(index: number): string | null {
+    return Array.from(this.map.keys())[index] ?? null;
+  }
+
+  removeItem(key: string): void {
+    this.map.delete(key);
+  }
+
+  setItem(key: string, value: string): void {
+    this.map.set(key, String(value));
+  }
+}
 
 function run(host: string, path: string) {
   return reroute({ url: new URL(`https://${host}${path}`) } as any);
 }
 
+function installBrowserTenantSlug(slug: string) {
+  const local = new MemoryStorage();
+  const session = new MemoryStorage();
+  local.setItem('active_tenant_slug', slug);
+  vi.stubGlobal('window', {} as Window & typeof globalThis);
+  vi.stubGlobal('localStorage', local);
+  vi.stubGlobal('sessionStorage', session);
+  return { local, session };
+}
+
 describe('hooks reroute', () => {
-  it('normalizes legacy platform slug path', () => {
-    expect(run('billing.tridigitals.com', '/isp-management/admin/network/noc')).toBe(
-      '/admin/network/noc',
-    );
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('leaves legacy platform path unresolved in SSR when no tenant slug is available', () => {
+    expect(run('billing.tridigitals.com', '/isp-management/admin/network/noc')).toBeUndefined();
   });
 
   it('does not rewrite clean platform admin path', () => {
@@ -20,8 +60,8 @@ describe('hooks reroute', () => {
     expect(run('billing.tridigitals.com', '/login')).toBeUndefined();
   });
 
-  it('normalizes slug-prefixed app path on platform domain', () => {
-    expect(run('billing.tridigitals.com', '/foo/admin/settings')).toBe('/admin/settings');
+  it('leaves slug-prefixed platform app path unresolved in SSR when no tenant slug is available', () => {
+    expect(run('billing.tridigitals.com', '/foo/admin/settings')).toBeUndefined();
   });
 
   it('rewrites custom domain app path to tenant slug', () => {
@@ -30,5 +70,17 @@ describe('hooks reroute', () => {
 
   it('does not rewrite custom domain public path', () => {
     expect(run('dashboard.tridigitals.com', '/login')).toBeUndefined();
+  });
+
+  it('rewrites clean platform admin storage path to active tenant route in browser context', () => {
+    installBrowserTenantSlug('xtrabit');
+    expect(run('billing.tridigitals.com', '/admin/storage')).toBe('/xtrabit/admin/storage');
+  });
+
+  it('rewrites legacy platform storage path to active tenant route in browser context', () => {
+    installBrowserTenantSlug('xtrabit');
+    expect(run('billing.tridigitals.com', '/isp-management/admin/storage')).toBe(
+      '/xtrabit/admin/storage',
+    );
   });
 });

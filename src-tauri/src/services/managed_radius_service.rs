@@ -15,6 +15,7 @@ const PURPOSE_MANAGED_RADIUS_DB: &str = "managed_radius_db";
 const PURPOSE_MANAGED_RADIUS_SHARED_SECRET: &str = "managed_radius_shared_secret";
 const DEFAULT_RADIUS_AUTH_PORT: i32 = 1812;
 const DEFAULT_RADIUS_ACCT_PORT: i32 = 1813;
+const MANAGED_RADIUS_UPGRADE_PATH: &str = "/admin/subscription";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManagedRadiusAccountPayload {
@@ -180,6 +181,26 @@ impl ManagedRadiusService {
         .ok_or_else(|| {
             AppError::Configuration("Managed RADIUS tenant assignment is not configured".into())
         })
+    }
+
+    pub async fn get_active_assignment_for_tenant_optional(
+        &self,
+        tenant_id: &str,
+    ) -> AppResult<Option<TenantRadiusAssignment>> {
+        sqlx::query_as::<_, TenantRadiusAssignment>(
+            r#"
+            SELECT *
+            FROM tenant_radius_assignments
+            WHERE tenant_id = $1
+              AND is_active = true
+            ORDER BY updated_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)
     }
 
     async fn connect_radius_db(&self, server: &ManagedRadiusServer) -> AppResult<PgPool> {
@@ -417,8 +438,8 @@ impl ManagedRadiusService {
         let server = sqlx::query_as::<_, ManagedRadiusServer>(
             r#"
             INSERT INTO radius_servers (
-              id, name, db_host, db_port, db_name, db_user, db_password_enc, is_active, notes, created_at, updated_at
-            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+              id, name, db_host, db_port, db_name, db_user, db_password_enc, is_active, is_default, notes, created_at, updated_at
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,false,$9,$10,$11)
             RETURNING *
             "#,
         )
@@ -504,6 +525,22 @@ impl ManagedRadiusService {
         server_id: &str,
         is_active: bool,
     ) -> AppResult<ManagedRadiusServer> {
+        let existing = sqlx::query_as::<_, ManagedRadiusServer>(
+            "SELECT * FROM radius_servers WHERE id = $1",
+        )
+        .bind(server_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or_else(|| AppError::NotFound("Managed RADIUS server not found".into()))?;
+
+        if !is_active && existing.is_default {
+            return Err(AppError::Validation(
+                "Default Managed RADIUS server must stay active until another default is selected"
+                    .into(),
+            ));
+        }
+
         let now = Utc::now();
         let server = sqlx::query_as::<_, ManagedRadiusServer>(
             "UPDATE radius_servers SET is_active = $1, updated_at = $2 WHERE id = $3 RETURNING *",
@@ -516,6 +553,77 @@ impl ManagedRadiusService {
         .map_err(AppError::Database)?
         .ok_or_else(|| AppError::NotFound("Managed RADIUS server not found".into()))?;
         Ok(server)
+    }
+
+    pub async fn get_default_server(&self) -> AppResult<Option<ManagedRadiusServer>> {
+        sqlx::query_as::<_, ManagedRadiusServer>(
+            r#"
+            SELECT *
+            FROM radius_servers
+            WHERE is_default = true
+            LIMIT 1
+            "#,
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)
+    }
+
+    pub async fn set_server_default(&self, server_id: &str) -> AppResult<ManagedRadiusServer> {
+        let existing = sqlx::query_as::<_, ManagedRadiusServer>(
+            "SELECT * FROM radius_servers WHERE id = $1",
+        )
+        .bind(server_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or_else(|| AppError::NotFound("Managed RADIUS server not found".into()))?;
+
+        if !existing.is_active {
+            return Err(AppError::Validation(
+                "Only active Managed RADIUS servers can be set as default".into(),
+            ));
+        }
+
+        let now = Utc::now();
+        let mut tx = self.pool.begin().await.map_err(AppError::Database)?;
+
+        sqlx::query("UPDATE radius_servers SET is_default = false, updated_at = $1 WHERE is_default = true")
+            .bind(now)
+            .execute(&mut *tx)
+            .await
+            .map_err(AppError::Database)?;
+
+        let server = sqlx::query_as::<_, ManagedRadiusServer>(
+            "UPDATE radius_servers SET is_default = true, updated_at = $1 WHERE id = $2 RETURNING *",
+        )
+        .bind(now)
+        .bind(server_id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(AppError::Database)?;
+
+        tx.commit().await.map_err(AppError::Database)?;
+        Ok(server)
+    }
+
+    pub async fn auto_assign_default_server_for_tenant(
+        &self,
+        tenant_id: &str,
+    ) -> AppResult<Option<TenantRadiusAssignment>> {
+        let Some(server) = self.get_default_server().await? else {
+            return Ok(None);
+        };
+
+        let assignment = self
+            .create_assignment(TenantRadiusAssignmentUpsert {
+                tenant_id: tenant_id.to_string(),
+                radius_server_id: server.id,
+                is_active: true,
+            })
+            .await?;
+
+        Ok(Some(assignment))
     }
 
     pub async fn create_assignment(
@@ -695,6 +803,50 @@ impl ManagedRadiusService {
         .fetch_one(&self.pool)
         .await
         .map_err(AppError::Database)
+    }
+
+    pub async fn auto_create_mapping_for_router(
+        &self,
+        tenant_id: &str,
+        router: &MikrotikRouter,
+    ) -> AppResult<ManagedRadiusNas> {
+        let assignment = self.get_active_assignment_for_tenant(tenant_id).await?;
+
+        let existing = sqlx::query_as::<_, ManagedRadiusNas>(
+            r#"
+            SELECT *
+            FROM managed_radius_nas
+            WHERE tenant_id = $1
+              AND router_id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&router.id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        if existing.is_some() {
+            return Err(AppError::Validation(
+                "Managed RADIUS NAS mapping already exists for this router".into(),
+            ));
+        }
+
+        let nas_name = build_default_nas_name(router);
+        let shortname = build_default_nas_shortname(router);
+
+        self.create_mapping(ManagedRadiusNasUpsert {
+            tenant_id: tenant_id.to_string(),
+            radius_server_id: assignment.radius_server_id,
+            router_id: router.id.clone(),
+            nas_name,
+            nas_ip_or_cidr: router.host.clone(),
+            shortname,
+            shared_secret: None,
+            is_active: true,
+        })
+        .await
     }
 
     pub async fn update_mapping(
@@ -895,7 +1047,53 @@ impl ManagedRadiusService {
         &self,
         tenant_id: &str,
         router: &MikrotikRouter,
+        plan_allows_managed_radius: bool,
     ) -> AppResult<ManagedRadiusRouterSetup> {
+        if !plan_allows_managed_radius {
+            return Ok(ManagedRadiusRouterSetup {
+                configured: false,
+                router_id: router.id.clone(),
+                plan_allows_managed_radius: false,
+                plan_upgrade_required: true,
+                upgrade_path: Some(MANAGED_RADIUS_UPGRADE_PATH.to_string()),
+                tenant_has_active_assignment: false,
+                default_server_available: false,
+                can_assign_default: false,
+                can_create_mapping: false,
+                assignment_server_name: None,
+                server_name: None,
+                radius_host: None,
+                auth_port: resolve_radius_port(
+                    "MANAGED_RADIUS_AUTH_PORT",
+                    "RADIUS_AUTH_PORT",
+                    DEFAULT_RADIUS_AUTH_PORT,
+                ),
+                acct_port: resolve_radius_port(
+                    "MANAGED_RADIUS_ACCT_PORT",
+                    "RADIUS_ACCT_PORT",
+                    DEFAULT_RADIUS_ACCT_PORT,
+                ),
+                nas_ip_or_cidr: None,
+                shared_secret: None,
+                shared_secret_masked: None,
+                cli_script: None,
+                warnings: vec![],
+            });
+        }
+
+        let active_assignment = self.get_active_assignment_for_tenant_optional(tenant_id).await?;
+        let default_server = self.get_default_server().await?;
+
+        let assignment_server_name = if let Some(assignment) = active_assignment.as_ref() {
+            sqlx::query_scalar::<_, String>("SELECT name FROM radius_servers WHERE id = $1")
+                .bind(&assignment.radius_server_id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(AppError::Database)?
+        } else {
+            None
+        };
+
         let config = sqlx::query_as::<_, ManagedRadiusNas>(
             r#"
             SELECT n.*
@@ -923,6 +1121,14 @@ impl ManagedRadiusService {
             return Ok(ManagedRadiusRouterSetup {
                 configured: false,
                 router_id: router.id.clone(),
+                plan_allows_managed_radius: true,
+                plan_upgrade_required: false,
+                upgrade_path: None,
+                tenant_has_active_assignment: active_assignment.is_some(),
+                default_server_available: default_server.is_some(),
+                can_assign_default: active_assignment.is_none() && default_server.is_some(),
+                can_create_mapping: active_assignment.is_some(),
+                assignment_server_name,
                 server_name: None,
                 radius_host: None,
                 auth_port: resolve_radius_port(
@@ -977,6 +1183,14 @@ impl ManagedRadiusService {
         Ok(ManagedRadiusRouterSetup {
             configured: true,
             router_id: router.id.clone(),
+            plan_allows_managed_radius: true,
+            plan_upgrade_required: false,
+            upgrade_path: None,
+            tenant_has_active_assignment: true,
+            default_server_available: default_server.is_some(),
+            can_assign_default: false,
+            can_create_mapping: false,
+            assignment_server_name: Some(server.name.clone()),
             server_name: Some(server.name),
             radius_host: Some(radius_host),
             auth_port,
@@ -1008,6 +1222,52 @@ fn normalize_optional_secret_input(value: Option<&str>) -> Option<String> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(ToOwned::to_owned)
+}
+
+fn build_default_nas_name(router: &MikrotikRouter) -> String {
+    let base = if !router.identity.as_deref().unwrap_or("").trim().is_empty() {
+        router.identity.as_deref().unwrap_or("router")
+    } else {
+        router.name.as_str()
+    };
+
+    let slug = base
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() {
+                ch.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>();
+
+    let compact = slug
+        .split('-')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("-");
+
+    if compact.is_empty() {
+        format!("router-{}", &router.id.chars().take(8).collect::<String>())
+    } else {
+        compact
+    }
+}
+
+fn build_default_nas_shortname(router: &MikrotikRouter) -> Option<String> {
+    let short = router
+        .name
+        .chars()
+        .filter(|ch| ch.is_ascii_alphanumeric())
+        .take(12)
+        .collect::<String>();
+
+    if short.is_empty() {
+        None
+    } else {
+        Some(short.to_uppercase())
+    }
 }
 
 fn required_trimmed<'a>(field: &str, value: &'a str) -> AppResult<&'a str> {

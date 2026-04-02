@@ -53,6 +53,14 @@ pub fn router() -> Router<AppState> {
             "/routers/{id}/managed-radius-setup",
             get(get_managed_radius_setup),
         )
+        .route(
+            "/routers/{id}/managed-radius-setup/assign-default",
+            post(assign_managed_radius_default),
+        )
+        .route(
+            "/routers/{id}/managed-radius-setup/create-mapping",
+            post(create_managed_radius_mapping),
+        )
         .route("/routers/{id}/test", post(test_router))
         .route("/routers/{id}/metrics", get(list_metrics))
         .route(
@@ -549,9 +557,181 @@ async fn get_managed_radius_setup(
         .await?
         .ok_or_else(|| AppError::NotFound("Router not found".into()))?;
 
+    let plan_allows_managed_radius = state
+        .plan_service
+        .check_feature_access(&tenant_id, "managed_radius")
+        .await
+        .map(|access| access.has_access)
+        .unwrap_or(false);
+
     let mut setup = state
         .managed_radius_service
-        .get_router_setup(&tenant_id, &router)
+        .get_router_setup(&tenant_id, &router, plan_allows_managed_radius)
+        .await?;
+
+    let can_reveal_secret = state
+        .auth_service
+        .check_permission(
+            &claims.sub,
+            &tenant_id,
+            "network_routers",
+            "manage_radius_secret",
+        )
+        .await
+        .is_ok();
+
+    if !can_reveal_secret {
+        setup.shared_secret = None;
+    }
+
+    Ok(Json(setup))
+}
+
+async fn assign_managed_radius_default(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<ManagedRadiusRouterSetup>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    let router = state
+        .mikrotik_service
+        .get_router(&tenant_id, &id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Router not found".into()))?;
+
+    let plan_allows_managed_radius = state
+        .plan_service
+        .check_feature_access(&tenant_id, "managed_radius")
+        .await
+        .map(|access| access.has_access)
+        .unwrap_or(false);
+
+    if !plan_allows_managed_radius {
+        return Err(AppError::Validation(
+            "Managed RADIUS is not included in the current plan".into(),
+        ));
+    }
+
+    if state
+        .managed_radius_service
+        .get_active_assignment_for_tenant_optional(&tenant_id)
+        .await?
+        .is_some()
+    {
+        return Err(AppError::Validation(
+            "Managed RADIUS assignment is already active for this tenant".into(),
+        ));
+    }
+
+    let assigned = state
+        .managed_radius_service
+        .auto_assign_default_server_for_tenant(&tenant_id)
+        .await?;
+
+    if assigned.is_none() {
+        return Err(AppError::Configuration(
+            "No default Managed RADIUS server is configured".into(),
+        ));
+    }
+
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "MIKROTIK_ROUTER_MANAGED_RADIUS_ASSIGNED_DEFAULT",
+            "mikrotik_router",
+            Some(&router.id),
+            Some(&format!(
+                "Assigned tenant {} to the default Managed RADIUS server from router {}",
+                tenant_id, router.name
+            )),
+            None,
+        )
+        .await;
+
+    let mut setup = state
+        .managed_radius_service
+        .get_router_setup(&tenant_id, &router, true)
+        .await?;
+
+    let can_reveal_secret = state
+        .auth_service
+        .check_permission(
+            &claims.sub,
+            &tenant_id,
+            "network_routers",
+            "manage_radius_secret",
+        )
+        .await
+        .is_ok();
+
+    if !can_reveal_secret {
+        setup.shared_secret = None;
+    }
+
+    Ok(Json(setup))
+}
+
+async fn create_managed_radius_mapping(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<ManagedRadiusRouterSetup>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    let router = state
+        .mikrotik_service
+        .get_router(&tenant_id, &id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Router not found".into()))?;
+
+    let plan_allows_managed_radius = state
+        .plan_service
+        .check_feature_access(&tenant_id, "managed_radius")
+        .await
+        .map(|access| access.has_access)
+        .unwrap_or(false);
+
+    if !plan_allows_managed_radius {
+        return Err(AppError::Validation(
+            "Managed RADIUS is not included in the current plan".into(),
+        ));
+    }
+
+    state
+        .managed_radius_service
+        .auto_create_mapping_for_router(&tenant_id, &router)
+        .await?;
+
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "MIKROTIK_ROUTER_MANAGED_RADIUS_MAPPING_CREATED",
+            "mikrotik_router",
+            Some(&router.id),
+            Some(&format!(
+                "Created Managed RADIUS NAS mapping automatically for router {}",
+                router.name
+            )),
+            None,
+        )
+        .await;
+
+    let mut setup = state
+        .managed_radius_service
+        .get_router_setup(&tenant_id, &router, true)
         .await?;
 
     let can_reveal_secret = state

@@ -96,4 +96,16 @@ describe('superadmin api wrapper', () => {
       tenant_id: 'tenant-1',
     });
   });
+
+  it('sets a managed radius server as default', async () => {
+    safeInvoke.mockResolvedValue({ ok: true });
+
+    const { superadmin } = await import('./superadmin');
+    await superadmin.setManagedRadiusServerDefault('server-1');
+
+    expect(safeInvoke).toHaveBeenCalledWith('set_managed_radius_server_default', {
+      token: 'token-123',
+      id: 'server-1',
+    });
+  });
 });

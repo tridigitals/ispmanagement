@@ -69,6 +69,12 @@ export const superadmin = {
       is_active: isActive,
     }),
 
+  setManagedRadiusServerDefault: (id: string): Promise<{ ok: boolean }> =>
+    safeInvoke('set_managed_radius_server_default', {
+      token: getTokenOrThrow(),
+      id,
+    }),
+
   listManagedRadiusAssignments: (): Promise<{ data: SuperadminManagedRadiusAssignment[]; total: number }> =>
     safeInvoke('list_managed_radius_assignments', { token: getTokenOrThrow() }),
 

@@ -22,6 +22,7 @@ pub struct SuperadminManagedRadiusServer {
     pub db_port: i32,
     pub db_name: String,
     pub is_active: bool,
+    pub is_default: bool,
     pub notes: Option<String>,
     pub tenant_count: i64,
     pub router_count: i64,
@@ -164,6 +165,7 @@ pub async fn list_managed_radius_servers(
           s.db_port,
           s.db_name,
           s.is_active,
+          s.is_default,
           s.notes,
           COUNT(DISTINCT a.tenant_id)::bigint AS tenant_count,
           COUNT(DISTINCT n.id)::bigint AS router_count,
@@ -176,8 +178,8 @@ pub async fn list_managed_radius_servers(
           ON n.radius_server_id = s.id
          AND n.is_active = true
         GROUP BY
-          s.id, s.name, s.db_host, s.db_port, s.db_name, s.is_active, s.notes, s.updated_at
-        ORDER BY s.updated_at DESC, s.name ASC
+          s.id, s.name, s.db_host, s.db_port, s.db_name, s.is_active, s.is_default, s.notes, s.updated_at
+        ORDER BY s.is_default DESC, s.updated_at DESC, s.name ASC
         "#,
     )
     .bind(DEFAULT_RADIUS_AUTH_PORT)
@@ -534,6 +536,42 @@ pub async fn set_managed_radius_server_active(
             "managed_radius_server",
             Some(&id),
             Some("Managed RADIUS server active state changed by Superadmin"),
+            None,
+        )
+        .await;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn set_managed_radius_server_default(
+    token: String,
+    id: String,
+    auth_service: State<'_, AuthService>,
+    managed_radius_service: State<'_, ManagedRadiusService>,
+    audit_service: State<'_, AuditService>,
+) -> Result<(), String> {
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    if !claims.is_super_admin {
+        return Err("Unauthorized".to_string());
+    }
+
+    let server = managed_radius_service
+        .set_server_default(&id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    audit_service
+        .log(
+            Some(&claims.sub),
+            None,
+            "MANAGED_RADIUS_SERVER_SET_DEFAULT",
+            "managed_radius_server",
+            Some(&server.id),
+            Some(&format!("Set managed RADIUS server {} as default", server.name)),
             None,
         )
         .await;
@@ -932,6 +970,7 @@ pub async fn create_tenant(
     auth_service: State<'_, AuthService>,
     audit_service: State<'_, AuditService>,
     plan_service: State<'_, PlanService>,
+    managed_radius_service: State<'_, ManagedRadiusService>,
 ) -> Result<Tenant, String> {
     let claims = auth_service
         .validate_token(&token)
@@ -1095,6 +1134,32 @@ pub async fn create_tenant(
                 tenant.id,
                 e
             );
+        } else {
+            match plan_service
+                .check_feature_access(&tenant.id, "managed_radius")
+                .await
+            {
+                Ok(access) if access.has_access => {
+                    if let Err(e) = managed_radius_service
+                        .auto_assign_default_server_for_tenant(&tenant.id)
+                        .await
+                    {
+                        tracing::error!(
+                            "Failed to auto-assign default Managed RADIUS server for tenant {}: {}",
+                            tenant.id,
+                            e
+                        );
+                    }
+                }
+                Ok(_) => {}
+                Err(e) => {
+                    tracing::error!(
+                        "Failed to evaluate managed_radius feature access for tenant {}: {}",
+                        tenant.id,
+                        e
+                    );
+                }
+            }
         }
     }
 

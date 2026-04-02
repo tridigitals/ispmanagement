@@ -96,10 +96,15 @@ pub struct CreatePlanRequest {
     pub name: String,
     pub slug: String,
     pub description: Option<String>,
+    #[serde(alias = "priceMonthly")]
     pub price_monthly: Option<f64>,
+    #[serde(alias = "priceYearly")]
     pub price_yearly: Option<f64>,
+    #[serde(alias = "isActive")]
     pub is_active: Option<bool>,
+    #[serde(alias = "isDefault")]
     pub is_default: Option<bool>,
+    #[serde(alias = "sortOrder")]
     pub sort_order: Option<i32>,
 }
 
@@ -109,10 +114,15 @@ pub struct UpdatePlanRequest {
     pub name: Option<String>,
     pub slug: Option<String>,
     pub description: Option<String>,
+    #[serde(alias = "priceMonthly")]
     pub price_monthly: Option<f64>,
+    #[serde(alias = "priceYearly")]
     pub price_yearly: Option<f64>,
+    #[serde(alias = "isActive")]
     pub is_active: Option<bool>,
+    #[serde(alias = "isDefault")]
     pub is_default: Option<bool>,
+    #[serde(alias = "sortOrder")]
     pub sort_order: Option<i32>,
 }
 
@@ -176,4 +186,51 @@ pub struct TenantSubscriptionDetails {
     pub storage_limit: Option<i64>,
     pub member_usage: i64,
     pub member_limit: Option<i64>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CreatePlanRequest, UpdatePlanRequest};
+
+    #[test]
+    fn create_plan_request_accepts_camel_case_payload() {
+        let req: CreatePlanRequest = serde_json::from_str(
+            r#"{
+                "name":"Pro",
+                "slug":"pro",
+                "priceMonthly":199000,
+                "priceYearly":1990000,
+                "isActive":true,
+                "isDefault":false,
+                "sortOrder":10
+            }"#,
+        )
+        .expect("camelCase payload should deserialize");
+
+        assert_eq!(req.price_monthly, Some(199000.0));
+        assert_eq!(req.price_yearly, Some(1990000.0));
+        assert_eq!(req.is_active, Some(true));
+        assert_eq!(req.is_default, Some(false));
+        assert_eq!(req.sort_order, Some(10));
+    }
+
+    #[test]
+    fn update_plan_request_accepts_camel_case_payload() {
+        let req: UpdatePlanRequest = serde_json::from_str(
+            r#"{
+                "priceMonthly":299000,
+                "priceYearly":2990000,
+                "isActive":false,
+                "isDefault":true,
+                "sortOrder":20
+            }"#,
+        )
+        .expect("camelCase payload should deserialize");
+
+        assert_eq!(req.price_monthly, Some(299000.0));
+        assert_eq!(req.price_yearly, Some(2990000.0));
+        assert_eq!(req.is_active, Some(false));
+        assert_eq!(req.is_default, Some(true));
+        assert_eq!(req.sort_order, Some(20));
+    }
 }

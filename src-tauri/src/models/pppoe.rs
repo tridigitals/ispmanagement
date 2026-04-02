@@ -272,6 +272,7 @@ pub struct ManagedRadiusServer {
     #[serde(skip_serializing)]
     pub db_password_enc: String,
     pub is_active: bool,
+    pub is_default: bool,
     pub notes: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

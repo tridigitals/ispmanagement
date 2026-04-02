@@ -18,8 +18,10 @@
   import StatsCard from '$lib/components/dashboard/StatsCard.svelte';
   import { toast } from '$lib/stores/toast';
   import {
+    buildManagedRadiusTabs,
     buildManagedRadiusRouterOsCli,
     filterManagedRadiusMappings,
+    type ManagedRadiusTabId,
   } from '$lib/utils/managedRadiusControlPlane';
   import { t } from 'svelte-i18n';
   import { onMount } from 'svelte';
@@ -69,6 +71,7 @@
   let loading = $state(true);
   let refreshing = $state(false);
   let error = $state('');
+  let activeTab = $state<ManagedRadiusTabId>('servers');
 
   let serverSearch = $state('');
   let serverStatusFilter = $state<'all' | 'active' | 'inactive'>('all');
@@ -270,6 +273,20 @@
       await loadData({ silent: true });
     } catch (err: any) {
       toast.error(err?.message || String(err) || 'Failed to change server state');
+    }
+  }
+
+  async function setDefaultServer(server: SuperadminManagedRadiusServer) {
+    if (server.is_default) return;
+
+    try {
+      await api.superadmin.setManagedRadiusServerDefault(server.id);
+      toast.success(
+        $t('superadmin.radius.toasts.server_default_set') || 'Default server updated',
+      );
+      await loadData({ silent: true });
+    } catch (err: any) {
+      toast.error(err?.message || String(err) || 'Failed to set default server');
     }
   }
 
@@ -620,6 +637,8 @@
     users: users.length,
     outOfSync: users.filter((user) => !user.radius_present || user.radius_last_error).length,
   }));
+
+  const tabs = $derived.by(() => buildManagedRadiusTabs(stats, activeTab));
 </script>
 
 <div class="page-shell">
@@ -666,338 +685,371 @@
     </div>
 
     <section class="panel">
-      <div class="panel-head">
-        <div>
-          <h2>{$t('superadmin.radius.sections.servers') || 'Servers'}</h2>
-          <p>{filteredServers.length} / {servers.length}</p>
-        </div>
-        <div class="filters">
-          <input bind:value={serverSearch} placeholder={$t('superadmin.radius.filters.search_servers') || 'Search servers...'} />
-          <select bind:value={serverStatusFilter}>
-            <option value="all">{$t('superadmin.radius.filters.all_statuses') || 'All statuses'}</option>
-            <option value="active">{$t('superadmin.radius.filters.active') || 'Active'}</option>
-            <option value="inactive">{$t('superadmin.radius.filters.inactive') || 'Inactive'}</option>
-          </select>
-        </div>
+      <div class="tabs" role="tablist" aria-label={$t('superadmin.radius.title') || 'Managed RADIUS tabs'}>
+        {#each tabs as tab}
+          <button
+            type="button"
+            role="tab"
+            class:active={tab.active}
+            aria-selected={tab.active}
+            onclick={() => (activeTab = tab.id)}
+          >
+            <span>
+              {#if tab.id === 'servers'}
+                {$t('superadmin.radius.sections.servers') || 'Servers'}
+              {:else if tab.id === 'assignments'}
+                {$t('superadmin.radius.sections.assignments') || 'Tenant Assignments'}
+              {:else if tab.id === 'mappings'}
+                {$t('superadmin.radius.sections.mappings') || 'NAS Mappings'}
+              {:else}
+                {$t('superadmin.radius.sections.users') || 'Users'}
+              {/if}
+            </span>
+            <strong>{tab.count}</strong>
+          </button>
+        {/each}
       </div>
 
-      {#if filteredServers.length === 0}
-        <div class="empty-state">
-          <strong>{$t('superadmin.radius.empty.servers_title') || 'No managed RADIUS servers yet'}</strong>
-          <span>{$t('superadmin.radius.empty.servers_subtitle') || 'Create global RADIUS infrastructure here, then assign tenants and map routers.'}</span>
+      {#if activeTab === 'servers'}
+        <div class="panel-head">
+          <div>
+            <h2>{$t('superadmin.radius.sections.servers') || 'Servers'}</h2>
+            <p>{filteredServers.length} / {servers.length}</p>
+          </div>
+          <div class="filters">
+            <input bind:value={serverSearch} placeholder={$t('superadmin.radius.filters.search_servers') || 'Search servers...'} />
+            <select bind:value={serverStatusFilter}>
+              <option value="all">{$t('superadmin.radius.filters.all_statuses') || 'All statuses'}</option>
+              <option value="active">{$t('superadmin.radius.filters.active') || 'Active'}</option>
+              <option value="inactive">{$t('superadmin.radius.filters.inactive') || 'Inactive'}</option>
+            </select>
+          </div>
         </div>
-      {:else}
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>{$t('superadmin.radius.columns.server') || 'Server'}</th>
-                <th>{$t('superadmin.radius.columns.host') || 'Host'}</th>
-                <th>{$t('superadmin.radius.columns.database') || 'Database'}</th>
-                <th>{$t('superadmin.radius.columns.status') || 'Status'}</th>
-                <th>{$t('superadmin.radius.columns.tenants') || 'Tenants'}</th>
-                <th>{$t('superadmin.radius.columns.routers') || 'Routers'}</th>
-                <th>{$t('superadmin.radius.columns.updated') || 'Updated'}</th>
-                <th>{$t('superadmin.radius.columns.actions') || 'Actions'}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each filteredServers as server}
+
+        {#if filteredServers.length === 0}
+          <div class="empty-state">
+            <strong>{$t('superadmin.radius.empty.servers_title') || 'No managed RADIUS servers yet'}</strong>
+            <span>{$t('superadmin.radius.empty.servers_subtitle') || 'Create global RADIUS infrastructure here, then assign tenants and map routers.'}</span>
+          </div>
+        {:else}
+          <div class="table-wrap">
+            <table>
+              <thead>
                 <tr>
-                  <td>
-                    <div class="primary">{server.name}</div>
-                    {#if server.notes}
-                      <div class="muted">{server.notes}</div>
-                    {/if}
-                  </td>
-                  <td>{server.host}</td>
-                  <td>{server.db_host}:{server.db_port}/{server.db_name}</td>
-                  <td>
-                    <span class="badge" class:good={server.is_active} class:muted={!server.is_active}>
-                      {server.is_active
-                        ? $t('superadmin.radius.status.active') || 'Active'
-                        : $t('superadmin.radius.status.inactive') || 'Inactive'}
-                    </span>
-                  </td>
-                  <td>{server.tenant_count}</td>
-                  <td>{server.router_count}</td>
-                  <td>{formatDateTime(server.updated_at)}</td>
-                  <td>
-                    <div class="row-actions">
-                      <button class="btn-link" type="button" onclick={() => openEditServerModal(server)}>
-                        {$t('superadmin.radius.actions.edit') || 'Edit'}
-                      </button>
-                      <button class="btn-link" type="button" onclick={() => toggleServerActive(server)}>
-                        {server.is_active
-                          ? $t('superadmin.radius.actions.deactivate') || 'Deactivate'
-                          : $t('superadmin.radius.actions.activate') || 'Activate'}
-                      </button>
-                      <button class="btn-link" type="button" onclick={() => focusMappingsForServer(server)}>
-                        {$t('superadmin.radius.actions.view_mappings') || 'View mappings'}
-                      </button>
-                    </div>
-                  </td>
+                  <th>{$t('superadmin.radius.columns.server') || 'Server'}</th>
+                  <th>{$t('superadmin.radius.columns.host') || 'Host'}</th>
+                  <th>{$t('superadmin.radius.columns.database') || 'Database'}</th>
+                  <th>{$t('superadmin.radius.columns.status') || 'Status'}</th>
+                  <th>{$t('superadmin.radius.columns.tenants') || 'Tenants'}</th>
+                  <th>{$t('superadmin.radius.columns.routers') || 'Routers'}</th>
+                  <th>{$t('superadmin.radius.columns.updated') || 'Updated'}</th>
+                  <th>{$t('superadmin.radius.columns.actions') || 'Actions'}</th>
                 </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
-      {/if}
-    </section>
-
-    <section class="panel">
-      <div class="panel-head">
-        <div>
-          <h2>{$t('superadmin.radius.sections.assignments') || 'Tenant Assignments'}</h2>
-          <p>{filteredAssignments.length} / {assignments.length}</p>
-        </div>
-        <div class="filters filters-wide">
-          <input bind:value={assignmentSearch} placeholder={$t('superadmin.radius.filters.search_assignments') || 'Search assignments...'} />
-          <select bind:value={assignmentTenantFilter}>
-            <option value="all">{$t('superadmin.radius.filters.all_tenants') || 'All tenants'}</option>
-            {#each mappingTenantOptions as tenant}
-              <option value={tenant.id}>{tenant.name}</option>
-            {/each}
-          </select>
-          <select bind:value={assignmentStatusFilter}>
-            <option value="all">{$t('superadmin.radius.filters.all_statuses') || 'All statuses'}</option>
-            <option value="active">{$t('superadmin.radius.filters.active') || 'Active'}</option>
-            <option value="inactive">{$t('superadmin.radius.filters.inactive') || 'Inactive'}</option>
-          </select>
-        </div>
-      </div>
-
-      {#if filteredAssignments.length === 0}
-        <div class="empty-state">
-          <strong>{$t('superadmin.radius.empty.assignments_title') || 'No tenant assignments yet'}</strong>
-          <span>{$t('superadmin.radius.empty.assignments_subtitle') || 'Assign one active global server per tenant before creating NAS mappings.'}</span>
-        </div>
-      {:else}
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>{$t('superadmin.radius.columns.tenant') || 'Tenant'}</th>
-                <th>{$t('superadmin.radius.columns.server') || 'Server'}</th>
-                <th>{$t('superadmin.radius.columns.status') || 'Status'}</th>
-                <th>{$t('superadmin.radius.columns.routers') || 'Routers'}</th>
-                <th>{$t('superadmin.radius.columns.updated') || 'Updated'}</th>
-                <th>{$t('superadmin.radius.columns.actions') || 'Actions'}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each filteredAssignments as assignment}
-                <tr>
-                  <td>{assignment.tenant_name}</td>
-                  <td>
-                    <div class="primary">{assignment.server_name}</div>
-                    <div class="muted">{assignment.radius_host}:{assignment.auth_port}/{assignment.acct_port}</div>
-                  </td>
-                  <td>
-                    <span class="badge" class:good={assignment.is_active} class:muted={!assignment.is_active}>
-                      {assignment.is_active
-                        ? $t('superadmin.radius.status.active') || 'Active'
-                        : $t('superadmin.radius.status.inactive') || 'Inactive'}
-                    </span>
-                  </td>
-                  <td>{assignment.router_count}</td>
-                  <td>{formatDateTime(assignment.updated_at)}</td>
-                  <td>
-                    <div class="row-actions">
-                      <button class="btn-link" type="button" onclick={() => openEditAssignmentModal(assignment)}>
-                        {$t('superadmin.radius.actions.edit') || 'Edit'}
-                      </button>
-                      <button class="btn-link" type="button" onclick={() => toggleAssignmentActive(assignment)}>
-                        {assignment.is_active
-                          ? $t('superadmin.radius.actions.deactivate') || 'Deactivate'
-                          : $t('superadmin.radius.actions.activate') || 'Activate'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
-      {/if}
-    </section>
-
-    <section class="panel">
-      <div class="panel-head">
-        <div>
-          <h2>{$t('superadmin.radius.sections.mappings') || 'NAS Mappings'}</h2>
-          <p>{filteredMappings.length} / {mappings.length}</p>
-        </div>
-        <div class="filters filters-wide">
-          <input bind:value={mappingSearch} placeholder={$t('superadmin.radius.filters.search_mappings') || 'Search mappings...'} />
-          <select bind:value={mappingTenantFilter}>
-            <option value="all">{$t('superadmin.radius.filters.all_tenants') || 'All tenants'}</option>
-            {#each mappingTenantOptions as tenant}
-              <option value={tenant.id}>{tenant.name}</option>
-            {/each}
-          </select>
-          <select bind:value={mappingServerFilter}>
-            <option value="all">{$t('superadmin.radius.filters.all_servers') || 'All servers'}</option>
-            {#each mappingServerOptions as server}
-              <option value={server.id}>{server.name}</option>
-            {/each}
-          </select>
-          <select bind:value={mappingStatusFilter}>
-            <option value="all">{$t('superadmin.radius.filters.all_statuses') || 'All statuses'}</option>
-            <option value="active">{$t('superadmin.radius.filters.active') || 'Active'}</option>
-            <option value="inactive">{$t('superadmin.radius.filters.inactive') || 'Inactive'}</option>
-          </select>
-        </div>
-      </div>
-
-      {#if filteredMappings.length === 0}
-        <div class="empty-state">
-          <strong>{$t('superadmin.radius.empty.mappings_title') || 'No NAS mappings yet'}</strong>
-          <span>{$t('superadmin.radius.empty.mappings_subtitle') || 'Create a tenant-scoped server and map a router to start issuing copy-ready MikroTik CLI.'}</span>
-        </div>
-      {:else}
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>{$t('superadmin.radius.columns.tenant') || 'Tenant'}</th>
-                <th>{$t('superadmin.radius.columns.server') || 'Server'}</th>
-                <th>{$t('superadmin.radius.columns.router') || 'Router'}</th>
-                <th>{$t('superadmin.radius.columns.nas') || 'NAS'}</th>
-                <th>{$t('superadmin.radius.columns.secret') || 'Secret'}</th>
-                <th>{$t('superadmin.radius.columns.status') || 'Status'}</th>
-                <th>{$t('superadmin.radius.columns.updated') || 'Updated'}</th>
-                <th>{$t('superadmin.radius.columns.actions') || 'Actions'}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each filteredMappings as mapping}
-                <tr>
-                  <td>{mapping.tenant_name}</td>
-                  <td>
-                    <div class="primary">{mapping.server_name}</div>
-                    <div class="muted">{mapping.radius_host}:{mapping.auth_port}/{mapping.acct_port}</div>
-                  </td>
-                  <td>{mapping.router_name || ($t('superadmin.radius.labels.unknown_router') || 'Unknown router')}</td>
-                  <td>
-                    <div class="primary">{mapping.nas_name}</div>
-                    <div class="muted">{mapping.nas_ip_or_cidr}</div>
-                    {#if mapping.shortname}
-                      <div class="muted">{mapping.shortname}</div>
-                    {/if}
-                  </td>
-                  <td><code>{mapping.shared_secret_masked}</code></td>
-                  <td>
-                    <span class="badge" class:good={mapping.is_active} class:muted={!mapping.is_active}>
-                      {mapping.is_active
-                        ? $t('superadmin.radius.status.active') || 'Active'
-                        : $t('superadmin.radius.status.inactive') || 'Inactive'}
-                    </span>
-                  </td>
-                  <td>{formatDateTime(mapping.updated_at)}</td>
-                  <td>
-                    <div class="row-actions wrap">
-                      <button class="btn-link" type="button" onclick={() => openEditMappingModal(mapping)}>
-                        {$t('superadmin.radius.actions.edit') || 'Edit'}
-                      </button>
-                      <button class="btn-link" type="button" onclick={() => openSecretDialog(mapping, 'reveal')}>
-                        {$t('superadmin.radius.actions.reveal_secret') || 'Reveal secret'}
-                      </button>
-                      <button class="btn-link" type="button" onclick={() => openSecretDialog(mapping, 'rotate')}>
-                        {$t('superadmin.radius.actions.rotate_secret') || 'Rotate secret'}
-                      </button>
-                      <button class="btn-link" type="button" onclick={() => copyMappingCli(mapping)}>
-                        {$t('superadmin.radius.actions.copy_cli') || 'Copy CLI'}
-                      </button>
-                      <button class="btn-link" type="button" onclick={() => toggleMappingActive(mapping)}>
-                        {mapping.is_active
-                          ? $t('superadmin.radius.actions.deactivate') || 'Deactivate'
-                          : $t('superadmin.radius.actions.activate') || 'Activate'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
-      {/if}
-    </section>
-
-    <section class="panel">
-      <div class="panel-head">
-        <div>
-          <h2>{$t('superadmin.radius.sections.users') || 'Users'}</h2>
-          <p>{filteredUsers.length} / {users.length}</p>
-        </div>
-        <div class="filters filters-wide">
-          <input bind:value={userSearch} placeholder={$t('superadmin.radius.filters.search_users') || 'Search users...'} />
-          <select bind:value={tenantFilter}>
-            <option value="all">{$t('superadmin.radius.filters.all_tenants') || 'All tenants'}</option>
-            {#each tenantOptions as tenantName}
-              <option value={tenantName}>{tenantName}</option>
-            {/each}
-          </select>
-          <select bind:value={routerFilter}>
-            <option value="all">{$t('superadmin.radius.filters.all_routers') || 'All routers'}</option>
-            {#each routerOptions as routerName}
-              <option value={routerName}>{routerName}</option>
-            {/each}
-          </select>
-          <select bind:value={userStatusFilter}>
-            <option value="all">{$t('superadmin.radius.filters.all_users') || 'All users'}</option>
-            <option value="provisioned">{$t('superadmin.radius.filters.provisioned') || 'Provisioned'}</option>
-            <option value="not_provisioned">{$t('superadmin.radius.filters.not_provisioned') || 'Not provisioned'}</option>
-          </select>
-        </div>
-      </div>
-
-      {#if filteredUsers.length === 0}
-        <div class="empty-state">
-          <strong>{$t('superadmin.radius.empty.users_title') || 'No managed RADIUS users yet'}</strong>
-          <span>{$t('superadmin.radius.empty.users_subtitle') || 'Managed-RADIUS-backed PPPoE users will appear here after tenant admins apply them.'}</span>
-        </div>
-      {:else}
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>{$t('superadmin.radius.columns.tenant') || 'Tenant'}</th>
-                <th>{$t('superadmin.radius.columns.router') || 'Router'}</th>
-                <th>{$t('superadmin.radius.columns.username') || 'Username'}</th>
-                <th>{$t('superadmin.radius.columns.identity') || 'RADIUS Identity'}</th>
-                <th>{$t('superadmin.radius.columns.profile') || 'Profile'}</th>
-                <th>{$t('superadmin.radius.columns.status') || 'Status'}</th>
-                <th>{$t('superadmin.radius.columns.last_sync') || 'Last Sync'}</th>
-                <th>{$t('superadmin.radius.columns.last_error') || 'Last Error'}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each filteredUsers as user}
-                <tr>
-                  <td>{user.tenant_name}</td>
-                  <td>{user.router_name || ($t('superadmin.radius.labels.unknown_router') || 'Unknown router')}</td>
-                  <td><div class="primary">{user.username}</div></td>
-                  <td>{user.radius_identity || user.username}</td>
-                  <td>{user.router_profile_name || ($t('superadmin.radius.labels.none') || 'None')}</td>
-                  <td>
-                    <span class="badge" class:good={userBadgeTone(user) === 'good'} class:warn={userBadgeTone(user) === 'warn'} class:danger={userBadgeTone(user) === 'danger'}>
-                      {#if user.radius_present}
-                        {$t('superadmin.radius.status.provisioned') || 'Provisioned'}
-                      {:else if user.radius_last_error}
-                        {$t('superadmin.radius.status.needs_attention') || 'Needs attention'}
-                      {:else}
-                        {$t('superadmin.radius.status.not_provisioned') || 'Not provisioned'}
+              </thead>
+              <tbody>
+                {#each filteredServers as server}
+                  <tr>
+                    <td>
+                      <div class="primary">
+                        {server.name}
+                        {#if server.is_default}
+                          <span class="badge good inline-badge">
+                            {$t('superadmin.radius.status.default') || 'Default'}
+                          </span>
+                        {/if}
+                      </div>
+                      {#if server.notes}
+                        <div class="muted">{server.notes}</div>
                       {/if}
-                    </span>
-                  </td>
-                  <td>{formatDateTime(user.radius_last_sync_at)}</td>
-                  <td class="error-text">{user.radius_last_error || ($t('superadmin.radius.labels.none') || 'None')}</td>
-                </tr>
+                    </td>
+                    <td>{server.host}</td>
+                    <td>{server.db_host}:{server.db_port}/{server.db_name}</td>
+                    <td>
+                      <span class="badge" class:good={server.is_active} class:muted={!server.is_active}>
+                        {server.is_active
+                          ? $t('superadmin.radius.status.active') || 'Active'
+                          : $t('superadmin.radius.status.inactive') || 'Inactive'}
+                      </span>
+                    </td>
+                    <td>{server.tenant_count}</td>
+                    <td>{server.router_count}</td>
+                    <td>{formatDateTime(server.updated_at)}</td>
+                    <td>
+                      <div class="row-actions">
+                        <button class="btn-link" type="button" onclick={() => openEditServerModal(server)}>
+                          {$t('superadmin.radius.actions.edit') || 'Edit'}
+                        </button>
+                        {#if !server.is_default}
+                          <button class="btn-link" type="button" onclick={() => setDefaultServer(server)}>
+                            {$t('superadmin.radius.actions.set_default') || 'Set default'}
+                          </button>
+                        {/if}
+                        <button class="btn-link" type="button" onclick={() => toggleServerActive(server)}>
+                          {server.is_active
+                            ? $t('superadmin.radius.actions.deactivate') || 'Deactivate'
+                            : $t('superadmin.radius.actions.activate') || 'Activate'}
+                        </button>
+                        <button class="btn-link" type="button" onclick={() => { focusMappingsForServer(server); activeTab = 'mappings'; }}>
+                          {$t('superadmin.radius.actions.view_mappings') || 'View mappings'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+      {:else if activeTab === 'assignments'}
+        <div class="panel-head">
+          <div>
+            <h2>{$t('superadmin.radius.sections.assignments') || 'Tenant Assignments'}</h2>
+            <p>{filteredAssignments.length} / {assignments.length}</p>
+          </div>
+          <div class="filters filters-wide">
+            <input bind:value={assignmentSearch} placeholder={$t('superadmin.radius.filters.search_assignments') || 'Search assignments...'} />
+            <select bind:value={assignmentTenantFilter}>
+              <option value="all">{$t('superadmin.radius.filters.all_tenants') || 'All tenants'}</option>
+              {#each mappingTenantOptions as tenant}
+                <option value={tenant.id}>{tenant.name}</option>
               {/each}
-            </tbody>
-          </table>
+            </select>
+            <select bind:value={assignmentStatusFilter}>
+              <option value="all">{$t('superadmin.radius.filters.all_statuses') || 'All statuses'}</option>
+              <option value="active">{$t('superadmin.radius.filters.active') || 'Active'}</option>
+              <option value="inactive">{$t('superadmin.radius.filters.inactive') || 'Inactive'}</option>
+            </select>
+          </div>
         </div>
+
+        {#if filteredAssignments.length === 0}
+          <div class="empty-state">
+            <strong>{$t('superadmin.radius.empty.assignments_title') || 'No tenant assignments yet'}</strong>
+            <span>{$t('superadmin.radius.empty.assignments_subtitle') || 'Assign one active global server per tenant before creating NAS mappings.'}</span>
+          </div>
+        {:else}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>{$t('superadmin.radius.columns.tenant') || 'Tenant'}</th>
+                  <th>{$t('superadmin.radius.columns.server') || 'Server'}</th>
+                  <th>{$t('superadmin.radius.columns.status') || 'Status'}</th>
+                  <th>{$t('superadmin.radius.columns.routers') || 'Routers'}</th>
+                  <th>{$t('superadmin.radius.columns.updated') || 'Updated'}</th>
+                  <th>{$t('superadmin.radius.columns.actions') || 'Actions'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each filteredAssignments as assignment}
+                  <tr>
+                    <td>{assignment.tenant_name}</td>
+                    <td>
+                      <div class="primary">{assignment.server_name}</div>
+                      <div class="muted">{assignment.radius_host}:{assignment.auth_port}/{assignment.acct_port}</div>
+                    </td>
+                    <td>
+                      <span class="badge" class:good={assignment.is_active} class:muted={!assignment.is_active}>
+                        {assignment.is_active
+                          ? $t('superadmin.radius.status.active') || 'Active'
+                          : $t('superadmin.radius.status.inactive') || 'Inactive'}
+                      </span>
+                    </td>
+                    <td>{assignment.router_count}</td>
+                    <td>{formatDateTime(assignment.updated_at)}</td>
+                    <td>
+                      <div class="row-actions">
+                        <button class="btn-link" type="button" onclick={() => openEditAssignmentModal(assignment)}>
+                          {$t('superadmin.radius.actions.edit') || 'Edit'}
+                        </button>
+                        <button class="btn-link" type="button" onclick={() => toggleAssignmentActive(assignment)}>
+                          {assignment.is_active
+                            ? $t('superadmin.radius.actions.deactivate') || 'Deactivate'
+                            : $t('superadmin.radius.actions.activate') || 'Activate'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+      {:else if activeTab === 'mappings'}
+        <div class="panel-head">
+          <div>
+            <h2>{$t('superadmin.radius.sections.mappings') || 'NAS Mappings'}</h2>
+            <p>{filteredMappings.length} / {mappings.length}</p>
+          </div>
+          <div class="filters filters-wide">
+            <input bind:value={mappingSearch} placeholder={$t('superadmin.radius.filters.search_mappings') || 'Search mappings...'} />
+            <select bind:value={mappingTenantFilter}>
+              <option value="all">{$t('superadmin.radius.filters.all_tenants') || 'All tenants'}</option>
+              {#each mappingTenantOptions as tenant}
+                <option value={tenant.id}>{tenant.name}</option>
+              {/each}
+            </select>
+            <select bind:value={mappingServerFilter}>
+              <option value="all">{$t('superadmin.radius.filters.all_servers') || 'All servers'}</option>
+              {#each mappingServerOptions as server}
+                <option value={server.id}>{server.name}</option>
+              {/each}
+            </select>
+            <select bind:value={mappingStatusFilter}>
+              <option value="all">{$t('superadmin.radius.filters.all_statuses') || 'All statuses'}</option>
+              <option value="active">{$t('superadmin.radius.filters.active') || 'Active'}</option>
+              <option value="inactive">{$t('superadmin.radius.filters.inactive') || 'Inactive'}</option>
+            </select>
+          </div>
+        </div>
+
+        {#if filteredMappings.length === 0}
+          <div class="empty-state">
+            <strong>{$t('superadmin.radius.empty.mappings_title') || 'No NAS mappings yet'}</strong>
+            <span>{$t('superadmin.radius.empty.mappings_subtitle') || 'Create a tenant assignment first, then map a router to start issuing copy-ready MikroTik CLI.'}</span>
+          </div>
+        {:else}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>{$t('superadmin.radius.columns.tenant') || 'Tenant'}</th>
+                  <th>{$t('superadmin.radius.columns.server') || 'Server'}</th>
+                  <th>{$t('superadmin.radius.columns.router') || 'Router'}</th>
+                  <th>{$t('superadmin.radius.columns.nas') || 'NAS'}</th>
+                  <th>{$t('superadmin.radius.columns.secret') || 'Secret'}</th>
+                  <th>{$t('superadmin.radius.columns.status') || 'Status'}</th>
+                  <th>{$t('superadmin.radius.columns.updated') || 'Updated'}</th>
+                  <th>{$t('superadmin.radius.columns.actions') || 'Actions'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each filteredMappings as mapping}
+                  <tr>
+                    <td>{mapping.tenant_name}</td>
+                    <td>
+                      <div class="primary">{mapping.server_name}</div>
+                      <div class="muted">{mapping.radius_host}:{mapping.auth_port}/{mapping.acct_port}</div>
+                    </td>
+                    <td>{mapping.router_name || ($t('superadmin.radius.labels.unknown_router') || 'Unknown router')}</td>
+                    <td>
+                      <div class="primary">{mapping.nas_name}</div>
+                      <div class="muted">{mapping.nas_ip_or_cidr}</div>
+                      {#if mapping.shortname}
+                        <div class="muted">{mapping.shortname}</div>
+                      {/if}
+                    </td>
+                    <td><code>{mapping.shared_secret_masked}</code></td>
+                    <td>
+                      <span class="badge" class:good={mapping.is_active} class:muted={!mapping.is_active}>
+                        {mapping.is_active
+                          ? $t('superadmin.radius.status.active') || 'Active'
+                          : $t('superadmin.radius.status.inactive') || 'Inactive'}
+                      </span>
+                    </td>
+                    <td>{formatDateTime(mapping.updated_at)}</td>
+                    <td>
+                      <div class="row-actions wrap">
+                        <button class="btn-link" type="button" onclick={() => openEditMappingModal(mapping)}>
+                          {$t('superadmin.radius.actions.edit') || 'Edit'}
+                        </button>
+                        <button class="btn-link" type="button" onclick={() => openSecretDialog(mapping, 'reveal')}>
+                          {$t('superadmin.radius.actions.reveal_secret') || 'Reveal secret'}
+                        </button>
+                        <button class="btn-link" type="button" onclick={() => openSecretDialog(mapping, 'rotate')}>
+                          {$t('superadmin.radius.actions.rotate_secret') || 'Rotate secret'}
+                        </button>
+                        <button class="btn-link" type="button" onclick={() => copyMappingCli(mapping)}>
+                          {$t('superadmin.radius.actions.copy_cli') || 'Copy CLI'}
+                        </button>
+                        <button class="btn-link" type="button" onclick={() => toggleMappingActive(mapping)}>
+                          {mapping.is_active
+                            ? $t('superadmin.radius.actions.deactivate') || 'Deactivate'
+                            : $t('superadmin.radius.actions.activate') || 'Activate'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+      {:else}
+        <div class="panel-head">
+          <div>
+            <h2>{$t('superadmin.radius.sections.users') || 'Users'}</h2>
+            <p>{filteredUsers.length} / {users.length}</p>
+          </div>
+          <div class="filters filters-wide">
+            <input bind:value={userSearch} placeholder={$t('superadmin.radius.filters.search_users') || 'Search users...'} />
+            <select bind:value={tenantFilter}>
+              <option value="all">{$t('superadmin.radius.filters.all_tenants') || 'All tenants'}</option>
+              {#each tenantOptions as tenantName}
+                <option value={tenantName}>{tenantName}</option>
+              {/each}
+            </select>
+            <select bind:value={routerFilter}>
+              <option value="all">{$t('superadmin.radius.filters.all_routers') || 'All routers'}</option>
+              {#each routerOptions as routerName}
+                <option value={routerName}>{routerName}</option>
+              {/each}
+            </select>
+            <select bind:value={userStatusFilter}>
+              <option value="all">{$t('superadmin.radius.filters.all_users') || 'All users'}</option>
+              <option value="provisioned">{$t('superadmin.radius.filters.provisioned') || 'Provisioned'}</option>
+              <option value="not_provisioned">{$t('superadmin.radius.filters.not_provisioned') || 'Not provisioned'}</option>
+            </select>
+          </div>
+        </div>
+
+        {#if filteredUsers.length === 0}
+          <div class="empty-state">
+            <strong>{$t('superadmin.radius.empty.users_title') || 'No managed RADIUS users yet'}</strong>
+            <span>{$t('superadmin.radius.empty.users_subtitle') || 'Managed-RADIUS-backed PPPoE users will appear here after tenant admins apply them.'}</span>
+          </div>
+        {:else}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>{$t('superadmin.radius.columns.tenant') || 'Tenant'}</th>
+                  <th>{$t('superadmin.radius.columns.router') || 'Router'}</th>
+                  <th>{$t('superadmin.radius.columns.username') || 'Username'}</th>
+                  <th>{$t('superadmin.radius.columns.identity') || 'RADIUS Identity'}</th>
+                  <th>{$t('superadmin.radius.columns.profile') || 'Profile'}</th>
+                  <th>{$t('superadmin.radius.columns.status') || 'Status'}</th>
+                  <th>{$t('superadmin.radius.columns.last_sync') || 'Last Sync'}</th>
+                  <th>{$t('superadmin.radius.columns.last_error') || 'Last Error'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each filteredUsers as user}
+                  <tr>
+                    <td>{user.tenant_name}</td>
+                    <td>{user.router_name || ($t('superadmin.radius.labels.unknown_router') || 'Unknown router')}</td>
+                    <td><div class="primary">{user.username}</div></td>
+                    <td>{user.radius_identity || user.username}</td>
+                    <td>{user.router_profile_name || ($t('superadmin.radius.labels.none') || 'None')}</td>
+                    <td>
+                      <span class="badge" class:good={userBadgeTone(user) === 'good'} class:warn={userBadgeTone(user) === 'warn'} class:danger={userBadgeTone(user) === 'danger'}>
+                        {#if user.radius_present}
+                          {$t('superadmin.radius.status.provisioned') || 'Provisioned'}
+                        {:else if user.radius_last_error}
+                          {$t('superadmin.radius.status.needs_attention') || 'Needs attention'}
+                        {:else}
+                          {$t('superadmin.radius.status.not_provisioned') || 'Not provisioned'}
+                        {/if}
+                      </span>
+                    </td>
+                    <td>{formatDateTime(user.radius_last_sync_at)}</td>
+                    <td class="error-text">{user.radius_last_error || ($t('superadmin.radius.labels.none') || 'None')}</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
       {/if}
     </section>
   {/if}
@@ -1123,8 +1175,49 @@
     margin-bottom: 1rem;
   }
 
+  .tabs {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.75rem;
+  }
+
+  .tabs button {
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    border-radius: 999px;
+    min-height: 42px;
+    padding: 0.6rem 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    transition:
+      background 0.2s ease,
+      color 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  .tabs button strong {
+    color: var(--text-primary);
+    font-size: 0.85rem;
+  }
+
+  .tabs button.active {
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--bg-primary));
+    color: var(--text-primary);
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 45%, var(--border-color));
+  }
+
   .panel-head h2 {
     margin: 0 0 0.25rem;
+  }
+
+  .inline-badge {
+    margin-left: 0.5rem;
   }
 
   .panel-head p {

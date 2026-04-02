@@ -24,27 +24,28 @@ const PUBLIC_PATHS = [
  */
 export const reroute: Reroute = ({ url }) => {
   const onPlatformDomain = isPlatformDomain(url.hostname);
+  let normalizedPath = url.pathname;
 
   // Block legacy tenant-slug URLs on main platform domain.
   // Example: /isp-management/dashboard -> /dashboard
   if (onPlatformDomain) {
-    if (url.pathname === '/isp-management' || url.pathname.startsWith('/isp-management/')) {
-      const cleanPath = url.pathname.replace(/^\/isp-management/, '') || '/';
-      return cleanPath;
+    if (normalizedPath === '/isp-management' || normalizedPath.startsWith('/isp-management/')) {
+      normalizedPath = normalizedPath.replace(/^\/isp-management/, '') || '/';
     }
 
     // Canonicalize any legacy slug-prefixed app path:
     // /:slug/admin/... -> /admin/...
     // /:slug/dashboard/... -> /dashboard/...
-    const m = url.pathname.match(/^\/([^/]+)\/(admin|dashboard|profile|support|notifications|announcements|storage)(\/.*)?$/);
+    const m = normalizedPath.match(
+      /^\/([^/]+)\/(admin|dashboard|profile|support|notifications|announcements|storage)(\/.*)?$/,
+    );
     if (m) {
       const firstSegment = m[1];
-      if ((APP_ROOT_SEGMENTS as readonly string[]).includes(firstSegment)) {
-        return undefined;
+      if (!(APP_ROOT_SEGMENTS as readonly string[]).includes(firstSegment)) {
+        const appRoot = m[2];
+        const tail = m[3] || '';
+        normalizedPath = `/${appRoot}${tail}`;
       }
-      const appRoot = m[2];
-      const tail = m[3] || '';
-      return `/${appRoot}${tail}`;
     }
   }
 
@@ -53,7 +54,7 @@ export const reroute: Reroute = ({ url }) => {
   if (onPlatformDomain) {
     const APP_ROOTS = APP_ROOT_SEGMENTS.map((s) => `/${s}`);
     const isTenantAppPath = APP_ROOTS.some(
-      (p) => url.pathname === p || url.pathname.startsWith(p + '/'),
+      (p) => normalizedPath === p || normalizedPath.startsWith(p + '/'),
     );
     if (!isTenantAppPath) {
       return undefined;
@@ -64,16 +65,16 @@ export const reroute: Reroute = ({ url }) => {
 
   if (slug) {
     // Skip rerouting for public paths that exist at root level
-    if (PUBLIC_PATHS.some((p) => url.pathname === p || url.pathname.startsWith(p + '/'))) {
+    if (PUBLIC_PATHS.some((p) => normalizedPath === p || normalizedPath.startsWith(p + '/'))) {
       return undefined;
     }
 
     // Rewrite path to include slug if not already present
     // e.g. /dashboard -> /tridigitals/dashboard
-    if (url.pathname.startsWith(`/${slug}`)) {
-      return url.pathname;
+    if (normalizedPath.startsWith(`/${slug}`)) {
+      return normalizedPath;
     }
-    return `/${slug}${url.pathname}`;
+    return `/${slug}${normalizedPath}`;
   }
 
   // Returning undefined means "use the default routing"

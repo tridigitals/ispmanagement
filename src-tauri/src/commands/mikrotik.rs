@@ -11,7 +11,7 @@ use crate::models::{
 use crate::services::mikrotik_service::{
     MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL, MIKROTIK_LOGS_DEFAULT_PAGE, MIKROTIK_LOGS_DEFAULT_PER_PAGE,
 };
-use crate::services::{AuditService, AuthService, ManagedRadiusService, MikrotikService};
+use crate::services::{AuditService, AuthService, ManagedRadiusService, MikrotikService, PlanService};
 use tauri::State;
 
 #[tauri::command]
@@ -533,6 +533,7 @@ pub async fn get_mikrotik_router_managed_radius_setup(
     auth: State<'_, AuthService>,
     mikrotik: State<'_, MikrotikService>,
     managed_radius: State<'_, ManagedRadiusService>,
+    plans: State<'_, PlanService>,
 ) -> Result<ManagedRadiusRouterSetup, String> {
     let claims = auth
         .validate_token(&token)
@@ -552,8 +553,187 @@ pub async fn get_mikrotik_router_managed_radius_setup(
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "Router not found".to_string())?;
 
+    let plan_allows_managed_radius = plans
+        .check_feature_access(&tenant_id, "managed_radius")
+        .await
+        .map(|access| access.has_access)
+        .unwrap_or(false);
+
     let mut setup = managed_radius
-        .get_router_setup(&tenant_id, &router)
+        .get_router_setup(&tenant_id, &router, plan_allows_managed_radius)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let can_reveal_secret = auth
+        .check_permission(
+            &claims.sub,
+            &tenant_id,
+            "network_routers",
+            "manage_radius_secret",
+        )
+        .await
+        .is_ok();
+
+    if !can_reveal_secret {
+        setup.shared_secret = None;
+    }
+
+    Ok(setup)
+}
+
+#[tauri::command]
+pub async fn assign_mikrotik_router_managed_radius_default(
+    token: String,
+    router_id: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+    managed_radius: State<'_, ManagedRadiusService>,
+    plans: State<'_, PlanService>,
+    audit: State<'_, AuditService>,
+) -> Result<ManagedRadiusRouterSetup, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let router = mikrotik
+        .get_router(&tenant_id, &router_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "Router not found".to_string())?;
+
+    let plan_allows_managed_radius = plans
+        .check_feature_access(&tenant_id, "managed_radius")
+        .await
+        .map(|access| access.has_access)
+        .unwrap_or(false);
+
+    if !plan_allows_managed_radius {
+        return Err("Managed RADIUS is not included in the current plan".to_string());
+    }
+
+    if managed_radius
+        .get_active_assignment_for_tenant_optional(&tenant_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .is_some()
+    {
+        return Err("Managed RADIUS assignment is already active for this tenant".to_string());
+    }
+
+    let assigned = managed_radius
+        .auto_assign_default_server_for_tenant(&tenant_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if assigned.is_none() {
+        return Err("No default Managed RADIUS server is configured".to_string());
+    }
+
+    audit
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "MIKROTIK_ROUTER_MANAGED_RADIUS_ASSIGNED_DEFAULT",
+            "mikrotik_router",
+            Some(&router.id),
+            Some(&format!(
+                "Assigned tenant {} to the default Managed RADIUS server from router {}",
+                tenant_id, router.name
+            )),
+            None,
+        )
+        .await;
+
+    let mut setup = managed_radius
+        .get_router_setup(&tenant_id, &router, true)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let can_reveal_secret = auth
+        .check_permission(
+            &claims.sub,
+            &tenant_id,
+            "network_routers",
+            "manage_radius_secret",
+        )
+        .await
+        .is_ok();
+
+    if !can_reveal_secret {
+        setup.shared_secret = None;
+    }
+
+    Ok(setup)
+}
+
+#[tauri::command]
+pub async fn create_mikrotik_router_managed_radius_mapping(
+    token: String,
+    router_id: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+    managed_radius: State<'_, ManagedRadiusService>,
+    plans: State<'_, PlanService>,
+    audit: State<'_, AuditService>,
+) -> Result<ManagedRadiusRouterSetup, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let router = mikrotik
+        .get_router(&tenant_id, &router_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "Router not found".to_string())?;
+
+    let plan_allows_managed_radius = plans
+        .check_feature_access(&tenant_id, "managed_radius")
+        .await
+        .map(|access| access.has_access)
+        .unwrap_or(false);
+
+    if !plan_allows_managed_radius {
+        return Err("Managed RADIUS is not included in the current plan".to_string());
+    }
+
+    managed_radius
+        .auto_create_mapping_for_router(&tenant_id, &router)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    audit
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "MIKROTIK_ROUTER_MANAGED_RADIUS_MAPPING_CREATED",
+            "mikrotik_router",
+            Some(&router.id),
+            Some(&format!(
+                "Created Managed RADIUS NAS mapping automatically for router {}",
+                router.name
+            )),
+            None,
+        )
+        .await;
+
+    let mut setup = managed_radius
+        .get_router_setup(&tenant_id, &router, true)
         .await
         .map_err(|e| e.to_string())?;
 

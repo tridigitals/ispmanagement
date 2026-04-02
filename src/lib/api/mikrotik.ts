@@ -15,6 +15,18 @@ export const mikrotik = {
         routerId,
         router_id: routerId,
       }),
+    assignManagedRadiusDefault: (routerId: string): Promise<ManagedRadiusRouterSetup> =>
+      safeInvoke('assign_mikrotik_router_managed_radius_default', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+      }),
+    createManagedRadiusMapping: (routerId: string): Promise<ManagedRadiusRouterSetup> =>
+      safeInvoke('create_mikrotik_router_managed_radius_mapping', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+      }),
     create: (router: {
       name: string;
       host: string;

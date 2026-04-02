@@ -69,6 +69,7 @@ export interface SuperadminManagedRadiusServer {
   db_port: number;
   db_name: string;
   is_active: boolean;
+  is_default: boolean;
   notes: string | null;
   tenant_count: number;
   router_count: number;
@@ -574,6 +575,14 @@ export interface PppoeAccountPublic {
 export interface ManagedRadiusRouterSetup {
   configured: boolean;
   router_id: string;
+  plan_allows_managed_radius: boolean;
+  plan_upgrade_required: boolean;
+  upgrade_path: string | null;
+  tenant_has_active_assignment: boolean;
+  default_server_available: boolean;
+  can_assign_default: boolean;
+  can_create_mapping: boolean;
+  assignment_server_name: string | null;
   server_name: string | null;
   radius_host: string | null;
   auth_port: number;

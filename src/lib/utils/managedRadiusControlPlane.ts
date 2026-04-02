@@ -1,5 +1,9 @@
 import type { SuperadminManagedRadiusMapping } from '$lib/api/types';
 
+export type ManagedRadiusTabId = 'servers' | 'assignments' | 'mappings' | 'users';
+
+type ManagedRadiusTabCounts = Record<ManagedRadiusTabId, number>;
+
 type RouterLike = {
   name?: string | null;
   host?: string | null;
@@ -56,6 +60,17 @@ export function filterManagedRadiusMappings(
 
     return matchesTenant && matchesServer && matchesSearch;
   });
+}
+
+export function buildManagedRadiusTabs(
+  counts: ManagedRadiusTabCounts,
+  activeTab: ManagedRadiusTabId,
+): Array<{ id: ManagedRadiusTabId; count: number; active: boolean }> {
+  return (['servers', 'assignments', 'mappings', 'users'] as ManagedRadiusTabId[]).map((id) => ({
+    id,
+    count: counts[id],
+    active: id === activeTab,
+  }));
 }
 
 export function routerToOptionLabel(router: RouterLike): string {

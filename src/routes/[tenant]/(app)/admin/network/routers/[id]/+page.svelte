@@ -10,7 +10,11 @@
   import { toast } from '$lib/stores/toast';
   import {
     canCopyManagedRadiusSecret,
+    getManagedRadiusSummary,
     getManagedRadiusDisplayedSecret,
+    shouldShowAssignDefaultManagedRadius,
+    shouldShowCreateManagedRadiusMapping,
+    shouldShowManagedRadiusUpgrade,
   } from '$lib/utils/managedRadiusSetup';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
@@ -138,6 +142,9 @@
   let managedRadiusSetup = $state<ManagedRadiusRouterSetupResponse | null>(null);
   let managedRadiusLoadedFor = $state<string | null>(null);
   let showManagedRadiusSecret = $state(false);
+  let showManagedRadiusModal = $state(false);
+  let assigningManagedRadiusDefault = $state(false);
+  let creatingManagedRadiusMapping = $state(false);
   let canRevealManagedRadiusSecret = $derived($can('manage_radius_secret', 'network_routers'));
 
   let cpuSeries = $derived.by(() => {
@@ -406,6 +413,65 @@
       );
     } catch (e: any) {
       toast.error(e?.message || e);
+    }
+  }
+
+  async function openManagedRadiusModal() {
+    const id = $page.params.id || router?.id || '';
+    showManagedRadiusModal = true;
+    if (!id) return;
+
+    if (managedRadiusLoadedFor !== id || !managedRadiusSetup) {
+      await loadManagedRadiusSetup(id);
+    }
+  }
+
+  function closeManagedRadiusModal() {
+    showManagedRadiusModal = false;
+    showManagedRadiusSecret = false;
+  }
+
+  async function assignManagedRadiusDefault() {
+    const id = $page.params.id || router?.id || '';
+    if (!id || assigningManagedRadiusDefault) return;
+
+    assigningManagedRadiusDefault = true;
+    try {
+      managedRadiusSetup = (await api.mikrotik.routers.assignManagedRadiusDefault(
+        id,
+      )) as ManagedRadiusRouterSetupResponse;
+      managedRadiusLoadedFor = id;
+      showManagedRadiusSecret = false;
+      toast.success(
+        $t('admin.network.routers.managed_radius.toasts.default_assigned') ||
+          'Default Managed RADIUS assigned',
+      );
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    } finally {
+      assigningManagedRadiusDefault = false;
+    }
+  }
+
+  async function createManagedRadiusMapping() {
+    const id = $page.params.id || router?.id || '';
+    if (!id || creatingManagedRadiusMapping) return;
+
+    creatingManagedRadiusMapping = true;
+    try {
+      managedRadiusSetup = (await api.mikrotik.routers.createManagedRadiusMapping(
+        id,
+      )) as ManagedRadiusRouterSetupResponse;
+      managedRadiusLoadedFor = id;
+      showManagedRadiusSecret = false;
+      toast.success(
+        $t('admin.network.routers.managed_radius.toasts.mapping_created') ||
+          'Managed RADIUS NAS mapping created',
+      );
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    } finally {
+      creatingManagedRadiusMapping = false;
     }
   }
 
@@ -836,6 +902,16 @@
       </div>
 
       <div class="hero-right">
+        {#if $can('manage', 'network_routers')}
+          <button class="btn ghost btn-sm hero-action" type="button" onclick={openManagedRadiusModal}>
+            <Icon name="shield" size={14} />
+            {$t('admin.network.routers.managed_radius.trigger.label') || 'Managed RADIUS'}
+            <span class="hero-action-note">
+              {getManagedRadiusSummary(managedRadiusSetup)}
+            </span>
+          </button>
+        {/if}
+
         <div class="badge" class:online={router.is_online} class:offline={!router.is_online}>
           {statusLabel()}
         </div>
@@ -1028,113 +1104,6 @@
         </div>
       {/if}
 
-      {#if $can('manage', 'network_routers')}
-        <div class="card full">
-          <div class="card-head">
-            <div>
-              <h2>{$t('admin.network.routers.managed_radius.title') || 'RADIUS Setup'}</h2>
-              <div class="muted">
-                {$t('admin.network.routers.managed_radius.subtitle') ||
-                  'Copy MikroTik CLI for PPP authentication'}
-              </div>
-            </div>
-            <div class="setup-actions">
-              {#if managedRadiusSetup?.configured && canRevealManagedRadiusSecret && canCopyManagedRadiusSecret(managedRadiusSetup)}
-                <button
-                  class="btn ghost btn-sm"
-                  type="button"
-                  onclick={() => (showManagedRadiusSecret = !showManagedRadiusSecret)}
-                >
-                  <Icon name={showManagedRadiusSecret ? 'eye-off' : 'eye'} size={14} />
-                  {showManagedRadiusSecret
-                    ? $t('admin.network.routers.managed_radius.actions.hide_secret') ||
-                      'Hide secret'
-                    : $t('admin.network.routers.managed_radius.actions.show_secret') ||
-                      'Show secret'}
-                </button>
-
-                <button class="btn ghost btn-sm" type="button" onclick={copyManagedRadiusSecret}>
-                  <Icon name="copy" size={14} />
-                  {$t('admin.network.routers.managed_radius.actions.copy_secret') ||
-                    'Copy secret'}
-                </button>
-              {/if}
-
-              {#if managedRadiusSetup?.configured && managedRadiusSetup.cli_script}
-                <button class="btn ghost btn-sm" type="button" onclick={copyManagedRadiusScript}>
-                  <Icon name="copy" size={14} />
-                  {$t('admin.network.routers.managed_radius.actions.copy_cli') || 'Copy CLI'}
-                </button>
-              {/if}
-            </div>
-          </div>
-
-          {#if managedRadiusSetupLoading && !managedRadiusSetup}
-            <div class="muted">{$t('common.loading') || 'Loading...'}</div>
-          {:else if managedRadiusSetup?.configured}
-            <div class="setup-grid">
-              <div class="row">
-                <span class="muted">
-                  {$t('admin.network.routers.managed_radius.labels.server') || 'Server'}
-                </span>
-                <span class="mono">{managedRadiusSetup.server_name || 'Managed RADIUS'}</span>
-              </div>
-              <div class="row">
-                <span class="muted">
-                  {$t('admin.network.routers.managed_radius.labels.host') || 'RADIUS host'}
-                </span>
-                <span class="mono">{managedRadiusSetup.radius_host || '—'}</span>
-              </div>
-              <div class="row">
-                <span class="muted">
-                  {$t('admin.network.routers.managed_radius.labels.ports') || 'Ports'}
-                </span>
-                <span class="mono"
-                  >auth {managedRadiusSetup.auth_port} / acct {managedRadiusSetup.acct_port}</span
-                >
-              </div>
-              <div class="row">
-                <span class="muted">
-                  {$t('admin.network.routers.managed_radius.labels.nas_source') || 'NAS source'}
-                </span>
-                <span class="mono">{managedRadiusSetup.nas_ip_or_cidr || '—'}</span>
-              </div>
-              <div class="row">
-                <span class="muted">
-                  {$t('admin.network.routers.managed_radius.labels.shared_secret') ||
-                    'Shared secret'}
-                </span>
-                <span class="mono"
-                  >{getManagedRadiusDisplayedSecret(
-                    managedRadiusSetup,
-                    showManagedRadiusSecret,
-                  )}</span
-                >
-              </div>
-            </div>
-
-            {#if managedRadiusSetup.warnings.length}
-              <div class="setup-warning">
-                <Icon name="alert-triangle" size={16} />
-                <div>
-                  {#each managedRadiusSetup.warnings as warning}
-                    <div>{warning}</div>
-                  {/each}
-                </div>
-              </div>
-            {/if}
-
-            {#if managedRadiusSetup.cli_script}
-              <pre class="code-block">{managedRadiusSetup.cli_script}</pre>
-            {/if}
-          {:else}
-            <div class="muted">
-              {$t('admin.network.routers.managed_radius.empty') ||
-                'Managed RADIUS is not configured for this router yet. The router can still use local MikroTik PPP secrets for now.'}
-            </div>
-          {/if}
-        </div>
-      {/if}
     {:else if activeTab === 'interfaces'}
       <div class="card full">
         <div class="card-head">
@@ -1273,6 +1242,183 @@
     </div>
   {/if}
 </div>
+
+<Modal
+  show={showManagedRadiusModal}
+  title={$t('admin.network.routers.managed_radius.title') || 'RADIUS Setup'}
+  width="820px"
+  onclose={closeManagedRadiusModal}
+>
+  <div class="managed-radius-modal-head">
+    <div>
+      <div class="muted">
+        {$t('admin.network.routers.managed_radius.subtitle') ||
+          'Copy MikroTik CLI for PPP authentication'}
+      </div>
+    </div>
+    <div class="setup-actions">
+      {#if shouldShowAssignDefaultManagedRadius(managedRadiusSetup)}
+        <button
+          class="btn btn-sm"
+          type="button"
+          onclick={assignManagedRadiusDefault}
+          disabled={assigningManagedRadiusDefault}
+        >
+          <Icon name="shield-check" size={14} />
+          {#if assigningManagedRadiusDefault}
+            {$t('common.loading') || 'Loading...'}
+          {:else}
+            {$t('admin.network.routers.managed_radius.actions.assign_default') ||
+              'Assign Default RADIUS'}
+          {/if}
+        </button>
+      {/if}
+
+      {#if shouldShowCreateManagedRadiusMapping(managedRadiusSetup)}
+        <button
+          class="btn btn-sm"
+          type="button"
+          onclick={createManagedRadiusMapping}
+          disabled={creatingManagedRadiusMapping}
+        >
+          <Icon name="plus-circle" size={14} />
+          {#if creatingManagedRadiusMapping}
+            {$t('common.loading') || 'Loading...'}
+          {:else}
+            {$t('admin.network.routers.managed_radius.actions.create_mapping') ||
+              'Create NAS Mapping'}
+          {/if}
+        </button>
+      {/if}
+
+      {#if managedRadiusSetup?.configured && canRevealManagedRadiusSecret && canCopyManagedRadiusSecret(managedRadiusSetup)}
+        <button
+          class="btn ghost btn-sm"
+          type="button"
+          onclick={() => (showManagedRadiusSecret = !showManagedRadiusSecret)}
+        >
+          <Icon name={showManagedRadiusSecret ? 'eye-off' : 'eye'} size={14} />
+          {showManagedRadiusSecret
+            ? $t('admin.network.routers.managed_radius.actions.hide_secret') || 'Hide secret'
+            : $t('admin.network.routers.managed_radius.actions.show_secret') || 'Show secret'}
+        </button>
+
+        <button class="btn ghost btn-sm" type="button" onclick={copyManagedRadiusSecret}>
+          <Icon name="copy" size={14} />
+          {$t('admin.network.routers.managed_radius.actions.copy_secret') || 'Copy secret'}
+        </button>
+      {/if}
+
+      {#if managedRadiusSetup?.configured && managedRadiusSetup.cli_script}
+        <button class="btn ghost btn-sm" type="button" onclick={copyManagedRadiusScript}>
+          <Icon name="copy" size={14} />
+          {$t('admin.network.routers.managed_radius.actions.copy_cli') || 'Copy CLI'}
+        </button>
+      {/if}
+    </div>
+  </div>
+
+  {#if managedRadiusSetupLoading && !managedRadiusSetup}
+    <div class="muted">{$t('common.loading') || 'Loading...'}</div>
+  {:else if shouldShowManagedRadiusUpgrade(managedRadiusSetup)}
+    <div class="setup-upgrade">
+      <div class="setup-warning">
+        <Icon name="alert-triangle" size={16} />
+        <div>
+          <div class="strong">
+            {$t('admin.network.routers.managed_radius.upgrade.title') ||
+              'Your plan does not include Managed RADIUS'}
+          </div>
+          <div>
+            {$t('admin.network.routers.managed_radius.upgrade.body') ||
+              'Upgrade your subscription to unlock centralized RADIUS onboarding and MikroTik CLI setup for this router.'}
+          </div>
+        </div>
+      </div>
+
+      <a class="btn btn-sm" href={managedRadiusSetup?.upgrade_path || '/admin/subscription'}>
+        {$t('admin.network.routers.managed_radius.upgrade.cta') || 'Upgrade plan'}
+      </a>
+    </div>
+  {:else if managedRadiusSetup?.configured}
+    <div class="setup-grid">
+      <div class="row">
+        <span class="muted">
+          {$t('admin.network.routers.managed_radius.labels.server') || 'Server'}
+        </span>
+        <span class="mono">{managedRadiusSetup.server_name || 'Managed RADIUS'}</span>
+      </div>
+      <div class="row">
+        <span class="muted">
+          {$t('admin.network.routers.managed_radius.labels.host') || 'RADIUS host'}
+        </span>
+        <span class="mono">{managedRadiusSetup.radius_host || '—'}</span>
+      </div>
+      <div class="row">
+        <span class="muted">
+          {$t('admin.network.routers.managed_radius.labels.ports') || 'Ports'}
+        </span>
+        <span class="mono">auth {managedRadiusSetup.auth_port} / acct {managedRadiusSetup.acct_port}</span>
+      </div>
+      <div class="row">
+        <span class="muted">
+          {$t('admin.network.routers.managed_radius.labels.nas_source') || 'NAS source'}
+        </span>
+        <span class="mono">{managedRadiusSetup.nas_ip_or_cidr || '—'}</span>
+      </div>
+      <div class="row">
+        <span class="muted">
+          {$t('admin.network.routers.managed_radius.labels.shared_secret') || 'Shared secret'}
+        </span>
+        <span class="mono">{getManagedRadiusDisplayedSecret(managedRadiusSetup, showManagedRadiusSecret)}</span>
+      </div>
+    </div>
+
+    {#if managedRadiusSetup.warnings.length}
+      <div class="setup-warning">
+        <Icon name="alert-triangle" size={16} />
+        <div>
+          {#each managedRadiusSetup.warnings as warning}
+            <div>{warning}</div>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
+    {#if managedRadiusSetup.cli_script}
+      <pre class="code-block">{managedRadiusSetup.cli_script}</pre>
+    {/if}
+  {:else if managedRadiusSetup?.tenant_has_active_assignment}
+    <div class="setup-upgrade">
+      <div class="row">
+        <span class="muted">
+          {$t('admin.network.routers.managed_radius.labels.server') || 'Server'}
+        </span>
+        <span class="mono">{managedRadiusSetup.assignment_server_name || 'Managed RADIUS'}</span>
+      </div>
+      <div class="muted">
+        {$t('admin.network.routers.managed_radius.assignment_only') ||
+          'Managed RADIUS assignment is active for this tenant, but this router still needs a NAS mapping before CLI setup can be generated.'}
+      </div>
+      <div class="muted">
+        {$t('admin.network.routers.managed_radius.assignment_only_hint') ||
+          'Use the button above to auto-create the NAS mapping from this router data.'}
+      </div>
+    </div>
+  {:else if managedRadiusSetup?.default_server_available}
+    <div class="setup-upgrade">
+      <div class="muted">
+        {$t('admin.network.routers.managed_radius.default_ready') ||
+          'A default Managed RADIUS server is available. Assign it to this tenant to continue with router onboarding.'}
+      </div>
+    </div>
+  {:else}
+    <div class="muted">
+      {$t('admin.network.routers.managed_radius.empty') ||
+        'Managed RADIUS is not configured for this router yet. The router can still use local MikroTik PPP secrets for now.'}
+    </div>
+  {/if}
+</Modal>
 
 <Modal
   show={showInterfaceTrafficModal}
@@ -1494,6 +1640,18 @@
     gap: 10px;
   }
 
+  .hero-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .hero-action-note {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
   .hint {
     display: inline-flex;
     align-items: center;
@@ -1689,6 +1847,13 @@
     gap: 8px;
   }
 
+  .managed-radius-modal-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
   h2 {
     margin: 0;
     color: var(--text-primary);
@@ -1730,6 +1895,13 @@
     gap: 10px;
   }
 
+  .setup-upgrade {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
   .setup-warning {
     margin-top: 12px;
     display: grid;
@@ -1741,6 +1913,11 @@
     background: rgba(245, 158, 11, 0.1);
     color: rgba(245, 158, 11, 0.95);
     font-weight: 700;
+  }
+
+  .strong {
+    font-weight: 700;
+    margin-bottom: 4px;
   }
 
   .code-block {

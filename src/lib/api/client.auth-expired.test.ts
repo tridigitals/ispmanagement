@@ -164,4 +164,32 @@ describe('api client auth-expired handling', () => {
     vi.runAllTimers();
     expect(assign).not.toHaveBeenCalled();
   });
+
+  it('does not clear session or redirect on 403 even when backend message says Unauthorized', async () => {
+    const { assign, local } = setupBrowser('/superadmin/storage');
+    local.setItem('auth_token', 'token-403-msg');
+    local.setItem('auth_user', '{"id":"u403msg","is_super_admin":true}');
+    local.setItem('auth_tenant', '{"id":"t403msg"}');
+    local.setItem('active_tenant_slug', 'demo');
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 403,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+
+    const { storage } = await import('./client');
+    await expect(storage.listFiles()).rejects.toThrow('Unauthorized');
+
+    expect(local.getItem('auth_token')).toBe('token-403-msg');
+    expect(local.getItem('auth_user')).toBe('{"id":"u403msg","is_super_admin":true}');
+    expect(local.getItem('auth_tenant')).toBe('{"id":"t403msg"}');
+    expect(local.getItem('active_tenant_slug')).toBe('demo');
+    vi.runAllTimers();
+    expect(assign).not.toHaveBeenCalled();
+  });
 });

@@ -1,9 +1,10 @@
 <script lang="ts">
   import Sidebar from '$lib/components/layout/Sidebar.svelte';
   import Topbar from '$lib/components/layout/Topbar.svelte';
-  import { isSuperAdmin, checkAuth } from '$lib/stores/auth';
+  import { checkAuth, user } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
 
   let authorized = $state(false);
   let { children } = $props();
@@ -14,7 +15,7 @@
     let cancelled = false;
 
     const runGuard = async () => {
-      const valid = await checkAuth();
+      const valid = await checkAuth({ force: true });
       if (cancelled) return;
 
       if (!valid) {
@@ -22,7 +23,8 @@
         return;
       }
 
-      if ($isSuperAdmin) {
+      const currentUser = get(user);
+      if ((currentUser as any)?.is_super_admin === true) {
         authorized = true;
         return;
       }

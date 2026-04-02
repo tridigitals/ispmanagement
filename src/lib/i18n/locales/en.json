@@ -924,6 +924,7 @@
       "status": {
         "active": "Active",
         "inactive": "Inactive",
+        "default": "Default",
         "provisioned": "Provisioned",
         "not_provisioned": "Not provisioned",
         "needs_attention": "Needs attention"
@@ -954,6 +955,7 @@
         "create_mapping": "Create mapping",
         "save_mapping": "Save mapping",
         "edit": "Edit",
+        "set_default": "Set default",
         "activate": "Activate",
         "deactivate": "Deactivate",
         "view_mappings": "View mappings",
@@ -1019,6 +1021,7 @@
         "server_password_required": "Database password is required for new servers",
         "server_created": "Managed RADIUS server created",
         "server_updated": "Managed RADIUS server updated",
+        "server_default_set": "Default server updated",
         "server_activated": "Server activated",
         "server_deactivated": "Server deactivated",
         "assignment_validation": "Complete the assignment form first",
@@ -2980,6 +2983,9 @@
         "managed_radius": {
           "title": "RADIUS Setup",
           "subtitle": "Copy MikroTik CLI for PPP authentication",
+          "trigger": {
+            "label": "Managed RADIUS"
+          },
           "labels": {
             "server": "Server",
             "host": "RADIUS host",
@@ -2988,6 +2994,8 @@
             "shared_secret": "Shared secret"
           },
           "actions": {
+            "assign_default": "Assign Default RADIUS",
+            "create_mapping": "Create NAS Mapping",
             "show_secret": "Show secret",
             "hide_secret": "Hide secret",
             "copy_secret": "Copy secret",
@@ -2995,7 +3003,17 @@
           },
           "toasts": {
             "cli_copied": "RADIUS CLI copied",
-            "secret_copied": "Shared secret copied"
+            "secret_copied": "Shared secret copied",
+            "default_assigned": "Default Managed RADIUS assigned",
+            "mapping_created": "Managed RADIUS NAS mapping created"
+          },
+          "default_ready": "A default Managed RADIUS server is available. Assign it to this tenant to continue with router onboarding.",
+          "assignment_only": "Managed RADIUS assignment is active for this tenant, but this router still needs a NAS mapping before CLI setup can be generated.",
+          "assignment_only_hint": "Use the button above to auto-create the NAS mapping from this router data.",
+          "upgrade": {
+            "title": "Your plan does not include Managed RADIUS",
+            "body": "Upgrade your subscription to unlock centralized RADIUS onboarding and MikroTik CLI setup for this router.",
+            "cta": "Upgrade plan"
           },
           "empty": "Managed RADIUS is not configured for this router yet. The router can still use local MikroTik PPP secrets for now."
         },

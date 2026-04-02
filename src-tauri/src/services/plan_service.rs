@@ -1049,6 +1049,14 @@ impl PlanService {
                 "false",
             ),
             (
+                "managed_radius",
+                "Managed RADIUS",
+                "Access to managed RADIUS onboarding and centralized PPP authentication",
+                "boolean",
+                "network",
+                "false",
+            ),
+            (
                 "sso_support",
                 "SSO Support",
                 "Single Sign-On (SAML/OIDC)",

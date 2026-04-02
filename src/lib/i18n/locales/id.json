@@ -924,6 +924,7 @@
       "status": {
         "active": "Aktif",
         "inactive": "Nonaktif",
+        "default": "Default",
         "provisioned": "Tersedia",
         "not_provisioned": "Belum tersedia",
         "needs_attention": "Perlu perhatian"
@@ -954,6 +955,7 @@
         "create_mapping": "Buat mapping",
         "save_mapping": "Simpan mapping",
         "edit": "Edit",
+        "set_default": "Jadikan default",
         "activate": "Aktifkan",
         "deactivate": "Nonaktifkan",
         "view_mappings": "Lihat mapping",
@@ -1019,6 +1021,7 @@
         "server_password_required": "Password database wajib diisi untuk server baru",
         "server_created": "Server Managed RADIUS berhasil dibuat",
         "server_updated": "Server Managed RADIUS berhasil diperbarui",
+        "server_default_set": "Server default berhasil diperbarui",
         "server_activated": "Server berhasil diaktifkan",
         "server_deactivated": "Server berhasil dinonaktifkan",
         "assignment_validation": "Lengkapi form assignment terlebih dahulu",
@@ -2766,6 +2769,9 @@
         "managed_radius": {
           "title": "Setup RADIUS",
           "subtitle": "Salin CLI MikroTik untuk autentikasi PPP",
+          "trigger": {
+            "label": "Managed RADIUS"
+          },
           "labels": {
             "server": "Server",
             "host": "Host RADIUS",
@@ -2774,6 +2780,8 @@
             "shared_secret": "Shared secret"
           },
           "actions": {
+            "assign_default": "Assign Default RADIUS",
+            "create_mapping": "Buat NAS Mapping",
             "show_secret": "Tampilkan secret",
             "hide_secret": "Sembunyikan secret",
             "copy_secret": "Salin secret",
@@ -2781,7 +2789,17 @@
           },
           "toasts": {
             "cli_copied": "CLI RADIUS berhasil disalin",
-            "secret_copied": "Shared secret berhasil disalin"
+            "secret_copied": "Shared secret berhasil disalin",
+            "default_assigned": "Default Managed RADIUS berhasil di-assign",
+            "mapping_created": "NAS mapping Managed RADIUS berhasil dibuat"
+          },
+          "default_ready": "Server default Managed RADIUS tersedia. Assign ke tenant ini untuk melanjutkan onboarding router.",
+          "assignment_only": "Assignment Managed RADIUS sudah aktif untuk tenant ini, tetapi router ini masih memerlukan NAS mapping sebelum CLI setup bisa dibuat.",
+          "assignment_only_hint": "Gunakan tombol di atas untuk membuat NAS mapping otomatis dari data router ini.",
+          "upgrade": {
+            "title": "Plan Anda belum mendukung Managed RADIUS",
+            "body": "Upgrade langganan untuk membuka onboarding RADIUS terpusat dan setup CLI MikroTik untuk router ini.",
+            "cta": "Upgrade plan"
           },
           "empty": "Managed RADIUS belum dikonfigurasi untuk router ini. Saat ini router masih dapat memakai PPP secret lokal MikroTik."
         },
