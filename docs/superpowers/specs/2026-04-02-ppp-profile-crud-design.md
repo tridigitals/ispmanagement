@@ -148,16 +148,13 @@ Responsibility:
 
 This should stay separate from page/UI concerns and separate from generic sync-only behavior.
 
-### Mirror refresh helper
-Responsibility:
-- refresh one profile after create or update when possible
-- fall back to router-scoped sync if single-profile refresh is not practical with the current RouterOS client behavior
-- remove or mark missing rows after delete
+### Mirror refresh strategy
+Phase-one implementation must use one path only:
+- run router-scoped PPP profile sync after every successful create/update/delete
 
-Recommended practical phase-one choice:
-- use router-scoped sync after every successful create/update/delete
+Do not add a separate single-profile refresh helper in phase one.
 
-This is slightly heavier than a single-row refresh, but it keeps the implementation simpler and consistent with the current codebase.
+This keeps the implementation simpler, avoids diverging refresh code paths, and matches the existing sync-first service pattern already in the codebase.
 
 ### Dependency query unit
 Responsibility:
@@ -173,6 +170,21 @@ Dependency coverage for phase one is considered complete when those two sources 
 - package-driven provisioning and installation/customer flows derive profile usage from `isp_package_router_mappings.router_profile_name`
 
 ## RouterOS Operation Rules
+### Shared request payload for create and update
+```json
+{
+  "name": "Basic-10M",
+  "local_address": "10.10.10.1",
+  "remote_address": "pool-basic-10m",
+  "rate_limit": "10M/10M",
+  "dns_server": "1.1.1.1",
+  "comment": "Standard residential package"
+}
+```
+
+Shared response payload for successful create and update:
+- return the refreshed mirrored row from `mikrotik_ppp_profiles`
+
 ### Create
 Input:
 - selected router ID
@@ -211,7 +223,38 @@ Behavior:
 - if dependencies exist, return a blocking validation error with dependency counts/details
 - if no dependencies exist, delete the RouterOS profile
 - after router success, sync router PPP profiles into PostgreSQL
-- return a success payload that lets the UI remove or refresh the row list
+- return a delete result payload:
+  - `ok`
+  - `deleted_profile_id`
+  - `deleted_profile_name`
+  - `router_id`
+
+### Dependency lookup response
+Return:
+- `profile_id`
+- `profile_name`
+- `router_id`
+- `can_delete`
+- `dependencies`
+
+### Standard error contract
+Use a stable error envelope for all CRUD endpoints:
+- `code`
+- `message`
+- `details` (optional)
+
+Initial error codes:
+- `validation_error`
+- `not_found`
+- `dependency_blocked`
+- `router_conflict`
+- `router_write_failed`
+- `mirror_sync_failed`
+
+Examples:
+- `dependency_blocked`: delete attempted while counts exist in `pppoe_accounts` or `isp_package_router_mappings`
+- `router_conflict`: mirrored row exists locally but the RouterOS profile cannot be found by the last-synced name
+- `mirror_sync_failed`: RouterOS mutation succeeded but the mirror refresh failed immediately after
 
 ## Validation Rules
 ### Required
@@ -227,11 +270,20 @@ Behavior:
 ### Validation behavior
 - `name` must be trimmed and non-empty
 - `name` must be unique per router
-- `local_address` should accept empty or basic IP-like values
-- `dns_server` should accept empty or basic IP-like values
+- `local_address` should accept empty or a single IPv4/IPv6 host value as plain text
+- `dns_server` should accept empty, a single IPv4/IPv6 host value, or a comma-separated list of host values
 - `remote_address` stays loosely validated because it can be either an address value or a RouterOS pool name
 - `rate_limit` remains a freeform RouterOS-compatible string in phase one
 - blank optional strings should be normalized to `null`
+
+Validation examples:
+- valid `local_address`: `10.10.10.1`
+- valid `local_address`: `2001:db8::1`
+- invalid `local_address`: `10.10.10.1,10.10.10.2`
+- valid `dns_server`: `1.1.1.1`
+- valid `dns_server`: `1.1.1.1,8.8.8.8`
+- valid `dns_server`: `2001:4860:4860::8888`
+- invalid `dns_server`: `pool-basic`
 
 ## Dependency Check Contract
 Recommended response shape:
