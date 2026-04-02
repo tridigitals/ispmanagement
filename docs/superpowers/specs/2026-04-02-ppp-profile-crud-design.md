@@ -121,6 +121,11 @@ Recommended HTTP routes:
 
 The Tauri command layer should mirror the same operations.
 
+Route identity contract:
+- `:routerId` always identifies the selected router context
+- `:id` always means the local PostgreSQL mirror row ID from `mikrotik_ppp_profiles.id`
+- router operations must never treat `:id` as a RouterOS name or internal RouterOS handle
+
 ### Authorization
 - `read` permission on `network_routers` for list and dependency lookup
 - `manage` permission on `network_routers` for create, update, delete, and sync
@@ -161,9 +166,11 @@ Responsibility:
 
 Initial dependency sources:
 - `pppoe_accounts` where `router_id` and `router_profile_name` match
-- `isp_package_router_mappings` or equivalent package mapping table where `router_id` and `router_profile_name` match
+- `isp_package_router_mappings` where `router_id` and `router_profile_name` match
 
-If additional tenant-side tables are found to use `router_profile_name`, include them in the same dependency payload before implementation is considered complete.
+Dependency coverage for phase one is considered complete when those two sources are checked, because the current tenant flows that indirectly depend on profile names do so through one of these tables:
+- direct PPPoE account assignment uses `pppoe_accounts.router_profile_name`
+- package-driven provisioning and installation/customer flows derive profile usage from `isp_package_router_mappings.router_profile_name`
 
 ## RouterOS Operation Rules
 ### Create
@@ -189,6 +196,7 @@ Behavior:
 - use the current RouterOS profile name to locate the router record being edited
 - allow renaming if the target name is not already used by another profile on the same router
 - apply only the supported standard fields in phase one
+- if the mirrored row exists locally but RouterOS lookup by the stored current name fails, return a conflict-style error and require `Sync from router` before retrying
 - after router success, sync router PPP profiles into PostgreSQL
 - return the updated profile row from the mirrored dataset
 
@@ -258,6 +266,7 @@ Example behavior:
 ### Stale row targeting
 - If the local row ID no longer exists in PostgreSQL for the selected tenant/router, return `not found`.
 - If the row exists locally but the RouterOS profile no longer exists, return a conflict-like error and suggest sync.
+- If the row exists locally but the profile was renamed externally on the router after the last sync, treat it the same as a missing RouterOS target: reject the update/delete attempt and require sync before retry.
 
 ### Dependency violations
 - Return a structured validation error rather than a generic failure.
