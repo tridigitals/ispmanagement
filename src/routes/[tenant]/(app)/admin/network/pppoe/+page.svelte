@@ -14,6 +14,7 @@
   import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
   import { timeAgo } from '$lib/utils/date';
+  import { getPppoeApplyActionFallback } from '$lib/utils/pppoeSource';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
 
   type RouterRow = { id: string; name: string; host?: string; port?: number };
@@ -56,11 +57,15 @@
   let formDisabled = $state(false);
   let formComment = $state('');
   let formPackageId = $state('');
+  let formAccountSource = $state<'router' | 'managed_radius'>('router');
 
   let profileSuggestions = $state<ProfileSuggestion[]>([]);
   let poolSuggestions = $state<PoolSuggestion[]>([]);
   let loadingRouterMeta = $state(false);
-  const routerMetaCache = new Map<string, { profiles: ProfileSuggestion[]; pools: PoolSuggestion[] }>();
+  const routerMetaCache = new Map<
+    string,
+    { profiles: ProfileSuggestion[]; pools: PoolSuggestion[] }
+  >();
 
   const profileOptions = $derived.by(() => {
     const base = (profileSuggestions || []).map((p) => ({ label: p.name, value: p.name }));
@@ -100,11 +105,55 @@
   const tenantPrefix = $derived(tenantCtx.tenantPrefix);
 
   const routerName = (id: string) => routers.find((r) => r.id === id)?.name || '-';
+  const sourceLabel = (source: 'router' | 'managed_radius') =>
+    source === 'managed_radius'
+      ? $t('admin.network.pppoe.sources.managed_radius') || 'Managed RADIUS'
+      : $t('admin.network.pppoe.sources.router') || 'Router secret';
+  const sourceTargetLabel = (source: 'router' | 'managed_radius') =>
+    source === 'managed_radius'
+      ? $t('admin.network.pppoe.sync.present_radius') || 'On RADIUS'
+      : $t('admin.network.pppoe.sync.present') || 'On router';
+  const sourceMissingLabel = (source: 'router' | 'managed_radius') =>
+    source === 'managed_radius'
+      ? $t('admin.network.pppoe.sync.missing_radius') || 'Missing on RADIUS'
+      : $t('admin.network.pppoe.sync.missing') || 'Missing';
+  const sourceApplyActionLabel = (source: 'router' | 'managed_radius') =>
+    source === 'managed_radius'
+      ? $t('admin.network.pppoe.actions.apply_radius') ||
+        getPppoeApplyActionFallback('managed_radius')
+      : $t('admin.network.pppoe.actions.apply') || getPppoeApplyActionFallback('router');
+  const sourceAppliedToastLabel = (source: 'router' | 'managed_radius') =>
+    source === 'managed_radius'
+      ? $t('admin.network.pppoe.toasts.applied_radius') || 'Applied to RADIUS'
+      : $t('admin.network.pppoe.toasts.applied') || 'Applied to router';
+  const sourceAutoAppliedToastLabel = (source: 'router' | 'managed_radius') =>
+    source === 'managed_radius'
+      ? $t('admin.network.pppoe.toasts.auto_applied_radius') ||
+        'Saved and automatically applied to RADIUS'
+      : $t('admin.network.pppoe.toasts.auto_applied') ||
+        'Saved and automatically applied to router';
+  const sourceDisabledHintLabel = (source: 'router' | 'managed_radius') =>
+    source === 'managed_radius'
+      ? $t('admin.network.pppoe.form.disabled_hint_radius_apply') ||
+        'Disable this PPPoE account in centralized RADIUS when you click Apply to RADIUS.'
+      : $t('admin.network.pppoe.form.disabled_hint') ||
+        'Disable this PPPoE account (will be applied to router when you click Apply).';
+  const targetPresent = (row: PppoeAccountPublic) =>
+    row.account_source === 'managed_radius' ? row.radius_present : row.router_present;
+  const targetLastError = (row: PppoeAccountPublic) =>
+    row.account_source === 'managed_radius'
+      ? row.radius_last_error || row.last_error
+      : row.last_error;
+  const targetLastSyncAt = (row: PppoeAccountPublic) =>
+    row.account_source === 'managed_radius'
+      ? row.radius_last_sync_at || row.last_sync_at
+      : row.last_sync_at;
   const customerName = (id: string) => customers.find((c) => c.id === id)?.name || '-';
-  const isImportPlaceholderCustomer = (id: string) => customerName(id) === IMPORT_PLACEHOLDER_CUSTOMER_NAME;
+  const isImportPlaceholderCustomer = (id: string) =>
+    customerName(id) === IMPORT_PLACEHOLDER_CUSTOMER_NAME;
   const customerLabel = (id: string) =>
     isImportPlaceholderCustomer(id)
-      ? ($t('admin.network.pppoe.import.fields.unassigned') || 'Unassigned')
+      ? $t('admin.network.pppoe.import.fields.unassigned') || 'Unassigned'
       : customerName(id);
   const routerHost = (id: string) => routers.find((r) => r.id === id)?.host || '';
   const routerPort = (id: string) => routers.find((r) => r.id === id)?.port || 0;
@@ -115,12 +164,14 @@
       .filter((c) => c.name !== IMPORT_PLACEHOLDER_CUSTOMER_NAME)
       .map((c) => ({ label: c.name, value: c.id })),
   );
-  const locationOptions = $derived.by(() => locations.map((l) => ({ label: l.label, value: l.id })));
+  const locationOptions = $derived.by(() =>
+    locations.map((l) => ({ label: l.label, value: l.id })),
+  );
 
   const viewRows = $derived.by(() =>
     accounts.filter((a) => {
-      if (status === 'present' && !a.router_present) return false;
-      if (status === 'missing' && a.router_present) return false;
+      if (status === 'present' && !targetPresent(a)) return false;
+      if (status === 'missing' && targetPresent(a)) return false;
       if (disabled === 'enabled' && a.disabled) return false;
       if (disabled === 'disabled' && !a.disabled) return false;
       if (provisioning !== 'any') {
@@ -142,7 +193,7 @@
 
   const stats = $derived.by(() => {
     const total = viewRows.length;
-    const present = viewRows.filter((a) => a.router_present).length;
+    const present = viewRows.filter((a) => targetPresent(a)).length;
     const missing = total - present;
     const disabledCount = viewRows.filter((a) => a.disabled).length;
     return { total, present, missing, disabled: disabledCount };
@@ -152,7 +203,11 @@
     { key: 'username', label: $t('admin.network.pppoe.columns.username') || 'Username' },
     { key: 'customer', label: $t('admin.network.pppoe.columns.customer') || 'Customer' },
     { key: 'router', label: $t('admin.network.pppoe.columns.router') || 'Router' },
-    { key: 'provisioning', label: $t('admin.network.pppoe.columns.provisioning') || 'Provisioning' },
+    { key: 'source', label: $t('admin.network.pppoe.columns.source') || 'Source' },
+    {
+      key: 'provisioning',
+      label: $t('admin.network.pppoe.columns.provisioning') || 'Provisioning',
+    },
     { key: 'sync', label: $t('admin.network.pppoe.columns.sync') || 'Sync' },
     { key: 'actions', label: '', align: 'right' as const, width: '300px' },
   ]);
@@ -314,6 +369,7 @@
     formAddressPool = '';
     formDisabled = false;
     formComment = '';
+    formAccountSource = 'router';
     locations = [];
     profileSuggestions = [];
     poolSuggestions = [];
@@ -349,14 +405,26 @@
     formAddressPool = row.address_pool || '';
     formDisabled = Boolean(row.disabled);
     formComment = row.comment || '';
+    formAccountSource = row.account_source || 'router';
     showEdit = true;
 
-    await Promise.all([loadLocations(row.customer_id), loadRouterMeta(row.router_id), loadRouterPackages(row.router_id)]);
+    await Promise.all([
+      loadLocations(row.customer_id),
+      loadRouterMeta(row.router_id),
+      loadRouterPackages(row.router_id),
+    ]);
   }
 
   async function submitCreate() {
     if (saving) return;
-    if (!formRouterId || !formCustomerId || !formLocationId || !formUsername.trim() || !formPassword) return;
+    if (
+      !formRouterId ||
+      !formCustomerId ||
+      !formLocationId ||
+      !formUsername.trim() ||
+      !formPassword
+    )
+      return;
 
     saving = true;
     try {
@@ -372,13 +440,12 @@
         address_pool: formAddressPool.trim() || null,
         disabled: formDisabled,
         comment: formComment.trim() || null,
+        account_source: formAccountSource,
       });
       if (autoApplyOnSave && created?.id) {
         try {
           await api.pppoe.accounts.apply(created.id);
-          toast.success(
-            $t('admin.network.pppoe.toasts.auto_applied') || 'Saved and automatically applied to router',
-          );
+          toast.success(sourceAutoAppliedToastLabel(formAccountSource));
         } catch (e: any) {
           toast.error(
             $t('admin.network.pppoe.toasts.auto_apply_failed', {
@@ -413,13 +480,12 @@
         address_pool: formAddressPool.trim() || null,
         disabled: formDisabled,
         comment: formComment.trim() || null,
+        account_source: formAccountSource,
       });
       if (autoApplyOnSave && updated?.id) {
         try {
           await api.pppoe.accounts.apply(updated.id);
-          toast.success(
-            $t('admin.network.pppoe.toasts.auto_applied') || 'Saved and automatically applied to router',
-          );
+          toast.success(sourceAutoAppliedToastLabel(formAccountSource));
         } catch (e: any) {
           toast.error(
             $t('admin.network.pppoe.toasts.auto_apply_failed', {
@@ -440,7 +506,8 @@
 
   async function deleteAccount(row: PppoeAccountPublic) {
     if (!$can('manage', 'pppoe')) return;
-    if (!confirm($t('admin.customers.pppoe.confirm_delete') || 'Delete this PPPoE account?')) return;
+    if (!confirm($t('admin.customers.pppoe.confirm_delete') || 'Delete this PPPoE account?'))
+      return;
     try {
       await api.pppoe.accounts.delete(row.id);
       toast.success($t('common.deleted') || 'Deleted');
@@ -506,8 +573,9 @@
       await loadAccounts();
     } catch (e: any) {
       toast.error(
-        $t('admin.network.pppoe.toasts.reconcile_failed', { values: { message: e?.message || e } }) ||
-          `Failed: ${e?.message || e}`,
+        $t('admin.network.pppoe.toasts.reconcile_failed', {
+          values: { message: e?.message || e },
+        }) || `Failed: ${e?.message || e}`,
       );
     }
   }
@@ -515,7 +583,7 @@
   async function apply(row: PppoeAccountPublic) {
     try {
       await api.pppoe.accounts.apply(row.id);
-      toast.success($t('admin.network.pppoe.toasts.applied') || 'Applied to router');
+      toast.success(sourceAppliedToastLabel(row.account_source));
       await loadAccounts();
     } catch (e: any) {
       toast.error(
@@ -527,8 +595,11 @@
 
   function provisioningState(row: PppoeAccountPublic): 'retrying' | 'failed' | 'applied' | 'draft' {
     if (retryingIds.includes(row.id)) return 'retrying';
-    if (row.last_error && row.last_error.trim()) return 'failed';
-    if (row.router_present && row.router_secret_id) return 'applied';
+    if (targetLastError(row) && targetLastError(row)!.trim()) return 'failed';
+    if (row.account_source === 'managed_radius' && row.radius_present && row.radius_identity)
+      return 'applied';
+    if (row.account_source === 'router' && row.router_present && row.router_secret_id)
+      return 'applied';
     return 'draft';
   }
 
@@ -584,11 +655,13 @@
 <div class="page-content fade-in">
   <NetworkPageHeader
     title={$t('admin.network.pppoe.title') || 'PPPoE'}
-    subtitle={$t('admin.network.pppoe.subtitle') || 'Tenant-wide view of PPPoE accounts across routers.'}
+    subtitle={$t('admin.network.pppoe.subtitle') ||
+      'Tenant-wide view of PPPoE accounts across routers.'}
   >
     {#snippet actions()}
       {#if $can('manage', 'pppoe') && autoApplyOnSave}
-        <span class="chip active">{$t('admin.network.pppoe.auto_apply_on') || 'Auto-apply ON'}</span>
+        <span class="chip active">{$t('admin.network.pppoe.auto_apply_on') || 'Auto-apply ON'}</span
+        >
       {/if}
       <button class="btn ghost" type="button" onclick={loadAccounts} disabled={refreshing}>
         <Icon name="refresh-cw" size={16} />
@@ -655,14 +728,14 @@
     </div>
     <div class="stat-card tone-ok">
       <div class="stat-top">
-        <span>{$t('admin.network.pppoe.stats.present') || 'On router'}</span>
+        <span>{$t('admin.network.pppoe.stats.present') || 'Provisioned'}</span>
         <Icon name="check-circle" size={16} />
       </div>
       <div class="stat-value">{stats.present}</div>
     </div>
     <div class="stat-card tone-warn">
       <div class="stat-top">
-        <span>{$t('admin.network.pppoe.stats.missing') || 'Missing'}</span>
+        <span>{$t('admin.network.pppoe.stats.missing') || 'Not provisioned'}</span>
         <Icon name="alert-triangle" size={16} />
       </div>
       <div class="stat-value">{stats.missing}</div>
@@ -712,32 +785,47 @@
         <label for="pppoe-filter-sync">{$t('admin.network.pppoe.filters.sync') || 'Sync'}</label>
         <select id="pppoe-filter-sync" class="input" bind:value={status}>
           <option value="any">{$t('admin.network.pppoe.filters.any') || 'Any'}</option>
-          <option value="present">{$t('admin.network.pppoe.filters.present') || 'On router'}</option>
-          <option value="missing">{$t('admin.network.pppoe.filters.missing') || 'Missing'}</option>
+          <option value="present"
+            >{$t('admin.network.pppoe.filters.present') || 'Provisioned'}</option
+          >
+          <option value="missing"
+            >{$t('admin.network.pppoe.filters.missing') || 'Not provisioned'}</option
+          >
         </select>
       </div>
 
       <div class="control">
-        <label for="pppoe-filter-state">{$t('admin.network.pppoe.filters.disabled') || 'State'}</label>
+        <label for="pppoe-filter-state"
+          >{$t('admin.network.pppoe.filters.disabled') || 'State'}</label
+        >
         <select id="pppoe-filter-state" class="input" bind:value={disabled}>
           <option value="any">{$t('admin.network.pppoe.filters.any') || 'Any'}</option>
           <option value="enabled">{$t('admin.network.pppoe.filters.enabled') || 'Enabled'}</option>
-          <option value="disabled">{$t('admin.network.pppoe.filters.disabled_only') || 'Disabled'}</option>
+          <option value="disabled"
+            >{$t('admin.network.pppoe.filters.disabled_only') || 'Disabled'}</option
+          >
         </select>
       </div>
 
       <div class="control">
-        <label for="pppoe-filter-prov">{$t('admin.network.pppoe.filters.provisioning') || 'Provisioning'}</label>
+        <label for="pppoe-filter-prov"
+          >{$t('admin.network.pppoe.filters.provisioning') || 'Provisioning'}</label
+        >
         <select id="pppoe-filter-prov" class="input" bind:value={provisioning}>
           <option value="any">{$t('admin.network.pppoe.filters.any') || 'Any'}</option>
-          <option value="applied">{$t('admin.network.pppoe.provisioning.applied') || 'Applied'}</option>
+          <option value="applied"
+            >{$t('admin.network.pppoe.provisioning.applied') || 'Applied'}</option
+          >
           <option value="draft">{$t('admin.network.pppoe.provisioning.draft') || 'Draft'}</option>
-          <option value="failed">{$t('admin.network.pppoe.provisioning.failed') || 'Failed'}</option>
+          <option value="failed">{$t('admin.network.pppoe.provisioning.failed') || 'Failed'}</option
+          >
         </select>
       </div>
 
       <div class="control control-wide">
-        <label for="pppoe-filter-router">{$t('admin.network.pppoe.filters.router') || 'Router'}</label>
+        <label for="pppoe-filter-router"
+          >{$t('admin.network.pppoe.filters.router') || 'Router'}</label
+        >
         <Select2
           bind:value={routerId}
           options={routerOptions}
@@ -764,9 +852,9 @@
     {/if}
 
     <Table
-      columns={columns}
+      {columns}
       data={viewRows}
-      loading={loading}
+      {loading}
       emptyText={$t('admin.network.pppoe.empty') || 'No PPPoE accounts.'}
       pagination
     >
@@ -797,7 +885,8 @@
             <div class="name">{customerLabel(row.customer_id)}</div>
             {#if !isPlaceholderCustomer}
               <div class="meta">
-                <span class="pill mono" title={row.customer_id}>{row.customer_id.slice(0, 8)}…</span>
+                <span class="pill mono" title={row.customer_id}>{row.customer_id.slice(0, 8)}…</span
+                >
                 <span class="pill mono" title={row.location_id}>
                   {$t('sidebar.locations') || 'Locations'}: {row.location_id.slice(0, 8)}…
                 </span>
@@ -809,25 +898,36 @@
             <div class="name">{routerName(row.router_id)}</div>
             <div class="meta">
               {#if routerHost(row.router_id)}
-                <span class="pill mono">{routerHost(row.router_id)}:{routerPort(row.router_id) || ''}</span>
+                <span class="pill mono"
+                  >{routerHost(row.router_id)}:{routerPort(row.router_id) || ''}</span
+                >
               {/if}
               <span class="pill mono" title={row.router_id}>{row.router_id.slice(0, 8)}…</span>
             </div>
           </div>
+        {:else if key === 'source'}
+          <div class="stack">
+            <span class="badge">{sourceLabel(row.account_source)}</span>
+            {#if row.account_source === 'managed_radius' && row.radius_identity}
+              <span class="pill mono">{row.radius_identity}</span>
+            {/if}
+          </div>
         {:else if key === 'sync'}
           <div class="stack">
             <div class="meta">
-              {#if row.router_present}
-                <span class="badge ok">{$t('admin.network.pppoe.sync.present') || 'On router'}</span>
+              {#if targetPresent(row)}
+                <span class="badge ok">{sourceTargetLabel(row.account_source)}</span>
               {:else}
-                <span class="badge warn">{$t('admin.network.pppoe.sync.missing') || 'Missing'}</span>
+                <span class="badge warn">{sourceMissingLabel(row.account_source)}</span>
               {/if}
-              <span class="pill mono">{row.last_sync_at ? timeAgo(row.last_sync_at) : '-'}</span>
+              <span class="pill mono"
+                >{targetLastSyncAt(row) ? timeAgo(targetLastSyncAt(row)!) : '-'}</span
+              >
             </div>
-            {#if row.last_error}
-              <div class="error-line" title={row.last_error}>
+            {#if targetLastError(row)}
+              <div class="error-line" title={targetLastError(row)}>
                 <Icon name="alert-triangle" size={14} />
-                <span class="error-text">{row.last_error}</span>
+                <span class="error-text">{targetLastError(row)}</span>
               </div>
             {/if}
           </div>
@@ -842,8 +942,8 @@
             >
               {provisioningLabel(state)}
             </span>
-            {#if state === 'failed' && row.last_error}
-              <span class="error-text" title={row.last_error}>{row.last_error}</span>
+            {#if state === 'failed' && targetLastError(row)}
+              <span class="error-text" title={targetLastError(row)}>{targetLastError(row)}</span>
             {/if}
           </div>
         {:else if key === 'actions'}
@@ -853,14 +953,18 @@
               <button
                 class="btn-icon"
                 title={$t('admin.network.pppoe.actions.open_customer') || 'Open customer'}
-                onclick={() => row.customer_id && goto(`${tenantPrefix}/admin/customers/${row.customer_id}`)}
+                onclick={() =>
+                  row.customer_id && goto(`${tenantPrefix}/admin/customers/${row.customer_id}`)}
               >
                 <Icon name="external-link" size={16} />
               </button>
               <button
                 class="btn-icon"
-                title={$t('admin.network.pppoe.actions.open_customer_billing') || 'Open customer billing'}
-                onclick={() => row.customer_id && goto(`${tenantPrefix}/admin/customers/${row.customer_id}?tab=billing`)}
+                title={$t('admin.network.pppoe.actions.open_customer_billing') ||
+                  'Open customer billing'}
+                onclick={() =>
+                  row.customer_id &&
+                  goto(`${tenantPrefix}/admin/customers/${row.customer_id}?tab=billing`)}
               >
                 <Icon name="file-text" size={16} />
               </button>
@@ -868,15 +972,23 @@
             {#if $can('manage', 'pppoe')}
               <button
                 class="btn-icon"
-                title={$t('admin.network.pppoe.actions.apply') || 'Apply to router'}
+                title={sourceApplyActionLabel(row.account_source)}
                 onclick={() => apply(row)}
               >
                 <Icon name="send" size={16} />
               </button>
-              <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => openEdit(row)}>
+              <button
+                class="btn-icon"
+                title={$t('common.edit') || 'Edit'}
+                onclick={() => openEdit(row)}
+              >
                 <Icon name="edit" size={16} />
               </button>
-              <button class="btn-icon danger" title={$t('common.delete') || 'Delete'} onclick={() => deleteAccount(row)}>
+              <button
+                class="btn-icon danger"
+                title={$t('common.delete') || 'Delete'}
+                onclick={() => deleteAccount(row)}
+              >
                 <Icon name="trash-2" size={16} />
               </button>
             {/if}
@@ -918,6 +1030,16 @@
         />
       </label>
       <label>
+        <span>{$t('admin.network.pppoe.fields.source') || 'Account source'}</span>
+        <select class="input" bind:value={formAccountSource}>
+          <option value="router">{sourceLabel('router')}</option>
+          <option value="managed_radius">{sourceLabel('managed_radius')}</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="grid2">
+      <label>
         <span>{$t('admin.customers.pppoe.fields.customer') || 'Customer'}</span>
         <Select2
           bind:value={formCustomerId}
@@ -933,6 +1055,16 @@
           }}
         />
       </label>
+    </div>
+
+    <div class="field-hint">
+      {#if formAccountSource === 'managed_radius'}
+        {$t('admin.network.pppoe.form.source_radius_hint') ||
+          'This account will be provisioned to managed RADIUS and expects a managed RADIUS server plus NAS mapping for the selected router.'}
+      {:else}
+        {$t('admin.network.pppoe.form.source_router_hint') ||
+          'This account will be provisioned to the router-local PPP secret table.'}
+      {/if}
     </div>
 
     <label>
@@ -995,7 +1127,12 @@
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.pppoe.fields.remote_address') || 'Remote IP'}</span>
-        <input class="input mono" bind:value={formRemoteAddress} placeholder="10.10.10.10" disabled={!formRouterId} />
+        <input
+          class="input mono"
+          bind:value={formRemoteAddress}
+          placeholder="10.10.10.10"
+          disabled={!formRouterId}
+        />
       </label>
       <label>
         <span>{$t('admin.customers.pppoe.fields.pool') || 'Address pool'}</span>
@@ -1020,10 +1157,17 @@
       <div class="toggle-text">
         <div class="toggle-title">{$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}</div>
         <div class="toggle-sub">
-          {$t('admin.network.pppoe.form.disabled_hint') || 'Disable this PPPoE account (will be applied to router when you click Apply).'}
+          {sourceDisabledHintLabel(formAccountSource)}
+          {#if formAccountSource === 'managed_radius'}
+            {' '}{$t('admin.network.pppoe.form.disabled_hint_radius') ||
+              'For managed RADIUS, this disables centralized authentication for the account.'}
+          {/if}
         </div>
       </div>
-      <Toggle bind:checked={formDisabled} ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'} />
+      <Toggle
+        bind:checked={formDisabled}
+        ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}
+      />
     </div>
 
     <div class="actions">
@@ -1033,7 +1177,12 @@
       <button
         class="btn"
         onclick={submitCreate}
-        disabled={saving || !formRouterId || !formCustomerId || !formLocationId || !formUsername.trim() || !formPassword}
+        disabled={saving ||
+          !formRouterId ||
+          !formCustomerId ||
+          !formLocationId ||
+          !formUsername.trim() ||
+          !formPassword}
       >
         <Icon name="plus" size={16} />
         {$t('common.create') || 'Create'}
@@ -1076,6 +1225,16 @@
           }}
         />
       </label>
+      <label>
+        <span>{$t('admin.network.pppoe.fields.source') || 'Account source'}</span>
+        <select class="input" bind:value={formAccountSource}>
+          <option value="router">{sourceLabel('router')}</option>
+          <option value="managed_radius">{sourceLabel('managed_radius')}</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="grid2">
       <label>
         <span>{$t('admin.customers.pppoe.fields.customer') || 'Customer'}</span>
         <input class="input" value={customerLabel(formCustomerId)} disabled />
@@ -1172,10 +1331,13 @@
       <div class="toggle-text">
         <div class="toggle-title">{$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}</div>
         <div class="toggle-sub">
-          {$t('admin.network.pppoe.form.disabled_hint') || 'Disable this PPPoE account (will be applied to router when you click Apply).'}
+          {sourceDisabledHintLabel(formAccountSource)}
         </div>
       </div>
-      <Toggle bind:checked={formDisabled} ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'} />
+      <Toggle
+        bind:checked={formDisabled}
+        ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}
+      />
     </div>
 
     <div class="actions">
@@ -1378,7 +1540,8 @@
   }
 
   .mono {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
       monospace;
   }
   .row-actions {
@@ -1491,7 +1654,8 @@
   }
 
   .mono {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
       monospace;
   }
 

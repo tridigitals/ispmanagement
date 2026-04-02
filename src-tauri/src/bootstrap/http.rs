@@ -1,7 +1,8 @@
 use crate::services::{
-    AuditService, AuthService, CustomerService, EmailService, IspPackageService, MikrotikService,
-    NetworkMappingService, NotificationService, PaymentService, PlanService, PppoeService,
-    RoleService, SettingsService, StorageService, SystemService, TeamService, UserService,
+    AuditService, AuthService, CustomerService, EmailService, IspPackageService,
+    ManagedRadiusService, MikrotikService, NetworkMappingService, NotificationService,
+    PaymentService, PlanService, PppoeService, RoleService, SettingsService, StorageService,
+    SystemService, TeamService, UserService,
 };
 use axum::{
     extract::DefaultBodyLimit,
@@ -177,6 +178,7 @@ pub async fn start_server_impl(
         payment_service: Arc::new(payment_service.clone()),
         notification_service: Arc::new(notification_service),
         mikrotik_service: Arc::new(mikrotik_service),
+        managed_radius_service: Arc::new(ManagedRadiusService::new(pool.clone())),
         customer_service: Arc::new(customer_service),
         pppoe_service: Arc::new(pppoe_service),
         isp_package_service: Arc::new(isp_package_service),

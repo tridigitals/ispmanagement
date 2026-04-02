@@ -7,9 +7,9 @@ use crate::services::metrics_service::MetricsService;
 #[cfg(feature = "desktop")]
 use crate::services::{
     AnnouncementScheduler, AuditService, AuthService, BackupService, CustomerService,
-    EmailOutboxService, EmailService, IspPackageService, MikrotikService, NetworkMappingService,
-    NotificationService, PaymentService, PlanService, PppoeService, RoleService, SettingsService,
-    SystemService, TeamService, UserService,
+    EmailOutboxService, EmailService, IspPackageService, ManagedRadiusService, MikrotikService,
+    NetworkMappingService, NotificationService, PaymentService, PlanService, PppoeService,
+    RoleService, SettingsService, SystemService, TeamService, UserService,
 };
 #[cfg(feature = "desktop")]
 use tauri::Manager;
@@ -68,6 +68,7 @@ pub async fn initialize_backend<R: tauri::Runtime>(
 
     let settings_service = SettingsService::new(pool.clone(), audit_service.clone());
     let email_service = EmailService::new(settings_service.clone());
+    let managed_radius_service = ManagedRadiusService::new(pool.clone());
     let auth_service = AuthService::new(
         pool.clone(),
         jwt_secret,
@@ -180,6 +181,7 @@ pub async fn initialize_backend<R: tauri::Runtime>(
     app_handle.manage(notification_service.clone());
     app_handle.manage(email_outbox_service.clone());
     app_handle.manage(mikrotik_service.clone());
+    app_handle.manage(managed_radius_service.clone());
     app_handle.manage(ws_hub.clone());
     app_handle.manage(metrics_service.clone());
     info!("Services added to Tauri state.");

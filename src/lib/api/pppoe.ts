@@ -29,6 +29,7 @@ export const pppoe = {
       address_pool?: string | null;
       disabled?: boolean;
       comment?: string | null;
+      account_source?: 'router' | 'managed_radius' | null;
     }): Promise<PppoeAccountPublic> =>
       safeInvoke('create_pppoe_account', {
         token: getTokenOrThrow(),
@@ -44,6 +45,7 @@ export const pppoe = {
         address_pool: dto.address_pool ?? null,
         disabled: dto.disabled ?? false,
         comment: dto.comment ?? null,
+        account_source: dto.account_source ?? 'router',
       }),
 
     update: (
@@ -58,6 +60,7 @@ export const pppoe = {
         address_pool?: string | null;
         disabled?: boolean;
         comment?: string | null;
+        account_source?: 'router' | 'managed_radius' | null;
       },
     ): Promise<PppoeAccountPublic> =>
       safeInvoke('update_pppoe_account', {
@@ -72,6 +75,7 @@ export const pppoe = {
         address_pool: dto.address_pool ?? undefined,
         disabled: dto.disabled,
         comment: dto.comment ?? undefined,
+        account_source: dto.account_source ?? undefined,
       }),
 
     delete: (id: string): Promise<void> =>

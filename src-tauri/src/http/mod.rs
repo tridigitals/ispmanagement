@@ -1,7 +1,8 @@
 use crate::services::{
-    AuditService, AuthService, CustomerService, EmailService, IspPackageService, MikrotikService,
-    NetworkMappingService, NotificationService, PaymentService, PlanService, PppoeService,
-    RoleService, SettingsService, StorageService, SystemService, TeamService, UserService,
+    AuditService, AuthService, CustomerService, EmailService, IspPackageService,
+    ManagedRadiusService, MikrotikService, NetworkMappingService, NotificationService,
+    PaymentService, PlanService, PppoeService, RoleService, SettingsService, StorageService,
+    SystemService, TeamService, UserService,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -68,6 +69,7 @@ pub struct AppState {
     pub payment_service: Arc<PaymentService>,
     pub notification_service: Arc<NotificationService>,
     pub mikrotik_service: Arc<MikrotikService>,
+    pub managed_radius_service: Arc<ManagedRadiusService>,
     pub customer_service: Arc<CustomerService>,
     pub pppoe_service: Arc<PppoeService>,
     pub isp_package_service: Arc<IspPackageService>,

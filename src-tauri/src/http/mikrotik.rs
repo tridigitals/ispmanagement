@@ -1,11 +1,11 @@
 use crate::error::{AppError, AppResult};
 use crate::http::AppState;
 use crate::models::{
-    CreateMikrotikRouterRequest, MikrotikAlert, MikrotikIncident, MikrotikInterfaceCounter,
-    MikrotikInterfaceMetric, MikrotikIpPool, MikrotikLogClearResult, MikrotikLogEntry,
-    MikrotikLogRetentionSettings, MikrotikLogSyncResult, MikrotikPppProfile, MikrotikRouter,
-    MikrotikRouterMetric, MikrotikTestResult, PaginatedResponse, SimulateMikrotikIncidentRequest,
-    UpdateMikrotikIncidentRequest, UpdateMikrotikRouterRequest,
+    CreateMikrotikRouterRequest, ManagedRadiusRouterSetup, MikrotikAlert, MikrotikIncident,
+    MikrotikInterfaceCounter, MikrotikInterfaceMetric, MikrotikIpPool, MikrotikLogClearResult,
+    MikrotikLogEntry, MikrotikLogRetentionSettings, MikrotikLogSyncResult, MikrotikPppProfile,
+    MikrotikRouter, MikrotikRouterMetric, MikrotikTestResult, PaginatedResponse,
+    SimulateMikrotikIncidentRequest, UpdateMikrotikIncidentRequest, UpdateMikrotikRouterRequest,
 };
 use crate::services::mikrotik_service::{
     MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL, MIKROTIK_LOGS_DEFAULT_PAGE, MIKROTIK_LOGS_DEFAULT_PER_PAGE,
@@ -49,6 +49,10 @@ pub fn router() -> Router<AppState> {
         .route("/routers/{id}/ppp-profiles/sync", post(sync_ppp_profiles))
         .route("/routers/{id}/ip-pools", get(list_ip_pools))
         .route("/routers/{id}/ip-pools/sync", post(sync_ip_pools))
+        .route(
+            "/routers/{id}/managed-radius-setup",
+            get(get_managed_radius_setup),
+        )
         .route("/routers/{id}/test", post(test_router))
         .route("/routers/{id}/metrics", get(list_metrics))
         .route(
@@ -525,6 +529,31 @@ async fn list_ip_pools(
         .list_ip_pools(&tenant_id, &id)
         .await?;
     Ok(Json(rows))
+}
+
+// GET /api/admin/mikrotik/routers/{id}/managed-radius-setup
+async fn get_managed_radius_setup(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<ManagedRadiusRouterSetup>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    let router = state
+        .mikrotik_service
+        .get_router(&tenant_id, &id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Router not found".into()))?;
+
+    let setup = state
+        .managed_radius_service
+        .get_router_setup(&tenant_id, &router)
+        .await?;
+    Ok(Json(setup))
 }
 
 // POST /api/admin/mikrotik/routers/{id}/ip-pools/sync

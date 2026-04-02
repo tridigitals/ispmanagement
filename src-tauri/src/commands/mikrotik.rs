@@ -1,16 +1,17 @@
 //! MikroTik router inventory + monitoring commands (tenant admin).
 
 use crate::models::{
-    CreateMikrotikRouterRequest, MikrotikAlert, MikrotikIncident, MikrotikInterfaceCounter,
-    MikrotikInterfaceMetric, MikrotikIpPool, MikrotikLogClearResult, MikrotikLogEntry,
-    MikrotikLogRetentionSettings, MikrotikLogSyncResult, MikrotikPppProfile, MikrotikRouter,
-    MikrotikRouterMetric, MikrotikRouterNocRow, MikrotikTestResult, PaginatedResponse,
-    SimulateMikrotikIncidentRequest, UpdateMikrotikIncidentRequest, UpdateMikrotikRouterRequest,
+    CreateMikrotikRouterRequest, ManagedRadiusRouterSetup, MikrotikAlert, MikrotikIncident,
+    MikrotikInterfaceCounter, MikrotikInterfaceMetric, MikrotikIpPool, MikrotikLogClearResult,
+    MikrotikLogEntry, MikrotikLogRetentionSettings, MikrotikLogSyncResult, MikrotikPppProfile,
+    MikrotikRouter, MikrotikRouterMetric, MikrotikRouterNocRow, MikrotikTestResult,
+    PaginatedResponse, SimulateMikrotikIncidentRequest, UpdateMikrotikIncidentRequest,
+    UpdateMikrotikRouterRequest,
 };
 use crate::services::mikrotik_service::{
     MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL, MIKROTIK_LOGS_DEFAULT_PAGE, MIKROTIK_LOGS_DEFAULT_PER_PAGE,
 };
-use crate::services::{AuditService, AuthService, MikrotikService};
+use crate::services::{AuditService, AuthService, ManagedRadiusService, MikrotikService};
 use tauri::State;
 
 #[tauri::command]
@@ -521,6 +522,38 @@ pub async fn get_mikrotik_router_snapshot(
 
     mikrotik
         .get_snapshot(&tenant_id, &id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_mikrotik_router_managed_radius_setup(
+    token: String,
+    router_id: String,
+    auth: State<'_, AuthService>,
+    mikrotik: State<'_, MikrotikService>,
+    managed_radius: State<'_, ManagedRadiusService>,
+) -> Result<ManagedRadiusRouterSetup, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let router = mikrotik
+        .get_router(&tenant_id, &router_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "Router not found".to_string())?;
+
+    managed_radius
+        .get_router_setup(&tenant_id, &router)
         .await
         .map_err(|e| e.to_string())
 }

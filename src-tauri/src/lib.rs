@@ -433,6 +433,7 @@ pub fn run() {
                                     test_mikrotik_router,
                                     get_mikrotik_router,
                                     get_mikrotik_router_snapshot,
+                                    get_mikrotik_router_managed_radius_setup,
                                     list_mikrotik_router_metrics,
                                     list_mikrotik_interface_metrics,
                                     list_mikrotik_interface_latest,

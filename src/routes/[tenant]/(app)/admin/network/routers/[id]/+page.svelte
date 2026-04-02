@@ -6,7 +6,12 @@
   import { can } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import { api } from '$lib/api/client';
+  import type { ManagedRadiusRouterSetup as ManagedRadiusRouterSetupResponse } from '$lib/api/types';
   import { toast } from '$lib/stores/toast';
+  import {
+    canCopyManagedRadiusSecret,
+    getManagedRadiusDisplayedSecret,
+  } from '$lib/utils/managedRadiusSetup';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
@@ -129,6 +134,10 @@
   let ipPools = $state<IpPoolRow[]>([]);
   let pppLoadedFor = $state<string | null>(null);
   let poolsLoadedFor = $state<string | null>(null);
+  let managedRadiusSetupLoading = $state(false);
+  let managedRadiusSetup = $state<ManagedRadiusRouterSetupResponse | null>(null);
+  let managedRadiusLoadedFor = $state<string | null>(null);
+  let showManagedRadiusSecret = $state(false);
 
   let cpuSeries = $derived.by(() => {
     const pts = metrics
@@ -302,6 +311,9 @@
       snapshot = snap as RouterSnapshot;
       router = (snapshot?.router || null) as any;
       metrics = (m || []) as any;
+      if ($can('manage', 'network_routers') && (managedRadiusLoadedFor !== id || !opts?.silent)) {
+        await loadManagedRadiusSetup(id, { silent: Boolean(opts?.silent) });
+      }
 
       // Live per-interface bps (computed from UI refresh deltas).
       if (snapshot?.interfaces?.length) {
@@ -320,8 +332,10 @@
           if (prev && prev.ts > 0) {
             const dt = nowMs - prev.ts;
             if (dt > 0) {
-              if (rx != null && rx >= prev.rx) rx_bps = Math.round(((rx - prev.rx) * 8 * 1000) / dt);
-              if (tx != null && tx >= prev.tx) tx_bps = Math.round(((tx - prev.tx) * 8 * 1000) / dt);
+              if (rx != null && rx >= prev.rx)
+                rx_bps = Math.round(((rx - prev.rx) * 8 * 1000) / dt);
+              if (tx != null && tx >= prev.tx)
+                tx_bps = Math.round(((tx - prev.tx) * 8 * 1000) / dt);
             }
           }
 
@@ -341,6 +355,51 @@
       initialLoading = false;
       refreshing = false;
       refreshInFlight = false;
+    }
+  }
+
+  async function loadManagedRadiusSetup(routerId: string, opts?: { silent?: boolean }) {
+    if (!$can('manage', 'network_routers')) {
+      managedRadiusSetup = null;
+      return;
+    }
+
+    managedRadiusSetupLoading = true;
+    try {
+      managedRadiusSetup = (await api.mikrotik.routers.managedRadiusSetup(
+        routerId,
+      )) as ManagedRadiusRouterSetupResponse;
+      managedRadiusLoadedFor = routerId;
+      showManagedRadiusSecret = false;
+    } catch (e: any) {
+      managedRadiusSetup = null;
+      if (!opts?.silent) toast.error(e?.message || e);
+    } finally {
+      managedRadiusSetupLoading = false;
+    }
+  }
+
+  async function copyManagedRadiusScript() {
+    const script = managedRadiusSetup?.cli_script;
+    if (!script) return;
+
+    try {
+      await navigator.clipboard.writeText(script);
+      toast.success('CLI RADIUS copied');
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    }
+  }
+
+  async function copyManagedRadiusSecret() {
+    const secret = managedRadiusSetup?.shared_secret;
+    if (!secret) return;
+
+    try {
+      await navigator.clipboard.writeText(secret);
+      toast.success('Shared secret copied');
+    } catch (e: any) {
+      toast.error(e?.message || e);
     }
   }
 
@@ -371,7 +430,9 @@
       const rows = (await api.mikrotik.routers.syncPppProfiles(id)) as any[];
       pppProfiles = (rows || []) as any;
       pppLoadedFor = id;
-      toast.success($t('admin.network.routers.ppp_profiles.toasts.synced') || 'Synced PPP profiles');
+      toast.success(
+        $t('admin.network.routers.ppp_profiles.toasts.synced') || 'Synced PPP profiles',
+      );
     } catch (e: any) {
       toast.error(e?.message || e);
     } finally {
@@ -899,7 +960,9 @@
               <div class="row">
                 <span class="muted">Disk</span>
                 <span class="mono"
-                  >{formatBytes(snapshot.free_hdd_bytes)} / {formatBytes(snapshot.total_hdd_bytes)}</span
+                  >{formatBytes(snapshot.free_hdd_bytes)} / {formatBytes(
+                    snapshot.total_hdd_bytes,
+                  )}</span
                 >
               </div>
             </div>
@@ -956,6 +1019,95 @@
               <div class="muted">Not supported on this device.</div>
             {/if}
           </div>
+        </div>
+      {/if}
+
+      {#if $can('manage', 'network_routers')}
+        <div class="card full">
+          <div class="card-head">
+            <div>
+              <h2>RADIUS Setup</h2>
+              <div class="muted">Copy CLI MikroTik for PPP authentication</div>
+            </div>
+            <div class="setup-actions">
+              {#if managedRadiusSetup?.configured && canCopyManagedRadiusSecret(managedRadiusSetup)}
+                <button
+                  class="btn ghost btn-sm"
+                  type="button"
+                  onclick={() => (showManagedRadiusSecret = !showManagedRadiusSecret)}
+                >
+                  <Icon name={showManagedRadiusSecret ? 'eye-off' : 'eye'} size={14} />
+                  {showManagedRadiusSecret ? 'Hide Secret' : 'Show Secret'}
+                </button>
+
+                <button class="btn ghost btn-sm" type="button" onclick={copyManagedRadiusSecret}>
+                  <Icon name="copy" size={14} />
+                  Copy Secret
+                </button>
+              {/if}
+
+              {#if managedRadiusSetup?.configured && managedRadiusSetup.cli_script}
+                <button class="btn ghost btn-sm" type="button" onclick={copyManagedRadiusScript}>
+                  <Icon name="copy" size={14} />
+                  Copy CLI
+                </button>
+              {/if}
+            </div>
+          </div>
+
+          {#if managedRadiusSetupLoading && !managedRadiusSetup}
+            <div class="muted">{$t('common.loading') || 'Loading...'}</div>
+          {:else if managedRadiusSetup?.configured}
+            <div class="setup-grid">
+              <div class="row">
+                <span class="muted">Server</span>
+                <span class="mono">{managedRadiusSetup.server_name || 'Managed RADIUS'}</span>
+              </div>
+              <div class="row">
+                <span class="muted">RADIUS host</span>
+                <span class="mono">{managedRadiusSetup.radius_host || '—'}</span>
+              </div>
+              <div class="row">
+                <span class="muted">Ports</span>
+                <span class="mono"
+                  >auth {managedRadiusSetup.auth_port} / acct {managedRadiusSetup.acct_port}</span
+                >
+              </div>
+              <div class="row">
+                <span class="muted">NAS source</span>
+                <span class="mono">{managedRadiusSetup.nas_ip_or_cidr || '—'}</span>
+              </div>
+              <div class="row">
+                <span class="muted">Shared secret</span>
+                <span class="mono"
+                  >{getManagedRadiusDisplayedSecret(
+                    managedRadiusSetup,
+                    showManagedRadiusSecret,
+                  )}</span
+                >
+              </div>
+            </div>
+
+            {#if managedRadiusSetup.warnings.length}
+              <div class="setup-warning">
+                <Icon name="alert-triangle" size={16} />
+                <div>
+                  {#each managedRadiusSetup.warnings as warning}
+                    <div>{warning}</div>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+
+            {#if managedRadiusSetup.cli_script}
+              <pre class="code-block">{managedRadiusSetup.cli_script}</pre>
+            {/if}
+          {:else}
+            <div class="muted">
+              Managed RADIUS belum dikonfigurasi untuk router ini. Saat ini router masih bisa tetap
+              memakai PPP secret lokal dari MikroTik.
+            </div>
+          {/if}
         </div>
       {/if}
     {:else if activeTab === 'interfaces'}
@@ -1032,7 +1184,6 @@
           </Table>
         </div>
       </div>
-
     {:else if activeTab === 'ip'}
       <div class="card full">
         <div class="card-head">
@@ -1138,7 +1289,11 @@
             {:else}
               {@const max = Math.max(...rxSeries, 1)}
               {#each rxSeries as v}
-                <div class="bar rx" style={`height:${Math.round((v / max) * 100)}%;`} title={formatBps(v)}></div>
+                <div
+                  class="bar rx"
+                  style={`height:${Math.round((v / max) * 100)}%;`}
+                  title={formatBps(v)}
+                ></div>
               {/each}
             {/if}
           </div>
@@ -1155,7 +1310,11 @@
             {:else}
               {@const max = Math.max(...txSeries, 1)}
               {#each txSeries as v}
-                <div class="bar tx" style={`height:${Math.round((v / max) * 100)}%;`} title={formatBps(v)}></div>
+                <div
+                  class="bar tx"
+                  style={`height:${Math.round((v / max) * 100)}%;`}
+                  title={formatBps(v)}
+                ></div>
               {/each}
             {/if}
           </div>
@@ -1205,8 +1364,15 @@
     cursor: not-allowed;
   }
 
+  .btn-sm {
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+  }
+
   .hero {
-    background: radial-gradient(1200px 700px at 0% 0%, rgba(99, 102, 241, 0.18), transparent 55%),
+    background:
+      radial-gradient(1200px 700px at 0% 0%, rgba(99, 102, 241, 0.18), transparent 55%),
       radial-gradient(1000px 600px at 100% 0%, rgba(34, 197, 94, 0.12), transparent 55%),
       var(--bg-card);
     border: 1px solid var(--border-color);
@@ -1257,8 +1423,9 @@
   }
 
   .mono {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-      'Courier New', monospace;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+      monospace;
     color: var(--text-primary);
   }
 
@@ -1410,7 +1577,10 @@
     color: var(--text-secondary);
     font-weight: 900;
     cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease;
   }
 
   .tab:hover {
@@ -1446,7 +1616,6 @@
     flex-wrap: wrap;
     gap: 8px;
   }
-
 
   .seg-btn {
     border: 1px solid var(--border-color);
@@ -1488,6 +1657,13 @@
     margin-bottom: 10px;
   }
 
+  .setup-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
   h2 {
     margin: 0;
     color: var(--text-primary);
@@ -1522,6 +1698,38 @@
   .rows {
     display: grid;
     gap: 10px;
+  }
+
+  .setup-grid {
+    display: grid;
+    gap: 10px;
+  }
+
+  .setup-warning {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(245, 158, 11, 0.28);
+    background: rgba(245, 158, 11, 0.1);
+    color: rgba(245, 158, 11, 0.95);
+    font-weight: 700;
+  }
+
+  .code-block {
+    margin: 12px 0 0;
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    background: #0f172a;
+    color: #e2e8f0;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.9rem;
+    line-height: 1.5;
   }
 
   .row {
@@ -1691,6 +1899,5 @@
     .traffic-grid {
       grid-template-columns: 1fr;
     }
-
   }
 </style>

@@ -155,6 +155,21 @@ pub struct MikrotikLogClearResult {
     pub deleted: u64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ManagedRadiusRouterSetup {
+    pub configured: bool,
+    pub router_id: String,
+    pub server_name: Option<String>,
+    pub radius_host: Option<String>,
+    pub auth_port: i32,
+    pub acct_port: i32,
+    pub nas_ip_or_cidr: Option<String>,
+    pub shared_secret: Option<String>,
+    pub shared_secret_masked: Option<String>,
+    pub cli_script: Option<String>,
+    pub warnings: Vec<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct MikrotikRouterMetric {
     pub id: String,

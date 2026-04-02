@@ -2,11 +2,11 @@ use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     CreatePppoeAccountRequest, PaginatedResponse, PppoeAccount, PppoeAccountPublic,
-    PppoeImportAction, PppoeImportCandidate, PppoeImportError, PppoeImportFromRouterRequest,
-    PppoeImportResult, UpdatePppoeAccountRequest,
+    PppoeAccountSource, PppoeImportAction, PppoeImportCandidate, PppoeImportError,
+    PppoeImportFromRouterRequest, PppoeImportResult, UpdatePppoeAccountRequest,
 };
 use crate::security::secret::{decrypt_secret_opt, decrypt_secret_opt_for, encrypt_secret_for};
-use crate::services::{AuditService, AuthService, SettingsService};
+use crate::services::{AuditService, AuthService, ManagedRadiusService, SettingsService};
 use chrono::Utc;
 use mikrotik_rs::{protocol::command::CommandBuilder, protocol::CommandResponse, MikrotikDevice};
 use std::time::Instant;
@@ -35,6 +35,7 @@ pub struct PppoeService {
     auth_service: AuthService,
     audit_service: AuditService,
     settings_service: SettingsService,
+    managed_radius_service: ManagedRadiusService,
 }
 
 impl PppoeService {
@@ -44,11 +45,13 @@ impl PppoeService {
         audit_service: AuditService,
         settings_service: SettingsService,
     ) -> Self {
+        let managed_radius_service = ManagedRadiusService::new(pool.clone());
         Self {
             pool,
             auth_service,
             audit_service,
             settings_service,
+            managed_radius_service,
         }
     }
 
@@ -165,6 +168,29 @@ impl PppoeService {
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
         Ok(dev)
+    }
+
+    async fn resolve_profile_name(
+        &self,
+        tenant_id: &str,
+        account: &PppoeAccount,
+    ) -> AppResult<Option<String>> {
+        if let Some(ref override_name) = account.router_profile_name {
+            return Ok(Some(override_name.clone()));
+        }
+
+        if let Some(ref pid) = account.profile_id {
+            return sqlx::query_scalar(
+                "SELECT name FROM pppoe_profiles WHERE tenant_id = $1 AND id = $2",
+            )
+            .bind(tenant_id)
+            .bind(pid)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(AppError::Database);
+        }
+
+        Ok(None)
     }
 
     async fn router_find_secret_id_by_name(
@@ -693,6 +719,11 @@ impl PppoeService {
                       router_secret_id = $8,
                       last_sync_at = $9,
                       last_error = $10,
+                      radius_present = false,
+                      radius_identity = NULL,
+                      radius_last_sync_at = NULL,
+                      radius_last_error = NULL,
+                      account_source = 'router',
                       updated_at = $11
                     WHERE tenant_id = $12 AND id = $13
                     "#,
@@ -737,14 +768,18 @@ impl PppoeService {
                       username, password_enc,
                       profile_id, router_profile_name, remote_address, address_pool,
                       disabled, comment,
+                      account_source,
                       router_present, router_secret_id, last_sync_at, last_error,
+                      radius_present, radius_identity, radius_last_sync_at, radius_last_error,
                       created_at, updated_at
                     ) VALUES (
                       $1, $2, $3, $4, $5,
                       $6, $7,
                       NULL, $8, $9, NULL,
                       $10, $11,
+                      'router',
                       true, $12, $13, $14,
+                      false, NULL, NULL, NULL,
                       $15, $16
                     )
                     "#,
@@ -908,7 +943,7 @@ impl PppoeService {
 
         let password_enc = encrypt_secret_for(PURPOSE_PPPOE, dto.password.as_str())?;
 
-        let account = PppoeAccount::new(
+        let mut account = PppoeAccount::new(
             tenant_id.to_string(),
             dto.router_id,
             dto.customer_id,
@@ -923,15 +958,20 @@ impl PppoeService {
             dto.disabled,
             dto.comment,
         );
+        account.account_source = dto.account_source.unwrap_or_default();
+        account.radius_identity = Some(account.username.clone());
 
         #[cfg(feature = "postgres")]
         sqlx::query(
             r#"
             INSERT INTO pppoe_accounts
               (id, tenant_id, router_id, customer_id, location_id, username, password_enc, package_id, profile_id, router_profile_name,
-               remote_address, address_pool, disabled, comment, router_present, router_secret_id, last_sync_at, last_error, created_at, updated_at)
+               remote_address, address_pool, disabled, comment, account_source,
+               router_present, router_secret_id, last_sync_at, last_error,
+               radius_present, radius_identity, radius_last_sync_at, radius_last_error,
+               created_at, updated_at)
             VALUES
-              ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+              ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
             "#,
         )
         .bind(&account.id)
@@ -948,10 +988,15 @@ impl PppoeService {
         .bind(&account.address_pool)
         .bind(account.disabled)
         .bind(&account.comment)
+        .bind(account.account_source)
         .bind(account.router_present)
         .bind(&account.router_secret_id)
         .bind(account.last_sync_at)
         .bind(&account.last_error)
+        .bind(account.radius_present)
+        .bind(&account.radius_identity)
+        .bind(account.radius_last_sync_at)
+        .bind(&account.radius_last_error)
         .bind(account.created_at)
         .bind(account.updated_at)
         .execute(&self.pool)
@@ -1055,9 +1100,13 @@ impl PppoeService {
             let vv = v.trim().to_string();
             account.comment = if vv.is_empty() { None } else { Some(vv) };
         }
+        if let Some(v) = dto.account_source {
+            account.account_source = v;
+        }
 
         account.updated_at = Utc::now();
         account.last_error = None;
+        account.radius_last_error = None;
 
         sqlx::query(
             r#"
@@ -1071,9 +1120,11 @@ impl PppoeService {
               address_pool = $7,
               disabled = $8,
               comment = $9,
-              updated_at = $10,
-              last_error = NULL
-            WHERE tenant_id = $11 AND id = $12
+              account_source = $10,
+              updated_at = $11,
+              last_error = NULL,
+              radius_last_error = NULL
+            WHERE tenant_id = $12 AND id = $13
             "#,
         )
         .bind(&account.username)
@@ -1085,6 +1136,7 @@ impl PppoeService {
         .bind(&account.address_pool)
         .bind(account.disabled)
         .bind(&account.comment)
+        .bind(account.account_source)
         .bind(account.updated_at)
         .bind(tenant_id)
         .bind(id)
@@ -1139,20 +1191,30 @@ impl PppoeService {
                 .map_err(AppError::Database)?
                 .ok_or_else(|| AppError::NotFound("PPPoE account not found".into()))?;
 
-        // Best-effort remove from router
-        if let Ok(dev) = self
-            .connect_router(tenant_id, account.router_id.as_str())
-            .await
-        {
-            if let Ok(Some(rid)) = self
-                .router_find_secret_id_by_name(&dev, account.username.as_str())
-                .await
-            {
-                let cmd = CommandBuilder::new()
-                    .command("/ppp/secret/remove")
-                    .attribute("numbers", Some(rid.as_str()))
-                    .build();
-                let _ = dev.send_command(cmd).await;
+        match account.account_source {
+            PppoeAccountSource::Router => {
+                // Best-effort remove from router
+                if let Ok(dev) = self
+                    .connect_router(tenant_id, account.router_id.as_str())
+                    .await
+                {
+                    if let Ok(Some(rid)) = self
+                        .router_find_secret_id_by_name(&dev, account.username.as_str())
+                        .await
+                    {
+                        let cmd = CommandBuilder::new()
+                            .command("/ppp/secret/remove")
+                            .attribute("numbers", Some(rid.as_str()))
+                            .build();
+                        let _ = dev.send_command(cmd).await;
+                    }
+                }
+            }
+            PppoeAccountSource::ManagedRadius => {
+                let _ = self
+                    .managed_radius_service
+                    .delete_account(tenant_id, &account)
+                    .await;
             }
         }
 
@@ -1203,6 +1265,14 @@ impl PppoeService {
             .await;
 
         Ok(updated)
+    }
+
+    pub async fn apply_account_direct(
+        &self,
+        tenant_id: &str,
+        id: &str,
+    ) -> AppResult<PppoeAccountPublic> {
+        self.apply_account_internal(tenant_id, id).await
     }
 
     pub async fn set_location_accounts_disabled_state(
@@ -1281,96 +1351,166 @@ impl PppoeService {
                 .ok_or_else(|| AppError::NotFound("PPPoE account not found".into()))?;
 
         let started = Instant::now();
-
-        let dev = self
-            .connect_router(tenant_id, account.router_id.as_str())
-            .await?;
-
         let password = decrypt_secret_opt_for(PURPOSE_PPPOE, account.password_enc.as_str())?
             .ok_or_else(|| AppError::Internal("Missing PPPoE password".into()))?;
-
-        // Resolve profile name (owned), then pass as &str.
-        let profile_name: Option<String> = if let Some(ref override_name) =
-            account.router_profile_name
-        {
-            Some(override_name.clone())
-        } else if let Some(ref pid) = account.profile_id {
-            sqlx::query_scalar("SELECT name FROM pppoe_profiles WHERE tenant_id = $1 AND id = $2")
-                .bind(tenant_id)
-                .bind(pid)
-                .fetch_optional(&self.pool)
-                .await
-                .map_err(AppError::Database)?
-        } else {
-            None
-        };
-
-        let res = self
-            .router_add_or_set_secret(
-                &dev,
-                account.username.as_str(),
-                password.as_str(),
-                profile_name.as_deref(),
-                account.remote_address.as_deref(),
-                account.address_pool.as_deref(),
-                account.disabled,
-                account.comment.as_deref(),
-            )
-            .await;
+        let profile_name = self.resolve_profile_name(tenant_id, &account).await?;
+        if account.router_profile_name.is_none() {
+            account.router_profile_name = profile_name.clone();
+        }
 
         let now = Utc::now();
-        match res {
-            Ok(router_secret_id) => {
-                account.router_present = true;
-                account.router_secret_id = if router_secret_id.trim().is_empty() {
-                    None
-                } else {
-                    Some(router_secret_id)
-                };
-                account.last_sync_at = Some(now);
-                account.last_error = None;
 
-                let _ = sqlx::query(
-                    r#"
-                    UPDATE pppoe_accounts SET
-                      router_present = true,
-                      router_secret_id = $1,
-                      last_sync_at = $2,
-                      last_error = NULL,
-                      updated_at = $3
-                    WHERE tenant_id = $4 AND id = $5
-                    "#,
-                )
-                .bind(&account.router_secret_id)
-                .bind(account.last_sync_at)
-                .bind(now)
-                .bind(tenant_id)
-                .bind(id)
-                .execute(&self.pool)
-                .await;
+        match account.account_source {
+            PppoeAccountSource::Router => {
+                let dev = self
+                    .connect_router(tenant_id, account.router_id.as_str())
+                    .await?;
+                let res = self
+                    .router_add_or_set_secret(
+                        &dev,
+                        account.username.as_str(),
+                        password.as_str(),
+                        profile_name.as_deref(),
+                        account.remote_address.as_deref(),
+                        account.address_pool.as_deref(),
+                        account.disabled,
+                        account.comment.as_deref(),
+                    )
+                    .await;
+
+                match res {
+                    Ok(router_secret_id) => {
+                        account.router_present = true;
+                        account.router_secret_id = if router_secret_id.trim().is_empty() {
+                            None
+                        } else {
+                            Some(router_secret_id)
+                        };
+                        account.last_sync_at = Some(now);
+                        account.last_error = None;
+                        account.radius_present = false;
+                        account.radius_last_sync_at = None;
+                        account.radius_last_error = None;
+
+                        let _ = sqlx::query(
+                            r#"
+                            UPDATE pppoe_accounts SET
+                              router_present = true,
+                              router_secret_id = $1,
+                              last_sync_at = $2,
+                              last_error = NULL,
+                              radius_present = false,
+                              radius_last_sync_at = NULL,
+                              radius_last_error = NULL,
+                              updated_at = $3
+                            WHERE tenant_id = $4 AND id = $5
+                            "#,
+                        )
+                        .bind(&account.router_secret_id)
+                        .bind(account.last_sync_at)
+                        .bind(now)
+                        .bind(tenant_id)
+                        .bind(id)
+                        .execute(&self.pool)
+                        .await;
+                    }
+                    Err(e) => {
+                        let msg = format!("apply failed: {}", e);
+                        account.last_error = Some(msg.clone());
+                        account.router_present = false;
+                        account.last_sync_at = Some(now);
+                        let _ = sqlx::query(
+                            r#"
+                            UPDATE pppoe_accounts SET
+                              router_present = false,
+                              last_sync_at = $1,
+                              last_error = $2,
+                              updated_at = $3
+                            WHERE tenant_id = $4 AND id = $5
+                            "#,
+                        )
+                        .bind(account.last_sync_at)
+                        .bind(&msg)
+                        .bind(now)
+                        .bind(tenant_id)
+                        .bind(id)
+                        .execute(&self.pool)
+                        .await;
+                    }
+                }
             }
-            Err(e) => {
-                let msg = format!("apply failed: {}", e);
-                account.last_error = Some(msg.clone());
-                account.router_present = false;
-                account.last_sync_at = Some(now);
-                let _ = sqlx::query(
-                    r#"
-                    UPDATE pppoe_accounts SET
-                      router_present = false,
-                      last_sync_at = $1,
-                      last_error = $2,
-                      updated_at = $3
-                    WHERE tenant_id = $4 AND id = $5
-                    "#,
-                )
-                .bind(account.last_sync_at)
-                .bind(&msg)
-                .bind(now)
-                .bind(tenant_id)
-                .bind(id)
-                .execute(&self.pool)
-                .await;
+            PppoeAccountSource::ManagedRadius => {
+                let res = self
+                    .managed_radius_service
+                    .apply_account(tenant_id, &account, password.as_str())
+                    .await;
+
+                match res {
+                    Ok(radius) => {
+                        account.router_present = false;
+                        account.router_secret_id = None;
+                        account.radius_present = true;
+                        account.radius_identity = Some(radius.radius_identity);
+                        account.radius_last_sync_at = Some(now);
+                        account.radius_last_error = None;
+                        account.last_sync_at = Some(now);
+                        account.last_error = None;
+
+                        let _ = sqlx::query(
+                            r#"
+                            UPDATE pppoe_accounts SET
+                              router_present = false,
+                              router_secret_id = NULL,
+                              last_sync_at = $1,
+                              last_error = NULL,
+                              radius_present = true,
+                              radius_identity = $2,
+                              radius_last_sync_at = $3,
+                              radius_last_error = NULL,
+                              updated_at = $4
+                            WHERE tenant_id = $5 AND id = $6
+                            "#,
+                        )
+                        .bind(account.last_sync_at)
+                        .bind(&account.radius_identity)
+                        .bind(account.radius_last_sync_at)
+                        .bind(now)
+                        .bind(tenant_id)
+                        .bind(id)
+                        .execute(&self.pool)
+                        .await;
+                    }
+                    Err(e) => {
+                        let msg = format!("apply failed: {}", e);
+                        account.radius_present = false;
+                        account.radius_last_sync_at = Some(now);
+                        account.radius_last_error = Some(msg.clone());
+                        account.last_sync_at = Some(now);
+                        account.last_error = Some(msg.clone());
+
+                        let _ = sqlx::query(
+                            r#"
+                            UPDATE pppoe_accounts SET
+                              radius_present = false,
+                              last_sync_at = $1,
+                              last_error = $2,
+                              radius_last_sync_at = $3,
+                              radius_last_error = $4,
+                              updated_at = $5
+                            WHERE tenant_id = $6 AND id = $7
+                            "#,
+                        )
+                        .bind(account.last_sync_at)
+                        .bind(&msg)
+                        .bind(account.radius_last_sync_at)
+                        .bind(&msg)
+                        .bind(now)
+                        .bind(tenant_id)
+                        .bind(id)
+                        .execute(&self.pool)
+                        .await;
+                    }
+                }
             }
         }
 
@@ -1402,26 +1542,8 @@ impl PppoeService {
 
         self.ensure_router_access(tenant_id, router_id).await?;
 
-        let dev = self.connect_router(tenant_id, router_id).await?;
-
-        let cmd = CommandBuilder::new().command("/ppp/secret/print").build();
-        let mut rx = dev
-            .send_command(cmd)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
-
-        let mut router_usernames: std::collections::HashSet<String> = Default::default();
-        while let Some(res) = rx.recv().await {
-            let r = res.map_err(|e| AppError::Internal(e.to_string()))?;
-            if let CommandResponse::Reply(reply) = r {
-                if let Some(name) = reply.attributes.get("name").and_then(|v| v.clone()) {
-                    router_usernames.insert(name);
-                }
-            }
-        }
-
-        let rows: Vec<(String, String)> = sqlx::query_as(
-            "SELECT id, username FROM pppoe_accounts WHERE tenant_id = $1 AND router_id = $2",
+        let rows: Vec<(String, String, PppoeAccountSource)> = sqlx::query_as(
+            "SELECT id, username, account_source FROM pppoe_accounts WHERE tenant_id = $1 AND router_id = $2",
         )
         .bind(tenant_id)
         .bind(router_id)
@@ -1429,32 +1551,94 @@ impl PppoeService {
         .await
         .map_err(AppError::Database)?;
 
+        let has_router_accounts = rows
+            .iter()
+            .any(|(_, _, source)| *source == PppoeAccountSource::Router);
+        let router_usernames = if has_router_accounts {
+            let dev = self.connect_router(tenant_id, router_id).await?;
+            let cmd = CommandBuilder::new().command("/ppp/secret/print").build();
+            let mut rx = dev
+                .send_command(cmd)
+                .await
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+            let mut usernames: std::collections::HashSet<String> = Default::default();
+            while let Some(res) = rx.recv().await {
+                let r = res.map_err(|e| AppError::Internal(e.to_string()))?;
+                if let CommandResponse::Reply(reply) = r {
+                    if let Some(name) = reply.attributes.get("name").and_then(|v| v.clone()) {
+                        usernames.insert(name);
+                    }
+                }
+            }
+            usernames
+        } else {
+            Default::default()
+        };
+        let radius_usernames = if rows
+            .iter()
+            .any(|(_, _, source)| *source == PppoeAccountSource::ManagedRadius)
+        {
+            self.managed_radius_service
+                .reconcile_router(tenant_id, router_id)
+                .await?
+        } else {
+            Default::default()
+        };
+
         let mut present = 0i64;
         let mut missing = 0i64;
         let now = Utc::now();
-        for (id, username) in rows {
-            let is_present = router_usernames.contains(username.as_str());
+        for (id, username, source) in rows {
+            let is_present = match source {
+                PppoeAccountSource::Router => router_usernames.contains(username.as_str()),
+                PppoeAccountSource::ManagedRadius => radius_usernames.contains(username.as_str()),
+            };
             if is_present {
                 present += 1;
             } else {
                 missing += 1;
             }
-            let _ = sqlx::query(
-                r#"
-                UPDATE pppoe_accounts SET
-                  router_present = $1,
-                  last_sync_at = $2,
-                  updated_at = $3
-                WHERE tenant_id = $4 AND id = $5
-                "#,
-            )
-            .bind(is_present)
-            .bind(now)
-            .bind(now)
-            .bind(tenant_id)
-            .bind(&id)
-            .execute(&self.pool)
-            .await;
+            match source {
+                PppoeAccountSource::Router => {
+                    let _ = sqlx::query(
+                        r#"
+                        UPDATE pppoe_accounts SET
+                          router_present = $1,
+                          last_sync_at = $2,
+                          updated_at = $3
+                        WHERE tenant_id = $4 AND id = $5
+                        "#,
+                    )
+                    .bind(is_present)
+                    .bind(now)
+                    .bind(now)
+                    .bind(tenant_id)
+                    .bind(&id)
+                    .execute(&self.pool)
+                    .await;
+                }
+                PppoeAccountSource::ManagedRadius => {
+                    let _ = sqlx::query(
+                        r#"
+                        UPDATE pppoe_accounts SET
+                          radius_present = $1,
+                          radius_last_sync_at = $2,
+                          radius_last_error = CASE WHEN $1 THEN NULL ELSE 'Missing on managed RADIUS' END,
+                          last_sync_at = $2,
+                          last_error = CASE WHEN $1 THEN NULL ELSE 'Missing on managed RADIUS' END,
+                          updated_at = $3
+                        WHERE tenant_id = $4 AND id = $5
+                        "#,
+                    )
+                    .bind(is_present)
+                    .bind(now)
+                    .bind(now)
+                    .bind(tenant_id)
+                    .bind(&id)
+                    .execute(&self.pool)
+                    .await;
+                }
+            }
         }
 
         self.audit_service

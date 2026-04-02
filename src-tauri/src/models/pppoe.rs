@@ -2,6 +2,15 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, Default)]
+#[serde(rename_all = "snake_case")]
+#[sqlx(type_name = "text", rename_all = "snake_case")]
+pub enum PppoeAccountSource {
+    #[default]
+    Router,
+    ManagedRadius,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct PppoeProfile {
     pub id: String,
@@ -53,10 +62,15 @@ pub struct PppoeAccount {
     pub address_pool: Option<String>,
     pub disabled: bool,
     pub comment: Option<String>,
+    pub account_source: PppoeAccountSource,
     pub router_present: bool,
     pub router_secret_id: Option<String>,
     pub last_sync_at: Option<DateTime<Utc>>,
     pub last_error: Option<String>,
+    pub radius_present: bool,
+    pub radius_identity: Option<String>,
+    pub radius_last_sync_at: Option<DateTime<Utc>>,
+    pub radius_last_error: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -94,10 +108,15 @@ impl PppoeAccount {
             address_pool,
             disabled: disabled.unwrap_or(false),
             comment,
+            account_source: PppoeAccountSource::Router,
             router_present: false,
             router_secret_id: None,
             last_sync_at: None,
             last_error: None,
+            radius_present: false,
+            radius_identity: None,
+            radius_last_sync_at: None,
+            radius_last_error: None,
             created_at: now,
             updated_at: now,
         }
@@ -119,6 +138,7 @@ pub struct CreatePppoeAccountRequest {
     pub address_pool: Option<String>,
     pub disabled: Option<bool>,
     pub comment: Option<String>,
+    pub account_source: Option<PppoeAccountSource>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -133,6 +153,7 @@ pub struct UpdatePppoeAccountRequest {
     pub address_pool: Option<String>,
     pub disabled: Option<bool>,
     pub comment: Option<String>,
+    pub account_source: Option<PppoeAccountSource>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -150,10 +171,15 @@ pub struct PppoeAccountPublic {
     pub address_pool: Option<String>,
     pub disabled: bool,
     pub comment: Option<String>,
+    pub account_source: PppoeAccountSource,
     pub router_present: bool,
     pub router_secret_id: Option<String>,
     pub last_sync_at: Option<DateTime<Utc>>,
     pub last_error: Option<String>,
+    pub radius_present: bool,
+    pub radius_identity: Option<String>,
+    pub radius_last_sync_at: Option<DateTime<Utc>>,
+    pub radius_last_error: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -174,10 +200,15 @@ impl From<PppoeAccount> for PppoeAccountPublic {
             address_pool: a.address_pool,
             disabled: a.disabled,
             comment: a.comment,
+            account_source: a.account_source,
             router_present: a.router_present,
             router_secret_id: a.router_secret_id,
             last_sync_at: a.last_sync_at,
             last_error: a.last_error,
+            radius_present: a.radius_present,
+            radius_identity: a.radius_identity,
+            radius_last_sync_at: a.radius_last_sync_at,
+            radius_last_error: a.radius_last_error,
             created_at: a.created_at,
             updated_at: a.updated_at,
         }
@@ -228,4 +259,58 @@ pub struct PppoeImportResult {
     pub errors: Vec<PppoeImportError>,
     pub used_customer_id: String,
     pub used_location_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct ManagedRadiusServer {
+    pub id: String,
+    pub tenant_id: String,
+    pub name: String,
+    pub db_host: String,
+    pub db_port: i32,
+    pub db_name: String,
+    pub db_user: String,
+    #[serde(skip_serializing)]
+    pub db_password_enc: String,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct ManagedRadiusNas {
+    pub id: String,
+    pub tenant_id: String,
+    pub router_id: String,
+    pub radius_server_id: String,
+    pub nas_name: String,
+    pub nas_ip_or_cidr: String,
+    #[serde(skip_serializing)]
+    pub shared_secret_enc: String,
+    pub shortname: Option<String>,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn pppoe_account_source_defaults_to_router() {
+        assert_eq!(PppoeAccountSource::default(), PppoeAccountSource::Router);
+    }
+
+    #[test]
+    fn pppoe_account_source_uses_snake_case_serde_contract() {
+        let raw = serde_json::from_value::<PppoeAccountSource>(json!("managed_radius"))
+            .expect("managed_radius should deserialize");
+        assert_eq!(raw, PppoeAccountSource::ManagedRadius);
+
+        let serialized =
+            serde_json::to_value(PppoeAccountSource::ManagedRadius).expect("serialize source");
+        assert_eq!(serialized, json!("managed_radius"));
+    }
 }

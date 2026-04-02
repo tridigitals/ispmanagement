@@ -1,0 +1,34 @@
+sql {
+    driver = "rlm_sql_postgresql"
+    dialect = "postgresql"
+
+    server = "__RADIUS_DB_HOST__"
+    port = __RADIUS_DB_PORT__
+    login = "__RADIUS_DB_USER__"
+    password = "__RADIUS_DB_PASSWORD__"
+    radius_db = "__RADIUS_DB_NAME__"
+
+    read_clients = yes
+    read_groups = no
+    delete_stale_sessions = no
+
+    pool {
+        start = 1
+        min = 1
+        max = 8
+        spare = 2
+        uses = 0
+        retry_delay = 30
+        lifetime = 0
+        cleanup_interval = 30
+        idle_timeout = 60
+    }
+
+    client_query = "SELECT nas_ip_or_cidr AS nasname, COALESCE(shortname, nas_name) AS shortname, 'other' AS type, shared_secret AS secret, NULL AS server FROM managed_radius_nas WHERE is_active = true"
+
+    authorize_check_query = "SELECT id, username, 'Cleartext-Password' AS attribute, cleartext_password AS value, ':=' AS op FROM managed_radius_accounts WHERE username = '%{SQL-User-Name}' AND disabled = false LIMIT 1"
+
+    authorize_reply_query = "SELECT id, username, attribute, value, ':=' AS op FROM (SELECT id, username, 'Mikrotik-Group' AS attribute, profile_name AS value FROM managed_radius_accounts WHERE username = '%{SQL-User-Name}' AND profile_name IS NOT NULL UNION ALL SELECT id, username, 'Framed-IP-Address' AS attribute, remote_address AS value FROM managed_radius_accounts WHERE username = '%{SQL-User-Name}' AND remote_address IS NOT NULL UNION ALL SELECT id, username, 'Framed-Pool' AS attribute, address_pool AS value FROM managed_radius_accounts WHERE username = '%{SQL-User-Name}' AND address_pool IS NOT NULL) attrs"
+
+    $INCLUDE ${modconfdir}/sql/main/${dialect}/queries.conf
+}

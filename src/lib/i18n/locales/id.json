@@ -2493,8 +2493,8 @@
         },
         "stats": {
           "total": "Total",
-          "present": "Ada di router",
-          "missing": "Tidak ada",
+          "present": "Sudah diprovisikan",
+          "missing": "Belum diprovisikan",
           "disabled": "Nonaktif"
         },
         "filters": {
@@ -2504,8 +2504,8 @@
           "provisioning": "Provisioning",
           "disabled": "Status",
           "any": "Semua",
-          "present": "Ada di router",
-          "missing": "Tidak ada",
+          "present": "Sudah diprovisikan",
+          "missing": "Belum diprovisikan",
           "enabled": "Aktif",
           "disabled_only": "Nonaktif"
         },
@@ -2513,8 +2513,13 @@
           "username": "Username",
           "customer": "Pelanggan",
           "router": "Router",
+          "source": "Sumber",
           "provisioning": "Provisioning",
           "sync": "Sinkron"
+        },
+        "sources": {
+          "router": "Secret router",
+          "managed_radius": "Managed RADIUS"
         },
         "provisioning": {
           "draft": "Draft",
@@ -2524,23 +2529,32 @@
         },
         "sync": {
           "present": "Ada di router",
-          "missing": "Tidak ada"
+          "missing": "Tidak ada",
+          "present_radius": "Ada di RADIUS",
+          "missing_radius": "Tidak ada di RADIUS"
         },
         "actions": {
           "reconcile": "Sinkronkan",
           "open_customer": "Buka pelanggan",
           "open_customer_billing": "Buka billing pelanggan",
           "apply": "Terapkan ke router",
+          "apply_radius": "Terapkan ke RADIUS",
           "retry_apply_batch": "Ulang apply"
         },
         "form": {
           "package_hint": "Jika memilih paket, profile/pool akan terisi otomatis untuk router yang dipilih (masih bisa diubah).",
-          "disabled_hint": "Nonaktifkan akun PPPoE ini (akan diterapkan ke router saat Anda klik Terapkan)."
+          "disabled_hint": "Nonaktifkan akun PPPoE ini (akan diterapkan ke router saat Anda klik Terapkan).",
+          "source_radius_hint": "Akun ini akan diprovisikan ke managed RADIUS dan membutuhkan konfigurasi managed RADIUS server serta NAS mapping untuk router yang dipilih.",
+          "source_router_hint": "Akun ini akan diprovisikan ke tabel PPP secret lokal di router.",
+          "disabled_hint_radius": "Untuk managed RADIUS, ini menonaktifkan autentikasi terpusat untuk akun tersebut.",
+          "disabled_hint_radius_apply": "Nonaktifkan akun PPPoE ini di managed RADIUS saat Anda klik Terapkan ke RADIUS."
         },
         "toasts": {
           "applied": "Berhasil diterapkan ke router",
+          "applied_radius": "Berhasil diterapkan ke RADIUS",
           "apply_failed": "Gagal menerapkan akun PPPoE: {message}",
           "auto_applied": "Berhasil disimpan dan diterapkan otomatis ke router",
+          "auto_applied_radius": "Berhasil disimpan dan diterapkan otomatis ke RADIUS",
           "auto_apply_failed": "Data tersimpan, tetapi auto-apply gagal: {message}",
           "retry_batch_ok": "{count} akun berhasil diterapkan",
           "retry_batch_fail": "{count} akun gagal diterapkan",

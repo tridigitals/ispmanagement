@@ -305,6 +305,10 @@ const commandMap: Record<string, { method: string; path: string }> = {
     method: 'GET',
     path: '/admin/mikrotik/routers/:id/snapshot',
   },
+  get_mikrotik_router_managed_radius_setup: {
+    method: 'GET',
+    path: '/admin/mikrotik/routers/:routerId/managed-radius-setup',
+  },
   list_mikrotik_router_metrics: {
     method: 'GET',
     path: '/admin/mikrotik/routers/:routerId/metrics',

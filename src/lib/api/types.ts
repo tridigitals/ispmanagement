@@ -308,7 +308,13 @@ export interface CustomerSubscription {
   billing_cycle: 'monthly' | 'yearly' | string;
   price: number;
   currency_code: string;
-  status: 'active' | 'pending_installation' | 'installation_done_awaiting_payment' | 'suspended' | 'cancelled' | string;
+  status:
+    | 'active'
+    | 'pending_installation'
+    | 'installation_done_awaiting_payment'
+    | 'suspended'
+    | 'cancelled'
+    | string;
   starts_at: string | null;
   ends_at: string | null;
   notes: string | null;
@@ -333,7 +339,6 @@ export interface CustomerPortalSubscriptionStats {
   pending_installation: number;
   needs_attention: number;
 }
-
 
 export interface CustomerLifecycleStageMetric {
   stage: string;
@@ -442,6 +447,7 @@ export interface CustomerPortalInstallationTrackerResponse {
 }
 
 export interface PppoeAccountPublic {
+  account_source: 'router' | 'managed_radius';
   id: string;
   tenant_id: string;
   router_id: string;
@@ -459,8 +465,26 @@ export interface PppoeAccountPublic {
   router_secret_id: string | null;
   last_sync_at: string | null;
   last_error: string | null;
+  radius_present: boolean;
+  radius_identity: string | null;
+  radius_last_sync_at: string | null;
+  radius_last_error: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ManagedRadiusRouterSetup {
+  configured: boolean;
+  router_id: string;
+  server_name: string | null;
+  radius_host: string | null;
+  auth_port: number;
+  acct_port: number;
+  nas_ip_or_cidr: string | null;
+  shared_secret: string | null;
+  shared_secret_masked: string | null;
+  cli_script: string | null;
+  warnings: string[];
 }
 
 export interface IspPackage {

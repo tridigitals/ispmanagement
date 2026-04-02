@@ -1,0 +1,52 @@
+services:
+  radius-postgres:
+    image: postgres:16-alpine
+    container_name: isp_radius_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${RADIUS_POSTGRES_USER:-radius}
+      POSTGRES_PASSWORD: ${RADIUS_POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${RADIUS_POSTGRES_DB:-radius}
+    ports:
+      - '${RADIUS_POSTGRES_PORT:-55433}:5432'
+    volumes:
+      - isp_radius_postgres_data:/var/lib/postgresql/data
+      - ./deploy/freeradius/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${RADIUS_POSTGRES_USER:-radius} -d ${RADIUS_POSTGRES_DB:-radius}',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  freeradius:
+    build:
+      context: ./deploy/freeradius
+      dockerfile: Dockerfile
+      args:
+        FREERADIUS_BASE_IMAGE: ${FREERADIUS_BASE_IMAGE:-freeradius/freeradius-server:latest}
+    container_name: isp_freeradius
+    restart: unless-stopped
+    depends_on:
+      radius-postgres:
+        condition: service_healthy
+    ports:
+      - '${RADIUS_AUTH_PORT:-1812}:1812/udp'
+      - '${RADIUS_ACCT_PORT:-1813}:1813/udp'
+    environment:
+      RADIUS_DB_HOST: radius-postgres
+      RADIUS_DB_PORT: 5432
+      RADIUS_DB_NAME: ${RADIUS_POSTGRES_DB:-radius}
+      RADIUS_DB_USER: ${RADIUS_POSTGRES_USER:-radius}
+      RADIUS_DB_PASSWORD: ${RADIUS_POSTGRES_PASSWORD:-change-me}
+    healthcheck:
+      test: ['CMD-SHELL', 'test -f /etc/freeradius/3.0/mods-available/sql']
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  isp_radius_postgres_data:

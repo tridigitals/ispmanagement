@@ -2707,8 +2707,8 @@
         },
         "stats": {
           "total": "Total",
-          "present": "On router",
-          "missing": "Missing",
+          "present": "Provisioned",
+          "missing": "Not provisioned",
           "disabled": "Disabled"
         },
         "filters": {
@@ -2718,8 +2718,8 @@
           "provisioning": "Provisioning",
           "disabled": "State",
           "any": "Any",
-          "present": "On router",
-          "missing": "Missing",
+          "present": "Provisioned",
+          "missing": "Not provisioned",
           "enabled": "Enabled",
           "disabled_only": "Disabled"
         },
@@ -2727,8 +2727,13 @@
           "username": "Username",
           "customer": "Customer",
           "router": "Router",
+          "source": "Source",
           "provisioning": "Provisioning",
           "sync": "Sync"
+        },
+        "sources": {
+          "router": "Router secret",
+          "managed_radius": "Managed RADIUS"
         },
         "provisioning": {
           "draft": "Draft",
@@ -2738,23 +2743,32 @@
         },
         "sync": {
           "present": "On router",
-          "missing": "Missing"
+          "missing": "Missing",
+          "present_radius": "On RADIUS",
+          "missing_radius": "Missing on RADIUS"
         },
         "actions": {
           "reconcile": "Reconcile",
           "open_customer": "Open customer",
           "open_customer_billing": "Open customer billing",
           "apply": "Apply to router",
+          "apply_radius": "Apply to RADIUS",
           "retry_apply_batch": "Retry apply"
         },
         "form": {
           "package_hint": "If you select a package, profile/pool will be prefilled for the selected router (you can still override).",
-          "disabled_hint": "Disable this PPPoE account (will be applied to router when you click Apply)."
+          "disabled_hint": "Disable this PPPoE account (will be applied to router when you click Apply).",
+          "source_radius_hint": "This account will be provisioned to managed RADIUS and expects a managed RADIUS server plus NAS mapping for the selected router.",
+          "source_router_hint": "This account will be provisioned to the router-local PPP secret table.",
+          "disabled_hint_radius": "For managed RADIUS, this disables centralized authentication for the account.",
+          "disabled_hint_radius_apply": "Disable this PPPoE account in managed RADIUS when you click Apply to RADIUS."
         },
         "toasts": {
           "applied": "Applied to router",
+          "applied_radius": "Applied to RADIUS",
           "apply_failed": "Failed to apply PPPoE account: {message}",
           "auto_applied": "Saved and automatically applied to router",
+          "auto_applied_radius": "Saved and automatically applied to RADIUS",
           "auto_apply_failed": "Saved, but auto-apply failed: {message}",
           "retry_batch_ok": "{count} account(s) applied",
           "retry_batch_fail": "{count} account(s) failed to apply",

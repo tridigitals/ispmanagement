@@ -154,6 +154,15 @@ The app will open automatically. First run will show the **Installation Wizard**
 | `POSTGRES_DB`       | Database name     | `isp_db`       |
 | `POSTGRES_PORT`     | Exposed port      | `5440`          |
 
+### Managed RADIUS (Optional)
+
+| Variable               | Description                                                  | Example             |
+| ---------------------- | ------------------------------------------------------------ | ------------------- |
+| `MANAGED_RADIUS_HOST`  | Public host or IP used by MikroTik to reach the RADIUS server | `103.190.112.214`   |
+| `RADIUS_POSTGRES_PORT` | Exposed local PostgreSQL port for the managed RADIUS database | `55433`             |
+| `RADIUS_AUTH_PORT`     | FreeRADIUS authentication UDP port                            | `1812`              |
+| `RADIUS_ACCT_PORT`     | FreeRADIUS accounting UDP port                                | `1813`              |
+
 ### For SQLite Mode
 
 ```env
@@ -215,6 +224,42 @@ docker-compose up -d
 npm run tauri dev
 ```
 
+### Managed RADIUS Stack (Optional)
+
+Use this when PPPoE accounts should be provisioned to a central FreeRADIUS server instead of only to the router.
+
+```bash
+# Start billing database/app dependencies
+docker compose up -d
+
+# Start managed RADIUS services
+docker compose -f docker-compose.radius.yml up -d --build
+```
+
+The managed RADIUS stack includes:
+
+- `freeradius` for PPP authentication and accounting on UDP `1812/1813`
+- `radius-postgres` for the managed RADIUS account store
+
+See [deploy/freeradius/README.md](deploy/freeradius/README.md) for image layout and container details.
+
+### Managed RADIUS Workflow
+
+1. Configure `MANAGED_RADIUS_HOST` so router setup CLI points to the public FreeRADIUS host instead of the database host fallback.
+2. Open a router detail page in the tenant admin and copy the `RADIUS Setup` CLI snippet.
+3. Paste the CLI into MikroTik so the router adds the correct RADIUS server address, ports, and router-specific shared secret.
+4. Create or update PPPoE accounts with source `Managed RADIUS`, then use `Apply to RADIUS`.
+5. Verify the provisioned account in the managed RADIUS database if needed.
+
+Example verification query:
+
+```bash
+PGPASSWORD='change-me' psql -h localhost -p 55433 -U radius -d radius -x -c \
+"select tenant_id, router_id, username, radius_identity, cleartext_password, profile_name, remote_address, address_pool, disabled, updated_at
+ from managed_radius_accounts
+ where username = 'example-user';"
+```
+
 ### SQLite (Development/Testing)
 
 ```bash
@@ -230,6 +275,9 @@ npm run tauri dev -- -- --features sqlite --no-default-features
 | Tauri Dev  | `1420`    | SvelteKit dev server    |
 | HTTP API   | `3000`    | Axum HTTP server        |
 | PostgreSQL | `5440`    | Database                |
+| RADIUS DB  | `55433`   | Managed RADIUS PostgreSQL |
+| RADIUS Auth | `1812/udp` | FreeRADIUS authentication |
+| RADIUS Acct | `1813/udp` | FreeRADIUS accounting    |
 | WebSocket  | `3000/ws` | Real-time notifications |
 
 ---

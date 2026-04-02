@@ -1,5 +1,5 @@
 import { getTokenOrThrow, safeInvoke } from './core';
-import type { PaginatedResponse } from './types';
+import type { ManagedRadiusRouterSetup, PaginatedResponse } from './types';
 
 export const mikrotik = {
   routers: {
@@ -9,6 +9,12 @@ export const mikrotik = {
       safeInvoke('get_mikrotik_router', { token: getTokenOrThrow(), id }),
     snapshot: (id: string): Promise<any> =>
       safeInvoke('get_mikrotik_router_snapshot', { token: getTokenOrThrow(), id }),
+    managedRadiusSetup: (routerId: string): Promise<ManagedRadiusRouterSetup> =>
+      safeInvoke('get_mikrotik_router_managed_radius_setup', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+      }),
     create: (router: {
       name: string;
       host: string;
@@ -216,7 +222,9 @@ export const mikrotik = {
         include_total: params?.includeTotal,
         includeTotal: params?.includeTotal,
       }),
-    getRetention: (routerId: string): Promise<{ router_id: string; retention_days: number | null }> =>
+    getRetention: (
+      routerId: string,
+    ): Promise<{ router_id: string; retention_days: number | null }> =>
       safeInvoke('get_mikrotik_log_retention', {
         token: getTokenOrThrow(),
         router_id: routerId,

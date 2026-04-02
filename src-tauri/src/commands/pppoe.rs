@@ -1,6 +1,7 @@
 use crate::models::{
-    CreatePppoeAccountRequest, PaginatedResponse, PppoeAccountPublic, PppoeImportCandidate,
-    PppoeImportFromRouterRequest, PppoeImportResult, UpdatePppoeAccountRequest,
+    CreatePppoeAccountRequest, PaginatedResponse, PppoeAccountPublic, PppoeAccountSource,
+    PppoeImportCandidate, PppoeImportFromRouterRequest, PppoeImportResult,
+    UpdatePppoeAccountRequest,
 };
 use crate::services::{AuthService, PppoeService};
 use tauri::State;
@@ -76,6 +77,7 @@ pub async fn create_pppoe_account(
     address_pool: Option<String>,
     disabled: Option<bool>,
     comment: Option<String>,
+    account_source: Option<PppoeAccountSource>,
     auth: State<'_, AuthService>,
     pppoe: State<'_, PppoeService>,
 ) -> Result<PppoeAccountPublic, String> {
@@ -100,6 +102,7 @@ pub async fn create_pppoe_account(
         address_pool,
         disabled,
         comment,
+        account_source,
     };
 
     pppoe
@@ -121,6 +124,7 @@ pub async fn update_pppoe_account(
     address_pool: Option<String>,
     disabled: Option<bool>,
     comment: Option<String>,
+    account_source: Option<PppoeAccountSource>,
     auth: State<'_, AuthService>,
     pppoe: State<'_, PppoeService>,
 ) -> Result<PppoeAccountPublic, String> {
@@ -142,6 +146,7 @@ pub async fn update_pppoe_account(
         address_pool,
         disabled,
         comment,
+        account_source,
     };
 
     pppoe
