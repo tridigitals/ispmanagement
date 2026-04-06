@@ -60,6 +60,15 @@ describe('hooks reroute', () => {
     expect(run('billing.tridigitals.com', '/login')).toBeUndefined();
   });
 
+  it('does not rewrite superadmin storage path on platform domain', () => {
+    expect(run('billing.tridigitals.com', '/superadmin/storage')).toBeUndefined();
+  });
+
+  it('does not rewrite superadmin storage path on platform domain in browser context', () => {
+    installBrowserTenantSlug('xtrabit');
+    expect(run('billing.tridigitals.com', '/superadmin/storage')).toBeUndefined();
+  });
+
   it('leaves slug-prefixed platform app path unresolved in SSR when no tenant slug is available', () => {
     expect(run('billing.tridigitals.com', '/foo/admin/settings')).toBeUndefined();
   });

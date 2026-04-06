@@ -16,6 +16,9 @@ const PUBLIC_PATHS = [
   '/reset-password',
   '/superadmin',
 ];
+const RESERVED_ROOT_SEGMENTS = new Set(
+  PUBLIC_PATHS.map((path) => path.replace(/^\//, '').split('/')[0]).filter(Boolean),
+);
 
 /**
  * Reroute hook to handle custom domains and rewrite paths to /[tenant]/...
@@ -41,7 +44,10 @@ export const reroute: Reroute = ({ url }) => {
     );
     if (m) {
       const firstSegment = m[1];
-      if (!(APP_ROOT_SEGMENTS as readonly string[]).includes(firstSegment)) {
+      if (
+        !(APP_ROOT_SEGMENTS as readonly string[]).includes(firstSegment) &&
+        !RESERVED_ROOT_SEGMENTS.has(firstSegment)
+      ) {
         const appRoot = m[2];
         const tail = m[3] || '';
         normalizedPath = `/${appRoot}${tail}`;
