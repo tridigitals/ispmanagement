@@ -1,11 +1,15 @@
 use crate::error::{AppError, AppResult};
 use crate::http::AppState;
 use crate::models::{
-    CreateMikrotikRouterRequest, ManagedRadiusRouterSetup, MikrotikAlert, MikrotikIncident,
-    MikrotikInterfaceCounter, MikrotikInterfaceMetric, MikrotikIpPool, MikrotikLogClearResult,
-    MikrotikLogEntry, MikrotikLogRetentionSettings, MikrotikLogSyncResult, MikrotikPppProfile,
-    MikrotikRouter, MikrotikRouterMetric, MikrotikTestResult, PaginatedResponse,
-    SimulateMikrotikIncidentRequest, UpdateMikrotikIncidentRequest, UpdateMikrotikRouterRequest,
+    CreateMikrotikIpPoolRequest, CreateMikrotikPppProfileRequest, CreateMikrotikRouterRequest,
+    ManagedRadiusRouterSetup, MikrotikAlert, MikrotikIncident, MikrotikInterfaceCounter,
+    MikrotikInterfaceMetric, MikrotikIpPool, MikrotikIpPoolDeleteResult,
+    MikrotikIpPoolDependencyStatus, MikrotikLogClearResult, MikrotikLogEntry,
+    MikrotikLogRetentionSettings, MikrotikLogSyncResult, MikrotikPppProfile,
+    MikrotikPppProfileDeleteResult, MikrotikPppProfileDependencyStatus, MikrotikRouter,
+    MikrotikRouterMetric, MikrotikTestResult, PaginatedResponse, SimulateMikrotikIncidentRequest,
+    UpdateMikrotikIncidentRequest, UpdateMikrotikIpPoolRequest, UpdateMikrotikPppProfileRequest,
+    UpdateMikrotikRouterRequest,
 };
 use crate::services::mikrotik_service::{
     MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL, MIKROTIK_LOGS_DEFAULT_PAGE, MIKROTIK_LOGS_DEFAULT_PER_PAGE,
@@ -45,9 +49,25 @@ pub fn router() -> Router<AppState> {
             "/routers/{id}/logs/retention",
             get(get_log_retention).put(update_log_retention),
         )
-        .route("/routers/{id}/ppp-profiles", get(list_ppp_profiles))
+        .route("/routers/{id}/ppp-profiles", get(list_ppp_profiles).post(create_ppp_profile))
+        .route(
+            "/routers/{id}/ppp-profiles/{profile_id}",
+            put(update_ppp_profile).delete(delete_ppp_profile),
+        )
+        .route(
+            "/routers/{id}/ppp-profiles/{profile_id}/dependencies",
+            get(get_ppp_profile_dependencies),
+        )
         .route("/routers/{id}/ppp-profiles/sync", post(sync_ppp_profiles))
-        .route("/routers/{id}/ip-pools", get(list_ip_pools))
+        .route("/routers/{id}/ip-pools", get(list_ip_pools).post(create_ip_pool))
+        .route(
+            "/routers/{id}/ip-pools/{pool_id}",
+            put(update_ip_pool).delete(delete_ip_pool),
+        )
+        .route(
+            "/routers/{id}/ip-pools/{pool_id}/dependencies",
+            get(get_ip_pool_dependencies),
+        )
         .route("/routers/{id}/ip-pools/sync", post(sync_ip_pools))
         .route(
             "/routers/{id}/managed-radius-setup",
@@ -501,6 +521,84 @@ async fn list_ppp_profiles(
     Ok(Json(rows))
 }
 
+// POST /api/admin/mikrotik/routers/{id}/ppp-profiles
+async fn create_ppp_profile(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(payload): Json<CreateMikrotikPppProfileRequest>,
+) -> AppResult<Json<MikrotikPppProfile>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    let row = state
+        .mikrotik_service
+        .create_ppp_profile(&tenant_id, &id, payload)
+        .await?;
+    Ok(Json(row))
+}
+
+// PUT /api/admin/mikrotik/routers/{id}/ppp-profiles/{profile_id}
+async fn update_ppp_profile(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path((id, profile_id)): Path<(String, String)>,
+    Json(payload): Json<UpdateMikrotikPppProfileRequest>,
+) -> AppResult<Json<MikrotikPppProfile>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    let row = state
+        .mikrotik_service
+        .update_ppp_profile(&tenant_id, &id, &profile_id, payload)
+        .await?;
+    Ok(Json(row))
+}
+
+// DELETE /api/admin/mikrotik/routers/{id}/ppp-profiles/{profile_id}
+async fn delete_ppp_profile(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path((id, profile_id)): Path<(String, String)>,
+) -> AppResult<Json<MikrotikPppProfileDeleteResult>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    let result = state
+        .mikrotik_service
+        .delete_ppp_profile(&tenant_id, &id, &profile_id)
+        .await?;
+    Ok(Json(result))
+}
+
+// GET /api/admin/mikrotik/routers/{id}/ppp-profiles/{profile_id}/dependencies
+async fn get_ppp_profile_dependencies(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path((id, profile_id)): Path<(String, String)>,
+) -> AppResult<Json<MikrotikPppProfileDependencyStatus>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await?;
+
+    let result = state
+        .mikrotik_service
+        .get_ppp_profile_dependencies(&tenant_id, &id, &profile_id)
+        .await?;
+    Ok(Json(result))
+}
+
 // POST /api/admin/mikrotik/routers/{id}/ppp-profiles/sync
 async fn sync_ppp_profiles(
     State(state): State<AppState>,
@@ -537,6 +635,84 @@ async fn list_ip_pools(
         .list_ip_pools(&tenant_id, &id)
         .await?;
     Ok(Json(rows))
+}
+
+// POST /api/admin/mikrotik/routers/{id}/ip-pools
+async fn create_ip_pool(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(payload): Json<CreateMikrotikIpPoolRequest>,
+) -> AppResult<Json<MikrotikIpPool>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    let row = state
+        .mikrotik_service
+        .create_ip_pool(&tenant_id, &id, payload)
+        .await?;
+    Ok(Json(row))
+}
+
+// PUT /api/admin/mikrotik/routers/{id}/ip-pools/{pool_id}
+async fn update_ip_pool(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path((id, pool_id)): Path<(String, String)>,
+    Json(payload): Json<UpdateMikrotikIpPoolRequest>,
+) -> AppResult<Json<MikrotikIpPool>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    let row = state
+        .mikrotik_service
+        .update_ip_pool(&tenant_id, &id, &pool_id, payload)
+        .await?;
+    Ok(Json(row))
+}
+
+// DELETE /api/admin/mikrotik/routers/{id}/ip-pools/{pool_id}
+async fn delete_ip_pool(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path((id, pool_id)): Path<(String, String)>,
+) -> AppResult<Json<MikrotikIpPoolDeleteResult>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .await?;
+
+    let result = state
+        .mikrotik_service
+        .delete_ip_pool(&tenant_id, &id, &pool_id)
+        .await?;
+    Ok(Json(result))
+}
+
+// GET /api/admin/mikrotik/routers/{id}/ip-pools/{pool_id}/dependencies
+async fn get_ip_pool_dependencies(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path((id, pool_id)): Path<(String, String)>,
+) -> AppResult<Json<MikrotikIpPoolDependencyStatus>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .await?;
+
+    let result = state
+        .mikrotik_service
+        .get_ip_pool_dependencies(&tenant_id, &id, &pool_id)
+        .await?;
+    Ok(Json(result))
 }
 
 // GET /api/admin/mikrotik/routers/{id}/managed-radius-setup

@@ -15,6 +15,11 @@
   import Table from '$lib/components/ui/Table.svelte';
   import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
+  import { getAvailableRouterNameSuggestions } from '$lib/utils/packageRouterMeta';
+  import {
+    getPackageRouterMappingErrorFallback,
+    getPackageRouterMappingReferenceError,
+  } from '$lib/utils/packageRouterMapping';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
 
   type RouterRow = { id: string; name: string };
@@ -413,6 +418,17 @@
       }
 
       if (isInternetType(pkgServiceType) && pkgMapEnabled && pkgMapRouterId && pkgMapProfile.trim()) {
+        const mappingReferenceError = getPackageRouterMappingReferenceError({
+          routerId: pkgMapRouterId,
+          profileName: pkgMapProfile,
+          profileSuggestions: pkgProfileSuggestions,
+          poolName: pkgMapPool,
+          poolSuggestions: pkgPoolSuggestions,
+        });
+        if (mappingReferenceError) {
+          throw new Error(mappingReferenceError);
+        }
+
         await api.ispPackages.routerMappings.upsert({
           router_id: pkgMapRouterId,
           package_id: pkg.id,
@@ -430,7 +446,7 @@
       showPkgModal = false;
       await Promise.all([loadPackages(), loadMappings()]);
     } catch (e: any) {
-      toast.error(e?.message || e);
+      toast.error(getPackageRouterMappingErrorFallback(e?.message || e));
     } finally {
       saving = false;
     }
@@ -477,8 +493,14 @@
         api.mikrotik.routers.pppProfiles(routerId),
         api.mikrotik.routers.ipPools(routerId),
       ]);
-      pkgProfileSuggestions = (profiles || []).map((x: any) => ({ id: x.id, name: x.name }));
-      pkgPoolSuggestions = (pools || []).map((x: any) => ({ id: x.id, name: x.name }));
+      pkgProfileSuggestions = getAvailableRouterNameSuggestions(profiles || []).map((name, index) => ({
+        id: `${index}:${name}`,
+        name,
+      }));
+      pkgPoolSuggestions = getAvailableRouterNameSuggestions(pools || []).map((name, index) => ({
+        id: `${index}:${name}`,
+        name,
+      }));
     } finally {
       pkgLoadingMeta = false;
     }
@@ -496,8 +518,14 @@
         api.mikrotik.routers.pppProfiles(routerId),
         api.mikrotik.routers.ipPools(routerId),
       ]);
-      profileSuggestions = (profiles || []).map((p: any) => ({ id: p.id, name: p.name }));
-      poolSuggestions = (pools || []).map((p: any) => ({ id: p.id, name: p.name }));
+      profileSuggestions = getAvailableRouterNameSuggestions(profiles || []).map((name, index) => ({
+        id: `${index}:${name}`,
+        name,
+      }));
+      poolSuggestions = getAvailableRouterNameSuggestions(pools || []).map((name, index) => ({
+        id: `${index}:${name}`,
+        name,
+      }));
     } finally {
       loadingMeta = false;
     }
@@ -508,6 +536,17 @@
     if (!mapPkg || !mapRouterId || !mapProfile.trim()) return;
     saving = true;
     try {
+      const mappingReferenceError = getPackageRouterMappingReferenceError({
+        routerId: mapRouterId,
+        profileName: mapProfile,
+        profileSuggestions,
+        poolName: mapPool,
+        poolSuggestions,
+      });
+      if (mappingReferenceError) {
+        throw new Error(mappingReferenceError);
+      }
+
       await api.ispPackages.routerMappings.upsert({
         router_id: mapRouterId,
         package_id: mapPkg.id,
@@ -518,7 +557,7 @@
       showMapModal = false;
       await loadMappings();
     } catch (e: any) {
-      toast.error(e?.message || e);
+      toast.error(getPackageRouterMappingErrorFallback(e?.message || e));
     } finally {
       saving = false;
     }
@@ -921,6 +960,20 @@
           <div></div>
         </div>
 
+        {#if pkgMapRouterId && !pkgLoadingMeta && pkgProfileOptions.length === 0}
+          <div class="field-hint">
+            {$t('admin.network.packages.mapping.profile_empty') ||
+              'No active PPP profile is available for this router yet. Sync PPP profiles first.'}
+          </div>
+        {/if}
+
+        {#if pkgMapRouterId && !pkgLoadingMeta && pkgPoolOptions.length === 0}
+          <div class="field-hint">
+            {$t('admin.network.packages.mapping.pool_empty') ||
+              'No active IP pool is available for this router yet. Sync IP pools first.'}
+          </div>
+        {/if}
+
         {#if pkgLoadingMeta}
           <div class="hint">
             <span class="spin"><Icon name="refresh-cw" size={14} /></span>
@@ -1032,6 +1085,20 @@
         />
       </label>
     </div>
+
+    {#if mapRouterId && !loadingMeta && mapProfileOptions.length === 0}
+      <div class="field-hint">
+        {$t('admin.network.packages.mapping.profile_empty') ||
+          'No active PPP profile is available for this router yet. Sync PPP profiles first.'}
+      </div>
+    {/if}
+
+    {#if mapRouterId && !loadingMeta && mapPoolOptions.length === 0}
+      <div class="field-hint">
+        {$t('admin.network.packages.mapping.pool_empty') ||
+          'No active IP pool is available for this router yet. Sync IP pools first.'}
+      </div>
+    {/if}
 
     {#if loadingMeta}
       <div class="hint">

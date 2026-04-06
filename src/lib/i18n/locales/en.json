@@ -2798,6 +2798,8 @@
           "router": "Router",
           "profile": "Router PPP Profile",
           "pool": "Address pool (optional)",
+          "profile_empty": "No active PPP profile is available for this router yet. Sync PPP profiles first.",
+          "pool_empty": "No active IP pool is available for this router yet. Sync IP pools first.",
           "inline_title": "Map to router now",
           "inline_hint": "Optional: prefill router profile/pool for this package (per-router)."
         },
@@ -2825,6 +2827,7 @@
         "title": "PPPoE",
         "subtitle": "Tenant-wide view of PPPoE accounts across routers.",
         "auto_apply_on": "Auto-apply ON",
+        "auto_apply_edits_on": "Auto-apply edits ON",
         "search": "Search PPPoE...",
         "empty": "No PPPoE accounts.",
         "import": {
@@ -2931,10 +2934,15 @@
           "open_customer_billing": "Open customer billing",
           "apply": "Apply to router",
           "apply_radius": "Apply to RADIUS",
+          "create_apply": "Create & apply to router",
+          "create_apply_radius": "Create & apply to RADIUS",
           "retry_apply_batch": "Retry apply"
         },
         "form": {
-          "package_hint": "If you select a package, profile/pool will be prefilled for the selected router (you can still override).",
+          "package_hint": "Choose a package to control PPP profile and addressing for the selected router.",
+          "assignment_title": "Package assignment",
+          "assignment_hint": "PPP profile and addressing follow the selected package for this router.",
+          "package_mapping_missing": "This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.",
           "disabled_hint": "Disable this PPPoE account (will be applied to router when you click Apply).",
           "source_radius_hint": "This account will be provisioned to managed RADIUS and expects a managed RADIUS server plus NAS mapping for the selected router.",
           "source_router_hint": "This account will be provisioned to the router-local PPP secret table.",
@@ -2945,6 +2953,8 @@
           "applied": "Applied to router",
           "applied_radius": "Applied to RADIUS",
           "apply_failed": "Failed to apply PPPoE account: {message}",
+          "created_applied": "PPPoE account created and applied to router",
+          "created_applied_radius": "PPPoE account created and applied to RADIUS",
           "auto_applied": "Saved and automatically applied to router",
           "auto_applied_radius": "Saved and automatically applied to RADIUS",
           "auto_apply_failed": "Saved, but auto-apply failed: {message}",
@@ -3029,7 +3039,10 @@
           "search": "Search profiles...",
           "empty": "No profiles found.",
           "actions": {
-            "sync": "Sync from router"
+            "sync": "Sync from router",
+            "add": "Add profile",
+            "edit": "Edit",
+            "delete": "Delete"
           },
           "columns": {
             "name": "Name",
@@ -3037,6 +3050,7 @@
             "remote": "Remote",
             "rate": "Rate",
             "dns": "DNS",
+            "only_one": "Only one",
             "state": "State",
             "synced": "Synced"
           },
@@ -3044,8 +3058,27 @@
             "present": "On router",
             "missing": "Missing"
           },
+  "form": {
+    "create_title": "Add PPP Profile",
+    "edit_title": "Edit PPP Profile",
+    "create_action": "Create profile",
+    "router_required": "Select a router first",
+    "name_required": "Profile name is required",
+    "comment": "Comment",
+    "no_remote_pool": "No remote pool",
+    "only_one": "Allow only one session"
+  },
+          "delete": {
+            "title": "Delete PPP Profile",
+            "confirm": "Delete PPP profile {name} from the router?",
+            "blocked": "Cannot delete {name}. It is still used by {count} record(s)."
+          },
           "toasts": {
-            "synced": "Synced PPP profiles"
+            "synced": "Synced PPP profiles",
+            "created": "PPP profile created",
+            "updated": "PPP profile updated",
+            "deleted": "PPP profile deleted",
+            "stale_deleted_sync": "This PPP profile was already missing on the router. The list has been refreshed."
           }
         },
         "ip_pools": {
@@ -3054,7 +3087,10 @@
           "search": "Search pools...",
           "empty": "No IP pools found.",
           "actions": {
-            "sync": "Sync from router"
+            "sync": "Sync from router",
+            "add": "Add pool",
+            "edit": "Edit",
+            "delete": "Delete"
           },
           "columns": {
             "name": "Name",
@@ -3067,8 +3103,30 @@
             "present": "On router",
             "missing": "Missing"
           },
+          "form": {
+            "create_title": "Add IP Pool",
+            "edit_title": "Edit IP Pool",
+            "router_required": "Select a router first",
+            "name_required": "Pool name is required",
+            "comment": "Comment",
+            "router_note": "Changes are applied directly to the selected router before the local mirror is refreshed.",
+            "no_next_pool": "No next pool",
+            "next_pool_manual": "Enter next pool manually",
+            "next_pool_manual_label": "Manual next pool"
+          },
+          "delete": {
+            "title": "Delete IP Pool",
+            "confirm": "Delete IP pool {name} from the router?",
+            "warning": "Delete IP pool {name} from the router? Warning: {count} internal record(s) still reference this pool.",
+            "confirm_warning": "Delete with warning"
+          },
           "toasts": {
-            "synced": "Synced IP pools"
+            "synced": "Synced IP pools",
+            "created": "IP pool created",
+            "updated": "IP pool updated",
+            "deleted": "IP pool deleted",
+            "deleted_with_warning": "IP pool {name} was deleted with {count} warning reference(s).",
+            "stale_deleted_sync": "This IP pool was already missing on the router. The list has been refreshed."
           }
         },
         "traffic": {

@@ -132,6 +132,70 @@ export const mikrotik = {
         routerId,
         router_id: routerId,
       }),
+    createPppProfile: (
+      routerId: string,
+      payload: {
+        name: string;
+        local_address?: string | null;
+        remote_address?: string | null;
+        rate_limit?: string | null;
+        dns_server?: string | null;
+        comment?: string | null;
+        only_one?: boolean;
+      },
+    ): Promise<any> =>
+      safeInvoke('create_mikrotik_ppp_profile', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+        ...payload,
+      }),
+    updatePppProfile: (
+      routerId: string,
+      id: string,
+      payload: {
+        name?: string | null;
+        local_address?: string | null;
+        remote_address?: string | null;
+        rate_limit?: string | null;
+        dns_server?: string | null;
+        comment?: string | null;
+        only_one?: boolean;
+      },
+    ): Promise<any> =>
+      safeInvoke('update_mikrotik_ppp_profile', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+        id,
+        ...payload,
+      }),
+    deletePppProfile: (
+      routerId: string,
+      id: string,
+    ): Promise<{ ok: boolean; deleted_profile_id: string; deleted_profile_name: string; router_id: string }> =>
+      safeInvoke('delete_mikrotik_ppp_profile', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+        id,
+      }),
+    pppProfileDependencies: (
+      routerId: string,
+      id: string,
+    ): Promise<{
+      profile_id: string;
+      profile_name: string;
+      router_id: string;
+      can_delete: boolean;
+      dependencies: { type: string; label: string; count: number }[];
+    }> =>
+      safeInvoke('get_mikrotik_ppp_profile_dependencies', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+        id,
+      }),
     syncPppProfiles: (routerId: string): Promise<any[]> =>
       safeInvoke('sync_mikrotik_ppp_profiles', {
         token: getTokenOrThrow(),
@@ -143,6 +207,70 @@ export const mikrotik = {
         token: getTokenOrThrow(),
         routerId,
         router_id: routerId,
+      }),
+    createIpPool: (
+      routerId: string,
+      payload: {
+        name: string;
+        ranges?: string | null;
+        next_pool?: string | null;
+        comment?: string | null;
+      },
+    ): Promise<any> =>
+      safeInvoke('create_mikrotik_ip_pool', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+        ...payload,
+      }),
+    updateIpPool: (
+      routerId: string,
+      id: string,
+      payload: {
+        name?: string | null;
+        ranges?: string | null;
+        next_pool?: string | null;
+        comment?: string | null;
+      },
+    ): Promise<any> =>
+      safeInvoke('update_mikrotik_ip_pool', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+        id,
+        ...payload,
+      }),
+    deleteIpPool: (
+      routerId: string,
+      id: string,
+    ): Promise<{
+      ok: boolean;
+      deleted_pool_id: string;
+      deleted_pool_name: string;
+      router_id: string;
+      warnings: { type: string; label: string; count: number }[];
+    }> =>
+      safeInvoke('delete_mikrotik_ip_pool', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+        id,
+      }),
+    ipPoolDependencies: (
+      routerId: string,
+      id: string,
+    ): Promise<{
+      pool_id: string;
+      pool_name: string;
+      router_id: string;
+      can_delete: boolean;
+      dependencies: { type: string; label: string; count: number }[];
+    }> =>
+      safeInvoke('get_mikrotik_ip_pool_dependencies', {
+        token: getTokenOrThrow(),
+        routerId,
+        router_id: routerId,
+        id,
       }),
     syncIpPools: (routerId: string): Promise<any[]> =>
       safeInvoke('sync_mikrotik_ip_pools', {

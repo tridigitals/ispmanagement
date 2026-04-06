@@ -6,11 +6,19 @@
   import { appSettings } from '$lib/stores/settings';
   import { api } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
+  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
+  import IpPoolFormDialog, { type IpPoolFormModel } from '$lib/components/network/IpPoolFormDialog.svelte';
   import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
+  import {
+    getIpPoolCrudGateState,
+    getIpPoolDeleteState,
+    getIpPoolMutationErrorState,
+    isIpPoolStaleTargetConflict,
+  } from '$lib/utils/ipPoolCrud';
 
   type RouterRow = {
     id: string;
@@ -35,7 +43,23 @@
   let routerId = $state('');
 
   let loading = $state(false);
+  let saving = $state(false);
+  let deleting = $state(false);
   let rows = $state<IpPoolRow[]>([]);
+  let showForm = $state(false);
+  let editing = $state<IpPoolRow | null>(null);
+  let form = $state<IpPoolFormModel>({
+    name: '',
+    ranges: '',
+    next_pool: '',
+    comment: '',
+  });
+  let showDelete = $state(false);
+  let deleteTarget = $state<IpPoolRow | null>(null);
+  let deleteMessage = $state('');
+  let deleteKeyword = $state('');
+  let deleteDialogType = $state<'danger' | 'warning'>('danger');
+  let deleteWarningCount = $state(0);
 
   const columns = $derived([
     { key: 'name', label: $t('admin.network.routers.ip_pools.columns.name') || 'Name' },
@@ -43,6 +67,7 @@
     { key: 'next', label: $t('admin.network.routers.ip_pools.columns.next') || 'Next pool', class: 'mono', width: '170px' },
     { key: 'state', label: $t('admin.network.routers.ip_pools.columns.state') || 'State', width: '120px' },
     { key: 'synced', label: $t('admin.network.routers.ip_pools.columns.synced') || 'Synced', class: 'mono', width: '130px' },
+    { key: 'actions', label: $t('common.actions') || 'Actions', width: '120px' },
   ]);
 
   const tableData = $derived.by(() =>
@@ -54,8 +79,19 @@
       state: Boolean(r.router_present),
       synced: r.last_sync_at,
       comment: r.comment,
+      raw: r,
     })),
   );
+
+  const nextPoolOptions = $derived.by(() => {
+    const currentName = editing?.name || form.name;
+    return rows
+      .map((row) => row.name?.trim())
+      .filter((name): name is string => Boolean(name))
+      .filter((name, index, names) => names.indexOf(name) === index)
+      .filter((name) => name !== currentName)
+      .sort((left, right) => left.localeCompare(right));
+  });
 
   onMount(async () => {
     if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
@@ -69,7 +105,6 @@
     loadingRouters = true;
     try {
       routers = (await api.mikrotik.routers.list()) as any;
-      if (!routerId && routers.length) routerId = routers[0].id;
       if (routerId) await load();
     } catch (e: any) {
       toast.error(e?.message || e);
@@ -104,6 +139,171 @@
       loading = false;
     }
   }
+
+  function resetForm() {
+    form = {
+      name: '',
+      ranges: '',
+      next_pool: '',
+      comment: '',
+    };
+  }
+
+  function openCreate() {
+    const gate = getIpPoolCrudGateState(routerId);
+    if (gate.blocked) {
+      toast.error($t('admin.network.routers.ip_pools.form.router_required') || 'Select a router first');
+      return;
+    }
+    editing = null;
+    resetForm();
+    showForm = true;
+  }
+
+  function openEdit(row: IpPoolRow) {
+    const gate = getIpPoolCrudGateState(routerId);
+    if (gate.blocked) {
+      toast.error($t('admin.network.routers.ip_pools.form.router_required') || 'Select a router first');
+      return;
+    }
+    editing = row;
+    form = {
+      name: row.name || '',
+      ranges: row.ranges || '',
+      next_pool: row.next_pool || '',
+      comment: row.comment || '',
+    };
+    showForm = true;
+  }
+
+  function normalizedPayload() {
+    const normalize = (value: string) => {
+      const trimmed = value.trim();
+      return trimmed ? trimmed : null;
+    };
+    return {
+      name: form.name.trim(),
+      ranges: normalize(form.ranges),
+      next_pool: normalize(form.next_pool),
+      comment: normalize(form.comment),
+    };
+  }
+
+  async function save() {
+    if (!routerId) {
+      toast.error($t('admin.network.routers.ip_pools.form.router_required') || 'Select a router first');
+      return;
+    }
+    saving = true;
+    try {
+      const payload = normalizedPayload();
+      if (!payload.name && !editing) {
+        throw new Error(
+          ($t('admin.network.routers.ip_pools.form.name_required') as string) || 'Pool name is required',
+        );
+      }
+      if (editing) {
+        await api.mikrotik.routers.updateIpPool(routerId, editing.id, payload);
+        toast.success(($t('admin.network.routers.ip_pools.toasts.updated') as string) || 'IP pool updated');
+      } else {
+        await api.mikrotik.routers.createIpPool(routerId, payload as any);
+        toast.success(($t('admin.network.routers.ip_pools.toasts.created') as string) || 'IP pool created');
+      }
+      showForm = false;
+      editing = null;
+      await load();
+    } catch (error: any) {
+      const state = getIpPoolMutationErrorState(
+        String(error?.message || '').includes('mirror refresh failed') ? 'mirror_sync_failed' : 'router_write_failed',
+      );
+      if (state.tone === 'warning' && typeof toast.warning === 'function') {
+        toast.warning(error?.message || state.message);
+      } else {
+        toast.error(error?.message || state.message);
+      }
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function openDelete(row: IpPoolRow) {
+    if (!routerId) {
+      toast.error($t('admin.network.routers.ip_pools.form.router_required') || 'Select a router first');
+      return;
+    }
+    try {
+      const dependency = await api.mikrotik.routers.ipPoolDependencies(routerId, row.id);
+      const counts = Object.fromEntries((dependency.dependencies || []).map((item) => [item.type, item.count]));
+      const state = getIpPoolDeleteState(counts as any);
+      deleteTarget = row;
+      deleteDialogType = state.warning ? 'warning' : 'danger';
+      deleteWarningCount = state.totalDependencies;
+      deleteKeyword = row.name;
+      deleteMessage = state.warning
+        ? $t('admin.network.routers.ip_pools.delete.warning', {
+            values: { name: row.name, count: state.totalDependencies },
+          }) || `Delete ${row.name} from the router? ${state.totalDependencies} internal record(s) still reference this pool.`
+        : $t('admin.network.routers.ip_pools.delete.confirm', {
+            values: { name: row.name },
+          }) || `Delete IP pool ${row.name} from the router?`;
+      showDelete = true;
+    } catch (error: any) {
+      toast.error(error?.message || error);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!routerId || !deleteTarget) return;
+    deleting = true;
+    try {
+      const result = await api.mikrotik.routers.deleteIpPool(routerId, deleteTarget.id);
+      showDelete = false;
+      if ((result.warnings || []).some((item) => Number(item.count || 0) > 0) && typeof toast.warning === 'function') {
+        toast.warning(
+          ($t('admin.network.routers.ip_pools.toasts.deleted_with_warning', {
+            values: { name: deleteTarget.name, count: deleteWarningCount },
+          }) as string) || `IP pool ${deleteTarget.name} was deleted with ${deleteWarningCount} warning reference(s).`,
+        );
+      } else {
+        toast.success(($t('admin.network.routers.ip_pools.toasts.deleted') as string) || 'IP pool deleted');
+      }
+      deleteTarget = null;
+      deleteMessage = '';
+      deleteKeyword = '';
+      deleteWarningCount = 0;
+      await load();
+    } catch (error: any) {
+      const message = error?.message || String(error || '');
+      if (isIpPoolStaleTargetConflict(message)) {
+        try {
+          rows = (await api.mikrotik.routers.syncIpPools(routerId)) as any;
+          showDelete = false;
+          deleteTarget = null;
+          deleteMessage = '';
+          deleteKeyword = '';
+          deleteWarningCount = 0;
+          if (typeof toast.warning === 'function') {
+            toast.warning(
+              ($t('admin.network.routers.ip_pools.toasts.stale_deleted_sync') as string) ||
+                'This IP pool was already missing on the router. The list has been refreshed.',
+            );
+          } else {
+            toast.success(
+              ($t('admin.network.routers.ip_pools.toasts.stale_deleted_sync') as string) ||
+                'This IP pool was already missing on the router. The list has been refreshed.',
+            );
+          }
+          return;
+        } catch (syncError: any) {
+          toast.error(syncError?.message || message);
+          return;
+        }
+      }
+      toast.error(message);
+    } finally {
+      deleting = false;
+    }
+  }
 </script>
 
 <div class="page-content fade-in">
@@ -125,6 +325,12 @@
         <Icon name="download" size={16} />
         {$t('admin.network.routers.ip_pools.actions.sync') || 'Sync from router'}
       </button>
+      {#if $can('manage', 'network_routers')}
+        <button class="btn ghost" type="button" onclick={openCreate} disabled={!routerId || loading}>
+          <Icon name="plus" size={16} />
+          {$t('admin.network.routers.ip_pools.actions.add') || 'Add pool'}
+        </button>
+      {/if}
     {/snippet}
   </NetworkPageHeader>
 
@@ -185,6 +391,17 @@
             {:else}
               <span class="muted">—</span>
             {/if}
+          {:else if key === 'actions'}
+            <div class="actions">
+              {#if $can('manage', 'network_routers')}
+                <button class="icon-btn" type="button" onclick={() => openEdit(item.raw)} title={$t('admin.network.routers.ip_pools.actions.edit') || 'Edit'}>
+                  <Icon name="edit" size={16} />
+                </button>
+                <button class="icon-btn danger" type="button" onclick={() => void openDelete(item.raw)} title={$t('admin.network.routers.ip_pools.actions.delete') || 'Delete'}>
+                  <Icon name="trash-2" size={16} />
+                </button>
+              {/if}
+            </div>
           {:else}
             {item[key] ?? ''}
           {/if}
@@ -193,6 +410,35 @@
     </div>
   {/if}
 </div>
+
+<IpPoolFormDialog
+  bind:show={showForm}
+  loading={saving}
+  isEditing={Boolean(editing)}
+  bind:pool={form}
+  nextPoolOptions={nextPoolOptions}
+  onSubmit={() => void save()}
+/>
+
+<ConfirmDialog
+  bind:show={showDelete}
+  title={$t('admin.network.routers.ip_pools.delete.title') || 'Delete IP Pool'}
+  message={deleteMessage}
+  confirmText={deleteDialogType === 'warning'
+    ? $t('admin.network.routers.ip_pools.delete.confirm_warning') || 'Delete with warning'
+    : $t('common.delete') || 'Delete'}
+  confirmationKeyword={deleteKeyword}
+  type={deleteDialogType}
+  loading={deleting}
+  onconfirm={() => void confirmDelete()}
+  oncancel={() => {
+    deleteTarget = null;
+    deleteMessage = '';
+    deleteKeyword = '';
+    deleteDialogType = 'danger';
+    deleteWarningCount = 0;
+  }}
+/>
 
 <style>
   .page-content {
@@ -300,6 +546,33 @@
     border: 1px solid var(--border-color);
     background: var(--bg-card);
     color: var(--text-secondary);
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+
+  .icon-btn:hover {
+    background: var(--bg-hover);
+  }
+
+  .icon-btn.danger {
+    color: #ef4444;
   }
 
   @media (max-width: 900px) {

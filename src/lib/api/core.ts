@@ -371,11 +371,40 @@ const commandMap: Record<string, { method: string; path: string }> = {
     method: 'GET',
     path: '/admin/mikrotik/routers/:routerId/ppp-profiles',
   },
+  create_mikrotik_ppp_profile: {
+    method: 'POST',
+    path: '/admin/mikrotik/routers/:routerId/ppp-profiles',
+  },
+  update_mikrotik_ppp_profile: {
+    method: 'PUT',
+    path: '/admin/mikrotik/routers/:routerId/ppp-profiles/:id',
+  },
+  delete_mikrotik_ppp_profile: {
+    method: 'DELETE',
+    path: '/admin/mikrotik/routers/:routerId/ppp-profiles/:id',
+  },
+  get_mikrotik_ppp_profile_dependencies: {
+    method: 'GET',
+    path: '/admin/mikrotik/routers/:routerId/ppp-profiles/:id/dependencies',
+  },
   sync_mikrotik_ppp_profiles: {
     method: 'POST',
     path: '/admin/mikrotik/routers/:routerId/ppp-profiles/sync',
   },
   list_mikrotik_ip_pools: { method: 'GET', path: '/admin/mikrotik/routers/:routerId/ip-pools' },
+  create_mikrotik_ip_pool: { method: 'POST', path: '/admin/mikrotik/routers/:routerId/ip-pools' },
+  update_mikrotik_ip_pool: {
+    method: 'PUT',
+    path: '/admin/mikrotik/routers/:routerId/ip-pools/:id',
+  },
+  delete_mikrotik_ip_pool: {
+    method: 'DELETE',
+    path: '/admin/mikrotik/routers/:routerId/ip-pools/:id',
+  },
+  get_mikrotik_ip_pool_dependencies: {
+    method: 'GET',
+    path: '/admin/mikrotik/routers/:routerId/ip-pools/:id/dependencies',
+  },
   sync_mikrotik_ip_pools: {
     method: 'POST',
     path: '/admin/mikrotik/routers/:routerId/ip-pools/sync',

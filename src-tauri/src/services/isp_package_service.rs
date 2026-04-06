@@ -84,6 +84,52 @@ impl IspPackageService {
         }
     }
 
+    fn normalize_router_mapping_fields(
+        router_profile_name: &str,
+        address_pool: Option<String>,
+    ) -> AppResult<(String, Option<String>)> {
+        let profile = router_profile_name.trim().to_string();
+        if profile.is_empty() {
+            return Err(AppError::Validation(
+                "router_profile_name is required".into(),
+            ));
+        }
+
+        let addr_pool = address_pool.and_then(|v| {
+            let vv = v.trim().to_string();
+            if vv.is_empty() {
+                None
+            } else {
+                Some(vv)
+            }
+        });
+
+        Ok((profile, addr_pool))
+    }
+
+    fn validate_router_mapping_references(
+        router_profile_exists: bool,
+        address_pool: Option<&str>,
+        address_pool_exists: bool,
+    ) -> AppResult<()> {
+        if !router_profile_exists {
+            return Err(AppError::Validation(
+                "Selected PPP profile does not exist on this router. Sync PPP profiles and choose a valid profile.".into(),
+            ));
+        }
+
+        if let Some(pool) = address_pool {
+            if !address_pool_exists {
+                return Err(AppError::Validation(format!(
+                    "Selected IP pool '{}' does not exist on this router. Sync IP pools and choose a valid pool.",
+                    pool
+                )));
+            }
+        }
+
+        Ok(())
+    }
+
     pub async fn list_packages(
         &self,
         actor_id: &str,
@@ -586,21 +632,56 @@ impl IspPackageService {
             ));
         }
 
-        let profile = dto.router_profile_name.trim().to_string();
-        if profile.is_empty() {
-            return Err(AppError::Validation(
-                "router_profile_name is required".into(),
-            ));
-        }
+        let (profile, addr_pool) =
+            Self::normalize_router_mapping_fields(&dto.router_profile_name, dto.address_pool)?;
 
-        let addr_pool = dto.address_pool.and_then(|v| {
-            let vv = v.trim().to_string();
-            if vv.is_empty() {
-                None
-            } else {
-                Some(vv)
-            }
-        });
+        let router_profile_exists: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+              SELECT 1
+              FROM mikrotik_ppp_profiles
+              WHERE tenant_id = $1
+                AND router_id = $2
+                AND name = $3
+                AND router_present = TRUE
+            )
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(&dto.router_id)
+        .bind(&profile)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let address_pool_exists: bool = if let Some(pool_name) = addr_pool.as_deref() {
+            sqlx::query_scalar(
+                r#"
+                SELECT EXISTS(
+                  SELECT 1
+                  FROM mikrotik_ip_pools
+                  WHERE tenant_id = $1
+                    AND router_id = $2
+                    AND name = $3
+                    AND router_present = TRUE
+                )
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(&dto.router_id)
+            .bind(pool_name)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(AppError::Database)?
+        } else {
+            true
+        };
+
+        Self::validate_router_mapping_references(
+            router_profile_exists,
+            addr_pool.as_deref(),
+            address_pool_exists,
+        )?;
 
         let now = Utc::now();
         let id = Uuid::new_v4().to_string();
@@ -656,5 +737,81 @@ impl IspPackageService {
             .await;
 
         Ok(mapping)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::IspPackageService;
+    use crate::error::AppError;
+
+    #[test]
+    fn normalize_router_mapping_fields_requires_profile_name() {
+        let err =
+            IspPackageService::normalize_router_mapping_fields("   ", Some(" pool-a ".into()))
+                .expect_err("blank profile should be rejected");
+
+        match err {
+            AppError::Validation(message) => {
+                assert_eq!(message, "router_profile_name is required");
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn normalize_router_mapping_fields_trims_values() {
+        let (profile, pool) = IspPackageService::normalize_router_mapping_fields(
+            " basic-10m ",
+            Some(" pool-basic ".into()),
+        )
+        .expect("trimmed values should be accepted");
+
+        assert_eq!(profile, "basic-10m");
+        assert_eq!(pool.as_deref(), Some("pool-basic"));
+    }
+
+    #[test]
+    fn validate_router_mapping_references_rejects_missing_profile() {
+        let err = IspPackageService::validate_router_mapping_references(false, None, true)
+            .expect_err("missing profile should be rejected");
+
+        match err {
+            AppError::Validation(message) => {
+                assert_eq!(
+                    message,
+                    "Selected PPP profile does not exist on this router. Sync PPP profiles and choose a valid profile."
+                );
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn validate_router_mapping_references_rejects_missing_pool() {
+        let err = IspPackageService::validate_router_mapping_references(
+            true,
+            Some("pool-missing"),
+            false,
+        )
+        .expect_err("missing pool should be rejected");
+
+        match err {
+            AppError::Validation(message) => {
+                assert_eq!(
+                    message,
+                    "Selected IP pool 'pool-missing' does not exist on this router. Sync IP pools and choose a valid pool."
+                );
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn validate_router_mapping_references_accepts_existing_profile_and_optional_pool() {
+        IspPackageService::validate_router_mapping_references(true, None, true)
+            .expect("valid references should pass");
+        IspPackageService::validate_router_mapping_references(true, Some("pool-a"), true)
+            .expect("valid references with pool should pass");
     }
 }

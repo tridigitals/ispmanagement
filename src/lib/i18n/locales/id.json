@@ -2584,6 +2584,8 @@
           "router": "Router",
           "profile": "Profil PPP Router",
           "pool": "IP Pool (opsional)",
+          "profile_empty": "Belum ada profil PPP aktif untuk router ini. Sinkronkan PPP profile terlebih dahulu.",
+          "pool_empty": "Belum ada IP pool aktif untuk router ini. Sinkronkan IP pool terlebih dahulu.",
           "inline_title": "Mapping ke router sekarang",
           "inline_hint": "Opsional: isi otomatis profile/pool router untuk paket ini (per-router)."
         },
@@ -2611,6 +2613,7 @@
         "title": "PPPoE",
         "subtitle": "Tampilan tenant untuk akun PPPoE di semua router.",
         "auto_apply_on": "Auto-apply AKTIF",
+        "auto_apply_edits_on": "Auto-apply edit AKTIF",
         "search": "Cari PPPoE...",
         "empty": "Tidak ada akun PPPoE.",
         "import": {
@@ -2717,10 +2720,15 @@
           "open_customer_billing": "Buka billing pelanggan",
           "apply": "Terapkan ke router",
           "apply_radius": "Terapkan ke RADIUS",
+          "create_apply": "Buat & terapkan ke router",
+          "create_apply_radius": "Buat & terapkan ke RADIUS",
           "retry_apply_batch": "Ulang apply"
         },
         "form": {
-          "package_hint": "Jika memilih paket, profile/pool akan terisi otomatis untuk router yang dipilih (masih bisa diubah).",
+          "package_hint": "Pilih paket untuk mengatur profile PPP dan addressing sesuai router yang dipilih.",
+          "assignment_title": "Assignment dari paket",
+          "assignment_hint": "PPP profile dan addressing akan mengikuti paket yang dipilih untuk router ini.",
+          "package_mapping_missing": "Paket ini belum punya mapping router. Nilai akun yang sudah ada akan tetap dipakai sampai mapping ditambahkan.",
           "disabled_hint": "Nonaktifkan akun PPPoE ini (akan diterapkan ke router saat Anda klik Terapkan).",
           "source_radius_hint": "Akun ini akan diprovisikan ke managed RADIUS dan membutuhkan konfigurasi managed RADIUS server serta NAS mapping untuk router yang dipilih.",
           "source_router_hint": "Akun ini akan diprovisikan ke tabel PPP secret lokal di router.",
@@ -2731,6 +2739,8 @@
           "applied": "Berhasil diterapkan ke router",
           "applied_radius": "Berhasil diterapkan ke RADIUS",
           "apply_failed": "Gagal menerapkan akun PPPoE: {message}",
+          "created_applied": "Akun PPPoE berhasil dibuat dan diterapkan ke router",
+          "created_applied_radius": "Akun PPPoE berhasil dibuat dan diterapkan ke RADIUS",
           "auto_applied": "Berhasil disimpan dan diterapkan otomatis ke router",
           "auto_applied_radius": "Berhasil disimpan dan diterapkan otomatis ke RADIUS",
           "auto_apply_failed": "Data tersimpan, tetapi auto-apply gagal: {message}",
@@ -2815,7 +2825,10 @@
           "search": "Cari profil...",
           "empty": "Belum ada profil.",
           "actions": {
-            "sync": "Sinkron dari router"
+            "sync": "Sinkron dari router",
+            "add": "Tambah profil",
+            "edit": "Ubah",
+            "delete": "Hapus"
           },
           "columns": {
             "name": "Nama",
@@ -2823,6 +2836,7 @@
             "remote": "Remote",
             "rate": "Rate",
             "dns": "DNS",
+            "only_one": "Satu sesi",
             "state": "Status",
             "synced": "Sinkron"
           },
@@ -2830,8 +2844,27 @@
             "present": "Ada di router",
             "missing": "Tidak ada"
           },
+  "form": {
+    "create_title": "Tambah Profil PPP",
+    "edit_title": "Ubah Profil PPP",
+    "create_action": "Buat profil",
+    "router_required": "Pilih router terlebih dahulu",
+    "name_required": "Nama profil wajib diisi",
+    "comment": "Komentar",
+    "no_remote_pool": "Tanpa remote pool",
+    "only_one": "Izinkan hanya satu sesi"
+  },
+          "delete": {
+            "title": "Hapus Profil PPP",
+            "confirm": "Hapus profil PPP {name} dari router?",
+            "blocked": "Tidak bisa menghapus {name}. Profil ini masih dipakai oleh {count} data."
+          },
           "toasts": {
-            "synced": "Profil PPP berhasil disinkron"
+            "synced": "Profil PPP berhasil disinkron",
+            "created": "Profil PPP berhasil dibuat",
+            "updated": "Profil PPP berhasil diperbarui",
+            "deleted": "Profil PPP berhasil dihapus",
+            "stale_deleted_sync": "Profil PPP ini ternyata sudah hilang di router. Daftar sudah saya segarkan."
           }
         },
         "ip_pools": {
@@ -2840,7 +2873,10 @@
           "search": "Cari pool...",
           "empty": "Belum ada IP pool.",
           "actions": {
-            "sync": "Sinkron dari router"
+            "sync": "Sinkron dari router",
+            "add": "Tambah pool",
+            "edit": "Ubah",
+            "delete": "Hapus"
           },
           "columns": {
             "name": "Nama",
@@ -2853,8 +2889,30 @@
             "present": "Ada di router",
             "missing": "Tidak ada"
           },
+          "form": {
+            "create_title": "Tambah Pool IP",
+            "edit_title": "Ubah Pool IP",
+            "router_required": "Pilih router terlebih dahulu",
+            "name_required": "Nama pool wajib diisi",
+            "comment": "Komentar",
+            "router_note": "Perubahan akan diterapkan langsung ke router yang dipilih sebelum mirror lokal diperbarui.",
+            "no_next_pool": "Tanpa next pool",
+            "next_pool_manual": "Isi next pool manual",
+            "next_pool_manual_label": "Next pool manual"
+          },
+          "delete": {
+            "title": "Hapus Pool IP",
+            "confirm": "Hapus pool IP {name} dari router?",
+            "warning": "Hapus pool IP {name} dari router? Peringatan: masih ada {count} data internal yang mereferensikan pool ini.",
+            "confirm_warning": "Hapus dengan peringatan"
+          },
           "toasts": {
-            "synced": "IP pool berhasil disinkron"
+            "synced": "IP pool berhasil disinkron",
+            "created": "IP pool berhasil dibuat",
+            "updated": "IP pool berhasil diperbarui",
+            "deleted": "IP pool berhasil dihapus",
+            "deleted_with_warning": "IP pool {name} tetap dihapus dengan {count} referensi peringatan.",
+            "stale_deleted_sync": "IP pool ini ternyata sudah hilang di router. Daftar sudah saya segarkan."
           }
         },
         "traffic": {

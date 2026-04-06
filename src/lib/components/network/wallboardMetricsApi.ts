@@ -89,13 +89,15 @@ function filterRowsForIface(rows: any[], iface: string): { rows: any[]; hasIface
 }
 
 export async function fetchInterfaceMetricsRows(args: {
-  slot: WallboardMetricsSlotRef;
+  slot: WallboardMetricsSlotRef | null;
   minLimit: number;
   fetchMetrics: (
     routerId: string,
     params?: { interface?: string; limit?: number },
   ) => Promise<any>;
 }) {
+  if (!args.slot) return [];
+
   const payload = await args.fetchMetrics(args.slot.routerId, {
     interface: args.slot.iface,
     limit: args.minLimit,

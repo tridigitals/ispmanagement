@@ -14,14 +14,23 @@
   import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
   import { timeAgo } from '$lib/utils/date';
-  import { getPppoeApplyActionFallback } from '$lib/utils/pppoeSource';
+  import {
+    getPppoeAssignmentPayload,
+  } from '$lib/utils/pppoePackageAssignment';
+  import {
+    createThenApplyPppoeAccount,
+    PppoeCreateApplyError,
+  } from '$lib/utils/pppoeCreateProvisioning';
+  import {
+    getPppoeApplyActionFallback,
+    getPppoeCreateActionFallback,
+    getPppoeCreatedAndAppliedToastFallback,
+  } from '$lib/utils/pppoeSource';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
 
   type RouterRow = { id: string; name: string; host?: string; port?: number };
   type CustomerRow = { id: string; name: string };
   type LocationRow = { id: string; label: string };
-  type ProfileSuggestion = { id: string; name: string };
-  type PoolSuggestion = { id: string; name: string };
   const IMPORT_PLACEHOLDER_CUSTOMER_NAME = 'Imported (Unassigned)';
 
   let loading = $state(true);
@@ -59,28 +68,6 @@
   let formPackageId = $state('');
   let formAccountSource = $state<'router' | 'managed_radius'>('router');
 
-  let profileSuggestions = $state<ProfileSuggestion[]>([]);
-  let poolSuggestions = $state<PoolSuggestion[]>([]);
-  let loadingRouterMeta = $state(false);
-  const routerMetaCache = new Map<
-    string,
-    { profiles: ProfileSuggestion[]; pools: PoolSuggestion[] }
-  >();
-
-  const profileOptions = $derived.by(() => {
-    const base = (profileSuggestions || []).map((p) => ({ label: p.name, value: p.name }));
-    const cur = formRouterProfileName?.trim();
-    if (cur && !base.some((o) => o.value === cur)) return [{ label: cur, value: cur }, ...base];
-    return base;
-  });
-
-  const poolOptions = $derived.by(() => {
-    const base = (poolSuggestions || []).map((p) => ({ label: p.name, value: p.name }));
-    const cur = formAddressPool?.trim();
-    if (cur && !base.some((o) => o.value === cur)) return [{ label: cur, value: cur }, ...base];
-    return base;
-  });
-
   let routerPackageMappings = $state<IspPackageRouterMappingView[]>([]);
   const packageOptions = $derived.by(() => {
     // Show only active mapped packages for selected router
@@ -93,6 +80,20 @@
     }
     return out;
   });
+
+  const packageSelectionHasMissingMapping = $derived.by(
+    () =>
+      Boolean(formPackageId) &&
+      !getPppoeAssignmentPayload({
+        packageId: formPackageId,
+        mappings: routerPackageMappings,
+        current: {
+          router_profile_name: formRouterProfileName,
+          remote_address: formRemoteAddress,
+          address_pool: formAddressPool,
+        },
+      }).hasPackageMapping,
+  );
 
   const tenantCtx = $derived.by(() =>
     resolveTenantContext({
@@ -122,10 +123,21 @@
       ? $t('admin.network.pppoe.actions.apply_radius') ||
         getPppoeApplyActionFallback('managed_radius')
       : $t('admin.network.pppoe.actions.apply') || getPppoeApplyActionFallback('router');
+  const sourceCreateActionLabel = (source: 'router' | 'managed_radius') =>
+    source === 'managed_radius'
+      ? $t('admin.network.pppoe.actions.create_apply_radius') ||
+        getPppoeCreateActionFallback('managed_radius')
+      : $t('admin.network.pppoe.actions.create_apply') || getPppoeCreateActionFallback('router');
   const sourceAppliedToastLabel = (source: 'router' | 'managed_radius') =>
     source === 'managed_radius'
       ? $t('admin.network.pppoe.toasts.applied_radius') || 'Applied to RADIUS'
       : $t('admin.network.pppoe.toasts.applied') || 'Applied to router';
+  const sourceCreatedAndAppliedToastLabel = (source: 'router' | 'managed_radius') =>
+    source === 'managed_radius'
+      ? $t('admin.network.pppoe.toasts.created_applied_radius') ||
+        getPppoeCreatedAndAppliedToastFallback('managed_radius')
+      : $t('admin.network.pppoe.toasts.created_applied') ||
+        getPppoeCreatedAndAppliedToastFallback('router');
   const sourceAutoAppliedToastLabel = (source: 'router' | 'managed_radius') =>
     source === 'managed_radius'
       ? $t('admin.network.pppoe.toasts.auto_applied_radius') ||
@@ -284,37 +296,6 @@
     }
   }
 
-  async function loadRouterMeta(routerId: string) {
-    if (!routerId) {
-      profileSuggestions = [];
-      poolSuggestions = [];
-      return;
-    }
-    const cached = routerMetaCache.get(routerId);
-    if (cached) {
-      profileSuggestions = cached.profiles;
-      poolSuggestions = cached.pools;
-      return;
-    }
-    loadingRouterMeta = true;
-    try {
-      const [profiles, pools] = await Promise.all([
-        api.mikrotik.routers.pppProfiles(routerId),
-        api.mikrotik.routers.ipPools(routerId),
-      ]);
-      const mappedProfiles = (profiles || []).map((p: any) => ({ id: p.id, name: p.name }));
-      const mappedPools = (pools || []).map((p: any) => ({ id: p.id, name: p.name }));
-      routerMetaCache.set(routerId, { profiles: mappedProfiles, pools: mappedPools });
-      profileSuggestions = mappedProfiles;
-      poolSuggestions = mappedPools;
-    } catch {
-      profileSuggestions = [];
-      poolSuggestions = [];
-    } finally {
-      loadingRouterMeta = false;
-    }
-  }
-
   async function loadRouterPackages(routerId: string) {
     if (!routerId) {
       routerPackageMappings = [];
@@ -327,34 +308,19 @@
     }
   }
 
-  function maybeAutoSelectPackageFromProfile() {
-    const profile = formRouterProfileName?.trim();
-    if (!formRouterId || !profile) return;
-    if (formPackageId) return;
-
-    const matches = routerPackageMappings.filter((m) => (m.router_profile_name || '') === profile);
-    if (matches.length === 1) {
-      formPackageId = matches[0].package_id;
-      applyPackageToForm(formPackageId);
-      return;
-    }
-
-    if (!formAddressPool) {
-      const withPool = matches.find((m) => m.address_pool);
-      if (withPool?.address_pool) formAddressPool = withPool.address_pool;
-    }
-  }
-
   function applyPackageToForm(pkgId: string) {
-    if (!pkgId) return;
-    const m = routerPackageMappings.find((x) => x.package_id === pkgId);
-    if (!m) return;
-    // Prefill but allow overrides.
-    formRouterProfileName = m.router_profile_name || '';
-    if (m.address_pool) {
-      formAddressPool = m.address_pool;
-      formRemoteAddress = '';
-    }
+    const resolved = getPppoeAssignmentPayload({
+      packageId: pkgId,
+      mappings: routerPackageMappings,
+      current: {
+        router_profile_name: formRouterProfileName,
+        remote_address: formRemoteAddress,
+        address_pool: formAddressPool,
+      },
+    });
+    formRouterProfileName = resolved.router_profile_name || '';
+    formRemoteAddress = resolved.remote_address || '';
+    formAddressPool = resolved.address_pool || '';
   }
 
   function resetForm() {
@@ -371,8 +337,6 @@
     formComment = '';
     formAccountSource = 'router';
     locations = [];
-    profileSuggestions = [];
-    poolSuggestions = [];
     routerPackageMappings = [];
     editRow = null;
   }
@@ -410,13 +374,19 @@
 
     await Promise.all([
       loadLocations(row.customer_id),
-      loadRouterMeta(row.router_id),
       loadRouterPackages(row.router_id),
     ]);
   }
 
   async function submitCreate() {
     if (saving) return;
+    if (packageSelectionHasMissingMapping) {
+      toast.error(
+        $t('admin.network.pppoe.form.package_mapping_missing') ||
+          'This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.',
+      );
+      return;
+    }
     if (
       !formRouterId ||
       !formCustomerId ||
@@ -428,37 +398,53 @@
 
     saving = true;
     try {
-      const created = await api.pppoe.accounts.create({
-        router_id: formRouterId,
-        customer_id: formCustomerId,
-        location_id: formLocationId,
-        username: formUsername.trim(),
-        password: formPassword,
-        package_id: formPackageId || null,
-        router_profile_name: formRouterProfileName.trim() || null,
-        remote_address: formRemoteAddress.trim() || null,
-        address_pool: formAddressPool.trim() || null,
-        disabled: formDisabled,
-        comment: formComment.trim() || null,
-        account_source: formAccountSource,
+      const assignmentPayload = getPppoeAssignmentPayload({
+        packageId: formPackageId,
+        mappings: routerPackageMappings,
+        current: {
+          router_profile_name: formRouterProfileName,
+          remote_address: formRemoteAddress,
+          address_pool: formAddressPool,
+        },
       });
-      if (autoApplyOnSave && created?.id) {
-        try {
-          await api.pppoe.accounts.apply(created.id);
-          toast.success(sourceAutoAppliedToastLabel(formAccountSource));
-        } catch (e: any) {
-          toast.error(
-            $t('admin.network.pppoe.toasts.auto_apply_failed', {
-              values: { message: e?.message || e },
-            }) || `Saved, but auto-apply failed: ${e?.message || e}`,
-          );
-        }
+      const result = await createThenApplyPppoeAccount({
+        create: () =>
+          api.pppoe.accounts.create({
+            router_id: formRouterId,
+            customer_id: formCustomerId,
+            location_id: formLocationId,
+            username: formUsername.trim(),
+            password: formPassword,
+            package_id: formPackageId || null,
+            router_profile_name: assignmentPayload.router_profile_name,
+            remote_address: assignmentPayload.remote_address,
+            address_pool: assignmentPayload.address_pool,
+            disabled: formDisabled,
+            comment: formComment.trim() || null,
+            account_source: formAccountSource,
+          }),
+        apply: (id) => api.pppoe.accounts.apply(id),
+      });
+      if (result.applySucceeded) {
+        toast.success(sourceCreatedAndAppliedToastLabel(formAccountSource));
+      } else {
+        toast.success($t('admin.customers.pppoe.toasts.created') || 'PPPoE account created');
       }
-      toast.success($t('admin.customers.pppoe.toasts.created') || 'PPPoE account created');
       showCreate = false;
       await loadAccounts();
     } catch (e: any) {
-      toast.error(e?.message || e);
+      if (e instanceof PppoeCreateApplyError) {
+        toast.error(
+          $t('admin.network.pppoe.toasts.auto_apply_failed', {
+            values: { message: (e.applyError as any)?.message || e.applyError || e.message },
+          }) ||
+            `Saved, but auto-apply failed: ${(e.applyError as any)?.message || e.applyError || e.message}`,
+        );
+        showCreate = false;
+        await loadAccounts();
+      } else {
+        toast.error(e?.message || e);
+      }
     } finally {
       saving = false;
     }
@@ -468,16 +454,32 @@
     if (saving) return;
     if (!editRow) return;
     if (!formUsername.trim()) return;
+    if (packageSelectionHasMissingMapping) {
+      toast.error(
+        $t('admin.network.pppoe.form.package_mapping_missing') ||
+          'This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.',
+      );
+      return;
+    }
 
     saving = true;
     try {
+      const assignmentPayload = getPppoeAssignmentPayload({
+        packageId: formPackageId,
+        mappings: routerPackageMappings,
+        current: {
+          router_profile_name: formRouterProfileName,
+          remote_address: formRemoteAddress,
+          address_pool: formAddressPool,
+        },
+      });
       const updated = await api.pppoe.accounts.update(editRow.id, {
         username: formUsername.trim(),
         password: formPassword || undefined,
         package_id: formPackageId || null,
-        router_profile_name: formRouterProfileName.trim() || null,
-        remote_address: formRemoteAddress.trim() || null,
-        address_pool: formAddressPool.trim() || null,
+        router_profile_name: assignmentPayload.router_profile_name,
+        remote_address: assignmentPayload.remote_address,
+        address_pool: assignmentPayload.address_pool,
         disabled: formDisabled,
         comment: formComment.trim() || null,
         account_source: formAccountSource,
@@ -660,7 +662,7 @@
   >
     {#snippet actions()}
       {#if $can('manage', 'pppoe') && autoApplyOnSave}
-        <span class="chip active">{$t('admin.network.pppoe.auto_apply_on') || 'Auto-apply ON'}</span
+        <span class="chip active">{$t('admin.network.pppoe.auto_apply_edits_on') || 'Auto-apply edits ON'}</span
         >
       {/if}
       <button class="btn ghost" type="button" onclick={loadAccounts} disabled={refreshing}>
@@ -1024,7 +1026,6 @@
             formRouterProfileName = '';
             formRemoteAddress = '';
             formAddressPool = '';
-            void loadRouterMeta(formRouterId);
             void loadRouterPackages(formRouterId);
           }}
         />
@@ -1081,7 +1082,7 @@
       />
       <div class="field-hint">
         {$t('admin.network.pppoe.form.package_hint') ||
-          'If you select a package, profile/pool will be prefilled for the selected router (you can still override).'}
+          'Choose a package to control PPP profile and addressing for the selected router.'}
       </div>
     </label>
 
@@ -1104,49 +1105,17 @@
       </label>
     </div>
 
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.password') || 'Password'}</span>
-        <input class="input" type="password" bind:value={formPassword} />
-      </label>
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.profile') || 'Profile'}</span>
-        <Select2
-          bind:value={formRouterProfileName}
-          options={profileOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-          disabled={!formRouterId || profileOptions.length === 0}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
-          onchange={() => maybeAutoSelectPackageFromProfile()}
-        />
-      </label>
-    </div>
+    <label>
+      <span>{$t('admin.customers.pppoe.fields.password') || 'Password'}</span>
+      <input class="input" type="password" bind:value={formPassword} />
+    </label>
 
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.remote_address') || 'Remote IP'}</span>
-        <input
-          class="input mono"
-          bind:value={formRemoteAddress}
-          placeholder="10.10.10.10"
-          disabled={!formRouterId}
-        />
-      </label>
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.pool') || 'Address pool'}</span>
-        <Select2
-          bind:value={formAddressPool}
-          options={poolOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-          disabled={!formRouterId || poolOptions.length === 0}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
-        />
-      </label>
-    </div>
+    {#if packageSelectionHasMissingMapping}
+      <div class="field-hint warning">
+        {$t('admin.network.pppoe.form.package_mapping_missing') ||
+          'This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.'}
+      </div>
+    {/if}
 
     <label>
       <span>{$t('admin.customers.pppoe.fields.comment') || 'Comment'}</span>
@@ -1178,6 +1147,7 @@
         class="btn"
         onclick={submitCreate}
         disabled={saving ||
+          packageSelectionHasMissingMapping ||
           !formRouterId ||
           !formCustomerId ||
           !formLocationId ||
@@ -1185,16 +1155,10 @@
           !formPassword}
       >
         <Icon name="plus" size={16} />
-        {$t('common.create') || 'Create'}
+        {sourceCreateActionLabel(formAccountSource)}
       </button>
     </div>
 
-    {#if loadingRouterMeta}
-      <div class="hint">
-        <span class="spin"><Icon name="refresh-cw" size={14} /></span>
-        <span>{$t('common.loading') || 'Loading...'} suggestions…</span>
-      </div>
-    {/if}
   </div>
 </Modal>
 
@@ -1208,22 +1172,7 @@
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.pppoe.fields.router') || 'Router'}</span>
-        <Select2
-          bind:value={formRouterId}
-          options={routerOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
-          onchange={() => {
-            formPackageId = '';
-            formRouterProfileName = '';
-            formRemoteAddress = '';
-            formAddressPool = '';
-            void loadRouterMeta(formRouterId);
-            void loadRouterPackages(formRouterId);
-          }}
-        />
+        <input class="input" value={routerName(formRouterId)} disabled />
       </label>
       <label>
         <span>{$t('admin.network.pppoe.fields.source') || 'Account source'}</span>
@@ -1268,7 +1217,7 @@
       />
       <div class="field-hint">
         {$t('admin.network.pppoe.form.package_hint') ||
-          'If you select a package, profile/pool will be prefilled for the selected router (you can still override).'}
+          'Choose a package to control PPP profile and addressing for the selected router.'}
       </div>
     </label>
 
@@ -1288,44 +1237,17 @@
       </label>
     </div>
 
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.profile') || 'Profile'}</span>
-        <Select2
-          bind:value={formRouterProfileName}
-          options={profileOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-          disabled={!formRouterId || profileOptions.length === 0}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
-          onchange={() => maybeAutoSelectPackageFromProfile()}
-        />
-      </label>
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.remote_address') || 'Remote IP'}</span>
-        <input class="input mono" bind:value={formRemoteAddress} placeholder="10.10.10.10" />
-      </label>
-    </div>
+    {#if packageSelectionHasMissingMapping}
+      <div class="field-hint warning">
+        {$t('admin.network.pppoe.form.package_mapping_missing') ||
+          'This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.'}
+      </div>
+    {/if}
 
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.pool') || 'Address pool'}</span>
-        <Select2
-          bind:value={formAddressPool}
-          options={poolOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-          disabled={!formRouterId || poolOptions.length === 0}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
-        />
-      </label>
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.comment') || 'Comment'}</span>
-        <input class="input" bind:value={formComment} />
-      </label>
-    </div>
+    <label>
+      <span>{$t('admin.customers.pppoe.fields.comment') || 'Comment'}</span>
+      <input class="input" bind:value={formComment} />
+    </label>
 
     <div class="toggle-row">
       <div class="toggle-text">
@@ -1344,7 +1266,11 @@
       <button class="btn ghost" onclick={() => (showEdit = false)} disabled={saving}>
         {$t('common.cancel') || 'Cancel'}
       </button>
-      <button class="btn" onclick={submitEdit} disabled={saving || !formUsername.trim()}>
+      <button
+        class="btn"
+        onclick={submitEdit}
+        disabled={saving || packageSelectionHasMissingMapping || !formUsername.trim()}
+      >
         <Icon name="check-circle" size={16} />
         {$t('common.save') || 'Save'}
       </button>
@@ -1713,27 +1639,9 @@
     line-height: 1.35;
   }
 
-  .hint {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--text-secondary);
-    font-weight: 650;
-    font-size: 0.9rem;
-  }
-
-  .spin {
-    display: inline-flex;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
+  .field-hint.warning {
+    margin-top: 0;
+    color: #f59e0b;
   }
 
   @media (max-width: 768px) {
@@ -1748,6 +1656,7 @@
     .grid2 {
       grid-template-columns: 1fr;
     }
+
   }
 
   @media (max-width: 1100px) {

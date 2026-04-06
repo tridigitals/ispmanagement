@@ -12,11 +12,15 @@
 use crate::db::DbPool;
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    CreateMikrotikRouterRequest, MikrotikAlert, MikrotikHealthSnapshot, MikrotikIncident,
-    MikrotikInterfaceCounter, MikrotikInterfaceMetric, MikrotikInterfaceSnapshot,
-    MikrotikIpAddressSnapshot, MikrotikLogClearResult, MikrotikLogEntry,
-    MikrotikLogRetentionSettings, MikrotikLogSyncResult, MikrotikRouter, MikrotikRouterMetric,
-    MikrotikRouterNocRow, MikrotikRouterSnapshot, MikrotikTestResult, PaginatedResponse,
+    CreateMikrotikIpPoolRequest, CreateMikrotikPppProfileRequest, CreateMikrotikRouterRequest,
+    MikrotikAlert, MikrotikHealthSnapshot, MikrotikIncident, MikrotikInterfaceCounter,
+    MikrotikInterfaceMetric, MikrotikInterfaceSnapshot, MikrotikIpAddressSnapshot, MikrotikIpPool,
+    MikrotikIpPoolDeleteResult, MikrotikIpPoolDependencyItem, MikrotikIpPoolDependencyStatus,
+    MikrotikLogClearResult, MikrotikLogEntry, MikrotikLogRetentionSettings,
+    MikrotikLogSyncResult, MikrotikPppProfile, MikrotikPppProfileDeleteResult,
+    MikrotikPppProfileDependencyItem, MikrotikPppProfileDependencyStatus, MikrotikRouter,
+    MikrotikRouterMetric, MikrotikRouterNocRow, MikrotikRouterSnapshot, MikrotikTestResult,
+    PaginatedResponse, UpdateMikrotikIpPoolRequest, UpdateMikrotikPppProfileRequest,
     UpdateMikrotikRouterRequest,
 };
 use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
@@ -3870,6 +3874,425 @@ impl MikrotikService {
         Ok(dev)
     }
 
+    fn normalize_optional_text(value: Option<String>) -> Option<String> {
+        value.and_then(|v| {
+            let trimmed = v.trim().to_string();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed)
+            }
+        })
+    }
+
+    async fn find_router_ppp_profile_id_by_name(
+        &self,
+        dev: &MikrotikDevice,
+        profile_name: &str,
+    ) -> Result<Option<String>, anyhow::Error> {
+        let cmd = CommandBuilder::new()
+            .command("/ppp/profile/print")
+            .attribute("detail", Some(""))
+            .build();
+        let mut rx = dev.send_command(cmd).await?;
+        let mut rows = Vec::new();
+        while let Some(res) = rx.recv().await {
+            let response = res?;
+            if let CommandResponse::Reply(reply) = response {
+                rows.push((
+                    reply.attributes.get(".id").and_then(|v| v.clone()),
+                    reply.attributes.get("name").and_then(|v| v.clone()),
+                ));
+            }
+        }
+        Ok(Self::find_router_named_item_id(&rows, profile_name))
+    }
+
+    async fn get_ppp_profile_row(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        id: &str,
+    ) -> AppResult<MikrotikPppProfile> {
+        sqlx::query_as::<_, MikrotikPppProfile>(
+            r#"
+            SELECT * FROM mikrotik_ppp_profiles
+            WHERE tenant_id = $1 AND router_id = $2 AND id = $3
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or_else(|| AppError::NotFound("PPP profile not found".into()))
+    }
+
+    async fn find_router_ip_pool_id_by_name(
+        &self,
+        dev: &MikrotikDevice,
+        pool_name: &str,
+    ) -> Result<Option<String>, anyhow::Error> {
+        let cmd = CommandBuilder::new()
+            .command("/ip/pool/print")
+            .attribute("detail", Some(""))
+            .build();
+        let mut rx = dev.send_command(cmd).await?;
+        let mut rows = Vec::new();
+        while let Some(res) = rx.recv().await {
+            let response = res?;
+            if let CommandResponse::Reply(reply) = response {
+                rows.push((
+                    reply.attributes.get(".id").and_then(|v| v.clone()),
+                    reply.attributes.get("name").and_then(|v| v.clone()),
+                ));
+            }
+        }
+        Ok(Self::find_router_named_item_id(&rows, pool_name))
+    }
+
+    fn find_router_named_item_id(
+        rows: &[(Option<String>, Option<String>)],
+        target_name: &str,
+    ) -> Option<String> {
+        rows.iter().find_map(|(id, name)| {
+            if name.as_deref() == Some(target_name) {
+                id.clone()
+            } else {
+                None
+            }
+        })
+    }
+
+    fn compute_router_missing_names(
+        existing_names: &[String],
+        seen_names: &std::collections::HashSet<String>,
+    ) -> Vec<String> {
+        existing_names
+            .iter()
+            .filter(|name| !seen_names.contains(*name))
+            .cloned()
+            .collect()
+    }
+
+    async fn get_ip_pool_row(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        id: &str,
+    ) -> AppResult<MikrotikIpPool> {
+        sqlx::query_as::<_, MikrotikIpPool>(
+            r#"
+            SELECT * FROM mikrotik_ip_pools
+            WHERE tenant_id = $1 AND router_id = $2 AND id = $3
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(AppError::Database)?
+        .ok_or_else(|| AppError::NotFound("IP pool not found".into()))
+    }
+
+    pub async fn get_ppp_profile_dependencies(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        id: &str,
+    ) -> AppResult<MikrotikPppProfileDependencyStatus> {
+        let profile = self.get_ppp_profile_row(tenant_id, router_id, id).await?;
+
+        let pppoe_accounts: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*) FROM pppoe_accounts
+            WHERE tenant_id = $1 AND router_id = $2 AND router_profile_name = $3
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(&profile.name)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let package_mappings: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*) FROM isp_package_router_mappings
+            WHERE tenant_id = $1 AND router_id = $2 AND router_profile_name = $3
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(&profile.name)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let dependencies = vec![
+            MikrotikPppProfileDependencyItem {
+                r#type: "pppoe_accounts".into(),
+                label: "PPPoE accounts".into(),
+                count: pppoe_accounts,
+            },
+            MikrotikPppProfileDependencyItem {
+                r#type: "isp_package_router_mappings".into(),
+                label: "ISP package mappings".into(),
+                count: package_mappings,
+            },
+        ];
+
+        Ok(MikrotikPppProfileDependencyStatus {
+            profile_id: profile.id,
+            profile_name: profile.name,
+            router_id: router_id.to_string(),
+            can_delete: dependencies.iter().all(|item| item.count == 0),
+            dependencies,
+        })
+    }
+
+    pub async fn create_ppp_profile(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        payload: CreateMikrotikPppProfileRequest,
+    ) -> AppResult<MikrotikPppProfile> {
+        let name = payload.name.trim().to_string();
+        if name.is_empty() {
+            return Err(AppError::Validation("name is required".into()));
+        }
+
+        let router = self
+            .get_router(tenant_id, router_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Router not found".into()))?;
+        let dev = self
+            .connect_device(&router)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        if self
+            .find_router_ppp_profile_id_by_name(&dev, &name)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .is_some()
+        {
+            return Err(AppError::Validation("PPP profile name already exists".into()));
+        }
+
+        let mut builder = CommandBuilder::new()
+            .command("/ppp/profile/add")
+            .attribute("name", Some(name.as_str()));
+        let local_address = Self::normalize_optional_text(payload.local_address);
+        let remote_address = Self::normalize_optional_text(payload.remote_address);
+        let rate_limit = Self::normalize_optional_text(payload.rate_limit);
+        let dns_server = Self::normalize_optional_text(payload.dns_server);
+        let comment = Self::normalize_optional_text(payload.comment);
+        let only_one = payload.only_one.unwrap_or(false);
+        if let Some(value) = local_address.as_deref() {
+            builder = builder.attribute("local-address", Some(value));
+        }
+        if let Some(value) = remote_address.as_deref() {
+            builder = builder.attribute("remote-address", Some(value));
+        }
+        if let Some(value) = rate_limit.as_deref() {
+            builder = builder.attribute("rate-limit", Some(value));
+        }
+        if let Some(value) = dns_server.as_deref() {
+            builder = builder.attribute("dns-server", Some(value));
+        }
+        if let Some(value) = comment.as_deref() {
+            builder = builder.attribute("comment", Some(value));
+        }
+        builder = builder.attribute("only-one", Some(if only_one { "yes" } else { "no" }));
+
+        let mut rx = dev
+            .send_command(builder.build())
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        while let Some(res) = rx.recv().await {
+            match res.map_err(|e| AppError::Internal(e.to_string()))? {
+                CommandResponse::Trap(trap) => {
+                    let message = trap.message.trim().to_string();
+                    return Err(AppError::Validation(if message.is_empty() {
+                        "Router rejected PPP profile create".into()
+                    } else {
+                        message
+                    }));
+                }
+                CommandResponse::Done(_) => break,
+                _ => {}
+            }
+        }
+
+        let rows = self.sync_ppp_profiles(tenant_id, router_id).await?;
+        rows.into_iter()
+            .find(|row| row.name == name)
+            .ok_or_else(|| AppError::Internal("PPP profile created on router but mirror refresh failed".into()))
+    }
+
+    pub async fn update_ppp_profile(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        id: &str,
+        payload: UpdateMikrotikPppProfileRequest,
+    ) -> AppResult<MikrotikPppProfile> {
+        let profile = self.get_ppp_profile_row(tenant_id, router_id, id).await?;
+        if payload
+            .name
+            .as_ref()
+            .map(|value| value.trim() != profile.name)
+            .unwrap_or(false)
+        {
+            return Err(AppError::Validation("PPP profile rename is not allowed in phase one".into()));
+        }
+
+        let router = self
+            .get_router(tenant_id, router_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Router not found".into()))?;
+        let dev = self
+            .connect_device(&router)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        let router_profile_id = self
+            .find_router_ppp_profile_id_by_name(&dev, &profile.name)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .ok_or_else(|| AppError::Conflict("PPP profile no longer exists on router. Sync from router before retrying.".into()))?;
+
+        let mut builder = CommandBuilder::new()
+            .command("/ppp/profile/set")
+            .attribute("numbers", Some(router_profile_id.as_str()));
+        let local_address = Self::normalize_optional_text(payload.local_address);
+        let remote_address = Self::normalize_optional_text(payload.remote_address);
+        let rate_limit = Self::normalize_optional_text(payload.rate_limit);
+        let dns_server = Self::normalize_optional_text(payload.dns_server);
+        let comment = Self::normalize_optional_text(payload.comment);
+        let only_one = payload.only_one;
+        builder = builder.attribute("local-address", local_address.as_deref());
+        builder = builder.attribute("remote-address", remote_address.as_deref());
+        builder = builder.attribute("rate-limit", rate_limit.as_deref());
+        builder = builder.attribute("dns-server", dns_server.as_deref());
+        builder = builder.attribute("comment", comment.as_deref());
+        if let Some(value) = only_one {
+            builder = builder.attribute("only-one", Some(if value { "yes" } else { "no" }));
+        }
+
+        let mut rx = dev
+            .send_command(builder.build())
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        while let Some(res) = rx.recv().await {
+            match res.map_err(|e| AppError::Internal(e.to_string()))? {
+                CommandResponse::Trap(trap) => {
+                    let message = trap.message.trim().to_string();
+                    return Err(AppError::Validation(if message.is_empty() {
+                        "Router rejected PPP profile update".into()
+                    } else {
+                        message
+                    }));
+                }
+                CommandResponse::Done(_) => break,
+                _ => {}
+            }
+        }
+
+        let rows = self.sync_ppp_profiles(tenant_id, router_id).await?;
+        rows.into_iter()
+            .find(|row| row.id == profile.id || row.name == profile.name)
+            .ok_or_else(|| AppError::Internal("PPP profile updated on router but mirror refresh failed".into()))
+    }
+
+    pub async fn delete_ppp_profile(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        id: &str,
+    ) -> AppResult<MikrotikPppProfileDeleteResult> {
+        let profile = self.get_ppp_profile_row(tenant_id, router_id, id).await?;
+        let dependencies = self.get_ppp_profile_dependencies(tenant_id, router_id, id).await?;
+        if !dependencies.can_delete {
+            return Err(AppError::Validation(format!(
+                "PPP profile is still in use: {}",
+                dependencies
+                    .dependencies
+                    .iter()
+                    .filter(|item| item.count > 0)
+                    .map(|item| format!("{} ({})", item.label, item.count))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )));
+        }
+
+        let router = self
+            .get_router(tenant_id, router_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Router not found".into()))?;
+        let dev = self
+            .connect_device(&router)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        let router_profile_id = self
+            .find_router_ppp_profile_id_by_name(&dev, &profile.name)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .ok_or_else(|| AppError::Conflict("PPP profile no longer exists on router. Sync from router before retrying.".into()))?;
+
+        let dependencies = self.get_ppp_profile_dependencies(tenant_id, router_id, id).await?;
+        if !dependencies.can_delete {
+            return Err(AppError::Validation("PPP profile is still in use".into()));
+        }
+
+        let mut rx = dev
+            .send_command(
+                CommandBuilder::new()
+                    .command("/ppp/profile/remove")
+                    .attribute("numbers", Some(router_profile_id.as_str()))
+                    .build(),
+            )
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        while let Some(res) = rx.recv().await {
+            match res.map_err(|e| AppError::Internal(e.to_string()))? {
+                CommandResponse::Trap(trap) => {
+                    let message = trap.message.trim().to_string();
+                    return Err(AppError::Validation(if message.is_empty() {
+                        "Router rejected PPP profile delete".into()
+                    } else {
+                        message
+                    }));
+                }
+                CommandResponse::Done(_) => break,
+                _ => {}
+            }
+        }
+
+        sqlx::query(
+            r#"
+            DELETE FROM mikrotik_ppp_profiles
+            WHERE tenant_id = $1 AND router_id = $2 AND id = $3
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(&profile.id)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        self.sync_ppp_profiles(tenant_id, router_id).await?;
+        Ok(MikrotikPppProfileDeleteResult {
+            ok: true,
+            deleted_profile_id: profile.id,
+            deleted_profile_name: profile.name,
+            router_id: router_id.to_string(),
+        })
+    }
+
     pub async fn list_ppp_profiles(
         &self,
         tenant_id: &str,
@@ -3910,6 +4333,257 @@ impl MikrotikService {
         Ok(rows)
     }
 
+    pub async fn get_ip_pool_dependencies(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        id: &str,
+    ) -> AppResult<MikrotikIpPoolDependencyStatus> {
+        let pool = self.get_ip_pool_row(tenant_id, router_id, id).await?;
+
+        let pppoe_accounts: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*) FROM pppoe_accounts
+            WHERE tenant_id = $1 AND router_id = $2 AND address_pool = $3
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(&pool.name)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let package_mappings: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*) FROM isp_package_router_mappings
+            WHERE tenant_id = $1 AND router_id = $2 AND address_pool = $3
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(&pool.name)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let dependencies = build_ip_pool_dependency_items(pppoe_accounts, package_mappings);
+
+        Ok(MikrotikIpPoolDependencyStatus {
+            pool_id: pool.id,
+            pool_name: pool.name,
+            router_id: router_id.to_string(),
+            can_delete: true,
+            dependencies,
+        })
+    }
+
+    pub async fn create_ip_pool(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        payload: CreateMikrotikIpPoolRequest,
+    ) -> AppResult<MikrotikIpPool> {
+        let name = payload.name.trim().to_string();
+        if name.is_empty() {
+            return Err(AppError::Validation("name is required".into()));
+        }
+
+        let router = self
+            .get_router(tenant_id, router_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Router not found".into()))?;
+        let dev = self
+            .connect_device(&router)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        if self
+            .find_router_ip_pool_id_by_name(&dev, &name)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .is_some()
+        {
+            return Err(AppError::Validation("IP pool name already exists".into()));
+        }
+
+        let mut builder = CommandBuilder::new()
+            .command("/ip/pool/add")
+            .attribute("name", Some(name.as_str()));
+        let ranges = Self::normalize_optional_text(payload.ranges);
+        let next_pool = Self::normalize_optional_text(payload.next_pool);
+        let comment = Self::normalize_optional_text(payload.comment);
+        if let Some(value) = ranges.as_deref() {
+            builder = builder.attribute("ranges", Some(value));
+        }
+        if let Some(value) = next_pool.as_deref() {
+            builder = builder.attribute("next-pool", Some(value));
+        }
+        if let Some(value) = comment.as_deref() {
+            builder = builder.attribute("comment", Some(value));
+        }
+
+        let mut rx = dev
+            .send_command(builder.build())
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        while let Some(res) = rx.recv().await {
+            match res.map_err(|e| AppError::Internal(e.to_string()))? {
+                CommandResponse::Trap(trap) => {
+                    let message = trap.message.trim().to_string();
+                    return Err(AppError::Validation(if message.is_empty() {
+                        "Router rejected IP pool create".into()
+                    } else {
+                        message
+                    }));
+                }
+                CommandResponse::Done(_) => break,
+                _ => {}
+            }
+        }
+
+        let rows = self.sync_ip_pools(tenant_id, router_id).await?;
+        rows.into_iter()
+            .find(|row| row.name == name)
+            .ok_or_else(|| AppError::Internal("IP pool created on router but mirror refresh failed".into()))
+    }
+
+    pub async fn update_ip_pool(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        id: &str,
+        payload: UpdateMikrotikIpPoolRequest,
+    ) -> AppResult<MikrotikIpPool> {
+        let pool = self.get_ip_pool_row(tenant_id, router_id, id).await?;
+        if let Some(message) = ip_pool_rename_attempted(payload.name.as_deref(), &pool.name) {
+            return Err(AppError::Validation(message));
+        }
+
+        let router = self
+            .get_router(tenant_id, router_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Router not found".into()))?;
+        let dev = self
+            .connect_device(&router)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        let router_pool_id = self
+            .find_router_ip_pool_id_by_name(&dev, &pool.name)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .ok_or_else(|| AppError::Conflict("IP pool no longer exists on router. Sync from router before retrying.".into()))?;
+
+        let mut builder = CommandBuilder::new()
+            .command("/ip/pool/set")
+            .attribute("numbers", Some(router_pool_id.as_str()));
+        let ranges = Self::normalize_optional_text(payload.ranges);
+        let next_pool = Self::normalize_optional_text(payload.next_pool);
+        let comment = Self::normalize_optional_text(payload.comment);
+        builder = builder.attribute("ranges", ranges.as_deref());
+        builder = builder.attribute("next-pool", next_pool.as_deref());
+        builder = builder.attribute("comment", comment.as_deref());
+
+        let mut rx = dev
+            .send_command(builder.build())
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        while let Some(res) = rx.recv().await {
+            match res.map_err(|e| AppError::Internal(e.to_string()))? {
+                CommandResponse::Trap(trap) => {
+                    let message = trap.message.trim().to_string();
+                    return Err(AppError::Validation(if message.is_empty() {
+                        "Router rejected IP pool update".into()
+                    } else {
+                        message
+                    }));
+                }
+                CommandResponse::Done(_) => break,
+                _ => {}
+            }
+        }
+
+        let rows = self.sync_ip_pools(tenant_id, router_id).await?;
+        rows.into_iter()
+            .find(|row| row.id == pool.id || row.name == pool.name)
+            .ok_or_else(|| AppError::Internal("IP pool updated on router but mirror refresh failed".into()))
+    }
+
+    pub async fn delete_ip_pool(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        id: &str,
+    ) -> AppResult<MikrotikIpPoolDeleteResult> {
+        let pool = self.get_ip_pool_row(tenant_id, router_id, id).await?;
+        let router = self
+            .get_router(tenant_id, router_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("Router not found".into()))?;
+        let dev = self
+            .connect_device(&router)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        let router_pool_id = self
+            .find_router_ip_pool_id_by_name(&dev, &pool.name)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?
+            .ok_or_else(|| AppError::Conflict("IP pool no longer exists on router. Sync from router before retrying.".into()))?;
+
+        let latest_warning_status = self.get_ip_pool_dependencies(tenant_id, router_id, id).await?;
+        let warnings = latest_warning_status.dependencies;
+
+        let mut rx = dev
+            .send_command(
+                CommandBuilder::new()
+                    .command("/ip/pool/remove")
+                    .attribute("numbers", Some(router_pool_id.as_str()))
+                    .build(),
+            )
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        while let Some(res) = rx.recv().await {
+            match res.map_err(|e| AppError::Internal(e.to_string()))? {
+                CommandResponse::Trap(trap) => {
+                    let message = trap.message.trim().to_string();
+                    return Err(AppError::Validation(if message.is_empty() {
+                        "Router rejected IP pool delete".into()
+                    } else {
+                        message
+                    }));
+                }
+                CommandResponse::Done(_) => break,
+                _ => {}
+            }
+        }
+
+        sqlx::query(
+            r#"
+            DELETE FROM mikrotik_ip_pools
+            WHERE tenant_id = $1 AND router_id = $2 AND id = $3
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .bind(&pool.id)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        self.sync_ip_pools(tenant_id, router_id).await?;
+        Ok(MikrotikIpPoolDeleteResult {
+            ok: true,
+            deleted_pool_id: pool.id,
+            deleted_pool_name: pool.name,
+            router_id: router_id.to_string(),
+            warnings: if ip_pool_has_dependency_warnings(&warnings) {
+                warnings
+            } else {
+                Vec::new()
+            },
+        })
+    }
+
     pub async fn sync_ppp_profiles(
         &self,
         tenant_id: &str,
@@ -3936,17 +4610,6 @@ impl MikrotikService {
 
         let now = chrono::Utc::now();
         let mut seen: std::collections::HashSet<String> = Default::default();
-
-        // Mark all as missing first; then upsert seen ones.
-        let _ = sqlx::query(
-            "UPDATE mikrotik_ppp_profiles SET router_present = false, last_sync_at = $1, updated_at = $2 WHERE tenant_id = $3 AND router_id = $4",
-        )
-        .bind(now)
-        .bind(now)
-        .bind(tenant_id)
-        .bind(router_id)
-        .execute(&self.pool)
-        .await;
 
         while let Some(res) = rx.recv().await {
             let r = res.map_err(|e| AppError::Internal(e.to_string()))?;
@@ -4057,6 +4720,48 @@ impl MikrotikService {
             }
         }
 
+        let existing_names: Vec<String> = sqlx::query_scalar(
+            r#"
+            SELECT name FROM mikrotik_ppp_profiles
+            WHERE tenant_id = $1 AND router_id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let missing_names = Self::compute_router_missing_names(&existing_names, &seen);
+        if !missing_names.is_empty() {
+            sqlx::query(
+                r#"
+                DELETE FROM mikrotik_ppp_profiles
+                WHERE tenant_id = $1 AND router_id = $2 AND name = ANY($3)
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(router_id)
+            .bind(&missing_names)
+            .execute(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
+        }
+
+        let _ = sqlx::query(
+            r#"
+            UPDATE mikrotik_ppp_profiles
+            SET router_present = true, last_sync_at = $1, updated_at = $2
+            WHERE tenant_id = $3 AND router_id = $4
+            "#,
+        )
+        .bind(now)
+        .bind(now)
+        .bind(tenant_id)
+        .bind(router_id)
+        .execute(&self.pool)
+        .await;
+
         self.list_ppp_profiles(tenant_id, router_id).await
     }
 
@@ -4085,16 +4790,7 @@ impl MikrotikService {
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
         let now = chrono::Utc::now();
-
-        let _ = sqlx::query(
-            "UPDATE mikrotik_ip_pools SET router_present = false, last_sync_at = $1, updated_at = $2 WHERE tenant_id = $3 AND router_id = $4",
-        )
-        .bind(now)
-        .bind(now)
-        .bind(tenant_id)
-        .bind(router_id)
-        .execute(&self.pool)
-        .await;
+        let mut seen: std::collections::HashSet<String> = Default::default();
 
         while let Some(res) = rx.recv().await {
             let r = res.map_err(|e| AppError::Internal(e.to_string()))?;
@@ -4107,6 +4803,7 @@ impl MikrotikService {
                 if name.trim().is_empty() {
                     continue;
                 }
+                seen.insert(name.clone());
 
                 let ranges = reply.attributes.get("ranges").and_then(|v| v.clone());
                 let next_pool = reply.attributes.get("next-pool").and_then(|v| v.clone());
@@ -4153,6 +4850,48 @@ impl MikrotikService {
                 .map_err(AppError::Database)?;
             }
         }
+
+        let existing_names: Vec<String> = sqlx::query_scalar(
+            r#"
+            SELECT name FROM mikrotik_ip_pools
+            WHERE tenant_id = $1 AND router_id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(router_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        let missing_names = Self::compute_router_missing_names(&existing_names, &seen);
+        if !missing_names.is_empty() {
+            sqlx::query(
+                r#"
+                DELETE FROM mikrotik_ip_pools
+                WHERE tenant_id = $1 AND router_id = $2 AND name = ANY($3)
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(router_id)
+            .bind(&missing_names)
+            .execute(&self.pool)
+            .await
+            .map_err(AppError::Database)?;
+        }
+
+        let _ = sqlx::query(
+            r#"
+            UPDATE mikrotik_ip_pools
+            SET router_present = true, last_sync_at = $1, updated_at = $2
+            WHERE tenant_id = $3 AND router_id = $4
+            "#,
+        )
+        .bind(now)
+        .bind(now)
+        .bind(tenant_id)
+        .bind(router_id)
+        .execute(&self.pool)
+        .await;
 
         self.list_ip_pools(tenant_id, router_id).await
     }
@@ -4373,6 +5112,39 @@ fn validate_log_calendar_filters(month: Option<u32>, year: Option<i32>) -> AppRe
     Ok(())
 }
 
+fn build_ip_pool_dependency_items(
+    pppoe_accounts: i64,
+    package_mappings: i64,
+) -> Vec<MikrotikIpPoolDependencyItem> {
+    vec![
+        MikrotikIpPoolDependencyItem {
+            r#type: "pppoe_accounts".into(),
+            label: "PPPoE accounts".into(),
+            count: pppoe_accounts,
+        },
+        MikrotikIpPoolDependencyItem {
+            r#type: "isp_package_router_mappings".into(),
+            label: "ISP package mappings".into(),
+            count: package_mappings,
+        },
+    ]
+}
+
+fn ip_pool_has_dependency_warnings(dependencies: &[MikrotikIpPoolDependencyItem]) -> bool {
+    dependencies.iter().any(|item| item.count > 0)
+}
+
+fn ip_pool_rename_attempted(requested_name: Option<&str>, current_name: &str) -> Option<String> {
+    requested_name.and_then(|value| {
+        let trimmed = value.trim();
+        if trimmed.is_empty() || trimmed == current_name {
+            None
+        } else {
+            Some("IP pool rename is not allowed in phase one".to_string())
+        }
+    })
+}
+
 fn mikrotik_log_list_sql() -> &'static str {
     r#"
     SELECT l.*
@@ -4498,6 +5270,58 @@ mod tests {
         let sql = mikrotik_log_prune_sql();
         assert!(sql.contains("logged_at < $3"));
         assert!(!sql.contains("OFFSET 5000"));
+    }
+
+    #[test]
+    fn ip_pool_dependencies_become_warning_items() {
+        let dependencies = build_ip_pool_dependency_items(2, 1);
+
+        assert_eq!(dependencies.len(), 2);
+        assert_eq!(dependencies[0].r#type, "pppoe_accounts");
+        assert_eq!(dependencies[0].count, 2);
+        assert_eq!(dependencies[1].r#type, "isp_package_router_mappings");
+        assert_eq!(dependencies[1].count, 1);
+        assert!(ip_pool_has_dependency_warnings(&dependencies));
+    }
+
+    #[test]
+    fn ip_pool_rename_check_allows_same_name_and_rejects_changes() {
+        assert!(ip_pool_rename_attempted(None, "pool-a").is_none());
+        assert!(ip_pool_rename_attempted(Some(" pool-a "), "pool-a").is_none());
+        assert_eq!(
+            ip_pool_rename_attempted(Some("pool-b"), "pool-a"),
+            Some("IP pool rename is not allowed in phase one".to_string())
+        );
+    }
+
+    #[test]
+    fn router_named_item_id_lookup_uses_exact_name_match_from_print_rows() {
+        let rows = vec![
+            (Some("*1".to_string()), Some("pool-a".to_string())),
+            (Some("*2".to_string()), Some("pool-b".to_string())),
+        ];
+
+        assert_eq!(
+            MikrotikService::find_router_named_item_id(&rows, "pool-b"),
+            Some("*2".to_string())
+        );
+        assert_eq!(MikrotikService::find_router_named_item_id(&rows, "pool-c"), None);
+    }
+
+    #[test]
+    fn prune_router_missing_names_keeps_only_seen_pool_names() {
+        let existing = vec![
+            "pool-a".to_string(),
+            "pool-b".to_string(),
+            "pool-c".to_string(),
+        ];
+        let seen: std::collections::HashSet<String> =
+            ["pool-a".to_string(), "pool-c".to_string()].into_iter().collect();
+
+        assert_eq!(
+            MikrotikService::compute_router_missing_names(&existing, &seen),
+            vec!["pool-b".to_string()]
+        );
     }
 
     #[tokio::test]

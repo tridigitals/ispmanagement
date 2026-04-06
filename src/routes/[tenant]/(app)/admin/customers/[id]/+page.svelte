@@ -17,6 +17,11 @@
     type IspPackageRouterMappingView,
   } from '$lib/api/client';
   import type { PppoeAccountPublic } from '$lib/api/client';
+  import { getPppoeAssignmentPayload } from '$lib/utils/pppoePackageAssignment';
+  import {
+    createThenApplyPppoeAccount,
+    PppoeCreateApplyError,
+  } from '$lib/utils/pppoeCreateProvisioning';
   import { timeAgo } from '$lib/utils/date';
   import { formatMoney } from '$lib/utils/money';
 
@@ -115,25 +120,19 @@
     return out;
   });
 
-  // Router-scoped inventory (used as suggestions for profile/pool fields)
-  let pppoeProfiles = $state<any[]>([]);
-  let pppoePools = $state<any[]>([]);
-  let pppoeInventoryLoading = $state(false);
-  let pppoeInventoryRouter = $state<string | null>(null);
-
-  const pppoeProfileOptions = $derived.by(() => {
-    const base = (pppoeProfiles || []).map((p: any) => ({ label: String(p.name), value: String(p.name) }));
-    const cur = pppoeRouterProfileName?.trim();
-    if (cur && !base.some((o) => o.value === cur)) return [{ label: cur, value: cur }, ...base];
-    return base;
-  });
-
-  const pppoePoolOptions = $derived.by(() => {
-    const base = (pppoePools || []).map((p: any) => ({ label: String(p.name), value: String(p.name) }));
-    const cur = pppoeAddressPool?.trim();
-    if (cur && !base.some((o) => o.value === cur)) return [{ label: cur, value: cur }, ...base];
-    return base;
-  });
+  const pppoePackageSelectionHasMissingMapping = $derived.by(
+    () =>
+      Boolean(pppoePackageId) &&
+      !getPppoeAssignmentPayload({
+        packageId: pppoePackageId,
+        mappings: pppoePackageMappings,
+        current: {
+          router_profile_name: pppoeRouterProfileName,
+          remote_address: pppoeRemoteAddress,
+          address_pool: pppoeAddressPool,
+        },
+      }).hasPackageMapping,
+  );
 
   const pppoeColumns = $derived.by(() => [
     { key: 'username', label: $t('admin.customers.pppoe.columns.username') || 'Username' },
@@ -312,28 +311,6 @@
     void loadTimeline();
   });
 
-  async function loadPppoeInventory(routerId: string, opts?: { silent?: boolean }) {
-    if (pppoeInventoryLoading) return;
-    if (!routerId) return;
-
-    pppoeInventoryLoading = true;
-    try {
-      const [profiles, pools] = await Promise.all([
-        api.mikrotik.routers.pppProfiles(routerId) as any,
-        api.mikrotik.routers.ipPools(routerId) as any,
-      ]);
-      pppoeProfiles = profiles || [];
-      pppoePools = pools || [];
-      pppoeInventoryRouter = routerId;
-    } catch (e: any) {
-      if (!opts?.silent) {
-        toast.error(e?.message || e);
-      }
-    } finally {
-      pppoeInventoryLoading = false;
-    }
-  }
-
   async function loadPppoePackages(routerId: string) {
     if (!routerId) {
       pppoePackageMappings = [];
@@ -346,33 +323,19 @@
     }
   }
 
-  function maybeAutoSelectPppoePackageFromProfile() {
-    const profile = pppoeRouterProfileName?.trim();
-    if (!pppoeRouterId || !profile) return;
-    if (pppoePackageId) return;
-
-    const matches = pppoePackageMappings.filter((m) => (m.router_profile_name || '') === profile);
-    if (matches.length === 1) {
-      pppoePackageId = matches[0].package_id;
-      applyPppoePackage(pppoePackageId);
-      return;
-    }
-
-    if (!pppoeAddressPool) {
-      const withPool = matches.find((m) => m.address_pool);
-      if (withPool?.address_pool) pppoeAddressPool = withPool.address_pool;
-    }
-  }
-
   function applyPppoePackage(pkgId: string) {
-    if (!pkgId) return;
-    const m = pppoePackageMappings.find((x) => x.package_id === pkgId);
-    if (!m) return;
-    pppoeRouterProfileName = m.router_profile_name || '';
-    if (m.address_pool) {
-      pppoeAddressPool = m.address_pool;
-      pppoeRemoteAddress = '';
-    }
+    const resolved = getPppoeAssignmentPayload({
+      packageId: pkgId,
+      mappings: pppoePackageMappings,
+      current: {
+        router_profile_name: pppoeRouterProfileName,
+        remote_address: pppoeRemoteAddress,
+        address_pool: pppoeAddressPool,
+      },
+    });
+    pppoeRouterProfileName = resolved.router_profile_name || '';
+    pppoeRemoteAddress = resolved.remote_address || '';
+    pppoeAddressPool = resolved.address_pool || '';
   }
 
   $effect(() => {
@@ -381,20 +344,10 @@
 
     const rid = pppoeRouterId;
     if (!rid) {
-      pppoeProfiles = [];
-      pppoePools = [];
-      pppoeInventoryRouter = null;
       pppoePackageMappings = [];
       return;
     }
-
-    if (pppoeInventoryRouter === rid) {
-      // still ensure packages are loaded once per router selection
-      if (pppoePackageMappings.length === 0) void loadPppoePackages(rid);
-      return;
-    }
-    void loadPppoeInventory(rid, { silent: true });
-    void loadPppoePackages(rid);
+    if (pppoePackageMappings.length === 0) void loadPppoePackages(rid);
   });
 
   async function loadCustomer() {
@@ -842,30 +795,66 @@
 
   async function submitCreatePppoe() {
     if (!pppoeRouterId || !pppoeLocationId || !pppoeUsername.trim() || !pppoePassword) return;
+    if (pppoePackageSelectionHasMissingMapping) {
+      toast.error(
+        get(t)('admin.network.pppoe.form.package_mapping_missing') ||
+          'This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.',
+      );
+      return;
+    }
     savingPppoe = true;
     try {
-      await api.pppoe.accounts.create({
-        router_id: pppoeRouterId,
-        customer_id: customerId,
-        location_id: pppoeLocationId,
-        username: pppoeUsername.trim(),
-        password: pppoePassword,
-        package_id: pppoePackageId || null,
-        router_profile_name: pppoeRouterProfileName.trim() || null,
-        remote_address: pppoeRemoteAddress.trim() || null,
-        address_pool: pppoeAddressPool.trim() || null,
-        disabled: pppoeDisabled,
-        comment: pppoeComment.trim() || null,
+      const assignmentPayload = getPppoeAssignmentPayload({
+        packageId: pppoePackageId,
+        mappings: pppoePackageMappings,
+        current: {
+          router_profile_name: pppoeRouterProfileName,
+          remote_address: pppoeRemoteAddress,
+          address_pool: pppoeAddressPool,
+        },
       });
-      toast.success(get(t)('admin.customers.pppoe.toasts.created') || 'PPPoE account created');
+      await createThenApplyPppoeAccount({
+        create: () =>
+          api.pppoe.accounts.create({
+            router_id: pppoeRouterId,
+            customer_id: customerId,
+            location_id: pppoeLocationId,
+            username: pppoeUsername.trim(),
+            password: pppoePassword,
+            package_id: pppoePackageId || null,
+            router_profile_name: assignmentPayload.router_profile_name,
+            remote_address: assignmentPayload.remote_address,
+            address_pool: assignmentPayload.address_pool,
+            disabled: pppoeDisabled,
+            comment: pppoeComment.trim() || null,
+          }),
+        apply: (id) => api.pppoe.accounts.apply(id),
+      });
+      toast.success(
+        get(t)('admin.network.pppoe.toasts.created_applied') ||
+          'PPPoE account created and applied to router',
+      );
       showAddPppoe = false;
       resetPppoeForm();
       await loadPppoeAccounts();
     } catch (e: any) {
-      toast.error(
-        get(t)('admin.customers.pppoe.toasts.create_failed', { values: { message: e?.message || e } }) ||
-          `Failed: ${e?.message || e}`,
-      );
+      if (e instanceof PppoeCreateApplyError) {
+        toast.error(
+          get(t)('admin.network.pppoe.toasts.auto_apply_failed', {
+            values: { message: (e.applyError as any)?.message || e.applyError || e.message },
+          }) ||
+            `Saved, but auto-apply failed: ${(e.applyError as any)?.message || e.applyError || e.message}`,
+        );
+        showAddPppoe = false;
+        resetPppoeForm();
+        await loadPppoeAccounts();
+      } else {
+        toast.error(
+          get(t)('admin.customers.pppoe.toasts.create_failed', {
+            values: { message: e?.message || e },
+          }) || `Failed: ${e?.message || e}`,
+        );
+      }
     } finally {
       savingPppoe = false;
     }
@@ -873,15 +862,31 @@
 
   async function submitUpdatePppoe() {
     if (!editingPppoe) return;
+    if (pppoePackageSelectionHasMissingMapping) {
+      toast.error(
+        get(t)('admin.network.pppoe.form.package_mapping_missing') ||
+          'This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.',
+      );
+      return;
+    }
     savingPppoe = true;
     try {
+      const assignmentPayload = getPppoeAssignmentPayload({
+        packageId: pppoePackageId,
+        mappings: pppoePackageMappings,
+        current: {
+          router_profile_name: pppoeRouterProfileName,
+          remote_address: pppoeRemoteAddress,
+          address_pool: pppoeAddressPool,
+        },
+      });
       await api.pppoe.accounts.update(editingPppoe.id, {
         username: pppoeUsername.trim() || undefined,
         password: pppoePassword || undefined,
         package_id: pppoePackageId || null,
-        router_profile_name: pppoeRouterProfileName.trim() || null,
-        remote_address: pppoeRemoteAddress.trim() || null,
-        address_pool: pppoeAddressPool.trim() || null,
+        router_profile_name: assignmentPayload.router_profile_name,
+        remote_address: assignmentPayload.remote_address,
+        address_pool: assignmentPayload.address_pool,
         disabled: pppoeDisabled,
         comment: pppoeComment.trim() || null,
       });
@@ -1829,9 +1834,16 @@
       />
       <div class="field-hint">
         {$t('admin.network.pppoe.form.package_hint') ||
-          'If you select a package, profile/pool will be prefilled for the selected router (you can still override).'}
+          'Choose a package to control PPP profile and addressing for the selected router.'}
       </div>
     </label>
+
+    {#if pppoePackageSelectionHasMissingMapping}
+      <div class="field-hint warning">
+        {$t('admin.network.pppoe.form.package_mapping_missing') ||
+          'This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.'}
+      </div>
+    {/if}
 
     <div class="grid2">
       <label>
@@ -1842,66 +1854,6 @@
         <span>{$t('admin.customers.pppoe.fields.password') || 'Password'}</span>
         <input class="input" type="password" bind:value={pppoePassword} />
       </label>
-    </div>
-
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.profile') || 'Profile'}</span>
-        <Select2
-          bind:value={pppoeRouterProfileName}
-          options={pppoeProfileOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-          disabled={!pppoeRouterId || pppoeProfileOptions.length === 0}
-          maxItems={5000}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
-          onchange={() => maybeAutoSelectPppoePackageFromProfile()}
-        />
-      </label>
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.remote_address') || 'Remote IP'}</span>
-        <input
-          class="input mono"
-          bind:value={pppoeRemoteAddress}
-          placeholder="10.10.10.10"
-          disabled={!pppoeRouterId}
-        />
-      </label>
-    </div>
-
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.pool') || 'Address pool'}</span>
-        <Select2
-          bind:value={pppoeAddressPool}
-          options={pppoePoolOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-          disabled={!pppoeRouterId || pppoePoolOptions.length === 0}
-          maxItems={5000}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
-        />
-      </label>
-      <div></div>
-    </div>
-
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.pool') || 'Address pool'}</span>
-        <Select2
-          bind:value={pppoeAddressPool}
-          options={pppoePoolOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-          disabled={!pppoeRouterId || pppoePoolOptions.length === 0}
-          maxItems={5000}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
-        />
-      </label>
-      <div></div>
     </div>
 
     <label>
@@ -1927,10 +1879,15 @@
       <button
         class="btn btn-primary"
         onclick={submitCreatePppoe}
-        disabled={savingPppoe || !pppoeRouterId || !pppoeLocationId || !pppoeUsername.trim() || !pppoePassword}
+        disabled={savingPppoe ||
+          pppoePackageSelectionHasMissingMapping ||
+          !pppoeRouterId ||
+          !pppoeLocationId ||
+          !pppoeUsername.trim() ||
+          !pppoePassword}
       >
         <Icon name="plus" size={16} />
-        {$t('common.create') || 'Create'}
+        {$t('admin.network.pppoe.actions.create_apply') || 'Create & apply to router'}
       </button>
     </div>
   </div>
@@ -1980,9 +1937,16 @@
       />
       <div class="field-hint">
         {$t('admin.network.pppoe.form.package_hint') ||
-          'If you select a package, profile/pool will be prefilled for the selected router (you can still override).'}
+          'Choose a package to control PPP profile and addressing for the selected router.'}
       </div>
     </label>
+
+    {#if pppoePackageSelectionHasMissingMapping}
+      <div class="field-hint warning">
+        {$t('admin.network.pppoe.form.package_mapping_missing') ||
+          'This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.'}
+      </div>
+    {/if}
 
     <div class="grid2">
       <label>
@@ -1993,44 +1957,6 @@
         <span>{$t('admin.customers.pppoe.fields.password') || 'Password'}</span>
         <input class="input" type="password" bind:value={pppoePassword} placeholder={$t('admin.customers.pppoe.edit.password_hint') || 'Leave blank to keep'} />
       </label>
-    </div>
-
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.profile') || 'Profile'}</span>
-        <Select2
-          bind:value={pppoeRouterProfileName}
-          options={pppoeProfileOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-          disabled={!pppoeRouterId || pppoeProfileOptions.length === 0}
-          maxItems={5000}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
-          onchange={() => maybeAutoSelectPppoePackageFromProfile()}
-        />
-      </label>
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.remote_address') || 'Remote IP'}</span>
-        <input class="input mono" bind:value={pppoeRemoteAddress} placeholder="10.10.10.10" />
-      </label>
-    </div>
-
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.pool') || 'Address pool'}</span>
-        <Select2
-          bind:value={pppoeAddressPool}
-          options={pppoePoolOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-          disabled={!pppoeRouterId || pppoePoolOptions.length === 0}
-          maxItems={5000}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
-        />
-      </label>
-      <div></div>
     </div>
 
     <label>
@@ -2053,7 +1979,11 @@
       <button class="btn btn-secondary" onclick={() => (showEditPppoe = false)}>
         {$t('common.cancel') || 'Cancel'}
       </button>
-      <button class="btn btn-primary" onclick={submitUpdatePppoe} disabled={savingPppoe || !pppoeUsername.trim()}>
+      <button
+        class="btn btn-primary"
+        onclick={submitUpdatePppoe}
+        disabled={savingPppoe || pppoePackageSelectionHasMissingMapping || !pppoeUsername.trim()}
+      >
         <Icon name="check-circle" size={16} />
         {$t('common.save') || 'Save'}
       </button>

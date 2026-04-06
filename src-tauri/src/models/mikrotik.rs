@@ -356,6 +356,54 @@ pub struct MikrotikPppProfile {
     pub updated_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CreateMikrotikPppProfileRequest {
+    pub name: String,
+    pub local_address: Option<String>,
+    pub remote_address: Option<String>,
+    pub rate_limit: Option<String>,
+    pub dns_server: Option<String>,
+    pub comment: Option<String>,
+    pub only_one: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateMikrotikPppProfileRequest {
+    pub name: Option<String>,
+    pub local_address: Option<String>,
+    pub remote_address: Option<String>,
+    pub rate_limit: Option<String>,
+    pub dns_server: Option<String>,
+    pub comment: Option<String>,
+    pub only_one: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MikrotikPppProfileDependencyItem {
+    pub r#type: String,
+    pub label: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MikrotikPppProfileDependencyStatus {
+    pub profile_id: String,
+    pub profile_name: String,
+    pub router_id: String,
+    pub can_delete: bool,
+    pub dependencies: Vec<MikrotikPppProfileDependencyItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MikrotikPppProfileDeleteResult {
+    pub ok: bool,
+    pub deleted_profile_id: String,
+    pub deleted_profile_name: String,
+    pub router_id: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct MikrotikIpPool {
     pub id: String,
@@ -369,6 +417,49 @@ pub struct MikrotikIpPool {
     pub last_sync_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CreateMikrotikIpPoolRequest {
+    pub name: String,
+    pub ranges: Option<String>,
+    pub next_pool: Option<String>,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateMikrotikIpPoolRequest {
+    pub name: Option<String>,
+    pub ranges: Option<String>,
+    pub next_pool: Option<String>,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MikrotikIpPoolDependencyItem {
+    pub r#type: String,
+    pub label: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MikrotikIpPoolDependencyStatus {
+    pub pool_id: String,
+    pub pool_name: String,
+    pub router_id: String,
+    pub can_delete: bool,
+    pub dependencies: Vec<MikrotikIpPoolDependencyItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MikrotikIpPoolDeleteResult {
+    pub ok: bool,
+    pub deleted_pool_id: String,
+    pub deleted_pool_name: String,
+    pub router_id: String,
+    pub warnings: Vec<MikrotikIpPoolDependencyItem>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
