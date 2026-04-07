@@ -106,11 +106,8 @@ fn activation_resolution_install_done_unpaid_waits_for_payment() {
         true,
         false,
     )
-    .expect("install-complete and unpaid should wait for payment");
-    assert_eq!(
-        status,
-        SubscriptionLifecycleStatus::InstallationDoneAwaitingPayment
-    );
+    .expect("install-complete and unpaid should enter grace");
+    assert_eq!(status, SubscriptionLifecycleStatus::GraceActive);
 }
 
 #[test]
@@ -118,6 +115,13 @@ fn activation_resolution_install_done_and_paid_is_active() {
     let status =
         resolve_activation_status(SubscriptionLifecycleStatus::PendingInstallation, true, true)
             .expect("install-complete and paid should become active");
+    assert_eq!(status, SubscriptionLifecycleStatus::Active);
+}
+
+#[test]
+fn activation_resolution_grace_paid_promotes_to_active() {
+    let status = resolve_activation_status(SubscriptionLifecycleStatus::GraceActive, true, true)
+        .expect("grace subscription should become active when paid");
     assert_eq!(status, SubscriptionLifecycleStatus::Active);
 }
 

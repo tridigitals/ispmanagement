@@ -6,6 +6,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
   import { api, type CustomerLocation, type IspPackage } from '$lib/api/client';
+  import { getVisibleInternetOrderPackages } from '$lib/utils/internetOrderPackages';
   import { appSettings } from '$lib/stores/settings';
   import { toast } from '$lib/stores/toast';
 
@@ -23,17 +24,6 @@
   let draftLocationId = $state('');
   let draftPackageId = $state('');
   let draftBillingCycle = $state<'monthly' | 'yearly'>('monthly');
-
-  let coverageError = $state('');
-  let coverageChecking = $state(false);
-  let coverageFiltering = $state(false);
-  let coverageZoneId = $state<string | null>(null);
-  let coverageZoneName = $state<string | null>(null);
-  let coverageHasCoordinates = $state(false);
-  let coverageOffersByPackage = $state<
-    Record<string, { price_monthly: number | null; price_yearly: number | null }>
-  >({});
-  let coverageVersion = 0;
 
   let orderItems = $state<
     Array<{
@@ -67,33 +57,11 @@
     void loadData();
   });
 
-  $effect(() => {
-    draftLocationId;
-    basePackages;
-    if (!loading) {
-      void refreshCoverage();
-    }
-  });
-
   const selectedLocation = $derived.by(
     () => locations.find((location) => location.id === draftLocationId) || null,
   );
 
-  const packages = $derived.by(() => {
-    if (!coverageFiltering) return basePackages;
-    if (!coverageZoneId) return [];
-    return basePackages
-      .filter((pkg) => !!coverageOffersByPackage[pkg.id])
-      .map((pkg) => {
-        const offer = coverageOffersByPackage[pkg.id];
-        if (!offer) return pkg;
-        return {
-          ...pkg,
-          price_monthly: offer.price_monthly ?? pkg.price_monthly,
-          price_yearly: offer.price_yearly ?? pkg.price_yearly,
-        };
-      });
-  });
+  const packages = $derived.by(() => getVisibleInternetOrderPackages(basePackages));
 
   $effect(() => {
     const list = packages;
@@ -142,62 +110,6 @@
       toast.error(tx('dashboard.internet_order.toasts.load_failed', 'Gagal memuat katalog layanan internet'));
     } finally {
       loading = false;
-    }
-  }
-
-  async function refreshCoverage() {
-    const location = selectedLocation;
-    const myVersion = ++coverageVersion;
-
-    coverageError = '';
-    coverageZoneId = null;
-    coverageZoneName = null;
-    coverageOffersByPackage = {};
-    coverageHasCoordinates = false;
-    coverageFiltering = false;
-
-    if (!location) return;
-
-    if (location.latitude == null || location.longitude == null) {
-      return;
-    }
-
-    coverageHasCoordinates = true;
-    coverageChecking = true;
-    try {
-      const result = await api.networkMapping.zones.checkCoverage({
-        lat: Number(location.latitude),
-        lng: Number(location.longitude),
-      });
-      if (myVersion !== coverageVersion) return;
-
-      coverageZoneId = result?.zone?.id || null;
-      coverageZoneName = result?.zone?.name || null;
-      coverageFiltering = true;
-
-      const map: Record<string, { price_monthly: number | null; price_yearly: number | null }> = {};
-      for (const offer of result?.offers || []) {
-        if (!offer?.package_id) continue;
-        map[offer.package_id] = {
-          price_monthly: offer.price_monthly ?? null,
-          price_yearly: offer.price_yearly ?? null,
-        };
-      }
-      coverageOffersByPackage = map;
-    } catch (e: any) {
-      if (myVersion !== coverageVersion) return;
-      const message = String(e?.message || e || '');
-      if (message.toLowerCase().includes('permission denied')) {
-        coverageError = '';
-      } else {
-        coverageError = message || tx('dashboard.internet_order.toasts.coverage_failed', 'Gagal memeriksa cakupan');
-      }
-      coverageFiltering = false;
-      coverageZoneId = null;
-      coverageZoneName = null;
-      coverageOffersByPackage = {};
-    } finally {
-      if (myVersion === coverageVersion) coverageChecking = false;
     }
   }
 
@@ -458,10 +370,6 @@
   {#if loadError}
     <section class="alert alert-error">{loadError}</section>
   {/if}
-  {#if coverageError}
-    <section class="alert alert-error">{coverageError}</section>
-  {/if}
-
   {#if step === 1}
     <section class="card stage-card">
       <div class="stage-head">
@@ -497,26 +405,6 @@
               <option value={location.id}>{location.label}</option>
             {/each}
           </select>
-        </div>
-
-        <div class="coverage-box">
-          <small>{$t('dashboard.internet_order.labels.coverage_zone') || 'Zona Cakupan'}</small>
-          {#if coverageChecking}
-            <strong>{$t('dashboard.internet_order.coverage.checking') || 'Memeriksa cakupan...'}</strong>
-          {:else if !selectedLocation}
-            <strong>{$t('dashboard.internet_order.coverage.select_location') || 'Pilih lokasi terlebih dahulu'}</strong>
-          {:else if !coverageHasCoordinates}
-            <strong>
-              {$t('dashboard.internet_order.coverage.missing_coordinates') ||
-                'Lokasi ini belum memiliki koordinat. Filter cakupan dinonaktifkan.'}
-            </strong>
-          {:else if coverageZoneId}
-            <strong>{coverageZoneName || coverageZoneId}</strong>
-          {:else}
-            <strong>
-              {$t('dashboard.internet_order.coverage.not_covered') || 'Lokasi ini di luar zona cakupan aktif.'}
-            </strong>
-          {/if}
         </div>
 
         <div class="stage-actions">
@@ -577,8 +465,8 @@
         <div class="empty-state">
           <Icon name="package" size={18} />
           <div>
-            <h4>{$t('dashboard.internet_order.empty.no_packages_title') || 'Tidak ada paket tersedia untuk lokasi ini'}</h4>
-            <p>{$t('dashboard.internet_order.empty.no_packages_subtitle') || 'Coba lokasi lain atau hubungi admin.'}</p>
+            <h4>{$t('dashboard.internet_order.empty.no_packages_title') || 'Belum ada paket internet yang tersedia'}</h4>
+            <p>{$t('dashboard.internet_order.empty.no_packages_subtitle') || 'Silakan hubungi admin untuk mengaktifkan katalog paket.'}</p>
           </div>
         </div>
       {:else}
@@ -965,27 +853,6 @@
     background: color-mix(in srgb, var(--accent-primary) 14%, transparent);
     color: var(--accent-primary);
     font-weight: 700;
-  }
-
-  .coverage-box {
-    border: 1px dashed var(--border-color);
-    border-radius: 10px;
-    padding: 0.65rem;
-    display: grid;
-    gap: 0.22rem;
-  }
-
-  .coverage-box small {
-    color: var(--text-secondary);
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-  }
-
-  .coverage-box strong {
-    font-size: 0.84rem;
-    line-height: 1.35;
-    color: var(--text-primary);
   }
 
   .package-stage-grid {

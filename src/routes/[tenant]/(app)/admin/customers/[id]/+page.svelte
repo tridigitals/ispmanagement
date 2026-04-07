@@ -413,6 +413,7 @@
   function subscriptionStatusLabel(status: string): string {
     const map: Record<string, string> = {
       active: get(t)('common.active') || 'Active',
+      grace_active: 'Aktif sementara',
       pending_installation: 'Menunggu instalasi',
       installation_done_awaiting_payment: 'Instalasi selesai, menunggu pembayaran',
       suspended: get(t)('common.suspended') || 'Suspended',
@@ -1387,8 +1388,8 @@
               <strong>{metricCount('pending_installation')}</strong>
             </div>
             <div class="metric-tile emphasis">
-              <span class="metric-label">Awaiting payment after install</span>
-              <strong>{metricCount('installation_done_awaiting_payment')}</strong>
+              <span class="metric-label">Grace active</span>
+              <strong>{metricCount('grace_active') || metricCount('installation_done_awaiting_payment')}</strong>
             </div>
             <div class="metric-tile">
               <span class="metric-label">Active</span>

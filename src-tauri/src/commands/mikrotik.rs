@@ -546,9 +546,17 @@ pub async fn get_mikrotik_router_managed_radius_setup(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    let can_manage_routers = auth
+        .has_permission(&claims.sub, &tenant_id, "network_routers", "manage")
         .await
         .map_err(|e| e.to_string())?;
+    let can_manage_work_orders = auth
+        .has_permission(&claims.sub, &tenant_id, "work_orders", "manage")
+        .await
+        .map_err(|e| e.to_string())?;
+    if !can_manage_routers && !can_manage_work_orders {
+        return Err("Permission denied".to_string());
+    }
 
     let router = mikrotik
         .get_router(&tenant_id, &router_id)

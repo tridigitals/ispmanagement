@@ -953,6 +953,141 @@ impl PaymentService {
         let now = Utc::now();
         let today = now.date_naive();
 
+        if settings.auto_suspend_enabled {
+            #[cfg(feature = "postgres")]
+            let grace_expired: Vec<(String, Option<String>)> = sqlx::query_as(
+                r#"
+                SELECT cs.id, (
+                    SELECT i.id
+                    FROM invoices i
+                    WHERE i.tenant_id = cs.tenant_id
+                      AND i.external_id LIKE ('pkgsub:' || cs.id || ':%')
+                    ORDER BY i.created_at DESC
+                    LIMIT 1
+                ) AS invoice_id
+                FROM customer_subscriptions cs
+                WHERE cs.tenant_id = $1
+                  AND cs.status = 'grace_active'
+                  AND cs.grace_until IS NOT NULL
+                  AND cs.grace_until <= $2
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM invoices i
+                      WHERE i.tenant_id = cs.tenant_id
+                        AND i.external_id LIKE ('pkgsub:' || cs.id || ':%')
+                        AND i.status = 'paid'
+                  )
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(now)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+            #[cfg(feature = "sqlite")]
+            let grace_expired: Vec<(String, Option<String>)> = sqlx::query_as(
+                r#"
+                SELECT cs.id, (
+                    SELECT i.id
+                    FROM invoices i
+                    WHERE i.tenant_id = cs.tenant_id
+                      AND i.external_id LIKE ('pkgsub:' || cs.id || ':%')
+                    ORDER BY i.created_at DESC
+                    LIMIT 1
+                ) AS invoice_id
+                FROM customer_subscriptions cs
+                WHERE cs.tenant_id = ?
+                  AND cs.status = 'grace_active'
+                  AND cs.grace_until IS NOT NULL
+                  AND cs.grace_until <= ?
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM invoices i
+                      WHERE i.tenant_id = cs.tenant_id
+                        AND i.external_id LIKE ('pkgsub:' || cs.id || ':%')
+                        AND i.status = 'paid'
+                  )
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(now.to_rfc3339())
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+            for (subscription_id, invoice_id) in grace_expired {
+                match self
+                    .update_customer_subscription_status_if(
+                        tenant_id,
+                        &subscription_id,
+                        "grace_active",
+                        "suspended",
+                    )
+                    .await
+                {
+                    Ok(true) => {
+                        result.suspended_count += 1;
+                        let _ = self
+                            .set_subscription_pppoe_disabled_state(
+                                tenant_id,
+                                &subscription_id,
+                                true,
+                            )
+                            .await;
+                        if let Some(invoice_id) = invoice_id.as_deref() {
+                            let _ = self
+                                .insert_billing_collection_log(
+                                    tenant_id,
+                                    invoice_id,
+                                    Some(&subscription_id),
+                                    "grace_expire_suspend",
+                                    "success",
+                                    Some("Grace activation expired without paid first invoice"),
+                                    "system",
+                                    None,
+                                )
+                                .await;
+                        }
+                    }
+                    Ok(false) => {
+                        if let Some(invoice_id) = invoice_id.as_deref() {
+                            let _ = self
+                                .insert_billing_collection_log(
+                                    tenant_id,
+                                    invoice_id,
+                                    Some(&subscription_id),
+                                    "grace_expire_suspend",
+                                    "skipped",
+                                    Some("Subscription already changed from grace_active"),
+                                    "system",
+                                    None,
+                                )
+                                .await;
+                        }
+                    }
+                    Err(e) => {
+                        result.failed_count += 1;
+                        let err_text = e.to_string();
+                        if let Some(invoice_id) = invoice_id.as_deref() {
+                            let _ = self
+                                .insert_billing_collection_log(
+                                    tenant_id,
+                                    invoice_id,
+                                    Some(&subscription_id),
+                                    "grace_expire_suspend",
+                                    "failed",
+                                    Some(&err_text),
+                                    "system",
+                                    None,
+                                )
+                                .await;
+                        }
+                    }
+                }
+            }
+        }
+
         #[cfg(feature = "postgres")]
         let invoices: Vec<(
             String,
@@ -2764,7 +2899,10 @@ impl PaymentService {
             )
             .await?;
 
-        let should_disable_pppoe = resolved != SubscriptionLifecycleStatus::Active;
+        let should_disable_pppoe = !matches!(
+            resolved,
+            SubscriptionLifecycleStatus::Active | SubscriptionLifecycleStatus::GraceActive
+        );
         let _ = self
             .set_subscription_pppoe_disabled_state(
                 &invoice.tenant_id,
@@ -2873,6 +3011,7 @@ impl PaymentService {
                     )
                     .await;
             }
+            SubscriptionLifecycleStatus::GraceActive => {}
             SubscriptionLifecycleStatus::InstallationDoneAwaitingPayment
             | SubscriptionLifecycleStatus::Suspended
             | SubscriptionLifecycleStatus::Cancelled => {}
@@ -3459,7 +3598,9 @@ impl PaymentService {
             r#"
             UPDATE customer_subscriptions
             SET status = $1,
-                starts_at = CASE WHEN $1 = 'active' THEN COALESCE(starts_at, $2) ELSE starts_at END,
+                starts_at = CASE WHEN $1 IN ('active', 'grace_active') THEN COALESCE(starts_at, $2) ELSE starts_at END,
+                grace_started_at = CASE WHEN $1 = 'grace_active' THEN COALESCE(grace_started_at, $2) WHEN $1 = 'active' THEN NULL ELSE grace_started_at END,
+                grace_until = CASE WHEN $1 = 'active' THEN NULL WHEN $1 = 'suspended' THEN NULL ELSE grace_until END,
                 updated_at = $2
             WHERE tenant_id = $3 AND id = $4 AND status = $5
             "#,
@@ -3479,7 +3620,9 @@ impl PaymentService {
             r#"
             UPDATE customer_subscriptions
             SET status = ?,
-                starts_at = CASE WHEN ? = 'active' THEN COALESCE(starts_at, ?) ELSE starts_at END,
+                starts_at = CASE WHEN ? IN ('active', 'grace_active') THEN COALESCE(starts_at, ?) ELSE starts_at END,
+                grace_started_at = CASE WHEN ? = 'grace_active' THEN COALESCE(grace_started_at, ?) WHEN ? = 'active' THEN NULL ELSE grace_started_at END,
+                grace_until = CASE WHEN ? = 'active' THEN NULL WHEN ? = 'suspended' THEN NULL ELSE grace_until END,
                 updated_at = ?
             WHERE tenant_id = ? AND id = ? AND status = ?
             "#,
@@ -3487,6 +3630,11 @@ impl PaymentService {
         .bind(new_status)
         .bind(new_status)
         .bind(now.to_rfc3339())
+        .bind(new_status)
+        .bind(now.to_rfc3339())
+        .bind(new_status)
+        .bind(new_status)
+        .bind(new_status)
         .bind(now.to_rfc3339())
         .bind(tenant_id)
         .bind(subscription_id)
@@ -3581,7 +3729,15 @@ impl PaymentService {
         let now = Utc::now();
         #[cfg(feature = "postgres")]
         let rows = sqlx::query(
-            "UPDATE customer_subscriptions SET status = $1, updated_at = $2 WHERE tenant_id = $3 AND id = $4 AND status = $5",
+            r#"
+            UPDATE customer_subscriptions
+            SET status = $1,
+                starts_at = CASE WHEN $1 IN ('active', 'grace_active') THEN COALESCE(starts_at, $2) ELSE starts_at END,
+                grace_started_at = CASE WHEN $1 = 'grace_active' THEN COALESCE(grace_started_at, $2) WHEN $1 = 'active' THEN NULL ELSE grace_started_at END,
+                grace_until = CASE WHEN $1 = 'grace_active' THEN grace_until ELSE NULL END,
+                updated_at = $2
+            WHERE tenant_id = $3 AND id = $4 AND status = $5
+            "#,
         )
         .bind(new_status)
         .bind(now)
@@ -3595,8 +3751,22 @@ impl PaymentService {
 
         #[cfg(feature = "sqlite")]
         let rows = sqlx::query(
-            "UPDATE customer_subscriptions SET status = ?, updated_at = ? WHERE tenant_id = ? AND id = ? AND status = ?",
+            r#"
+            UPDATE customer_subscriptions
+            SET status = ?,
+                starts_at = CASE WHEN ? IN ('active', 'grace_active') THEN COALESCE(starts_at, ?) ELSE starts_at END,
+                grace_started_at = CASE WHEN ? = 'grace_active' THEN COALESCE(grace_started_at, ?) WHEN ? = 'active' THEN NULL ELSE grace_started_at END,
+                grace_until = CASE WHEN ? = 'grace_active' THEN grace_until ELSE NULL END,
+                updated_at = ?
+            WHERE tenant_id = ? AND id = ? AND status = ?
+            "#,
         )
+        .bind(new_status)
+        .bind(new_status)
+        .bind(now.to_rfc3339())
+        .bind(new_status)
+        .bind(now.to_rfc3339())
+        .bind(new_status)
         .bind(new_status)
         .bind(now.to_rfc3339())
         .bind(tenant_id)

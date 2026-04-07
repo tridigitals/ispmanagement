@@ -722,10 +722,17 @@ async fn get_managed_radius_setup(
     Path(id): Path<String>,
 ) -> AppResult<Json<ManagedRadiusRouterSetup>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
-    state
+    let can_manage_routers = state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .has_permission(&claims.sub, &tenant_id, "network_routers", "manage")
         .await?;
+    let can_manage_work_orders = state
+        .auth_service
+        .has_permission(&claims.sub, &tenant_id, "work_orders", "manage")
+        .await?;
+    if !can_manage_routers && !can_manage_work_orders {
+        return Err(AppError::Forbidden("Permission denied".into()));
+    }
 
     let router = state
         .mikrotik_service

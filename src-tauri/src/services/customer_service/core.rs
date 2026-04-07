@@ -1613,6 +1613,8 @@ impl CustomerService {
               cs.status,
               cs.starts_at,
               cs.ends_at,
+              cs.grace_started_at,
+              cs.grace_until,
               cs.notes,
               cs.created_at,
               cs.updated_at,
@@ -1827,7 +1829,7 @@ impl CustomerService {
             WITH lifecycle_stages(stage, rank) AS (
               VALUES
                 ('pending_installation', 1),
-                ('installation_done_awaiting_payment', 2),
+                ('grace_active', 2),
                 ('active', 3),
                 ('cancelled', 4)
             )
@@ -1852,7 +1854,7 @@ impl CustomerService {
             WITH lifecycle_stages(stage, rank) AS (
               VALUES
                 ('pending_installation', 1),
-                ('installation_done_awaiting_payment', 2),
+                ('grace_active', 2),
                 ('active', 3),
                 ('cancelled', 4)
             )
@@ -1935,7 +1937,7 @@ impl CustomerService {
               SELECT GREATEST(0, FLOOR(EXTRACT(EPOCH FROM ($3 - COALESCE(cs.updated_at, cs.created_at))) / 86400))::int AS age_days
               FROM customer_subscriptions cs
               WHERE cs.tenant_id = $1
-                AND LOWER(cs.status) IN ('pending_installation', 'installation_done_awaiting_payment')
+                AND LOWER(cs.status) IN ('pending_installation', 'installation_done_awaiting_payment', 'grace_active')
                 AND ($2::text IS NULL OR cs.customer_id = $2)
             )
             SELECT b.bucket, COALESCE(COUNT(ws.age_days), 0) AS count
@@ -1972,7 +1974,7 @@ impl CustomerService {
               ) AS age_days
               FROM customer_subscriptions cs
               WHERE cs.tenant_id = ?
-                AND LOWER(cs.status) IN ('pending_installation', 'installation_done_awaiting_payment')
+                AND LOWER(cs.status) IN ('pending_installation', 'installation_done_awaiting_payment', 'grace_active')
                 AND (? IS NULL OR cs.customer_id = ?)
             )
             SELECT b.bucket, COALESCE(COUNT(ws.age_days), 0) AS count

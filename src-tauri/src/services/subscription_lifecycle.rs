@@ -3,6 +3,7 @@ use std::fmt;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SubscriptionLifecycleStatus {
     Active,
+    GraceActive,
     PendingInstallation,
     InstallationDoneAwaitingPayment,
     Suspended,
@@ -13,6 +14,7 @@ impl SubscriptionLifecycleStatus {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Active => "active",
+            Self::GraceActive => "grace_active",
             Self::PendingInstallation => "pending_installation",
             Self::InstallationDoneAwaitingPayment => "installation_done_awaiting_payment",
             Self::Suspended => "suspended",
@@ -23,6 +25,7 @@ impl SubscriptionLifecycleStatus {
     pub fn parse(input: &str) -> Result<Self, LifecycleTransitionError> {
         match input.trim().to_ascii_lowercase().as_str() {
             "active" => Ok(Self::Active),
+            "grace_active" => Ok(Self::GraceActive),
             "pending_installation" => Ok(Self::PendingInstallation),
             "installation_done_awaiting_payment" => Ok(Self::InstallationDoneAwaitingPayment),
             "suspended" => Ok(Self::Suspended),
@@ -133,14 +136,18 @@ pub fn resolve_activation_status(
     };
     let _ = transition_status(current, event)?;
 
-    if current == SubscriptionLifecycleStatus::Active && payment_paid {
+    if matches!(
+        current,
+        SubscriptionLifecycleStatus::Active | SubscriptionLifecycleStatus::GraceActive
+    ) && payment_paid
+    {
         return Ok(SubscriptionLifecycleStatus::Active);
     }
 
     if installation_completed && payment_paid {
         Ok(SubscriptionLifecycleStatus::Active)
     } else if installation_completed {
-        Ok(SubscriptionLifecycleStatus::InstallationDoneAwaitingPayment)
+        Ok(SubscriptionLifecycleStatus::GraceActive)
     } else {
         Ok(SubscriptionLifecycleStatus::PendingInstallation)
     }
@@ -198,11 +205,8 @@ mod tests {
             true,
             false,
         )
-        .expect("install-complete unpaid should resolve to installation_done_awaiting_payment");
-        assert_eq!(
-            target,
-            SubscriptionLifecycleStatus::InstallationDoneAwaitingPayment
-        );
+        .expect("install-complete unpaid should resolve to grace_active");
+        assert_eq!(target, SubscriptionLifecycleStatus::GraceActive);
     }
 
     #[test]
@@ -210,6 +214,13 @@ mod tests {
         let target =
             resolve_activation_status(SubscriptionLifecycleStatus::PendingInstallation, true, true)
                 .expect("install-complete paid should resolve to active");
+        assert_eq!(target, SubscriptionLifecycleStatus::Active);
+    }
+
+    #[test]
+    fn activation_resolution_paid_grace_subscription_stays_active() {
+        let target = resolve_activation_status(SubscriptionLifecycleStatus::GraceActive, true, true)
+            .expect("paid grace subscription should resolve to active");
         assert_eq!(target, SubscriptionLifecycleStatus::Active);
     }
 }

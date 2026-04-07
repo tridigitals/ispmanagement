@@ -409,6 +409,7 @@ export interface CustomerSubscription {
   currency_code: string;
   status:
     | 'active'
+    | 'grace_active'
     | 'pending_installation'
     | 'installation_done_awaiting_payment'
     | 'suspended'
@@ -416,6 +417,8 @@ export interface CustomerSubscription {
     | string;
   starts_at: string | null;
   ends_at: string | null;
+  grace_started_at: string | null;
+  grace_until: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -482,6 +485,7 @@ export interface InstallationWorkOrderView {
   assignment_status: string | null;
   subscription_status: string | null;
   subscription_starts_at: string | null;
+  subscription_grace_until: string | null;
   has_customer_package_invoice: boolean;
   selected_zone_id: string | null;
   selected_zone_name: string | null;

@@ -130,9 +130,9 @@ impl CustomerService {
         sqlx::query(
             r#"
             INSERT INTO customer_subscriptions
-              (id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at)
+              (id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price, currency_code, status, starts_at, ends_at, grace_started_at, grace_until, notes, created_at, updated_at)
             VALUES
-              ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+              ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NULL,NULL,$13,$14,$15)
             "#,
         )
         .bind(&id)
@@ -157,9 +157,9 @@ impl CustomerService {
         sqlx::query(
             r#"
             INSERT INTO customer_subscriptions
-              (id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at)
+              (id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price, currency_code, status, starts_at, ends_at, grace_started_at, grace_until, notes, created_at, updated_at)
             VALUES
-              (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+              (?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,?,?,?)
             "#,
         )
         .bind(&id)
@@ -182,7 +182,7 @@ impl CustomerService {
 
         #[cfg(feature = "postgres")]
         let row: CustomerSubscription = sqlx::query_as(
-            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price::float8 as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE id = $1 AND tenant_id = $2",
+            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price::float8 as price, currency_code, status, starts_at, ends_at, grace_started_at, grace_until, notes, created_at, updated_at FROM customer_subscriptions WHERE id = $1 AND tenant_id = $2",
         )
         .bind(&id)
         .bind(tenant_id)
@@ -191,7 +191,7 @@ impl CustomerService {
 
         #[cfg(feature = "sqlite")]
         let row: CustomerSubscription = sqlx::query_as(
-            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE id = ? AND tenant_id = ?",
+            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price as price, currency_code, status, starts_at, ends_at, grace_started_at, grace_until, notes, created_at, updated_at FROM customer_subscriptions WHERE id = ? AND tenant_id = ?",
         )
         .bind(&id)
         .bind(tenant_id)
@@ -230,7 +230,7 @@ impl CustomerService {
 
         #[cfg(feature = "postgres")]
         let mut row: CustomerSubscription = sqlx::query_as(
-            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price::float8 as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE id = $1 AND tenant_id = $2",
+            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price::float8 as price, currency_code, status, starts_at, ends_at, grace_started_at, grace_until, notes, created_at, updated_at FROM customer_subscriptions WHERE id = $1 AND tenant_id = $2",
         )
         .bind(subscription_id)
         .bind(tenant_id)
@@ -240,7 +240,7 @@ impl CustomerService {
 
         #[cfg(feature = "sqlite")]
         let mut row: CustomerSubscription = sqlx::query_as(
-            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE id = ? AND tenant_id = ?",
+            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price as price, currency_code, status, starts_at, ends_at, grace_started_at, grace_until, notes, created_at, updated_at FROM customer_subscriptions WHERE id = ? AND tenant_id = ?",
         )
         .bind(subscription_id)
         .bind(tenant_id)
@@ -303,9 +303,11 @@ impl CustomerService {
               status = $7,
               starts_at = $8,
               ends_at = $9,
-              notes = $10,
-              updated_at = $11
-            WHERE id = $12 AND tenant_id = $13
+              grace_started_at = $10,
+              grace_until = $11,
+              notes = $12,
+              updated_at = $13
+            WHERE id = $14 AND tenant_id = $15
             "#,
         )
         .bind(&row.location_id)
@@ -317,6 +319,8 @@ impl CustomerService {
         .bind(&row.status)
         .bind(row.starts_at)
         .bind(row.ends_at)
+        .bind(row.grace_started_at)
+        .bind(row.grace_until)
         .bind(&row.notes)
         .bind(row.updated_at)
         .bind(subscription_id)
@@ -338,6 +342,8 @@ impl CustomerService {
               status = ?,
               starts_at = ?,
               ends_at = ?,
+              grace_started_at = ?,
+              grace_until = ?,
               notes = ?,
               updated_at = ?
             WHERE id = ? AND tenant_id = ?
@@ -352,6 +358,8 @@ impl CustomerService {
         .bind(&row.status)
         .bind(row.starts_at)
         .bind(row.ends_at)
+        .bind(row.grace_started_at)
+        .bind(row.grace_until)
         .bind(&row.notes)
         .bind(row.updated_at)
         .bind(subscription_id)

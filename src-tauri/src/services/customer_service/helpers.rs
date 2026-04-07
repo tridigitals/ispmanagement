@@ -1,4 +1,7 @@
-use super::{CustomerService, InstallationSlaBreachType, INSTALLATION_SLA_REMINDER_ENABLED_KEY};
+use super::{
+    CustomerService, InstallationSlaBreachType, INSTALLATION_GRACE_HOURS_KEY,
+    INSTALLATION_SLA_REMINDER_ENABLED_KEY,
+};
 use crate::error::{AppError, AppResult};
 use crate::services::subscription_lifecycle::SubscriptionLifecycleStatus;
 use chrono::{DateTime, Duration, Utc};
@@ -23,7 +26,7 @@ impl CustomerService {
             .map(|status| status.as_str().to_string())
             .map_err(|_| {
                 AppError::Validation(
-                    "status must be active, pending_installation, installation_done_awaiting_payment, suspended, or cancelled"
+                    "status must be active, grace_active, pending_installation, installation_done_awaiting_payment, suspended, or cancelled"
                         .to_string(),
                 )
             })
@@ -259,5 +262,11 @@ impl CustomerService {
             .ok()
             .flatten();
         Self::parse_setting_bool(raw, true)
+    }
+
+    pub(super) async fn resolve_installation_grace_hours(&self, tenant_id: &str) -> i64 {
+        let tenant_raw = self.read_tenant_setting_value(tenant_id, INSTALLATION_GRACE_HOURS_KEY).await.ok().flatten();
+        let global_raw = self.read_global_setting_value(INSTALLATION_GRACE_HOURS_KEY).await.ok().flatten();
+        Self::parse_setting_i64(tenant_raw.or(global_raw), 72, 1, 24 * 30)
     }
 }

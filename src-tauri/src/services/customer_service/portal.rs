@@ -1,6 +1,25 @@
 use super::*;
 
 impl CustomerService {
+    pub(crate) fn portal_subscription_select_columns(
+        alias: &str,
+        price_expr: &str,
+    ) -> String {
+        format!(
+            "{alias}.id, {alias}.tenant_id, {alias}.customer_id, {alias}.location_id, {alias}.package_id, {alias}.router_id, {alias}.billing_cycle, {price_expr} as price, {alias}.currency_code, {alias}.status, {alias}.starts_at, {alias}.ends_at, {alias}.grace_started_at, {alias}.grace_until, {alias}.notes, {alias}.created_at, {alias}.updated_at"
+        )
+    }
+
+    pub(crate) fn portal_subscription_view_select_columns(
+        alias: &str,
+        price_expr: &str,
+    ) -> String {
+        format!(
+            "{base}, p.name AS package_name, l.label AS location_label, r.name AS router_name",
+            base = Self::portal_subscription_select_columns(alias, price_expr),
+        )
+    }
+
     pub async fn list_my_subscriptions(
         &self,
         actor_id: &str,
@@ -111,24 +130,7 @@ impl CustomerService {
         let rows: Vec<CustomerSubscriptionView> = sqlx::query_as(&format!(
             r#"
             SELECT
-              cs.id,
-              cs.tenant_id,
-              cs.customer_id,
-              cs.location_id,
-              cs.package_id,
-              cs.router_id,
-              cs.billing_cycle,
-              cs.price::float8 AS price,
-              cs.currency_code,
-              cs.status,
-              cs.starts_at,
-              cs.ends_at,
-              cs.notes,
-              cs.created_at,
-              cs.updated_at,
-              p.name AS package_name,
-              l.label AS location_label,
-              r.name AS router_name,
+              {subscription_columns},
               (
                 SELECT iwo.id
                 FROM installation_work_orders iwo
@@ -202,6 +204,8 @@ impl CustomerService {
             ORDER BY {sort_column} {sort_direction}
             LIMIT $4 OFFSET $5
             "#,
+            subscription_columns =
+                Self::portal_subscription_view_select_columns("cs", "cs.price::float8"),
         ))
         .bind(tenant_id)
         .bind(&customer_id)
@@ -215,24 +219,7 @@ impl CustomerService {
         let rows: Vec<CustomerSubscriptionView> = sqlx::query_as(&format!(
             r#"
             SELECT
-              cs.id,
-              cs.tenant_id,
-              cs.customer_id,
-              cs.location_id,
-              cs.package_id,
-              cs.router_id,
-              cs.billing_cycle,
-              cs.price AS price,
-              cs.currency_code,
-              cs.status,
-              cs.starts_at,
-              cs.ends_at,
-              cs.notes,
-              cs.created_at,
-              cs.updated_at,
-              p.name AS package_name,
-              l.label AS location_label,
-              r.name AS router_name,
+              {subscription_columns},
               (
                 SELECT iwo.id
                 FROM installation_work_orders iwo
@@ -306,6 +293,8 @@ impl CustomerService {
             ORDER BY {sort_column} {sort_direction}
             LIMIT ? OFFSET ?
             "#,
+            subscription_columns =
+                Self::portal_subscription_view_select_columns("cs", "cs.price"),
         ))
         .bind(tenant_id)
         .bind(&customer_id)
@@ -513,9 +502,9 @@ impl CustomerService {
         sqlx::query(
             r#"
             INSERT INTO customer_subscriptions
-              (id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at)
+              (id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price, currency_code, status, starts_at, ends_at, grace_started_at, grace_until, notes, created_at, updated_at)
             VALUES
-              ($1,$2,$3,$4,$5,NULL,$6,$7,$8,'pending_installation',NULL,NULL,$9,$10,$11)
+              ($1,$2,$3,$4,$5,NULL,$6,$7,$8,'pending_installation',NULL,NULL,NULL,NULL,$9,$10,$11)
             "#,
         )
         .bind(&subscription_id)
@@ -536,9 +525,9 @@ impl CustomerService {
         sqlx::query(
             r#"
             INSERT INTO customer_subscriptions
-              (id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at)
+              (id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price, currency_code, status, starts_at, ends_at, grace_started_at, grace_until, notes, created_at, updated_at)
             VALUES
-              (?,?,?,?,?,NULL,?,?,?,'pending_installation',NULL,NULL,?,?,?)
+              (?,?,?,?,?,NULL,?,?,?,'pending_installation',NULL,NULL,NULL,NULL,?,?,?)
             "#,
         )
         .bind(&subscription_id)
@@ -557,7 +546,10 @@ impl CustomerService {
 
         #[cfg(feature = "postgres")]
         let row: CustomerSubscription = sqlx::query_as(
-            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price::float8 as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE id = $1 AND tenant_id = $2",
+            &format!(
+                "SELECT {} FROM customer_subscriptions WHERE id = $1 AND tenant_id = $2",
+                Self::portal_subscription_select_columns("customer_subscriptions", "price::float8")
+            ),
         )
         .bind(&subscription_id)
         .bind(tenant_id)
@@ -566,7 +558,10 @@ impl CustomerService {
 
         #[cfg(feature = "sqlite")]
         let row: CustomerSubscription = sqlx::query_as(
-            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE id = ? AND tenant_id = ?",
+            &format!(
+                "SELECT {} FROM customer_subscriptions WHERE id = ? AND tenant_id = ?",
+                Self::portal_subscription_select_columns("customer_subscriptions", "price")
+            ),
         )
         .bind(&subscription_id)
         .bind(tenant_id)
@@ -632,7 +627,10 @@ impl CustomerService {
 
         #[cfg(feature = "postgres")]
         let mut sub: CustomerSubscription = sqlx::query_as(
-            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price::float8 as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE tenant_id = $1 AND id = $2 AND customer_id = $3 LIMIT 1",
+            &format!(
+                "SELECT {} FROM customer_subscriptions WHERE tenant_id = $1 AND id = $2 AND customer_id = $3 LIMIT 1",
+                Self::portal_subscription_select_columns("customer_subscriptions", "price::float8")
+            ),
         )
         .bind(tenant_id)
         .bind(subscription_id)
@@ -643,7 +641,10 @@ impl CustomerService {
 
         #[cfg(feature = "sqlite")]
         let mut sub: CustomerSubscription = sqlx::query_as(
-            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE tenant_id = ? AND id = ? AND customer_id = ? LIMIT 1",
+            &format!(
+                "SELECT {} FROM customer_subscriptions WHERE tenant_id = ? AND id = ? AND customer_id = ? LIMIT 1",
+                Self::portal_subscription_select_columns("customer_subscriptions", "price")
+            ),
         )
         .bind(tenant_id)
         .bind(subscription_id)
@@ -778,14 +779,10 @@ impl CustomerService {
 
         #[cfg(feature = "postgres")]
         let subscription: CustomerSubscriptionView = sqlx::query_as(
+            &format!(
             r#"
             SELECT
-              cs.id, cs.tenant_id, cs.customer_id, cs.location_id, cs.package_id, cs.router_id,
-              cs.billing_cycle, cs.price::float8 as price, cs.currency_code, cs.status,
-              cs.starts_at, cs.ends_at, cs.notes, cs.created_at, cs.updated_at,
-              p.name AS package_name,
-              l.label AS location_label,
-              r.name AS router_name,
+              {subscription_columns},
               (
                 SELECT iwo.id
                 FROM installation_work_orders iwo
@@ -846,6 +843,9 @@ impl CustomerService {
               AND cs.id = $3
             LIMIT 1
             "#,
+            subscription_columns =
+                Self::portal_subscription_view_select_columns("cs", "cs.price::float8")
+            ),
         )
         .bind(tenant_id)
         .bind(&customer_id)
@@ -856,14 +856,10 @@ impl CustomerService {
 
         #[cfg(feature = "sqlite")]
         let subscription: CustomerSubscriptionView = sqlx::query_as(
+            &format!(
             r#"
             SELECT
-              cs.id, cs.tenant_id, cs.customer_id, cs.location_id, cs.package_id, cs.router_id,
-              cs.billing_cycle, cs.price as price, cs.currency_code, cs.status,
-              cs.starts_at, cs.ends_at, cs.notes, cs.created_at, cs.updated_at,
-              p.name AS package_name,
-              l.label AS location_label,
-              r.name AS router_name,
+              {subscription_columns},
               (
                 SELECT iwo.id
                 FROM installation_work_orders iwo
@@ -924,6 +920,9 @@ impl CustomerService {
               AND cs.id = ?
             LIMIT 1
             "#,
+            subscription_columns =
+                Self::portal_subscription_view_select_columns("cs", "cs.price")
+            ),
         )
         .bind(tenant_id)
         .bind(&customer_id)
@@ -950,6 +949,7 @@ impl CustomerService {
               csa.status AS assignment_status,
               cs.status AS subscription_status,
               cs.starts_at AS subscription_starts_at,
+              cs.grace_until AS subscription_grace_until,
               EXISTS(
                 SELECT 1
                 FROM invoices i
@@ -1009,6 +1009,7 @@ impl CustomerService {
               csa.status AS assignment_status,
               cs.status AS subscription_status,
               cs.starts_at AS subscription_starts_at,
+              cs.grace_until AS subscription_grace_until,
               EXISTS(
                 SELECT 1
                 FROM invoices i
@@ -1138,7 +1139,10 @@ impl CustomerService {
 
         #[cfg(feature = "postgres")]
         let sub: CustomerSubscription = sqlx::query_as(
-            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price::float8 as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE tenant_id = $1 AND id = $2 AND customer_id = $3 LIMIT 1",
+            &format!(
+                "SELECT {} FROM customer_subscriptions WHERE tenant_id = $1 AND id = $2 AND customer_id = $3 LIMIT 1",
+                Self::portal_subscription_select_columns("customer_subscriptions", "price::float8")
+            ),
         )
         .bind(tenant_id)
         .bind(subscription_id)
@@ -1149,7 +1153,10 @@ impl CustomerService {
 
         #[cfg(feature = "sqlite")]
         let sub: CustomerSubscription = sqlx::query_as(
-            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE tenant_id = ? AND id = ? AND customer_id = ? LIMIT 1",
+            &format!(
+                "SELECT {} FROM customer_subscriptions WHERE tenant_id = ? AND id = ? AND customer_id = ? LIMIT 1",
+                Self::portal_subscription_select_columns("customer_subscriptions", "price")
+            ),
         )
         .bind(tenant_id)
         .bind(subscription_id)

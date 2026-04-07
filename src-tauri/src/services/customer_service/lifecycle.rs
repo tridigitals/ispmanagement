@@ -14,7 +14,9 @@ impl CustomerService {
             r#"
             UPDATE customer_subscriptions
             SET status = $1,
-                starts_at = CASE WHEN $1 = 'active' THEN COALESCE(starts_at, $2) ELSE starts_at END,
+                starts_at = CASE WHEN $1 IN ('active', 'grace_active') THEN COALESCE(starts_at, $2) ELSE starts_at END,
+                grace_started_at = CASE WHEN $1 = 'grace_active' THEN COALESCE(grace_started_at, $2) WHEN $1 = 'active' THEN NULL ELSE grace_started_at END,
+                grace_until = CASE WHEN $1 = 'grace_active' THEN grace_until ELSE NULL END,
                 updated_at = $2
             WHERE tenant_id = $3
               AND id = $4
@@ -35,7 +37,9 @@ impl CustomerService {
             r#"
             UPDATE customer_subscriptions
             SET status = ?,
-                starts_at = CASE WHEN ? = 'active' THEN COALESCE(starts_at, ?) ELSE starts_at END,
+                starts_at = CASE WHEN ? IN ('active', 'grace_active') THEN COALESCE(starts_at, ?) ELSE starts_at END,
+                grace_started_at = CASE WHEN ? = 'grace_active' THEN COALESCE(grace_started_at, ?) WHEN ? = 'active' THEN NULL ELSE grace_started_at END,
+                grace_until = CASE WHEN ? = 'grace_active' THEN grace_until ELSE NULL END,
                 updated_at = ?
             WHERE tenant_id = ?
               AND id = ?
@@ -45,6 +49,10 @@ impl CustomerService {
         .bind(status)
         .bind(status)
         .bind(now.to_rfc3339())
+        .bind(status)
+        .bind(now.to_rfc3339())
+        .bind(status)
+        .bind(status)
         .bind(now.to_rfc3339())
         .bind(tenant_id)
         .bind(subscription_id)
@@ -54,6 +62,56 @@ impl CustomerService {
         .rows_affected();
 
         Ok(rows > 0)
+    }
+
+    pub(super) async fn set_customer_subscription_grace_window(
+        &self,
+        tenant_id: &str,
+        subscription_id: &str,
+        grace_started_at: DateTime<Utc>,
+        grace_until: DateTime<Utc>,
+    ) -> AppResult<u64> {
+        #[cfg(feature = "postgres")]
+        let rows = sqlx::query(
+            r#"
+            UPDATE customer_subscriptions
+            SET grace_started_at = $1,
+                grace_until = $2,
+                updated_at = $3
+            WHERE tenant_id = $4
+              AND id = $5
+            "#,
+        )
+        .bind(grace_started_at)
+        .bind(grace_until)
+        .bind(Utc::now())
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+
+        #[cfg(feature = "sqlite")]
+        let rows = sqlx::query(
+            r#"
+            UPDATE customer_subscriptions
+            SET grace_started_at = ?,
+                grace_until = ?,
+                updated_at = ?
+            WHERE tenant_id = ?
+              AND id = ?
+            "#,
+        )
+        .bind(grace_started_at.to_rfc3339())
+        .bind(grace_until.to_rfc3339())
+        .bind(Utc::now().to_rfc3339())
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+
+        Ok(rows)
     }
 
     pub(super) async fn set_location_pppoe_disabled_state(
