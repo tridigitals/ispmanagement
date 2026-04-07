@@ -35,7 +35,9 @@ use crate::services::subscription_lifecycle::{
     resolve_activation_status, transition_status, SubscriptionLifecycleEvent,
     SubscriptionLifecycleStatus,
 };
-use crate::services::{AuditService, AuthService, NotificationService, PppoeService, UserService};
+use crate::services::{
+    AuditService, AuthService, NotificationService, PaymentService, PppoeService, UserService,
+};
 use chrono::{DateTime, Duration, Utc};
 use tracing::warn;
 use uuid::Uuid;
@@ -52,6 +54,7 @@ const INSTALLATION_SLA_REMINDER_COOLDOWN_MINUTES_KEY: &str =
     "installation_sla_reminder_cooldown_minutes";
 const INSTALLATION_SLA_SCHEDULER_INTERVAL_MINUTES_KEY: &str =
     "installation_sla_scheduler_interval_minutes";
+const INSTALLATION_GRACE_HOURS_KEY: &str = "installation_grace_hours";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum InstallationSlaBreachType {

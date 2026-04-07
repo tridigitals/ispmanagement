@@ -1,6 +1,51 @@
 use super::*;
 
 impl CustomerService {
+    pub(crate) fn should_auto_create_first_invoice_on_completion(
+        resolved: SubscriptionLifecycleStatus,
+        has_paid_invoice: bool,
+    ) -> bool {
+        !has_paid_invoice && resolved == SubscriptionLifecycleStatus::GraceActive
+    }
+
+    async fn attach_installation_work_order_invoice(
+        &self,
+        tenant_id: &str,
+        work_order_id: &str,
+        invoice_id: &str,
+    ) -> AppResult<()> {
+        #[cfg(feature = "postgres")]
+        sqlx::query(
+            r#"
+            UPDATE installation_work_orders
+            SET invoice_id = $3, updated_at = NOW()
+            WHERE tenant_id = $1 AND id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(work_order_id)
+        .bind(invoice_id)
+        .execute(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        sqlx::query(
+            r#"
+            UPDATE installation_work_orders
+            SET invoice_id = ?, updated_at = ?
+            WHERE tenant_id = ? AND id = ?
+            "#,
+        )
+        .bind(invoice_id)
+        .bind(Utc::now().to_rfc3339())
+        .bind(tenant_id)
+        .bind(work_order_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn list_installation_work_orders(
         &self,
         actor_id: &str,
@@ -46,6 +91,7 @@ impl CustomerService {
               csa.status AS assignment_status,
               cs.status AS subscription_status,
               cs.starts_at AS subscription_starts_at,
+              cs.grace_until AS subscription_grace_until,
               EXISTS(
                 SELECT 1
                 FROM invoices i
@@ -82,7 +128,7 @@ impl CustomerService {
                 OR wo.status NOT IN ('completed', 'cancelled')
                 OR (
                   wo.status = 'completed'
-                  AND LOWER(COALESCE(cs.status, '')) = 'pending_installation'
+                  AND LOWER(COALESCE(cs.status, '')) IN ('pending_installation', 'grace_active', 'suspended')
                 )
               )
               AND (
@@ -133,6 +179,7 @@ impl CustomerService {
               csa.status AS assignment_status,
               cs.status AS subscription_status,
               cs.starts_at AS subscription_starts_at,
+              cs.grace_until AS subscription_grace_until,
               EXISTS(
                 SELECT 1
                 FROM invoices i
@@ -169,7 +216,7 @@ impl CustomerService {
                 OR wo.status NOT IN ('completed', 'cancelled')
                 OR (
                   wo.status = 'completed'
-                  AND LOWER(COALESCE(cs.status, '')) = 'pending_installation'
+                  AND LOWER(COALESCE(cs.status, '')) IN ('pending_installation', 'grace_active', 'suspended')
                 )
               )
               AND (
@@ -536,7 +583,7 @@ impl CustomerService {
 
         #[cfg(feature = "postgres")]
         let sub: Option<CustomerSubscription> = sqlx::query_as(
-            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price::float8 as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE tenant_id = $1 AND id = $2",
+            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price::float8 as price, currency_code, status, starts_at, ends_at, grace_started_at, grace_until, notes, created_at, updated_at FROM customer_subscriptions WHERE tenant_id = $1 AND id = $2",
         )
         .bind(tenant_id)
         .bind(&row.subscription_id)
@@ -545,7 +592,7 @@ impl CustomerService {
 
         #[cfg(feature = "sqlite")]
         let sub: Option<CustomerSubscription> = sqlx::query_as(
-            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price as price, currency_code, status, starts_at, ends_at, notes, created_at, updated_at FROM customer_subscriptions WHERE tenant_id = ? AND id = ?",
+            "SELECT id, tenant_id, customer_id, location_id, package_id, router_id, billing_cycle, price as price, currency_code, status, starts_at, ends_at, grace_started_at, grace_until, notes, created_at, updated_at FROM customer_subscriptions WHERE tenant_id = ? AND id = ?",
         )
         .bind(tenant_id)
         .bind(&row.subscription_id)
@@ -578,7 +625,29 @@ impl CustomerService {
                 s.status = resolved.as_str().to_string();
                 s.updated_at = Utc::now();
 
-                let should_disable_pppoe = resolved != SubscriptionLifecycleStatus::Active;
+                if resolved == SubscriptionLifecycleStatus::GraceActive {
+                    let grace_started_at = Utc::now();
+                    let grace_hours = self.resolve_installation_grace_hours(tenant_id).await;
+                    let grace_until = grace_started_at + Duration::hours(grace_hours);
+                    let _ = self
+                        .set_customer_subscription_grace_window(
+                            tenant_id,
+                            &s.id,
+                            grace_started_at,
+                            grace_until,
+                        )
+                        .await?;
+                    s.grace_started_at = Some(grace_started_at);
+                    s.grace_until = Some(grace_until);
+                } else {
+                    s.grace_started_at = None;
+                    s.grace_until = None;
+                }
+
+                let should_disable_pppoe = !matches!(
+                    resolved,
+                    SubscriptionLifecycleStatus::Active | SubscriptionLifecycleStatus::GraceActive
+                );
                 let _ = self
                     .set_location_pppoe_disabled_state(
                         tenant_id,
@@ -590,6 +659,47 @@ impl CustomerService {
                 let _ = self
                     .auto_provision_pppoe_for_subscription(actor_id, tenant_id, &s, ip_address)
                     .await;
+
+                if Self::should_auto_create_first_invoice_on_completion(resolved, has_paid_invoice) {
+                    let payment_service = PaymentService::new(
+                        self.pool.clone(),
+                        self.notification_service.clone(),
+                        self.pppoe_service.clone(),
+                    );
+
+                    match payment_service
+                        .create_invoice_for_customer_subscription(tenant_id, &s.id)
+                        .await
+                    {
+                        Ok(invoice) => {
+                            if let Err(err) = self
+                                .attach_installation_work_order_invoice(
+                                    tenant_id,
+                                    work_order_id,
+                                    &invoice.id,
+                                )
+                                .await
+                            {
+                                tracing::warn!(
+                                    "failed to link installation work order invoice: tenant={}, work_order={}, invoice={}, error={}",
+                                    tenant_id,
+                                    work_order_id,
+                                    invoice.id,
+                                    err
+                                );
+                            }
+                        }
+                        Err(err) => {
+                            tracing::warn!(
+                                "failed to auto-create first invoice after installation completion: tenant={}, work_order={}, subscription={}, error={}",
+                                tenant_id,
+                                work_order_id,
+                                s.id,
+                                err
+                            );
+                        }
+                    }
+                }
             }
         }
 

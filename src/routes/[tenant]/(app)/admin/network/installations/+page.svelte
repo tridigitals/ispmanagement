@@ -11,12 +11,21 @@
     type FileRecord,
     type IspPackageRouterMappingView,
     type InstallationWorkOrderView,
+    type ManagedRadiusRouterSetup,
     type PppoeAccountPublic,
     type TeamMember,
     type WorkOrderRescheduleRequestView,
   } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
   import { formatDateTime } from '$lib/utils/date';
+  import {
+    getInstallationInternetTestTargetOptions,
+    getInstallationInternetTestTargetHint,
+    normalizeInstallationInternetTestTarget,
+    resolveInstallationInternetTestRouterId,
+    type InstallationInternetTestTarget,
+  } from '$lib/utils/installationInternetTest';
+  import { shouldAllowInstallationInvoiceCreation } from '$lib/utils/installationInvoice';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Select2 from '$lib/components/ui/Select2.svelte';
   import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
@@ -50,11 +59,14 @@
   let installationSubscription = $state<CustomerSubscriptionView | null>(null);
   let installationPppoeAccount = $state<PppoeAccountPublic | null>(null);
   let installationPppoeMappings = $state<IspPackageRouterMappingView[]>([]);
+  let installationManagedRadiusSetup = $state<ManagedRadiusRouterSetup | null>(null);
+  let installationManagedRadiusLoadError = $state('');
   let loadingInstallationPppoe = $state(false);
   let savingInstallationPppoe = $state(false);
   let installationPppoeUsername = $state('');
   let installationPppoePassword = $state('');
   let installationPppoeComment = $state('');
+  let installationPppoeTarget = $state<InstallationInternetTestTarget>('router');
   let onsiteFocusIndex = $state<number | null>(null);
   let canManageWorkOrders = $derived($can('manage', 'work_orders'));
   let canReadAuditLogs = $derived($can('read', 'audit_logs'));
@@ -430,11 +442,14 @@
     installationSubscription = null;
     installationPppoeAccount = null;
     installationPppoeMappings = [];
+    installationManagedRadiusSetup = null;
+    installationManagedRadiusLoadError = '';
     loadingInstallationPppoe = false;
     savingInstallationPppoe = false;
     installationPppoeUsername = '';
     installationPppoePassword = '';
     installationPppoeComment = '';
+    installationPppoeTarget = 'router';
     onsiteFocusIndex = null;
   }
 
@@ -536,6 +551,8 @@
     installationSubscription = null;
     installationPppoeAccount = null;
     installationPppoeMappings = [];
+    installationManagedRadiusSetup = null;
+    installationManagedRadiusLoadError = '';
     installationPppoeUsername = '';
     installationPppoePassword = '';
     installationPppoeComment = '';
@@ -558,20 +575,49 @@
           (item) => item.location_id === row.location_id,
         ) || null);
 
-      const routerId = subscription?.router_id || row.router_id || installationPppoeAccount?.router_id || '';
+      const explicitRouterId =
+        subscription?.router_id || row.router_id || installationPppoeAccount?.router_id || '';
       const packageId = subscription?.package_id || row.package_id || installationPppoeAccount?.package_id || '';
+      let routerId = explicitRouterId;
       if (routerId) {
         installationPppoeMappings = await api.ispPackages.routerMappings.list({
           router_id: routerId,
         });
       } else if (packageId) {
         installationPppoeMappings = await api.ispPackages.routerMappings.list();
+        routerId = resolveInstallationInternetTestRouterId({
+          explicitRouterId,
+          packageId,
+          mappings: installationPppoeMappings,
+        });
+      }
+
+      if (routerId) {
+        try {
+          installationManagedRadiusSetup = await api.mikrotik.routers.managedRadiusSetup(routerId);
+          installationManagedRadiusLoadError = '';
+        } catch {
+          installationManagedRadiusSetup = null;
+          installationManagedRadiusLoadError = tr(
+            'admin.network.installations.managed_radius_load_failed',
+            'Managed RADIUS setup could not be loaded. Check permissions or router setup.',
+          );
+        }
       }
 
       if (installationPppoeAccount) {
         installationPppoeUsername = installationPppoeAccount.username || '';
         installationPppoeComment = installationPppoeAccount.comment || '';
       }
+
+      const nextTargetOptions = getInstallationInternetTestTargetOptions({
+        routerId,
+        managedRadiusConfigured: installationManagedRadiusSetup?.configured,
+      });
+      installationPppoeTarget = normalizeInstallationInternetTestTarget(
+        installationPppoeAccount?.account_source === 'managed_radius' ? 'managed_radius' : 'router',
+        nextTargetOptions,
+      );
     } catch (e: any) {
       toast.error(e?.message || 'Failed to prepare PPPoE installation form');
     } finally {
@@ -609,7 +655,65 @@
       '-',
   );
 
-  async function createInstallationPppoe() {
+  const installationPppoeTargetOptions = $derived.by(() =>
+    getInstallationInternetTestTargetOptions({
+      routerId:
+        resolveInstallationInternetTestRouterId({
+          explicitRouterId:
+            installationSubscription?.router_id ||
+            activeRow?.router_id ||
+            installationPppoeAccount?.router_id ||
+            installationPppoeMapping?.router_id ||
+            '',
+          packageId:
+            installationSubscription?.package_id ||
+            activeRow?.package_id ||
+            installationPppoeAccount?.package_id ||
+            installationPppoeMapping?.package_id ||
+            '',
+          mappings: installationPppoeMappings,
+        }),
+      managedRadiusConfigured: installationManagedRadiusSetup?.configured,
+    }),
+  );
+
+  $effect(() => {
+    installationPppoeTarget = normalizeInstallationInternetTestTarget(
+      installationPppoeTarget,
+      installationPppoeTargetOptions,
+    );
+  });
+
+  const installationPppoeTargetLabel = $derived.by(
+    () =>
+      installationPppoeTargetOptions.find((option) => option.value === installationPppoeTarget)?.label ||
+      'Router',
+  );
+
+  const installationManagedRadiusHint = $derived.by(() =>
+    getInstallationInternetTestTargetHint({
+      managedRadiusConfigured: installationManagedRadiusSetup?.configured,
+      managedRadiusLoadError: installationManagedRadiusLoadError,
+      planUpgradeRequired: installationManagedRadiusSetup?.plan_upgrade_required,
+      tenantHasActiveAssignment: installationManagedRadiusSetup?.tenant_has_active_assignment,
+      canCreateMapping: installationManagedRadiusSetup?.can_create_mapping,
+      defaultServerAvailable: installationManagedRadiusSetup?.default_server_available,
+    }),
+  );
+
+  const installationPppoeTargetSummary = $derived.by(() => {
+    if (installationPppoeTarget === 'managed_radius') {
+      return (
+        installationManagedRadiusSetup?.server_name ||
+        installationManagedRadiusSetup?.assignment_server_name ||
+        installationManagedRadiusSetup?.radius_host ||
+        tr('admin.network.installations.target_managed_radius', 'Managed RADIUS')
+      );
+    }
+    return installationPppoeRouterLabel;
+  });
+
+  async function saveInstallationPppoe() {
     const row = activeRow;
     const subscription = installationSubscription;
     const mapping = installationPppoeMapping;
@@ -629,38 +733,82 @@
       toast.error('Router profile mapping for this internet package is not configured');
       return;
     }
-    if (!installationPppoeUsername.trim() || !installationPppoePassword) {
-      toast.error('Username and password are required');
+    if (!installationPppoeUsername.trim()) {
+      toast.error(tr('admin.network.installations.username_required', 'Username is required'));
+      return;
+    }
+    if (!installationPppoeAccount && !installationPppoePassword) {
+      toast.error(tr('admin.network.installations.password_required', 'Password is required'));
+      return;
+    }
+    if (installationPppoeTarget === 'managed_radius' && !installationManagedRadiusSetup?.configured) {
+      toast.error(
+        tr(
+          'admin.network.installations.managed_radius_not_configured',
+          'Managed RADIUS is not configured for this router yet',
+        ),
+      );
       return;
     }
 
     savingInstallationPppoe = true;
     try {
-      const created = await api.pppoe.accounts.create({
-        router_id: routerId,
-        customer_id: row.customer_id,
-        location_id: row.location_id,
-        username: installationPppoeUsername.trim(),
-        password: installationPppoePassword,
-        package_id: packageId || null,
-        router_profile_name: mapping.router_profile_name,
-        address_pool: mapping.address_pool ?? null,
-        comment: installationPppoeComment.trim() || null,
-      });
-      installationPppoeAccount = created;
-      installationPppoePassword = '';
-      toast.success('PPPoE account created');
-      try {
-        const applied = await api.pppoe.accounts.apply(created.id);
-        installationPppoeAccount = applied;
-        checkPppoe = true;
-        await savePlan();
-        toast.success('PPPoE account applied to router');
-      } catch (applyErr: any) {
-        toast.error(applyErr?.message || 'PPPoE created but failed to apply to router');
+      let account = installationPppoeAccount;
+      const trimmedComment = installationPppoeComment.trim() || null;
+      const selectedSource = installationPppoeTarget;
+
+      if (!account) {
+        account = await api.pppoe.accounts.create({
+          router_id: routerId,
+          customer_id: row.customer_id,
+          location_id: row.location_id,
+          username: installationPppoeUsername.trim(),
+          password: installationPppoePassword,
+          package_id: packageId || null,
+          router_profile_name: mapping.router_profile_name,
+          address_pool: mapping.address_pool ?? null,
+          comment: trimmedComment,
+          account_source: selectedSource,
+        });
+        toast.success(
+          selectedSource === 'managed_radius'
+            ? tr(
+                'admin.network.installations.test_account_created_radius',
+                'Test account created for RADIUS',
+              )
+            : tr('admin.network.installations.pppoe_created', 'PPPoE account created'),
+        );
+      } else {
+        account = await api.pppoe.accounts.update(account.id, {
+          username: installationPppoeUsername.trim(),
+          password: installationPppoePassword || undefined,
+          package_id: packageId || null,
+          router_profile_name: mapping.router_profile_name,
+          address_pool: mapping.address_pool ?? null,
+          comment: trimmedComment,
+          account_source: selectedSource,
+        });
+        toast.success(
+          tr('admin.network.installations.test_account_updated', 'Test account updated'),
+        );
       }
+
+      installationPppoeAccount = account;
+      installationPppoePassword = '';
+      const applied = await api.pppoe.accounts.apply(account.id);
+      installationPppoeAccount = applied;
+      checkPppoe = true;
+      await savePlan();
+      toast.success(
+        selectedSource === 'managed_radius'
+          ? tr(
+              'admin.network.installations.test_account_applied_radius',
+              'Test account applied to Managed RADIUS',
+            )
+          : tr('admin.network.installations.pppoe_applied', 'PPPoE account applied to router'),
+      );
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to create PPPoE account');
+      toast.error(e?.message || 'Failed to save test account');
     } finally {
       savingInstallationPppoe = false;
     }
@@ -674,7 +822,14 @@
       installationPppoeAccount = applied;
       checkPppoe = true;
       await savePlan();
-      toast.success('PPPoE account applied to router');
+      toast.success(
+        installationPppoeAccount.account_source === 'managed_radius'
+          ? tr(
+              'admin.network.installations.test_account_applied_radius',
+              'Test account applied to Managed RADIUS',
+            )
+          : tr('admin.network.installations.pppoe_applied', 'PPPoE account applied to router'),
+      );
     } catch (e: any) {
       toast.error(e?.message || 'Failed to apply PPPoE account');
     } finally {
@@ -845,6 +1000,70 @@
       !activeRow.subscription_starts_at
     );
   });
+  const isGraceActive = $derived.by(
+    () => activeRow?.status === 'completed' && activeRow.subscription_status === 'grace_active',
+  );
+  const canCreateMissingInvoice = $derived.by(() =>
+    shouldAllowInstallationInvoiceCreation({
+      workOrderStatus: activeRow?.status,
+      subscriptionStatus: activeRow?.subscription_status,
+      hasCustomerPackageInvoice: activeRow?.has_customer_package_invoice,
+    }),
+  );
+  const subscriptionStatusLabel = $derived.by(() =>
+    formatSubscriptionStatus(activeRow?.subscription_status || ''),
+  );
+  const subscriptionGraceDeadlineLabel = $derived.by(() =>
+    activeRow?.subscription_grace_until ? formatDateTime(activeRow.subscription_grace_until) : '-',
+  );
+  const currentFocusTitle = $derived.by(() => {
+    if (!activeRow) return '';
+    if (activeRow.status === 'completed') {
+      return isGraceActive
+        ? tr('admin.network.installations.focus_grace_title', 'Service is temporarily active')
+        : tr('admin.network.installations.focus_done_title', 'Installation is completed');
+    }
+    if (activeRow.status === 'cancelled') {
+      return tr('admin.network.installations.focus_cancelled_title', 'Work order is cancelled');
+    }
+    if (activeRow.status === 'pending' && effectiveStep === 1) {
+      return tr('admin.network.installations.focus_assign_title', 'Assign technician');
+    }
+    if (activeRow.status === 'pending' && effectiveStep === 2) {
+      return tr('admin.network.installations.focus_schedule_title', 'Lock installation schedule');
+    }
+    if (activeRow.status === 'in_progress' && onsiteActiveTask?.key === 'pppoe') {
+      return tr('admin.network.installations.focus_test_title', 'Test customer internet access');
+    }
+    if (activeRow.status === 'in_progress' && effectiveStep === 4) {
+      return tr('admin.network.installations.focus_finish_title', 'Finish and confirm service outcome');
+    }
+    return tr('admin.network.installations.focus_onsite_title', 'Complete onsite installation tasks');
+  });
+  const currentFocusHint = $derived.by(() => {
+    if (!activeRow) return '';
+    if (activeRow.status === 'completed') {
+      return isGraceActive
+        ? tr('admin.network.installations.focus_grace_hint', 'Customer can use the service for now. Billing will auto-suspend it if the first invoice remains unpaid after the deadline.')
+        : tr('admin.network.installations.focus_done_hint', 'No technician action is required unless billing or reopen follow-up is needed.');
+    }
+    if (activeRow.status === 'cancelled') {
+      return tr('admin.network.installations.focus_cancelled_hint', 'This request stays closed until an admin decides to reopen it.');
+    }
+    if (activeRow.status === 'pending' && effectiveStep === 1) {
+      return tr('admin.network.installations.focus_assign_hint', 'Choose who will own this visit so the rest of the flow stays on one technician.');
+    }
+    if (activeRow.status === 'pending' && effectiveStep === 2) {
+      return tr('admin.network.installations.focus_schedule_hint', 'Set the exact visit time before starting onsite work.');
+    }
+    if (activeRow.status === 'in_progress' && onsiteActiveTask?.key === 'pppoe') {
+      return tr('admin.network.installations.focus_test_hint', 'Use the package mapping values automatically, then verify the account really connects.');
+    }
+    if (activeRow.status === 'in_progress' && effectiveStep === 4) {
+      return tr('admin.network.installations.focus_finish_hint', 'Once completed, the service will either enter grace-active or become fully active depending on payment state.');
+    }
+    return tr('admin.network.installations.focus_onsite_hint', 'Move through one onsite task at a time so handover and proof stay clean.');
+  });
 
   async function startFromDetail() {
     if (!activeRow) return;
@@ -917,6 +1136,26 @@
   function tr(key: string, fallback: string) {
     const value = $t(key);
     return value && value !== key ? value : fallback;
+  }
+
+  function formatSubscriptionStatus(status: string) {
+    const normalized = status.trim().toLowerCase();
+    if (normalized === 'grace_active') {
+      return tr('admin.network.installations.status_grace_active', 'Grace Active');
+    }
+    if (normalized === 'pending_installation') {
+      return tr('admin.network.installations.status_pending_installation', 'Pending Installation');
+    }
+    if (normalized === 'suspended') {
+      return tr('common.suspended', 'Suspended');
+    }
+    if (normalized === 'active') {
+      return tr('common.active', 'Active');
+    }
+    if (normalized === 'cancelled') {
+      return tr('common.cancelled', 'Cancelled');
+    }
+    return status || '-';
   }
 
   async function createInvoiceFromDetail() {
@@ -1146,11 +1385,6 @@
                       {tr('common.start', 'Start')}
                     </button>
                   {/if}
-                  {#if $can('manage', 'work_orders') && row.status === 'in_progress'}
-                    <button class="btn success" onclick={(e) => { e.stopPropagation(); setStatus(row, 'complete'); }} disabled={busyId === row.id || !canOperateRow(row)}>
-                      {tr('common.complete', 'Complete')}
-                    </button>
-                  {/if}
                   {#if $can('manage', 'work_orders') && isAdminOwner && row.status !== 'completed' && row.status !== 'cancelled'}
                     <button class="btn danger" onclick={(e) => { e.stopPropagation(); openCancelDialog(row); }} disabled={busyId === row.id}>
                       {tr('common.cancel', 'Cancel')}
@@ -1218,8 +1452,8 @@
         {:else}
           <div class:active-step={effectiveStep >= 1}>1. {tr('admin.network.installations.step_assign', 'Assign')}</div>
           <div class:active-step={effectiveStep >= 2}>2. {tr('admin.network.installations.step_schedule', 'Schedule')}</div>
-          <div class:active-step={effectiveStep >= 3}>3. {tr('admin.network.installations.step_onsite', 'On-site')}</div>
-          <div class:active-step={effectiveStep >= 4}>4. {tr('admin.network.installations.step_activate', 'Activate')}</div>
+          <div class:active-step={effectiveStep >= 3}>3. {tr('admin.network.installations.step_onsite', 'On-site & Test')}</div>
+          <div class:active-step={effectiveStep >= 4}>4. {tr('admin.network.installations.step_activate', 'Finish')}</div>
         {/if}
       </div>
 
@@ -1242,13 +1476,32 @@
         </article>
         <article class="meta-item">
           <span class="meta-label">{tr('admin.network.installations.subscription_status', 'Service Status')}</span>
-          <strong class="meta-value">{activeRow.subscription_status || '-'}</strong>
+          <strong class="meta-value">{subscriptionStatusLabel}</strong>
         </article>
         <article class="meta-item">
           <span class="meta-label">{tr('common.assignee', 'Assignee')}</span>
           <strong class="meta-value">{activeRow.assigned_to_name || '-'}</strong>
         </article>
       </div>
+
+      <section class:grace={isGraceActive} class="focus-panel">
+        <div class="focus-copy">
+          <span class="focus-kicker">{tr('admin.network.installations.focus_kicker', 'Current Focus')}</span>
+          <strong>{currentFocusTitle}</strong>
+          <p>{currentFocusHint}</p>
+        </div>
+        {#if activeRow.status === 'completed' && isGraceActive}
+          <div class="focus-chip">
+            <span>{tr('admin.network.installations.grace_deadline', 'Grace active until')}</span>
+            <strong>{subscriptionGraceDeadlineLabel}</strong>
+          </div>
+        {:else if activeRow.status === 'in_progress'}
+          <div class="focus-chip">
+            <span>{tr('admin.network.installations.checklist', 'Installation Checklist')}</span>
+            <strong>{checklistDoneCount}/{checklistTotal}</strong>
+          </div>
+        {/if}
+      </section>
 
       {#if $can('manage', 'work_orders')}
         <section class="wizard-card">
@@ -1384,7 +1637,7 @@
             </div>
           {:else if activeRow.status === 'in_progress' && effectiveStep === 3}
             <h3>{tr('admin.network.installations.step_onsite', 'On-site')}</h3>
-            <p class="step-help">{tr('admin.network.installations.step_onsite_help', 'Complete onsite checklist. Progress updates automatically.')}</p>
+            <p class="step-help">{tr('admin.network.installations.step_onsite_help', 'Complete physical installation, test internet access, then finish the visit.')}</p>
             {#if onsiteActiveTask.key === 'cable'}
               <div class="cable-designer-card">
                 <div class="cable-designer-copy">
@@ -1423,11 +1676,11 @@
               <section class="pppoe-install-card">
                 <div class="pppoe-install-head">
                   <div>
-                    <strong>PPPoE Provisioning</strong>
-                    <p>Username/password diisi teknisi. Router dan profile mengikuti service internet aktif.</p>
+                    <strong>{tr('admin.network.installations.internet_test_title', 'Internet Test')}</strong>
+                    <p>{tr('admin.network.installations.internet_test_help', 'Technician only enters username and password. Router, profile, and pool follow the active internet package mapping.')}</p>
                   </div>
                   {#if installationPppoeAccount}
-                    <span class="status progress">Configured</span>
+                    <span class="status progress">{tr('admin.network.installations.internet_test_configured', 'Configured')}</span>
                   {/if}
                 </div>
 
@@ -1437,66 +1690,91 @@
                   <p class="helper-text">Subscription internet untuk work order ini belum ditemukan.</p>
                 {:else}
                   <div class="form-grid two-col compact">
-                    <label>
-                      Router
-                      <input
-                        class="input"
-                        value={installationPppoeRouterLabel}
-                        readonly
-                      />
-                    </label>
-                    <label>
-                      Profile
-                      <input
-                        class="input"
-                        value={installationPppoeMapping?.router_profile_name || '-'}
-                        readonly
-                      />
-                    </label>
-                    <label>
-                      Package
-                      <input
-                        class="input"
-                        value={activeRow.package_name || installationSubscription.package_name || installationSubscription.package_id || '-'}
-                        readonly
-                      />
-                    </label>
-                    <label>
-                      Address Pool
-                      <input
-                        class="input"
-                        value={installationPppoeMapping?.address_pool || '-'}
-                        readonly
-                      />
-                    </label>
-                    <label>
-                      Username
+                    <label class="summary-field">
+                      {tr('admin.network.installations.pppoe_username', 'Username')}
                       <input class="input" bind:value={installationPppoeUsername} placeholder="pppoe username" />
                     </label>
-                    <label>
-                      Password
-                      <input class="input" type="password" bind:value={installationPppoePassword} placeholder="pppoe password" />
+                    <label class="summary-field">
+                      {tr('admin.network.installations.pppoe_password', 'Password')}
+                      <input class="input" type="password" bind:value={installationPppoePassword} placeholder={installationPppoeAccount ? tr('admin.network.installations.password_keep_existing_placeholder', 'Leave blank to keep current password') : 'pppoe password'} />
                     </label>
                   </div>
+
+                  {#if installationPppoeTargetOptions.length > 1}
+                    <div class="field">
+                      <div class="field-label">{tr('admin.network.installations.provision_to', 'Provision to')}</div>
+                      <select class="input" bind:value={installationPppoeTarget}>
+                        {#each installationPppoeTargetOptions as option (option.value)}
+                          <option value={option.value} disabled={option.disabled}>
+                            {option.label}
+                          </option>
+                        {/each}
+                      </select>
+                      {#if installationManagedRadiusHint}
+                        <p class="helper-text">{tr(
+                          installationManagedRadiusLoadError
+                            ? 'admin.network.installations.managed_radius_load_failed'
+                            : installationManagedRadiusSetup?.plan_upgrade_required
+                              ? 'admin.network.installations.managed_radius_plan_required'
+                              : installationManagedRadiusSetup?.tenant_has_active_assignment === false &&
+                                  installationManagedRadiusSetup?.default_server_available
+                                ? 'admin.network.installations.managed_radius_assignment_inactive'
+                                : installationManagedRadiusSetup?.tenant_has_active_assignment &&
+                                    installationManagedRadiusSetup?.can_create_mapping
+                                  ? 'admin.network.installations.managed_radius_mapping_inactive'
+                                  : 'admin.network.installations.managed_radius_not_configured',
+                          installationManagedRadiusHint,
+                        )}</p>
+                      {/if}
+                    </div>
+                  {/if}
+
                   <label class="notes">
-                    Comment
+                    {tr('admin.network.installations.pppoe_comment', 'Comment')}
                     <input class="input" bind:value={installationPppoeComment} placeholder="Optional PPPoE comment" />
                   </label>
 
+                  {#if installationManagedRadiusSetup?.configured}
+                    <p class="helper-text">
+                      {tr(
+                        'admin.network.installations.managed_radius_ready_hint',
+                        'Managed RADIUS is ready on this router. Technician can choose local router or RADIUS before applying.',
+                      )}
+                    </p>
+                  {/if}
+
                   {#if installationPppoeAccount}
                     <div class="pppoe-existing">
-                      <span>Existing PPPoE:</span>
+                      <span>{tr('admin.network.installations.pppoe_existing', 'Existing PPPoE:')}</span>
                       <strong>{installationPppoeAccount.username}</strong>
-                      <span>{installationPppoeAccount.router_profile_name || installationPppoeMapping?.router_profile_name || '-'}</span>
+                      <span>{installationPppoeAccount.account_source === 'managed_radius' ? 'RADIUS' : 'Router'}</span>
                     </div>
                   {/if}
+
+                  <div class="test-outcome">
+                    <span class:ok={!!installationPppoeAccount} class="test-state">
+                      {installationPppoeAccount
+                        ? installationPppoeAccount.account_source === 'managed_radius'
+                          ? tr(
+                              'admin.network.installations.radius_ready_state',
+                              'RADIUS account is ready for live testing.',
+                            )
+                          : tr('admin.network.installations.test_ready_state', 'Router account is ready for live testing.')
+                        : installationPppoeTarget === 'managed_radius'
+                          ? tr(
+                              'admin.network.installations.radius_pending_state',
+                              'Create the account first, then test live connectivity through RADIUS.',
+                            )
+                          : tr('admin.network.installations.test_pending_state', 'Create the account first, then test live connectivity from the customer side.')}
+                    </span>
+                  </div>
 
                   <div class="modal-actions">
                     {#if !installationPppoeAccount}
                       <button
                         class="btn ghost"
                         type="button"
-                        onclick={createInstallationPppoe}
+                        onclick={saveInstallationPppoe}
                         disabled={
                           savingInstallationPppoe ||
                           !(
@@ -1506,19 +1784,56 @@
                           ) ||
                           !installationPppoeMapping?.router_profile_name ||
                           !installationPppoeUsername.trim() ||
-                          !installationPppoePassword
+                          !installationPppoePassword ||
+                          (installationPppoeTarget === 'managed_radius' && !installationManagedRadiusSetup?.configured)
                         }
                       >
-                        {savingInstallationPppoe ? tr('common.loading', 'Loading...') : 'Create PPPoE'}
+                        {savingInstallationPppoe
+                          ? tr('common.loading', 'Loading...')
+                          : installationPppoeTarget === 'managed_radius'
+                            ? tr(
+                                'admin.network.installations.create_apply_radius',
+                                'Create & Apply to RADIUS',
+                              )
+                            : tr('admin.network.installations.create_and_test', 'Create & Test Connection')}
                       </button>
                     {:else}
+                      <button
+                        class="btn ghost"
+                        type="button"
+                        onclick={saveInstallationPppoe}
+                        disabled={
+                          savingInstallationPppoe ||
+                          !installationPppoeUsername.trim() ||
+                          (installationPppoeTarget === 'managed_radius' && !installationManagedRadiusSetup?.configured)
+                        }
+                      >
+                        {savingInstallationPppoe
+                          ? tr('common.loading', 'Loading...')
+                          : installationPppoeTarget === 'managed_radius'
+                            ? tr(
+                                'admin.network.installations.save_reapply_radius',
+                                'Save & Re-apply to RADIUS',
+                              )
+                            : tr(
+                                'admin.network.installations.save_reapply_router',
+                                'Save & Re-apply to Router',
+                              )}
+                      </button>
                       <button
                         class="btn ghost"
                         type="button"
                         onclick={applyInstallationPppoe}
                         disabled={savingInstallationPppoe}
                       >
-                        {savingInstallationPppoe ? tr('common.loading', 'Loading...') : 'Apply to Router'}
+                        {savingInstallationPppoe
+                          ? tr('common.loading', 'Loading...')
+                          : installationPppoeAccount.account_source === 'managed_radius'
+                            ? tr(
+                                'admin.network.installations.apply_existing_radius',
+                                'Apply Existing to RADIUS',
+                              )
+                            : tr('admin.network.installations.apply_test', 'Apply Test to Router')}
                       </button>
                     {/if}
                   </div>
@@ -1601,7 +1916,7 @@
               {tr('common.notes', 'Notes')}
               <textarea rows="4" bind:value={formNotes} placeholder={tr('admin.network.installations.notes_placeholder', 'Technician notes and onsite findings')}></textarea>
             </label>
-            <div class="modal-actions">
+            <div class="modal-actions stage-actions">
               <button
                 class="btn ghost"
                 type="button"
@@ -1629,13 +1944,10 @@
               <button class="btn ghost" onclick={savePlan} disabled={busyId === activeRow.id}>
                 {tr('admin.network.installations.save_plan', 'Save Plan')}
               </button>
-              <button class="btn success" onclick={completeFromDetail} disabled={busyId === activeRow.id || !canCompleteActive}>
-                {tr('common.complete', 'Complete')}
-              </button>
             </div>
           {:else if activeRow.status === 'in_progress' && effectiveStep === 4}
-            <h3>{tr('admin.network.installations.step_activate', 'Activate')}</h3>
-            <p class="step-help">{tr('admin.network.installations.step_active_help', 'Checklist complete. Activate service now.')}</p>
+            <h3>{tr('admin.network.installations.step_activate', 'Finish')}</h3>
+            <p class="step-help">{tr('admin.network.installations.step_active_help', 'Checklist complete. Finish installation to start the service state flow.')}</p>
             <div class="activation-ready">
               <div>{tr('admin.network.installations.checklist', 'Installation Checklist')}: <strong>{checklistDoneCount}/{checklistTotal}</strong></div>
               <div>{tr('common.schedule', 'Schedule')}: <strong>{activeRow.scheduled_at ? formatDateTime(activeRow.scheduled_at) : '-'}</strong></div>
@@ -1644,7 +1956,7 @@
               {tr('common.notes', 'Notes')}
               <textarea rows="4" bind:value={formNotes} placeholder={tr('admin.network.installations.notes_placeholder', 'Technician notes and onsite findings')}></textarea>
             </label>
-            <div class="modal-actions">
+            <div class="modal-actions stage-actions">
               <button class="btn success" onclick={completeFromDetail} disabled={busyId === activeRow.id || !canCompleteActive}>
                 {tr('common.complete', 'Complete')}
               </button>
@@ -1653,7 +1965,12 @@
             <h3>{tr('admin.network.installations.final_state', 'Final State')}</h3>
             <p class="step-help">
               {activeRow.status === 'completed'
-                ? isAwaitingFirstPayment
+                ? isGraceActive
+                  ? tr(
+                      'admin.network.installations.final_grace_active',
+                      'Installation is complete. Service is temporarily active during grace period.',
+                    )
+                  : isAwaitingFirstPayment
                   ? activeRow.has_customer_package_invoice
                     ? tr(
                         'admin.network.installations.final_waiting_payment_invoice_exists',
@@ -1666,8 +1983,14 @@
                   : tr('admin.network.installations.final_completed', 'Installation has been completed and service is active.')
                 : tr('admin.network.installations.final_cancelled', 'Installation has been cancelled.')}
             </p>
-            {#if activeRow.status === 'completed' && isAwaitingFirstPayment && !activeRow.has_customer_package_invoice}
-              <div class="modal-actions">
+            {#if activeRow.status === 'completed' && isGraceActive}
+              <div class="activation-ready">
+                <div>{tr('admin.network.installations.grace_deadline', 'Grace active until')}: <strong>{subscriptionGraceDeadlineLabel}</strong></div>
+                <div>{tr('admin.network.installations.grace_followup', 'If the first invoice is still unpaid after this deadline, service will be suspended automatically.')}</div>
+              </div>
+            {/if}
+            {#if canCreateMissingInvoice}
+              <div class="modal-actions stage-actions">
                 <button
                   class="btn ghost"
                   type="button"
@@ -2005,6 +2328,15 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: -16px;
+    z-index: 5;
+    margin: -16px -16px 0;
+    padding: 16px;
+    background: rgba(11, 18, 33, 0.94);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(51, 65, 85, 0.72);
   }
   .modal h2 {
     margin: 0;
@@ -2017,8 +2349,8 @@
   }
   .step-flow > div {
     border: 1px solid #334155;
-    border-radius: 999px;
-    padding: 8px 10px;
+    border-radius: 16px;
+    padding: 10px 12px;
     color: #9fb0cc;
     font-size: 0.82rem;
     text-align: center;
@@ -2038,6 +2370,67 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px 14px;
+  }
+  .focus-panel {
+    border: 1px solid rgba(96, 165, 250, 0.28);
+    border-radius: 14px;
+    background:
+      linear-gradient(135deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.94)),
+      radial-gradient(circle at top right, rgba(59, 130, 246, 0.16), transparent 44%);
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .focus-panel.grace {
+    border-color: rgba(34, 197, 94, 0.34);
+    background:
+      linear-gradient(135deg, rgba(15, 37, 28, 0.96), rgba(11, 18, 33, 0.94)),
+      radial-gradient(circle at top right, rgba(34, 197, 94, 0.18), transparent 44%);
+  }
+  .focus-copy {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+  .focus-kicker {
+    color: #93c5fd;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .focus-copy strong {
+    color: #eff6ff;
+    font-size: 1rem;
+  }
+  .focus-copy p {
+    margin: 0;
+    color: #c6d4ea;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    max-width: 62ch;
+  }
+  .focus-chip {
+    min-width: 190px;
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.7);
+    padding: 10px 12px;
+    display: grid;
+    gap: 4px;
+  }
+  .focus-chip span {
+    color: #93c5fd;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+  }
+  .focus-chip strong {
+    color: #f8fafc;
+    font-size: 0.95rem;
   }
   .meta-item {
     border: 1px solid #2b3854;
@@ -2064,9 +2457,9 @@
     border: 1px solid #2b3a5b;
     border-radius: 12px;
     background: #0e1729;
-    padding: 14px;
+    padding: 16px;
     display: grid;
-    gap: 10px;
+    gap: 12px;
   }
   .wizard-card h3 {
     margin: 0;
@@ -2180,13 +2573,14 @@
     font-weight: 700;
   }
   .activation-ready {
-    border: 1px dashed #334766;
-    border-radius: 10px;
-    padding: 10px;
+    border: 1px dashed #3b5276;
+    border-radius: 12px;
+    padding: 12px;
     display: grid;
-    gap: 6px;
+    gap: 8px;
     color: #cfe0ff;
     font-size: 0.9rem;
+    background: rgba(15, 23, 42, 0.52);
   }
   .checklist label {
     display: flex;
@@ -2254,13 +2648,70 @@
   }
   .cable-designer-card {
     border: 1px solid #2d3f61;
-    border-radius: 10px;
-    background: #0c162a;
-    padding: 10px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #0c162a, #101c31);
+    padding: 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 10px;
+  }
+  .pppoe-install-card {
+    border: 1px solid rgba(59, 130, 246, 0.26);
+    border-radius: 14px;
+    background:
+      linear-gradient(180deg, rgba(11, 23, 41, 0.96), rgba(12, 18, 33, 0.98)),
+      radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 45%);
+    padding: 14px;
+    display: grid;
+    gap: 12px;
+  }
+  .pppoe-install-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .pppoe-install-head p {
+    margin: 4px 0 0;
+    color: #b7c8e7;
+    font-size: 0.86rem;
+    max-width: 58ch;
+  }
+  .pppoe-existing {
+    border: 1px solid rgba(34, 197, 94, 0.22);
+    border-radius: 12px;
+    background: rgba(21, 128, 61, 0.12);
+    padding: 10px 12px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    color: #d6f5e3;
+  }
+  .pppoe-existing span:first-child {
+    color: #9fd7b2;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+  }
+  .test-outcome {
+    display: flex;
+    justify-content: flex-start;
+  }
+  .test-state {
+    border: 1px dashed rgba(148, 163, 184, 0.34);
+    border-radius: 999px;
+    padding: 7px 12px;
+    color: #c7d3e7;
+    font-size: 0.82rem;
+    background: rgba(15, 23, 42, 0.45);
+  }
+  .test-state.ok {
+    border-color: rgba(34, 197, 94, 0.38);
+    color: #d4f7df;
+    background: rgba(22, 101, 52, 0.2);
   }
   .cable-designer-copy {
     display: grid;
@@ -2371,6 +2822,16 @@
     flex-wrap: wrap;
     justify-content: flex-end;
   }
+  .stage-actions {
+    position: sticky;
+    bottom: -16px;
+    z-index: 4;
+    margin: 6px -16px -16px;
+    padding: 14px 16px 16px;
+    background: linear-gradient(180deg, rgba(11, 18, 33, 0), rgba(11, 18, 33, 0.92) 22%, rgba(11, 18, 33, 0.98));
+    backdrop-filter: blur(8px);
+    border-top: 1px solid rgba(51, 65, 85, 0.72);
+  }
   .history {
     border-top: 1px dashed #33405d;
     padding-top: 10px;
@@ -2430,8 +2891,31 @@
     .reschedule-decision-fields {
       grid-template-columns: 1fr;
     }
+    .focus-panel,
+    .pppoe-install-head,
+    .cable-designer-card {
+      grid-template-columns: 1fr;
+      display: grid;
+    }
     .step-flow {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
+    }
+    .step-flow > div {
+      text-align: left;
+    }
+    .modal-head {
+      top: -16px;
+      align-items: flex-start;
+    }
+    .modal-head .btn {
+      flex-shrink: 0;
+    }
+    .stage-actions {
+      justify-content: stretch;
+    }
+    .stage-actions .btn {
+      flex: 1 1 100%;
+      justify-content: center;
     }
   }
 </style>

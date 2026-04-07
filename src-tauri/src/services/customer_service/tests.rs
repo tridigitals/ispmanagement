@@ -99,6 +99,10 @@ fn lifecycle_observability_helpers_extract_counts() {
                 stage: "installation_done_awaiting_payment".to_string(),
                 count: 2,
             },
+            crate::models::CustomerLifecycleStageMetric {
+                stage: "grace_active".to_string(),
+                count: 1,
+            },
         ],
         work_order_funnel: vec![crate::models::CustomerLifecycleStageMetric {
             stage: "in_progress".to_string(),
@@ -115,6 +119,7 @@ fn lifecycle_observability_helpers_extract_counts() {
         lifecycle_count(&metrics, "installation_done_awaiting_payment"),
         2
     );
+    assert_eq!(lifecycle_count(&metrics, "grace_active"), 1);
     assert_eq!(work_order_count(&metrics, "in_progress"), 4);
     assert_eq!(aging_bucket_count(&metrics, ">7d"), 1);
     assert_eq!(lifecycle_count(&metrics, "cancelled"), 0);
@@ -129,6 +134,10 @@ fn normalizers_lock_subscription_and_work_order_status_semantics() {
     assert_eq!(
         CustomerService::normalize_subscription_status("pending_installation").unwrap(),
         "pending_installation"
+    );
+    assert_eq!(
+        CustomerService::normalize_subscription_status("grace_active").unwrap(),
+        "grace_active"
     );
 
     let sub_err = CustomerService::normalize_subscription_status("draft").unwrap_err();
@@ -192,4 +201,33 @@ fn portal_and_reschedule_helpers_preserve_validation_contracts() {
 
     let missing = CustomerService::validate_location_coordinates(None, Some(106.8)).unwrap_err();
     assert!(matches!(missing, AppError::Validation(_)));
+}
+
+#[test]
+fn portal_subscription_select_fragments_include_grace_columns() {
+    let view_select = CustomerService::portal_subscription_view_select_columns("cs", "cs.price");
+    assert!(view_select.contains("cs.grace_started_at"));
+    assert!(view_select.contains("cs.grace_until"));
+
+    let entity_select = CustomerService::portal_subscription_select_columns("cs", "cs.price");
+    assert!(entity_select.contains("cs.grace_started_at"));
+    assert!(entity_select.contains("cs.grace_until"));
+}
+
+#[test]
+fn installation_completion_auto_invoice_only_runs_for_unpaid_grace_activation() {
+    assert!(CustomerService::should_auto_create_first_invoice_on_completion(
+        crate::services::subscription_lifecycle::SubscriptionLifecycleStatus::GraceActive,
+        false,
+    ));
+
+    assert!(!CustomerService::should_auto_create_first_invoice_on_completion(
+        crate::services::subscription_lifecycle::SubscriptionLifecycleStatus::Active,
+        false,
+    ));
+
+    assert!(!CustomerService::should_auto_create_first_invoice_on_completion(
+        crate::services::subscription_lifecycle::SubscriptionLifecycleStatus::GraceActive,
+        true,
+    ));
 }
