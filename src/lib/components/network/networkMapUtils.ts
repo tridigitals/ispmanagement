@@ -424,6 +424,88 @@ export function filterRoutersForOverlay(rows: NMRouter[], nodes: NMNode[]) {
   return (rows || []).filter((row) => !syncedKeys.has(`mikrotik_router:${row.id}`));
 }
 
+function normalizedStatus(value: unknown) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function metadataNumber(row: NMNode | null | undefined, keys: string[]) {
+  for (const key of keys) {
+    const raw = row?.metadata?.[key];
+    const value = Number(raw);
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+  return 0;
+}
+
+function hasRiskStatus(statusRaw: unknown) {
+  const status = normalizedStatus(statusRaw);
+  return (
+    status === 'down' ||
+    status === 'degraded' ||
+    status === 'maintenance' ||
+    status === 'inactive' ||
+    status === 'offline' ||
+    status === 'critical' ||
+    status === 'warning'
+  );
+}
+
+export function hasServiceMetadata(row: NMNode | null | undefined) {
+  return !!(
+    row?.metadata?.service_id ||
+    row?.metadata?.service_name ||
+    row?.metadata?.service_type ||
+    row?.metadata?.service_label
+  );
+}
+
+export function countNodesAtRisk(rows: NMNode[]) {
+  return (rows || []).filter((row) => hasRiskStatus(row.status)).length;
+}
+
+export function countDegradedLinks(rows: NMLink[]) {
+  return (rows || []).filter((row) => {
+    const health = computeLinkHealth(row);
+    return health.tone !== 'good';
+  }).length;
+}
+
+export function countImpactedServices(rows: NMNode[]) {
+  let total = 0;
+  for (const row of rows || []) {
+    total += metadataNumber(row, [
+      'impacted_services',
+      'service_count',
+      'services_affected',
+      'customer_services',
+      'affected_services',
+    ]);
+
+    if (isCustomerNodeType(row.node_type) && hasRiskStatus(row.status)) {
+      total += 1;
+    }
+  }
+  return total;
+}
+
+export function summarizeZoneRisk(rows: NMZone[]) {
+  const byStatus: Record<string, number> = {};
+  let atRisk = 0;
+
+  for (const row of rows || []) {
+    const status = normalizedStatus(row.status) || 'unknown';
+    byStatus[status] = (byStatus[status] || 0) + 1;
+    if (hasRiskStatus(status)) atRisk += 1;
+  }
+
+  return {
+    total: (rows || []).length,
+    atRisk,
+    healthy: Math.max(0, (rows || []).length - atRisk),
+    byStatus,
+  };
+}
+
 export function computeLinkHealth(row: NMLink): { score: number; tone: 'good' | 'warn' | 'bad' } {
   const statusRaw = String(row.status || '').toLowerCase();
   if (statusRaw === 'down' || statusRaw === 'retired') return { score: 5, tone: 'bad' };

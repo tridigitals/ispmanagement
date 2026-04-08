@@ -20,7 +20,7 @@ vi.mock('$lib/api/client', () => ({
   },
 }));
 
-import { fetchNetworkMapData } from './networkMapData';
+import { extractMapRows, fetchNetworkMapData } from './networkMapData';
 
 describe('fetchNetworkMapData', () => {
   const params = {
@@ -63,5 +63,49 @@ describe('fetchNetworkMapData', () => {
 
     expect(listRouters).toHaveBeenCalledOnce();
     expect(result.routersRes).toEqual([{ id: 'router-1', name: 'Router 1' }]);
+  });
+
+  it('derives customer and service placeholder rows without changing fetch rows', () => {
+    const result = extractMapRows({
+      nodesRes: {
+        data: [
+          {
+            id: 'customer-node',
+            name: 'Customer Premise',
+            node_type: 'customer_premise',
+            status: 'active',
+            lat: -6.2,
+            lng: 106.8,
+          },
+          {
+            id: 'service-node',
+            name: 'Managed Service',
+            node_type: 'switch',
+            status: 'active',
+            lat: -6.21,
+            lng: 106.81,
+            metadata: { service_id: 'svc-1', service_name: 'Managed Service' },
+          },
+        ],
+        total: 2,
+        page: 1,
+        per_page: 1000,
+      },
+      linksRes: { data: [], total: 0, page: 1, per_page: 1000 },
+      zonesRes: { data: [], total: 0, page: 1, per_page: 1000 },
+      routersRes: [{ id: 'router-1', name: 'Router 1' } as any],
+    });
+
+    expect(result.nodeRows).toHaveLength(2);
+    expect(result.customerRows).toEqual([
+      expect.objectContaining({ id: 'customer-node', node_type: 'customer_premise' }),
+    ]);
+    expect(result.serviceRows).toEqual([
+      expect.objectContaining({
+        id: 'service-node',
+        metadata: expect.objectContaining({ service_id: 'svc-1' }),
+      }),
+    ]);
+    expect(result.routerRows).toEqual([{ id: 'router-1', name: 'Router 1' }]);
   });
 });
