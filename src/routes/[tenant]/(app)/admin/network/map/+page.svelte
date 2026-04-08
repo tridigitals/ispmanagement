@@ -622,6 +622,47 @@
     };
   }
 
+  function inspectNodeFromPopup(node: NMNode) {
+    updateWorkspaceSelection(
+      buildSelectedMapObject({
+        kind: node.metadata?.service_id
+          ? 'service'
+          : isCustomerNodeType(node.node_type)
+            ? 'customer'
+            : 'node',
+        id: node.id,
+        label: node.name,
+        nodeType: node.node_type,
+      }),
+    );
+  }
+
+  function traceNodeFromPopup(node: NMNode) {
+    inspectNodeFromPopup(node);
+    setInvestigationMode(node.metadata?.service_id ? 'service' : 'trace');
+  }
+
+  function viewNodeImpactFromPopup(node: NMNode) {
+    inspectNodeFromPopup(node);
+    setInvestigationMode('service');
+  }
+
+  function inspectLinkFromPopup(link: NMLink) {
+    updateWorkspaceSelection(
+      buildSelectedMapObject({
+        kind: 'link',
+        id: link.id,
+        label: link.name,
+        linkType: link.link_type,
+      }),
+    );
+  }
+
+  function traceLinkFromPopup(link: NMLink) {
+    inspectLinkFromPopup(link);
+    setInvestigationMode('trace');
+  }
+
   function handleWorkspaceSearchSelect(item: NetworkMapSearchResultItem) {
     workspaceSearchQuery = item.label;
 
@@ -711,6 +752,9 @@
       setActivePopup: (popup) => (activeNodePopup = popup),
       onConnect: startConnectFromNode,
       onEdit: openEditNodeModal,
+      onTrace: traceNodeFromPopup,
+      onInspect: inspectNodeFromPopup,
+      onViewImpact: viewNodeImpactFromPopup,
     });
   }
 
@@ -733,6 +777,8 @@
       lngLat: e.lngLat,
       linkRows,
       onDelete: (linkId, linkName) => openDeleteConfirm('link', linkId, linkName),
+      onTrace: traceLinkFromPopup,
+      onInspect: inspectLinkFromPopup,
     });
   }
 
@@ -2062,16 +2108,32 @@
 
   :global(.nm-popup-head) {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 10px;
   }
 
+  :global(.nm-popup-kicker) {
+    color: #93c5fd;
+    font-size: 0.66rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
   :global(.nm-popup-title) {
+    margin-top: 2px;
     font-size: 0.95rem;
     font-weight: 900;
     color: #f8fafc;
     letter-spacing: 0.01em;
+  }
+
+  :global(.nm-popup-subtitle) {
+    margin-top: 4px;
+    color: #cbd5e1;
+    font-size: 0.78rem;
+    line-height: 1.35;
   }
 
   :global(.nm-popup-badge) {
@@ -2108,6 +2170,16 @@
     display: grid;
     grid-template-columns: 86px 1fr;
     gap: 6px 10px;
+  }
+
+  :global(.nm-popup-impact) {
+    border-radius: 12px;
+    padding: 9px 10px;
+    background: rgba(15, 23, 42, 0.78);
+    color: #e2e8f0;
+    font-size: 0.79rem;
+    line-height: 1.45;
+    border: 1px solid rgba(148, 163, 184, 0.14);
   }
 
   :global(.nm-popup-label) {
