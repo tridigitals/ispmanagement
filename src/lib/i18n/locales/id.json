@@ -3428,6 +3428,16 @@
           "add_link": "Tambah link",
           "add_zone": "Tambah zona"
         },
+        "inspector": {
+          "title": "Inspector cerdas",
+          "default_kicker": "Workspace",
+          "selected_kicker": "Pilihan",
+          "investigation_kicker": "Investigasi",
+          "collapse": "Ciutkan inspector",
+          "expand": "Buka inspector",
+          "clear": "Bersihkan",
+          "no_selection": "Belum ada objek terpilih. Gunakan map, aksi popup, atau pencarian di atas."
+        },
         "view": {
           "label": "Tampilan",
           "standard": "Standar",

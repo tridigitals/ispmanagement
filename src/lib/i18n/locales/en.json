@@ -3642,6 +3642,16 @@
           "add_link": "Add link",
           "add_zone": "Add zone"
         },
+        "inspector": {
+          "title": "Smart inspector",
+          "default_kicker": "Workspace",
+          "selected_kicker": "Selection",
+          "investigation_kicker": "Investigation",
+          "collapse": "Collapse inspector",
+          "expand": "Expand inspector",
+          "clear": "Clear",
+          "no_selection": "No object selected yet. Use the map, popup actions, or search above."
+        },
         "view": {
           "label": "View",
           "standard": "Standard",

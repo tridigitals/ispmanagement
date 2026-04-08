@@ -12,6 +12,9 @@
   import NetworkMapNodePanel from '$lib/components/network/NetworkMapNodePanel.svelte';
   import NetworkMapOverview from '$lib/components/network/NetworkMapOverview.svelte';
   import NetworkMapFloatingControls from '$lib/components/network/NetworkMapFloatingControls.svelte';
+  import NetworkMapSmartInspector, {
+    type NetworkMapInspectorModel,
+  } from '$lib/components/network/NetworkMapSmartInspector.svelte';
   import NetworkMapZoneModal from '$lib/components/network/NetworkMapZoneModal.svelte';
   import {
     buildLinkDraftForm,
@@ -137,6 +140,7 @@
     applyNetworkMapWorkspaceDefaults,
     buildNetworkMapWorkspaceDefaults,
     buildSelectedMapObject,
+    clearWorkspaceSelection,
     createNetworkMapWorkspaceState,
     enterInvestigationMode,
     selectNetworkMapObject,
@@ -178,6 +182,7 @@
   let routersVisible = $state(true);
   let customersVisible = $state(true);
   let viewMode = $state<'standard' | 'satellite'>('standard');
+  let inspectorCollapsed = $state(false);
 
   let q = $state('');
   let workspaceSearchQuery = $state('');
@@ -417,6 +422,11 @@
       }) || `${searchResultCount} matching results across ${searchGroups.length} sections`
     );
   });
+  const inspectorDefaultModel = $derived.by(() => buildDefaultInspectorModel());
+  const inspectorSelectedModel = $derived.by(() =>
+    selectedObjectSummary(workspaceState.selectedObject),
+  );
+  const inspectorInvestigationModel = $derived.by(() => buildInvestigationInspectorModel());
   const linkFieldConfig = $derived.by(() => getLinkFieldConfig(linkForm.link_type));
 
   const tenantCtx = $derived.by(() =>
@@ -661,6 +671,182 @@
   function traceLinkFromPopup(link: NMLink) {
     inspectLinkFromPopup(link);
     setInvestigationMode('trace');
+  }
+
+  function selectedObjectSummary(
+    selectedObject: NetworkMapWorkspaceState['selectedObject'],
+  ): NetworkMapInspectorModel | null {
+    if (!selectedObject) return null;
+
+    if (
+      selectedObject.kind === 'node' ||
+      selectedObject.kind === 'customer' ||
+      selectedObject.kind === 'service'
+    ) {
+      const row = nodeRows.find((candidate) => candidate.id === selectedObject.id);
+      if (!row) return null;
+      return {
+        title: row.name || selectedObject.label,
+        subtitle:
+          selectedObject.kind === 'service'
+            ? `Service on ${String(row.metadata?.customer_name || 'mapped customer')}`
+            : `${nodeTypeLabel(row.node_type)} · ${row.status}`,
+        tone: statusTone(row.status),
+        sections: [
+          {
+            title: 'Overview',
+            lines: [
+              `Kind: ${selectedObject.kind}`,
+              `Status: ${row.status || '-'}`,
+              `Impact: ${countImpactedServices([row]) || 0} mapped services`,
+            ],
+          },
+          {
+            title: 'Context',
+            lines: [
+              `Latitude: ${row.lat.toFixed(5)}`,
+              `Longitude: ${row.lng.toFixed(5)}`,
+              `Source: ${String(row.metadata?.asset_source || row.metadata?.asset_type || 'manual')}`,
+            ],
+          },
+        ],
+      };
+    }
+
+    if (selectedObject.kind === 'link') {
+      const row = linkRows.find((candidate) => candidate.id === selectedObject.id);
+      if (!row) return null;
+      const health = computeLinkHealth(row);
+      return {
+        title: row.name || selectedObject.label,
+        subtitle: `${row.from_node_id || '-'} -> ${row.to_node_id || '-'}`,
+        tone: health.tone === 'good' ? 'ok' : health.tone === 'warn' ? 'warn' : 'muted',
+        sections: [
+          {
+            title: 'Health',
+            lines: [
+              `Status: ${row.status || '-'}`,
+              `Health score: ${health.score}`,
+              `Type: ${row.link_type || '-'}`,
+            ],
+          },
+          {
+            title: 'Performance',
+            lines: [
+              `Capacity: ${row.capacity_mbps ?? '-'} Mbps`,
+              `Utilization: ${row.utilization_pct ?? '-'} %`,
+              `Latency: ${row.latency_ms ?? '-'} ms`,
+            ],
+          },
+        ],
+      };
+    }
+
+    if (selectedObject.kind === 'zone') {
+      const row = zoneRows.find((candidate) => candidate.id === selectedObject.id);
+      if (!row) return null;
+      return {
+        title: row.name || selectedObject.label,
+        subtitle: `${row.zone_type || '-'} · ${row.status || '-'}`,
+        tone: statusTone(row.status),
+        sections: [
+          {
+            title: 'Coverage',
+            lines: [
+              `Type: ${row.zone_type || '-'}`,
+              `Status: ${row.status || '-'}`,
+              'Use this zone to inspect field coverage and affected nodes.',
+            ],
+          },
+        ],
+      };
+    }
+
+    if (selectedObject.kind === 'router') {
+      const row = routerRows.find((candidate) => candidate.id === selectedObject.id);
+      if (!row) return null;
+      return {
+        title: row.identity || row.name || selectedObject.label,
+        subtitle: `${row.host}:${row.port}`,
+        tone: row.is_online ? 'ok' : 'muted',
+        sections: [
+          {
+            title: 'Router state',
+            lines: [
+              `Online: ${row.is_online ? 'Yes' : 'No'}`,
+              `Version: ${row.ros_version || '-'}`,
+              `Latency: ${row.latency_ms ?? '-'} ms`,
+            ],
+          },
+        ],
+      };
+    }
+
+    return null;
+  }
+
+  function buildDefaultInspectorModel(): NetworkMapInspectorModel {
+    return {
+      title: 'Topology workspace',
+      subtitle: 'Select an asset on the map or use search to inspect service and network context.',
+      tone: 'muted' as const,
+      sections: [
+        {
+          title: 'Live summary',
+          lines: [
+            `${nodeRows.length} nodes loaded in current viewport`,
+            `${linkRows.length} links loaded in current viewport`,
+            `${customerRows.length} customer endpoints visible`,
+          ],
+        },
+        {
+          title: 'Role focus',
+          lines: [
+            workspaceCapabilities.canManageTopology
+              ? 'Manage-capable view: topology editing is available.'
+              : 'Monitoring-first view: focus on investigation and field operations.',
+            workspaceCapabilities.canReadNetworkNoc
+              ? 'NOC context is available for issue tracing.'
+              : 'NOC tracing is limited for this role.',
+          ],
+        },
+      ],
+    };
+  }
+
+  function buildInvestigationInspectorModel(): NetworkMapInspectorModel | null {
+    const state = workspaceState.investigationState;
+    if (!state) return null;
+    const rootLabel = state.rootObject?.label || 'Selected object';
+    const selectedLabel = state.selectedObject?.label || rootLabel;
+    return {
+      title:
+        state.mode === 'trace' ? `Tracing from ${rootLabel}` : `Service impact for ${rootLabel}`,
+      subtitle:
+        state.mode === 'trace'
+          ? 'Use the map and popup actions to follow the path and inspect related links.'
+          : 'Review customer-service impact and mapped field context from this starting point.',
+      tone: 'warn' as const,
+      sections: [
+        {
+          title: 'Investigation root',
+          lines: [
+            `Mode: ${state.mode}`,
+            `Root object: ${rootLabel}`,
+            `Current focus: ${selectedLabel}`,
+          ],
+        },
+        {
+          title: 'Next actions',
+          lines: [
+            state.mode === 'trace'
+              ? 'Open nodes or links from the popup to keep stepping through the path.'
+              : 'Use service mode to review impacted subscribers and related endpoints.',
+            'Collapse inspector if you need more map space while preserving context.',
+          ],
+        },
+      ],
+    };
   }
 
   function handleWorkspaceSearchSelect(item: NetworkMapSearchResultItem) {
@@ -1793,6 +1979,8 @@
     bind:viewMode
     showSearch={false}
     showViewSwitch={false}
+    hasAside={!compactMode}
+    asideCollapsed={inspectorCollapsed}
     {loading}
     {mapUnavailable}
     {mapErrorMessage}
@@ -1878,6 +2066,37 @@
           </button>
         </div>
       {/if}
+    </svelte:fragment>
+
+    <svelte:fragment slot="aside">
+      <NetworkMapSmartInspector
+        collapsed={inspectorCollapsed}
+        capabilities={workspaceCapabilities}
+        selectedObject={workspaceState.selectedObject}
+        investigationState={workspaceState.investigationState}
+        defaultModel={inspectorDefaultModel}
+        selectedModel={inspectorSelectedModel}
+        investigationModel={inspectorInvestigationModel}
+        labels={{
+          title: $t('admin.network.map.inspector.title') || 'Smart inspector',
+          defaultKicker: $t('admin.network.map.inspector.default_kicker') || 'Workspace',
+          selectedKicker: $t('admin.network.map.inspector.selected_kicker') || 'Selection',
+          investigationKicker:
+            $t('admin.network.map.inspector.investigation_kicker') || 'Investigation',
+          collapse: $t('admin.network.map.inspector.collapse') || 'Collapse inspector',
+          expand: $t('admin.network.map.inspector.expand') || 'Expand inspector',
+          clear: $t('admin.network.map.inspector.clear') || 'Clear',
+          serviceMode: $t('admin.network.map.floating.service_mode') || 'Service mode',
+          traceMode: $t('admin.network.map.floating.trace_mode') || 'Trace mode',
+          noSelection:
+            $t('admin.network.map.inspector.no_selection') ||
+            'No object selected yet. Use the map, popup actions, or search above.',
+        }}
+        onToggleCollapse={() => (inspectorCollapsed = !inspectorCollapsed)}
+        onClearSelection={() => (workspaceState = clearWorkspaceSelection(workspaceState))}
+        onEnterServiceInvestigation={() => setInvestigationMode('service')}
+        onEnterTraceInvestigation={() => setInvestigationMode('trace')}
+      />
     </svelte:fragment>
   </MapCanvasShell>
 
