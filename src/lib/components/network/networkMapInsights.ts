@@ -90,6 +90,7 @@ function resolveInsightRole(
 ): NetworkMapInsightRole {
   if (explicitRole) return explicitRole;
   if (!capabilities) return 'viewer';
+  if (capabilities.canManageTopology) return 'manage';
   if (
     capabilities.canReadNetworkNoc &&
     !capabilities.canReadCustomers &&
@@ -99,7 +100,6 @@ function resolveInsightRole(
     return 'noc';
   }
   if (capabilities.canReadCustomers || capabilities.canReadWorkOrders) return 'technician';
-  if (capabilities.canManageTopology) return 'manage';
   return 'viewer';
 }
 

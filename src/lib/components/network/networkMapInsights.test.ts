@@ -1,10 +1,25 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildNetworkMapInsightCards, groupNetworkMapSearchResults } from './networkMapInsights';
-import type { NMNode, NMRouter, NMLink, NMZone } from './networkMapUtils';
+import {
+  countDegradedLinks,
+  countImpactedServices,
+  type NMNode,
+  type NMRouter,
+  type NMLink,
+  type NMZone,
+} from './networkMapUtils';
 
 const technicianCapabilities = {
   canManageTopology: false,
+  canReadCustomers: true,
+  canReadWorkOrders: true,
+  canReadNetworkNoc: false,
+  canReadRouterInventory: true,
+};
+
+const manageTechnicianCapabilities = {
+  canManageTopology: true,
   canReadCustomers: true,
   canReadWorkOrders: true,
   canReadNetworkNoc: false,
@@ -84,6 +99,19 @@ const routers: Array<Partial<NMRouter>> = [
 ];
 
 describe('buildNetworkMapInsightCards', () => {
+  it('orders manage-capable cards ahead of technician-style cards', () => {
+    const cards = buildNetworkMapInsightCards({
+      capabilities: manageTechnicianCapabilities,
+      nodes,
+      links,
+      zones,
+      routers,
+      viewportMode: 'global',
+    });
+
+    expect(cards.map((card) => card.key).slice(0, 2)).toEqual(['field-work', 'impacted-services']);
+  });
+
   it('orders technician cards around impacted services and field work', () => {
     const cards = buildNetworkMapInsightCards({
       capabilities: technicianCapabilities,
@@ -151,6 +179,40 @@ describe('buildNetworkMapInsightCards', () => {
         serviceRows: [],
       }),
     ).toEqual([]);
+  });
+});
+
+describe('network map utility counts', () => {
+  it('uses explicit impacted service metadata instead of double-counting risky customer nodes', () => {
+    expect(
+      countImpactedServices([
+        {
+          id: 'customer-node',
+          name: 'Customer Site A',
+          node_type: 'customer_premise',
+          status: 'degraded',
+          lat: -6.2,
+          lng: 106.8,
+          metadata: { impacted_services: 4 },
+        },
+      ]),
+    ).toBe(4);
+  });
+
+  it('ignores retired links when counting degraded links', () => {
+    expect(
+      countDegradedLinks([
+        {
+          id: 'link-retired',
+          name: 'Old Backbone',
+          link_type: 'fiber',
+          status: 'retired',
+          from_node_id: 'node-1',
+          to_node_id: 'node-2',
+          geometry: { type: 'LineString', coordinates: [[106.8, -6.2], [106.81, -6.21]] },
+        },
+      ]),
+    ).toBe(0);
   });
 });
 

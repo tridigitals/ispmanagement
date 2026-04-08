@@ -465,6 +465,7 @@ export function countNodesAtRisk(rows: NMNode[]) {
 
 export function countDegradedLinks(rows: NMLink[]) {
   return (rows || []).filter((row) => {
+    if (normalizedStatus(row.status) === 'retired') return false;
     const health = computeLinkHealth(row);
     return health.tone !== 'good';
   }).length;
@@ -473,13 +474,18 @@ export function countDegradedLinks(rows: NMLink[]) {
 export function countImpactedServices(rows: NMNode[]) {
   let total = 0;
   for (const row of rows || []) {
-    total += metadataNumber(row, [
+    const explicitCount = metadataNumber(row, [
       'impacted_services',
       'service_count',
       'services_affected',
       'customer_services',
       'affected_services',
     ]);
+
+    if (explicitCount > 0) {
+      total += explicitCount;
+      continue;
+    }
 
     if (isCustomerNodeType(row.node_type) && hasRiskStatus(row.status)) {
       total += 1;
