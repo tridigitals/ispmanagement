@@ -7,6 +7,8 @@
   import { user, tenant } from '$lib/stores/auth';
   import { timeAgo } from '$lib/utils/date';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
+  import { hasInternalAppAccess } from '$lib/utils/appLanding';
+  import { resolveAnnouncementActionUrl } from '$lib/utils/announcementRouting';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import {
     notifications,
@@ -71,19 +73,10 @@
   }
 
   function resolveActionUrl(actionUrl: string) {
-    if (!actionUrl || !tenantPrefix) return actionUrl;
-    if (actionUrl.startsWith(tenantPrefix + '/')) return actionUrl;
-    if (
-      actionUrl.startsWith('/admin') ||
-      actionUrl.startsWith('/support') ||
-      actionUrl.startsWith('/dashboard') ||
-      actionUrl.startsWith('/announcements') ||
-      actionUrl.startsWith('/profile') ||
-      actionUrl.startsWith('/notifications')
-    ) {
-      return `${tenantPrefix}${actionUrl}`;
-    }
-    return actionUrl;
+    return resolveAnnouncementActionUrl(actionUrl, {
+      tenantPrefix,
+      internal: hasInternalAppAccess($user),
+    });
   }
 
   function getIconForType(type: string) {

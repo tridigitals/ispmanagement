@@ -78,12 +78,14 @@ export function setCachedMapData(
 export async function fetchNetworkMapData(
   params: NetworkMapQueryParams,
   signal: AbortSignal,
+  options: { includeRouters?: boolean } = {},
 ): Promise<NetworkMapFetchResult> {
+  const includeRouters = options.includeRouters ?? true;
   const [nodesRes, linksRes, zonesRes, routersRes] = await Promise.all([
     api.networkMapping.nodes.list(params, { signal }),
     api.networkMapping.links.list(params, { signal }),
     api.networkMapping.zones.list(params, { signal }),
-    api.mikrotik.routers.list(),
+    includeRouters ? api.mikrotik.routers.list() : Promise.resolve([]),
   ]);
 
   return {

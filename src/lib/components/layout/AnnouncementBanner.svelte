@@ -14,6 +14,8 @@
   import { user, tenant } from '$lib/stores/auth';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { stripHtmlToText } from '$lib/utils/sanitizeHtml';
+  import { hasInternalAppAccess } from '$lib/utils/appLanding';
+  import { getAnnouncementDetailPath } from '$lib/utils/announcementRouting';
 
   let maxVisible = 2;
 
@@ -72,7 +74,13 @@
           class="read"
           type="button"
           title={$t('announcements.actions.read') || 'Read'}
-          onclick={() => goto(`${tenantPrefix}/announcements/${a.id}`)}
+          onclick={() =>
+            goto(
+              getAnnouncementDetailPath(a.id, {
+                tenantPrefix,
+                internal: hasInternalAppAccess($user),
+              }),
+            )}
         >
           <Icon name="arrow-right" size={18} />
         </button>

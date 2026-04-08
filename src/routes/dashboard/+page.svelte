@@ -4,6 +4,7 @@
   import { user, isAuthenticated } from '$lib/stores/auth';
   import { get } from 'svelte/store';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
+  import { getDefaultTenantLandingPath } from '$lib/utils/appLanding';
   import { t } from 'svelte-i18n';
 
   onMount(() => {
@@ -14,13 +15,12 @@
     }
 
     const u = get(user);
-    const role = String(u?.role || '').toLowerCase();
     const ctx = resolveTenantContext({
       hostname: typeof window !== 'undefined' ? window.location.hostname : 'localhost',
       userTenantSlug: u?.tenant_slug,
     });
 
-    let target = role === 'admin' ? `${ctx.tenantPrefix}/admin` : `${ctx.tenantPrefix}/dashboard`;
+    let target = getDefaultTenantLandingPath(u, ctx.tenantPrefix);
     const current = typeof window !== 'undefined' ? window.location.pathname : '/dashboard';
     if (target === current) {
       target = `${ctx.tenantPrefix}/profile`;

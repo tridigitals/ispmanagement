@@ -1,0 +1,54 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  getDefaultTenantLandingPath,
+  hasInternalAppAccess,
+  type LandingUserLike,
+} from './appLanding';
+
+function makeUser(overrides: Partial<LandingUserLike> = {}): LandingUserLike {
+  return {
+    role: 'customer',
+    is_super_admin: false,
+    permissions: [],
+    ...overrides,
+  };
+}
+
+describe('app landing helpers', () => {
+  it('treats customer portal users as dashboard-first', () => {
+    const user = makeUser({
+      permissions: ['customers:read_own', 'support:read'],
+    });
+
+    expect(hasInternalAppAccess(user)).toBe(false);
+    expect(getDefaultTenantLandingPath(user, '/tenant-a')).toBe('/tenant-a/dashboard');
+  });
+
+  it('treats admin access permission as internal landing access', () => {
+    const user = makeUser({
+      permissions: ['admin:access'],
+    });
+
+    expect(hasInternalAppAccess(user)).toBe(true);
+    expect(getDefaultTenantLandingPath(user, '/tenant-a')).toBe('/tenant-a/admin');
+  });
+
+  it('treats granular internal permissions like technician access as admin landing access', () => {
+    const user = makeUser({
+      permissions: ['work_orders:read', 'pppoe:manage'],
+    });
+
+    expect(hasInternalAppAccess(user)).toBe(true);
+    expect(getDefaultTenantLandingPath(user, '/tenant-a')).toBe('/tenant-a/admin');
+  });
+
+  it('keeps superadmins on superadmin landing when there is no tenant prefix', () => {
+    const user = makeUser({
+      is_super_admin: true,
+      permissions: ['*'],
+    });
+
+    expect(getDefaultTenantLandingPath(user, '')).toBe('/admin');
+  });
+});

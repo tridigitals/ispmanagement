@@ -139,7 +139,10 @@
       return $can('read', 'billing') || $can('manage', 'billing');
     }
     if (path.startsWith('/admin/announcements')) {
-      return $can('manage', 'announcements');
+      if (path === '/admin/announcements' || path === '/admin/announcements/') {
+        return $can('manage', 'announcements');
+      }
+      return hasAnyAdminCapability();
     }
     if (path.startsWith('/admin/backups')) {
       return (

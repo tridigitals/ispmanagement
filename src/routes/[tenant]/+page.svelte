@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { login, isAuthenticated, isAdmin, user, isSuperAdmin } from '$lib/stores/auth';
+  import { login, isAuthenticated, user, isSuperAdmin } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import { appLogo } from '$lib/stores/logo';
   import { goto } from '$app/navigation';
@@ -11,6 +11,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import { isPlatformDomain } from '$lib/utils/domain';
   import { publicApi } from '$lib/api/client';
+  import { getDefaultTenantLandingPath } from '$lib/utils/appLanding';
 
   import { api } from '$lib/api/client';
 
@@ -86,11 +87,7 @@
         const isTauri = typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__;
 
         if (isTauri) {
-          if (get(isAdmin)) {
-            goto('/admin');
-          } else {
-            goto('/dashboard');
-          }
+          goto(getDefaultTenantLandingPath(u, ''));
           return;
         }
 
@@ -103,11 +100,7 @@
       }
 
       if (slug) {
-        if (get(isAdmin)) {
-          goto('/admin');
-        } else {
-          goto('/dashboard');
-        }
+        goto(getDefaultTenantLandingPath(u, ''));
       } else {
         goto('/dashboard');
       }
@@ -241,15 +234,9 @@
 
     if (slug) {
       if ($page.url.hostname.includes(slug)) {
-        if (u.role === 'admin') {
-          goto(`/admin`);
-        } else {
-          goto(`/dashboard`);
-        }
+        goto(getDefaultTenantLandingPath(u, ''));
       } else {
-        if (u.role === 'admin') {
-          goto('/admin');
-        }
+        goto(getDefaultTenantLandingPath(u, ''));
       } // This closing brace was missing in the original search
     } else {
       const { logout } = await import('$lib/stores/auth');

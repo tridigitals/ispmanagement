@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { login, isAuthenticated, isAdmin, user, token } from '$lib/stores/auth';
+  import { login, isAuthenticated, user, token } from '$lib/stores/auth';
   import { api } from '$lib/api/client';
   import { appSettings } from '$lib/stores/settings';
   import { appLogo } from '$lib/stores/logo';
@@ -13,6 +13,7 @@
   import { isPlatformDomain } from '$lib/utils/domain';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { publicApi } from '$lib/api/client';
+  import { getDefaultTenantLandingPath } from '$lib/utils/appLanding';
 
   let email = '';
   let password = '';
@@ -117,8 +118,7 @@
     });
 
     const goToRoleHome = () => {
-      const role = String(u?.role || '').toLowerCase();
-      let target = role === 'admin' ? `${ctx.tenantPrefix}/admin` : `${ctx.tenantPrefix}/dashboard`;
+      let target = getDefaultTenantLandingPath(u, ctx.tenantPrefix);
       const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/login';
       if (target === currentPath) target = `${ctx.tenantPrefix}/profile`;
       if (target === currentPath) target = '/';

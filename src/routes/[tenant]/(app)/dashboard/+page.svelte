@@ -6,6 +6,11 @@
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
+  import { hasInternalAppAccess } from '$lib/utils/appLanding';
+  import {
+    getAnnouncementDetailPath,
+    resolveAnnouncementActionUrl,
+  } from '$lib/utils/announcementRouting';
   import { formatDate, timeAgo } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
   import {
@@ -147,7 +152,7 @@
   }
 
   function openAnnouncement(id: string) {
-    goto(`${tenantPrefix}/announcements/${id}`);
+    goto(getAnnouncementDetailPath(id, { tenantPrefix, internal: hasInternalAppAccess($user) }));
   }
 
   function openNotification(n: any) {
@@ -156,18 +161,10 @@
   }
 
   function resolveActionUrl(actionUrl: string) {
-    if (!actionUrl || !tenantPrefix) return actionUrl;
-    if (actionUrl.startsWith(tenantPrefix + '/')) return actionUrl;
-    if (
-      actionUrl.startsWith('/admin') ||
-      actionUrl.startsWith('/support') ||
-      actionUrl.startsWith('/dashboard') ||
-      actionUrl.startsWith('/profile') ||
-      actionUrl.startsWith('/notifications')
-    ) {
-      return `${tenantPrefix}${actionUrl}`;
-    }
-    return actionUrl;
+    return resolveAnnouncementActionUrl(actionUrl, {
+      tenantPrefix,
+      internal: hasInternalAppAccess($user),
+    });
   }
 
   function iconForType(type: string) {

@@ -56,7 +56,11 @@
     createLinkForm,
     type LinkPickDrawMode,
   } from '$lib/components/network/networkMapLinkPicking';
-  import { openLinkPopup, openNodePopup, openRouterPopup } from '$lib/components/network/networkMapPopups';
+  import {
+    openLinkPopup,
+    openNodePopup,
+    openRouterPopup,
+  } from '$lib/components/network/networkMapPopups';
   import {
     applyCachedMapData,
     applyFetchedMapData,
@@ -245,10 +249,7 @@
   let activeDataAbortController: AbortController | null = null;
   let didInitialFitToMarkers = false;
   let lastAssetSyncAt = 0;
-  const dataCache = new Map<
-    string,
-    NetworkMapCacheEntry
-  >();
+  const dataCache = new Map<string, NetworkMapCacheEntry>();
   const dataCacheTtlMs = 20_000;
   const dataCacheMaxEntries = 40;
   const assetSyncTtlMs = 45_000;
@@ -258,6 +259,9 @@
   const satelliteMaxZoom = hasHiResSatellite ? 21 : 18;
 
   const canManageTopology = $derived($can('manage', 'network_topology'));
+  const canReadRouterInventory = $derived(
+    $can('read', 'router_inventory') || $can('manage', 'router_inventory'),
+  );
   const linkFieldConfig = $derived.by(() => getLinkFieldConfig(linkForm.link_type));
 
   const tenantCtx = $derived.by(() =>
@@ -393,7 +397,10 @@
         minZoom: 3,
       });
 
-      map.addControl(new maplibre.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
+      map.addControl(
+        new maplibre.NavigationControl({ showCompass: true, showZoom: true }),
+        'top-right',
+      );
       map.addControl(
         createMapTextButtonControl({
           className: 'nm-location-ctrl',
@@ -628,7 +635,9 @@
       const abortController = new AbortController();
       activeDataAbortController = abortController;
 
-      const result = await fetchNetworkMapData(params, abortController.signal);
+      const result = await fetchNetworkMapData(params, abortController.signal, {
+        includeRouters: canReadRouterInventory,
+      });
 
       // Drop stale responses when user moves map quickly.
       if (requestId !== lastRequestId) return;
@@ -848,7 +857,9 @@
 
   function openEditNodeModal(row: NMNode) {
     if (isSystemManagedNode(row)) {
-      toast.info(`Node ini tersinkron dari ${systemManagedNodeSourceLabel(row) || 'asset map'}. Ubah dari sumbernya.`);
+      toast.info(
+        `Node ini tersinkron dari ${systemManagedNodeSourceLabel(row) || 'asset map'}. Ubah dari sumbernya.`,
+      );
       return;
     }
     nodePickMode = true;
@@ -1266,10 +1277,12 @@
     {linksVisible}
     {zonesVisible}
     {routersVisible}
+    showRoutersToggle={canReadRouterInventory}
     {customersVisible}
     {myLocationError}
     title={$t('admin.network.map.title') || 'Network Topology Map'}
-    subtitle={$t('admin.network.map.subtitle') || 'Visualize nodes, links, and service zones in current viewport.'}
+    subtitle={$t('admin.network.map.subtitle') ||
+      'Visualize nodes, links, and service zones in current viewport.'}
     labels={{
       backToInstallation: $t('admin.network.map.back_to_installation') || 'Back to Installation',
       backToNoc: $t('admin.network.map.back_to_noc') || 'Back to NOC',
@@ -1281,7 +1294,8 @@
       links: $t('admin.network.map.stats.links') || 'Links',
       zones: $t('admin.network.map.stats.zones') || 'Zones',
       search: $t('admin.network.map.filters.search') || 'Search',
-      searchPlaceholder: $t('admin.network.map.filters.search_placeholder') || 'Search node/link/zone...',
+      searchPlaceholder:
+        $t('admin.network.map.filters.search_placeholder') || 'Search node/link/zone...',
       status: $t('admin.network.map.filters.status') || 'Status',
       anyStatus: $t('admin.network.map.filters.any_status') || 'Any status',
       kind: $t('admin.network.map.filters.kind') || 'Type',
@@ -1293,7 +1307,7 @@
     onStatusChange={(value) => (status = value)}
     onKindChange={(value) => (kind = value)}
     onApplyFilters={() => void onApplyFilters()}
-    onResetFilters={onResetFilters}
+    {onResetFilters}
     onSyncAssets={async () => {
       if (await syncTopologyAssets(true)) {
         invalidateMapDataCache();
@@ -1309,8 +1323,8 @@
   />
 
   <MapCanvasShell
-    bind:mapEl={mapEl}
-    bind:viewMode={viewMode}
+    bind:mapEl
+    bind:viewMode
     on:searchselect={onMapSearchSelect}
     showViewSwitch={false}
     {loading}
@@ -1335,7 +1349,12 @@
       {#if linkPickMode}
         <div class="map-link-draw-controls">
           {#if linkPickDrawMode === 'path'}
-            <button class="btn ghost btn-xs" type="button" onclick={undoLinkPathPoint} disabled={linkPathBendPoints.length === 0}>
+            <button
+              class="btn ghost btn-xs"
+              type="button"
+              onclick={undoLinkPathPoint}
+              disabled={linkPathBendPoints.length === 0}
+            >
               <Icon name="arrow-left" size={14} />
               Undo
             </button>

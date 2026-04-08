@@ -22,6 +22,7 @@
     linksVisible,
     zonesVisible,
     routersVisible,
+    showRoutersToggle = true,
     customersVisible,
     myLocationError,
     title,
@@ -58,6 +59,7 @@
     linksVisible: boolean;
     zonesVisible: boolean;
     routersVisible: boolean;
+    showRoutersToggle?: boolean;
     customersVisible: boolean;
     myLocationError: string;
     title: string;
@@ -150,7 +152,12 @@
 
       <div class="control">
         <label for="nm-status">{labels.status}</label>
-        <select id="nm-status" class="input" value={status} onchange={(e) => onStatusChange((e.currentTarget as HTMLSelectElement).value)}>
+        <select
+          id="nm-status"
+          class="input"
+          value={status}
+          onchange={(e) => onStatusChange((e.currentTarget as HTMLSelectElement).value)}
+        >
           <option value="">{labels.anyStatus}</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
@@ -163,7 +170,12 @@
 
       <div class="control">
         <label for="nm-kind">{labels.kind}</label>
-        <select id="nm-kind" class="input" value={kind} onchange={(e) => onKindChange((e.currentTarget as HTMLSelectElement).value)}>
+        <select
+          id="nm-kind"
+          class="input"
+          value={kind}
+          onchange={(e) => onKindChange((e.currentTarget as HTMLSelectElement).value)}
+        >
           <option value="">{labels.anyKind}</option>
           <option value="core">Core</option>
           <option value="pop">POP</option>
@@ -190,7 +202,12 @@
           <Icon name="check" size={14} />
           {labels.apply}
         </button>
-        <button class="btn ghost" type="button" onclick={onResetFilters} disabled={refreshing || loading}>
+        <button
+          class="btn ghost"
+          type="button"
+          onclick={onResetFilters}
+          disabled={refreshing || loading}
+        >
           <Icon name="x-circle" size={14} />
           {labels.reset}
         </button>
@@ -202,23 +219,47 @@
     <div class="map-toolbar">
       <div class="layer-toggles">
         <label class="toggle">
-          <input type="checkbox" checked={nodesVisible} onchange={(e) => onNodesVisibleChange((e.currentTarget as HTMLInputElement).checked)} />
+          <input
+            type="checkbox"
+            checked={nodesVisible}
+            onchange={(e) => onNodesVisibleChange((e.currentTarget as HTMLInputElement).checked)}
+          />
           <span>{labels.nodes}</span>
         </label>
         <label class="toggle">
-          <input type="checkbox" checked={linksVisible} onchange={(e) => onLinksVisibleChange((e.currentTarget as HTMLInputElement).checked)} />
+          <input
+            type="checkbox"
+            checked={linksVisible}
+            onchange={(e) => onLinksVisibleChange((e.currentTarget as HTMLInputElement).checked)}
+          />
           <span>{labels.links}</span>
         </label>
         <label class="toggle">
-          <input type="checkbox" checked={zonesVisible} onchange={(e) => onZonesVisibleChange((e.currentTarget as HTMLInputElement).checked)} />
+          <input
+            type="checkbox"
+            checked={zonesVisible}
+            onchange={(e) => onZonesVisibleChange((e.currentTarget as HTMLInputElement).checked)}
+          />
           <span>{labels.zones}</span>
         </label>
+        {#if showRoutersToggle}
+          <label class="toggle">
+            <input
+              type="checkbox"
+              checked={routersVisible}
+              onchange={(e) =>
+                onRoutersVisibleChange((e.currentTarget as HTMLInputElement).checked)}
+            />
+            <span>Routers</span>
+          </label>
+        {/if}
         <label class="toggle">
-          <input type="checkbox" checked={routersVisible} onchange={(e) => onRoutersVisibleChange((e.currentTarget as HTMLInputElement).checked)} />
-          <span>Routers</span>
-        </label>
-        <label class="toggle">
-          <input type="checkbox" checked={customersVisible} onchange={(e) => onCustomersVisibleChange((e.currentTarget as HTMLInputElement).checked)} />
+          <input
+            type="checkbox"
+            checked={customersVisible}
+            onchange={(e) =>
+              onCustomersVisibleChange((e.currentTarget as HTMLInputElement).checked)}
+          />
           <span>Customers</span>
         </label>
       </div>
@@ -246,12 +287,11 @@
   }
 
   .stat-card {
-    background:
-      linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--bg-card) 86%, #16213f 14%) 0%,
-        var(--bg-card) 100%
-      );
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-card) 86%, #16213f 14%) 0%,
+      var(--bg-card) 100%
+    );
     border: 1px solid var(--border-color);
     border-radius: 16px;
     padding: 14px 14px 12px;

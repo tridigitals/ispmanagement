@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { login, isAuthenticated, isAdmin, user } from '$lib/stores/auth';
+  import { login, isAuthenticated, user } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import { appLogo } from '$lib/stores/logo';
   import { goto } from '$app/navigation';
@@ -11,6 +11,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import { isPlatformDomain } from '$lib/utils/domain';
   import { publicApi } from '$lib/api/client';
+  import { getDefaultTenantLandingPath } from '$lib/utils/appLanding';
 
   let email = '';
   let password = '';
@@ -61,11 +62,9 @@
 
       if (slug) {
         if (currentHost.includes(slug) || isMainDomain) {
-          if (get(isAdmin)) goto('/admin');
-          else goto('/dashboard');
+          goto(getDefaultTenantLandingPath(u, ''));
         } else {
-          if (get(isAdmin)) goto('/admin');
-          else goto('/dashboard');
+          goto(getDefaultTenantLandingPath(u, ''));
         }
       } else {
         goto('/dashboard');
@@ -90,18 +89,9 @@
 
       if (slug) {
         if (currentHost.includes(slug) || isMainDomain) {
-          // Check if we are ALREADY on the tenant domain
-          if (response.user.role === 'admin') {
-            goto(`/admin`);
-          } else {
-            goto(`/dashboard`);
-          }
+          goto(getDefaultTenantLandingPath(response.user, ''));
         } else {
-          if (response.user.role === 'admin') {
-            goto('/admin');
-          } else {
-            goto('/dashboard');
-          }
+          goto(getDefaultTenantLandingPath(response.user, ''));
         }
       } else {
         goto('/dashboard'); // Fallback
