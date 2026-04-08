@@ -2238,9 +2238,203 @@
     }
   },
   "admin": {
+    "dashboard": {
+      "eyebrow": "Dashboard admin adaptif",
+      "role_scoped": "Hanya modul yang bisa Anda akses yang ditampilkan di sini",
+      "last_updated": "Terakhir diperbarui",
+      "loading": "Memuat ringkasan workspace Anda...",
+      "open_area": "Buka area",
+      "empty": {
+        "title": "Belum ada modul dashboard yang tersedia",
+        "description": "Akun ini belum menampilkan bagian dashboard apa pun. Minta owner atau admin untuk memberi satu atau beberapa permission tenant."
+      },
+      "audience": {
+        "admin": {
+          "title": "Pusat kendali tenant",
+          "subtitle": "Pantau akses, billing, pertumbuhan pelanggan, dan beban kerja lintas tim dalam satu tampilan."
+        },
+        "operations": {
+          "title": "Operasional lapangan hari ini",
+          "subtitle": "Mulai dari instalasi, tindak lanjut PPPoE, dan konteks pelanggan yang dibutuhkan teknisi di lapangan."
+        },
+        "support": {
+          "title": "Workspace customer service",
+          "subtitle": "Prioritaskan follow-up billing, handoff aktivasi, dan percakapan support yang masih terbuka."
+        },
+        "noc": {
+          "title": "Pantauan jaringan",
+          "subtitle": "Fokus pada incident, alert, dan router yang dimonitor sebelum eskalasi."
+        },
+        "hybrid": {
+          "title": "Ringkasan operasional",
+          "subtitle": "Hanya modul yang bisa Anda akses yang ditampilkan di sini, diurutkan dari yang paling mungkin butuh perhatian."
+        }
+      },
+      "sections": {
+        "primary": {
+          "kicker": "Ringkasan",
+          "title": "KPI terpilih"
+        },
+        "focus": {
+          "kicker": "Aksi",
+          "title": "Fokus Hari Ini"
+        },
+        "actions": {
+          "kicker": "Lanjut ke",
+          "title": "Aksi Cepat"
+        },
+        "trends": {
+          "kicker": "Distribusi",
+          "title": "Tren ringkas"
+        }
+      },
+      "widgets": {
+        "customers": {
+          "title": "Pelanggan",
+          "meta": "menunggu aktivasi"
+        },
+        "invoices_due": {
+          "title": "Invoice yang perlu ditindaklanjuti",
+          "meta": "terlambat"
+        },
+        "team_members": {
+          "title": "Anggota tim"
+        },
+        "subscription_plan": {
+          "title": "Paket langganan",
+          "meta": "member terpakai"
+        },
+        "work_orders_active": {
+          "title": "Instalasi aktif",
+          "meta": "menunggu mulai"
+        },
+        "pppoe_accounts": {
+          "title": "Akun PPPoE",
+          "meta": "perlu sinkron router"
+        },
+        "incidents_open": {
+          "title": "Incident terbuka",
+          "meta": "kritis"
+        },
+        "alerts_active": {
+          "title": "Alert aktif",
+          "meta": "kritis"
+        },
+        "routers_monitored": {
+          "title": "Router termonitor"
+        },
+        "support_open": {
+          "title": "Tiket support terbuka",
+          "meta": "menunggu balasan"
+        }
+      },
+      "focus": {
+        "work_orders_attention": {
+          "title": "Instalasi yang menunggu aksi",
+          "description": "Prioritaskan work order pending dan in-progress untuk teknisi."
+        },
+        "pppoe_sync_issues": {
+          "title": "Masalah sinkron PPPoE",
+          "description": "Periksa akun yang hilang di router atau nonaktif secara tidak terduga."
+        },
+        "billing_followup": {
+          "title": "Follow-up billing",
+          "description": "Invoice overdue dan pending yang masih perlu ditindaklanjuti hari ini."
+        },
+        "customer_activation": {
+          "title": "Pelanggan menunggu aktivasi",
+          "description": "Pelanggan yang sudah dekat ke aktivasi layanan atau handoff pembayaran."
+        },
+        "support_queue": {
+          "title": "Antrian support",
+          "description": "Tiket open dan pending yang butuh respons terkoordinasi."
+        },
+        "network_watch": {
+          "title": "Watchlist jaringan",
+          "description": "Alert dan incident yang perlu ditinjau NOC sebelum eskalasi."
+        }
+      },
+      "actions": {
+        "team": {
+          "title": "Tim",
+          "description": "Tinjau anggota, undangan, dan pembagian tanggung jawab."
+        },
+        "roles": {
+          "title": "Role & permission",
+          "description": "Atur akses granular tanpa membuka modul yang tidak terkait."
+        },
+        "settings": {
+          "title": "Pengaturan",
+          "description": "Ubah kebijakan tenant, default, dan perilaku jaringan."
+        },
+        "customers": {
+          "title": "Pelanggan",
+          "description": "Buka data pelanggan, riwayat layanan, dan konteks field yang bersifat read-only."
+        },
+        "invoices": {
+          "title": "Invoice",
+          "description": "Tinjau invoice outstanding dan ulangi collection bila diperlukan."
+        },
+        "installations": {
+          "title": "Instalasi",
+          "description": "Claim work order, pantau progres, dan selesaikan pekerjaan lapangan."
+        },
+        "pppoe": {
+          "title": "PPPoE",
+          "description": "Kelola akun dan selesaikan masalah sinkron router atau RADIUS."
+        },
+        "noc": {
+          "title": "Wallboard NOC",
+          "description": "Buka wallboard live untuk situasi jaringan saat ini."
+        },
+        "alerts": {
+          "title": "Alert",
+          "description": "Triage alert router aktif dan akui noise dengan cepat."
+        },
+        "incidents": {
+          "title": "Incident",
+          "description": "Tinjau incident aktif, owner, dan eskalasi severity."
+        },
+        "routers": {
+          "title": "Router",
+          "description": "Periksa inventaris router, health, dan detail per perangkat."
+        },
+        "support": {
+          "title": "Support",
+          "description": "Buka antrian tiket bersama dan lanjutkan balasan pelanggan."
+        },
+        "audit": {
+          "title": "Audit log",
+          "description": "Tinjau perubahan sensitif dan aktivitas di level permission."
+        },
+        "email_outbox": {
+          "title": "Outbox email",
+          "description": "Cek pengiriman gagal dan retry pesan outbound yang penting."
+        }
+      },
+      "trends": {
+        "invoice_status": {
+          "title": "Distribusi status invoice",
+          "overdue": "Terlambat",
+          "pending": "Pending",
+          "paid": "Lunas"
+        },
+        "incident_severity": {
+          "title": "Severity incident",
+          "critical": "Kritis",
+          "warning": "Peringatan"
+        },
+        "alert_severity": {
+          "title": "Severity alert",
+          "critical": "Kritis",
+          "warning": "Peringatan"
+        }
+      }
+    },
     "customers": {
       "title": "Pelanggan",
       "subtitle": "Kelola data pelanggan dan lokasi layanan.",
+      "read_only_hint": "Role ini bisa meninjau data pelanggan, tetapi aksi pengelolaan pelanggan dinonaktifkan.",
       "actions": {
         "new": "Pelanggan baru"
       },
@@ -2290,7 +2484,8 @@
       },
       "detail": {
         "title": "Pelanggan",
-        "subtitle": "Detail pelanggan"
+        "subtitle": "Detail pelanggan",
+        "read_only_hint": "Role ini bisa memeriksa data pelanggan dan konteks layanan di sini, tetapi perubahan data pelanggan dinonaktifkan."
       },
       "tabs": {
         "overview": "Ringkasan",
@@ -2846,16 +3041,16 @@
             "present": "Ada di router",
             "missing": "Tidak ada"
           },
-  "form": {
-    "create_title": "Tambah Profil PPP",
-    "edit_title": "Ubah Profil PPP",
-    "create_action": "Buat profil",
-    "router_required": "Pilih router terlebih dahulu",
-    "name_required": "Nama profil wajib diisi",
-    "comment": "Komentar",
-    "no_remote_pool": "Tanpa remote pool",
-    "only_one": "Izinkan hanya satu sesi"
-  },
+          "form": {
+            "create_title": "Tambah Profil PPP",
+            "edit_title": "Ubah Profil PPP",
+            "create_action": "Buat profil",
+            "router_required": "Pilih router terlebih dahulu",
+            "name_required": "Nama profil wajib diisi",
+            "comment": "Komentar",
+            "no_remote_pool": "Tanpa remote pool",
+            "only_one": "Izinkan hanya satu sesi"
+          },
           "delete": {
             "title": "Hapus Profil PPP",
             "confirm": "Hapus profil PPP {name} dari router?",

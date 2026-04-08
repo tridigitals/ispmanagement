@@ -2239,6 +2239,199 @@
     }
   },
   "admin": {
+    "dashboard": {
+      "eyebrow": "Adaptive admin dashboard",
+      "role_scoped": "Only modules you can access are shown here",
+      "last_updated": "Last updated",
+      "loading": "Loading your workspace snapshot...",
+      "open_area": "Open area",
+      "empty": {
+        "title": "No dashboard modules available yet",
+        "description": "This account does not currently expose a dashboard section. Ask an owner or admin to grant one or more tenant permissions."
+      },
+      "audience": {
+        "admin": {
+          "title": "Tenant control room",
+          "subtitle": "Keep access, billing, customer growth, and cross-team workload in one view."
+        },
+        "operations": {
+          "title": "Field operations today",
+          "subtitle": "Start with installations, PPPoE follow-up, and the customer context needed in the field."
+        },
+        "support": {
+          "title": "Customer service workspace",
+          "subtitle": "Prioritize billing follow-up, activation handoff, and open support conversations."
+        },
+        "noc": {
+          "title": "Network watch",
+          "subtitle": "Focus on incidents, alerts, and monitored routers before they escalate."
+        },
+        "hybrid": {
+          "title": "Operational snapshot",
+          "subtitle": "Only the modules you can access are shown here, ordered by what likely needs attention first."
+        }
+      },
+      "sections": {
+        "primary": {
+          "kicker": "Snapshot",
+          "title": "Selected KPIs"
+        },
+        "focus": {
+          "kicker": "Action",
+          "title": "My Focus Today"
+        },
+        "actions": {
+          "kicker": "Go next",
+          "title": "Quick Actions"
+        },
+        "trends": {
+          "kicker": "Distribution",
+          "title": "Compact trends"
+        }
+      },
+      "widgets": {
+        "customers": {
+          "title": "Customers",
+          "meta": "awaiting activation"
+        },
+        "invoices_due": {
+          "title": "Invoices needing follow-up",
+          "meta": "overdue"
+        },
+        "team_members": {
+          "title": "Team members"
+        },
+        "subscription_plan": {
+          "title": "Subscription plan",
+          "meta": "members used"
+        },
+        "work_orders_active": {
+          "title": "Active installations",
+          "meta": "waiting to start"
+        },
+        "pppoe_accounts": {
+          "title": "PPPoE accounts",
+          "meta": "need router sync"
+        },
+        "incidents_open": {
+          "title": "Open incidents",
+          "meta": "critical"
+        },
+        "alerts_active": {
+          "title": "Active alerts",
+          "meta": "critical"
+        },
+        "routers_monitored": {
+          "title": "Monitored routers"
+        },
+        "support_open": {
+          "title": "Open support tickets",
+          "meta": "pending reply"
+        }
+      },
+      "focus": {
+        "work_orders_attention": {
+          "title": "Installations waiting for action",
+          "description": "Prioritize pending and in-progress work orders for technicians."
+        },
+        "pppoe_sync_issues": {
+          "title": "PPPoE sync issues",
+          "description": "Check accounts missing on router or disabled unexpectedly."
+        },
+        "billing_followup": {
+          "title": "Billing follow-up",
+          "description": "Overdue and pending invoices that still need action today."
+        },
+        "customer_activation": {
+          "title": "Customers awaiting activation",
+          "description": "Customers who are close to service activation or payment handoff."
+        },
+        "support_queue": {
+          "title": "Support queue",
+          "description": "Open and pending tickets that need a coordinated response."
+        },
+        "network_watch": {
+          "title": "Network watchlist",
+          "description": "Alerts and incidents that need NOC review before they escalate."
+        }
+      },
+      "actions": {
+        "team": {
+          "title": "Team",
+          "description": "Review members, invitations, and responsibilities."
+        },
+        "roles": {
+          "title": "Roles & permissions",
+          "description": "Adjust granular access without opening unrelated modules."
+        },
+        "settings": {
+          "title": "Settings",
+          "description": "Update tenant-level policies, defaults, and network behavior."
+        },
+        "customers": {
+          "title": "Customers",
+          "description": "Open customer records, service history, and read-only field context."
+        },
+        "invoices": {
+          "title": "Invoices",
+          "description": "Review outstanding invoices and retry collections when needed."
+        },
+        "installations": {
+          "title": "Installations",
+          "description": "Claim work orders, track progress, and complete field jobs."
+        },
+        "pppoe": {
+          "title": "PPPoE",
+          "description": "Manage accounts and resolve router or RADIUS sync issues."
+        },
+        "noc": {
+          "title": "NOC wallboard",
+          "description": "Open the live wallboard for the current network situation."
+        },
+        "alerts": {
+          "title": "Alerts",
+          "description": "Triage active router alerts and acknowledge noise quickly."
+        },
+        "incidents": {
+          "title": "Incidents",
+          "description": "Review active incidents, owners, and severity escalations."
+        },
+        "routers": {
+          "title": "Routers",
+          "description": "Inspect router inventory, health, and per-device details."
+        },
+        "support": {
+          "title": "Support",
+          "description": "Open the shared ticket queue and continue customer replies."
+        },
+        "audit": {
+          "title": "Audit logs",
+          "description": "Review sensitive changes and permission-level activity."
+        },
+        "email_outbox": {
+          "title": "Email outbox",
+          "description": "Check failed deliveries and retry critical outbound messages."
+        }
+      },
+      "trends": {
+        "invoice_status": {
+          "title": "Invoice status distribution",
+          "overdue": "Overdue",
+          "pending": "Pending",
+          "paid": "Paid"
+        },
+        "incident_severity": {
+          "title": "Incident severity",
+          "critical": "Critical",
+          "warning": "Warning"
+        },
+        "alert_severity": {
+          "title": "Alert severity",
+          "critical": "Critical",
+          "warning": "Warning"
+        }
+      }
+    },
     "settings": {
       "title": "Global Settings",
       "subtitle": "Manage application configuration, security, and integrations.",
@@ -2456,6 +2649,7 @@
     "customers": {
       "title": "Customers",
       "subtitle": "Manage customer accounts and service locations.",
+      "read_only_hint": "This role can review customer records, but customer management actions are disabled.",
       "actions": {
         "new": "New customer"
       },
@@ -2504,7 +2698,8 @@
       },
       "detail": {
         "title": "Customer",
-        "subtitle": "Customer details"
+        "subtitle": "Customer details",
+        "read_only_hint": "This role can inspect customer data and service context here, but customer mutations are disabled."
       },
       "tabs": {
         "overview": "Overview",
@@ -3060,16 +3255,16 @@
             "present": "On router",
             "missing": "Missing"
           },
-  "form": {
-    "create_title": "Add PPP Profile",
-    "edit_title": "Edit PPP Profile",
-    "create_action": "Create profile",
-    "router_required": "Select a router first",
-    "name_required": "Profile name is required",
-    "comment": "Comment",
-    "no_remote_pool": "No remote pool",
-    "only_one": "Allow only one session"
-  },
+          "form": {
+            "create_title": "Add PPP Profile",
+            "edit_title": "Edit PPP Profile",
+            "create_action": "Create profile",
+            "router_required": "Select a router first",
+            "name_required": "Profile name is required",
+            "comment": "Comment",
+            "no_remote_pool": "No remote pool",
+            "only_one": "Allow only one session"
+          },
           "delete": {
             "title": "Delete PPP Profile",
             "confirm": "Delete PPP profile {name} from the router?",

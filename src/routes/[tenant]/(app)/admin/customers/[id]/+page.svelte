@@ -19,6 +19,12 @@
   import type { PppoeAccountPublic } from '$lib/api/client';
   import { getPppoeAssignmentPayload } from '$lib/utils/pppoePackageAssignment';
   import {
+    normalizeCustomerDetailTab,
+    readCustomerDetailTabFromUrlValue,
+    getVisibleCustomerDetailTabs,
+    type CustomerDetailTab,
+  } from '$lib/utils/customerDetailAccess';
+  import {
     createThenApplyPppoeAccount,
     PppoeCreateApplyError,
   } from '$lib/utils/pppoeCreateProvisioning';
@@ -31,16 +37,6 @@
   import Toggle from '$lib/components/ui/Toggle.svelte';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import Table from '$lib/components/ui/Table.svelte';
-
-  const customerDetailTabs = [
-    'overview',
-    'locations',
-    'subscriptions',
-    'billing',
-    'timeline',
-    'pppoe',
-  ] as const;
-  type CustomerDetailTab = (typeof customerDetailTabs)[number];
 
   const customerId = $derived(String($page.params.id || ''));
 
@@ -236,8 +232,16 @@
   );
   const canManageCustomerLocations = $derived($can('manage', 'customer_locations'));
   const canReadBilling = $derived($can('read', 'billing') || $can('manage', 'billing'));
-  const isReadOnlyCustomerAccess = $derived(canReadCustomers && !canManageCustomers);
   const canReadAudit = $derived($can('read', 'audit_logs'));
+  const canReadPppoe = $derived($can('read', 'pppoe') || $can('manage', 'pppoe'));
+  const visibleTabs = $derived.by(() =>
+    getVisibleCustomerDetailTabs({
+      canReadCustomerLocations,
+      canReadBilling,
+      canReadPppoe,
+      canReadAudit,
+    }),
+  );
   const timelineFilteredLogs = $derived.by(() => {
     if (timelineType === 'all') return timelineLogs;
     if (timelineType === 'customer') return timelineLogs.filter((l) => l.resource === 'customers');
@@ -309,10 +313,7 @@
     if (fromUrl && fromUrl !== activeTab) {
       activeTab = fromUrl;
     }
-    if (activeTab === 'billing' && !canReadBilling) {
-      activeTab = 'overview';
-    }
-    if (activeTab === 'locations' && !canReadCustomerLocations) {
+    if (!visibleTabs.includes(activeTab)) {
       activeTab = 'overview';
     }
   });
@@ -463,10 +464,12 @@
   }
 
   function readActiveTabFromUrl(): CustomerDetailTab | null {
-    const tab = String($page.url.searchParams.get('tab') || '').toLowerCase();
-    return customerDetailTabs.includes(tab as CustomerDetailTab)
-      ? (tab as CustomerDetailTab)
-      : null;
+    return readCustomerDetailTabFromUrlValue($page.url.searchParams.get('tab'), {
+      canReadCustomerLocations,
+      canReadBilling,
+      canReadPppoe,
+      canReadAudit,
+    });
   }
 
   function getSubscriptionIdFromInvoice(inv: Invoice): string | null {
@@ -1240,42 +1243,34 @@
     </div>
   </div>
 
-  {#if isReadOnlyCustomerAccess}
-    <div class="read-only-banner">
-      <Icon name="eye" size={16} />
-      <span>
-        {$t('admin.customers.detail.read_only_hint') ||
-          'Read-only customer access. You can review profile, locations, subscriptions, and PPPoE context, while admin-only edits stay hidden.'}
-      </span>
-    </div>
-  {/if}
-
   <div class="tabs">
     <button class:active={activeTab === 'overview'} onclick={() => (activeTab = 'overview')}>
       {$t('admin.customers.tabs.overview') || 'Overview'}
     </button>
-    {#if canReadCustomerLocations}
+    {#if visibleTabs.includes('locations')}
       <button class:active={activeTab === 'locations'} onclick={() => (activeTab = 'locations')}>
         {$t('admin.customers.tabs.locations') || 'Locations'}
       </button>
     {/if}
-    <button
-      class:active={activeTab === 'subscriptions'}
-      onclick={() => (activeTab = 'subscriptions')}
-    >
-      {$t('admin.customers.tabs.subscriptions') || 'Subscriptions'}
-    </button>
-    {#if canReadBilling}
+    {#if visibleTabs.includes('subscriptions')}
+      <button
+        class:active={activeTab === 'subscriptions'}
+        onclick={() => (activeTab = 'subscriptions')}
+      >
+        {$t('admin.customers.tabs.subscriptions') || 'Subscriptions'}
+      </button>
+    {/if}
+    {#if visibleTabs.includes('billing')}
       <button class:active={activeTab === 'billing'} onclick={() => (activeTab = 'billing')}>
         {$t('admin.customers.tabs.billing') || 'Billing'}
       </button>
     {/if}
-    {#if $can('read', 'pppoe') || $can('manage', 'pppoe')}
+    {#if visibleTabs.includes('pppoe')}
       <button class:active={activeTab === 'pppoe'} onclick={() => (activeTab = 'pppoe')}>
         {$t('admin.customers.tabs.pppoe') || 'PPPoE'}
       </button>
     {/if}
-    {#if canReadAudit}
+    {#if visibleTabs.includes('timeline')}
       <button class:active={activeTab === 'timeline'} onclick={() => (activeTab = 'timeline')}>
         Timeline
       </button>
@@ -2512,18 +2507,6 @@
     margin-bottom: 1rem;
     padding: 1rem 1.05rem;
     background: var(--bg-surface);
-  }
-
-  .read-only-banner {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.75rem 0.9rem;
-    margin-bottom: 1rem;
-    border-radius: 12px;
-    border: 1px solid rgba(59, 130, 246, 0.24);
-    background: rgba(59, 130, 246, 0.08);
-    color: var(--text-primary);
   }
 
   .hero-top {

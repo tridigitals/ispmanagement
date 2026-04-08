@@ -73,7 +73,6 @@
   let inviteSummary = $state<CustomerRegistrationInviteSummary | null>(null);
   const canReadCustomers = $derived($can('read', 'customers') || $can('manage', 'customers'));
   const canManageCustomers = $derived($can('manage', 'customers'));
-  const isReadOnlyCustomerAccess = $derived(canReadCustomers && !canManageCustomers);
 
   let stats = $derived({
     total,
@@ -402,15 +401,6 @@
   </div>
 
   <div class="card table-card">
-    {#if isReadOnlyCustomerAccess}
-      <div class="read-only-banner">
-        <Icon name="eye" size={16} />
-        <span>
-          {$t('admin.customers.read_only_hint') ||
-            'Read-only access. You can review customer data, but create, delete, and portal invite actions are disabled.'}
-        </span>
-      </div>
-    {/if}
     <TableToolbar
       bind:searchQuery={q}
       placeholder={$t('admin.customers.search') || 'Search customers...'}
@@ -837,18 +827,6 @@
 
   .table-card {
     padding: 1.25rem;
-  }
-
-  .read-only-banner {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.75rem 0.9rem;
-    margin-bottom: 0.9rem;
-    border-radius: 12px;
-    border: 1px solid rgba(59, 130, 246, 0.24);
-    background: rgba(59, 130, 246, 0.08);
-    color: var(--text-primary);
   }
 
   .error-banner {
