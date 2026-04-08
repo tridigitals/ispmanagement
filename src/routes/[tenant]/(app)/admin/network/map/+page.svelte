@@ -129,6 +129,15 @@
     type NMRouter,
     type NMZone,
   } from '$lib/components/network/networkMapUtils';
+  import {
+    buildInvestigationState,
+    buildNetworkMapWorkspaceDefaults,
+    buildSelectedMapObject,
+    type NetworkMapInvestigationKind,
+    type NetworkMapInvestigationState,
+    type NetworkMapWorkspaceCapabilities,
+    type NetworkMapWorkspaceSelectedObject,
+  } from '$lib/components/network/networkMapWorkspaceState';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import Select2 from '$lib/components/ui/Select2.svelte';
   import Icon from '$lib/components/ui/Icon.svelte';
@@ -236,6 +245,8 @@
     is_primary: false,
     weight: '100',
   });
+  let selectedObject = $state<NetworkMapWorkspaceSelectedObject | null>(null);
+  let investigationState = $state<NetworkMapInvestigationState | null>(null);
 
   let refreshDebounce: ReturnType<typeof setTimeout> | null = null;
   let lastRequestId = 0;
@@ -261,6 +272,16 @@
   const canManageTopology = $derived($can('manage', 'network_topology'));
   const canReadRouterInventory = $derived(
     $can('read', 'router_inventory') || $can('manage', 'router_inventory'),
+  );
+  const workspaceCapabilities = $derived.by<NetworkMapWorkspaceCapabilities>(() => ({
+    canManageTopology,
+    canReadCustomers: $can('read', 'customers') || $can('manage', 'customers'),
+    canReadWorkOrders: $can('read', 'work_orders') || $can('manage', 'work_orders'),
+    canReadNetworkNoc: $can('read', 'network_noc') || $can('manage', 'network_noc'),
+    canReadRouterInventory,
+  }));
+  const workspaceDefaults = $derived.by(() =>
+    buildNetworkMapWorkspaceDefaults(workspaceCapabilities),
   );
   const linkFieldConfig = $derived.by(() => getLinkFieldConfig(linkForm.link_type));
 
@@ -334,10 +355,33 @@
     }
   }
 
+  function setWorkspaceSelectedObject(
+    nextSelectedObject: NetworkMapWorkspaceSelectedObject | null,
+  ) {
+    selectedObject = nextSelectedObject ? buildSelectedMapObject(nextSelectedObject) : null;
+    investigationState = null;
+  }
+
+  function startWorkspaceInvestigation(mode: NetworkMapInvestigationKind) {
+    investigationState = buildInvestigationState({
+      mode,
+      rootObject: selectedObject,
+      selectedObject,
+    });
+  }
+
   function handleNodeLayerClick(e: any) {
     if (!map || !e.features?.[0] || !maplibre) return;
     const props = e.features[0].properties || {};
     const nodeId = String(props.id || '');
+    setWorkspaceSelectedObject(
+      buildSelectedMapObject({
+        kind: 'node',
+        id: nodeId,
+        label: String(props.name || props.label || nodeId),
+        nodeType: props.node_type || props.nodeType || undefined,
+      }),
+    );
     if (linkPickMode) {
       handleLinkPickNode(nodeId);
       return;
@@ -356,6 +400,16 @@
 
   function handleLinkLayerClick(e: any) {
     if (!map || !e.features?.[0] || !maplibre || linkPickMode) return;
+    const props = e.features[0].properties || {};
+    const linkId = String(props.id || '');
+    setWorkspaceSelectedObject(
+      buildSelectedMapObject({
+        kind: 'link',
+        id: linkId,
+        label: String(props.name || props.label || linkId),
+        linkType: props.link_type || props.linkType || undefined,
+      }),
+    );
     openLinkPopup({
       map,
       maplibre,
@@ -368,6 +422,15 @@
 
   function handleRouterLayerClick(e: any) {
     if (!map || !e.features?.[0] || !maplibre) return;
+    const props = e.features[0].properties || {};
+    const routerId = String(props.id || '');
+    setWorkspaceSelectedObject(
+      buildSelectedMapObject({
+        kind: 'router',
+        id: routerId,
+        label: String(props.name || props.identity || routerId),
+      }),
+    );
     openRouterPopup({
       map,
       maplibre,
@@ -1035,6 +1098,15 @@
   function startConnectFromNode(nodeId: string) {
     activeNodePopup?.remove();
     const next = buildConnectFromNodeResult(nodeId, nodeRows);
+    const nodeRow = nodeRows.find((row) => row.id === nodeId);
+    setWorkspaceSelectedObject(
+      buildSelectedMapObject({
+        kind: 'node',
+        id: nodeId,
+        label: nodeRow?.name || nodeId,
+        nodeType: nodeRow?.node_type || undefined,
+      }),
+    );
     editingLinkId = next.editingLinkId;
     showLinkModal = next.showLinkModal;
     linkPickDrawMode = next.linkPickDrawMode;
