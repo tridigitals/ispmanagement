@@ -86,6 +86,9 @@
     SOURCE_LINKS,
     SOURCE_NODES,
     SOURCE_ROUTERS,
+    SOURCE_SELECTION_LINES,
+    SOURCE_SELECTION_POINTS,
+    SOURCE_SELECTION_ZONES,
     SOURCE_ZONES,
   } from '$lib/components/network/networkMapLayers';
   import {
@@ -139,6 +142,7 @@
   import {
     applyNetworkMapWorkspaceDefaults,
     buildNetworkMapWorkspaceDefaults,
+    buildImpactedServiceList,
     buildSelectedMapObject,
     clearWorkspaceSelection,
     createNetworkMapWorkspaceState,
@@ -485,6 +489,10 @@
   });
 
   $effect(() => {
+    syncWorkspaceHighlights();
+  });
+
+  $effect(() => {
     syncMyLocationControlUi();
   });
 
@@ -819,6 +827,23 @@
     if (!state) return null;
     const rootLabel = state.rootObject?.label || 'Selected object';
     const selectedLabel = state.selectedObject?.label || rootLabel;
+    const impactedServices = buildImpactedServiceList({
+      rootObject: state.rootObject,
+      services:
+        state.mode === 'service'
+          ? nodeRows
+              .filter((row) => row.metadata?.service_id || row.metadata?.service_name)
+              .slice(0, 4)
+              .map((row) => ({
+                id: String(row.metadata?.service_id || row.id),
+                label: String(
+                  row.metadata?.service_name || row.metadata?.service_label || row.name,
+                ),
+                customerName: String(row.metadata?.customer_name || ''),
+                status: row.status,
+              }))
+          : [],
+    });
     return {
       title:
         state.mode === 'trace' ? `Tracing from ${rootLabel}` : `Service impact for ${rootLabel}`,
@@ -845,6 +870,14 @@
             'Collapse inspector if you need more map space while preserving context.',
           ],
         },
+        ...(impactedServices.length
+          ? [
+              {
+                title: 'Impacted services',
+                lines: impactedServices.map((service) => `${service.label} · ${service.status}`),
+              },
+            ]
+          : []),
       ],
     };
   }
@@ -1318,6 +1351,41 @@
     if (!map.getSource(sourceId)) return;
     const source = map.getSource(sourceId) as import('maplibre-gl').GeoJSONSource | undefined;
     source?.setData(data as any);
+  }
+
+  function syncWorkspaceHighlights() {
+    if (!map || !mapReady) return;
+
+    const selectedObject =
+      workspaceState.investigationState?.selectedObject || workspaceState.selectedObject;
+
+    let pointData = emptyFeatureCollection();
+    let lineData = emptyFeatureCollection();
+    let zoneData = emptyFeatureCollection();
+
+    if (selectedObject) {
+      if (
+        selectedObject.kind === 'node' ||
+        selectedObject.kind === 'customer' ||
+        selectedObject.kind === 'service'
+      ) {
+        const row = nodeRows.find((candidate) => candidate.id === selectedObject.id);
+        if (row) pointData = nodesToFeatureCollection([row]);
+      } else if (selectedObject.kind === 'link') {
+        const row = linkRows.find((candidate) => candidate.id === selectedObject.id);
+        if (row) lineData = linksToFeatureCollection([row]);
+      } else if (selectedObject.kind === 'zone') {
+        const row = zoneRows.find((candidate) => candidate.id === selectedObject.id);
+        if (row) zoneData = zonesToFeatureCollection([row]);
+      } else if (selectedObject.kind === 'router') {
+        const row = routerRows.find((candidate) => candidate.id === selectedObject.id);
+        if (row) pointData = routersToFeatureCollection([row]);
+      }
+    }
+
+    setSourceData(SOURCE_SELECTION_POINTS, pointData);
+    setSourceData(SOURCE_SELECTION_LINES, lineData);
+    setSourceData(SOURCE_SELECTION_ZONES, zoneData);
   }
 
   function setLayerVisibility(layerId: string, visible: boolean) {

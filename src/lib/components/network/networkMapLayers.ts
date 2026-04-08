@@ -7,6 +7,9 @@ export const SOURCE_ZONES = 'nm-zones';
 export const SOURCE_ROUTERS = 'nm-routers';
 export const SOURCE_LINK_DRAFT = 'nm-link-draft';
 export const SOURCE_LINK_DRAFT_POINTS = 'nm-link-draft-points';
+export const SOURCE_SELECTION_POINTS = 'nm-selection-points';
+export const SOURCE_SELECTION_LINES = 'nm-selection-lines';
+export const SOURCE_SELECTION_ZONES = 'nm-selection-zones';
 
 export function emptyFeatureCollection(): FeatureCollection {
   return { type: 'FeatureCollection', features: [] };
@@ -37,7 +40,9 @@ export function buildBaseMapStyle({
         type: 'raster' as const,
         tiles: hasHiResSatellite
           ? [`https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${mapTilerKey}`]
-          : ['https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+          : [
+              'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            ],
         tileSize: 256,
         maxzoom: satelliteMaxZoom,
         attribution: hasHiResSatellite ? '© MapTiler © OpenStreetMap contributors' : '© Esri',
@@ -69,6 +74,9 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
   });
   map.addSource(SOURCE_LINK_DRAFT, { type: 'geojson', data: emptyFeatureCollection() });
   map.addSource(SOURCE_LINK_DRAFT_POINTS, { type: 'geojson', data: emptyFeatureCollection() });
+  map.addSource(SOURCE_SELECTION_POINTS, { type: 'geojson', data: emptyFeatureCollection() });
+  map.addSource(SOURCE_SELECTION_LINES, { type: 'geojson', data: emptyFeatureCollection() });
+  map.addSource(SOURCE_SELECTION_ZONES, { type: 'geojson', data: emptyFeatureCollection() });
 
   map.addLayer({
     id: 'nm-zones-fill',
@@ -95,9 +103,21 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
     id: 'nm-links-line',
     type: 'line',
     source: SOURCE_LINKS,
-    filter: ['all', ['!=', ['get', 'status'], 'maintenance'], ['!=', ['get', 'status'], 'planning']],
+    filter: [
+      'all',
+      ['!=', ['get', 'status'], 'maintenance'],
+      ['!=', ['get', 'status'], 'planning'],
+    ],
     paint: {
-      'line-color': ['match', ['get', 'health_tone'], 'bad', '#ef4444', 'warn', '#f59e0b', '#3f8cff'],
+      'line-color': [
+        'match',
+        ['get', 'health_tone'],
+        'bad',
+        '#ef4444',
+        'warn',
+        '#f59e0b',
+        '#3f8cff',
+      ],
       'line-width': 2.5,
       'line-opacity': 0.95,
     },
@@ -109,7 +129,15 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
     source: SOURCE_LINKS,
     filter: ['in', ['get', 'status'], ['literal', ['maintenance', 'planning']]],
     paint: {
-      'line-color': ['match', ['get', 'health_tone'], 'bad', '#ef4444', 'warn', '#f59e0b', '#3f8cff'],
+      'line-color': [
+        'match',
+        ['get', 'health_tone'],
+        'bad',
+        '#ef4444',
+        'warn',
+        '#f59e0b',
+        '#3f8cff',
+      ],
       'line-width': 2.5,
       'line-opacity': 0.95,
       'line-dasharray': [1.4, 1.2],
@@ -120,10 +148,22 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
     id: 'nm-nodes-circle',
     type: 'circle',
     source: SOURCE_NODES,
-    filter: ['all', ['!=', ['get', 'node_type'], 'customer_endpoint'], ['!=', ['get', 'node_type'], 'customer_premise']],
+    filter: [
+      'all',
+      ['!=', ['get', 'node_type'], 'customer_endpoint'],
+      ['!=', ['get', 'node_type'], 'customer_premise'],
+    ],
     paint: {
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 6, 11, 8, 14, 10.5],
-      'circle-color': ['match', ['get', 'status'], 'active', '#16a34a', 'maintenance', '#f59e0b', '#64748b'],
+      'circle-color': [
+        'match',
+        ['get', 'status'],
+        'active',
+        '#16a34a',
+        'maintenance',
+        '#f59e0b',
+        '#64748b',
+      ],
       'circle-stroke-width': 1.6,
       'circle-stroke-color': '#e2e8f0',
     },
@@ -133,7 +173,11 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
     id: 'nm-nodes-icons',
     type: 'symbol',
     source: SOURCE_NODES,
-    filter: ['all', ['!=', ['get', 'node_type'], 'customer_endpoint'], ['!=', ['get', 'node_type'], 'customer_premise']],
+    filter: [
+      'all',
+      ['!=', ['get', 'node_type'], 'customer_endpoint'],
+      ['!=', ['get', 'node_type'], 'customer_premise'],
+    ],
     layout: {
       'icon-image': [
         'match',
@@ -260,6 +304,41 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
       'circle-color': '#38bdf8',
       'circle-stroke-color': '#0b1020',
       'circle-stroke-width': 1.2,
+    },
+  });
+
+  map.addLayer({
+    id: 'nm-selection-zones-outline',
+    type: 'line',
+    source: SOURCE_SELECTION_ZONES,
+    paint: {
+      'line-color': '#f8fafc',
+      'line-width': 4,
+      'line-opacity': 0.95,
+    },
+  });
+
+  map.addLayer({
+    id: 'nm-selection-lines',
+    type: 'line',
+    source: SOURCE_SELECTION_LINES,
+    paint: {
+      'line-color': '#f8fafc',
+      'line-width': 5,
+      'line-opacity': 0.95,
+    },
+  });
+
+  map.addLayer({
+    id: 'nm-selection-points',
+    type: 'circle',
+    source: SOURCE_SELECTION_POINTS,
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 9, 11, 12, 14, 15],
+      'circle-color': '#f8fafc',
+      'circle-opacity': 0.92,
+      'circle-stroke-width': 3,
+      'circle-stroke-color': '#0f172a',
     },
   });
 }

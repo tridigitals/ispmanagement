@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildInvestigationState,
   applyNetworkMapWorkspaceDefaults,
+  buildImpactedServiceList,
   buildNetworkMapWorkspaceDefaults,
   buildSelectedMapObject,
   clearWorkspaceSelection,
@@ -142,7 +143,10 @@ describe('network map workspace state', () => {
       label: 'Spur Node',
     });
 
-    const investigating = enterInvestigationMode(selectNetworkMapObject(workspace, selectedNode), 'trace');
+    const investigating = enterInvestigationMode(
+      selectNetworkMapObject(workspace, selectedNode),
+      'trace',
+    );
     const cleared = clearWorkspaceSelection(investigating);
 
     expect(cleared.selectedObject).toBeNull();
@@ -157,11 +161,66 @@ describe('network map workspace state', () => {
       label: 'Managed Core Node',
     });
 
-    const investigating = enterInvestigationMode(selectNetworkMapObject(workspace, selectedNode), 'trace');
+    const investigating = enterInvestigationMode(
+      selectNetworkMapObject(workspace, selectedNode),
+      'trace',
+    );
     const exited = exitInvestigationMode(investigating);
 
     expect(exited.mode).toBe('manage');
     expect(exited.investigationState).toBeNull();
     expect(exited.selectedObject).toEqual(selectedNode);
+  });
+
+  it('keeps the investigation root while allowing focus to move deeper into the trace', () => {
+    const workspace = createNetworkMapWorkspaceState(nocCapabilities);
+    const rootNode = buildSelectedMapObject({
+      kind: 'node',
+      id: 'node-root',
+      label: 'Core POP',
+    });
+    const tracedLink = buildSelectedMapObject({
+      kind: 'link',
+      id: 'link-mid',
+      label: 'Backbone Fiber',
+      linkType: 'fiber',
+    });
+
+    const selected = selectNetworkMapObject(workspace, rootNode);
+    const investigating = enterInvestigationMode(selected, 'trace', rootNode);
+    const deeperTrace = buildInvestigationState({
+      mode: 'trace',
+      rootObject: investigating.investigationState?.rootObject,
+      selectedObject: tracedLink,
+    });
+
+    expect(deeperTrace.rootObject).toEqual(rootNode);
+    expect(deeperTrace.selectedObject).toEqual(tracedLink);
+    expect(deeperTrace.startedFrom).toBe('selection');
+  });
+
+  it('builds a safe impacted-service list from sparse service data', () => {
+    const services = buildImpactedServiceList({
+      rootObject: buildSelectedMapObject({
+        kind: 'node',
+        id: 'node-service',
+        label: 'Access POP',
+      }),
+      services: [
+        { id: 'svc-1', name: 'Office A', status: 'active' },
+        { id: 'svc-2', customerName: 'PT Maju', status: 'degraded' },
+        { id: '', label: 'Fallback Label' },
+      ],
+    });
+
+    expect(services).toEqual([
+      expect.objectContaining({ id: 'svc-1', label: 'Office A', status: 'active' }),
+      expect.objectContaining({ id: 'svc-2', label: 'PT Maju', status: 'degraded' }),
+      expect.objectContaining({
+        id: 'node-service-service-3',
+        label: 'Fallback Label',
+        status: 'unknown',
+      }),
+    ]);
   });
 });

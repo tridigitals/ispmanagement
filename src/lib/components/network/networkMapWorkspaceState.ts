@@ -61,6 +61,12 @@ export type BuildInvestigationStateInput = {
   selectedObject?: NetworkMapWorkspaceSelectedObject | null;
 };
 
+export type NetworkMapImpactedService = {
+  id: string;
+  label: string;
+  status: string;
+};
+
 function isInvestigationPreferred(capabilities: NetworkMapWorkspaceCapabilities): boolean {
   return (
     capabilities.canReadCustomers ||
@@ -136,6 +142,29 @@ export function buildInvestigationState(
   };
 }
 
+export function buildImpactedServiceList(args: {
+  rootObject?: NetworkMapWorkspaceSelectedObject | null;
+  services?: Array<{
+    id?: string | null;
+    label?: string | null;
+    name?: string | null;
+    customerName?: string | null;
+    status?: string | null;
+  }>;
+}): NetworkMapImpactedService[] {
+  const rootId = args.rootObject?.id || 'unknown-root';
+  return (args.services || []).map((service, index) => {
+    const fallbackLabel =
+      String(service.label || service.name || service.customerName || '').trim() ||
+      `Impacted service ${index + 1}`;
+    return {
+      id: String(service.id || '').trim() || `${rootId}-service-${index + 1}`,
+      label: fallbackLabel,
+      status: String(service.status || '').trim() || 'unknown',
+    };
+  });
+}
+
 export function createNetworkMapWorkspaceState(
   capabilities: NetworkMapWorkspaceCapabilities,
 ): NetworkMapWorkspaceState {
@@ -183,9 +212,7 @@ export function exitInvestigationMode(state: NetworkMapWorkspaceState): NetworkM
   };
 }
 
-export function clearWorkspaceSelection(
-  state: NetworkMapWorkspaceState,
-): NetworkMapWorkspaceState {
+export function clearWorkspaceSelection(state: NetworkMapWorkspaceState): NetworkMapWorkspaceState {
   return {
     ...state,
     selectedObject: null,
