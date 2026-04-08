@@ -175,8 +175,10 @@ export function enterInvestigationMode(
 }
 
 export function exitInvestigationMode(state: NetworkMapWorkspaceState): NetworkMapWorkspaceState {
+  const nextMode = state.manageAvailable ? 'manage' : 'overview';
   return {
     ...state,
+    mode: nextMode,
     investigationState: null,
   };
 }

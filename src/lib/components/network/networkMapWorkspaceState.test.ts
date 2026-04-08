@@ -8,6 +8,7 @@ import {
   clearWorkspaceSelection,
   createNetworkMapWorkspaceState,
   enterInvestigationMode,
+  exitInvestigationMode,
   selectNetworkMapObject,
 } from './networkMapWorkspaceState';
 
@@ -146,5 +147,21 @@ describe('network map workspace state', () => {
 
     expect(cleared.selectedObject).toBeNull();
     expect(cleared.investigationState).toBeNull();
+  });
+
+  it('returns to a stable non-investigation mode when investigation ends', () => {
+    const workspace = createNetworkMapWorkspaceState(manageCapabilities);
+    const selectedNode = buildSelectedMapObject({
+      kind: 'node',
+      id: 'node-21',
+      label: 'Managed Core Node',
+    });
+
+    const investigating = enterInvestigationMode(selectNetworkMapObject(workspace, selectedNode), 'trace');
+    const exited = exitInvestigationMode(investigating);
+
+    expect(exited.mode).toBe('manage');
+    expect(exited.investigationState).toBeNull();
+    expect(exited.selectedObject).toEqual(selectedNode);
   });
 });
