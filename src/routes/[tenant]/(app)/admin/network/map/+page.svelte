@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Geometry } from 'geojson';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { onDestroy, onMount } from 'svelte';
@@ -65,7 +66,6 @@
     applyCachedMapData,
     applyFetchedMapData,
     buildMapDataCacheKey,
-    extractMapRows,
     fetchNetworkMapData,
     getCachedMapData,
     setCachedMapData,
@@ -104,6 +104,9 @@
   } from '$lib/components/network/networkMapRuntime';
   import {
     asNumber,
+    countDegradedLinks,
+    countImpactedServices,
+    countNodesAtRisk,
     computeLinkHealth,
     customersToFeatureCollection,
     ensureNodeTypeIconsRegistered,
@@ -131,14 +134,19 @@
   } from '$lib/components/network/networkMapUtils';
   import {
     applyNetworkMapWorkspaceDefaults,
-    createNetworkMapWorkspaceState,
     buildNetworkMapWorkspaceDefaults,
     buildSelectedMapObject,
+    createNetworkMapWorkspaceState,
     enterInvestigationMode,
     selectNetworkMapObject,
     type NetworkMapWorkspaceState,
     type NetworkMapWorkspaceCapabilities,
   } from '$lib/components/network/networkMapWorkspaceState';
+  import {
+    buildNetworkMapInsightCards,
+    groupNetworkMapSearchResults,
+    type NetworkMapSearchResultItem,
+  } from '$lib/components/network/networkMapInsights';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import Select2 from '$lib/components/ui/Select2.svelte';
   import Icon from '$lib/components/ui/Icon.svelte';
@@ -148,6 +156,7 @@
 
   type MaplibreModule = typeof import('maplibre-gl');
   type MapInstance = import('maplibre-gl').Map;
+  type NetworkMapQuickMode = 'all' | 'issues' | 'customers' | 'services' | 'topology' | 'field';
 
   let mapEl = $state<HTMLDivElement | null>(null);
   let map = $state<MapInstance | null>(null);
@@ -170,8 +179,10 @@
   let viewMode = $state<'standard' | 'satellite'>('standard');
 
   let q = $state('');
+  let workspaceSearchQuery = $state('');
   let status = $state('');
   let kind = $state('');
+  let quickMode = $state<NetworkMapQuickMode>('all');
 
   let nodeCount = $state(0);
   let linkCount = $state(0);
@@ -180,6 +191,8 @@
   let linkRows = $state<NMLink[]>([]);
   let zoneRows = $state<NMZone[]>([]);
   let routerRows = $state<NMRouter[]>([]);
+  let customerRows = $state<NMNode[]>([]);
+  let serviceRows = $state<NMNode[]>([]);
   let zoneBindings = $state<any[]>([]);
   let selectedZoneId = $state('');
   let selectedTab = $state<'nodes' | 'links' | 'zones' | 'bindings'>('nodes');
@@ -291,6 +304,118 @@
   const workspaceDefaults = $derived.by(() =>
     buildNetworkMapWorkspaceDefaults(workspaceCapabilities),
   );
+  const insightCards = $derived.by(() =>
+    buildNetworkMapInsightCards({
+      capabilities: workspaceCapabilities,
+      nodes: nodeRows,
+      links: linkRows,
+      zones: zoneRows,
+      routers: routerRows,
+      viewportMode: 'viewport',
+    }),
+  );
+  const searchGroups = $derived.by(() => {
+    const groups = groupNetworkMapSearchResults({
+      query: workspaceSearchQuery,
+      nodes: nodeRows,
+      links: linkRows,
+      zones: zoneRows,
+      routers: routerRows,
+      customerRows,
+      serviceRows,
+    });
+
+    if (quickMode === 'all') return groups;
+
+    const allowedGroupKeys: Record<Exclude<NetworkMapQuickMode, 'all'>, string[]> = {
+      issues: ['nodes', 'links', 'zones', 'routers'],
+      customers: ['customers'],
+      services: ['services'],
+      topology: ['nodes', 'links', 'zones', 'routers'],
+      field: ['customers', 'services', 'nodes', 'zones'],
+    };
+
+    const allowedKeys = allowedGroupKeys[quickMode as Exclude<NetworkMapQuickMode, 'all'>] || [];
+    return groups.filter((group) => allowedKeys.includes(group.key));
+  });
+  const searchResultCount = $derived.by(() =>
+    searchGroups.reduce((total, group) => total + group.items.length, 0),
+  );
+  const quickModeOptions = $derived.by(
+    () =>
+      [
+        {
+          key: 'all',
+          label: $t('admin.network.map.quick_modes.all') || 'All',
+          hint:
+            $t('admin.network.map.quick_modes.all_hint') ||
+            'Balanced workspace across the loaded map',
+          count: nodeRows.length + linkRows.length + zoneRows.length + routerRows.length,
+        },
+        {
+          key: 'issues',
+          label: $t('admin.network.map.quick_modes.issues') || 'Issues',
+          hint:
+            $t('admin.network.map.quick_modes.issues_hint') ||
+            'Focus degraded links, risky zones, and unstable nodes',
+          count: countNodesAtRisk(nodeRows) + countDegradedLinks(linkRows),
+        },
+        {
+          key: 'customers',
+          label: $t('admin.network.map.quick_modes.customers') || 'Customers',
+          hint:
+            $t('admin.network.map.quick_modes.customers_hint') ||
+            'Inspect customer endpoints and last-mile placements',
+          count: customerRows.length,
+        },
+        {
+          key: 'services',
+          label: $t('admin.network.map.quick_modes.services') || 'Services',
+          hint:
+            $t('admin.network.map.quick_modes.services_hint') ||
+            'Track mapped service nodes and activation context',
+          count: serviceRows.length,
+        },
+        {
+          key: 'topology',
+          label: $t('admin.network.map.quick_modes.topology') || 'Topology',
+          hint:
+            $t('admin.network.map.quick_modes.topology_hint') ||
+            'Show the infrastructure graph and router overlay',
+          count: nodeRows.length + linkRows.length + zoneRows.length + routerRows.length,
+        },
+        {
+          key: 'field',
+          label: $t('admin.network.map.quick_modes.field') || 'Field',
+          hint:
+            $t('admin.network.map.quick_modes.field_hint') ||
+            'Prioritize impacted services and field-relevant assets',
+          count: countImpactedServices(nodeRows) + customerRows.length,
+        },
+      ] as const,
+  );
+  const searchSummary = $derived.by(() => {
+    const query = workspaceSearchQuery.trim();
+    if (!query) {
+      return (
+        $t('admin.network.map.search.summary_idle', {
+          values: {
+            count: nodeRows.length + linkRows.length + zoneRows.length + routerRows.length,
+          },
+        }) ||
+        `${nodeRows.length + linkRows.length + zoneRows.length + routerRows.length} assets loaded in this workspace`
+      );
+    }
+
+    return (
+      $t('admin.network.map.search.summary_results', {
+        values: {
+          count: searchResultCount,
+          groups: searchGroups.length,
+        },
+      }) || `${searchResultCount} matching results across ${searchGroups.length} sections`
+    );
+  });
   const linkFieldConfig = $derived.by(() => getLinkFieldConfig(linkForm.link_type));
 
   const tenantCtx = $derived.by(() =>
@@ -320,6 +445,13 @@
       return;
     }
     workspaceState = applyNetworkMapWorkspaceDefaults(workspaceState, workspaceDefaults);
+    if (workspaceCapabilities.canManageTopology) {
+      applyQuickMode('topology');
+    } else if (workspaceCapabilities.canReadNetworkNoc && !workspaceCapabilities.canReadCustomers) {
+      applyQuickMode('issues');
+    } else if (workspaceCapabilities.canReadCustomers || workspaceCapabilities.canReadWorkOrders) {
+      applyQuickMode('field');
+    }
     ensureMaplibreCompatHelpers();
     void initMap();
   });
@@ -369,6 +501,176 @@
     if (workspaceDefaults.mode === 'investigate') {
       workspaceState = enterInvestigationMode(workspaceState, workspaceDefaults.investigationKind);
     }
+  }
+
+  function focusMapOnCoordinates(lng: number, lat: number, zoomFloor = 13) {
+    if (!map || !Number.isFinite(lng) || !Number.isFinite(lat)) return;
+    const currentZoom = Number.isFinite(map.getZoom()) ? map.getZoom() : zoomFloor;
+    map.flyTo({
+      center: [lng, lat],
+      zoom: Math.max(currentZoom, zoomFloor),
+      essential: true,
+    });
+  }
+
+  function coordinateFromGeometry(geometry: Geometry | null | undefined): [number, number] | null {
+    if (!geometry) return null;
+    switch (geometry.type) {
+      case 'Point':
+        return geometry.coordinates as [number, number];
+      case 'LineString': {
+        const points = geometry.coordinates as Array<[number, number]>;
+        if (!points.length) return null;
+        return points[Math.floor(points.length / 2)] ?? points[0] ?? null;
+      }
+      case 'Polygon': {
+        const ring = (geometry.coordinates?.[0] || []) as Array<[number, number]>;
+        if (!ring.length) return null;
+        const [sumLng, sumLat] = ring.reduce(
+          (acc, [lng, lat]) => [acc[0] + lng, acc[1] + lat],
+          [0, 0],
+        );
+        return [sumLng / ring.length, sumLat / ring.length];
+      }
+      case 'MultiPoint':
+        return (geometry.coordinates?.[0] as [number, number]) ?? null;
+      case 'MultiLineString': {
+        const firstLine = (geometry.coordinates?.[0] || []) as Array<[number, number]>;
+        if (!firstLine.length) return null;
+        return firstLine[Math.floor(firstLine.length / 2)] ?? firstLine[0] ?? null;
+      }
+      case 'MultiPolygon': {
+        const firstRing = (geometry.coordinates?.[0]?.[0] || []) as Array<[number, number]>;
+        if (!firstRing.length) return null;
+        const [sumLng, sumLat] = firstRing.reduce(
+          (acc, [lng, lat]) => [acc[0] + lng, acc[1] + lat],
+          [0, 0],
+        );
+        return [sumLng / firstRing.length, sumLat / firstRing.length];
+      }
+      case 'GeometryCollection':
+        return coordinateFromGeometry(geometry.geometries?.[0]);
+      default:
+        return null;
+    }
+  }
+
+  function applyQuickMode(nextMode: NetworkMapQuickMode) {
+    quickMode = nextMode;
+    if (nextMode === 'all') {
+      nodesVisible = true;
+      linksVisible = true;
+      zonesVisible = true;
+      routersVisible = true;
+      customersVisible = true;
+      return;
+    }
+
+    if (nextMode === 'issues') {
+      nodesVisible = true;
+      linksVisible = true;
+      zonesVisible = true;
+      routersVisible = canReadRouterInventory;
+      customersVisible = false;
+      return;
+    }
+
+    if (nextMode === 'customers') {
+      nodesVisible = false;
+      linksVisible = false;
+      zonesVisible = false;
+      routersVisible = false;
+      customersVisible = true;
+      return;
+    }
+
+    if (nextMode === 'services') {
+      nodesVisible = true;
+      linksVisible = false;
+      zonesVisible = false;
+      routersVisible = false;
+      customersVisible = true;
+      return;
+    }
+
+    if (nextMode === 'topology') {
+      nodesVisible = true;
+      linksVisible = true;
+      zonesVisible = true;
+      routersVisible = canReadRouterInventory;
+      customersVisible = false;
+      return;
+    }
+
+    nodesVisible = true;
+    linksVisible = false;
+    zonesVisible = true;
+    routersVisible = false;
+    customersVisible = true;
+  }
+
+  function handleWorkspaceSearchSelect(item: NetworkMapSearchResultItem) {
+    workspaceSearchQuery = item.label;
+
+    if (item.kind === 'customer' || item.kind === 'service' || item.kind === 'node') {
+      const row = nodeRows.find((candidate) => candidate.id === item.id);
+      if (!row) return;
+      focusMapOnCoordinates(row.lng, row.lat, 14);
+      updateWorkspaceSelection(
+        buildSelectedMapObject({
+          kind: item.kind,
+          id: row.id,
+          label: row.name,
+          nodeType: row.node_type,
+        }),
+      );
+      return;
+    }
+
+    if (item.kind === 'link') {
+      const row = linkRows.find((candidate) => candidate.id === item.id);
+      if (!row) return;
+      const coord = coordinateFromGeometry(row.geometry);
+      if (coord) focusMapOnCoordinates(coord[0], coord[1], 13);
+      updateWorkspaceSelection(
+        buildSelectedMapObject({
+          kind: 'link',
+          id: row.id,
+          label: row.name,
+          linkType: row.link_type,
+        }),
+      );
+      return;
+    }
+
+    if (item.kind === 'zone') {
+      const row = zoneRows.find((candidate) => candidate.id === item.id);
+      if (!row) return;
+      const coord = coordinateFromGeometry(row.geometry);
+      if (coord) focusMapOnCoordinates(coord[0], coord[1], 12);
+      updateWorkspaceSelection(
+        buildSelectedMapObject({
+          kind: 'zone',
+          id: row.id,
+          label: row.name,
+          zoneType: row.zone_type,
+        }),
+      );
+      return;
+    }
+
+    const router = routerRows.find((candidate) => candidate.id === item.id);
+    if (!router) return;
+    if (router.longitude != null && router.latitude != null) {
+      focusMapOnCoordinates(Number(router.longitude), Number(router.latitude), 13);
+    }
+    updateWorkspaceSelection(
+      buildSelectedMapObject({
+        kind: 'router',
+        id: router.id,
+        label: router.identity || router.name,
+      }),
+    );
   }
 
   function handleNodeLayerClick(e: any) {
@@ -678,6 +980,8 @@
             linkRows = rows.linkRows;
             zoneRows = rows.zoneRows;
             routerRows = rows.routerRows;
+            customerRows = rows.customerRows;
+            serviceRows = rows.serviceRows;
             nodeCount = rows.nodeCount;
             linkCount = rows.linkCount;
             zoneCount = rows.zoneCount;
@@ -707,8 +1011,6 @@
       if (requestId !== lastRequestId) return;
       if (abortController.signal.aborted) return;
 
-      const rows = extractMapRows(result);
-
       setCachedMapData(
         dataCache,
         cacheKey,
@@ -728,6 +1030,8 @@
           linkRows = nextRows.linkRows;
           zoneRows = nextRows.zoneRows;
           routerRows = nextRows.routerRows;
+          customerRows = nextRows.customerRows;
+          serviceRows = nextRows.serviceRows;
           nodeCount = nextRows.nodeCount;
           linkCount = nextRows.linkCount;
           zoneCount = nextRows.zoneCount;
@@ -1302,17 +1606,6 @@
     deleteTargetId = '';
   }
 
-  function onMapSearchSelect(event: CustomEvent<{ lat: number; lng: number; label: string }>) {
-    if (!map) return;
-    const { lat, lng } = event.detail;
-    const currentZoom = Number.isFinite(map.getZoom()) ? map.getZoom() : 12;
-    map.flyTo({
-      center: [lng, lat],
-      zoom: Math.max(currentZoom, 13),
-      essential: true,
-    });
-  }
-
   $effect(() => {
     if (!selectedZoneId) {
       if (bindingForm.zone_id) bindingForm = { ...bindingForm, zone_id: '' };
@@ -1340,10 +1633,8 @@
     {syncingAssetNodes}
     {refreshing}
     {loading}
-    {nodeCount}
-    {linkCount}
-    {zoneCount}
-    {q}
+    filterQuery={q}
+    {workspaceSearchQuery}
     {status}
     {kind}
     {nodesVisible}
@@ -1353,12 +1644,45 @@
     showRoutersToggle={canReadRouterInventory}
     {customersVisible}
     {myLocationError}
+    {insightCards}
+    insightScopeLabel={$t('admin.network.map.insight.scope_viewport') || 'Current viewport'}
+    {searchGroups}
+    {searchSummary}
+    quickModes={quickModeOptions}
+    activeQuickMode={quickMode}
     title={$t('admin.network.map.title') || 'Network Topology Map'}
     subtitle={$t('admin.network.map.subtitle') ||
       'Visualize nodes, links, and service zones in current viewport.'}
     labels={{
       backToInstallation: $t('admin.network.map.back_to_installation') || 'Back to Installation',
       backToNoc: $t('admin.network.map.back_to_noc') || 'Back to NOC',
+      workspaceKicker: $t('admin.network.map.workspace.kicker') || 'Topology workspace',
+      workspaceTitle:
+        $t('admin.network.map.workspace.title') || 'Monitor the network before you edit it',
+      workspaceCopy:
+        $t('admin.network.map.workspace.copy') ||
+        'Start from the map, inspect live topology signals, then drill into customers, services, and risky paths.',
+      insightEmpty:
+        $t('admin.network.map.insight.empty') || 'No insight cards yet for this viewport.',
+      searchKicker: $t('admin.network.map.search.kicker') || 'Unified search',
+      searchTitle:
+        $t('admin.network.map.search.title') || 'Jump to any mapped asset, service, or customer',
+      searchHint:
+        $t('admin.network.map.search.hint') ||
+        'Search across infrastructure, customer endpoints, services, zones, and router inventory.',
+      searchPlaceholder:
+        $t('admin.network.map.search.placeholder') ||
+        'Search customer, service, node, link, zone, or router...',
+      searchEmptyTitle: $t('admin.network.map.search.empty_title') || 'No matching results',
+      searchEmptyHint:
+        $t('admin.network.map.search.empty_hint') ||
+        'Try another keyword or switch quick mode to widen the result scope.',
+      quickModesKicker: $t('admin.network.map.quick_modes.kicker') || 'Quick modes',
+      quickModesTitle:
+        $t('admin.network.map.quick_modes.title') || 'Swap workspace focus in one click',
+      quickModesHint:
+        $t('admin.network.map.quick_modes.hint') ||
+        'Each mode changes what matters most in the current map session.',
       syncing: 'Syncing...',
       syncAssets: 'Sync Router & Customer Nodes',
       loading: $t('common.loading') || 'Loading...',
@@ -1366,19 +1690,29 @@
       nodes: $t('admin.network.map.stats.nodes') || 'Nodes',
       links: $t('admin.network.map.stats.links') || 'Links',
       zones: $t('admin.network.map.stats.zones') || 'Zones',
-      search: $t('admin.network.map.filters.search') || 'Search',
-      searchPlaceholder:
-        $t('admin.network.map.filters.search_placeholder') || 'Search node/link/zone...',
+      routers: $t('admin.network.map.layers.routers') || 'Routers',
+      customers: $t('admin.network.map.layers.customers') || 'Customers',
+      filterSearch: $t('admin.network.map.filters.search') || 'Data filter',
+      filterSearchPlaceholder:
+        $t('admin.network.map.filters.search_placeholder') ||
+        'Filter fetched data by node/link/zone...',
       status: $t('admin.network.map.filters.status') || 'Status',
       anyStatus: $t('admin.network.map.filters.any_status') || 'Any status',
       kind: $t('admin.network.map.filters.kind') || 'Type',
       anyKind: $t('admin.network.map.filters.any_kind') || 'Any type',
       apply: $t('common.apply') || 'Apply',
       reset: $t('common.reset') || 'Reset',
+      layerTitle: $t('admin.network.map.layers.title') || 'Layer visibility',
+      layerSubtitle:
+        $t('admin.network.map.layers.subtitle') ||
+        'Tune what stays on the map while you inspect routes and customers.',
     }}
-    onQChange={(value) => (q = value)}
+    onFilterQueryChange={(value) => (q = value)}
+    onWorkspaceSearchChange={(value) => (workspaceSearchQuery = value)}
+    onWorkspaceSearchSelect={handleWorkspaceSearchSelect}
     onStatusChange={(value) => (status = value)}
     onKindChange={(value) => (kind = value)}
+    onQuickModeSelect={(key) => applyQuickMode(key as NetworkMapQuickMode)}
     onApplyFilters={() => void onApplyFilters()}
     {onResetFilters}
     onSyncAssets={async () => {
@@ -1398,7 +1732,7 @@
   <MapCanvasShell
     bind:mapEl
     bind:viewMode
-    on:searchselect={onMapSearchSelect}
+    showSearch={false}
     showViewSwitch={false}
     {loading}
     {mapUnavailable}

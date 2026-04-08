@@ -3578,15 +3578,55 @@
         "back_to_noc": "Back to NOC",
         "back_to_installation": "Back to Installation",
         "bbox": "Viewport bbox",
+        "workspace": {
+          "kicker": "Topology workspace",
+          "title": "Monitor the network before you edit it",
+          "copy": "Start from the map, inspect live topology signals, then drill into customers, services, and risky paths."
+        },
+        "insight": {
+          "empty": "No insight cards yet for this viewport.",
+          "scope_viewport": "Current viewport"
+        },
+        "search": {
+          "kicker": "Unified search",
+          "title": "Jump to any mapped asset, service, or customer",
+          "hint": "Search across infrastructure, customer endpoints, services, zones, and router inventory.",
+          "placeholder": "Search customer, service, node, link, zone, or router...",
+          "empty_title": "No matching results",
+          "empty_hint": "Try another keyword or switch quick mode to widen the result scope.",
+          "summary_idle": "{count} assets loaded in this workspace",
+          "summary_results": "{count} matching results across {groups} sections"
+        },
+        "quick_modes": {
+          "kicker": "Quick modes",
+          "title": "Swap workspace focus in one click",
+          "hint": "Each mode changes what matters most in the current map session.",
+          "all": "All",
+          "all_hint": "Balanced workspace across the loaded map",
+          "issues": "Issues",
+          "issues_hint": "Focus degraded links, risky zones, and unstable nodes",
+          "customers": "Customers",
+          "customers_hint": "Inspect customer endpoints and last-mile placements",
+          "services": "Services",
+          "services_hint": "Track mapped service nodes and activation context",
+          "topology": "Topology",
+          "topology_hint": "Show the infrastructure graph and router overlay",
+          "field": "Field",
+          "field_hint": "Prioritize impacted services and field-relevant assets"
+        },
         "stats": {
           "nodes": "Nodes",
           "links": "Links",
           "zones": "Zones"
         },
         "layers": {
+          "title": "Layer visibility",
+          "subtitle": "Tune what stays on the map while you inspect routes and customers.",
           "nodes": "Nodes",
           "links": "Links",
-          "zones": "Zones"
+          "zones": "Zones",
+          "routers": "Routers",
+          "customers": "Customers"
         },
         "view": {
           "label": "View",
@@ -3598,8 +3638,8 @@
           "hide": "Hide My Location"
         },
         "filters": {
-          "search": "Search",
-          "search_placeholder": "Search node/link/zone...",
+          "search": "Data filter",
+          "search_placeholder": "Filter fetched data by node/link/zone...",
           "status": "Status",
           "kind": "Type",
           "any_status": "Any status",

@@ -1,6 +1,15 @@
 <script lang="ts">
+  import type {
+    NetworkMapInsightCard,
+    NetworkMapSearchResultGroup,
+    NetworkMapSearchResultItem,
+  } from '$lib/components/network/networkMapInsights';
+  import type { NetworkMapQuickModeOption } from '$lib/components/network/NetworkMapQuickModes.svelte';
   import Icon from '$lib/components/ui/Icon.svelte';
   import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
+  import NetworkMapInsightStrip from '$lib/components/network/NetworkMapInsightStrip.svelte';
+  import NetworkMapQuickModes from '$lib/components/network/NetworkMapQuickModes.svelte';
+  import NetworkMapSearchBar from '$lib/components/network/NetworkMapSearchBar.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
 
   let {
@@ -12,10 +21,8 @@
     syncingAssetNodes,
     refreshing,
     loading,
-    nodeCount,
-    linkCount,
-    zoneCount,
-    q,
+    filterQuery,
+    workspaceSearchQuery,
     status,
     kind,
     nodesVisible,
@@ -28,9 +35,18 @@
     title,
     subtitle,
     labels,
-    onQChange,
+    insightCards,
+    insightScopeLabel,
+    searchGroups,
+    searchSummary,
+    quickModes,
+    activeQuickMode,
+    onFilterQueryChange,
+    onWorkspaceSearchChange,
+    onWorkspaceSearchSelect,
     onStatusChange,
     onKindChange,
+    onQuickModeSelect,
     onApplyFilters,
     onResetFilters,
     onSyncAssets,
@@ -49,10 +65,8 @@
     syncingAssetNodes: boolean;
     refreshing: boolean;
     loading: boolean;
-    nodeCount: number;
-    linkCount: number;
-    zoneCount: number;
-    q: string;
+    filterQuery: string;
+    workspaceSearchQuery: string;
     status: string;
     kind: string;
     nodesVisible: boolean;
@@ -65,9 +79,18 @@
     title: string;
     subtitle: string;
     labels: Record<string, string>;
-    onQChange: (value: string) => void;
+    insightCards: NetworkMapInsightCard[];
+    insightScopeLabel: string;
+    searchGroups: NetworkMapSearchResultGroup[];
+    searchSummary: string;
+    quickModes: readonly NetworkMapQuickModeOption[];
+    activeQuickMode: string;
+    onFilterQueryChange: (value: string) => void;
+    onWorkspaceSearchChange: (value: string) => void;
+    onWorkspaceSearchSelect: (item: NetworkMapSearchResultItem) => void;
     onStatusChange: (value: string) => void;
     onKindChange: (value: string) => void;
+    onQuickModeSelect: (key: string) => void;
     onApplyFilters: () => void;
     onResetFilters: () => void;
     onSyncAssets: () => void;
@@ -81,247 +104,307 @@
 </script>
 
 {#if !compactMode}
-  <NetworkPageHeader {title} {subtitle}>
-    {#snippet actions()}
-      {#if fromInstallation}
-        <a class="btn ghost" href={installationReturnUrl}>
+  <div class="overview-shell">
+    <NetworkPageHeader {title} {subtitle}>
+      {#snippet actions()}
+        {#if fromInstallation}
+          <a class="btn ghost" href={installationReturnUrl}>
+            <Icon name="arrow-left" size={16} />
+            {labels.backToInstallation}
+          </a>
+        {/if}
+        <a class="btn ghost" href={`${tenantPrefix}/admin/network/noc`}>
           <Icon name="arrow-left" size={16} />
-          {labels.backToInstallation}
+          {labels.backToNoc}
         </a>
-      {/if}
-      <a class="btn ghost" href={`${tenantPrefix}/admin/network/noc`}>
-        <Icon name="arrow-left" size={16} />
-        {labels.backToNoc}
-      </a>
-      {#if canManageTopology}
-        <button
-          class="btn ghost"
-          type="button"
-          onclick={onSyncAssets}
-          disabled={syncingAssetNodes || refreshing || loading}
-        >
-          <Icon name="git-merge" size={16} />
-          {syncingAssetNodes ? labels.syncing : labels.syncAssets}
+        {#if canManageTopology}
+          <button
+            class="btn ghost"
+            type="button"
+            onclick={onSyncAssets}
+            disabled={syncingAssetNodes || refreshing || loading}
+          >
+            <Icon name="git-merge" size={16} />
+            {syncingAssetNodes ? labels.syncing : labels.syncAssets}
+          </button>
+        {/if}
+        <button class="btn" type="button" onclick={onRefresh} disabled={refreshing || loading}>
+          <Icon name="refresh-cw" size={16} />
+          {refreshing ? labels.loading : labels.refresh}
         </button>
-      {/if}
-      <button class="btn" type="button" onclick={onRefresh} disabled={refreshing || loading}>
-        <Icon name="refresh-cw" size={16} />
-        {refreshing ? labels.loading : labels.refresh}
-      </button>
-    {/snippet}
-  </NetworkPageHeader>
+      {/snippet}
+    </NetworkPageHeader>
 
-  <div class="stats">
-    <div class="stat-card">
-      <div class="stat-top">
-        <span>{labels.nodes}</span>
-        <Icon name="map-pin" size={16} />
+    <div class="workspace-composer">
+      <div class="workspace-intro">
+        <div class="workspace-kicker">{labels.workspaceKicker}</div>
+        <h2 class="workspace-title">{labels.workspaceTitle}</h2>
+        <p class="workspace-copy">{labels.workspaceCopy}</p>
       </div>
-      <div class="stat-value">{nodeCount}</div>
-    </div>
-    <div class="stat-card tone-ok">
-      <div class="stat-top">
-        <span>{labels.links}</span>
-        <Icon name="git-merge" size={16} />
-      </div>
-      <div class="stat-value">{linkCount}</div>
-    </div>
-    <div class="stat-card tone-warn">
-      <div class="stat-top">
-        <span>{labels.zones}</span>
-        <Icon name="layers" size={16} />
-      </div>
-      <div class="stat-value">{zoneCount}</div>
-    </div>
-  </div>
 
-  <div class="filters-wrap">
-    <NetworkFilterPanel>
-      <div class="control">
-        <label for="nm-search">{labels.search}</label>
-        <input
-          id="nm-search"
-          class="input"
-          type="text"
-          value={q}
+      <NetworkMapInsightStrip
+        cards={insightCards}
+        scopeLabel={insightScopeLabel}
+        emptyLabel={labels.insightEmpty}
+      />
+
+      <div class="search-section">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">{labels.searchKicker}</div>
+            <div class="section-title">{labels.searchTitle}</div>
+          </div>
+          <div class="section-copy">{labels.searchHint}</div>
+        </div>
+
+        <NetworkMapSearchBar
+          query={workspaceSearchQuery}
+          groups={searchGroups}
+          summary={searchSummary}
           placeholder={labels.searchPlaceholder}
-          oninput={(e) => onQChange((e.currentTarget as HTMLInputElement).value)}
-          onkeydown={(e) => e.key === 'Enter' && onApplyFilters()}
+          emptyTitle={labels.searchEmptyTitle}
+          emptyHint={labels.searchEmptyHint}
+          onQueryChange={onWorkspaceSearchChange}
+          onSelect={onWorkspaceSearchSelect}
         />
       </div>
 
-      <div class="control">
-        <label for="nm-status">{labels.status}</label>
-        <select
-          id="nm-status"
-          class="input"
-          value={status}
-          onchange={(e) => onStatusChange((e.currentTarget as HTMLSelectElement).value)}
-        >
-          <option value="">{labels.anyStatus}</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-          <option value="maintenance">Maintenance</option>
-          <option value="up">Up</option>
-          <option value="down">Down</option>
-          <option value="degraded">Degraded</option>
-        </select>
-      </div>
+      <div class="quick-mode-section">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">{labels.quickModesKicker}</div>
+            <div class="section-title">{labels.quickModesTitle}</div>
+          </div>
+          <div class="section-copy">{labels.quickModesHint}</div>
+        </div>
 
-      <div class="control">
-        <label for="nm-kind">{labels.kind}</label>
-        <select
-          id="nm-kind"
-          class="input"
-          value={kind}
-          onchange={(e) => onKindChange((e.currentTarget as HTMLSelectElement).value)}
-        >
-          <option value="">{labels.anyKind}</option>
-          <option value="core">Core</option>
-          <option value="pop">POP</option>
-          <option value="olt">OLT</option>
-          <option value="router">Router</option>
-          <option value="switch">Switch</option>
-          <option value="tower">Tower</option>
-          <option value="ap">AP</option>
-          <option value="odc">ODC</option>
-          <option value="odp">ODP</option>
-          <option value="splitter">Splitter</option>
-          <option value="junction">Junction</option>
-          <option value="customer_premise">Customer Premise</option>
-          <option value="fiber">Fiber</option>
-          <option value="lan">LAN</option>
-          <option value="wireless">Wireless</option>
-          <option value="ptp_radio">PTP Radio</option>
-        </select>
-      </div>
-
-      <div class="control control-actions">
-        <div class="control-spacer" aria-hidden="true"></div>
-        <button class="btn" type="button" onclick={onApplyFilters} disabled={refreshing || loading}>
-          <Icon name="check" size={14} />
-          {labels.apply}
-        </button>
-        <button
-          class="btn ghost"
-          type="button"
-          onclick={onResetFilters}
-          disabled={refreshing || loading}
-        >
-          <Icon name="x-circle" size={14} />
-          {labels.reset}
-        </button>
-      </div>
-    </NetworkFilterPanel>
-  </div>
-
-  <div class="toolbar-wrap">
-    <div class="map-toolbar">
-      <div class="layer-toggles">
-        <label class="toggle">
-          <input
-            type="checkbox"
-            checked={nodesVisible}
-            onchange={(e) => onNodesVisibleChange((e.currentTarget as HTMLInputElement).checked)}
-          />
-          <span>{labels.nodes}</span>
-        </label>
-        <label class="toggle">
-          <input
-            type="checkbox"
-            checked={linksVisible}
-            onchange={(e) => onLinksVisibleChange((e.currentTarget as HTMLInputElement).checked)}
-          />
-          <span>{labels.links}</span>
-        </label>
-        <label class="toggle">
-          <input
-            type="checkbox"
-            checked={zonesVisible}
-            onchange={(e) => onZonesVisibleChange((e.currentTarget as HTMLInputElement).checked)}
-          />
-          <span>{labels.zones}</span>
-        </label>
-        {#if showRoutersToggle}
-          <label class="toggle">
-            <input
-              type="checkbox"
-              checked={routersVisible}
-              onchange={(e) =>
-                onRoutersVisibleChange((e.currentTarget as HTMLInputElement).checked)}
-            />
-            <span>Routers</span>
-          </label>
-        {/if}
-        <label class="toggle">
-          <input
-            type="checkbox"
-            checked={customersVisible}
-            onchange={(e) =>
-              onCustomersVisibleChange((e.currentTarget as HTMLInputElement).checked)}
-          />
-          <span>Customers</span>
-        </label>
+        <NetworkMapQuickModes
+          modes={quickModes}
+          activeKey={activeQuickMode}
+          onSelect={onQuickModeSelect}
+        />
       </div>
     </div>
 
-    {#if myLocationError}
-      <div class="location-error">
-        <Icon name="alert-triangle" size={14} />
-        <span>{myLocationError}</span>
+    <div class="secondary-controls">
+      <NetworkFilterPanel>
+        <div class="control">
+          <label for="nm-filter-search">{labels.filterSearch}</label>
+          <input
+            id="nm-filter-search"
+            class="input"
+            type="text"
+            value={filterQuery}
+            placeholder={labels.filterSearchPlaceholder}
+            oninput={(event) =>
+              onFilterQueryChange((event.currentTarget as HTMLInputElement).value)}
+            onkeydown={(event) => event.key === 'Enter' && onApplyFilters()}
+          />
+        </div>
+
+        <div class="control">
+          <label for="nm-status">{labels.status}</label>
+          <select
+            id="nm-status"
+            class="input"
+            value={status}
+            onchange={(event) => onStatusChange((event.currentTarget as HTMLSelectElement).value)}
+          >
+            <option value="">{labels.anyStatus}</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="up">Up</option>
+            <option value="down">Down</option>
+            <option value="degraded">Degraded</option>
+          </select>
+        </div>
+
+        <div class="control">
+          <label for="nm-kind">{labels.kind}</label>
+          <select
+            id="nm-kind"
+            class="input"
+            value={kind}
+            onchange={(event) => onKindChange((event.currentTarget as HTMLSelectElement).value)}
+          >
+            <option value="">{labels.anyKind}</option>
+            <option value="core">Core</option>
+            <option value="pop">POP</option>
+            <option value="olt">OLT</option>
+            <option value="router">Router</option>
+            <option value="switch">Switch</option>
+            <option value="tower">Tower</option>
+            <option value="ap">AP</option>
+            <option value="odc">ODC</option>
+            <option value="odp">ODP</option>
+            <option value="splitter">Splitter</option>
+            <option value="junction">Junction</option>
+            <option value="customer_premise">Customer Premise</option>
+            <option value="fiber">Fiber</option>
+            <option value="lan">LAN</option>
+            <option value="wireless">Wireless</option>
+            <option value="ptp_radio">PTP Radio</option>
+          </select>
+        </div>
+
+        <div class="control control-actions">
+          <div class="control-spacer" aria-hidden="true"></div>
+          <button
+            class="btn"
+            type="button"
+            onclick={onApplyFilters}
+            disabled={refreshing || loading}
+          >
+            <Icon name="check" size={14} />
+            {labels.apply}
+          </button>
+          <button
+            class="btn ghost"
+            type="button"
+            onclick={onResetFilters}
+            disabled={refreshing || loading}
+          >
+            <Icon name="x-circle" size={14} />
+            {labels.reset}
+          </button>
+        </div>
+      </NetworkFilterPanel>
+
+      <div class="toolbar-wrap">
+        <div class="map-toolbar">
+          <div class="toolbar-copy">
+            <div class="toolbar-title">{labels.layerTitle}</div>
+            <div class="toolbar-subtitle">{labels.layerSubtitle}</div>
+          </div>
+          <div class="layer-toggles">
+            <label class="toggle">
+              <input
+                type="checkbox"
+                checked={nodesVisible}
+                onchange={(event) =>
+                  onNodesVisibleChange((event.currentTarget as HTMLInputElement).checked)}
+              />
+              <span>{labels.nodes}</span>
+            </label>
+            <label class="toggle">
+              <input
+                type="checkbox"
+                checked={linksVisible}
+                onchange={(event) =>
+                  onLinksVisibleChange((event.currentTarget as HTMLInputElement).checked)}
+              />
+              <span>{labels.links}</span>
+            </label>
+            <label class="toggle">
+              <input
+                type="checkbox"
+                checked={zonesVisible}
+                onchange={(event) =>
+                  onZonesVisibleChange((event.currentTarget as HTMLInputElement).checked)}
+              />
+              <span>{labels.zones}</span>
+            </label>
+            {#if showRoutersToggle}
+              <label class="toggle">
+                <input
+                  type="checkbox"
+                  checked={routersVisible}
+                  onchange={(event) =>
+                    onRoutersVisibleChange((event.currentTarget as HTMLInputElement).checked)}
+                />
+                <span>{labels.routers}</span>
+              </label>
+            {/if}
+            <label class="toggle">
+              <input
+                type="checkbox"
+                checked={customersVisible}
+                onchange={(event) =>
+                  onCustomersVisibleChange((event.currentTarget as HTMLInputElement).checked)}
+              />
+              <span>{labels.customers}</span>
+            </label>
+          </div>
+        </div>
+
+        {#if myLocationError}
+          <div class="location-error">
+            <Icon name="alert-triangle" size={14} />
+            <span>{myLocationError}</span>
+          </div>
+        {/if}
       </div>
-    {/if}
+    </div>
   </div>
 {/if}
 
 <style>
-  .filters-wrap {
-    margin-bottom: 12px;
-  }
-
-  .stats {
+  .overview-shell {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 12px;
-    margin-bottom: 14px;
+    gap: 16px;
   }
 
-  .stat-card {
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--bg-card) 86%, #16213f 14%) 0%,
-      var(--bg-card) 100%
-    );
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
-    padding: 14px 14px 12px;
-    box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.08);
+  .workspace-composer {
+    display: grid;
+    gap: 16px;
+    padding: 18px;
+    border-radius: 24px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
+    background:
+      radial-gradient(circle at top right, rgba(23, 37, 84, 0.28), transparent 34%),
+      linear-gradient(180deg, color-mix(in srgb, var(--bg-card) 94%, #050d18 6%), var(--bg-card));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 30px 60px rgba(2, 6, 23, 0.12);
   }
 
-  .stat-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: var(--text-secondary);
-    font-weight: 800;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+  .workspace-intro {
+    display: grid;
+    gap: 8px;
+  }
+
+  .workspace-kicker,
+  .section-kicker {
     font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-primary) 72%, white 28%);
   }
 
-  .stat-value {
-    margin-top: 10px;
-    font-size: 1.6rem;
-    font-weight: 950;
+  .workspace-title,
+  .section-title {
+    margin: 0;
+    font-size: 1.02rem;
+    font-weight: 900;
     color: var(--text-primary);
   }
 
-  .tone-ok {
-    border-color: color-mix(in srgb, #1fbf75 55%, var(--border-color));
+  .workspace-copy,
+  .section-copy {
+    margin: 0;
+    color: var(--text-secondary);
+    line-height: 1.5;
   }
 
-  .tone-warn {
-    border-color: color-mix(in srgb, #ffcc66 55%, var(--border-color));
+  .search-section,
+  .quick-mode-section {
+    display: grid;
+    gap: 12px;
+  }
+
+  .section-head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .secondary-controls {
+    display: grid;
+    gap: 12px;
   }
 
   .toolbar-wrap {
@@ -333,13 +416,28 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: 14px;
     flex-wrap: wrap;
     border: 1px solid var(--border-color);
-    border-radius: 14px;
-    padding: 10px 12px;
+    border-radius: 16px;
+    padding: 12px 14px;
     background: var(--bg-card);
     box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.08);
+  }
+
+  .toolbar-copy {
+    display: grid;
+    gap: 4px;
+  }
+
+  .toolbar-title {
+    font-weight: 800;
+    color: var(--text-primary);
+  }
+
+  .toolbar-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.84rem;
   }
 
   .layer-toggles {
@@ -415,5 +513,12 @@
   .btn:disabled {
     opacity: 0.65;
     cursor: not-allowed;
+  }
+
+  @media (max-width: 768px) {
+    .workspace-composer {
+      padding: 14px;
+      border-radius: 20px;
+    }
   }
 </style>
