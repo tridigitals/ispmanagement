@@ -234,6 +234,8 @@
       var(--bg-card);
     backdrop-filter: blur(14px);
     box-shadow: 0 24px 48px rgba(2, 6, 23, 0.28);
+    max-height: min(78vh, 720px);
+    overflow: auto;
   }
 
   .controls-head {
@@ -306,6 +308,45 @@
       left: 14px;
       right: 14px;
       width: auto;
+      top: auto;
+      bottom: 14px;
+      max-height: min(46vh, 420px);
+      padding: 12px;
+      border-radius: 18px;
+    }
+
+    .controls-title {
+      font-size: 0.76rem;
+    }
+
+    .controls-subtitle {
+      font-size: 0.74rem;
+    }
+
+    .control-group {
+      gap: 6px;
+    }
+
+    .control-row,
+    .toggle-grid {
+      gap: 6px;
+    }
+
+    .control-chip,
+    .toggle-chip {
+      padding: 8px 10px;
+      font-size: 0.78rem;
+      min-height: 34px;
+    }
+
+    .toggle-chip {
+      flex: 1 1 calc(50% - 6px);
+      justify-content: center;
+    }
+
+    .control-row > button {
+      flex: 1 1 100%;
+      justify-content: center;
     }
   }
 </style>

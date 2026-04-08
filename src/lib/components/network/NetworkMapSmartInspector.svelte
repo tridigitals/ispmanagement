@@ -89,6 +89,16 @@
     </button>
   </div>
 
+  {#if collapsed && activeModel}
+    <div class="collapsed-summary">
+      <div class={`collapsed-indicator ${toneClass(activeModel.tone)}`}></div>
+      <div class="collapsed-labels">
+        <div class="collapsed-title">{activeModel.title}</div>
+        <div class="collapsed-subtitle">{activeModel.subtitle}</div>
+      </div>
+    </div>
+  {/if}
+
   {#if !collapsed}
     <div class={`inspector-body ${toneClass(activeModel?.tone || 'muted')}`}>
       {#if activeModel}
@@ -148,7 +158,7 @@
   }
 
   .smart-inspector.collapsed {
-    width: 64px;
+    width: 88px;
   }
 
   .inspector-head {
@@ -194,6 +204,42 @@
     gap: 12px;
     padding: 14px;
     overflow: auto;
+  }
+
+  .collapsed-summary {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    padding: 14px 10px;
+  }
+
+  .collapsed-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--border-color) 75%, transparent);
+  }
+
+  .collapsed-labels {
+    display: grid;
+    gap: 6px;
+    justify-items: center;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    min-height: 180px;
+  }
+
+  .collapsed-title {
+    font-size: 0.72rem;
+    font-weight: 900;
+    color: var(--text-primary);
+    line-height: 1.1;
+  }
+
+  .collapsed-subtitle {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    line-height: 1.2;
   }
 
   .hero-card {
@@ -284,8 +330,23 @@
     border-color: color-mix(in srgb, #10b981 42%, var(--border-color));
   }
 
+  .tone-ok.collapsed-indicator,
+  .tone-ok .collapsed-indicator {
+    background: #10b981;
+  }
+
   .tone-warn .hero-card {
     border-color: color-mix(in srgb, #f59e0b 42%, var(--border-color));
+  }
+
+  .tone-warn.collapsed-indicator,
+  .tone-warn .collapsed-indicator {
+    background: #f59e0b;
+  }
+
+  .tone-muted.collapsed-indicator,
+  .tone-muted .collapsed-indicator {
+    background: color-mix(in srgb, var(--border-color) 80%, transparent);
   }
 
   .sr-only {
@@ -298,5 +359,29 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+
+  @media (max-width: 1180px) {
+    .smart-inspector {
+      min-height: 0;
+    }
+
+    .inspector-head {
+      padding: 12px;
+    }
+
+    .inspector-body {
+      padding: 12px;
+      gap: 10px;
+    }
+
+    .action-row {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .action-btn {
+      justify-content: center;
+    }
   }
 </style>

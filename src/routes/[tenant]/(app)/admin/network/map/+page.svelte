@@ -281,6 +281,8 @@
   );
 
   let refreshDebounce: ReturnType<typeof setTimeout> | null = null;
+  let freshnessTimer: ReturnType<typeof setInterval> | null = null;
+  let syncResponsiveInspectorState: (() => void) | null = null;
   let lastRequestId = 0;
   let myLocationMarker: import('maplibre-gl').Marker | null = null;
   let installationTargetMarker: import('maplibre-gl').Marker | null = null;
@@ -292,6 +294,9 @@
   let activeDataAbortController: AbortController | null = null;
   let didInitialFitToMarkers = false;
   let lastAssetSyncAt = 0;
+  let lastMapDataLoadedAt = $state(0);
+  let lastMapDataSource = $state<'live' | 'cache' | 'none'>('none');
+  let currentTimeMs = $state(Date.now());
   const dataCache = new Map<string, NetworkMapCacheEntry>();
   const dataCacheTtlMs = 20_000;
   const dataCacheMaxEntries = 40;
@@ -315,6 +320,20 @@
   const workspaceDefaults = $derived.by(() =>
     buildNetworkMapWorkspaceDefaults(workspaceCapabilities),
   );
+  const workspaceRole = $derived.by(() => {
+    if (workspaceCapabilities.canManageTopology) return 'manage';
+    if (
+      workspaceCapabilities.canReadNetworkNoc &&
+      !workspaceCapabilities.canReadCustomers &&
+      !workspaceCapabilities.canReadWorkOrders
+    ) {
+      return 'noc';
+    }
+    if (workspaceCapabilities.canReadCustomers || workspaceCapabilities.canReadWorkOrders) {
+      return 'technician';
+    }
+    return 'viewer';
+  });
   const insightCards = $derived.by(() =>
     buildNetworkMapInsightCards({
       capabilities: workspaceCapabilities,
@@ -427,6 +446,51 @@
       }) || `${searchResultCount} matching results across ${searchGroups.length} sections`
     );
   });
+  const mapDataFreshnessLabel = $derived.by(() => {
+    if (!lastMapDataLoadedAt) return 'Viewport data has not loaded yet.';
+    const diffMs = Math.max(0, currentTimeMs - lastMapDataLoadedAt);
+    let age = 'just now';
+    if (diffMs >= 3_600_000) {
+      age = `${Math.round(diffMs / 3_600_000)}h ago`;
+    } else if (diffMs >= 60_000) {
+      age = `${Math.round(diffMs / 60_000)}m ago`;
+    } else if (diffMs >= 10_000) {
+      age = `${Math.round(diffMs / 1000)}s ago`;
+    }
+    return lastMapDataSource === 'cache'
+      ? `Viewport data restored from cache ${age}.`
+      : `Viewport data updated ${age}.`;
+  });
+  const workspaceStatusNotes = $derived.by(() => {
+    const notes: string[] = [mapDataFreshnessLabel];
+    if (!workspaceCapabilities.canReadRouterInventory) {
+      notes.push('Router overlay is unavailable for this role.');
+    } else if (!routerRows.length) {
+      notes.push(
+        'Router overlay is enabled, but no router markers are available in this viewport.',
+      );
+    }
+    if (!workspaceCapabilities.canReadCustomers && !workspaceCapabilities.canReadWorkOrders) {
+      notes.push('Customer and field context is limited for this role.');
+    }
+    return notes;
+  });
+  const workspaceSubtitle = $derived.by(() => {
+    const base =
+      'Visualize nodes, links, service zones, and operational context from the current viewport.';
+    return `${base} ${workspaceStatusNotes[0] || ''}`.trim();
+  });
+  const floatingSubtitle = $derived.by(() => {
+    const roleHint =
+      workspaceRole === 'manage'
+        ? 'Balanced overview with manage tools nearby.'
+        : workspaceRole === 'noc'
+          ? 'Issue tracing is prioritized for this role.'
+          : workspaceRole === 'technician'
+            ? 'Field and service investigation is prioritized for this role.'
+            : 'Tune the map for the current investigation.';
+    return `${roleHint} ${mapDataFreshnessLabel}`;
+  });
   const inspectorDefaultModel = $derived.by(() => buildDefaultInspectorModel());
   const inspectorSelectedModel = $derived.by(() =>
     selectedObjectSummary(workspaceState.selectedObject),
@@ -460,9 +524,19 @@
       goto('/unauthorized');
       return;
     }
+    if (typeof window !== 'undefined') {
+      syncResponsiveInspectorState = () => {
+        inspectorCollapsed = window.innerWidth <= 1180;
+      };
+      syncResponsiveInspectorState();
+      window.addEventListener('resize', syncResponsiveInspectorState, { passive: true });
+      freshnessTimer = setInterval(() => {
+        currentTimeMs = Date.now();
+      }, 15_000);
+    }
     workspaceState = applyNetworkMapWorkspaceDefaults(workspaceState, workspaceDefaults);
     if (workspaceCapabilities.canManageTopology) {
-      applyQuickMode('topology');
+      applyQuickMode('all');
     } else if (workspaceCapabilities.canReadNetworkNoc && !workspaceCapabilities.canReadCustomers) {
       applyQuickMode('issues');
     } else if (workspaceCapabilities.canReadCustomers || workspaceCapabilities.canReadWorkOrders) {
@@ -474,6 +548,10 @@
 
   onDestroy(() => {
     if (refreshDebounce) clearTimeout(refreshDebounce);
+    if (freshnessTimer) clearInterval(freshnessTimer);
+    if (typeof window !== 'undefined' && syncResponsiveInspectorState) {
+      window.removeEventListener('resize', syncResponsiveInspectorState);
+    }
     activeDataAbortController?.abort();
     myLocationMarker?.remove();
     installationTargetMarker?.remove();
@@ -807,7 +885,8 @@
   function buildDefaultInspectorModel(): NetworkMapInspectorModel {
     return {
       title: 'Topology workspace',
-      subtitle: 'Select an asset on the map or use search to inspect service and network context.',
+      subtitle:
+        'Select an asset on the map or use search to inspect service, customer, and topology context.',
       tone: 'muted' as const,
       sections: [
         {
@@ -819,11 +898,19 @@
           ],
         },
         {
+          title: 'Data readiness',
+          lines: workspaceStatusNotes,
+        },
+        {
           title: 'Role focus',
           lines: [
-            workspaceCapabilities.canManageTopology
-              ? 'Manage-capable view: topology editing is available.'
-              : 'Monitoring-first view: focus on investigation and field operations.',
+            workspaceRole === 'manage'
+              ? 'Manage-capable view: stay in overview first, then open topology editing when needed.'
+              : workspaceRole === 'noc'
+                ? 'NOC-first view: tracing unstable paths and degraded links is prioritized.'
+                : workspaceRole === 'technician'
+                  ? 'Field-first view: impacted services and customer endpoints are prioritized.'
+                  : 'Monitoring-first view: inspect topology before taking action.',
             workspaceCapabilities.canReadNetworkNoc
               ? 'NOC context is available for issue tracing.'
               : 'NOC tracing is limited for this role.',
@@ -1262,6 +1349,8 @@
         : getCachedMapData(dataCache, cacheKey, dataCacheTtlMs);
       if (cached) {
         if (requestId !== lastRequestId) return;
+        lastMapDataLoadedAt = cached.at;
+        lastMapDataSource = 'cache';
         applyCachedMapData({
           cached,
           setRows: (rows) => {
@@ -1311,6 +1400,8 @@
         },
         dataCacheMaxEntries,
       );
+      lastMapDataLoadedAt = Date.now();
+      lastMapDataSource = 'live';
 
       applyFetchedMapData({
         result,
@@ -1981,8 +2072,7 @@
     quickModes={quickModeOptions}
     activeQuickMode={quickMode}
     title={$t('admin.network.map.title') || 'Network Topology Map'}
-    subtitle={$t('admin.network.map.subtitle') ||
-      'Visualize nodes, links, and service zones in current viewport.'}
+    subtitle={workspaceSubtitle}
     labels={{
       backToInstallation: $t('admin.network.map.back_to_installation') || 'Back to Installation',
       backToNoc: $t('admin.network.map.back_to_noc') || 'Back to NOC',
@@ -2077,9 +2167,7 @@
       <NetworkMapFloatingControls
         labels={{
           title: $t('admin.network.map.floating.title') || 'Map controls',
-          subtitle:
-            $t('admin.network.map.floating.subtitle') ||
-            'Tune layers, change view, and jump into investigation mode.',
+          subtitle: floatingSubtitle,
           layers: $t('admin.network.map.floating.layers') || 'Layers',
           view: $t('admin.network.map.floating.view') || 'View',
           tools: $t('admin.network.map.floating.tools') || 'Trace tools',

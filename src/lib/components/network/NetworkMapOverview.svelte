@@ -414,5 +414,25 @@
       padding: 14px;
       border-radius: 20px;
     }
+
+    .section-head {
+      align-items: start;
+    }
+
+    .workspace-title,
+    .section-title {
+      font-size: 0.96rem;
+    }
+
+    .workspace-copy,
+    .section-copy {
+      font-size: 0.84rem;
+    }
+
+    .btn {
+      width: 100%;
+      justify-content: center;
+      min-height: 40px;
+    }
   }
 </style>
