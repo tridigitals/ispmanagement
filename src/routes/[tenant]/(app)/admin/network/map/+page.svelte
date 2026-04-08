@@ -206,6 +206,7 @@
   let zoneBindings = $state<any[]>([]);
   let selectedZoneId = $state('');
   let selectedTab = $state<'nodes' | 'links' | 'zones' | 'bindings'>('nodes');
+  let manageMode = $state(false);
   let lastLoadedZoneId = '';
 
   let loadingManager = $state(false);
@@ -638,6 +639,16 @@
       mode: workspaceDefaults.mode,
       investigationState: null,
     };
+  }
+
+  function openManageWorkspace(tab: 'nodes' | 'links' | 'zones' | 'bindings') {
+    if (!canManageTopology) return;
+    selectedTab = tab;
+    manageMode = true;
+  }
+
+  function closeManageWorkspace() {
+    manageMode = false;
   }
 
   function inspectNodeFromPopup(node: NMNode) {
@@ -1526,6 +1537,8 @@
   }
 
   function openCreateNodeModal() {
+    manageMode = true;
+    selectedTab = 'nodes';
     editingNodeId = null;
     nodeForm = { name: '', node_type: 'router', status: 'active', lat: '', lng: '' };
     nodePickMode = true;
@@ -1580,6 +1593,8 @@
   }
 
   function openCreateLinkModal() {
+    manageMode = true;
+    selectedTab = 'links';
     editingLinkId = null;
     linkPickMode = false;
     linkPickStep = 'from';
@@ -1775,6 +1790,8 @@
   }
 
   function openCreateZoneModal() {
+    manageMode = true;
+    selectedTab = 'zones';
     editingZoneId = null;
     zoneForm = {
       name: '',
@@ -2072,6 +2089,10 @@
           serviceMode: $t('admin.network.map.floating.service_mode') || 'Service mode',
           traceMode: $t('admin.network.map.floating.trace_mode') || 'Trace mode',
           clearMode: $t('admin.network.map.floating.clear_mode') || 'Clear',
+          openNodes: $t('admin.network.map.floating.open_nodes') || 'Manage nodes',
+          openLinks: $t('admin.network.map.floating.open_links') || 'Manage links',
+          openZones: $t('admin.network.map.floating.open_zones') || 'Manage zones',
+          openBindings: $t('admin.network.map.floating.open_bindings') || 'Manage bindings',
           addNode: $t('admin.network.map.floating.add_node') || 'Add node',
           addLink: $t('admin.network.map.floating.add_link') || 'Add link',
           addZone: $t('admin.network.map.floating.add_zone') || 'Add zone',
@@ -2099,9 +2120,10 @@
         onEnterServiceMode={() => setInvestigationMode('service')}
         onEnterTraceMode={() => setInvestigationMode('trace')}
         onClearMode={clearInvestigationMode}
-        onOpenCreateNode={openCreateNodeModal}
-        onOpenCreateLink={openCreateLinkModal}
-        onOpenCreateZone={openCreateZoneModal}
+        onOpenManageNodes={() => openManageWorkspace('nodes')}
+        onOpenManageLinks={() => openManageWorkspace('links')}
+        onOpenManageZones={() => openManageWorkspace('zones')}
+        onOpenManageBindings={() => openManageWorkspace('bindings')}
       />
 
       <NetworkMapNodePanel
@@ -2170,6 +2192,10 @@
 
   {#if !compactMode}
     <NetworkMapManager
+      {manageMode}
+      title={$t('admin.network.map.manage.title') || 'Topology editor workspace'}
+      subtitle={$t('admin.network.map.manage.subtitle') ||
+        'Editing lives in a separate workspace so monitoring and investigation stay focused.'}
       {selectedTab}
       {nodeRows}
       {linkRows}
@@ -2180,6 +2206,7 @@
       {savingBinding}
       {deletingId}
       {bindingForm}
+      onClose={closeManageWorkspace}
       onSelectTab={(tab) => (selectedTab = tab)}
       onOpenCreateNode={openCreateNodeModal}
       onOpenCreateLink={openCreateLinkModal}

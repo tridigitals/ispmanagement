@@ -3638,9 +3638,17 @@
           "service_mode": "Service mode",
           "trace_mode": "Trace mode",
           "clear_mode": "Clear",
+          "open_nodes": "Manage nodes",
+          "open_links": "Manage links",
+          "open_zones": "Manage zones",
+          "open_bindings": "Manage bindings",
           "add_node": "Add node",
           "add_link": "Add link",
           "add_zone": "Add zone"
+        },
+        "manage": {
+          "title": "Topology editor workspace",
+          "subtitle": "Editing lives in a separate workspace so monitoring and investigation stay focused."
         },
         "inspector": {
           "title": "Smart inspector",

@@ -13,6 +13,10 @@
     serviceMode: string;
     traceMode: string;
     clearMode: string;
+    openNodes: string;
+    openLinks: string;
+    openZones: string;
+    openBindings: string;
     addNode: string;
     addLink: string;
     addZone: string;
@@ -43,9 +47,10 @@
     onEnterServiceMode,
     onEnterTraceMode,
     onClearMode,
-    onOpenCreateNode,
-    onOpenCreateLink,
-    onOpenCreateZone,
+    onOpenManageNodes,
+    onOpenManageLinks,
+    onOpenManageZones,
+    onOpenManageBindings,
   }: {
     labels: NetworkMapFloatingLabels;
     viewMode: 'standard' | 'satellite';
@@ -66,9 +71,10 @@
     onEnterServiceMode: () => void;
     onEnterTraceMode: () => void;
     onClearMode: () => void;
-    onOpenCreateNode: () => void;
-    onOpenCreateLink: () => void;
-    onOpenCreateZone: () => void;
+    onOpenManageNodes: () => void;
+    onOpenManageLinks: () => void;
+    onOpenManageZones: () => void;
+    onOpenManageBindings: () => void;
   } = $props();
 
   function buttonClass(active: boolean) {
@@ -186,17 +192,21 @@
     <section class="control-group">
       <div class="control-group-label">{labels.manage}</div>
       <div class="control-row">
-        <button type="button" class="control-chip" onclick={onOpenCreateNode}>
-          <Icon name="plus-circle" size={14} />
-          {labels.addNode}
+        <button type="button" class="control-chip" onclick={onOpenManageNodes}>
+          <Icon name="panel-bottom-open" size={14} />
+          {labels.openNodes}
         </button>
-        <button type="button" class="control-chip" onclick={onOpenCreateLink}>
-          <Icon name="plus-circle" size={14} />
-          {labels.addLink}
+        <button type="button" class="control-chip" onclick={onOpenManageLinks}>
+          <Icon name="panel-bottom-open" size={14} />
+          {labels.openLinks}
         </button>
-        <button type="button" class="control-chip" onclick={onOpenCreateZone}>
-          <Icon name="plus-circle" size={14} />
-          {labels.addZone}
+        <button type="button" class="control-chip" onclick={onOpenManageZones}>
+          <Icon name="panel-bottom-open" size={14} />
+          {labels.openZones}
+        </button>
+        <button type="button" class="control-chip" onclick={onOpenManageBindings}>
+          <Icon name="panel-bottom-open" size={14} />
+          {labels.openBindings}
         </button>
       </div>
     </section>

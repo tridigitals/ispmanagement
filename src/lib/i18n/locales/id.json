@@ -3424,9 +3424,17 @@
           "service_mode": "Mode service",
           "trace_mode": "Mode trace",
           "clear_mode": "Bersihkan",
+          "open_nodes": "Kelola node",
+          "open_links": "Kelola link",
+          "open_zones": "Kelola zona",
+          "open_bindings": "Kelola binding",
           "add_node": "Tambah node",
           "add_link": "Tambah link",
           "add_zone": "Tambah zona"
+        },
+        "manage": {
+          "title": "Workspace editor topologi",
+          "subtitle": "Aktivitas edit dipisahkan ke workspace sendiri agar monitoring dan investigasi tetap fokus."
         },
         "inspector": {
           "title": "Inspector cerdas",
