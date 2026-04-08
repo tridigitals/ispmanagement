@@ -6,6 +6,17 @@ use crate::models::{
 use crate::services::{AuthService, PppoeService};
 use tauri::State;
 
+async fn require_pppoe_permission(
+    auth: &AuthService,
+    claims: &crate::services::auth_service::Claims,
+    tenant_id: &str,
+    action: &str,
+) -> Result<(), String> {
+    auth.check_permission(&claims.sub, tenant_id, "pppoe", action)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub async fn list_pppoe_accounts(
     token: String,
@@ -24,7 +35,9 @@ pub async fn list_pppoe_accounts(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_pppoe_permission(&auth, &claims, &tenant_id, "read").await?;
 
     pppoe
         .list_accounts(
@@ -54,7 +67,9 @@ pub async fn get_pppoe_account(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_pppoe_permission(&auth, &claims, &tenant_id, "read").await?;
 
     pppoe
         .get_account(&claims.sub, &tenant_id, &id)
@@ -87,7 +102,9 @@ pub async fn create_pppoe_account(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_pppoe_permission(&auth, &claims, &tenant_id, "manage").await?;
 
     let dto = CreatePppoeAccountRequest {
         router_id,
@@ -134,7 +151,9 @@ pub async fn update_pppoe_account(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_pppoe_permission(&auth, &claims, &tenant_id, "manage").await?;
 
     let dto = UpdatePppoeAccountRequest {
         username,
@@ -168,7 +187,9 @@ pub async fn delete_pppoe_account(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_pppoe_permission(&auth, &claims, &tenant_id, "manage").await?;
 
     pppoe
         .delete_account(&claims.sub, &tenant_id, &id, Some("127.0.0.1"))
@@ -189,7 +210,9 @@ pub async fn apply_pppoe_account(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_pppoe_permission(&auth, &claims, &tenant_id, "manage").await?;
 
     pppoe
         .apply_account(&claims.sub, &tenant_id, &id, Some("127.0.0.1"))
@@ -210,7 +233,9 @@ pub async fn reconcile_pppoe_router(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_pppoe_permission(&auth, &claims, &tenant_id, "manage").await?;
 
     pppoe
         .reconcile_router(&claims.sub, &tenant_id, &router_id, Some("127.0.0.1"))
@@ -232,7 +257,9 @@ pub async fn preview_pppoe_import_from_router(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_pppoe_permission(&auth, &claims, &tenant_id, "manage").await?;
 
     pppoe
         .preview_import_from_router(
@@ -261,7 +288,9 @@ pub async fn import_pppoe_from_router(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_pppoe_permission(&auth, &claims, &tenant_id, "manage").await?;
 
     let req = PppoeImportFromRouterRequest {
         usernames,

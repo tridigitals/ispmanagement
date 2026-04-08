@@ -1,19 +1,13 @@
 use super::*;
 
 impl CustomerService {
-    pub(crate) fn portal_subscription_select_columns(
-        alias: &str,
-        price_expr: &str,
-    ) -> String {
+    pub(crate) fn portal_subscription_select_columns(alias: &str, price_expr: &str) -> String {
         format!(
             "{alias}.id, {alias}.tenant_id, {alias}.customer_id, {alias}.location_id, {alias}.package_id, {alias}.router_id, {alias}.billing_cycle, {price_expr} as price, {alias}.currency_code, {alias}.status, {alias}.starts_at, {alias}.ends_at, {alias}.grace_started_at, {alias}.grace_until, {alias}.notes, {alias}.created_at, {alias}.updated_at"
         )
     }
 
-    pub(crate) fn portal_subscription_view_select_columns(
-        alias: &str,
-        price_expr: &str,
-    ) -> String {
+    pub(crate) fn portal_subscription_view_select_columns(alias: &str, price_expr: &str) -> String {
         format!(
             "{base}, p.name AS package_name, l.label AS location_label, r.name AS router_name",
             base = Self::portal_subscription_select_columns(alias, price_expr),
@@ -293,8 +287,7 @@ impl CustomerService {
             ORDER BY {sort_column} {sort_direction}
             LIMIT ? OFFSET ?
             "#,
-            subscription_columns =
-                Self::portal_subscription_view_select_columns("cs", "cs.price"),
+            subscription_columns = Self::portal_subscription_view_select_columns("cs", "cs.price"),
         ))
         .bind(tenant_id)
         .bind(&customer_id)
@@ -545,24 +538,20 @@ impl CustomerService {
         .await?;
 
         #[cfg(feature = "postgres")]
-        let row: CustomerSubscription = sqlx::query_as(
-            &format!(
-                "SELECT {} FROM customer_subscriptions WHERE id = $1 AND tenant_id = $2",
-                Self::portal_subscription_select_columns("customer_subscriptions", "price::float8")
-            ),
-        )
+        let row: CustomerSubscription = sqlx::query_as(&format!(
+            "SELECT {} FROM customer_subscriptions WHERE id = $1 AND tenant_id = $2",
+            Self::portal_subscription_select_columns("customer_subscriptions", "price::float8")
+        ))
         .bind(&subscription_id)
         .bind(tenant_id)
         .fetch_one(&self.pool)
         .await?;
 
         #[cfg(feature = "sqlite")]
-        let row: CustomerSubscription = sqlx::query_as(
-            &format!(
-                "SELECT {} FROM customer_subscriptions WHERE id = ? AND tenant_id = ?",
-                Self::portal_subscription_select_columns("customer_subscriptions", "price")
-            ),
-        )
+        let row: CustomerSubscription = sqlx::query_as(&format!(
+            "SELECT {} FROM customer_subscriptions WHERE id = ? AND tenant_id = ?",
+            Self::portal_subscription_select_columns("customer_subscriptions", "price")
+        ))
         .bind(&subscription_id)
         .bind(tenant_id)
         .fetch_one(&self.pool)
@@ -778,8 +767,7 @@ impl CustomerService {
         let customer_id = self.get_portal_customer_id(actor_id, tenant_id).await?;
 
         #[cfg(feature = "postgres")]
-        let subscription: CustomerSubscriptionView = sqlx::query_as(
-            &format!(
+        let subscription: CustomerSubscriptionView = sqlx::query_as(&format!(
             r#"
             SELECT
               {subscription_columns},
@@ -845,8 +833,7 @@ impl CustomerService {
             "#,
             subscription_columns =
                 Self::portal_subscription_view_select_columns("cs", "cs.price::float8")
-            ),
-        )
+        ))
         .bind(tenant_id)
         .bind(&customer_id)
         .bind(subscription_id)
@@ -855,8 +842,7 @@ impl CustomerService {
         .ok_or_else(|| AppError::NotFound("Subscription not found".to_string()))?;
 
         #[cfg(feature = "sqlite")]
-        let subscription: CustomerSubscriptionView = sqlx::query_as(
-            &format!(
+        let subscription: CustomerSubscriptionView = sqlx::query_as(&format!(
             r#"
             SELECT
               {subscription_columns},
@@ -920,10 +906,8 @@ impl CustomerService {
               AND cs.id = ?
             LIMIT 1
             "#,
-            subscription_columns =
-                Self::portal_subscription_view_select_columns("cs", "cs.price")
-            ),
-        )
+            subscription_columns = Self::portal_subscription_view_select_columns("cs", "cs.price")
+        ))
         .bind(tenant_id)
         .bind(&customer_id)
         .bind(subscription_id)

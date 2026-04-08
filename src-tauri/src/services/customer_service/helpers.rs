@@ -265,8 +265,16 @@ impl CustomerService {
     }
 
     pub(super) async fn resolve_installation_grace_hours(&self, tenant_id: &str) -> i64 {
-        let tenant_raw = self.read_tenant_setting_value(tenant_id, INSTALLATION_GRACE_HOURS_KEY).await.ok().flatten();
-        let global_raw = self.read_global_setting_value(INSTALLATION_GRACE_HOURS_KEY).await.ok().flatten();
+        let tenant_raw = self
+            .read_tenant_setting_value(tenant_id, INSTALLATION_GRACE_HOURS_KEY)
+            .await
+            .ok()
+            .flatten();
+        let global_raw = self
+            .read_global_setting_value(INSTALLATION_GRACE_HOURS_KEY)
+            .await
+            .ok()
+            .flatten();
         Self::parse_setting_i64(tenant_raw.or(global_raw), 72, 1, 24 * 30)
     }
 }

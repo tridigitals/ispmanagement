@@ -16,12 +16,11 @@ use crate::models::{
     MikrotikAlert, MikrotikHealthSnapshot, MikrotikIncident, MikrotikInterfaceCounter,
     MikrotikInterfaceMetric, MikrotikInterfaceSnapshot, MikrotikIpAddressSnapshot, MikrotikIpPool,
     MikrotikIpPoolDeleteResult, MikrotikIpPoolDependencyItem, MikrotikIpPoolDependencyStatus,
-    MikrotikLogClearResult, MikrotikLogEntry, MikrotikLogRetentionSettings,
-    MikrotikLogSyncResult, MikrotikPppProfile, MikrotikPppProfileDeleteResult,
-    MikrotikPppProfileDependencyItem, MikrotikPppProfileDependencyStatus, MikrotikRouter,
-    MikrotikRouterMetric, MikrotikRouterNocRow, MikrotikRouterSnapshot, MikrotikTestResult,
-    PaginatedResponse, UpdateMikrotikIpPoolRequest, UpdateMikrotikPppProfileRequest,
-    UpdateMikrotikRouterRequest,
+    MikrotikLogClearResult, MikrotikLogEntry, MikrotikLogRetentionSettings, MikrotikLogSyncResult,
+    MikrotikPppProfile, MikrotikPppProfileDeleteResult, MikrotikPppProfileDependencyItem,
+    MikrotikPppProfileDependencyStatus, MikrotikRouter, MikrotikRouterMetric, MikrotikRouterNocRow,
+    MikrotikRouterSnapshot, MikrotikTestResult, PaginatedResponse, UpdateMikrotikIpPoolRequest,
+    UpdateMikrotikPppProfileRequest, UpdateMikrotikRouterRequest,
 };
 use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
 use crate::services::{AuditService, NotificationService, SettingsService};
@@ -4079,7 +4078,9 @@ impl MikrotikService {
             .map_err(|e| AppError::Internal(e.to_string()))?
             .is_some()
         {
-            return Err(AppError::Validation("PPP profile name already exists".into()));
+            return Err(AppError::Validation(
+                "PPP profile name already exists".into(),
+            ));
         }
 
         let mut builder = CommandBuilder::new()
@@ -4130,7 +4131,9 @@ impl MikrotikService {
         let rows = self.sync_ppp_profiles(tenant_id, router_id).await?;
         rows.into_iter()
             .find(|row| row.name == name)
-            .ok_or_else(|| AppError::Internal("PPP profile created on router but mirror refresh failed".into()))
+            .ok_or_else(|| {
+                AppError::Internal("PPP profile created on router but mirror refresh failed".into())
+            })
     }
 
     pub async fn update_ppp_profile(
@@ -4147,7 +4150,9 @@ impl MikrotikService {
             .map(|value| value.trim() != profile.name)
             .unwrap_or(false)
         {
-            return Err(AppError::Validation("PPP profile rename is not allowed in phase one".into()));
+            return Err(AppError::Validation(
+                "PPP profile rename is not allowed in phase one".into(),
+            ));
         }
 
         let router = self
@@ -4162,7 +4167,12 @@ impl MikrotikService {
             .find_router_ppp_profile_id_by_name(&dev, &profile.name)
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?
-            .ok_or_else(|| AppError::Conflict("PPP profile no longer exists on router. Sync from router before retrying.".into()))?;
+            .ok_or_else(|| {
+                AppError::Conflict(
+                    "PPP profile no longer exists on router. Sync from router before retrying."
+                        .into(),
+                )
+            })?;
 
         let mut builder = CommandBuilder::new()
             .command("/ppp/profile/set")
@@ -4204,7 +4214,9 @@ impl MikrotikService {
         let rows = self.sync_ppp_profiles(tenant_id, router_id).await?;
         rows.into_iter()
             .find(|row| row.id == profile.id || row.name == profile.name)
-            .ok_or_else(|| AppError::Internal("PPP profile updated on router but mirror refresh failed".into()))
+            .ok_or_else(|| {
+                AppError::Internal("PPP profile updated on router but mirror refresh failed".into())
+            })
     }
 
     pub async fn delete_ppp_profile(
@@ -4214,7 +4226,9 @@ impl MikrotikService {
         id: &str,
     ) -> AppResult<MikrotikPppProfileDeleteResult> {
         let profile = self.get_ppp_profile_row(tenant_id, router_id, id).await?;
-        let dependencies = self.get_ppp_profile_dependencies(tenant_id, router_id, id).await?;
+        let dependencies = self
+            .get_ppp_profile_dependencies(tenant_id, router_id, id)
+            .await?;
         if !dependencies.can_delete {
             return Err(AppError::Validation(format!(
                 "PPP profile is still in use: {}",
@@ -4240,9 +4254,16 @@ impl MikrotikService {
             .find_router_ppp_profile_id_by_name(&dev, &profile.name)
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?
-            .ok_or_else(|| AppError::Conflict("PPP profile no longer exists on router. Sync from router before retrying.".into()))?;
+            .ok_or_else(|| {
+                AppError::Conflict(
+                    "PPP profile no longer exists on router. Sync from router before retrying."
+                        .into(),
+                )
+            })?;
 
-        let dependencies = self.get_ppp_profile_dependencies(tenant_id, router_id, id).await?;
+        let dependencies = self
+            .get_ppp_profile_dependencies(tenant_id, router_id, id)
+            .await?;
         if !dependencies.can_delete {
             return Err(AppError::Validation("PPP profile is still in use".into()));
         }
@@ -4445,7 +4466,9 @@ impl MikrotikService {
         let rows = self.sync_ip_pools(tenant_id, router_id).await?;
         rows.into_iter()
             .find(|row| row.name == name)
-            .ok_or_else(|| AppError::Internal("IP pool created on router but mirror refresh failed".into()))
+            .ok_or_else(|| {
+                AppError::Internal("IP pool created on router but mirror refresh failed".into())
+            })
     }
 
     pub async fn update_ip_pool(
@@ -4472,7 +4495,11 @@ impl MikrotikService {
             .find_router_ip_pool_id_by_name(&dev, &pool.name)
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?
-            .ok_or_else(|| AppError::Conflict("IP pool no longer exists on router. Sync from router before retrying.".into()))?;
+            .ok_or_else(|| {
+                AppError::Conflict(
+                    "IP pool no longer exists on router. Sync from router before retrying.".into(),
+                )
+            })?;
 
         let mut builder = CommandBuilder::new()
             .command("/ip/pool/set")
@@ -4506,7 +4533,9 @@ impl MikrotikService {
         let rows = self.sync_ip_pools(tenant_id, router_id).await?;
         rows.into_iter()
             .find(|row| row.id == pool.id || row.name == pool.name)
-            .ok_or_else(|| AppError::Internal("IP pool updated on router but mirror refresh failed".into()))
+            .ok_or_else(|| {
+                AppError::Internal("IP pool updated on router but mirror refresh failed".into())
+            })
     }
 
     pub async fn delete_ip_pool(
@@ -4528,9 +4557,15 @@ impl MikrotikService {
             .find_router_ip_pool_id_by_name(&dev, &pool.name)
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?
-            .ok_or_else(|| AppError::Conflict("IP pool no longer exists on router. Sync from router before retrying.".into()))?;
+            .ok_or_else(|| {
+                AppError::Conflict(
+                    "IP pool no longer exists on router. Sync from router before retrying.".into(),
+                )
+            })?;
 
-        let latest_warning_status = self.get_ip_pool_dependencies(tenant_id, router_id, id).await?;
+        let latest_warning_status = self
+            .get_ip_pool_dependencies(tenant_id, router_id, id)
+            .await?;
         let warnings = latest_warning_status.dependencies;
 
         let mut rx = dev
@@ -4904,7 +4939,7 @@ impl MikrotikService {
         action_url: Option<String>,
         notification_type: &str,
     ) {
-        // Send to all tenant members who have manage/read access to routers.
+        // Send to tenant members with relevant network monitoring or router inventory access.
         let user_ids: Result<Vec<String>, sqlx::Error> = sqlx::query_scalar(
             r#"
             SELECT DISTINCT tm.user_id
@@ -4912,7 +4947,7 @@ impl MikrotikService {
             JOIN role_permissions rp ON rp.role_id = tm.role_id
             JOIN permissions p ON p.id = rp.permission_id
             WHERE tm.tenant_id = $1
-              AND p.resource = 'network_routers'
+              AND p.resource IN ('network_noc', 'network_alerts', 'network_incidents', 'network_logs', 'router_inventory')
               AND p.action IN ('read','manage')
             "#,
         )
@@ -5305,7 +5340,10 @@ mod tests {
             MikrotikService::find_router_named_item_id(&rows, "pool-b"),
             Some("*2".to_string())
         );
-        assert_eq!(MikrotikService::find_router_named_item_id(&rows, "pool-c"), None);
+        assert_eq!(
+            MikrotikService::find_router_named_item_id(&rows, "pool-c"),
+            None
+        );
     }
 
     #[test]
@@ -5315,8 +5353,9 @@ mod tests {
             "pool-b".to_string(),
             "pool-c".to_string(),
         ];
-        let seen: std::collections::HashSet<String> =
-            ["pool-a".to_string(), "pool-c".to_string()].into_iter().collect();
+        let seen: std::collections::HashSet<String> = ["pool-a".to_string(), "pool-c".to_string()]
+            .into_iter()
+            .collect();
 
         assert_eq!(
             MikrotikService::compute_router_missing_names(&existing, &seen),

@@ -72,7 +72,7 @@
   let canUseTenantSettings = $derived($can('read', 'settings') || $can('update', 'settings'));
 
   onMount(() => {
-    if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
+    if (!$can('read', 'network_noc') && !$can('manage', 'network_noc')) {
       goto('/unauthorized');
       return;
     }

@@ -57,7 +57,7 @@ impl NetworkMappingService {
         self.check_permission_any(
             actor_id,
             tenant_id,
-            &[("network_topology", "read"), ("network_routers", "read")],
+            &[("network_topology", "read"), ("router_inventory", "read")],
         )
         .await
     }
@@ -68,7 +68,7 @@ impl NetworkMappingService {
             tenant_id,
             &[
                 ("network_topology", "manage"),
-                ("network_routers", "manage"),
+                ("router_inventory", "manage"),
             ],
         )
         .await
@@ -80,7 +80,7 @@ impl NetworkMappingService {
             tenant_id,
             &[
                 ("network_topology", "read"),
-                ("network_routers", "read"),
+                ("router_inventory", "read"),
                 ("work_orders", "read"),
                 ("work_orders", "manage"),
             ],
@@ -94,7 +94,7 @@ impl NetworkMappingService {
             tenant_id,
             &[
                 ("network_topology", "manage"),
-                ("network_routers", "manage"),
+                ("router_inventory", "manage"),
                 ("work_orders", "manage"),
             ],
         )
@@ -108,7 +108,7 @@ impl NetworkMappingService {
             &[
                 ("service_zones", "read"),
                 ("network_topology", "read"),
-                ("network_routers", "read"),
+                ("router_inventory", "read"),
             ],
         )
         .await
@@ -121,7 +121,7 @@ impl NetworkMappingService {
             &[
                 ("service_zones", "manage"),
                 ("network_topology", "manage"),
-                ("network_routers", "manage"),
+                ("router_inventory", "manage"),
             ],
         )
         .await
@@ -135,7 +135,7 @@ impl NetworkMappingService {
                 ("coverage", "read"),
                 ("service_zones", "read"),
                 ("network_topology", "read"),
-                ("network_routers", "read"),
+                ("router_inventory", "read"),
             ],
         )
         .await

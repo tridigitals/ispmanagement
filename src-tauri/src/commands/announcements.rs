@@ -11,8 +11,9 @@ use tauri::State;
 use uuid::Uuid;
 
 use super::announcements_support_common::{
-    ann_changed_fields, ann_snapshot_json, norm_audience, norm_format, norm_mode, norm_severity,
-    strip_html_tags, tenant_admin_user_ids, tenant_user_ids,
+    ann_changed_fields, ann_snapshot_json, can_access_admin_audience, is_internal_tenant_member,
+    norm_audience, norm_format, norm_mode, norm_severity, strip_html_tags, tenant_admin_user_ids,
+    tenant_user_ids,
 };
 
 async fn send_announcement_notifications(
@@ -272,13 +273,13 @@ pub async fn list_active_announcements(
     let user_id = claims.sub.clone();
 
     let is_admin = if let Some(tid) = tenant_id.as_deref() {
-        auth_service
-            .has_permission(&user_id, tid, "admin", "access")
+        let is_internal_member = is_internal_tenant_member(&auth_service.pool, tid, &user_id)
             .await
-            .unwrap_or(false)
+            .unwrap_or(false);
+        can_access_admin_audience(is_internal_member, claims.is_super_admin)
     } else {
-        false
-    } || claims.is_super_admin;
+        claims.is_super_admin
+    };
 
     let now = Utc::now();
 
@@ -335,13 +336,13 @@ pub async fn list_recent_announcements(
     let user_id = claims.sub.clone();
 
     let is_admin = if let Some(tid) = tenant_id.as_deref() {
-        auth_service
-            .has_permission(&user_id, tid, "admin", "access")
+        let is_internal_member = is_internal_tenant_member(&auth_service.pool, tid, &user_id)
             .await
-            .unwrap_or(false)
+            .unwrap_or(false);
+        can_access_admin_audience(is_internal_member, claims.is_super_admin)
     } else {
-        false
-    } || claims.is_super_admin;
+        claims.is_super_admin
+    };
 
     let now = Utc::now();
 
@@ -481,13 +482,13 @@ pub async fn get_announcement(
     let user_id = claims.sub.clone();
 
     let is_admin = if let Some(tid) = tenant_id.as_deref() {
-        auth_service
-            .has_permission(&user_id, tid, "admin", "access")
+        let is_internal_member = is_internal_tenant_member(&auth_service.pool, tid, &user_id)
             .await
-            .unwrap_or(false)
+            .unwrap_or(false);
+        can_access_admin_audience(is_internal_member, claims.is_super_admin)
     } else {
-        false
-    } || claims.is_super_admin;
+        claims.is_super_admin
+    };
 
     let can_manage = if let Some(tid) = tenant_id.as_deref() {
         auth_service

@@ -110,19 +110,24 @@ pub(crate) async fn tenant_admin_user_ids(
     pool: &sqlx::Pool<sqlx::Postgres>,
     tenant_id: &str,
 ) -> Result<Vec<String>, sqlx::Error> {
+    sqlx::query_scalar("SELECT DISTINCT user_id FROM tenant_members WHERE tenant_id = $1")
+        .bind(tenant_id)
+        .fetch_all(pool)
+        .await
+}
+
+#[cfg(feature = "postgres")]
+pub(crate) async fn is_internal_tenant_member(
+    pool: &sqlx::Pool<sqlx::Postgres>,
+    tenant_id: &str,
+    user_id: &str,
+) -> Result<bool, sqlx::Error> {
     sqlx::query_scalar(
-        r#"
-        SELECT DISTINCT tm.user_id
-        FROM tenant_members tm
-        JOIN role_permissions rp ON rp.role_id = tm.role_id
-        WHERE tm.tenant_id = $1
-          AND tm.role_id IS NOT NULL
-          AND rp.permission_id = ANY($2)
-    "#,
+        "SELECT EXISTS(SELECT 1 FROM tenant_members WHERE tenant_id = $1 AND user_id = $2)",
     )
     .bind(tenant_id)
-    .bind(["admin:access", "admin:*", "*"])
-    .fetch_all(pool)
+    .bind(user_id)
+    .fetch_one(pool)
     .await
 }
 
@@ -169,5 +174,32 @@ pub(crate) fn normalize_status(s: Option<String>) -> Option<String> {
     match s.as_deref() {
         Some("open") | Some("pending") | Some("closed") => s,
         _ => None,
+    }
+}
+
+pub(crate) fn can_access_admin_audience(
+    is_internal_tenant_member: bool,
+    is_super_admin: bool,
+) -> bool {
+    is_internal_tenant_member || is_super_admin
+}
+
+#[cfg(test)]
+mod tests {
+    use super::can_access_admin_audience;
+
+    #[test]
+    fn admin_audience_is_visible_to_internal_members() {
+        assert!(can_access_admin_audience(true, false));
+    }
+
+    #[test]
+    fn admin_audience_is_visible_to_superadmins() {
+        assert!(can_access_admin_audience(false, true));
+    }
+
+    #[test]
+    fn admin_audience_is_hidden_from_non_internal_users() {
+        assert!(!can_access_admin_audience(false, false));
     }
 }

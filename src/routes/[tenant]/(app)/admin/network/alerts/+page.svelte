@@ -120,7 +120,7 @@
   }));
 
   onMount(() => {
-    if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
+    if (!$can('read', 'network_alerts') && !$can('manage', 'network_alerts')) {
       goto('/unauthorized');
       return;
     }
@@ -401,11 +401,11 @@
         {:else if key === 'actions'}
           <RowActionButtons
             onOpen={() => openRouter(item.router_id)}
-            showSnooze={item.status !== 'resolved' && $can('manage', 'network_routers')}
+            showSnooze={item.status !== 'resolved' && $can('manage', 'network_alerts')}
             onSnooze={() => snooze(item.router_id, 30)}
-            showAcknowledge={item.status !== 'ack' && item.status !== 'resolved' && $can('manage', 'network_routers')}
+            showAcknowledge={item.status !== 'ack' && item.status !== 'resolved' && $can('manage', 'network_alerts')}
             onAcknowledge={() => ack(item.id)}
-            showResolve={item.status !== 'resolved' && $can('manage', 'network_routers')}
+            showResolve={item.status !== 'resolved' && $can('manage', 'network_alerts')}
             onResolve={() => resolve(item.id)}
           />
         {:else}

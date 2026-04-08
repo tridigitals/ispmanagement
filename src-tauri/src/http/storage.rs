@@ -74,7 +74,7 @@ async fn authorize_file_access(
 
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "storage", "read")
+        .check_permission(&claims.sub, &tenant_id, "storage_files", "read")
         .await
         .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden").into_response())?;
 
@@ -174,7 +174,7 @@ pub async fn list_files(
     if let Some(tid) = claims.tenant_id {
         if state
             .auth_service
-            .check_permission(&claims.sub, &tid, "storage", "read")
+            .check_permission(&claims.sub, &tid, "storage_console", "read")
             .await
             .is_err()
         {
@@ -253,7 +253,7 @@ pub async fn delete_file(
     if let Some(tid) = claims.tenant_id {
         if state
             .auth_service
-            .check_permission(&claims.sub, &tid, "storage", "delete")
+            .check_permission(&claims.sub, &tid, "storage_files", "delete")
             .await
             .is_err()
         {
@@ -541,7 +541,7 @@ pub async fn upload_file_http(
     if !claims.is_super_admin {
         let has_storage_upload = state
             .auth_service
-            .check_permission(&claims.sub, &tenant_id, "storage", "upload")
+            .check_permission(&claims.sub, &tenant_id, "storage_files", "upload")
             .await
             .is_ok();
 
@@ -768,7 +768,7 @@ pub async fn init_upload(State(state): State<AppState>, headers: HeaderMap) -> R
             };
             if state
                 .auth_service
-                .check_permission(&claims.sub, &tid, "storage", "upload")
+                .check_permission(&claims.sub, &tid, "storage_files", "upload")
                 .await
                 .is_err()
             {
@@ -807,7 +807,7 @@ pub async fn upload_chunk(
             };
             if state
                 .auth_service
-                .check_permission(&claims.sub, &tid, "storage", "upload")
+                .check_permission(&claims.sub, &tid, "storage_files", "upload")
                 .await
                 .is_err()
             {
@@ -887,7 +887,7 @@ pub async fn complete_upload(
     if !claims.is_super_admin {
         if state
             .auth_service
-            .check_permission(&claims.sub, &tenant_id, "storage", "upload")
+            .check_permission(&claims.sub, &tenant_id, "storage_files", "upload")
             .await
             .is_err()
         {

@@ -49,7 +49,10 @@ pub fn router() -> Router<AppState> {
             "/routers/{id}/logs/retention",
             get(get_log_retention).put(update_log_retention),
         )
-        .route("/routers/{id}/ppp-profiles", get(list_ppp_profiles).post(create_ppp_profile))
+        .route(
+            "/routers/{id}/ppp-profiles",
+            get(list_ppp_profiles).post(create_ppp_profile),
+        )
         .route(
             "/routers/{id}/ppp-profiles/{profile_id}",
             put(update_ppp_profile).delete(delete_ppp_profile),
@@ -59,7 +62,10 @@ pub fn router() -> Router<AppState> {
             get(get_ppp_profile_dependencies),
         )
         .route("/routers/{id}/ppp-profiles/sync", post(sync_ppp_profiles))
-        .route("/routers/{id}/ip-pools", get(list_ip_pools).post(create_ip_pool))
+        .route(
+            "/routers/{id}/ip-pools",
+            get(list_ip_pools).post(create_ip_pool),
+        )
         .route(
             "/routers/{id}/ip-pools/{pool_id}",
             put(update_ip_pool).delete(delete_ip_pool),
@@ -152,7 +158,7 @@ async fn list_alerts(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .check_permission(&claims.sub, &tenant_id, "network_alerts", "read")
         .await?;
 
     let rows = state
@@ -175,7 +181,7 @@ async fn ack_alert(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "network_alerts", "manage")
         .await?;
 
     state
@@ -195,7 +201,7 @@ async fn resolve_alert(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "network_alerts", "manage")
         .await?;
 
     state
@@ -215,7 +221,7 @@ async fn list_incidents(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .check_permission(&claims.sub, &tenant_id, "network_incidents", "read")
         .await?;
 
     let rows = state
@@ -239,7 +245,7 @@ async fn update_incident(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "network_incidents", "manage")
         .await?;
 
     let row = state
@@ -259,7 +265,7 @@ async fn simulate_incident(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "network_incidents", "manage")
         .await?;
 
     let row = state
@@ -285,7 +291,7 @@ async fn run_incident_auto_escalation(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "network_incidents", "manage")
         .await?;
 
     let escalated = state
@@ -306,7 +312,7 @@ async fn ack_incident(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "network_incidents", "manage")
         .await?;
 
     state
@@ -326,7 +332,7 @@ async fn resolve_incident(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "network_incidents", "manage")
         .await?;
 
     state
@@ -345,7 +351,7 @@ async fn list_routers(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .check_permission(&claims.sub, &tenant_id, "router_inventory", "read")
         .await?;
 
     let rows = state.mikrotik_service.list_routers(&tenant_id).await?;
@@ -360,7 +366,7 @@ async fn get_noc(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .check_permission(&claims.sub, &tenant_id, "network_noc", "read")
         .await?;
 
     let rows = state.mikrotik_service.list_noc(&tenant_id).await?;
@@ -376,7 +382,7 @@ async fn list_logs(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .check_permission(&claims.sub, &tenant_id, "network_logs", "read")
         .await?;
 
     let rows = state
@@ -408,7 +414,7 @@ async fn sync_logs(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "network_logs", "manage")
         .await?;
 
     let fetch_limit = body
@@ -431,7 +437,7 @@ async fn clear_logs(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "network_logs", "manage")
         .await?;
 
     let result = state
@@ -450,7 +456,7 @@ async fn get_log_retention(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .check_permission(&claims.sub, &tenant_id, "network_logs", "read")
         .await?;
 
     let result = state
@@ -470,7 +476,7 @@ async fn update_log_retention(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "network_logs", "manage")
         .await?;
 
     let result = state
@@ -490,7 +496,7 @@ async fn get_router(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .check_permission(&claims.sub, &tenant_id, "router_inventory", "read")
         .await?;
 
     let router = state
@@ -511,7 +517,7 @@ async fn list_ppp_profiles(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .check_permission(&claims.sub, &tenant_id, "ppp_profiles", "read")
         .await?;
 
     let rows = state
@@ -531,7 +537,7 @@ async fn create_ppp_profile(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "ppp_profiles", "manage")
         .await?;
 
     let row = state
@@ -551,7 +557,7 @@ async fn update_ppp_profile(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "ppp_profiles", "manage")
         .await?;
 
     let row = state
@@ -570,7 +576,7 @@ async fn delete_ppp_profile(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "ppp_profiles", "manage")
         .await?;
 
     let result = state
@@ -589,7 +595,7 @@ async fn get_ppp_profile_dependencies(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .check_permission(&claims.sub, &tenant_id, "ppp_profiles", "read")
         .await?;
 
     let result = state
@@ -608,7 +614,7 @@ async fn sync_ppp_profiles(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "ppp_profiles", "manage")
         .await?;
 
     let rows = state
@@ -627,7 +633,7 @@ async fn list_ip_pools(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .check_permission(&claims.sub, &tenant_id, "ip_pools", "read")
         .await?;
 
     let rows = state
@@ -647,7 +653,7 @@ async fn create_ip_pool(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "ip_pools", "manage")
         .await?;
 
     let row = state
@@ -667,7 +673,7 @@ async fn update_ip_pool(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "ip_pools", "manage")
         .await?;
 
     let row = state
@@ -686,7 +692,7 @@ async fn delete_ip_pool(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "ip_pools", "manage")
         .await?;
 
     let result = state
@@ -705,7 +711,7 @@ async fn get_ip_pool_dependencies(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .check_permission(&claims.sub, &tenant_id, "ip_pools", "read")
         .await?;
 
     let result = state
@@ -724,7 +730,7 @@ async fn get_managed_radius_setup(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     let can_manage_routers = state
         .auth_service
-        .has_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .has_permission(&claims.sub, &tenant_id, "router_inventory", "manage")
         .await?;
     let can_manage_work_orders = state
         .auth_service
@@ -757,7 +763,7 @@ async fn get_managed_radius_setup(
         .check_permission(
             &claims.sub,
             &tenant_id,
-            "network_routers",
+            "router_inventory",
             "manage_radius_secret",
         )
         .await
@@ -778,7 +784,7 @@ async fn assign_managed_radius_default(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "router_inventory", "manage")
         .await?;
 
     let router = state
@@ -848,7 +854,7 @@ async fn assign_managed_radius_default(
         .check_permission(
             &claims.sub,
             &tenant_id,
-            "network_routers",
+            "router_inventory",
             "manage_radius_secret",
         )
         .await
@@ -869,7 +875,7 @@ async fn create_managed_radius_mapping(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "router_inventory", "manage")
         .await?;
 
     let router = state
@@ -922,7 +928,7 @@ async fn create_managed_radius_mapping(
         .check_permission(
             &claims.sub,
             &tenant_id,
-            "network_routers",
+            "router_inventory",
             "manage_radius_secret",
         )
         .await
@@ -944,7 +950,7 @@ async fn sync_ip_pools(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "ip_pools", "manage")
         .await?;
 
     let rows = state
@@ -963,7 +969,7 @@ async fn create_router(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "router_inventory", "manage")
         .await?;
 
     let router = state
@@ -999,7 +1005,7 @@ async fn update_router(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "router_inventory", "manage")
         .await?;
 
     let router = state
@@ -1034,7 +1040,7 @@ async fn delete_router(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .check_permission(&claims.sub, &tenant_id, "router_inventory", "manage")
         .await?;
 
     let existing = state.mikrotik_service.get_router(&tenant_id, &id).await?;
@@ -1070,7 +1076,7 @@ async fn test_router(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .check_permission(&claims.sub, &tenant_id, "router_inventory", "read")
         .await?;
 
     let res = state
@@ -1116,7 +1122,7 @@ async fn list_metrics(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .check_permission(&claims.sub, &tenant_id, "router_inventory", "read")
         .await?;
 
     let rows = state
@@ -1142,7 +1148,7 @@ async fn list_interface_metrics(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .check_permission(&claims.sub, &tenant_id, "router_inventory", "read")
         .await?;
 
     let rows = state
@@ -1166,7 +1172,7 @@ async fn list_interface_latest(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .check_permission(&claims.sub, &tenant_id, "router_inventory", "read")
         .await?;
 
     let rows = state
@@ -1191,7 +1197,7 @@ async fn get_interface_live(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .check_permission(&claims.sub, &tenant_id, "router_inventory", "read")
         .await?;
 
     let names: Vec<String> = q
@@ -1218,7 +1224,7 @@ async fn get_snapshot(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     state
         .auth_service
-        .check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+        .check_permission(&claims.sub, &tenant_id, "router_inventory", "read")
         .await?;
 
     let snap = state.mikrotik_service.get_snapshot(&tenant_id, &id).await?;

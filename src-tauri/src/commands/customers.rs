@@ -14,6 +14,18 @@ use crate::models::{
 use crate::services::{AuthService, CustomerService, PaymentService};
 use tauri::State;
 
+async fn require_permission(
+    auth: &AuthService,
+    claims: &crate::services::auth_service::Claims,
+    tenant_id: &str,
+    resource: &str,
+    action: &str,
+) -> Result<(), String> {
+    auth.check_permission(&claims.sub, tenant_id, resource, action)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PortalCheckoutResponse {
     pub subscription: CustomerSubscription,
@@ -48,7 +60,9 @@ pub async fn list_customers(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "read").await?;
 
     customers
         .list_customers(
@@ -75,7 +89,9 @@ pub async fn get_customer(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "read").await?;
 
     customers
         .get_customer(&claims.sub, &tenant_id, &customer_id)
@@ -96,7 +112,9 @@ pub async fn create_customer(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "manage").await?;
 
     customers
         .create_customer(&claims.sub, &tenant_id, dto, Some("127.0.0.1"))
@@ -117,7 +135,9 @@ pub async fn create_customer_with_portal(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "manage").await?;
 
     customers
         .create_customer_with_portal(&claims.sub, &tenant_id, dto, Some("127.0.0.1"))
@@ -139,7 +159,9 @@ pub async fn update_customer(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "manage").await?;
 
     customers
         .update_customer(
@@ -166,7 +188,9 @@ pub async fn delete_customer(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "manage").await?;
 
     customers
         .delete_customer(&claims.sub, &tenant_id, &customer_id, Some("127.0.0.1"))
@@ -187,7 +211,9 @@ pub async fn create_customer_registration_invite(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "manage").await?;
 
     customers
         .create_customer_registration_invite(&claims.sub, &tenant_id, dto, Some("127.0.0.1"))
@@ -209,7 +235,9 @@ pub async fn list_customer_registration_invites(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "read").await?;
 
     customers
         .list_customer_registration_invites(
@@ -234,7 +262,9 @@ pub async fn get_customer_registration_invite_policy(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "read").await?;
 
     customers
         .get_customer_registration_invite_policy(&claims.sub, &tenant_id)
@@ -255,7 +285,9 @@ pub async fn update_customer_registration_invite_policy(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "manage").await?;
 
     customers
         .update_customer_registration_invite_policy(&claims.sub, &tenant_id, dto, Some("127.0.0.1"))
@@ -275,7 +307,9 @@ pub async fn get_customer_registration_invite_summary(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "read").await?;
 
     customers
         .summarize_customer_registration_invites(&claims.sub, &tenant_id)
@@ -296,7 +330,9 @@ pub async fn revoke_customer_registration_invite(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "manage").await?;
 
     customers
         .revoke_customer_registration_invite(&claims.sub, &tenant_id, &invite_id, Some("127.0.0.1"))
@@ -317,7 +353,9 @@ pub async fn list_customer_locations(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customer_locations", "read").await?;
 
     customers
         .list_locations(&claims.sub, &tenant_id, &customer_id)
@@ -338,7 +376,9 @@ pub async fn create_customer_location(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customer_locations", "manage").await?;
 
     customers
         .create_location(&claims.sub, &tenant_id, dto, Some("127.0.0.1"))
@@ -360,7 +400,9 @@ pub async fn update_customer_location(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customer_locations", "manage").await?;
 
     customers
         .update_location(
@@ -387,7 +429,9 @@ pub async fn delete_customer_location(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customer_locations", "manage").await?;
 
     customers
         .delete_location(&claims.sub, &tenant_id, &location_id, Some("127.0.0.1"))
@@ -408,7 +452,9 @@ pub async fn list_customer_portal_users(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "read").await?;
 
     customers
         .list_portal_users(&claims.sub, &tenant_id, &customer_id)
@@ -429,7 +475,9 @@ pub async fn add_customer_portal_user(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "manage").await?;
 
     customers
         .add_portal_user(&claims.sub, &tenant_id, dto, Some("127.0.0.1"))
@@ -450,7 +498,9 @@ pub async fn create_customer_portal_user(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "manage").await?;
 
     customers
         .create_portal_user(&claims.sub, &tenant_id, dto, Some("127.0.0.1"))
@@ -471,7 +521,9 @@ pub async fn remove_customer_portal_user(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "manage").await?;
 
     customers
         .remove_portal_user(
@@ -496,8 +548,8 @@ pub async fn list_my_customer_locations(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
-
     customers
         .list_my_locations(&claims.sub, &tenant_id)
         .await
@@ -517,8 +569,8 @@ pub async fn create_my_customer_location(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
-
     customers
         .create_my_location(&claims.sub, &tenant_id, dto, Some("127.0.0.1"))
         .await
@@ -539,8 +591,8 @@ pub async fn update_my_customer_location(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
-
     customers
         .update_my_location(
             &claims.sub,
@@ -566,8 +618,8 @@ pub async fn delete_my_customer_location(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
-
     customers
         .delete_my_location(&claims.sub, &tenant_id, &location_id, Some("127.0.0.1"))
         .await
@@ -586,8 +638,8 @@ pub async fn list_my_customer_packages(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
-
     customers
         .list_my_packages(&claims.sub, &tenant_id)
         .await
@@ -611,8 +663,8 @@ pub async fn list_my_customer_subscriptions(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
-
     customers
         .list_my_subscriptions(
             &claims.sub,
@@ -639,8 +691,8 @@ pub async fn get_my_customer_subscription_stats(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
-
     customers
         .get_my_subscription_stats(&claims.sub, &tenant_id)
         .await
@@ -660,6 +712,7 @@ pub async fn get_my_customer_subscription_installation_tracker(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     let (subscription, work_order, reschedule_request) = customers
@@ -689,6 +742,7 @@ pub async fn request_my_customer_subscription_reschedule(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     let (subscription, work_order) = customers
@@ -723,6 +777,7 @@ pub async fn create_my_customer_subscription_invoice(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     let subscription = customers
@@ -754,7 +809,9 @@ pub async fn get_customer_lifecycle_observability(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "customers", "read").await?;
 
     customers
         .get_lifecycle_observability(&claims.sub, &tenant_id, customer_id.as_deref())
@@ -777,7 +834,9 @@ pub async fn list_customer_subscriptions(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "billing", "read").await?;
 
     customers
         .list_customer_subscriptions(
@@ -804,7 +863,9 @@ pub async fn create_customer_subscription(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "billing", "manage").await?;
 
     customers
         .create_customer_subscription(&claims.sub, &tenant_id, dto, Some("127.0.0.1"))
@@ -826,7 +887,9 @@ pub async fn update_customer_subscription(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "billing", "manage").await?;
 
     customers
         .update_customer_subscription(
@@ -853,7 +916,9 @@ pub async fn delete_customer_subscription(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "billing", "manage").await?;
 
     customers
         .delete_customer_subscription(&claims.sub, &tenant_id, &subscription_id, Some("127.0.0.1"))
@@ -877,7 +942,9 @@ pub async fn list_installation_work_orders(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "work_orders", "read").await?;
 
     customers
         .list_installation_work_orders(
@@ -904,7 +971,9 @@ pub async fn list_installation_assignees(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "work_orders", "read").await?;
 
     customers
         .list_installation_assignees(&claims.sub, &tenant_id)
@@ -928,7 +997,9 @@ pub async fn assign_installation_work_order(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "work_orders", "manage").await?;
 
     customers
         .assign_installation_work_order(
@@ -958,7 +1029,9 @@ pub async fn claim_installation_work_order(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "work_orders", "manage").await?;
 
     customers
         .claim_installation_work_order(&claims.sub, &tenant_id, &id, notes, Some("127.0.0.1"))
@@ -980,7 +1053,9 @@ pub async fn release_installation_work_order(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "work_orders", "manage").await?;
 
     customers
         .release_installation_work_order(&claims.sub, &tenant_id, &id, notes, Some("127.0.0.1"))
@@ -1002,7 +1077,9 @@ pub async fn start_installation_work_order(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "work_orders", "manage").await?;
 
     customers
         .start_installation_work_order(&claims.sub, &tenant_id, &id, notes, Some("127.0.0.1"))
@@ -1024,7 +1101,9 @@ pub async fn complete_installation_work_order(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "work_orders", "manage").await?;
 
     customers
         .complete_installation_work_order(&claims.sub, &tenant_id, &id, notes, Some("127.0.0.1"))
@@ -1046,7 +1125,9 @@ pub async fn cancel_installation_work_order(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "work_orders", "manage").await?;
 
     customers
         .cancel_installation_work_order(&claims.sub, &tenant_id, &id, notes, Some("127.0.0.1"))

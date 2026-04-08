@@ -150,20 +150,10 @@ impl AnnouncementScheduler {
         pool: &sqlx::Pool<sqlx::Postgres>,
         tenant_id: &str,
     ) -> Result<Vec<String>, sqlx::Error> {
-        sqlx::query_scalar(
-            r#"
-            SELECT DISTINCT tm.user_id
-            FROM tenant_members tm
-            JOIN role_permissions rp ON rp.role_id = tm.role_id
-            WHERE tm.tenant_id = $1
-              AND tm.role_id IS NOT NULL
-              AND rp.permission_id = ANY($2)
-        "#,
-        )
-        .bind(tenant_id)
-        .bind(["admin:access", "admin:*", "*"])
-        .fetch_all(pool)
-        .await
+        sqlx::query_scalar("SELECT DISTINCT user_id FROM tenant_members WHERE tenant_id = $1")
+            .bind(tenant_id)
+            .fetch_all(pool)
+            .await
     }
 
     #[cfg(feature = "postgres")]

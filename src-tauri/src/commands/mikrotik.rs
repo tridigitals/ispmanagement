@@ -14,7 +14,9 @@ use crate::models::{
 use crate::services::mikrotik_service::{
     MIKROTIK_LOGS_DEFAULT_INCLUDE_TOTAL, MIKROTIK_LOGS_DEFAULT_PAGE, MIKROTIK_LOGS_DEFAULT_PER_PAGE,
 };
-use crate::services::{AuditService, AuthService, ManagedRadiusService, MikrotikService, PlanService};
+use crate::services::{
+    AuditService, AuthService, ManagedRadiusService, MikrotikService, PlanService,
+};
 use tauri::State;
 
 #[tauri::command]
@@ -31,7 +33,7 @@ pub async fn list_mikrotik_routers(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+    auth.check_permission(&claims.sub, &tenant_id, "router_inventory", "read")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -55,7 +57,7 @@ pub async fn list_mikrotik_noc(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+    auth.check_permission(&claims.sub, &tenant_id, "network_noc", "read")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -81,7 +83,7 @@ pub async fn list_mikrotik_alerts(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+    auth.check_permission(&claims.sub, &tenant_id, "network_alerts", "read")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -111,7 +113,7 @@ pub async fn list_mikrotik_incidents(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+    auth.check_permission(&claims.sub, &tenant_id, "network_incidents", "read")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -148,7 +150,7 @@ pub async fn list_mikrotik_logs(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+    auth.check_permission(&claims.sub, &tenant_id, "network_logs", "read")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -184,7 +186,7 @@ pub async fn get_mikrotik_log_retention(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+    auth.check_permission(&claims.sub, &tenant_id, "network_logs", "read")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -210,7 +212,7 @@ pub async fn update_mikrotik_log_retention(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "network_logs", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -235,7 +237,7 @@ pub async fn clear_mikrotik_logs(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "network_logs", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -261,7 +263,7 @@ pub async fn sync_mikrotik_logs(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "network_logs", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -290,7 +292,7 @@ pub async fn ack_mikrotik_alert(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "network_alerts", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -315,7 +317,7 @@ pub async fn resolve_mikrotik_alert(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "network_alerts", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -340,7 +342,7 @@ pub async fn ack_mikrotik_incident(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "network_incidents", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -365,7 +367,7 @@ pub async fn resolve_mikrotik_incident(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "network_incidents", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -392,7 +394,7 @@ pub async fn update_mikrotik_incident(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "network_incidents", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -426,7 +428,7 @@ pub async fn simulate_mikrotik_incident(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "network_incidents", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -466,7 +468,7 @@ pub async fn run_mikrotik_incident_auto_escalation(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "network_incidents", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -493,7 +495,7 @@ pub async fn get_mikrotik_router(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+    auth.check_permission(&claims.sub, &tenant_id, "router_inventory", "read")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -519,7 +521,7 @@ pub async fn get_mikrotik_router_snapshot(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+    auth.check_permission(&claims.sub, &tenant_id, "router_inventory", "read")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -547,7 +549,7 @@ pub async fn get_mikrotik_router_managed_radius_setup(
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
     let can_manage_routers = auth
-        .has_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+        .has_permission(&claims.sub, &tenant_id, "router_inventory", "manage")
         .await
         .map_err(|e| e.to_string())?;
     let can_manage_work_orders = auth
@@ -579,7 +581,7 @@ pub async fn get_mikrotik_router_managed_radius_setup(
         .check_permission(
             &claims.sub,
             &tenant_id,
-            "network_routers",
+            "router_inventory",
             "manage_radius_secret",
         )
         .await
@@ -610,7 +612,7 @@ pub async fn assign_mikrotik_router_managed_radius_default(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "router_inventory", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -672,7 +674,7 @@ pub async fn assign_mikrotik_router_managed_radius_default(
         .check_permission(
             &claims.sub,
             &tenant_id,
-            "network_routers",
+            "router_inventory",
             "manage_radius_secret",
         )
         .await
@@ -703,7 +705,7 @@ pub async fn create_mikrotik_router_managed_radius_mapping(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "router_inventory", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -752,7 +754,7 @@ pub async fn create_mikrotik_router_managed_radius_mapping(
         .check_permission(
             &claims.sub,
             &tenant_id,
-            "network_routers",
+            "router_inventory",
             "manage_radius_secret",
         )
         .await
@@ -780,7 +782,7 @@ pub async fn list_mikrotik_ppp_profiles(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+    auth.check_permission(&claims.sub, &tenant_id, "ppp_profiles", "read")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -805,7 +807,7 @@ pub async fn sync_mikrotik_ppp_profiles(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "ppp_profiles", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -831,7 +833,7 @@ pub async fn create_mikrotik_ppp_profile(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "ppp_profiles", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -858,7 +860,7 @@ pub async fn update_mikrotik_ppp_profile(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "ppp_profiles", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -884,7 +886,7 @@ pub async fn delete_mikrotik_ppp_profile(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "ppp_profiles", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -910,7 +912,7 @@ pub async fn get_mikrotik_ppp_profile_dependencies(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+    auth.check_permission(&claims.sub, &tenant_id, "ppp_profiles", "read")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -935,7 +937,7 @@ pub async fn list_mikrotik_ip_pools(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+    auth.check_permission(&claims.sub, &tenant_id, "ip_pools", "read")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -964,7 +966,7 @@ pub async fn create_mikrotik_ip_pool(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "ip_pools", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -1003,7 +1005,7 @@ pub async fn update_mikrotik_ip_pool(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "ip_pools", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -1039,7 +1041,7 @@ pub async fn delete_mikrotik_ip_pool(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "ip_pools", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -1065,7 +1067,7 @@ pub async fn get_mikrotik_ip_pool_dependencies(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+    auth.check_permission(&claims.sub, &tenant_id, "ip_pools", "read")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -1090,7 +1092,7 @@ pub async fn sync_mikrotik_ip_pools(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "ip_pools", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -1126,7 +1128,7 @@ pub async fn create_mikrotik_router(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "router_inventory", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -1198,7 +1200,7 @@ pub async fn update_mikrotik_router(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "router_inventory", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -1260,7 +1262,7 @@ pub async fn delete_mikrotik_router(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "manage")
+    auth.check_permission(&claims.sub, &tenant_id, "router_inventory", "manage")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -1308,7 +1310,7 @@ pub async fn test_mikrotik_router(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+    auth.check_permission(&claims.sub, &tenant_id, "router_inventory", "read")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -1357,7 +1359,7 @@ pub async fn list_mikrotik_router_metrics(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+    auth.check_permission(&claims.sub, &tenant_id, "router_inventory", "read")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -1389,7 +1391,7 @@ pub async fn list_mikrotik_interface_metrics(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+    auth.check_permission(&claims.sub, &tenant_id, "router_inventory", "read")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -1419,7 +1421,7 @@ pub async fn list_mikrotik_interface_latest(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+    auth.check_permission(&claims.sub, &tenant_id, "router_inventory", "read")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -1449,7 +1451,7 @@ pub async fn get_mikrotik_live_interface_counters(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "network_routers", "read")
+    auth.check_permission(&claims.sub, &tenant_id, "router_inventory", "read")
         .await
         .map_err(|e| e.to_string())?;
 

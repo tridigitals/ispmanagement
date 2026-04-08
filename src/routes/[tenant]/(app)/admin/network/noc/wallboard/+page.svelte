@@ -472,7 +472,7 @@
   }
 
   async function ackIncident(id: string) {
-    if (!$can('manage', 'network_routers')) return;
+    if (!$can('manage', 'network_noc')) return;
     try {
       await ackWallboardIncident(id, $t('admin.network.alerts.toasts.acked') || 'Alert acknowledged');
       pushIncident('ack', 'Incident acknowledged');
@@ -483,7 +483,7 @@
   }
 
   async function resolveIncident(id: string) {
-    if (!$can('manage', 'network_routers')) return;
+    if (!$can('manage', 'network_noc')) return;
     try {
       await resolveWallboardIncident(id, $t('admin.network.alerts.toasts.resolved') || 'Alert resolved');
       pushIncident('recovered', 'Incident resolved');
@@ -494,7 +494,7 @@
   }
 
   async function ackRouterAlerts(routerId: string) {
-    if (!$can('manage', 'network_routers')) return;
+    if (!$can('manage', 'network_noc')) return;
     const ids = routerAlertMap[routerId]?.ids || [];
     if (!ids.length) return;
     try {
@@ -507,7 +507,7 @@
   }
 
   async function ackVisibleAlerts() {
-    if (!$can('manage', 'network_routers')) return;
+    if (!$can('manage', 'network_noc')) return;
     const ids = visibleAlerts
       .filter((a) => {
         const st = String(a.status || '').toLowerCase();
@@ -529,7 +529,7 @@
   }
 
   async function muteRouterAlerts(routerId: string, minutes: number) {
-    if (!$can('manage', 'network_routers')) return;
+    if (!$can('manage', 'network_noc')) return;
     try {
       await muteWallboardRouter(routerId, minutes, $t('admin.network.alerts.toasts.snoozed') || 'Router snoozed');
       pushIncident('mute', `Mute ${minutes}m`, routerId);
@@ -540,7 +540,7 @@
   }
 
   async function unmuteRouter(routerId: string) {
-    if (!$can('manage', 'network_routers')) return;
+    if (!$can('manage', 'network_noc')) return;
     try {
       await unmuteWallboardRouter(routerId, $t('admin.network.wallboard.unmuted') || 'Maintenance cleared');
       pushIncident('unmute', 'Maintenance cleared', routerId);
@@ -1025,7 +1025,7 @@
   }
 
   onMount(() => {
-    if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
+    if (!$can('read', 'network_noc') && !$can('manage', 'network_noc')) {
       goto('/unauthorized');
       return;
     }
@@ -1268,7 +1268,7 @@
         {topIssues}
         {openIncidentItems}
         {incidentEvents}
-        canManage={$can('manage', 'network_routers')}
+        canManage={$can('manage', 'network_noc')}
         selectedMuteMinutes={selectedMuteMinutes}
         getMaintenanceRemaining={(routerId) => maintenanceRemaining(routerById(routerId)?.maintenance_until)}
         onSetTopIssueMuteMinutes={(routerId, mins) => {
@@ -1300,7 +1300,7 @@
         bind:alertSeverityFilter
         {visibleAlerts}
         {alertStats}
-        canManage={$can('manage', 'network_routers')}
+        canManage={$can('manage', 'network_noc')}
         onAckVisible={() => void ackVisibleAlerts()}
         onOpenAlerts={() => goto(`${tenantPrefix}/admin/network/alerts`)}
         routerLabel={(routerId) => routerById(routerId)?.identity || routerById(routerId)?.name || routerId}
@@ -1359,7 +1359,7 @@
               Math.ceil(((routerPollState[slot.routerId]?.nextRetryAt ?? 0) - Date.now()) / 1000),
             )}
             routerAlertTotal={routerAlertMap[slot.routerId]?.total ?? 0}
-            canManage={$can('manage', 'network_routers')}
+            canManage={$can('manage', 'network_noc')}
             {dragOver}
             {tileMenuIndex}
             {hoverBar}

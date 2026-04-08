@@ -46,6 +46,18 @@ async fn tenant_and_claims(
     Ok((tenant_id, claims))
 }
 
+async fn require_pppoe_permission(
+    state: &AppState,
+    claims: &crate::services::auth_service::Claims,
+    tenant_id: &str,
+    action: &str,
+) -> AppResult<()> {
+    state
+        .auth_service
+        .check_permission(&claims.sub, tenant_id, "pppoe", action)
+        .await
+}
+
 #[derive(Debug, Deserialize)]
 struct ListQuery {
     customer_id: Option<String>,
@@ -63,6 +75,7 @@ async fn list_accounts(
     Query(q): Query<ListQuery>,
 ) -> AppResult<Json<PaginatedResponse<PppoeAccountPublic>>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_pppoe_permission(&state, &claims, &tenant_id, "read").await?;
     let rows = state
         .pppoe_service
         .list_accounts(
@@ -86,6 +99,7 @@ async fn get_account(
     Path(id): Path<String>,
 ) -> AppResult<Json<PppoeAccountPublic>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_pppoe_permission(&state, &claims, &tenant_id, "read").await?;
     let row = state
         .pppoe_service
         .get_account(&claims.sub, &tenant_id, &id)
@@ -101,6 +115,7 @@ async fn create_account(
     Json(dto): Json<CreatePppoeAccountRequest>,
 ) -> AppResult<Json<PppoeAccountPublic>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_pppoe_permission(&state, &claims, &tenant_id, "manage").await?;
     let ip = extract_ip(&headers, addr);
     let row = state
         .pppoe_service
@@ -118,6 +133,7 @@ async fn update_account(
     Json(dto): Json<UpdatePppoeAccountRequest>,
 ) -> AppResult<Json<PppoeAccountPublic>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_pppoe_permission(&state, &claims, &tenant_id, "manage").await?;
     let ip = extract_ip(&headers, addr);
     let row = state
         .pppoe_service
@@ -134,6 +150,7 @@ async fn delete_account(
     Path(id): Path<String>,
 ) -> AppResult<Json<serde_json::Value>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_pppoe_permission(&state, &claims, &tenant_id, "manage").await?;
     let ip = extract_ip(&headers, addr);
     state
         .pppoe_service
@@ -150,6 +167,7 @@ async fn apply_account(
     Path(id): Path<String>,
 ) -> AppResult<Json<PppoeAccountPublic>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_pppoe_permission(&state, &claims, &tenant_id, "manage").await?;
     let ip = extract_ip(&headers, addr);
     let row = state
         .pppoe_service
@@ -166,6 +184,7 @@ async fn reconcile_router(
     Path(router_id): Path<String>,
 ) -> AppResult<Json<serde_json::Value>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_pppoe_permission(&state, &claims, &tenant_id, "manage").await?;
     let ip = extract_ip(&headers, addr);
     let row = state
         .pppoe_service
@@ -187,6 +206,7 @@ async fn preview_import(
     Query(q): Query<PreviewQuery>,
 ) -> AppResult<Json<Vec<PppoeImportCandidate>>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_pppoe_permission(&state, &claims, &tenant_id, "manage").await?;
     let rows = state
         .pppoe_service
         .preview_import_from_router(
@@ -208,6 +228,7 @@ async fn run_import(
     Json(dto): Json<PppoeImportFromRouterRequest>,
 ) -> AppResult<Json<PppoeImportResult>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_pppoe_permission(&state, &claims, &tenant_id, "manage").await?;
     let ip = extract_ip(&headers, addr);
     let row = state
         .pppoe_service

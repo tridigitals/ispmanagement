@@ -5,7 +5,7 @@
   import FileManager from '$lib/components/ui/FileManager.svelte';
 
   onMount(() => {
-    if (!$can('read', 'storage') && !$can('upload', 'storage') && !$can('delete', 'storage')) {
+    if (!$can('read', 'storage_console')) {
       goto('/unauthorized');
     }
   });

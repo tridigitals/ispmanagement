@@ -216,18 +216,24 @@ fn portal_subscription_select_fragments_include_grace_columns() {
 
 #[test]
 fn installation_completion_auto_invoice_only_runs_for_unpaid_grace_activation() {
-    assert!(CustomerService::should_auto_create_first_invoice_on_completion(
-        crate::services::subscription_lifecycle::SubscriptionLifecycleStatus::GraceActive,
-        false,
-    ));
+    assert!(
+        CustomerService::should_auto_create_first_invoice_on_completion(
+            crate::services::subscription_lifecycle::SubscriptionLifecycleStatus::GraceActive,
+            false,
+        )
+    );
 
-    assert!(!CustomerService::should_auto_create_first_invoice_on_completion(
-        crate::services::subscription_lifecycle::SubscriptionLifecycleStatus::Active,
-        false,
-    ));
+    assert!(
+        !CustomerService::should_auto_create_first_invoice_on_completion(
+            crate::services::subscription_lifecycle::SubscriptionLifecycleStatus::Active,
+            false,
+        )
+    );
 
-    assert!(!CustomerService::should_auto_create_first_invoice_on_completion(
-        crate::services::subscription_lifecycle::SubscriptionLifecycleStatus::GraceActive,
-        true,
-    ));
+    assert!(
+        !CustomerService::should_auto_create_first_invoice_on_completion(
+            crate::services::subscription_lifecycle::SubscriptionLifecycleStatus::GraceActive,
+            true,
+        )
+    );
 }

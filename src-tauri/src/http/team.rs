@@ -1,6 +1,7 @@
 //! Team management HTTP handlers
 
 use super::{websocket::WsEvent, AppState};
+use crate::commands::team::enforce_member_role_change_permissions;
 use crate::http::auth::extract_ip;
 use crate::models::TeamMemberWithUser;
 use axum::{
@@ -148,6 +149,25 @@ pub async fn update_team_member(
         .check_permission(&claims.sub, &tenant_id, "team", "update")
         .await?;
 
+    let requester_level = state
+        .team_service
+        .get_user_role_level(&claims.sub, &tenant_id)
+        .await
+        .map_err(crate::error::AppError::Internal)?;
+    let target_level = state
+        .team_service
+        .get_member_role_level(&id)
+        .await
+        .map_err(crate::error::AppError::Internal)?;
+    let new_role_level = state
+        .team_service
+        .get_role_level_by_id(&payload.role_id)
+        .await
+        .map_err(crate::error::AppError::Internal)?;
+
+    enforce_member_role_change_permissions(requester_level, target_level, new_role_level)
+        .map_err(crate::error::AppError::Forbidden)?;
+
     state
         .team_service
         .update_member(
@@ -185,6 +205,23 @@ pub async fn remove_team_member(
         .auth_service
         .check_permission(&claims.sub, &tenant_id, "team", "delete")
         .await?;
+
+    let requester_level = state
+        .team_service
+        .get_user_role_level(&claims.sub, &tenant_id)
+        .await
+        .map_err(crate::error::AppError::Internal)?;
+    let target_level = state
+        .team_service
+        .get_member_role_level(&id)
+        .await
+        .map_err(crate::error::AppError::Internal)?;
+
+    if requester_level <= target_level {
+        return Err(crate::error::AppError::Forbidden(
+            "Insufficient permissions: Cannot remove member with equal or higher role".to_string(),
+        ));
+    }
 
     state
         .team_service

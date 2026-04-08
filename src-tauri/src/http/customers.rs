@@ -128,6 +128,19 @@ async fn tenant_and_claims(
     Ok((tenant_id, claims))
 }
 
+async fn require_permission(
+    state: &AppState,
+    claims: &crate::services::auth_service::Claims,
+    tenant_id: &str,
+    resource: &str,
+    action: &str,
+) -> AppResult<()> {
+    state
+        .auth_service
+        .check_permission(&claims.sub, tenant_id, resource, action)
+        .await
+}
+
 #[derive(Debug, Deserialize)]
 struct ListQuery {
     q: Option<String>,
@@ -187,6 +200,7 @@ async fn list_customers(
     Query(q): Query<ListQuery>,
 ) -> AppResult<Json<PaginatedResponse<Customer>>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "read").await?;
     let resp = state
         .customer_service
         .list_customers(
@@ -207,6 +221,7 @@ async fn get_lifecycle_observability(
     Query(q): Query<LifecycleObservabilityQuery>,
 ) -> AppResult<Json<CustomerLifecycleObservability>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "read").await?;
     let metrics = state
         .customer_service
         .get_lifecycle_observability(&claims.sub, &tenant_id, q.customer_id.as_deref())
@@ -221,6 +236,7 @@ async fn get_customer(
     Path(id): Path<String>,
 ) -> AppResult<Json<Customer>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "read").await?;
     let row = state
         .customer_service
         .get_customer(&claims.sub, &tenant_id, &id)
@@ -236,6 +252,7 @@ async fn create_customer(
     Json(dto): Json<CreateCustomerRequest>,
 ) -> AppResult<Json<Customer>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "manage").await?;
     let ip = extract_ip(&headers, addr);
     let row = state
         .customer_service
@@ -252,6 +269,7 @@ async fn create_customer_with_portal(
     Json(dto): Json<CreateCustomerWithPortalRequest>,
 ) -> AppResult<Json<Customer>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "manage").await?;
     let ip = extract_ip(&headers, addr);
     let row = state
         .customer_service
@@ -269,6 +287,7 @@ async fn update_customer(
     Json(dto): Json<UpdateCustomerRequest>,
 ) -> AppResult<Json<Customer>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "manage").await?;
     let ip = extract_ip(&headers, addr);
     let row = state
         .customer_service
@@ -285,6 +304,7 @@ async fn delete_customer(
     Path(id): Path<String>,
 ) -> AppResult<Json<serde_json::Value>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "manage").await?;
     let ip = extract_ip(&headers, addr);
     state
         .customer_service
@@ -301,6 +321,7 @@ async fn create_customer_registration_invite(
     Json(dto): Json<CreateCustomerRegistrationInviteRequest>,
 ) -> AppResult<Json<CustomerRegistrationInviteCreateResponse>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "manage").await?;
     let ip = extract_ip(&headers, addr);
     let invite = state
         .customer_service
@@ -316,6 +337,7 @@ async fn list_customer_registration_invites(
     Query(q): Query<ListCustomerInviteQuery>,
 ) -> AppResult<Json<Vec<CustomerRegistrationInviteView>>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "read").await?;
     let rows = state
         .customer_service
         .list_customer_registration_invites(
@@ -334,6 +356,7 @@ async fn get_customer_registration_invite_policy(
     headers: HeaderMap,
 ) -> AppResult<Json<CustomerRegistrationInvitePolicy>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "read").await?;
     let policy = state
         .customer_service
         .get_customer_registration_invite_policy(&claims.sub, &tenant_id)
@@ -349,6 +372,7 @@ async fn update_customer_registration_invite_policy(
     Json(dto): Json<UpdateCustomerRegistrationInvitePolicyRequest>,
 ) -> AppResult<Json<CustomerRegistrationInvitePolicy>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "manage").await?;
     let ip = extract_ip(&headers, addr);
     let policy = state
         .customer_service
@@ -363,6 +387,7 @@ async fn get_customer_registration_invite_summary(
     headers: HeaderMap,
 ) -> AppResult<Json<CustomerRegistrationInviteSummary>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "read").await?;
     let summary = state
         .customer_service
         .summarize_customer_registration_invites(&claims.sub, &tenant_id)
@@ -378,6 +403,7 @@ async fn revoke_customer_registration_invite(
     Path(invite_id): Path<String>,
 ) -> AppResult<Json<serde_json::Value>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "manage").await?;
     let ip = extract_ip(&headers, addr);
     state
         .customer_service
@@ -393,6 +419,7 @@ async fn list_locations(
     Path(id): Path<String>,
 ) -> AppResult<Json<Vec<CustomerLocation>>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customer_locations", "read").await?;
     let rows = state
         .customer_service
         .list_locations(&claims.sub, &tenant_id, &id)
@@ -408,6 +435,7 @@ async fn create_location(
     Json(dto): Json<CreateCustomerLocationRequest>,
 ) -> AppResult<Json<CustomerLocation>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customer_locations", "manage").await?;
     let ip = extract_ip(&headers, addr);
     let row = state
         .customer_service
@@ -425,6 +453,7 @@ async fn update_location(
     Json(dto): Json<UpdateCustomerLocationRequest>,
 ) -> AppResult<Json<CustomerLocation>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customer_locations", "manage").await?;
     let ip = extract_ip(&headers, addr);
     let row = state
         .customer_service
@@ -441,6 +470,7 @@ async fn delete_location(
     Path(location_id): Path<String>,
 ) -> AppResult<Json<serde_json::Value>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customer_locations", "manage").await?;
     let ip = extract_ip(&headers, addr);
     state
         .customer_service
@@ -456,6 +486,7 @@ async fn list_portal_users(
     Path(id): Path<String>,
 ) -> AppResult<Json<Vec<CustomerPortalUser>>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "read").await?;
     let rows = state
         .customer_service
         .list_portal_users(&claims.sub, &tenant_id, &id)
@@ -471,6 +502,7 @@ async fn add_portal_user(
     Json(dto): Json<AddCustomerPortalUserRequest>,
 ) -> AppResult<Json<CustomerPortalUser>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "manage").await?;
     let ip = extract_ip(&headers, addr);
     let row = state
         .customer_service
@@ -487,6 +519,7 @@ async fn create_portal_user(
     Json(dto): Json<CreateCustomerPortalUserRequest>,
 ) -> AppResult<Json<CustomerPortalUser>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "manage").await?;
     let ip = extract_ip(&headers, addr);
     let row = state
         .customer_service
@@ -503,6 +536,7 @@ async fn remove_portal_user(
     Path(customer_user_id): Path<String>,
 ) -> AppResult<Json<serde_json::Value>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "customers", "manage").await?;
     let ip = extract_ip(&headers, addr);
     state
         .customer_service
@@ -771,6 +805,7 @@ async fn list_subscriptions(
     Query(q): Query<ListSubscriptionQuery>,
 ) -> AppResult<Json<PaginatedResponse<CustomerSubscriptionView>>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "billing", "read").await?;
     let rows = state
         .customer_service
         .list_customer_subscriptions(
@@ -793,6 +828,7 @@ async fn create_subscription(
     Json(mut dto): Json<CreateCustomerSubscriptionRequest>,
 ) -> AppResult<Json<CustomerSubscription>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "billing", "manage").await?;
     let ip = extract_ip(&headers, addr);
     dto.customer_id = id;
     let row = state
@@ -811,6 +847,7 @@ async fn update_subscription(
     Json(dto): Json<UpdateCustomerSubscriptionRequest>,
 ) -> AppResult<Json<CustomerSubscription>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "billing", "manage").await?;
     let ip = extract_ip(&headers, addr);
     let row = state
         .customer_service
@@ -827,6 +864,7 @@ async fn delete_subscription(
     Path(subscription_id): Path<String>,
 ) -> AppResult<Json<serde_json::Value>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "billing", "manage").await?;
     let ip = extract_ip(&headers, addr);
     state
         .customer_service

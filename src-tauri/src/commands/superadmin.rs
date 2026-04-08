@@ -316,24 +316,27 @@ pub async fn list_managed_radius_mappings(
         return Err("Unauthorized".to_string());
     }
 
-    let rows = sqlx::query_as::<_, (
-        String,
-        String,
-        String,
-        String,
-        String,
-        String,
-        i32,
-        i32,
-        String,
-        Option<String>,
-        String,
-        String,
-        Option<String>,
-        String,
-        bool,
-        chrono::DateTime<chrono::Utc>,
-    )>(
+    let rows = sqlx::query_as::<
+        _,
+        (
+            String,
+            String,
+            String,
+            String,
+            String,
+            String,
+            i32,
+            i32,
+            String,
+            Option<String>,
+            String,
+            String,
+            Option<String>,
+            String,
+            bool,
+            chrono::DateTime<chrono::Utc>,
+        ),
+    >(
         r#"
         SELECT
           n.id,
@@ -417,22 +420,27 @@ pub async fn create_managed_radius_server(
     managed_radius_service: State<'_, ManagedRadiusService>,
     audit_service: State<'_, AuditService>,
 ) -> Result<(), String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     if !claims.is_super_admin {
         return Err("Unauthorized".to_string());
     }
 
     let server = managed_radius_service
-        .create_server(crate::services::managed_radius_service::ManagedRadiusServerUpsert {
-            name,
-            db_host,
-            db_port,
-            db_name,
-            db_user,
-            db_password: Some(db_password),
-            is_active,
-            notes,
-        })
+        .create_server(
+            crate::services::managed_radius_service::ManagedRadiusServerUpsert {
+                name,
+                db_host,
+                db_port,
+                db_name,
+                db_user,
+                db_password: Some(db_password),
+                is_active,
+                notes,
+            },
+        )
         .await
         .map_err(|e| e.to_string())?;
 
@@ -468,7 +476,10 @@ pub async fn update_managed_radius_server(
     managed_radius_service: State<'_, ManagedRadiusService>,
     audit_service: State<'_, AuditService>,
 ) -> Result<(), String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     if !claims.is_super_admin {
         return Err("Unauthorized".to_string());
     }
@@ -514,7 +525,10 @@ pub async fn set_managed_radius_server_active(
     managed_radius_service: State<'_, ManagedRadiusService>,
     audit_service: State<'_, AuditService>,
 ) -> Result<(), String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     if !claims.is_super_admin {
         return Err("Unauthorized".to_string());
     }
@@ -571,7 +585,10 @@ pub async fn set_managed_radius_server_default(
             "MANAGED_RADIUS_SERVER_SET_DEFAULT",
             "managed_radius_server",
             Some(&server.id),
-            Some(&format!("Set managed RADIUS server {} as default", server.name)),
+            Some(&format!(
+                "Set managed RADIUS server {} as default",
+                server.name
+            )),
             None,
         )
         .await;
@@ -589,7 +606,10 @@ pub async fn create_managed_radius_assignment(
     managed_radius_service: State<'_, ManagedRadiusService>,
     audit_service: State<'_, AuditService>,
 ) -> Result<(), String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     if !claims.is_super_admin {
         return Err("Unauthorized".to_string());
     }
@@ -631,7 +651,10 @@ pub async fn update_managed_radius_assignment(
     managed_radius_service: State<'_, ManagedRadiusService>,
     audit_service: State<'_, AuditService>,
 ) -> Result<(), String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     if !claims.is_super_admin {
         return Err("Unauthorized".to_string());
     }
@@ -673,7 +696,10 @@ pub async fn set_managed_radius_assignment_active(
     managed_radius_service: State<'_, ManagedRadiusService>,
     audit_service: State<'_, AuditService>,
 ) -> Result<(), String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     if !claims.is_super_admin {
         return Err("Unauthorized".to_string());
     }
@@ -718,22 +744,27 @@ pub async fn create_managed_radius_mapping(
     managed_radius_service: State<'_, ManagedRadiusService>,
     audit_service: State<'_, AuditService>,
 ) -> Result<(), String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     if !claims.is_super_admin {
         return Err("Unauthorized".to_string());
     }
 
     let mapping = managed_radius_service
-        .create_mapping(crate::services::managed_radius_service::ManagedRadiusNasUpsert {
-            tenant_id: tenant_id.clone(),
-            radius_server_id,
-            router_id,
-            nas_name,
-            nas_ip_or_cidr,
-            shortname,
-            shared_secret,
-            is_active,
-        })
+        .create_mapping(
+            crate::services::managed_radius_service::ManagedRadiusNasUpsert {
+                tenant_id: tenant_id.clone(),
+                radius_server_id,
+                router_id,
+                nas_name,
+                nas_ip_or_cidr,
+                shortname,
+                shared_secret,
+                is_active,
+            },
+        )
         .await
         .map_err(|e| e.to_string())?;
 
@@ -769,7 +800,10 @@ pub async fn update_managed_radius_mapping(
     managed_radius_service: State<'_, ManagedRadiusService>,
     audit_service: State<'_, AuditService>,
 ) -> Result<(), String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     if !claims.is_super_admin {
         return Err("Unauthorized".to_string());
     }
@@ -816,7 +850,10 @@ pub async fn set_managed_radius_mapping_active(
     managed_radius_service: State<'_, ManagedRadiusService>,
     audit_service: State<'_, AuditService>,
 ) -> Result<(), String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     if !claims.is_super_admin {
         return Err("Unauthorized".to_string());
     }
@@ -855,7 +892,10 @@ pub async fn rotate_managed_radius_mapping_secret(
     managed_radius_service: State<'_, ManagedRadiusService>,
     audit_service: State<'_, AuditService>,
 ) -> Result<SuperadminManagedRadiusSecretValue, String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     if !claims.is_super_admin {
         return Err("Unauthorized".to_string());
     }
@@ -892,7 +932,10 @@ pub async fn reveal_managed_radius_mapping_secret(
     managed_radius_service: State<'_, ManagedRadiusService>,
     audit_service: State<'_, AuditService>,
 ) -> Result<SuperadminManagedRadiusSecretValue, String> {
-    let claims = auth_service.validate_token(&token).await.map_err(|e| e.to_string())?;
+    let claims = auth_service
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
     if !claims.is_super_admin {
         return Err("Unauthorized".to_string());
     }

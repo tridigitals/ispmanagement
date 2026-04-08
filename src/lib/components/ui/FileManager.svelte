@@ -427,7 +427,7 @@
         </p>
       </div>
       <div class="header-actions">
-        {#if mode !== 'admin' && $can('upload', 'storage')}
+        {#if mode !== 'admin' && $can('upload', 'storage_files')}
           <input
             type="file"
             class="hidden"
@@ -547,7 +547,7 @@
           </div>
 
           <div class="toolbar-actions">
-            {#if mode !== 'admin' && $can('upload', 'storage')}
+            {#if mode !== 'admin' && $can('upload', 'storage_files')}
               <input
                 type="file"
                 class="hidden"
@@ -618,7 +618,7 @@
                 tabindex="0"
                 onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && handleItemClick(index)}
               >
-                {#if $can('delete', 'storage')}
+                {#if $can('delete', 'storage_files')}
                   <div class="selection-checkbox">
                     <input
                       type="checkbox"
@@ -671,7 +671,7 @@
                   </div>
                 </div>
 
-                {#if $can('delete', 'storage')}
+                {#if $can('delete', 'storage_files')}
                   <div class="file-actions">
                     <button
                       class="action-btn delete"
@@ -695,7 +695,7 @@
               <thead>
                 <tr>
                   <th class="w-10 text-center">
-                    {#if $can('delete', 'storage')}
+                    {#if $can('delete', 'storage_files')}
                       <input
                         type="checkbox"
                         checked={selectedFileIds.length > 0 &&
@@ -732,7 +732,7 @@
                     onclick={() => handleItemClick(index)}
                   >
                     <td class="text-center" onclick={(e) => e.stopPropagation()}>
-                      {#if $can('delete', 'storage')}
+                      {#if $can('delete', 'storage_files')}
                         <input
                           type="checkbox"
                           checked={selectedFileIds.includes(file.id)}
@@ -778,7 +778,7 @@
                       {formatDate(file.created_at, { timeZone: $appSettings.app_timezone })}
                     </td>
                     <td class="text-right">
-                      {#if $can('delete', 'storage')}
+                      {#if $can('delete', 'storage_files')}
                         <button
                           class="text-btn delete"
                           onclick={(e) => {

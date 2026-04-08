@@ -14,6 +14,81 @@ pub struct RoleService {
 }
 
 impl RoleService {
+    fn map_legacy_permission_key(key: &str) -> Vec<String> {
+        match key {
+            "network_routers:read" => vec![
+                "network_noc:read",
+                "network_alerts:read",
+                "network_incidents:read",
+                "network_logs:read",
+                "router_inventory:read",
+                "ppp_profiles:read",
+                "ip_pools:read",
+            ]
+            .into_iter()
+            .map(str::to_string)
+            .collect(),
+            "network_routers:manage" => vec![
+                "network_noc:manage",
+                "network_alerts:manage",
+                "network_incidents:manage",
+                "network_logs:manage",
+                "router_inventory:manage",
+                "ppp_profiles:manage",
+                "ip_pools:manage",
+            ]
+            .into_iter()
+            .map(str::to_string)
+            .collect(),
+            "network_routers:manage_radius_secret" => {
+                vec!["router_inventory:manage_radius_secret".to_string()]
+            }
+            "storage:read" => vec![
+                "storage_console:read".to_string(),
+                "storage_files:read".to_string(),
+            ],
+            "storage:upload" => vec!["storage_files:upload".to_string()],
+            "storage:delete" => vec!["storage_files:delete".to_string()],
+            "pppoe:read" => vec![
+                "ppp_profiles:read".to_string(),
+                "ip_pools:read".to_string(),
+                "pppoe:read".to_string(),
+            ],
+            "pppoe:manage" => vec![
+                "ppp_profiles:manage".to_string(),
+                "ip_pools:manage".to_string(),
+                "pppoe:manage".to_string(),
+            ],
+            _ => vec![key.to_string()],
+        }
+    }
+
+    fn normalize_permission_keys<'a, I>(permissions: I) -> Vec<String>
+    where
+        I: IntoIterator<Item = &'a str>,
+    {
+        let mut normalized = permissions
+            .into_iter()
+            .flat_map(Self::map_legacy_permission_key)
+            .collect::<Vec<_>>();
+        normalized.sort();
+        normalized.dedup();
+        normalized
+    }
+
+    fn legacy_permission_keys() -> &'static [&'static str] {
+        &[
+            "network_routers:read",
+            "network_routers:manage",
+            "network_routers:manage_radius_secret",
+            "storage:read",
+            "storage:upload",
+            "storage:delete",
+            "pppoe:read",
+            "pppoe:manage",
+        ]
+    }
+
     pub fn new(pool: DbPool, audit_service: AuditService) -> Self {
         Self {
             pool,
@@ -45,11 +120,35 @@ impl RoleService {
             ("customers", "read_own", "View own customer portal data"),
             ("customer_locations", "read", "View customer locations"),
             ("customer_locations", "manage", "Manage customer locations"),
-            // Network / Routers (tenant scoped)
-            ("network_routers", "read", "View routers and status"),
-            ("network_routers", "manage", "Manage router inventory"),
+            // Network monitoring and inventory (tenant scoped)
+            ("network_noc", "read", "View NOC dashboards and wallboards"),
             (
-                "network_routers",
+                "network_noc",
+                "manage",
+                "Manage NOC wallboards and dashboard settings",
+            ),
+            ("network_alerts", "read", "View network alerts"),
+            (
+                "network_alerts",
+                "manage",
+                "Acknowledge and resolve network alerts",
+            ),
+            ("network_incidents", "read", "View network incidents"),
+            (
+                "network_incidents",
+                "manage",
+                "Manage and escalate network incidents",
+            ),
+            ("network_logs", "read", "View router and network logs"),
+            (
+                "network_logs",
+                "manage",
+                "Sync, clear, and manage router logs",
+            ),
+            ("router_inventory", "read", "View routers and status"),
+            ("router_inventory", "manage", "Manage router inventory"),
+            (
+                "router_inventory",
                 "manage_radius_secret",
                 "Reveal managed RADIUS shared secrets",
             ),
@@ -59,6 +158,10 @@ impl RoleService {
             ("service_zones", "read", "View service zones"),
             ("service_zones", "manage", "Manage service zones"),
             ("coverage", "read", "Read coverage checks"),
+            ("ppp_profiles", "read", "View PPP profiles"),
+            ("ppp_profiles", "manage", "Manage PPP profiles"),
+            ("ip_pools", "read", "View IP pools"),
+            ("ip_pools", "manage", "Manage IP pools"),
             // PPPoE (tenant scoped)
             ("pppoe", "read", "View PPPoE accounts"),
             ("pppoe", "manage", "Manage PPPoE accounts"),
@@ -77,6 +180,11 @@ impl RoleService {
             ("backups", "download", "Download backups"),
             ("backups", "restore", "Restore backups"),
             ("backups", "delete", "Delete backups"),
+            // Tenant storage
+            ("storage_console", "read", "View tenant storage console"),
+            ("storage_files", "read", "Read tenant file contents"),
+            ("storage_files", "upload", "Upload tenant files"),
+            ("storage_files", "delete", "Delete tenant files"),
             // Support Tickets (tenant scoped)
             ("support", "create", "Create support tickets"),
             ("support", "read", "Read own support tickets"),
@@ -124,13 +232,26 @@ impl RoleService {
                     "customers:manage",
                     "customer_locations:read",
                     "customer_locations:manage",
-                    "network_routers:read",
-                    "network_routers:manage",
+                    "network_noc:read",
+                    "network_noc:manage",
+                    "network_alerts:read",
+                    "network_alerts:manage",
+                    "network_incidents:read",
+                    "network_incidents:manage",
+                    "network_logs:read",
+                    "network_logs:manage",
+                    "router_inventory:read",
+                    "router_inventory:manage",
+                    "router_inventory:manage_radius_secret",
                     "network_topology:read",
                     "network_topology:manage",
                     "service_zones:read",
                     "service_zones:manage",
                     "coverage:read",
+                    "ppp_profiles:read",
+                    "ppp_profiles:manage",
+                    "ip_pools:read",
+                    "ip_pools:manage",
                     "pppoe:read",
                     "pppoe:manage",
                     "isp_packages:read",
@@ -139,6 +260,10 @@ impl RoleService {
                     "work_orders:manage",
                     "billing:read",
                     "billing:manage",
+                    "storage_console:read",
+                    "storage_files:read",
+                    "storage_files:upload",
+                    "storage_files:delete",
                     "backups:read",
                     "backups:create",
                     "backups:download",
@@ -176,13 +301,26 @@ impl RoleService {
                     "customers:manage",
                     "customer_locations:read",
                     "customer_locations:manage",
-                    "network_routers:read",
-                    "network_routers:manage",
+                    "network_noc:read",
+                    "network_noc:manage",
+                    "network_alerts:read",
+                    "network_alerts:manage",
+                    "network_incidents:read",
+                    "network_incidents:manage",
+                    "network_logs:read",
+                    "network_logs:manage",
+                    "router_inventory:read",
+                    "router_inventory:manage",
+                    "router_inventory:manage_radius_secret",
                     "network_topology:read",
                     "network_topology:manage",
                     "service_zones:read",
                     "service_zones:manage",
                     "coverage:read",
+                    "ppp_profiles:read",
+                    "ppp_profiles:manage",
+                    "ip_pools:read",
+                    "ip_pools:manage",
                     "pppoe:read",
                     "pppoe:manage",
                     "isp_packages:read",
@@ -191,6 +329,10 @@ impl RoleService {
                     "work_orders:manage",
                     "billing:read",
                     "billing:manage",
+                    "storage_console:read",
+                    "storage_files:read",
+                    "storage_files:upload",
+                    "storage_files:delete",
                     "backups:read",
                     "backups:create",
                     "backups:download",
@@ -219,7 +361,7 @@ impl RoleService {
                     "dashboard:read",
                     "customers:read",
                     "customer_locations:read",
-                    "network_routers:read",
+                    "router_inventory:read",
                     "network_topology:read",
                     "network_topology:manage",
                     "service_zones:read",
@@ -239,13 +381,18 @@ impl RoleService {
                     "dashboard:read",
                     "customers:read",
                     "customer_locations:read",
-                    "network_routers:read",
-                    "network_routers:manage",
-                    "network_topology:read",
-                    "network_topology:manage",
-                    "service_zones:read",
-                    "service_zones:manage",
-                    "coverage:read",
+                    "network_noc:read",
+                    "network_alerts:read",
+                    "network_alerts:manage",
+                    "network_incidents:read",
+                    "network_incidents:manage",
+                    "network_logs:read",
+                    "network_logs:manage",
+                    "router_inventory:read",
+                    "ppp_profiles:read",
+                    "ppp_profiles:manage",
+                    "ip_pools:read",
+                    "ip_pools:manage",
                     "pppoe:read",
                     "pppoe:manage",
                     "isp_packages:read",
@@ -272,7 +419,10 @@ impl RoleService {
                     "customer_locations:read",
                     "customer_locations:manage",
                     "work_orders:read",
+                    "storage_files:read",
+                    "storage_files:upload",
                     "billing:read",
+                    "billing:manage",
                     "support:create",
                     "support:read",
                     "support:read_all",
@@ -292,19 +442,19 @@ impl RoleService {
                     "dashboard:read",
                     "customers:read",
                     "customer_locations:read",
-                    "network_routers:read",
-                    "network_topology:read",
-                    "service_zones:read",
-                    "coverage:read",
+                    "router_inventory:read",
+                    "ppp_profiles:read",
+                    "ip_pools:read",
                     "pppoe:read",
                     "pppoe:manage",
                     "isp_packages:read",
                     "work_orders:read",
                     "work_orders:manage",
                     "support:read",
-                    "support:read_all",
                     "support:reply",
                     "support:internal",
+                    "storage_files:read",
+                    "storage_files:upload",
                     "announcements:read",
                 ],
             ),
@@ -316,6 +466,8 @@ impl RoleService {
                 vec![
                     "team:read",
                     "dashboard:read",
+                    "storage_files:read",
+                    "storage_files:upload",
                     "support:create",
                     "support:read",
                     "support:reply",
@@ -337,6 +489,8 @@ impl RoleService {
                 vec![
                     "dashboard:read",
                     "announcements:read",
+                    "storage_files:read",
+                    "storage_files:upload",
                     "support:create",
                     "support:read",
                     "support:reply",
@@ -345,6 +499,13 @@ impl RoleService {
                 ],
             ),
         ]
+    }
+
+    pub fn get_role_permission_keys(role_name: &str) -> Option<Vec<&'static str>> {
+        Self::get_default_roles()
+            .into_iter()
+            .find(|(name, _, _, _, _)| *name == role_name)
+            .map(|(_, _, _, _, permissions)| permissions)
     }
 
     /// Seed default permissions into database
@@ -389,6 +550,94 @@ impl RoleService {
         }
 
         tracing::info!("Default permissions seeded");
+        Ok(())
+    }
+
+    async fn migrate_legacy_role_permissions(&self) -> Result<(), sqlx::Error> {
+        let legacy_keys = Self::legacy_permission_keys();
+
+        #[cfg(feature = "postgres")]
+        let roles: Vec<(String,)> = sqlx::query_as("SELECT id FROM roles")
+            .fetch_all(&self.pool)
+            .await?;
+
+        #[cfg(feature = "sqlite")]
+        let roles: Vec<(String,)> = sqlx::query_as("SELECT id FROM roles")
+            .fetch_all(&self.pool)
+            .await?;
+
+        for (role_id,) in roles {
+            let existing = self.get_role_permissions(&role_id).await?;
+            let existing_set = existing.iter().cloned().collect::<HashSet<_>>();
+            let normalized = Self::normalize_permission_keys(existing.iter().map(String::as_str));
+
+            for perm_key in normalized {
+                if existing_set.contains(&perm_key) {
+                    continue;
+                }
+                let parts: Vec<&str> = perm_key.split(':').collect();
+                if parts.len() != 2 {
+                    continue;
+                }
+                let (resource, action) = (parts[0], parts[1]);
+
+                #[cfg(feature = "postgres")]
+                sqlx::query(
+                    r#"
+                    INSERT INTO role_permissions (role_id, permission_id)
+                    SELECT $1, id FROM permissions WHERE resource = $2 AND action = $3
+                    ON CONFLICT DO NOTHING
+                "#,
+                )
+                .bind(&role_id)
+                .bind(resource)
+                .bind(action)
+                .execute(&self.pool)
+                .await?;
+
+                #[cfg(feature = "sqlite")]
+                sqlx::query(
+                    r#"
+                    INSERT OR IGNORE INTO role_permissions (role_id, permission_id)
+                    SELECT ?, id FROM permissions WHERE resource = ? AND action = ?
+                "#,
+                )
+                .bind(&role_id)
+                .bind(resource)
+                .bind(action)
+                .execute(&self.pool)
+                .await?;
+            }
+
+            for legacy_key in legacy_keys {
+                #[cfg(feature = "postgres")]
+                sqlx::query(
+                    r#"
+                    DELETE FROM role_permissions
+                    WHERE role_id = $1
+                      AND permission_id IN (SELECT id FROM permissions WHERE id = $2)
+                "#,
+                )
+                .bind(&role_id)
+                .bind(legacy_key)
+                .execute(&self.pool)
+                .await?;
+
+                #[cfg(feature = "sqlite")]
+                sqlx::query(
+                    r#"
+                    DELETE FROM role_permissions
+                    WHERE role_id = ?
+                      AND permission_id IN (SELECT id FROM permissions WHERE id = ?)
+                "#,
+                )
+                .bind(&role_id)
+                .bind(legacy_key)
+                .execute(&self.pool)
+                .await?;
+            }
+        }
+
         Ok(())
     }
 
@@ -521,6 +770,8 @@ impl RoleService {
                 }
             }
         }
+
+        self.migrate_legacy_role_permissions().await?;
 
         tracing::info!("Default roles seeded");
         Ok(())
@@ -662,7 +913,8 @@ impl RoleService {
         }
 
         // Assign permissions
-        for perm_key in &dto.permissions {
+        for perm_key in Self::normalize_permission_keys(dto.permissions.iter().map(String::as_str))
+        {
             let parts: Vec<&str> = perm_key.split(':').collect();
             if parts.len() != 2 {
                 continue;
@@ -856,18 +1108,10 @@ impl RoleService {
             let existing_set: HashSet<String> = existing_permissions
                 .into_iter()
                 .collect::<HashSet<String>>();
-            let requested_set: HashSet<String> = permissions
-                .iter()
-                .filter_map(|key| {
-                    let mut iter = key.split(':');
-                    let r = iter.next()?;
-                    let a = iter.next()?;
-                    if iter.next().is_some() {
-                        return None;
-                    }
-                    Some(format!("{}:{}", r, a))
-                })
-                .collect();
+            let requested_set: HashSet<String> =
+                Self::normalize_permission_keys(permissions.iter().map(String::as_str))
+                    .into_iter()
+                    .collect();
 
             perms_added = requested_set
                 .difference(&existing_set)
@@ -894,7 +1138,8 @@ impl RoleService {
                 .await?;
 
             // Add new permissions
-            for perm_key in permissions {
+            for perm_key in Self::normalize_permission_keys(permissions.iter().map(String::as_str))
+            {
                 let parts: Vec<&str> = perm_key.split(':').collect();
                 if parts.len() != 2 {
                     continue;
@@ -1032,5 +1277,103 @@ impl RoleService {
             // Role not found, treat as success or error?
             Ok(true)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RoleService;
+    use std::collections::HashSet;
+
+    fn perms(role_name: &str) -> HashSet<&'static str> {
+        RoleService::get_role_permission_keys(role_name)
+            .unwrap_or_default()
+            .into_iter()
+            .collect()
+    }
+
+    #[test]
+    fn technician_role_is_limited_to_installation_focused_access() {
+        let technician = perms("Technician");
+
+        assert!(technician.contains("work_orders:manage"));
+        assert!(technician.contains("pppoe:manage"));
+        assert!(technician.contains("router_inventory:read"));
+        assert!(technician.contains("ppp_profiles:read"));
+        assert!(technician.contains("ip_pools:read"));
+        assert!(!technician.contains("network_noc:read"));
+        assert!(!technician.contains("network_alerts:read"));
+        assert!(!technician.contains("network_incidents:manage"));
+        assert!(!technician.contains("network_logs:read"));
+        assert!(!technician.contains("storage_console:read"));
+        assert!(!technician.contains("support:read_all"));
+    }
+
+    #[test]
+    fn noc_role_can_operate_network_without_router_inventory_mutation() {
+        let noc = perms("NOC");
+
+        assert!(noc.contains("network_noc:read"));
+        assert!(noc.contains("network_alerts:manage"));
+        assert!(noc.contains("network_incidents:manage"));
+        assert!(noc.contains("network_logs:manage"));
+        assert!(noc.contains("ppp_profiles:manage"));
+        assert!(noc.contains("ip_pools:manage"));
+        assert!(noc.contains("pppoe:manage"));
+        assert!(noc.contains("router_inventory:read"));
+        assert!(!noc.contains("router_inventory:manage"));
+        assert!(!noc.contains("storage_console:read"));
+    }
+
+    #[test]
+    fn admin_role_receives_full_granular_admin_surface() {
+        let admin = perms("Admin");
+
+        assert!(admin.contains("network_noc:manage"));
+        assert!(admin.contains("network_alerts:manage"));
+        assert!(admin.contains("network_incidents:manage"));
+        assert!(admin.contains("network_logs:manage"));
+        assert!(admin.contains("router_inventory:manage"));
+        assert!(admin.contains("router_inventory:manage_radius_secret"));
+        assert!(admin.contains("ppp_profiles:manage"));
+        assert!(admin.contains("ip_pools:manage"));
+        assert!(admin.contains("storage_console:read"));
+        assert!(admin.contains("storage_files:delete"));
+    }
+
+    #[test]
+    fn legacy_permissions_are_normalized_to_granular_keys() {
+        let normalized = RoleService::normalize_permission_keys([
+            "network_routers:read",
+            "storage:read",
+            "pppoe:manage",
+        ]);
+        let normalized = normalized.into_iter().collect::<HashSet<_>>();
+
+        assert!(normalized.contains("network_noc:read"));
+        assert!(normalized.contains("router_inventory:read"));
+        assert!(normalized.contains("storage_console:read"));
+        assert!(normalized.contains("storage_files:read"));
+        assert!(normalized.contains("ppp_profiles:manage"));
+        assert!(normalized.contains("ip_pools:manage"));
+        assert!(normalized.contains("pppoe:manage"));
+    }
+
+    #[test]
+    fn legacy_permission_catalog_stays_complete_for_migration_cleanup() {
+        let legacy = RoleService::legacy_permission_keys()
+            .iter()
+            .copied()
+            .collect::<HashSet<_>>();
+
+        assert!(legacy.contains("network_routers:read"));
+        assert!(legacy.contains("network_routers:manage"));
+        assert!(legacy.contains("network_routers:manage_radius_secret"));
+        assert!(legacy.contains("storage:read"));
+        assert!(legacy.contains("storage:upload"));
+        assert!(legacy.contains("storage:delete"));
+        assert!(legacy.contains("pppoe:read"));
+        assert!(legacy.contains("pppoe:manage"));
+        assert_eq!(legacy.len(), 8);
     }
 }

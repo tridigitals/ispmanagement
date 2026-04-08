@@ -219,8 +219,9 @@ mod tests {
 
     #[test]
     fn activation_resolution_paid_grace_subscription_stays_active() {
-        let target = resolve_activation_status(SubscriptionLifecycleStatus::GraceActive, true, true)
-            .expect("paid grace subscription should resolve to active");
+        let target =
+            resolve_activation_status(SubscriptionLifecycleStatus::GraceActive, true, true)
+                .expect("paid grace subscription should resolve to active");
         assert_eq!(target, SubscriptionLifecycleStatus::Active);
     }
 }

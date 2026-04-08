@@ -191,8 +191,14 @@
   ]);
 
   const billingColumns = $derived.by(() => [
-    { key: 'invoice_number', label: $t('admin.customers.billing.columns.invoice_number') || 'Invoice #' },
-    { key: 'subscription', label: $t('admin.customers.billing.columns.subscription') || 'Subscription' },
+    {
+      key: 'invoice_number',
+      label: $t('admin.customers.billing.columns.invoice_number') || 'Invoice #',
+    },
+    {
+      key: 'subscription',
+      label: $t('admin.customers.billing.columns.subscription') || 'Subscription',
+    },
     { key: 'amount', label: $t('admin.customers.billing.columns.amount') || 'Amount' },
     { key: 'status', label: $t('admin.customers.billing.columns.status') || 'Status' },
     { key: 'due_date', label: $t('admin.customers.billing.columns.due_date') || 'Due date' },
@@ -223,11 +229,20 @@
       .filter((p: any) => p?.is_active !== false)
       .map((p: any) => ({ label: p.name, value: p.id })),
   );
+  const canReadCustomers = $derived($can('read', 'customers') || $can('manage', 'customers'));
+  const canManageCustomers = $derived($can('manage', 'customers'));
+  const canReadCustomerLocations = $derived(
+    $can('read', 'customer_locations') || $can('manage', 'customer_locations'),
+  );
+  const canManageCustomerLocations = $derived($can('manage', 'customer_locations'));
+  const canReadBilling = $derived($can('read', 'billing') || $can('manage', 'billing'));
+  const isReadOnlyCustomerAccess = $derived(canReadCustomers && !canManageCustomers);
   const canReadAudit = $derived($can('read', 'audit_logs'));
   const timelineFilteredLogs = $derived.by(() => {
     if (timelineType === 'all') return timelineLogs;
     if (timelineType === 'customer') return timelineLogs.filter((l) => l.resource === 'customers');
-    if (timelineType === 'location') return timelineLogs.filter((l) => l.resource === 'customer_locations');
+    if (timelineType === 'location')
+      return timelineLogs.filter((l) => l.resource === 'customer_locations');
     if (timelineType === 'subscription')
       return timelineLogs.filter((l) => l.resource === 'customer_subscriptions');
     return timelineLogs;
@@ -254,14 +269,19 @@
     });
 
     return rows.sort(
-      (a, b) => new Date(b.created_at || b.due_date).getTime() - new Date(a.created_at || a.due_date).getTime(),
+      (a, b) =>
+        new Date(b.created_at || b.due_date).getTime() -
+        new Date(a.created_at || a.due_date).getTime(),
     );
   });
   const billingStats = $derived.by(() => {
     const now = Date.now();
-    const overdue = billingRows.filter((inv) => inv.status !== 'paid' && new Date(inv.due_date).getTime() < now)
-      .length;
-    const unpaid = billingRows.filter((inv) => ['pending', 'verification_pending'].includes(inv.status)).length;
+    const overdue = billingRows.filter(
+      (inv) => inv.status !== 'paid' && new Date(inv.due_date).getTime() < now,
+    ).length;
+    const unpaid = billingRows.filter((inv) =>
+      ['pending', 'verification_pending'].includes(inv.status),
+    ).length;
     const paid = billingRows.filter((inv) => inv.status === 'paid').length;
     return {
       total: billingRows.length,
@@ -272,14 +292,16 @@
   });
 
   onMount(async () => {
-    if (!$can('read', 'customers') && !$can('manage', 'customers')) {
+    if (!canReadCustomers) {
       goto('/unauthorized');
       return;
     }
     const fromUrl = readActiveTabFromUrl();
     if (fromUrl) activeTab = fromUrl;
     await loadCustomer();
-    await loadLocations();
+    if (canReadCustomerLocations) {
+      await loadLocations();
+    }
   });
 
   $effect(() => {
@@ -287,11 +309,17 @@
     if (fromUrl && fromUrl !== activeTab) {
       activeTab = fromUrl;
     }
+    if (activeTab === 'billing' && !canReadBilling) {
+      activeTab = 'overview';
+    }
+    if (activeTab === 'locations' && !canReadCustomerLocations) {
+      activeTab = 'overview';
+    }
   });
 
   $effect(() => {
     if (activeTab !== 'subscriptions') return;
-    if (!$can('read', 'customers') && !$can('manage', 'customers')) return;
+    if (!canReadCustomers) return;
     void loadSubscriptions();
     if (subscriptionPackages.length === 0) {
       void loadSubscriptionPackages();
@@ -300,7 +328,7 @@
 
   $effect(() => {
     if (activeTab !== 'billing') return;
-    if (!$can('read', 'customers') && !$can('manage', 'customers')) return;
+    if (!canReadBilling) return;
     void loadSubscriptions();
     void loadBillingInvoices();
   });
@@ -340,7 +368,7 @@
 
   $effect(() => {
     if (!showAddPppoe && !showEditPppoe) return;
-    if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) return;
+    if (!$can('read', 'router_inventory') && !$can('manage', 'router_inventory')) return;
 
     const rid = pppoeRouterId;
     if (!rid) {
@@ -423,9 +451,10 @@
   }
 
   function metricCount(stage: string, source: 'lifecycle' | 'work_order' = 'lifecycle'): number {
-    const items = source === 'lifecycle'
-      ? lifecycleObservability?.lifecycle_funnel || []
-      : lifecycleObservability?.work_order_funnel || [];
+    const items =
+      source === 'lifecycle'
+        ? lifecycleObservability?.lifecycle_funnel || []
+        : lifecycleObservability?.work_order_funnel || [];
     return items.find((item) => item.stage === stage)?.count || 0;
   }
 
@@ -435,7 +464,9 @@
 
   function readActiveTabFromUrl(): CustomerDetailTab | null {
     const tab = String($page.url.searchParams.get('tab') || '').toLowerCase();
-    return customerDetailTabs.includes(tab as CustomerDetailTab) ? (tab as CustomerDetailTab) : null;
+    return customerDetailTabs.includes(tab as CustomerDetailTab)
+      ? (tab as CustomerDetailTab)
+      : null;
   }
 
   function getSubscriptionIdFromInvoice(inv: Invoice): string | null {
@@ -467,8 +498,9 @@
       billingInvoices = invoices;
     } catch (e: any) {
       toast.error(
-        get(t)('admin.customers.billing.toasts.load_failed', { values: { message: e?.message || e } }) ||
-          `Failed to load billing invoices: ${e?.message || e}`,
+        get(t)('admin.customers.billing.toasts.load_failed', {
+          values: { message: e?.message || e },
+        }) || `Failed to load billing invoices: ${e?.message || e}`,
       );
     } finally {
       loadingBilling = false;
@@ -488,8 +520,9 @@
       await loadBillingInvoices();
     } catch (e: any) {
       toast.error(
-        get(t)('admin.customers.billing.toasts.generate_failed', { values: { message: e?.message || e } }) ||
-          `Failed to generate invoice: ${e?.message || e}`,
+        get(t)('admin.customers.billing.toasts.generate_failed', {
+          values: { message: e?.message || e },
+        }) || `Failed to generate invoice: ${e?.message || e}`,
       );
     } finally {
       generatingInvoiceFor = null;
@@ -537,11 +570,13 @@
         api.customers.locations.list(customerId).catch(() => [] as CustomerLocation[]),
         api.customers.subscriptions
           .list(customerId, { page: 1, per_page: 500 })
-          .catch(() => ({ data: [] as CustomerSubscriptionView[] } as any)),
+          .catch(() => ({ data: [] as CustomerSubscriptionView[] }) as any),
       ]);
 
       const allowedLocationIds = new Set((locRows || []).map((l) => l.id));
-      const allowedSubscriptionIds = new Set(((subRes?.data as CustomerSubscriptionView[]) || []).map((s) => s.id));
+      const allowedSubscriptionIds = new Set(
+        ((subRes?.data as CustomerSubscriptionView[]) || []).map((s) => s.id),
+      );
 
       timelineLogs = (res.data || []).filter((log) => {
         if (log.resource === 'customers') {
@@ -578,7 +613,13 @@
       CUSTOMER_PORTAL_USER_ADD: 'Portal user linked',
       CUSTOMER_PORTAL_USER_REMOVE: 'Portal user removed',
     };
-    return map[action] || action.replaceAll('_', ' ').toLowerCase().replace(/^./, (m) => m.toUpperCase());
+    return (
+      map[action] ||
+      action
+        .replaceAll('_', ' ')
+        .toLowerCase()
+        .replace(/^./, (m) => m.toUpperCase())
+    );
   }
 
   function timelineResourceLabel(resource: string): string {
@@ -630,12 +671,14 @@
     subLocationId = row.location_id;
     subPackageId = row.package_id;
     subRouterId = row.router_id || '';
-    subBillingCycle = (row.billing_cycle === 'yearly' ? 'yearly' : 'monthly') as 'monthly' | 'yearly';
+    subBillingCycle = (row.billing_cycle === 'yearly' ? 'yearly' : 'monthly') as
+      | 'monthly'
+      | 'yearly';
     subPrice = String(row.price ?? '');
     subCurrency = row.currency_code || '';
-    subStatus = (['active', 'suspended', 'cancelled'].includes(row.status)
-      ? row.status
-      : 'active') as 'active' | 'suspended' | 'cancelled';
+    subStatus = (
+      ['active', 'suspended', 'cancelled'].includes(row.status) ? row.status : 'active'
+    ) as 'active' | 'suspended' | 'cancelled';
     subStartsAt = row.starts_at ? row.starts_at.slice(0, 10) : '';
     subEndsAt = row.ends_at ? row.ends_at.slice(0, 10) : '';
     subNotes = row.notes || '';
@@ -729,12 +772,14 @@
   }
 
   async function loadPppoeRouters() {
-    if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) return;
+    if (!$can('read', 'router_inventory') && !$can('manage', 'router_inventory')) return;
     loadingPppoeRouters = true;
     try {
       pppoeRouters = await api.mikrotik.routers.list();
     } catch (e: any) {
-      toast.error(get(t)('admin.customers.pppoe.toasts.routers_failed') || 'Failed to load routers');
+      toast.error(
+        get(t)('admin.customers.pppoe.toasts.routers_failed') || 'Failed to load routers',
+      );
     } finally {
       loadingPppoeRouters = false;
     }
@@ -752,8 +797,9 @@
       pppoeAccounts = res.data || [];
     } catch (e: any) {
       toast.error(
-        get(t)('admin.customers.pppoe.toasts.load_failed', { values: { message: e?.message || e } }) ||
-          `Failed to load PPPoE accounts: ${e?.message || e}`,
+        get(t)('admin.customers.pppoe.toasts.load_failed', {
+          values: { message: e?.message || e },
+        }) || `Failed to load PPPoE accounts: ${e?.message || e}`,
       );
     } finally {
       loadingPppoe = false;
@@ -898,8 +944,9 @@
       await loadPppoeAccounts();
     } catch (e: any) {
       toast.error(
-        get(t)('admin.customers.pppoe.toasts.update_failed', { values: { message: e?.message || e } }) ||
-          `Failed: ${e?.message || e}`,
+        get(t)('admin.customers.pppoe.toasts.update_failed', {
+          values: { message: e?.message || e },
+        }) || `Failed: ${e?.message || e}`,
       );
     } finally {
       savingPppoe = false;
@@ -913,8 +960,9 @@
       await loadPppoeAccounts();
     } catch (e: any) {
       toast.error(
-        get(t)('admin.customers.pppoe.toasts.apply_failed', { values: { message: e?.message || e } }) ||
-          `Failed: ${e?.message || e}`,
+        get(t)('admin.customers.pppoe.toasts.apply_failed', {
+          values: { message: e?.message || e },
+        }) || `Failed: ${e?.message || e}`,
       );
     }
   }
@@ -930,22 +978,25 @@
       await loadPppoeAccounts();
     } catch (e: any) {
       toast.error(
-        get(t)('admin.customers.pppoe.toasts.reconcile_failed', { values: { message: e?.message || e } }) ||
-          `Failed: ${e?.message || e}`,
+        get(t)('admin.customers.pppoe.toasts.reconcile_failed', {
+          values: { message: e?.message || e },
+        }) || `Failed: ${e?.message || e}`,
       );
     }
   }
 
   async function deletePppoe(row: PppoeAccountPublic) {
-    if (!confirm(get(t)('admin.customers.pppoe.confirm_delete') || 'Delete this PPPoE account?')) return;
+    if (!confirm(get(t)('admin.customers.pppoe.confirm_delete') || 'Delete this PPPoE account?'))
+      return;
     try {
       await api.pppoe.accounts.delete(row.id);
       toast.success(get(t)('admin.customers.pppoe.toasts.deleted') || 'Deleted');
       await loadPppoeAccounts();
     } catch (e: any) {
       toast.error(
-        get(t)('admin.customers.pppoe.toasts.delete_failed', { values: { message: e?.message || e } }) ||
-          `Failed: ${e?.message || e}`,
+        get(t)('admin.customers.pppoe.toasts.delete_failed', {
+          values: { message: e?.message || e },
+        }) || `Failed: ${e?.message || e}`,
       );
     }
   }
@@ -1001,8 +1052,9 @@
       toast.success(get(t)('admin.customers.locations.toasts.created') || 'Location added');
     } catch (e: any) {
       toast.error(
-        get(t)('admin.customers.locations.toasts.create_failed', { values: { message: e?.message || e } }) ||
-          `Failed: ${e?.message || e}`,
+        get(t)('admin.customers.locations.toasts.create_failed', {
+          values: { message: e?.message || e },
+        }) || `Failed: ${e?.message || e}`,
       );
     } finally {
       creatingLocation = false;
@@ -1121,7 +1173,7 @@
         {$t('common.back') || 'Back'}
       </button>
       <div class="header-actions">
-        {#if $can('manage', 'customers') && customer}
+        {#if canManageCustomers && customer}
           {#if customer.is_active}
             <button
               class="btn btn-warning"
@@ -1142,14 +1194,11 @@
             </button>
           {/if}
         {/if}
-        <button
-          class="btn btn-secondary"
-          onclick={refreshCurrent}
-        >
+        <button class="btn btn-secondary" onclick={refreshCurrent}>
           <Icon name="refresh-cw" size={16} />
           {$t('common.refresh') || 'Refresh'}
         </button>
-        {#if $can('manage', 'customers')}
+        {#if canManageCustomers}
           <button class="btn btn-danger" onclick={() => (showDeleteCustomer = true)}>
             <Icon name="trash-2" size={16} />
             {$t('common.delete') || 'Delete'}
@@ -1170,12 +1219,17 @@
       <div class="meta">
         <h1>{customer?.name || $t('admin.customers.detail.title') || 'Customer'}</h1>
         <p class="subtitle">
-          {customer?.email || customer?.phone || ($t('admin.customers.detail.subtitle') || 'Customer details')}
+          {customer?.email ||
+            customer?.phone ||
+            $t('admin.customers.detail.subtitle') ||
+            'Customer details'}
         </p>
         <div class="hero-badges">
           <span class={`status-pill ${customer?.is_active ? 'is-active' : 'is-inactive'}`}>
             <span class="dot"></span>
-            {customer?.is_active ? ($t('common.active') || 'Active') : ($t('common.inactive') || 'Inactive')}
+            {customer?.is_active
+              ? $t('common.active') || 'Active'
+              : $t('common.inactive') || 'Inactive'}
           </span>
           <span class="meta-pill">
             <Icon name="clock" size={14} />
@@ -1184,22 +1238,38 @@
         </div>
       </div>
     </div>
-
   </div>
+
+  {#if isReadOnlyCustomerAccess}
+    <div class="read-only-banner">
+      <Icon name="eye" size={16} />
+      <span>
+        {$t('admin.customers.detail.read_only_hint') ||
+          'Read-only customer access. You can review profile, locations, subscriptions, and PPPoE context, while admin-only edits stay hidden.'}
+      </span>
+    </div>
+  {/if}
 
   <div class="tabs">
     <button class:active={activeTab === 'overview'} onclick={() => (activeTab = 'overview')}>
       {$t('admin.customers.tabs.overview') || 'Overview'}
     </button>
-    <button class:active={activeTab === 'locations'} onclick={() => (activeTab = 'locations')}>
-      {$t('admin.customers.tabs.locations') || 'Locations'}
-    </button>
-    <button class:active={activeTab === 'subscriptions'} onclick={() => (activeTab = 'subscriptions')}>
+    {#if canReadCustomerLocations}
+      <button class:active={activeTab === 'locations'} onclick={() => (activeTab = 'locations')}>
+        {$t('admin.customers.tabs.locations') || 'Locations'}
+      </button>
+    {/if}
+    <button
+      class:active={activeTab === 'subscriptions'}
+      onclick={() => (activeTab = 'subscriptions')}
+    >
       {$t('admin.customers.tabs.subscriptions') || 'Subscriptions'}
     </button>
-    <button class:active={activeTab === 'billing'} onclick={() => (activeTab = 'billing')}>
-      {$t('admin.customers.tabs.billing') || 'Billing'}
-    </button>
+    {#if canReadBilling}
+      <button class:active={activeTab === 'billing'} onclick={() => (activeTab = 'billing')}>
+        {$t('admin.customers.tabs.billing') || 'Billing'}
+      </button>
+    {/if}
     {#if $can('read', 'pppoe') || $can('manage', 'pppoe')}
       <button class:active={activeTab === 'pppoe'} onclick={() => (activeTab = 'pppoe')}>
         {$t('admin.customers.tabs.pppoe') || 'PPPoE'}
@@ -1225,8 +1295,12 @@
             <h3>{$t('admin.customers.overview.title') || 'Customer profile'}</h3>
             <p class="subtitle">Primary identity and contact data used for billing and support.</p>
           </div>
-          {#if $can('manage', 'customers')}
-            <button class="btn btn-primary" onclick={saveOverview} disabled={saving || !name.trim()}>
+          {#if canManageCustomers}
+            <button
+              class="btn btn-primary"
+              onclick={saveOverview}
+              disabled={saving || !name.trim()}
+            >
               <Icon name="check-circle" size={16} />
               {$t('common.save') || 'Save'}
             </button>
@@ -1237,25 +1311,21 @@
           <div class="form">
             <label>
               <span>{$t('admin.customers.fields.name') || 'Name'}</span>
-              <input class="input" bind:value={name} disabled={!$can('manage', 'customers')} />
+              <input class="input" bind:value={name} disabled={!canManageCustomers} />
             </label>
             <div class="grid2">
               <label>
                 <span>{$t('admin.customers.fields.email') || 'Email'}</span>
-                <input class="input" bind:value={email} disabled={!$can('manage', 'customers')} />
+                <input class="input" bind:value={email} disabled={!canManageCustomers} />
               </label>
               <label>
                 <span>{$t('admin.customers.fields.phone') || 'Phone'}</span>
-                <input class="input" bind:value={phone} disabled={!$can('manage', 'customers')} />
+                <input class="input" bind:value={phone} disabled={!canManageCustomers} />
               </label>
             </div>
             <label>
               <span>{$t('admin.customers.fields.notes') || 'Notes'}</span>
-              <textarea
-                class="input"
-                rows="5"
-                bind:value={notes}
-                disabled={!$can('manage', 'customers')}
+              <textarea class="input" rows="5" bind:value={notes} disabled={!canManageCustomers}
               ></textarea>
             </label>
           </div>
@@ -1284,7 +1354,7 @@
           </aside>
         </div>
       </div>
-    {:else if activeTab === 'locations'}
+    {:else if activeTab === 'locations' && canReadCustomerLocations}
       <div class="card section">
         <div class="section-head">
           <div>
@@ -1293,7 +1363,7 @@
               {$t('admin.customers.locations.subtitle') || 'Service locations under this customer.'}
             </p>
           </div>
-          {#if $can('manage', 'customer_locations')}
+          {#if canManageCustomerLocations}
             <button class="btn btn-primary" onclick={openCreateLocation}>
               <Icon name="plus" size={16} />
               {$t('admin.customers.locations.actions.add') || 'Add location'}
@@ -1316,20 +1386,33 @@
             {:else if key === 'address'}
               <div>{loc.address_line1 || '-'}</div>
               <div class="sub">
-                {[loc.city, loc.state, loc.postal_code, loc.country].filter(Boolean).join(', ') || '-'}
+                {[loc.city, loc.state, loc.postal_code, loc.country].filter(Boolean).join(', ') ||
+                  '-'}
               </div>
             {:else if key === 'updated_at'}
               <span class="mono">{new Date(loc.updated_at).toLocaleString()}</span>
             {:else if key === 'actions'}
               <div class="row-actions">
-                <button class="btn-icon" title={$t('common.refresh') || 'Refresh'} onclick={loadLocations}>
+                <button
+                  class="btn-icon"
+                  title={$t('common.refresh') || 'Refresh'}
+                  onclick={loadLocations}
+                >
                   <Icon name="refresh-cw" size={16} />
                 </button>
-                {#if $can('manage', 'customer_locations')}
-                  <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => openEditLocation(loc)}>
+                {#if canManageCustomerLocations}
+                  <button
+                    class="btn-icon"
+                    title={$t('common.edit') || 'Edit'}
+                    onclick={() => openEditLocation(loc)}
+                  >
                     <Icon name="edit-3" size={16} />
                   </button>
-                  <button class="btn-icon danger" title={$t('common.delete') || 'Delete'} onclick={() => confirmDeleteLocation(loc)}>
+                  <button
+                    class="btn-icon danger"
+                    title={$t('common.delete') || 'Delete'}
+                    onclick={() => confirmDeleteLocation(loc)}
+                  >
                     <Icon name="trash-2" size={16} />
                   </button>
                 {/if}
@@ -1351,7 +1434,11 @@
             </p>
           </div>
           <div class="header-actions">
-            <button class="btn btn-secondary" onclick={loadSubscriptions} disabled={loadingSubscriptions}>
+            <button
+              class="btn btn-secondary"
+              onclick={loadSubscriptions}
+              disabled={loadingSubscriptions}
+            >
               <Icon name="refresh-cw" size={16} />
               {$t('common.refresh') || 'Refresh'}
             </button>
@@ -1368,7 +1455,9 @@
           <div class="observability-head">
             <div>
               <h4>Lifecycle observability</h4>
-              <p class="subtitle">Operational funnel and aging snapshot for this customer's activations.</p>
+              <p class="subtitle">
+                Operational funnel and aging snapshot for this customer's activations.
+              </p>
             </div>
             <span class="meta-pill">
               <Icon name="activity" size={14} />
@@ -1389,7 +1478,10 @@
             </div>
             <div class="metric-tile emphasis">
               <span class="metric-label">Grace active</span>
-              <strong>{metricCount('grace_active') || metricCount('installation_done_awaiting_payment')}</strong>
+              <strong
+                >{metricCount('grace_active') ||
+                  metricCount('installation_done_awaiting_payment')}</strong
+              >
             </div>
             <div class="metric-tile">
               <span class="metric-label">Active</span>
@@ -1435,20 +1527,28 @@
               <div class="sub">{subscriptionStatusLabel(row.status)}</div>
             {:else if key === 'billing'}
               <div class="name">{row.billing_cycle}</div>
-              <div class="sub mono">{row.currency_code} {Number(row.price || 0).toLocaleString()}</div>
+              <div class="sub mono">
+                {row.currency_code}
+                {Number(row.price || 0).toLocaleString()}
+              </div>
             {:else if key === 'location'}
               <div>{row.location_label || '-'}</div>
             {:else if key === 'router'}
               <div>{row.router_name || '-'}</div>
             {:else if key === 'period'}
-              <div class="sub">{row.starts_at ? new Date(row.starts_at).toLocaleDateString() : '-'}</div>
-              <div class="sub">{row.ends_at ? new Date(row.ends_at).toLocaleDateString() : '-'}</div>
+              <div class="sub">
+                {row.starts_at ? new Date(row.starts_at).toLocaleDateString() : '-'}
+              </div>
+              <div class="sub">
+                {row.ends_at ? new Date(row.ends_at).toLocaleDateString() : '-'}
+              </div>
             {:else if key === 'actions'}
               <div class="row-actions">
                 {#if $can('manage', 'customers')}
                   <button
                     class="btn-icon"
-                    title={$t('admin.customers.billing.actions.generate_from_subscription') || 'Generate invoice'}
+                    title={$t('admin.customers.billing.actions.generate_from_subscription') ||
+                      'Generate invoice'}
                     onclick={() => generateInvoiceForSubscription(row.id)}
                     disabled={generatingInvoiceFor === row.id || deletingSubscription === row.id}
                   >
@@ -1473,7 +1573,11 @@
                       <Icon name="play" size={16} />
                     </button>
                   {/if}
-                  <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => openEditSubscription(row)}>
+                  <button
+                    class="btn-icon"
+                    title={$t('common.edit') || 'Edit'}
+                    onclick={() => openEditSubscription(row)}
+                  >
                     <Icon name="edit-3" size={16} />
                   </button>
                   <button
@@ -1507,12 +1611,17 @@
               <span>{$t('admin.customers.billing.filters.status') || 'Status'}</span>
               <select class="input" bind:value={billingStatus}>
                 <option value="all">{$t('admin.customers.billing.filters.all') || 'All'}</option>
-                <option value="pending">{$t('admin.package_invoices.statuses.pending') || 'Pending'}</option>
+                <option value="pending"
+                  >{$t('admin.package_invoices.statuses.pending') || 'Pending'}</option
+                >
                 <option value="verification_pending">
-                  {$t('admin.package_invoices.statuses.verification_pending') || 'Verification pending'}
+                  {$t('admin.package_invoices.statuses.verification_pending') ||
+                    'Verification pending'}
                 </option>
                 <option value="paid">{$t('admin.package_invoices.statuses.paid') || 'Paid'}</option>
-                <option value="failed">{$t('admin.package_invoices.statuses.failed') || 'Failed'}</option>
+                <option value="failed"
+                  >{$t('admin.package_invoices.statuses.failed') || 'Failed'}</option
+                >
               </select>
             </label>
             <div class="quick-ranges">
@@ -1547,11 +1656,21 @@
             </div>
             <label class="inline-filter">
               <span>{$t('admin.customers.billing.filters.from') || 'From'}</span>
-              <input class="input" type="date" bind:value={billingDateFrom} oninput={onBillingDateChange} />
+              <input
+                class="input"
+                type="date"
+                bind:value={billingDateFrom}
+                oninput={onBillingDateChange}
+              />
             </label>
             <label class="inline-filter">
               <span>{$t('admin.customers.billing.filters.to') || 'To'}</span>
-              <input class="input" type="date" bind:value={billingDateTo} oninput={onBillingDateChange} />
+              <input
+                class="input"
+                type="date"
+                bind:value={billingDateTo}
+                oninput={onBillingDateChange}
+              />
             </label>
             <button
               class="btn btn-secondary"
@@ -1561,7 +1680,11 @@
               <Icon name="eraser" size={16} />
               {$t('admin.customers.billing.filters.clear') || 'Clear'}
             </button>
-            <button class="btn btn-secondary" onclick={loadBillingInvoices} disabled={loadingBilling}>
+            <button
+              class="btn btn-secondary"
+              onclick={loadBillingInvoices}
+              disabled={loadingBilling}
+            >
               <Icon name="refresh-cw" size={16} />
               {$t('common.refresh') || 'Refresh'}
             </button>
@@ -1570,19 +1693,27 @@
 
         <div class="billing-stats">
           <div class="billing-stat">
-            <div class="billing-stat-label">{$t('admin.customers.billing.stats.total') || 'Total invoices'}</div>
+            <div class="billing-stat-label">
+              {$t('admin.customers.billing.stats.total') || 'Total invoices'}
+            </div>
             <div class="billing-stat-value">{billingStats.total}</div>
           </div>
           <div class="billing-stat">
-            <div class="billing-stat-label">{$t('admin.customers.billing.stats.unpaid') || 'Unpaid'}</div>
+            <div class="billing-stat-label">
+              {$t('admin.customers.billing.stats.unpaid') || 'Unpaid'}
+            </div>
             <div class="billing-stat-value">{billingStats.unpaid}</div>
           </div>
           <div class="billing-stat">
-            <div class="billing-stat-label">{$t('admin.customers.billing.stats.paid') || 'Paid'}</div>
+            <div class="billing-stat-label">
+              {$t('admin.customers.billing.stats.paid') || 'Paid'}
+            </div>
             <div class="billing-stat-value">{billingStats.paid}</div>
           </div>
           <div class="billing-stat">
-            <div class="billing-stat-label">{$t('admin.customers.billing.stats.overdue') || 'Overdue'}</div>
+            <div class="billing-stat-label">
+              {$t('admin.customers.billing.stats.overdue') || 'Overdue'}
+            </div>
             <div class="billing-stat-value">{billingStats.overdue}</div>
           </div>
         </div>
@@ -1600,14 +1731,22 @@
             {@const subscription = subscriptionId ? subscriptionById.get(subscriptionId) : null}
             {#if key === 'invoice_number'}
               <div class="name">#{row.invoice_number}</div>
-              <div class="sub mono">{row.created_at ? new Date(row.created_at).toLocaleString() : '-'}</div>
+              <div class="sub mono">
+                {row.created_at ? new Date(row.created_at).toLocaleString() : '-'}
+              </div>
             {:else if key === 'subscription'}
-              <div class="name">{subscription?.package_name || subscription?.package_id || '-'}</div>
+              <div class="name">
+                {subscription?.package_name || subscription?.package_id || '-'}
+              </div>
               <div class="sub">{subscription?.billing_cycle || '-'}</div>
             {:else if key === 'amount'}
-              <div class="name">{formatMoney(row.amount, { currency: row.currency_code || undefined })}</div>
+              <div class="name">
+                {formatMoney(row.amount, { currency: row.currency_code || undefined })}
+              </div>
             {:else if key === 'status'}
-              <span class={`badge ${row.status === 'paid' ? 'ok' : row.status === 'failed' ? 'danger' : 'warn'}`}>
+              <span
+                class={`badge ${row.status === 'paid' ? 'ok' : row.status === 'failed' ? 'danger' : 'warn'}`}
+              >
                 {billingStatusLabel(row.status)}
               </span>
             {:else if key === 'due_date'}
@@ -1658,14 +1797,19 @@
                 class="btn btn-secondary"
                 onclick={reconcilePppoeRouters}
                 disabled={loadingPppoe || pppoeAccounts.length === 0}
-                title={$t('admin.customers.pppoe.actions.reconcile_hint') || 'Mark which accounts exist on the router'}
+                title={$t('admin.customers.pppoe.actions.reconcile_hint') ||
+                  'Mark which accounts exist on the router'}
               >
                 <Icon name="refresh-cw" size={16} />
                 {$t('admin.customers.pppoe.actions.reconcile') || 'Reconcile'}
               </button>
             {/if}
             {#if $can('manage', 'pppoe')}
-              <button class="btn btn-primary" onclick={openCreatePppoe} disabled={loadingPppoeRouters}>
+              <button
+                class="btn btn-primary"
+                onclick={openCreatePppoe}
+                disabled={loadingPppoeRouters}
+              >
                 <Icon name="plus" size={16} />
                 {$t('admin.customers.pppoe.actions.add') || 'Add PPPoE'}
               </button>
@@ -1686,7 +1830,11 @@
             {@const locName = locations.find((l) => l.id === row.location_id)?.label || '-'}
             {#if key === 'username'}
               <div class="name">{row.username}</div>
-              <div class="sub mono">{row.disabled ? ($t('common.disabled') || 'Disabled') : ($t('common.active') || 'Active')}</div>
+              <div class="sub mono">
+                {row.disabled
+                  ? $t('common.disabled') || 'Disabled'
+                  : $t('common.active') || 'Active'}
+              </div>
             {:else if key === 'router'}
               <div class="name">{routerName}</div>
               <div class="sub mono">{row.router_id}</div>
@@ -1695,15 +1843,26 @@
               <div class="sub mono">{row.location_id}</div>
             {:else if key === 'assignment'}
               <div class="sub">
-                <span class="pill">{$t('admin.customers.pppoe.fields.profile') || 'Profile'}: {row.router_profile_name || '-'}</span>
-                <span class="pill">{$t('admin.customers.pppoe.fields.remote_address') || 'Remote'}: {row.remote_address || row.address_pool || '-'}</span>
+                <span class="pill"
+                  >{$t('admin.customers.pppoe.fields.profile') || 'Profile'}: {row.router_profile_name ||
+                    '-'}</span
+                >
+                <span class="pill"
+                  >{$t('admin.customers.pppoe.fields.remote_address') || 'Remote'}: {row.remote_address ||
+                    row.address_pool ||
+                    '-'}</span
+                >
               </div>
             {:else if key === 'sync'}
               <div class="sub">
                 {#if row.router_present}
-                  <span class="badge ok">{$t('admin.customers.pppoe.sync.present') || 'On router'}</span>
+                  <span class="badge ok"
+                    >{$t('admin.customers.pppoe.sync.present') || 'On router'}</span
+                  >
                 {:else}
-                  <span class="badge warn">{$t('admin.customers.pppoe.sync.missing') || 'Missing'}</span>
+                  <span class="badge warn"
+                    >{$t('admin.customers.pppoe.sync.missing') || 'Missing'}</span
+                  >
                 {/if}
                 <span class="mono">{row.last_sync_at ? timeAgo(row.last_sync_at) : '-'}</span>
               </div>
@@ -1713,13 +1872,25 @@
             {:else if key === 'actions'}
               <div class="row-actions">
                 {#if $can('manage', 'pppoe')}
-                  <button class="btn-icon" title={$t('admin.customers.pppoe.actions.apply') || 'Apply to router'} onclick={() => applyPppoe(row)}>
+                  <button
+                    class="btn-icon"
+                    title={$t('admin.customers.pppoe.actions.apply') || 'Apply to router'}
+                    onclick={() => applyPppoe(row)}
+                  >
                     <Icon name="send" size={16} />
                   </button>
-                  <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => openEditPppoe(row)}>
+                  <button
+                    class="btn-icon"
+                    title={$t('common.edit') || 'Edit'}
+                    onclick={() => openEditPppoe(row)}
+                  >
                     <Icon name="edit" size={16} />
                   </button>
-                  <button class="btn-icon danger" title={$t('common.delete') || 'Delete'} onclick={() => deletePppoe(row)}>
+                  <button
+                    class="btn-icon danger"
+                    title={$t('common.delete') || 'Delete'}
+                    onclick={() => deletePppoe(row)}
+                  >
                     <Icon name="trash-2" size={16} />
                   </button>
                 {/if}
@@ -1743,10 +1914,21 @@
           </button>
         </div>
         <div class="timeline-filters">
-          <button class:active={timelineType === 'all'} onclick={() => (timelineType = 'all')}>All</button>
-          <button class:active={timelineType === 'customer'} onclick={() => (timelineType = 'customer')}>Profile</button>
-          <button class:active={timelineType === 'location'} onclick={() => (timelineType = 'location')}>Location</button>
-          <button class:active={timelineType === 'subscription'} onclick={() => (timelineType = 'subscription')}>Subscription</button>
+          <button class:active={timelineType === 'all'} onclick={() => (timelineType = 'all')}
+            >All</button
+          >
+          <button
+            class:active={timelineType === 'customer'}
+            onclick={() => (timelineType = 'customer')}>Profile</button
+          >
+          <button
+            class:active={timelineType === 'location'}
+            onclick={() => (timelineType = 'location')}>Location</button
+          >
+          <button
+            class:active={timelineType === 'subscription'}
+            onclick={() => (timelineType = 'subscription')}>Subscription</button
+          >
         </div>
         {#if loadingTimeline}
           <div class="loading-card">
@@ -1870,7 +2052,10 @@
             'Disable this PPPoE account (will be applied to router when you click Apply).'}
         </div>
       </div>
-      <Toggle bind:checked={pppoeDisabled} ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'} />
+      <Toggle
+        bind:checked={pppoeDisabled}
+        ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}
+      />
     </div>
 
     <div class="actions">
@@ -1956,7 +2141,12 @@
       </label>
       <label>
         <span>{$t('admin.customers.pppoe.fields.password') || 'Password'}</span>
-        <input class="input" type="password" bind:value={pppoePassword} placeholder={$t('admin.customers.pppoe.edit.password_hint') || 'Leave blank to keep'} />
+        <input
+          class="input"
+          type="password"
+          bind:value={pppoePassword}
+          placeholder={$t('admin.customers.pppoe.edit.password_hint') || 'Leave blank to keep'}
+        />
       </label>
     </div>
 
@@ -1973,7 +2163,10 @@
             'Disable this PPPoE account (will be applied to router when you click Apply).'}
         </div>
       </div>
-      <Toggle bind:checked={pppoeDisabled} ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'} />
+      <Toggle
+        bind:checked={pppoeDisabled}
+        ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}
+      />
     </div>
 
     <div class="actions">
@@ -2290,7 +2483,8 @@
 <ConfirmDialog
   show={showDeleteCustomer}
   title={$t('admin.customers.delete.title') || 'Delete customer'}
-  message={$t('admin.customers.delete.message') || 'This will remove the customer and all related data.'}
+  message={$t('admin.customers.delete.message') ||
+    'This will remove the customer and all related data.'}
   confirmText={$t('common.delete') || 'Delete'}
   cancelText={$t('common.cancel') || 'Cancel'}
   loading={deletingCustomer}
@@ -2318,6 +2512,18 @@
     margin-bottom: 1rem;
     padding: 1rem 1.05rem;
     background: var(--bg-surface);
+  }
+
+  .read-only-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 0.9rem;
+    margin-bottom: 1rem;
+    border-radius: 12px;
+    border: 1px solid rgba(59, 130, 246, 0.24);
+    background: rgba(59, 130, 246, 0.08);
+    color: var(--text-primary);
   }
 
   .hero-top {
@@ -2435,7 +2641,10 @@
     gap: 0.5rem;
     font-weight: 650;
     font-size: 0.9rem;
-    transition: background 0.15s ease, border-color 0.15s ease, transform 0.02s ease;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease,
+      transform 0.02s ease;
     user-select: none;
   }
 
@@ -2815,7 +3024,8 @@
 
   .mono {
     font-variant-numeric: tabular-nums;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
     color: var(--text-secondary);
     font-size: 0.9rem;
   }

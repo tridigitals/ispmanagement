@@ -144,7 +144,7 @@
   const remotePoolOptions = $derived.by(() => getPppProfileRemotePoolOptions(ipPools));
 
   onMount(async () => {
-    if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
+    if (!$can('read', 'ppp_profiles') && !$can('manage', 'ppp_profiles')) {
       goto('/unauthorized');
       return;
     }
@@ -383,7 +383,7 @@
         <Icon name="download" size={16} />
         {$t('admin.network.routers.ppp_profiles.actions.sync') || 'Sync from router'}
       </button>
-      {#if $can('manage', 'network_routers')}
+      {#if $can('manage', 'ppp_profiles')}
         <button class="btn ghost" type="button" onclick={openCreate} disabled={!routerId || loading}>
           <Icon name="plus" size={16} />
           {$t('admin.network.routers.ppp_profiles.actions.add') || 'Add profile'}
@@ -457,7 +457,7 @@
             {/if}
           {:else if key === 'actions'}
             <div class="actions">
-              {#if $can('manage', 'network_routers')}
+              {#if $can('manage', 'ppp_profiles')}
                 <button class="icon-btn" type="button" onclick={() => openEdit(item.raw)} title={$t('admin.network.routers.ppp_profiles.actions.edit') || 'Edit'}>
                   <Icon name="edit" size={16} />
                 </button>

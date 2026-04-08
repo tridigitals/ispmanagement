@@ -53,11 +53,15 @@
   }
 
   function canShowPackageBillingAlert() {
-    return !$isAdmin && !$isSuperAdmin && (canAccessCustomerPackages() || $can('read_own', 'customers'));
+    return (
+      !$isAdmin && !$isSuperAdmin && (canAccessCustomerPackages() || $can('read_own', 'customers'))
+    );
   }
 
   function canAccessCustomerPackages() {
-    const role = String(($user as any)?.tenant_role || $user?.role || '').trim().toLowerCase();
+    const role = String(($user as any)?.tenant_role || $user?.role || '')
+      .trim()
+      .toLowerCase();
     return role === 'customer';
   }
 
@@ -249,8 +253,13 @@
             href: `${tenantPrefix}/admin`,
             show:
               $can('access', 'admin') ||
-              $can('read', 'network_routers') ||
-              $can('manage', 'network_routers') ||
+              $can('read', 'network_noc') ||
+              $can('read', 'network_alerts') ||
+              $can('read', 'network_incidents') ||
+              $can('read', 'network_logs') ||
+              $can('read', 'router_inventory') ||
+              $can('read', 'ppp_profiles') ||
+              $can('read', 'ip_pools') ||
               $can('read', 'work_orders') ||
               $can('manage', 'work_orders') ||
               $can('read', 'customers') ||
@@ -280,31 +289,31 @@
             label: $t('sidebar.noc') || 'NOC',
             icon: 'activity',
             href: `${tenantPrefix}/admin/network/noc`,
-            show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+            show: $can('read', 'network_noc') || $can('manage', 'network_noc'),
           },
           {
             label: $t('sidebar.topology_map') || 'Topology Map',
             icon: 'map-pin',
             href: `${tenantPrefix}/admin/network/map`,
-            show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+            show: $can('read', 'network_topology') || $can('manage', 'network_topology'),
           },
           {
             label: $t('sidebar.wallboard') || 'Wallboard',
             icon: 'monitor',
             href: `${tenantPrefix}/admin/network/noc/wallboard`,
-            show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+            show: $can('read', 'network_noc') || $can('manage', 'network_noc'),
           },
           {
             label: $t('sidebar.alerts') || 'Alerts',
             icon: 'alert-triangle',
             href: `${tenantPrefix}/admin/network/alerts`,
-            show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+            show: $can('read', 'network_alerts') || $can('manage', 'network_alerts'),
           },
           {
             label: $t('sidebar.incidents') || 'Incidents',
             icon: 'alert-triangle',
             href: `${tenantPrefix}/admin/network/incidents`,
-            show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+            show: $can('read', 'network_incidents') || $can('manage', 'network_incidents'),
           },
           {
             label: $t('sidebar.installations') || 'Installations',
@@ -316,25 +325,25 @@
             label: $t('sidebar.logs') || 'Logs',
             icon: 'file-text',
             href: `${tenantPrefix}/admin/network/logs`,
-            show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+            show: $can('read', 'network_logs') || $can('manage', 'network_logs'),
           },
           {
             label: $t('sidebar.routers') || 'Routers',
             icon: 'router',
             href: `${tenantPrefix}/admin/network/routers`,
-            show: $can('read', 'network_routers') || $can('manage', 'network_routers'),
+            show: $can('read', 'router_inventory') || $can('manage', 'router_inventory'),
           },
           {
             label: $t('sidebar.ppp_profiles') || 'PPP Profiles',
             icon: 'key',
             href: `${tenantPrefix}/admin/network/ppp-profiles`,
-            show: $can('read', 'pppoe') || $can('manage', 'pppoe'),
+            show: $can('read', 'ppp_profiles') || $can('manage', 'ppp_profiles'),
           },
           {
             label: $t('sidebar.ip_pools') || 'IP Pools',
             icon: 'database',
             href: `${tenantPrefix}/admin/network/ip-pools`,
-            show: $can('read', 'pppoe') || $can('manage', 'pppoe'),
+            show: $can('read', 'ip_pools') || $can('manage', 'ip_pools'),
           },
           {
             label: $t('sidebar.services') || $t('sidebar.packages') || 'Services',
@@ -388,7 +397,7 @@
             label: $t('sidebar.storage') || 'Storage',
             icon: 'folder',
             href: `${tenantPrefix}/admin/storage`,
-            show: $can('read', 'storage') || $can('upload', 'storage') || $can('delete', 'storage'),
+            show: $can('read', 'storage_console'),
           },
           {
             label: $t('sidebar.email_outbox') || 'Email Outbox',
@@ -400,7 +409,7 @@
             label: $t('sidebar.support') || 'Support',
             icon: 'life-buoy',
             href: `${tenantPrefix}/admin/support`,
-            show: $can('read_all', 'support') || $can('read', 'support'),
+            show: $can('read_all', 'support'),
           },
         ]),
       },
@@ -442,7 +451,7 @@
             label: $t('sidebar.announcements') || 'Announcements',
             icon: 'megaphone',
             href: `${tenantPrefix}/admin/announcements`,
-            show: $can('read', 'announcements') || $can('manage', 'announcements'),
+            show: $can('manage', 'announcements'),
           },
         ]),
       },

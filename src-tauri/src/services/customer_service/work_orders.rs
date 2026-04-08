@@ -660,7 +660,8 @@ impl CustomerService {
                     .auto_provision_pppoe_for_subscription(actor_id, tenant_id, &s, ip_address)
                     .await;
 
-                if Self::should_auto_create_first_invoice_on_completion(resolved, has_paid_invoice) {
+                if Self::should_auto_create_first_invoice_on_completion(resolved, has_paid_invoice)
+                {
                     let payment_service = PaymentService::new(
                         self.pool.clone(),
                         self.notification_service.clone(),

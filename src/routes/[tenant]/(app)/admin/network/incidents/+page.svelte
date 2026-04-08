@@ -233,7 +233,7 @@
   });
 
   onMount(() => {
-    if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
+    if (!$can('read', 'network_incidents') && !$can('manage', 'network_incidents')) {
       goto('/unauthorized');
       return;
     }
@@ -251,7 +251,7 @@
     void load();
     void loadAssignmentEmailSetting();
     void loadSlaSettings();
-    if ($can('manage', 'network_routers')) {
+    if ($can('manage', 'network_incidents')) {
       void loadTeamMembers();
     }
     refreshHandle = setInterval(() => void refreshSilent(), 5000);
@@ -960,7 +960,7 @@
         <Icon name="refresh-cw" size={16} />
         {$t('common.refresh') || 'Refresh'}
       </button>
-      {#if $can('manage', 'network_routers')}
+      {#if $can('manage', 'network_incidents')}
         <button class="btn ghost" type="button" onclick={runAutoEscalationNow} disabled={escalationRunBusy}>
           <Icon name="shield-alert" size={16} />
           {escalationRunBusy
@@ -1007,7 +1007,7 @@
           </div>
         {/if}
       </div>
-      {#if $can('manage', 'network_routers')}
+      {#if $can('manage', 'network_incidents')}
         <button class="btn ghost" type="button" onclick={openSimulateDialog}>
           <Icon name="activity" size={16} />
           {$t('admin.network.incidents.actions.simulate') || 'Simulate'}
@@ -1130,7 +1130,7 @@
       </div>
     </NetworkFilterPanel>
 
-    {#if $can('manage', 'network_routers')}
+    {#if $can('manage', 'network_incidents')}
       <div class="bulk-bar">
         <label class="bulk-select-all">
           <input type="checkbox" checked={allFilteredSelected} onchange={toggleSelectAllFiltered} />
@@ -1193,7 +1193,7 @@
     >
       {#snippet cell({ item, key }: any)}
         {#if key === 'select'}
-          {#if $can('manage', 'network_routers')}
+          {#if $can('manage', 'network_incidents')}
             <input
               type="checkbox"
               class="row-check"
@@ -1239,9 +1239,9 @@
             onOpen={() => openRouter(item.router_id)}
             showDetail={true}
             onDetail={() => void openDetail(item)}
-            showAcknowledge={item.status !== 'ack' && item.status !== 'resolved' && $can('manage', 'network_routers')}
+            showAcknowledge={item.status !== 'ack' && item.status !== 'resolved' && $can('manage', 'network_incidents')}
             onAcknowledge={() => ack(item.id)}
-            showResolve={item.status !== 'resolved' && $can('manage', 'network_routers')}
+            showResolve={item.status !== 'resolved' && $can('manage', 'network_incidents')}
             onResolve={() => resolve(item.id)}
           />
         {:else}
@@ -1261,7 +1261,7 @@
     selectedOwnerId={selectedOwnerId}
     draftNotes={draftNotes}
     saving={detailSaving}
-    canManage={$can('manage', 'network_routers')}
+    canManage={$can('manage', 'network_incidents')}
     emailNotifyEnabled={assignmentEmailEnabled}
     slaState={detailIncident ? slaLevel(detailIncident) : 'ok'}
     slaOpenDuration={detailIncident ? formatOpenDuration(incidentOpenMs(detailIncident)) : '—'}

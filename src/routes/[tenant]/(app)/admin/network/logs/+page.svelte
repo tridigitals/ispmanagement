@@ -85,7 +85,7 @@
   ]);
 
   onMount(() => {
-    if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
+    if (!$can('read', 'network_logs') && !$can('manage', 'network_logs')) {
       goto('/unauthorized');
       return;
     }

@@ -5,6 +5,17 @@ use crate::models::{
 use crate::services::{AuthService, IspPackageService};
 use tauri::State;
 
+async fn require_isp_package_permission(
+    auth: &AuthService,
+    claims: &crate::services::auth_service::Claims,
+    tenant_id: &str,
+    action: &str,
+) -> Result<(), String> {
+    auth.check_permission(&claims.sub, tenant_id, "isp_packages", action)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub async fn list_isp_packages(
     token: String,
@@ -22,7 +33,9 @@ pub async fn list_isp_packages(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_isp_package_permission(&auth, &claims, &tenant_id, "read").await?;
 
     svc.list_packages(
         &claims.sub,
@@ -56,7 +69,9 @@ pub async fn create_isp_package(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_isp_package_permission(&auth, &claims, &tenant_id, "manage").await?;
 
     let dto = CreateIspPackageRequest {
         service_type,
@@ -92,7 +107,9 @@ pub async fn update_isp_package(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_isp_package_permission(&auth, &claims, &tenant_id, "manage").await?;
 
     let dto = UpdateIspPackageRequest {
         service_type,
@@ -122,7 +139,9 @@ pub async fn delete_isp_package(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_isp_package_permission(&auth, &claims, &tenant_id, "manage").await?;
 
     svc.delete_package(&claims.sub, &tenant_id, &id, Some("127.0.0.1"))
         .await
@@ -142,7 +161,9 @@ pub async fn list_isp_package_router_mappings(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_isp_package_permission(&auth, &claims, &tenant_id, "read").await?;
 
     svc.list_router_mappings(&claims.sub, &tenant_id, router_id)
         .await
@@ -165,7 +186,9 @@ pub async fn upsert_isp_package_router_mapping(
         .map_err(|e| e.to_string())?;
     let tenant_id = claims
         .tenant_id
+        .clone()
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_isp_package_permission(&auth, &claims, &tenant_id, "manage").await?;
 
     let dto = UpsertIspPackageRouterMappingRequest {
         router_id,

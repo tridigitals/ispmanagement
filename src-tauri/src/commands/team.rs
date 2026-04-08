@@ -4,6 +4,26 @@ use crate::models::TeamMemberWithUser;
 use crate::services::{AuthService, TeamService};
 use tauri::State;
 
+pub(crate) fn enforce_member_role_change_permissions(
+    requester_level: i32,
+    target_level: i32,
+    new_role_level: i32,
+) -> Result<(), String> {
+    if requester_level <= target_level {
+        return Err(
+            "Insufficient permissions: Cannot edit member with equal or higher role".to_string(),
+        );
+    }
+
+    if requester_level < new_role_level {
+        return Err(
+            "Insufficient permissions: Cannot assign role higher than your own".to_string(),
+        );
+    }
+
+    Ok(())
+}
+
 /// List all members of the current team
 #[tauri::command]
 pub async fn list_team_members(
@@ -19,6 +39,10 @@ pub async fn list_team_members(
     let tenant_id = claims
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
+
+    auth.check_permission(&claims.sub, &tenant_id, "team", "read")
+        .await
+        .map_err(|e| e.to_string())?;
 
     team_service
         .list_members(&tenant_id)
@@ -93,7 +117,7 @@ pub async fn update_team_member_role(
         .tenant_id
         .ok_or_else(|| "No tenant ID in token".to_string())?;
 
-    auth.check_permission(&claims.sub, &tenant_id, "roles", "update")
+    auth.check_permission(&claims.sub, &tenant_id, "team", "update")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -101,22 +125,8 @@ pub async fn update_team_member_role(
         .get_user_role_level(&claims.sub, &tenant_id)
         .await?;
     let target_level = team_service.get_member_role_level(&member_id).await?;
-
-    // Check 1: Cannot edit someone with higher or equal role
-    if requester_level <= target_level {
-        return Err(
-            "Insufficient permissions: Cannot edit member with equal or higher role".to_string(),
-        );
-    }
-
     let new_role_level = team_service.get_role_level_by_id(&role_id).await?;
-
-    // Check 2: Cannot promote to higher than own role
-    if requester_level < new_role_level {
-        return Err(
-            "Insufficient permissions: Cannot assign role higher than your own".to_string(),
-        );
-    }
+    enforce_member_role_change_permissions(requester_level, target_level, new_role_level)?;
 
     team_service
         .update_member(&tenant_id, &member_id, &role_id, Some(&claims.sub), None)
@@ -150,7 +160,6 @@ pub async fn remove_team_member(
         .await?;
     let target_level = team_service.get_member_role_level(&member_id).await?;
 
-    // Check: Cannot remove someone with higher or equal role
     if requester_level <= target_level {
         return Err(
             "Insufficient permissions: Cannot remove member with equal or higher role".to_string(),
@@ -161,4 +170,33 @@ pub async fn remove_team_member(
         .remove_member(&tenant_id, &member_id, Some(&claims.sub), None)
         .await
         .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::enforce_member_role_change_permissions;
+
+    #[test]
+    fn role_change_allows_only_lower_targets_and_assignable_roles() {
+        assert!(
+            enforce_member_role_change_permissions(100, 50, 80).is_ok(),
+            "higher-level operator should be able to update lower-level member into lower-level role"
+        );
+    }
+
+    #[test]
+    fn role_change_blocks_equal_or_higher_target_member() {
+        let err = enforce_member_role_change_permissions(50, 50, 10)
+            .expect_err("equal-level member must not be editable");
+
+        assert!(err.contains("equal or higher role"));
+    }
+
+    #[test]
+    fn role_change_blocks_assigning_role_above_requester_level() {
+        let err = enforce_member_role_change_permissions(50, 10, 80)
+            .expect_err("requester must not assign a role above their own level");
+
+        assert!(err.contains("higher than your own"));
+    }
 }

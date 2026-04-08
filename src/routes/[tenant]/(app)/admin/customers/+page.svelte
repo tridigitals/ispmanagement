@@ -71,6 +71,9 @@
   let invitePolicyExpiresInHours = $state(24);
   let invitePolicyMaxUses = $state(1);
   let inviteSummary = $state<CustomerRegistrationInviteSummary | null>(null);
+  const canReadCustomers = $derived($can('read', 'customers') || $can('manage', 'customers'));
+  const canManageCustomers = $derived($can('manage', 'customers'));
+  const isReadOnlyCustomerAccess = $derived(canReadCustomers && !canManageCustomers);
 
   let stats = $derived({
     total,
@@ -79,11 +82,11 @@
   });
 
   onMount(async () => {
-    if (!$can('read', 'customers') && !$can('manage', 'customers')) {
+    if (!canReadCustomers) {
       goto('/unauthorized');
       return;
     }
-    await Promise.all([$can('manage', 'customers') ? loadInvites() : Promise.resolve(), load()]);
+    await Promise.all([canManageCustomers ? loadInvites() : Promise.resolve(), load()]);
   });
 
   async function load() {
@@ -219,7 +222,7 @@
   }
 
   async function loadInvites() {
-    if (!$can('manage', 'customers')) return;
+    if (!canManageCustomers) return;
     inviteLoading = true;
     try {
       inviteRows = await api.customers.invites.list({
@@ -234,7 +237,7 @@
   }
 
   async function loadInvitePolicy() {
-    if (!$can('manage', 'customers')) return;
+    if (!canManageCustomers) return;
     invitePolicyLoading = true;
     try {
       const policy: CustomerRegistrationInvitePolicy = await api.customers.invites.getPolicy();
@@ -276,7 +279,7 @@
   }
 
   async function loadInviteSummary() {
-    if (!$can('manage', 'customers')) return;
+    if (!canManageCustomers) return;
     inviteSummaryLoading = true;
     try {
       inviteSummary = await api.customers.invites.summary();
@@ -364,7 +367,7 @@
         <Icon name="refresh-cw" size={16} />
         {$t('common.refresh') || 'Refresh'}
       </button>
-      {#if $can('manage', 'customers')}
+      {#if canManageCustomers}
         <button class="btn btn-secondary" onclick={openInviteModal}>
           <Icon name="link" size={16} />
           Invite Link
@@ -399,6 +402,15 @@
   </div>
 
   <div class="card table-card">
+    {#if isReadOnlyCustomerAccess}
+      <div class="read-only-banner">
+        <Icon name="eye" size={16} />
+        <span>
+          {$t('admin.customers.read_only_hint') ||
+            'Read-only access. You can review customer data, but create, delete, and portal invite actions are disabled.'}
+        </span>
+      </div>
+    {/if}
     <TableToolbar
       bind:searchQuery={q}
       placeholder={$t('admin.customers.search') || 'Search customers...'}
@@ -426,7 +438,7 @@
       {columns}
       data={customers}
       keyField="id"
-      loading={loading}
+      {loading}
       emptyText={$t('admin.customers.empty') || 'No customers yet.'}
       pagination
       serverSide
@@ -448,7 +460,9 @@
           {#if isSystemImportPlaceholder(c)}
             <div>
               <div class="name">{c.name}</div>
-              <div class="sub">{$t('admin.network.pppoe.import.fields.unassigned') || 'Unassigned'}</div>
+              <div class="sub">
+                {$t('admin.network.pppoe.import.fields.unassigned') || 'Unassigned'}
+              </div>
             </div>
           {:else}
             <button class="linkish" onclick={() => openCustomer(c)}>
@@ -472,11 +486,15 @@
         {:else if key === 'actions'}
           <div class="row-actions">
             {#if !isSystemImportPlaceholder(c)}
-              <button class="btn-icon" title={$t('common.open') || 'Open'} onclick={() => openCustomer(c)}>
+              <button
+                class="btn-icon"
+                title={$t('common.open') || 'Open'}
+                onclick={() => openCustomer(c)}
+              >
                 <Icon name="arrow-right" size={16} />
               </button>
             {/if}
-            {#if $can('manage', 'customers') && !isSystemImportPlaceholder(c)}
+            {#if canManageCustomers && !isSystemImportPlaceholder(c)}
               <button
                 class="btn-icon danger"
                 title={$t('common.delete') || 'Delete'}
@@ -539,14 +557,12 @@
       <button
         class="btn btn-primary"
         onclick={createCustomer}
-        disabled={
-          creating ||
+        disabled={creating ||
           !createName.trim() ||
           !createEmail.trim() ||
           !createPortalPassword ||
           !createPortalPasswordConfirm ||
-          createPortalPassword !== createPortalPasswordConfirm
-        }
+          createPortalPassword !== createPortalPasswordConfirm}
       >
         <Icon name="plus" size={16} />
         {$t('common.create') || 'Create'}
@@ -555,7 +571,11 @@
   </div>
 </Modal>
 
-<Modal show={showInviteModal} title="Customer Invite Link" onclose={() => (showInviteModal = false)}>
+<Modal
+  show={showInviteModal}
+  title="Customer Invite Link"
+  onclose={() => (showInviteModal = false)}
+>
   <div class="form">
     <section class="invite-section">
       <div class="invite-section-head">
@@ -631,13 +651,7 @@
       <div class="grid2">
         <label>
           <span>Expire (hours)</span>
-          <input
-            class="input"
-            type="number"
-            min="1"
-            max="720"
-            bind:value={inviteExpiresInHours}
-          />
+          <input class="input" type="number" min="1" max="720" bind:value={inviteExpiresInHours} />
         </label>
         <label>
           <span>Max uses</span>
@@ -733,7 +747,8 @@
 <ConfirmDialog
   show={showDelete}
   title={$t('admin.customers.delete.title') || 'Delete customer'}
-  message={$t('admin.customers.delete.message') || 'This will remove the customer and all related data.'}
+  message={$t('admin.customers.delete.message') ||
+    'This will remove the customer and all related data.'}
   confirmText={$t('common.delete') || 'Delete'}
   cancelText={$t('common.cancel') || 'Cancel'}
   loading={deleting}
@@ -779,7 +794,10 @@
     gap: 0.5rem;
     font-weight: 650;
     font-size: 0.9rem;
-    transition: background 0.15s ease, border-color 0.15s ease, transform 0.02s ease;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease,
+      transform 0.02s ease;
     user-select: none;
   }
 
@@ -821,6 +839,18 @@
     padding: 1.25rem;
   }
 
+  .read-only-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 0.9rem;
+    margin-bottom: 0.9rem;
+    border-radius: 12px;
+    border: 1px solid rgba(59, 130, 246, 0.24);
+    background: rgba(59, 130, 246, 0.08);
+    color: var(--text-primary);
+  }
+
   .error-banner {
     display: flex;
     gap: 0.5rem;
@@ -854,7 +884,8 @@
 
   .mono {
     font-variant-numeric: tabular-nums;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    font-family:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
     color: var(--text-secondary);
     font-size: 0.9rem;
   }

@@ -145,7 +145,7 @@
   let showManagedRadiusModal = $state(false);
   let assigningManagedRadiusDefault = $state(false);
   let creatingManagedRadiusMapping = $state(false);
-  let canRevealManagedRadiusSecret = $derived($can('manage_radius_secret', 'network_routers'));
+  let canRevealManagedRadiusSecret = $derived($can('manage_radius_secret', 'router_inventory'));
 
   let cpuSeries = $derived.by(() => {
     const pts = metrics
@@ -170,7 +170,7 @@
   let refreshInFlight = false;
 
   onMount(() => {
-    if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
+    if (!$can('read', 'router_inventory') && !$can('manage', 'router_inventory')) {
       goto('/unauthorized');
       return;
     }
@@ -319,7 +319,7 @@
       snapshot = snap as RouterSnapshot;
       router = (snapshot?.router || null) as any;
       metrics = (m || []) as any;
-      if ($can('manage', 'network_routers') && (managedRadiusLoadedFor !== id || !opts?.silent)) {
+      if ($can('manage', 'router_inventory') && (managedRadiusLoadedFor !== id || !opts?.silent)) {
         await loadManagedRadiusSetup(id, { silent: Boolean(opts?.silent) });
       }
 
@@ -367,7 +367,7 @@
   }
 
   async function loadManagedRadiusSetup(routerId: string, opts?: { silent?: boolean }) {
-    if (!$can('manage', 'network_routers')) {
+    if (!$can('manage', 'router_inventory')) {
       managedRadiusSetup = null;
       return;
     }
@@ -902,7 +902,7 @@
       </div>
 
       <div class="hero-right">
-        {#if $can('manage', 'network_routers')}
+        {#if $can('manage', 'router_inventory')}
           <button class="btn ghost btn-sm hero-action" type="button" onclick={openManagedRadiusModal}>
             <Icon name="shield" size={14} />
             {$t('admin.network.routers.managed_radius.trigger.label') || 'Managed RADIUS'}

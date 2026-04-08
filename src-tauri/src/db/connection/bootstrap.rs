@@ -2,7 +2,7 @@
 use super::migrations::run_migrations_pg;
 #[cfg(feature = "sqlite")]
 use super::migrations::run_migrations_sqlite;
-use super::seed::{seed_defaults, seed_plans, seed_roles};
+use super::seed::{seed_defaults, seed_plans};
 use super::DbPool;
 
 #[cfg(feature = "postgres")]
@@ -89,7 +89,6 @@ pub async fn init_db(app_data_dir: PathBuf) -> Result<DbPool, sqlx::Error> {
         info!("PostgreSQL database initialized successfully");
 
         seed_defaults(&pool).await?;
-        seed_roles(&pool).await?;
         seed_plans(&pool).await?;
 
         Ok(pool)
@@ -110,7 +109,6 @@ pub async fn init_db(app_data_dir: PathBuf) -> Result<DbPool, sqlx::Error> {
         info!("SQLite database initialized successfully");
 
         seed_defaults(&pool).await?;
-        seed_roles(&pool).await?;
         seed_plans(&pool).await?;
 
         Ok(pool)

@@ -1,13 +1,13 @@
 use super::AppState;
-use crate::http::auth::extract_ip;
-use crate::models::Tenant;
 use crate::commands::superadmin::{
     SuperadminManagedRadiusAssignment, SuperadminManagedRadiusAssignmentListResponse,
     SuperadminManagedRadiusMapping, SuperadminManagedRadiusMappingListResponse,
-    SuperadminManagedRadiusServer, SuperadminManagedRadiusServerListResponse,
-    SuperadminManagedRadiusSecretValue,
-    SuperadminManagedRadiusUser, SuperadminManagedRadiusUserListResponse,
+    SuperadminManagedRadiusSecretValue, SuperadminManagedRadiusServer,
+    SuperadminManagedRadiusServerListResponse, SuperadminManagedRadiusUser,
+    SuperadminManagedRadiusUserListResponse,
 };
+use crate::http::auth::extract_ip;
+use crate::models::Tenant;
 use axum::{
     extract::ConnectInfo,
     extract::{Path, State},
@@ -322,26 +322,32 @@ pub async fn list_managed_radius_mappings(
 ) -> Result<Json<SuperadminManagedRadiusMappingListResponse>, crate::error::AppError> {
     let claims = check_super_admin(&state, &headers).await?;
     let mut tx = state.auth_service.pool.begin().await?;
-    state.auth_service.apply_rls_context_tx(&mut tx, &claims).await?;
+    state
+        .auth_service
+        .apply_rls_context_tx(&mut tx, &claims)
+        .await?;
 
-    let rows = sqlx::query_as::<_, (
-        String,
-        String,
-        String,
-        String,
-        String,
-        String,
-        i32,
-        i32,
-        String,
-        Option<String>,
-        String,
-        String,
-        Option<String>,
-        String,
-        bool,
-        chrono::DateTime<chrono::Utc>,
-    )>(
+    let rows = sqlx::query_as::<
+        _,
+        (
+            String,
+            String,
+            String,
+            String,
+            String,
+            String,
+            i32,
+            i32,
+            String,
+            Option<String>,
+            String,
+            String,
+            Option<String>,
+            String,
+            bool,
+            chrono::DateTime<chrono::Utc>,
+        ),
+    >(
         r#"
         SELECT
           n.id,
@@ -408,7 +414,10 @@ pub async fn list_managed_radius_mappings(
     }
 
     let total = data.len() as i64;
-    Ok(Json(SuperadminManagedRadiusMappingListResponse { data, total }))
+    Ok(Json(SuperadminManagedRadiusMappingListResponse {
+        data,
+        total,
+    }))
 }
 
 pub async fn create_managed_radius_server(
@@ -422,16 +431,18 @@ pub async fn create_managed_radius_server(
 
     let server = state
         .managed_radius_service
-        .create_server(crate::services::managed_radius_service::ManagedRadiusServerUpsert {
-            name: payload.name,
-            db_host: payload.db_host,
-            db_port: payload.db_port,
-            db_name: payload.db_name,
-            db_user: payload.db_user,
-            db_password: payload.db_password,
-            is_active: payload.is_active,
-            notes: payload.notes,
-        })
+        .create_server(
+            crate::services::managed_radius_service::ManagedRadiusServerUpsert {
+                name: payload.name,
+                db_host: payload.db_host,
+                db_port: payload.db_port,
+                db_name: payload.db_name,
+                db_user: payload.db_user,
+                db_password: payload.db_password,
+                is_active: payload.is_active,
+                notes: payload.notes,
+            },
+        )
         .await?;
 
     state
@@ -547,7 +558,10 @@ pub async fn set_managed_radius_server_default(
             "MANAGED_RADIUS_SERVER_SET_DEFAULT",
             "managed_radius_server",
             Some(&server.id),
-            Some(&format!("Set managed RADIUS server {} as default", server.name)),
+            Some(&format!(
+                "Set managed RADIUS server {} as default",
+                server.name
+            )),
             Some(&ip),
         )
         .await;
@@ -675,16 +689,18 @@ pub async fn create_managed_radius_mapping(
 
     let mapping = state
         .managed_radius_service
-        .create_mapping(crate::services::managed_radius_service::ManagedRadiusNasUpsert {
-            tenant_id: payload.tenant_id.clone(),
-            radius_server_id: payload.radius_server_id,
-            router_id: payload.router_id,
-            nas_name: payload.nas_name,
-            nas_ip_or_cidr: payload.nas_ip_or_cidr,
-            shortname: payload.shortname,
-            shared_secret: payload.shared_secret,
-            is_active: payload.is_active,
-        })
+        .create_mapping(
+            crate::services::managed_radius_service::ManagedRadiusNasUpsert {
+                tenant_id: payload.tenant_id.clone(),
+                radius_server_id: payload.radius_server_id,
+                router_id: payload.router_id,
+                nas_name: payload.nas_name,
+                nas_ip_or_cidr: payload.nas_ip_or_cidr,
+                shortname: payload.shortname,
+                shared_secret: payload.shared_secret,
+                is_active: payload.is_active,
+            },
+        )
         .await?;
 
     state
@@ -810,8 +826,9 @@ pub async fn rotate_managed_radius_mapping_secret(
         .await;
 
     Ok(Json(SuperadminManagedRadiusSecretValue {
-        shared_secret_masked:
-            crate::services::ManagedRadiusService::mask_shared_secret_for_display(&secret),
+        shared_secret_masked: crate::services::ManagedRadiusService::mask_shared_secret_for_display(
+            &secret,
+        ),
         shared_secret: secret,
     }))
 }
@@ -845,8 +862,9 @@ pub async fn reveal_managed_radius_mapping_secret(
         .await;
 
     Ok(Json(SuperadminManagedRadiusSecretValue {
-        shared_secret_masked:
-            crate::services::ManagedRadiusService::mask_shared_secret_for_display(&secret),
+        shared_secret_masked: crate::services::ManagedRadiusService::mask_shared_secret_for_display(
+            &secret,
+        ),
         shared_secret: secret,
     }))
 }
@@ -974,7 +992,11 @@ pub async fn create_tenant(
     };
 
     if let Some(pid) = plan_id_to_assign {
-        if let Err(err) = state.plan_service.assign_plan_to_tenant(&tenant.id, &pid).await {
+        if let Err(err) = state
+            .plan_service
+            .assign_plan_to_tenant(&tenant.id, &pid)
+            .await
+        {
             tracing::error!(
                 "Failed to assign plan {} to tenant {} via HTTP flow: {}",
                 pid,

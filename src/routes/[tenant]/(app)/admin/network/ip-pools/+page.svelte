@@ -94,7 +94,7 @@
   });
 
   onMount(async () => {
-    if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
+    if (!$can('read', 'ip_pools') && !$can('manage', 'ip_pools')) {
       goto('/unauthorized');
       return;
     }
@@ -325,7 +325,7 @@
         <Icon name="download" size={16} />
         {$t('admin.network.routers.ip_pools.actions.sync') || 'Sync from router'}
       </button>
-      {#if $can('manage', 'network_routers')}
+      {#if $can('manage', 'ip_pools')}
         <button class="btn ghost" type="button" onclick={openCreate} disabled={!routerId || loading}>
           <Icon name="plus" size={16} />
           {$t('admin.network.routers.ip_pools.actions.add') || 'Add pool'}
@@ -393,7 +393,7 @@
             {/if}
           {:else if key === 'actions'}
             <div class="actions">
-              {#if $can('manage', 'network_routers')}
+              {#if $can('manage', 'ip_pools')}
                 <button class="icon-btn" type="button" onclick={() => openEdit(item.raw)} title={$t('admin.network.routers.ip_pools.actions.edit') || 'Edit'}>
                   <Icon name="edit" size={16} />
                 </button>

@@ -257,7 +257,7 @@
   const standardMaxZoom = 19;
   const satelliteMaxZoom = hasHiResSatellite ? 21 : 18;
 
-  const canManageTopology = $derived($can('manage', 'network_topology') || $can('manage', 'network_routers'));
+  const canManageTopology = $derived($can('manage', 'network_topology'));
   const linkFieldConfig = $derived.by(() => getLinkFieldConfig(linkForm.link_type));
 
   const tenantCtx = $derived.by(() =>
@@ -282,7 +282,7 @@
   });
 
   onMount(() => {
-    if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
+    if (!$can('read', 'network_topology') && !$can('manage', 'network_topology')) {
       goto('/unauthorized');
       return;
     }

@@ -41,6 +41,18 @@ async fn tenant_and_claims(
     Ok((tenant_id, claims))
 }
 
+async fn require_isp_package_permission(
+    state: &AppState,
+    claims: &crate::services::auth_service::Claims,
+    tenant_id: &str,
+    action: &str,
+) -> AppResult<()> {
+    state
+        .auth_service
+        .check_permission(&claims.sub, tenant_id, "isp_packages", action)
+        .await
+}
+
 #[derive(Debug, Deserialize)]
 struct ListPackagesQuery {
     q: Option<String>,
@@ -57,6 +69,7 @@ async fn list_packages(
     Query(q): Query<ListPackagesQuery>,
 ) -> AppResult<Json<PaginatedResponse<IspPackage>>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_isp_package_permission(&state, &claims, &tenant_id, "read").await?;
     let out = state
         .isp_package_service
         .list_packages(
@@ -79,6 +92,7 @@ async fn create_package(
     Json(dto): Json<CreateIspPackageRequest>,
 ) -> AppResult<Json<IspPackage>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_isp_package_permission(&state, &claims, &tenant_id, "manage").await?;
     let out = state
         .isp_package_service
         .create_package(&claims.sub, &tenant_id, dto, None)
@@ -94,6 +108,7 @@ async fn update_package(
     Json(dto): Json<UpdateIspPackageRequest>,
 ) -> AppResult<Json<IspPackage>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_isp_package_permission(&state, &claims, &tenant_id, "manage").await?;
     let out = state
         .isp_package_service
         .update_package(&claims.sub, &tenant_id, &id, dto, None)
@@ -108,6 +123,7 @@ async fn delete_package(
     Path(id): Path<String>,
 ) -> AppResult<Json<serde_json::Value>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_isp_package_permission(&state, &claims, &tenant_id, "manage").await?;
     state
         .isp_package_service
         .delete_package(&claims.sub, &tenant_id, &id, None)
@@ -127,6 +143,7 @@ async fn list_router_mappings(
     Query(q): Query<ListMappingsQuery>,
 ) -> AppResult<Json<Vec<IspPackageRouterMappingView>>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_isp_package_permission(&state, &claims, &tenant_id, "read").await?;
     let out = state
         .isp_package_service
         .list_router_mappings(&claims.sub, &tenant_id, q.router_id)
@@ -141,6 +158,7 @@ async fn upsert_router_mapping(
     Json(dto): Json<UpsertIspPackageRouterMappingRequest>,
 ) -> AppResult<Json<IspPackageRouterMapping>> {
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_isp_package_permission(&state, &claims, &tenant_id, "manage").await?;
     let out = state
         .isp_package_service
         .upsert_router_mapping(&claims.sub, &tenant_id, dto, None)

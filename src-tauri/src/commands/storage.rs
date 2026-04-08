@@ -168,9 +168,14 @@ pub async fn delete_file_tenant(
         .tenant_id
         .ok_or("Unauthorized: No tenant context".to_string())?;
 
-    // Ideally check if user has 'storage:delete' permission here too.
-    // For now assuming any authenticated tenant user can delete (or rely on UI hiding).
-    // Better: check role permissions via RoleService, but we keep it simple for MVP.
+    let can_delete = auth_service
+        .has_permission(&claims.sub, &tenant_id, "storage_files", "delete")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !can_delete {
+        return Err("Forbidden".to_string());
+    }
 
     state
         .delete_tenant_file(&file_id, &tenant_id)

@@ -120,7 +120,7 @@
   let refreshHandle: any = null;
 
   onMount(() => {
-    if (!$can('read', 'network_routers') && !$can('manage', 'network_routers')) {
+    if (!$can('read', 'router_inventory') && !$can('manage', 'router_inventory')) {
       goto('/unauthorized');
       return;
     }
@@ -475,7 +475,7 @@
         {$t('admin.network.routers.actions.refresh') || $t('common.refresh') || 'Refresh'}
       </button>
 
-      {#if $can('manage', 'network_routers')}
+      {#if $can('manage', 'router_inventory')}
         <button class="btn" type="button" onclick={openCreate}>
           <Icon name="plus" size={16} />
           {$t('admin.network.routers.actions.add') || 'Add Router'}
@@ -584,7 +584,7 @@
             <button class="icon-btn" type="button" onclick={() => test(item)} title={$t('admin.network.routers.actions.test') || 'Test Connection'}>
               <Icon name="zap" size={16} />
             </button>
-            {#if $can('manage', 'network_routers')}
+            {#if $can('manage', 'router_inventory')}
               <button class="icon-btn" type="button" onclick={() => openEdit(item)} title={$t('admin.network.routers.actions.edit') || 'Edit'}>
                 <Icon name="edit" size={16} />
               </button>

@@ -44,8 +44,13 @@
     if ($isSuperAdmin) return true;
     return (
       $can('access', 'admin') ||
-      $can('read', 'network_routers') ||
-      $can('manage', 'network_routers') ||
+      $can('read', 'network_noc') ||
+      $can('read', 'network_alerts') ||
+      $can('read', 'network_incidents') ||
+      $can('read', 'network_logs') ||
+      $can('read', 'router_inventory') ||
+      $can('read', 'ppp_profiles') ||
+      $can('read', 'ip_pools') ||
       $can('read', 'work_orders') ||
       $can('manage', 'work_orders') ||
       $can('read', 'customers') ||
@@ -72,8 +77,14 @@
 
     if (path === '/admin/network' || path === '/admin/network/') {
       return (
-        $can('read', 'network_routers') ||
-        $can('manage', 'network_routers') ||
+        $can('read', 'network_noc') ||
+        $can('read', 'network_alerts') ||
+        $can('read', 'network_incidents') ||
+        $can('read', 'network_logs') ||
+        $can('read', 'router_inventory') ||
+        $can('read', 'network_topology') ||
+        $can('read', 'ppp_profiles') ||
+        $can('read', 'ip_pools') ||
         $can('read', 'pppoe') ||
         $can('manage', 'pppoe') ||
         $can('read', 'isp_packages') ||
@@ -91,17 +102,29 @@
     if (path.startsWith('/admin/network/installations')) {
       return $can('read', 'work_orders') || $can('manage', 'work_orders');
     }
-    if (
-      path.startsWith('/admin/network/noc') ||
-      path.startsWith('/admin/network/map') ||
-      path.startsWith('/admin/network/alerts') ||
-      path.startsWith('/admin/network/incidents') ||
-      path.startsWith('/admin/network/logs') ||
-      path.startsWith('/admin/network/routers') ||
-      path.startsWith('/admin/network/ppp-profiles') ||
-      path.startsWith('/admin/network/ip-pools')
-    ) {
-      return $can('read', 'network_routers') || $can('manage', 'network_routers');
+    if (path.startsWith('/admin/network/noc')) {
+      return $can('read', 'network_noc') || $can('manage', 'network_noc');
+    }
+    if (path.startsWith('/admin/network/map')) {
+      return $can('read', 'network_topology') || $can('manage', 'network_topology');
+    }
+    if (path.startsWith('/admin/network/alerts')) {
+      return $can('read', 'network_alerts') || $can('manage', 'network_alerts');
+    }
+    if (path.startsWith('/admin/network/incidents')) {
+      return $can('read', 'network_incidents') || $can('manage', 'network_incidents');
+    }
+    if (path.startsWith('/admin/network/logs')) {
+      return $can('read', 'network_logs') || $can('manage', 'network_logs');
+    }
+    if (path.startsWith('/admin/network/routers')) {
+      return $can('read', 'router_inventory') || $can('manage', 'router_inventory');
+    }
+    if (path.startsWith('/admin/network/ppp-profiles')) {
+      return $can('read', 'ppp_profiles') || $can('manage', 'ppp_profiles');
+    }
+    if (path.startsWith('/admin/network/ip-pools')) {
+      return $can('read', 'ip_pools') || $can('manage', 'ip_pools');
     }
     if (path.startsWith('/admin/customers')) {
       return $can('read', 'customers') || $can('manage', 'customers');
@@ -116,7 +139,7 @@
       return $can('read', 'billing') || $can('manage', 'billing');
     }
     if (path.startsWith('/admin/announcements')) {
-      return $can('read', 'announcements') || $can('manage', 'announcements');
+      return $can('manage', 'announcements');
     }
     if (path.startsWith('/admin/backups')) {
       return (
@@ -150,10 +173,10 @@
       return $can('read', 'audit_logs');
     }
     if (path.startsWith('/admin/support')) {
-      return $can('read_all', 'support') || $can('read', 'support');
+      return $can('read_all', 'support');
     }
     if (path.startsWith('/admin/storage')) {
-      return $can('read', 'storage') || $can('upload', 'storage') || $can('delete', 'storage');
+      return $can('read', 'storage_console');
     }
     if (path.startsWith('/admin/email-outbox')) {
       return (
@@ -196,10 +219,7 @@
     });
 
     // Keep main domain URL clean: never expose /:tenant/... in browser URL.
-    if (
-      onPlatformDomain &&
-      hasTenantPrefixInPath
-    ) {
+    if (onPlatformDomain && hasTenantPrefixInPath) {
       debugLog('canonicalize-main-domain-path', {
         from: pathname,
         to: canonicalPath,
@@ -208,7 +228,12 @@
       return;
     }
 
-    if (userCustomDomain && currentHost !== userCustomDomain && !$isSuperAdmin && !onPlatformDomain) {
+    if (
+      userCustomDomain &&
+      currentHost !== userCustomDomain &&
+      !$isSuperAdmin &&
+      !onPlatformDomain
+    ) {
       debugLog('domain-mismatch-logout', {
         currentHost,
         expectedDomain: userCustomDomain,
