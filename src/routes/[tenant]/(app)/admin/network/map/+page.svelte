@@ -130,13 +130,14 @@
     type NMZone,
   } from '$lib/components/network/networkMapUtils';
   import {
-    buildInvestigationState,
+    applyNetworkMapWorkspaceDefaults,
+    createNetworkMapWorkspaceState,
     buildNetworkMapWorkspaceDefaults,
     buildSelectedMapObject,
-    type NetworkMapInvestigationKind,
-    type NetworkMapInvestigationState,
+    enterInvestigationMode,
+    selectNetworkMapObject,
+    type NetworkMapWorkspaceState,
     type NetworkMapWorkspaceCapabilities,
-    type NetworkMapWorkspaceSelectedObject,
   } from '$lib/components/network/networkMapWorkspaceState';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import Select2 from '$lib/components/ui/Select2.svelte';
@@ -245,8 +246,15 @@
     is_primary: false,
     weight: '100',
   });
-  let selectedObject = $state<NetworkMapWorkspaceSelectedObject | null>(null);
-  let investigationState = $state<NetworkMapInvestigationState | null>(null);
+  let workspaceState = $state<NetworkMapWorkspaceState>(
+    createNetworkMapWorkspaceState({
+      canManageTopology: false,
+      canReadCustomers: false,
+      canReadWorkOrders: false,
+      canReadNetworkNoc: false,
+      canReadRouterInventory: false,
+    }),
+  );
 
   let refreshDebounce: ReturnType<typeof setTimeout> | null = null;
   let lastRequestId = 0;
@@ -311,6 +319,7 @@
       goto('/unauthorized');
       return;
     }
+    workspaceState = applyNetworkMapWorkspaceDefaults(workspaceState, workspaceDefaults);
     ensureMaplibreCompatHelpers();
     void initMap();
   });
@@ -355,26 +364,18 @@
     }
   }
 
-  function setWorkspaceSelectedObject(
-    nextSelectedObject: NetworkMapWorkspaceSelectedObject | null,
-  ) {
-    selectedObject = nextSelectedObject ? buildSelectedMapObject(nextSelectedObject) : null;
-    investigationState = null;
-  }
-
-  function startWorkspaceInvestigation(mode: NetworkMapInvestigationKind) {
-    investigationState = buildInvestigationState({
-      mode,
-      rootObject: selectedObject,
-      selectedObject,
-    });
+  function updateWorkspaceSelection(nextSelectedObject: ReturnType<typeof buildSelectedMapObject>) {
+    workspaceState = selectNetworkMapObject(workspaceState, nextSelectedObject);
+    if (workspaceDefaults.mode === 'investigate') {
+      workspaceState = enterInvestigationMode(workspaceState, workspaceDefaults.investigationKind);
+    }
   }
 
   function handleNodeLayerClick(e: any) {
     if (!map || !e.features?.[0] || !maplibre) return;
     const props = e.features[0].properties || {};
     const nodeId = String(props.id || '');
-    setWorkspaceSelectedObject(
+    updateWorkspaceSelection(
       buildSelectedMapObject({
         kind: 'node',
         id: nodeId,
@@ -402,7 +403,7 @@
     if (!map || !e.features?.[0] || !maplibre || linkPickMode) return;
     const props = e.features[0].properties || {};
     const linkId = String(props.id || '');
-    setWorkspaceSelectedObject(
+    updateWorkspaceSelection(
       buildSelectedMapObject({
         kind: 'link',
         id: linkId,
@@ -424,7 +425,7 @@
     if (!map || !e.features?.[0] || !maplibre) return;
     const props = e.features[0].properties || {};
     const routerId = String(props.id || '');
-    setWorkspaceSelectedObject(
+    updateWorkspaceSelection(
       buildSelectedMapObject({
         kind: 'router',
         id: routerId,
@@ -1099,7 +1100,7 @@
     activeNodePopup?.remove();
     const next = buildConnectFromNodeResult(nodeId, nodeRows);
     const nodeRow = nodeRows.find((row) => row.id === nodeId);
-    setWorkspaceSelectedObject(
+    updateWorkspaceSelection(
       buildSelectedMapObject({
         kind: 'node',
         id: nodeId,

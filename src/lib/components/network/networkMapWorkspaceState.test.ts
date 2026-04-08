@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildInvestigationState,
+  applyNetworkMapWorkspaceDefaults,
   buildNetworkMapWorkspaceDefaults,
   buildSelectedMapObject,
   clearWorkspaceSelection,
@@ -77,7 +78,10 @@ describe('network map workspace state', () => {
   });
 
   it('builds an investigationState when trace mode starts from a selected node', () => {
-    const workspace = createNetworkMapWorkspaceState(nocCapabilities);
+    const workspace = {
+      ...createNetworkMapWorkspaceState(nocCapabilities),
+      mode: 'overview' as const,
+    };
     const selectedNode = buildSelectedMapObject({
       kind: 'node',
       id: 'node-18',
@@ -89,6 +93,7 @@ describe('network map workspace state', () => {
     const next = enterInvestigationMode(selected, 'trace');
 
     expect(next.selectedObject).toEqual(selectedNode);
+    expect(next.mode).toBe('investigate');
     expect(next.investigationState).toEqual(
       expect.objectContaining({
         mode: 'trace',
@@ -102,6 +107,30 @@ describe('network map workspace state', () => {
         rootObject: selectedNode,
       }),
     );
+  });
+
+  it('applies workspace defaults without dropping an active selection', () => {
+    const selectedNode = buildSelectedMapObject({
+      kind: 'node',
+      id: 'node-20',
+      label: 'Spur Node',
+    });
+    const workspace = {
+      ...createNetworkMapWorkspaceState(manageCapabilities),
+      mode: 'overview' as const,
+      selectedObject: selectedNode,
+    };
+
+    const next = applyNetworkMapWorkspaceDefaults(workspace, {
+      mode: 'manage',
+      investigationKind: 'service',
+      overviewAvailable: true,
+      manageAvailable: true,
+    });
+
+    expect(next.mode).toBe('overview');
+    expect(next.selectedObject).toEqual(selectedNode);
+    expect(next.manageAvailable).toBe(true);
   });
 
   it('clears both selection and investigation state together', () => {

@@ -95,6 +95,17 @@ export function buildNetworkMapWorkspaceDefaults(
   };
 }
 
+export function applyNetworkMapWorkspaceDefaults(
+  state: NetworkMapWorkspaceState,
+  defaults: NetworkMapWorkspaceDefaults,
+): NetworkMapWorkspaceState {
+  return {
+    ...state,
+    ...defaults,
+    mode: state.selectedObject || state.investigationState ? state.mode : defaults.mode,
+  };
+}
+
 export function buildSelectedMapObject(
   input: BuildSelectedMapObjectInput,
 ): NetworkMapWorkspaceSelectedObject {
@@ -154,6 +165,7 @@ export function enterInvestigationMode(
   const nextRootObject = rootObject ?? state.selectedObject ?? null;
   return {
     ...state,
+    mode: 'investigate',
     investigationState: buildInvestigationState({
       mode,
       rootObject: nextRootObject,
