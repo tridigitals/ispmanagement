@@ -3414,6 +3414,20 @@
           "routers": "Router",
           "customers": "Customer"
         },
+        "floating": {
+          "title": "Kontrol peta",
+          "subtitle": "Atur layer, ganti tampilan, dan masuk ke mode investigasi dengan cepat.",
+          "layers": "Layer",
+          "view": "Tampilan",
+          "tools": "Alat telusur",
+          "manage": "Kelola",
+          "service_mode": "Mode service",
+          "trace_mode": "Mode trace",
+          "clear_mode": "Bersihkan",
+          "add_node": "Tambah node",
+          "add_link": "Tambah link",
+          "add_zone": "Tambah zona"
+        },
         "view": {
           "label": "Tampilan",
           "standard": "Standar",

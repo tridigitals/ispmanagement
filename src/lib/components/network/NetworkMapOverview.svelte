@@ -271,70 +271,12 @@
         </div>
       </NetworkFilterPanel>
 
-      <div class="toolbar-wrap">
-        <div class="map-toolbar">
-          <div class="toolbar-copy">
-            <div class="toolbar-title">{labels.layerTitle}</div>
-            <div class="toolbar-subtitle">{labels.layerSubtitle}</div>
-          </div>
-          <div class="layer-toggles">
-            <label class="toggle">
-              <input
-                type="checkbox"
-                checked={nodesVisible}
-                onchange={(event) =>
-                  onNodesVisibleChange((event.currentTarget as HTMLInputElement).checked)}
-              />
-              <span>{labels.nodes}</span>
-            </label>
-            <label class="toggle">
-              <input
-                type="checkbox"
-                checked={linksVisible}
-                onchange={(event) =>
-                  onLinksVisibleChange((event.currentTarget as HTMLInputElement).checked)}
-              />
-              <span>{labels.links}</span>
-            </label>
-            <label class="toggle">
-              <input
-                type="checkbox"
-                checked={zonesVisible}
-                onchange={(event) =>
-                  onZonesVisibleChange((event.currentTarget as HTMLInputElement).checked)}
-              />
-              <span>{labels.zones}</span>
-            </label>
-            {#if showRoutersToggle}
-              <label class="toggle">
-                <input
-                  type="checkbox"
-                  checked={routersVisible}
-                  onchange={(event) =>
-                    onRoutersVisibleChange((event.currentTarget as HTMLInputElement).checked)}
-                />
-                <span>{labels.routers}</span>
-              </label>
-            {/if}
-            <label class="toggle">
-              <input
-                type="checkbox"
-                checked={customersVisible}
-                onchange={(event) =>
-                  onCustomersVisibleChange((event.currentTarget as HTMLInputElement).checked)}
-              />
-              <span>{labels.customers}</span>
-            </label>
-          </div>
+      {#if myLocationError}
+        <div class="location-error">
+          <Icon name="alert-triangle" size={14} />
+          <span>{myLocationError}</span>
         </div>
-
-        {#if myLocationError}
-          <div class="location-error">
-            <Icon name="alert-triangle" size={14} />
-            <span>{myLocationError}</span>
-          </div>
-        {/if}
-      </div>
+      {/if}
     </div>
   </div>
 {/if}
@@ -405,54 +347,6 @@
   .secondary-controls {
     display: grid;
     gap: 12px;
-  }
-
-  .toolbar-wrap {
-    display: grid;
-    gap: 8px;
-  }
-
-  .map-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-    flex-wrap: wrap;
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
-    padding: 12px 14px;
-    background: var(--bg-card);
-    box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.08);
-  }
-
-  .toolbar-copy {
-    display: grid;
-    gap: 4px;
-  }
-
-  .toolbar-title {
-    font-weight: 800;
-    color: var(--text-primary);
-  }
-
-  .toolbar-subtitle {
-    color: var(--text-secondary);
-    font-size: 0.84rem;
-  }
-
-  .layer-toggles {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.86rem;
-    color: var(--text-secondary);
   }
 
   .control {

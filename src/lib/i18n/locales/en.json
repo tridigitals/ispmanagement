@@ -3628,6 +3628,20 @@
           "routers": "Routers",
           "customers": "Customers"
         },
+        "floating": {
+          "title": "Map controls",
+          "subtitle": "Tune layers, change view, and jump into investigation mode.",
+          "layers": "Layers",
+          "view": "View",
+          "tools": "Trace tools",
+          "manage": "Manage",
+          "service_mode": "Service mode",
+          "trace_mode": "Trace mode",
+          "clear_mode": "Clear",
+          "add_node": "Add node",
+          "add_link": "Add link",
+          "add_zone": "Add zone"
+        },
         "view": {
           "label": "View",
           "standard": "Standard",

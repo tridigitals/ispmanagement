@@ -11,6 +11,7 @@
   import NetworkMapManager from '$lib/components/network/NetworkMapManager.svelte';
   import NetworkMapNodePanel from '$lib/components/network/NetworkMapNodePanel.svelte';
   import NetworkMapOverview from '$lib/components/network/NetworkMapOverview.svelte';
+  import NetworkMapFloatingControls from '$lib/components/network/NetworkMapFloatingControls.svelte';
   import NetworkMapZoneModal from '$lib/components/network/NetworkMapZoneModal.svelte';
   import {
     buildLinkDraftForm,
@@ -607,6 +608,18 @@
     zonesVisible = true;
     routersVisible = false;
     customersVisible = true;
+  }
+
+  function setInvestigationMode(mode: 'service' | 'trace') {
+    workspaceState = enterInvestigationMode(workspaceState, mode);
+  }
+
+  function clearInvestigationMode() {
+    workspaceState = {
+      ...workspaceState,
+      mode: workspaceDefaults.mode,
+      investigationState: null,
+    };
   }
 
   function handleWorkspaceSearchSelect(item: NetworkMapSearchResultItem) {
@@ -1742,6 +1755,53 @@
     height={compactMode ? 'min(76vh, 760px)' : 'min(62vh, 700px)'}
   >
     <svelte:fragment slot="overlay">
+      <NetworkMapFloatingControls
+        labels={{
+          title: $t('admin.network.map.floating.title') || 'Map controls',
+          subtitle:
+            $t('admin.network.map.floating.subtitle') ||
+            'Tune layers, change view, and jump into investigation mode.',
+          layers: $t('admin.network.map.floating.layers') || 'Layers',
+          view: $t('admin.network.map.floating.view') || 'View',
+          tools: $t('admin.network.map.floating.tools') || 'Trace tools',
+          manage: $t('admin.network.map.floating.manage') || 'Manage',
+          standard: $t('admin.network.map.view.standard') || 'Standard',
+          satellite: $t('admin.network.map.view.satellite') || 'Satellite',
+          serviceMode: $t('admin.network.map.floating.service_mode') || 'Service mode',
+          traceMode: $t('admin.network.map.floating.trace_mode') || 'Trace mode',
+          clearMode: $t('admin.network.map.floating.clear_mode') || 'Clear',
+          addNode: $t('admin.network.map.floating.add_node') || 'Add node',
+          addLink: $t('admin.network.map.floating.add_link') || 'Add link',
+          addZone: $t('admin.network.map.floating.add_zone') || 'Add zone',
+          nodes: $t('admin.network.map.stats.nodes') || 'Nodes',
+          links: $t('admin.network.map.stats.links') || 'Links',
+          zones: $t('admin.network.map.stats.zones') || 'Zones',
+          routers: $t('admin.network.map.layers.routers') || 'Routers',
+          customers: $t('admin.network.map.layers.customers') || 'Customers',
+        }}
+        {viewMode}
+        {nodesVisible}
+        {linksVisible}
+        {zonesVisible}
+        {routersVisible}
+        {customersVisible}
+        canShowRouters={canReadRouterInventory}
+        {canManageTopology}
+        activeInvestigationMode={workspaceState.investigationState?.mode ?? null}
+        onViewModeChange={(mode) => (viewMode = mode)}
+        onNodesVisibleChange={(checked) => (nodesVisible = checked)}
+        onLinksVisibleChange={(checked) => (linksVisible = checked)}
+        onZonesVisibleChange={(checked) => (zonesVisible = checked)}
+        onRoutersVisibleChange={(checked) => (routersVisible = checked)}
+        onCustomersVisibleChange={(checked) => (customersVisible = checked)}
+        onEnterServiceMode={() => setInvestigationMode('service')}
+        onEnterTraceMode={() => setInvestigationMode('trace')}
+        onClearMode={clearInvestigationMode}
+        onOpenCreateNode={openCreateNodeModal}
+        onOpenCreateLink={openCreateLinkModal}
+        onOpenCreateZone={openCreateZoneModal}
+      />
+
       <NetworkMapNodePanel
         show={showCreateNodePanel}
         {editingNodeId}
