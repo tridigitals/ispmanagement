@@ -3581,7 +3581,14 @@
         "workspace": {
           "kicker": "Topology workspace",
           "title": "Monitor the network before you edit it",
-          "copy": "Start from the map, inspect live topology signals, then drill into customers, services, and risky paths."
+          "copy": "Start from the map, inspect live topology signals, then drill into customers, services, and risky paths.",
+          "subtitle": "Visualize nodes, links, service zones, and operational context from the current viewport.",
+          "freshness_not_loaded": "Viewport data has not loaded yet.",
+          "freshness_cache": "Viewport data restored from cache {age}.",
+          "freshness_live": "Viewport data updated {age}.",
+          "router_overlay_unavailable": "Router overlay is unavailable for this role.",
+          "router_overlay_empty": "Router overlay is enabled, but no router markers are available in this viewport.",
+          "customer_context_limited": "Customer and field context is limited for this role."
         },
         "insight": {
           "empty": "No insight cards yet for this viewport.",
@@ -3631,6 +3638,10 @@
         "floating": {
           "title": "Map controls",
           "subtitle": "Tune layers, change view, and jump into investigation mode.",
+          "subtitle_manage": "Balanced overview with manage tools nearby.",
+          "subtitle_noc": "Issue tracing is prioritized for this role.",
+          "subtitle_technician": "Field and service investigation is prioritized for this role.",
+          "subtitle_viewer": "Tune the map for the current investigation.",
           "layers": "Layers",
           "view": "View",
           "tools": "Trace tools",
@@ -3658,7 +3669,18 @@
           "collapse": "Collapse inspector",
           "expand": "Expand inspector",
           "clear": "Clear",
-          "no_selection": "No object selected yet. Use the map, popup actions, or search above."
+          "no_selection": "No object selected yet. Use the map, popup actions, or search above.",
+          "workspace_title": "Topology workspace",
+          "workspace_subtitle": "Select an asset on the map or use search to inspect service, customer, and topology context.",
+          "live_summary": "Live summary",
+          "data_readiness": "Data readiness",
+          "role_focus": "Role focus",
+          "role_manage": "Manage-capable view: stay in overview first, then open topology editing when needed.",
+          "role_noc": "NOC-first view: tracing unstable paths and degraded links is prioritized.",
+          "role_technician": "Field-first view: impacted services and customer endpoints are prioritized.",
+          "role_viewer": "Monitoring-first view: inspect topology before taking action.",
+          "noc_available": "NOC context is available for issue tracing.",
+          "noc_limited": "NOC tracing is limited for this role."
         },
         "view": {
           "label": "View",

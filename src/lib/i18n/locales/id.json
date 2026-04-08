@@ -3367,7 +3367,14 @@
         "workspace": {
           "kicker": "Workspace topologi",
           "title": "Pantau jaringan dulu, baru lakukan perubahan",
-          "copy": "Mulai dari peta, lihat sinyal topologi yang aktif, lalu masuk ke customer, service, dan jalur yang berisiko."
+          "copy": "Mulai dari peta, lihat sinyal topologi yang aktif, lalu masuk ke customer, service, dan jalur yang berisiko.",
+          "subtitle": "Visualisasikan node, link, zona layanan, dan konteks operasional dari viewport saat ini.",
+          "freshness_not_loaded": "Data viewport belum dimuat.",
+          "freshness_cache": "Data viewport dipulihkan dari cache {age}.",
+          "freshness_live": "Data viewport diperbarui {age}.",
+          "router_overlay_unavailable": "Overlay router tidak tersedia untuk role ini.",
+          "router_overlay_empty": "Overlay router aktif, tetapi belum ada marker router di viewport ini.",
+          "customer_context_limited": "Konteks customer dan pekerjaan lapangan terbatas untuk role ini."
         },
         "insight": {
           "empty": "Belum ada insight untuk viewport ini.",
@@ -3417,6 +3424,10 @@
         "floating": {
           "title": "Kontrol peta",
           "subtitle": "Atur layer, ganti tampilan, dan masuk ke mode investigasi dengan cepat.",
+          "subtitle_manage": "Ringkasan seimbang dengan alat kelola tetap dekat.",
+          "subtitle_noc": "Pelacakan gangguan diprioritaskan untuk role ini.",
+          "subtitle_technician": "Investigasi lapangan dan service diprioritaskan untuk role ini.",
+          "subtitle_viewer": "Atur peta sesuai investigasi saat ini.",
           "layers": "Layer",
           "view": "Tampilan",
           "tools": "Alat telusur",
@@ -3444,7 +3455,18 @@
           "collapse": "Ciutkan inspector",
           "expand": "Buka inspector",
           "clear": "Bersihkan",
-          "no_selection": "Belum ada objek terpilih. Gunakan map, aksi popup, atau pencarian di atas."
+          "no_selection": "Belum ada objek terpilih. Gunakan map, aksi popup, atau pencarian di atas.",
+          "workspace_title": "Workspace topologi",
+          "workspace_subtitle": "Pilih aset di peta atau gunakan pencarian untuk melihat konteks service, customer, dan topologi.",
+          "live_summary": "Ringkasan langsung",
+          "data_readiness": "Kesiapan data",
+          "role_focus": "Fokus role",
+          "role_manage": "Tampilan berizin kelola: tetap di overview dulu, lalu buka editor topologi saat diperlukan.",
+          "role_noc": "Tampilan NOC: pelacakan jalur tidak stabil dan link degradasi diprioritaskan.",
+          "role_technician": "Tampilan lapangan: service terdampak dan endpoint customer diprioritaskan.",
+          "role_viewer": "Tampilan monitoring: inspeksi topologi dulu sebelum mengambil tindakan.",
+          "noc_available": "Konteks NOC tersedia untuk pelacakan gangguan.",
+          "noc_limited": "Pelacakan NOC terbatas untuk role ini."
         },
         "view": {
           "label": "Tampilan",

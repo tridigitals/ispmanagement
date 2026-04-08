@@ -447,7 +447,12 @@
     );
   });
   const mapDataFreshnessLabel = $derived.by(() => {
-    if (!lastMapDataLoadedAt) return 'Viewport data has not loaded yet.';
+    if (!lastMapDataLoadedAt) {
+      return (
+        $t('admin.network.map.workspace.freshness_not_loaded') ||
+        'Viewport data has not loaded yet.'
+      );
+    }
     const diffMs = Math.max(0, currentTimeMs - lastMapDataLoadedAt);
     let age = 'just now';
     if (diffMs >= 3_600_000) {
@@ -457,38 +462,55 @@
     } else if (diffMs >= 10_000) {
       age = `${Math.round(diffMs / 1000)}s ago`;
     }
-    return lastMapDataSource === 'cache'
-      ? `Viewport data restored from cache ${age}.`
-      : `Viewport data updated ${age}.`;
+    return (
+      (lastMapDataSource === 'cache'
+        ? $t('admin.network.map.workspace.freshness_cache', { values: { age } })
+        : $t('admin.network.map.workspace.freshness_live', { values: { age } })) ||
+      (lastMapDataSource === 'cache'
+        ? `Viewport data restored from cache ${age}.`
+        : `Viewport data updated ${age}.`)
+    );
   });
   const workspaceStatusNotes = $derived.by(() => {
     const notes: string[] = [mapDataFreshnessLabel];
     if (!workspaceCapabilities.canReadRouterInventory) {
-      notes.push('Router overlay is unavailable for this role.');
+      notes.push(
+        $t('admin.network.map.workspace.router_overlay_unavailable') ||
+          'Router overlay is unavailable for this role.',
+      );
     } else if (!routerRows.length) {
       notes.push(
-        'Router overlay is enabled, but no router markers are available in this viewport.',
+        $t('admin.network.map.workspace.router_overlay_empty') ||
+          'Router overlay is enabled, but no router markers are available in this viewport.',
       );
     }
     if (!workspaceCapabilities.canReadCustomers && !workspaceCapabilities.canReadWorkOrders) {
-      notes.push('Customer and field context is limited for this role.');
+      notes.push(
+        $t('admin.network.map.workspace.customer_context_limited') ||
+          'Customer and field context is limited for this role.',
+      );
     }
     return notes;
   });
   const workspaceSubtitle = $derived.by(() => {
     const base =
+      $t('admin.network.map.workspace.subtitle') ||
       'Visualize nodes, links, service zones, and operational context from the current viewport.';
     return `${base} ${workspaceStatusNotes[0] || ''}`.trim();
   });
   const floatingSubtitle = $derived.by(() => {
     const roleHint =
       workspaceRole === 'manage'
-        ? 'Balanced overview with manage tools nearby.'
+        ? $t('admin.network.map.floating.subtitle_manage') ||
+          'Balanced overview with manage tools nearby.'
         : workspaceRole === 'noc'
-          ? 'Issue tracing is prioritized for this role.'
+          ? $t('admin.network.map.floating.subtitle_noc') ||
+            'Issue tracing is prioritized for this role.'
           : workspaceRole === 'technician'
-            ? 'Field and service investigation is prioritized for this role.'
-            : 'Tune the map for the current investigation.';
+            ? $t('admin.network.map.floating.subtitle_technician') ||
+              'Field and service investigation is prioritized for this role.'
+            : $t('admin.network.map.floating.subtitle_viewer') ||
+              'Tune the map for the current investigation.';
     return `${roleHint} ${mapDataFreshnessLabel}`;
   });
   const inspectorDefaultModel = $derived.by(() => buildDefaultInspectorModel());
@@ -884,13 +906,14 @@
 
   function buildDefaultInspectorModel(): NetworkMapInspectorModel {
     return {
-      title: 'Topology workspace',
+      title: $t('admin.network.map.inspector.workspace_title') || 'Topology workspace',
       subtitle:
+        $t('admin.network.map.inspector.workspace_subtitle') ||
         'Select an asset on the map or use search to inspect service, customer, and topology context.',
       tone: 'muted' as const,
       sections: [
         {
-          title: 'Live summary',
+          title: $t('admin.network.map.inspector.live_summary') || 'Live summary',
           lines: [
             `${nodeRows.length} nodes loaded in current viewport`,
             `${linkRows.length} links loaded in current viewport`,
@@ -898,22 +921,28 @@
           ],
         },
         {
-          title: 'Data readiness',
+          title: $t('admin.network.map.inspector.data_readiness') || 'Data readiness',
           lines: workspaceStatusNotes,
         },
         {
-          title: 'Role focus',
+          title: $t('admin.network.map.inspector.role_focus') || 'Role focus',
           lines: [
             workspaceRole === 'manage'
-              ? 'Manage-capable view: stay in overview first, then open topology editing when needed.'
+              ? $t('admin.network.map.inspector.role_manage') ||
+                'Manage-capable view: stay in overview first, then open topology editing when needed.'
               : workspaceRole === 'noc'
-                ? 'NOC-first view: tracing unstable paths and degraded links is prioritized.'
+                ? $t('admin.network.map.inspector.role_noc') ||
+                  'NOC-first view: tracing unstable paths and degraded links is prioritized.'
                 : workspaceRole === 'technician'
-                  ? 'Field-first view: impacted services and customer endpoints are prioritized.'
-                  : 'Monitoring-first view: inspect topology before taking action.',
+                  ? $t('admin.network.map.inspector.role_technician') ||
+                    'Field-first view: impacted services and customer endpoints are prioritized.'
+                  : $t('admin.network.map.inspector.role_viewer') ||
+                    'Monitoring-first view: inspect topology before taking action.',
             workspaceCapabilities.canReadNetworkNoc
-              ? 'NOC context is available for issue tracing.'
-              : 'NOC tracing is limited for this role.',
+              ? $t('admin.network.map.inspector.noc_available') ||
+                'NOC context is available for issue tracing.'
+              : $t('admin.network.map.inspector.noc_limited') ||
+                'NOC tracing is limited for this role.',
           ],
         },
       ],
