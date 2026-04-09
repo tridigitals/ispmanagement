@@ -7,11 +7,11 @@ import {
 } from './networkMapInteractionUtils';
 import {
   computeLinkHealth,
+  buildLinkPopupModel,
+  buildNodePopupModel,
+  buildServicePopupModel,
   escapeHtml,
-  isSystemManagedNode,
-  nodeTypeLabel,
   statusTone,
-  systemManagedNodeSourceLabel,
   type NMLink,
   type NMNode,
 } from './networkMapUtils';
@@ -28,30 +28,20 @@ export function openNodePopup(args: {
   setActivePopup: (popup: PopupInstance | null) => void;
   onConnect: (nodeId: string) => void;
   onEdit: (node: NMNode) => void;
+  onTrace?: (node: NMNode) => void;
+  onInspect?: (node: NMNode) => void;
+  onViewImpact?: (node: NMNode) => void;
 }) {
   const props = args.feature.properties || {};
   const coords = pointCoordinates(args.feature.geometry);
   const nodeId = String(props.id || '');
   const node = args.nodeRows.find((x) => x.id === nodeId);
-  const managed = isSystemManagedNode(node);
-  const managedSource = systemManagedNodeSourceLabel(node);
   const popupUid = `nm-popup-${Math.random().toString(36).slice(2, 10)}`;
-  const status = escapeHtml(props.status || '-');
-  const tone = statusTone(props.status);
-  const name = escapeHtml(props.name || '-');
-  const nodeType = escapeHtml(nodeTypeLabel(props.node_type));
-  const sourceDetail = managedSource
-    ? `<div class="nm-popup-label">Source</div><div class="nm-popup-value">${escapeHtml(managedSource)}</div>`
-    : '';
-  const popupContent = buildNodePopupHtml({
-    popupUid,
-    name,
-    tone,
-    status,
-    nodeType,
-    sourceDetailHtml: sourceDetail,
-    managed,
-  });
+  if (!node) return;
+  const popupModel = node.metadata?.service_id
+    ? buildServicePopupModel(node)
+    : buildNodePopupModel(node);
+  const popupContent = buildNodePopupHtml({ popupUid, model: popupModel });
 
   args.activePopup?.remove();
   const popup = new args.maplibre.Popup({ closeButton: false, closeOnClick: true })
@@ -59,18 +49,18 @@ export function openNodePopup(args: {
     .setHTML(popupContent.html);
 
   popup.on('open', () => {
-    const connectBtn = document.getElementById(popupContent.connectBtnId) as HTMLButtonElement | null;
-    const editBtn = document.getElementById(popupContent.editBtnId) as HTMLButtonElement | null;
     const closeBtn = document.getElementById(popupContent.closeBtnId) as HTMLButtonElement | null;
-
-    connectBtn?.addEventListener('click', () => {
-      popup.remove();
-      args.onConnect(nodeId);
-    });
-    editBtn?.addEventListener('click', () => {
-      popup.remove();
-      if (node) args.onEdit(node);
-    });
+    for (const actionButton of popupContent.actionButtons) {
+      const button = document.getElementById(actionButton.buttonId) as HTMLButtonElement | null;
+      button?.addEventListener('click', () => {
+        popup.remove();
+        if (actionButton.key === 'connect') args.onConnect(nodeId);
+        if (actionButton.key === 'edit') args.onEdit(node);
+        if (actionButton.key === 'trace') args.onTrace?.(node);
+        if (actionButton.key === 'inspect') args.onInspect?.(node);
+        if (actionButton.key === 'impact') args.onViewImpact?.(node);
+      });
+    }
     closeBtn?.addEventListener('click', () => {
       popup.remove();
     });
@@ -89,6 +79,8 @@ export function openLinkPopup(args: {
   lngLat: { lng: number; lat: number };
   linkRows: NMLink[];
   onDelete: (linkId: string, linkName?: string) => void;
+  onTrace?: (link: NMLink) => void;
+  onInspect?: (link: NMLink) => void;
 }) {
   const props = args.feature.properties || {};
   const linkId = String(props.id || '');
@@ -96,30 +88,22 @@ export function openLinkPopup(args: {
   if (!link) return;
 
   const popupUid = `nm-link-popup-${Math.random().toString(36).slice(2, 10)}`;
-  const name = escapeHtml(link.name || '-');
-  const status = escapeHtml(link.status || '-');
-  const type = escapeHtml(link.link_type || '-');
-  const health = computeLinkHealth(link);
-  const popupContent = buildLinkPopupHtml({
-    popupUid,
-    name,
-    healthTone: health.tone,
-    healthScore: health.score,
-    type,
-    status,
-    endpoints: `${escapeHtml(link.from_node_id || '-')} -> ${escapeHtml(link.to_node_id || '-')}`,
-  });
+  const popupContent = buildLinkPopupHtml({ popupUid, model: buildLinkPopupModel(link) });
   const popup = new args.maplibre.Popup({ closeButton: false, closeOnClick: true })
     .setLngLat([args.lngLat.lng, args.lngLat.lat])
     .setHTML(popupContent.html);
 
   popup.on('open', () => {
-    const deleteBtn = document.getElementById(popupContent.deleteBtnId) as HTMLButtonElement | null;
     const closeBtn = document.getElementById(popupContent.closeBtnId) as HTMLButtonElement | null;
-    deleteBtn?.addEventListener('click', () => {
-      popup.remove();
-      args.onDelete(linkId, link.name);
-    });
+    for (const actionButton of popupContent.actionButtons) {
+      const button = document.getElementById(actionButton.buttonId) as HTMLButtonElement | null;
+      button?.addEventListener('click', () => {
+        popup.remove();
+        if (actionButton.key === 'delete') args.onDelete(linkId, link.name);
+        if (actionButton.key === 'trace') args.onTrace?.(link);
+        if (actionButton.key === 'inspect') args.onInspect?.(link);
+      });
+    }
     closeBtn?.addEventListener('click', () => popup.remove());
   });
   popup.addTo(args.map);

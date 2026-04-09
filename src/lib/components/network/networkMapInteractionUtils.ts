@@ -1,5 +1,19 @@
 import type { Geometry, Point } from 'geojson';
-import type { NMLink, NMNode } from './networkMapUtils';
+import type {
+  NMLink,
+  NMNode,
+  NetworkMapPopupActionModel,
+  NetworkMapPopupModel,
+} from './networkMapUtils';
+
+function escapePopupHtml(input: unknown): string {
+  return String(input ?? '-')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
 
 export function buildDefaultLineGeometry(
   nodeRows: NMNode[],
@@ -93,36 +107,49 @@ export function buildDeleteConfirmCopy(
   };
 }
 
-export function buildNodePopupHtml(args: {
-  popupUid: string;
-  name: string;
-  tone: 'ok' | 'warn' | 'muted';
-  status: string;
-  nodeType: string;
-  sourceDetailHtml: string;
-  managed: boolean;
-}) {
-  const connectBtnId = `${args.popupUid}-connect`;
-  const editBtnId = `${args.popupUid}-edit`;
-  const closeBtnId = `${args.popupUid}-close`;
+function renderPopupActionButton(popupUid: string, action: NetworkMapPopupActionModel) {
+  const buttonId = `${popupUid}-${action.key}`;
+  const toneClass =
+    action.tone === 'primary' ? 'primary' : action.tone === 'danger' ? 'danger' : '';
   return {
-    connectBtnId,
-    editBtnId,
+    buttonId,
+    html: `<button id="${buttonId}" class="nm-popup-btn ${toneClass}" type="button">${action.label}</button>`,
+  };
+}
+
+function renderPopupModel(args: { popupUid: string; model: NetworkMapPopupModel }) {
+  const closeBtnId = `${args.popupUid}-close`;
+  const actionButtons = args.model.actions.map((action) => ({
+    key: action.key,
+    ...renderPopupActionButton(args.popupUid, action),
+  }));
+
+  return {
     closeBtnId,
+    actionButtons,
     html: `
       <div class="nm-popup-card">
         <div class="nm-popup-head">
-          <div class="nm-popup-title">${args.name}</div>
-          <span class="nm-popup-badge ${args.tone}">${args.status}</span>
+          <div>
+            <div class="nm-popup-kicker">${escapePopupHtml(args.model.kicker)}</div>
+            <div class="nm-popup-title">${escapePopupHtml(args.model.title)}</div>
+            <div class="nm-popup-subtitle">${escapePopupHtml(args.model.subtitle)}</div>
+          </div>
+          <span class="nm-popup-badge ${args.model.tone}">${escapePopupHtml(args.model.statusText)}</span>
         </div>
+        <div class="nm-popup-impact">${escapePopupHtml(args.model.impactText)}</div>
         <div class="nm-popup-grid">
-          <div class="nm-popup-label">Type</div>
-          <div class="nm-popup-value">${args.nodeType}</div>
-          ${args.sourceDetailHtml}
+          ${args.model.detailPairs
+            .map(
+              (pair) => `
+            <div class="nm-popup-label">${escapePopupHtml(pair.label)}</div>
+            <div class="nm-popup-value">${escapePopupHtml(pair.value)}</div>
+          `,
+            )
+            .join('')}
         </div>
         <div class="nm-popup-actions">
-          <button id="${connectBtnId}" class="nm-popup-btn primary" type="button">Connect</button>
-          ${args.managed ? '' : `<button id="${editBtnId}" class="nm-popup-btn" type="button">Edit</button>`}
+          ${actionButtons.map((button) => button.html).join('')}
           <button id="${closeBtnId}" class="nm-popup-btn" type="button">Close</button>
         </div>
       </div>
@@ -130,42 +157,12 @@ export function buildNodePopupHtml(args: {
   };
 }
 
-export function buildLinkPopupHtml(args: {
-  popupUid: string;
-  name: string;
-  healthTone: 'good' | 'warn' | 'bad';
-  healthScore: number;
-  type: string;
-  status: string;
-  endpoints: string;
-}) {
-  const deleteBtnId = `${args.popupUid}-delete`;
-  const closeBtnId = `${args.popupUid}-close`;
-  const badgeTone = args.healthTone === 'good' ? 'ok' : args.healthTone === 'warn' ? 'warn' : 'muted';
-  return {
-    deleteBtnId,
-    closeBtnId,
-    html: `
-      <div class="nm-popup-card">
-        <div class="nm-popup-head">
-          <div class="nm-popup-title">${args.name}</div>
-          <span class="nm-popup-badge ${badgeTone}">${args.healthScore}</span>
-        </div>
-        <div class="nm-popup-grid">
-          <div class="nm-popup-label">Type</div>
-          <div class="nm-popup-value">${args.type}</div>
-          <div class="nm-popup-label">Status</div>
-          <div class="nm-popup-value">${args.status}</div>
-          <div class="nm-popup-label">Endpoints</div>
-          <div class="nm-popup-value mono">${args.endpoints}</div>
-        </div>
-        <div class="nm-popup-actions">
-          <button id="${deleteBtnId}" class="nm-popup-btn danger" type="button">Delete</button>
-          <button id="${closeBtnId}" class="nm-popup-btn" type="button">Close</button>
-        </div>
-      </div>
-    `,
-  };
+export function buildNodePopupHtml(args: { popupUid: string; model: NetworkMapPopupModel }) {
+  return renderPopupModel(args);
+}
+
+export function buildLinkPopupHtml(args: { popupUid: string; model: NetworkMapPopupModel }) {
+  return renderPopupModel(args);
 }
 
 export function buildRouterPopupHtml(args: {

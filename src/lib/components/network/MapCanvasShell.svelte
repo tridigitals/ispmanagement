@@ -16,13 +16,16 @@
   export let mapUnavailable = false;
   export let mapErrorMessage = '';
   export let mapUnavailableTitle = 'Map preview unavailable on this device';
-  export let mapUnavailableSubtitle = 'WebGL context failed. Data is still loaded and counts are visible.';
+  export let mapUnavailableSubtitle =
+    'WebGL context failed. Data is still loaded and counts are visible.';
   export let viewMode: 'standard' | 'satellite' = 'standard';
   export let showViewSwitch = true;
   export let showSearch = true;
   export let searchPlaceholder = 'Search city or address...';
   export let height = 'min(62vh, 700px)';
   export let mapEl: HTMLDivElement | null = null;
+  export let hasAside = false;
+  export let asideCollapsed = false;
 
   let searchQuery = '';
   let searching = false;
@@ -154,109 +157,145 @@
 </script>
 
 <div class="map-wrap">
-  <div class="map-shell" style={`--map-shell-height:${height};`}>
-    {#if loading}
-      <div class="map-loading">Loading...</div>
-    {/if}
-    {#if mapUnavailable}
-      <div class="map-unavailable">
-        <div>
-          <div class="map-unavailable-title">{mapUnavailableTitle}</div>
-          <div class="map-unavailable-sub">{mapUnavailableSubtitle}</div>
-          {#if mapErrorMessage}
-            <div class="map-unavailable-sub">{mapErrorMessage}</div>
+  <div
+    class={`map-layout ${hasAside ? 'has-aside' : ''} ${asideCollapsed ? 'aside-collapsed' : ''}`}
+  >
+    <div class="map-shell" style={`--map-shell-height:${height};`}>
+      {#if loading}
+        <div class="map-loading">Loading...</div>
+      {/if}
+      {#if mapUnavailable}
+        <div class="map-unavailable">
+          <div>
+            <div class="map-unavailable-title">{mapUnavailableTitle}</div>
+            <div class="map-unavailable-sub">{mapUnavailableSubtitle}</div>
+            {#if mapErrorMessage}
+              <div class="map-unavailable-sub">{mapErrorMessage}</div>
+            {/if}
+          </div>
+        </div>
+      {:else}
+        <div class="map-canvas" bind:this={mapEl}></div>
+      {/if}
+
+      {#if showViewSwitch}
+        <div class="map-view-switch" bind:this={viewMenuEl}>
+          <button
+            type="button"
+            class={`map-view-toggle ${viewMenuOpen ? 'active' : ''}`}
+            onclick={toggleViewMenu}
+            title="Map view mode"
+            aria-label="Map view mode"
+          >
+            <span class="map-view-toggle-label">View</span>
+          </button>
+          {#if viewMenuOpen}
+            <div class="map-view-menu">
+              <button
+                type="button"
+                class={`map-view-item ${viewMode === 'standard' ? 'active' : ''}`}
+                onclick={() => setViewMode('standard')}
+              >
+                <Icon name="map" size={11} />
+                <span>Standard</span>
+              </button>
+              <button
+                type="button"
+                class={`map-view-item ${viewMode === 'satellite' ? 'active' : ''}`}
+                onclick={() => setViewMode('satellite')}
+              >
+                <Icon name="satellite" size={11} />
+                <span>Satellite</span>
+              </button>
+            </div>
           {/if}
         </div>
-      </div>
-    {:else}
-      <div class="map-canvas" bind:this={mapEl}></div>
-    {/if}
+      {/if}
 
-    {#if showViewSwitch}
-      <div class="map-view-switch" bind:this={viewMenuEl}>
-        <button
-          type="button"
-          class={`map-view-toggle ${viewMenuOpen ? 'active' : ''}`}
-          onclick={toggleViewMenu}
-          title="Map view mode"
-          aria-label="Map view mode"
-        >
-          <span class="map-view-toggle-label">View</span>
-        </button>
-        {#if viewMenuOpen}
-          <div class="map-view-menu">
-            <button
-              type="button"
-              class={`map-view-item ${viewMode === 'standard' ? 'active' : ''}`}
-              onclick={() => setViewMode('standard')}
-            >
-              <Icon name="map" size={11} />
-              <span>Standard</span>
-            </button>
-            <button
-              type="button"
-              class={`map-view-item ${viewMode === 'satellite' ? 'active' : ''}`}
-              onclick={() => setViewMode('satellite')}
-            >
-              <Icon name="satellite" size={11} />
-              <span>Satellite</span>
-            </button>
-          </div>
-        {/if}
-      </div>
-    {/if}
+      {#if showSearch}
+        <div class="map-search-dock" bind:this={searchDockEl}>
+          <button
+            class={`map-search-toggle ${searchOpen ? 'active' : ''}`}
+            type="button"
+            onclick={toggleSearchOpen}
+          >
+            <Icon name="search" size={12} />
+          </button>
 
-    {#if showSearch}
-      <div class="map-search-dock" bind:this={searchDockEl}>
-        <button class={`map-search-toggle ${searchOpen ? 'active' : ''}`} type="button" onclick={toggleSearchOpen}>
-          <Icon name="search" size={12} />
-        </button>
+          {#if searchOpen}
+            <div class="map-search">
+              <form
+                class="map-search-form"
+                onsubmit={(e) => {
+                  e.preventDefault();
+                  void submitSearch();
+                }}
+              >
+                <input
+                  class="map-search-input"
+                  type="text"
+                  bind:value={searchQuery}
+                  placeholder={searchPlaceholder}
+                  autocomplete="off"
+                  oninput={queueSearch}
+                />
+                <button class="map-search-btn" type="submit" disabled={searching}>
+                  {searching ? '...' : 'Search'}
+                </button>
+              </form>
+              {#if searchError}
+                <div class="map-search-error">{searchError}</div>
+              {/if}
+              {#if results.length}
+                <div class="map-search-results">
+                  {#each results as item}
+                    <button
+                      class="map-search-item"
+                      type="button"
+                      onclick={() => selectResult(item)}
+                    >
+                      {item.display_name}
+                    </button>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+          {/if}
+        </div>
+      {/if}
 
-        {#if searchOpen}
-          <div class="map-search">
-            <form
-              class="map-search-form"
-              onsubmit={(e) => {
-                e.preventDefault();
-                void submitSearch();
-              }}
-            >
-              <input
-                class="map-search-input"
-                type="text"
-                bind:value={searchQuery}
-                placeholder={searchPlaceholder}
-                autocomplete="off"
-                oninput={queueSearch}
-              />
-              <button class="map-search-btn" type="submit" disabled={searching}>
-                {searching ? '...' : 'Search'}
-              </button>
-            </form>
-            {#if searchError}
-              <div class="map-search-error">{searchError}</div>
-            {/if}
-            {#if results.length}
-              <div class="map-search-results">
-                {#each results as item}
-                  <button class="map-search-item" type="button" onclick={() => selectResult(item)}>
-                    {item.display_name}
-                  </button>
-                {/each}
-              </div>
-            {/if}
-          </div>
-        {/if}
+      <slot name="overlay"></slot>
+    </div>
+
+    {#if hasAside}
+      <div class="map-aside">
+        <slot name="aside"></slot>
       </div>
     {/if}
-
-    <slot name="overlay"></slot>
   </div>
 </div>
 
 <style>
   .map-wrap {
     margin-top: 14px;
+  }
+
+  .map-layout {
+    display: block;
+  }
+
+  .map-layout.has-aside {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    overflow: hidden;
+    background: #070b15;
+  }
+
+  .map-layout.has-aside.aside-collapsed {
+    grid-template-columns: minmax(0, 1fr) 64px;
   }
 
   .map-shell {
@@ -267,6 +306,18 @@
     border-radius: 18px;
     overflow: hidden;
     background: #070b15;
+  }
+
+  .map-layout.has-aside .map-shell {
+    border: none;
+    border-radius: 0;
+  }
+
+  .map-aside {
+    min-width: 0;
+    height: var(--map-shell-height);
+    min-height: 360px;
+    background: var(--bg-card);
   }
 
   .map-canvas {
@@ -485,6 +536,18 @@
     color: #fca5a5;
   }
 
+  @media (max-width: 1100px) {
+    .map-layout.has-aside,
+    .map-layout.has-aside.aside-collapsed {
+      grid-template-columns: 1fr;
+    }
+
+    .map-aside {
+      height: auto;
+      min-height: 0;
+    }
+  }
+
   @media (max-width: 760px) {
     .map-search-dock {
       left: 12px;
@@ -496,5 +559,4 @@
       max-width: none;
     }
   }
-
 </style>

@@ -19,6 +19,9 @@
   };
 
   let {
+    manageMode,
+    title,
+    subtitle,
     selectedTab,
     nodeRows,
     linkRows,
@@ -29,6 +32,7 @@
     savingBinding,
     deletingId,
     bindingForm,
+    onClose,
     onSelectTab,
     onOpenCreateNode,
     onOpenCreateLink,
@@ -44,6 +48,9 @@
     onBindingPrimaryChange,
     onCreateBinding,
   }: {
+    manageMode: boolean;
+    title: string;
+    subtitle: string;
     selectedTab: SelectedTab;
     nodeRows: NMNode[];
     linkRows: NMLink[];
@@ -54,6 +61,7 @@
     savingBinding: boolean;
     deletingId: string | null;
     bindingForm: BindingForm;
+    onClose: () => void;
     onSelectTab: (tab: SelectedTab) => void;
     onOpenCreateNode: () => void;
     onOpenCreateLink: () => void;
@@ -62,7 +70,11 @@
     onOpenEditNode: (row: NMNode) => void;
     onOpenEditLink: (row: NMLink) => void;
     onOpenEditZone: (row: NMZone) => void;
-    onOpenDeleteConfirm: (type: 'node' | 'link' | 'zone' | 'binding', id: string, name?: string) => void;
+    onOpenDeleteConfirm: (
+      type: 'node' | 'link' | 'zone' | 'binding',
+      id: string,
+      name?: string,
+    ) => void;
     onSelectedZoneChange: (value: string) => void;
     onBindingNodeChange: (value: string) => void;
     onBindingWeightChange: (value: string) => void;
@@ -71,230 +83,99 @@
   } = $props();
 </script>
 
-<div class="manager-wrap">
-  <div class="manager-header">
-    <div class="manager-tabs">
-      <button class:active={selectedTab === 'nodes'} onclick={() => onSelectTab('nodes')}>Nodes</button>
-      <button class:active={selectedTab === 'links'} onclick={() => onSelectTab('links')}>Links</button>
-      <button class:active={selectedTab === 'zones'} onclick={() => onSelectTab('zones')}>Zones</button>
-      <button class:active={selectedTab === 'bindings'} onclick={() => onSelectTab('bindings')}>
-        Zone Bindings
-      </button>
-    </div>
-
-    <div class="manager-actions">
-      {#if selectedTab === 'nodes'}
-        <button class="btn" type="button" onclick={onOpenCreateNode}>
-          <Icon name="plus" size={14} />
-          Add Node
-        </button>
-      {:else if selectedTab === 'links'}
-        <button class="btn" type="button" onclick={onOpenCreateLink}>
-          <Icon name="plus" size={14} />
-          Add Link
-        </button>
-      {:else if selectedTab === 'zones'}
-        <button class="btn" type="button" onclick={onOpenCreateZone}>
-          <Icon name="plus" size={14} />
-          Add Zone
-        </button>
-      {/if}
-    </div>
-  </div>
-
-  {#if selectedTab === 'nodes'}
-    <div class="table-wrap">
-      <div class="table-top"><strong>{nodeRows.length}</strong> nodes in viewport</div>
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Source</th>
-            <th>Status</th>
-            <th>Coordinates</th>
-            <th class="right">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#if nodeRows.length === 0}
-            <tr><td colspan="6" class="empty">No nodes</td></tr>
-          {:else}
-            {#each nodeRows as row}
-              <tr>
-                <td>{row.name}</td>
-                <td>{nodeTypeLabel(row.node_type)}</td>
-                <td>{systemManagedNodeSourceLabel(row) || 'Manual'}</td>
-                <td>{row.status}</td>
-                <td>{row.lat.toFixed(6)}, {row.lng.toFixed(6)}</td>
-                <td class="right">
-                  <button class="btn ghost btn-xs" onclick={() => onStartConnectNode(row.id)}>Connect</button>
-                  <button class="btn ghost btn-xs" onclick={() => onOpenEditNode(row)} disabled={isSystemManagedNode(row)}>
-                    Edit
-                  </button>
-                  <button
-                    class="btn ghost btn-xs danger"
-                    onclick={() => onOpenDeleteConfirm('node', row.id, row.name)}
-                    disabled={deletingId === row.id || isSystemManagedNode(row)}
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            {/each}
-          {/if}
-        </tbody>
-      </table>
-    </div>
-  {/if}
-
-  {#if selectedTab === 'links'}
-    <div class="table-wrap">
-      <div class="table-top"><strong>{linkRows.length}</strong> links in viewport</div>
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Status</th>
-            <th>Health</th>
-            <th>Endpoints</th>
-            <th class="right">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#if linkRows.length === 0}
-            <tr><td colspan="6" class="empty">No links</td></tr>
-          {:else}
-            {#each linkRows as row}
-              {@const health = computeLinkHealth(row)}
-              <tr>
-                <td>{row.name}</td>
-                <td>{row.link_type}</td>
-                <td>{row.status}</td>
-                <td>
-                  <span class={`health-pill ${health.tone}`}>{health.score}</span>
-                </td>
-                <td>{row.from_node_id || '-'} -> {row.to_node_id || '-'}</td>
-                <td class="right">
-                  <button class="btn ghost btn-xs" onclick={() => onOpenEditLink(row)}>Edit</button>
-                  <button class="btn ghost btn-xs danger" onclick={() => onOpenDeleteConfirm('link', row.id, row.name)} disabled={deletingId === row.id}>Delete</button>
-                </td>
-              </tr>
-            {/each}
-          {/if}
-        </tbody>
-      </table>
-    </div>
-  {/if}
-
-  {#if selectedTab === 'zones'}
-    <div class="table-wrap">
-      <div class="table-top"><strong>{zoneRows.length}</strong> zones in viewport</div>
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Status</th>
-            <th class="right">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#if zoneRows.length === 0}
-            <tr><td colspan="4" class="empty">No zones</td></tr>
-          {:else}
-            {#each zoneRows as row}
-              <tr>
-                <td>{row.name}</td>
-                <td>{row.zone_type}</td>
-                <td>{row.status}</td>
-                <td class="right">
-                  <button class="btn ghost btn-xs" onclick={() => onOpenEditZone(row)}>Edit</button>
-                  <button class="btn ghost btn-xs danger" onclick={() => onOpenDeleteConfirm('zone', row.id, row.name)} disabled={deletingId === row.id}>Delete</button>
-                </td>
-              </tr>
-            {/each}
-          {/if}
-        </tbody>
-      </table>
-    </div>
-  {/if}
-
-  {#if selectedTab === 'bindings'}
-    <div class="bindings-wrap">
-      <div class="binding-form">
-        <div class="control">
-          <label for="zone-id">Zone</label>
-          <select id="zone-id" class="input" value={selectedZoneId} onchange={(e) => onSelectedZoneChange((e.currentTarget as HTMLSelectElement).value)}>
-            <option value="">Select zone</option>
-            {#each zoneRows as z}
-              <option value={z.id}>{z.name}</option>
-            {/each}
-          </select>
-        </div>
-        <div class="control">
-          <label for="node-id">Node</label>
-          <select
-            id="node-id"
-            class="input"
-            value={bindingForm.node_id}
-            disabled={!selectedZoneId}
-            onchange={(e) => onBindingNodeChange((e.currentTarget as HTMLSelectElement).value)}
-          >
-            <option value="">Select node</option>
-            {#each nodeRows as n}
-              <option value={n.id}>{n.name}</option>
-            {/each}
-          </select>
-        </div>
-        <div class="control">
-          <label for="binding-weight">Weight</label>
-          <input
-            id="binding-weight"
-            class="input"
-            type="number"
-            min="1"
-            value={bindingForm.weight}
-            oninput={(e) => onBindingWeightChange((e.currentTarget as HTMLInputElement).value)}
-          />
-        </div>
-        <label class="toggle">
-          <input type="checkbox" checked={bindingForm.is_primary} onchange={(e) => onBindingPrimaryChange((e.currentTarget as HTMLInputElement).checked)} />
-          <span>Primary</span>
-        </label>
-        <button class="btn" type="button" onclick={onCreateBinding} disabled={!selectedZoneId || savingBinding}>
-          <Icon name="plus" size={14} />
-          Add Binding
-        </button>
+{#if manageMode}
+  <div class="manager-wrap">
+    <div class="manager-header">
+      <div class="manager-heading">
+        <div class="manager-kicker">Manage Mode</div>
+        <div class="manager-title">{title}</div>
+        <div class="manager-subtitle">{subtitle}</div>
       </div>
 
+      <div class="manager-header-main">
+        <div class="manager-tabs">
+          <button class:active={selectedTab === 'nodes'} onclick={() => onSelectTab('nodes')}
+            >Nodes</button
+          >
+          <button class:active={selectedTab === 'links'} onclick={() => onSelectTab('links')}
+            >Links</button
+          >
+          <button class:active={selectedTab === 'zones'} onclick={() => onSelectTab('zones')}
+            >Zones</button
+          >
+          <button class:active={selectedTab === 'bindings'} onclick={() => onSelectTab('bindings')}>
+            Zone Bindings
+          </button>
+        </div>
+
+        <div class="manager-actions">
+          {#if selectedTab === 'nodes'}
+            <button class="btn" type="button" onclick={onOpenCreateNode}>
+              <Icon name="plus" size={14} />
+              Add Node
+            </button>
+          {:else if selectedTab === 'links'}
+            <button class="btn" type="button" onclick={onOpenCreateLink}>
+              <Icon name="plus" size={14} />
+              Add Link
+            </button>
+          {:else if selectedTab === 'zones'}
+            <button class="btn" type="button" onclick={onOpenCreateZone}>
+              <Icon name="plus" size={14} />
+              Add Zone
+            </button>
+          {/if}
+          <button class="btn ghost" type="button" onclick={onClose}>
+            <Icon name="x-circle" size={14} />
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {#if selectedTab === 'nodes'}
       <div class="table-wrap">
-        <div class="table-top"><strong>{zoneBindings.length}</strong> bindings</div>
+        <div class="table-top"><strong>{nodeRows.length}</strong> nodes in viewport</div>
         <table class="table">
           <thead>
             <tr>
-              <th>Zone</th>
-              <th>Node</th>
-              <th>Primary</th>
-              <th>Weight</th>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Source</th>
+              <th>Status</th>
+              <th>Coordinates</th>
               <th class="right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {#if loadingManager}
-              <tr><td colspan="5" class="empty">Loading...</td></tr>
-            {:else if zoneBindings.length === 0}
-              <tr><td colspan="5" class="empty">No bindings</td></tr>
+            {#if nodeRows.length === 0}
+              <tr><td colspan="6" class="empty">No nodes</td></tr>
             {:else}
-              {#each zoneBindings as row}
+              {#each nodeRows as row}
                 <tr>
-                  <td>{zoneRows.find((z) => z.id === row.zone_id)?.name || row.zone_id}</td>
-                  <td>{nodeRows.find((n) => n.id === row.node_id)?.name || row.node_id}</td>
-                  <td>{row.is_primary ? 'Yes' : 'No'}</td>
-                  <td>{row.weight}</td>
+                  <td>{row.name}</td>
+                  <td>{nodeTypeLabel(row.node_type)}</td>
+                  <td>{systemManagedNodeSourceLabel(row) || 'Manual'}</td>
+                  <td>{row.status}</td>
+                  <td>{row.lat.toFixed(6)}, {row.lng.toFixed(6)}</td>
                   <td class="right">
-                    <button class="btn ghost btn-xs danger" onclick={() => onOpenDeleteConfirm('binding', row.id)} disabled={deletingId === row.id}>Delete</button>
+                    <button class="btn ghost btn-xs" onclick={() => onStartConnectNode(row.id)}
+                      >Connect</button
+                    >
+                    <button
+                      class="btn ghost btn-xs"
+                      onclick={() => onOpenEditNode(row)}
+                      disabled={isSystemManagedNode(row)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      class="btn ghost btn-xs danger"
+                      onclick={() => onOpenDeleteConfirm('node', row.id, row.name)}
+                      disabled={deletingId === row.id || isSystemManagedNode(row)}
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               {/each}
@@ -302,9 +183,197 @@
           </tbody>
         </table>
       </div>
-    </div>
-  {/if}
-</div>
+    {/if}
+
+    {#if selectedTab === 'links'}
+      <div class="table-wrap">
+        <div class="table-top"><strong>{linkRows.length}</strong> links in viewport</div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Health</th>
+              <th>Endpoints</th>
+              <th class="right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#if linkRows.length === 0}
+              <tr><td colspan="6" class="empty">No links</td></tr>
+            {:else}
+              {#each linkRows as row}
+                {@const health = computeLinkHealth(row)}
+                <tr>
+                  <td>{row.name}</td>
+                  <td>{row.link_type}</td>
+                  <td>{row.status}</td>
+                  <td>
+                    <span class={`health-pill ${health.tone}`}>{health.score}</span>
+                  </td>
+                  <td>{row.from_node_id || '-'} -> {row.to_node_id || '-'}</td>
+                  <td class="right">
+                    <button class="btn ghost btn-xs" onclick={() => onOpenEditLink(row)}
+                      >Edit</button
+                    >
+                    <button
+                      class="btn ghost btn-xs danger"
+                      onclick={() => onOpenDeleteConfirm('link', row.id, row.name)}
+                      disabled={deletingId === row.id}>Delete</button
+                    >
+                  </td>
+                </tr>
+              {/each}
+            {/if}
+          </tbody>
+        </table>
+      </div>
+    {/if}
+
+    {#if selectedTab === 'zones'}
+      <div class="table-wrap">
+        <div class="table-top"><strong>{zoneRows.length}</strong> zones in viewport</div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th class="right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#if zoneRows.length === 0}
+              <tr><td colspan="4" class="empty">No zones</td></tr>
+            {:else}
+              {#each zoneRows as row}
+                <tr>
+                  <td>{row.name}</td>
+                  <td>{row.zone_type}</td>
+                  <td>{row.status}</td>
+                  <td class="right">
+                    <button class="btn ghost btn-xs" onclick={() => onOpenEditZone(row)}
+                      >Edit</button
+                    >
+                    <button
+                      class="btn ghost btn-xs danger"
+                      onclick={() => onOpenDeleteConfirm('zone', row.id, row.name)}
+                      disabled={deletingId === row.id}>Delete</button
+                    >
+                  </td>
+                </tr>
+              {/each}
+            {/if}
+          </tbody>
+        </table>
+      </div>
+    {/if}
+
+    {#if selectedTab === 'bindings'}
+      <div class="bindings-wrap">
+        <div class="binding-form">
+          <div class="control">
+            <label for="zone-id">Zone</label>
+            <select
+              id="zone-id"
+              class="input"
+              value={selectedZoneId}
+              onchange={(e) => onSelectedZoneChange((e.currentTarget as HTMLSelectElement).value)}
+            >
+              <option value="">Select zone</option>
+              {#each zoneRows as z}
+                <option value={z.id}>{z.name}</option>
+              {/each}
+            </select>
+          </div>
+          <div class="control">
+            <label for="node-id">Node</label>
+            <select
+              id="node-id"
+              class="input"
+              value={bindingForm.node_id}
+              disabled={!selectedZoneId}
+              onchange={(e) => onBindingNodeChange((e.currentTarget as HTMLSelectElement).value)}
+            >
+              <option value="">Select node</option>
+              {#each nodeRows as n}
+                <option value={n.id}>{n.name}</option>
+              {/each}
+            </select>
+          </div>
+          <div class="control">
+            <label for="binding-weight">Weight</label>
+            <input
+              id="binding-weight"
+              class="input"
+              type="number"
+              min="1"
+              value={bindingForm.weight}
+              oninput={(e) => onBindingWeightChange((e.currentTarget as HTMLInputElement).value)}
+            />
+          </div>
+          <label class="toggle">
+            <input
+              type="checkbox"
+              checked={bindingForm.is_primary}
+              onchange={(e) =>
+                onBindingPrimaryChange((e.currentTarget as HTMLInputElement).checked)}
+            />
+            <span>Primary</span>
+          </label>
+          <button
+            class="btn"
+            type="button"
+            onclick={onCreateBinding}
+            disabled={!selectedZoneId || savingBinding}
+          >
+            <Icon name="plus" size={14} />
+            Add Binding
+          </button>
+        </div>
+
+        <div class="table-wrap">
+          <div class="table-top"><strong>{zoneBindings.length}</strong> bindings</div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Zone</th>
+                <th>Node</th>
+                <th>Primary</th>
+                <th>Weight</th>
+                <th class="right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#if loadingManager}
+                <tr><td colspan="5" class="empty">Loading...</td></tr>
+              {:else if zoneBindings.length === 0}
+                <tr><td colspan="5" class="empty">No bindings</td></tr>
+              {:else}
+                {#each zoneBindings as row}
+                  <tr>
+                    <td>{zoneRows.find((z) => z.id === row.zone_id)?.name || row.zone_id}</td>
+                    <td>{nodeRows.find((n) => n.id === row.node_id)?.name || row.node_id}</td>
+                    <td>{row.is_primary ? 'Yes' : 'No'}</td>
+                    <td>{row.weight}</td>
+                    <td class="right">
+                      <button
+                        class="btn ghost btn-xs danger"
+                        onclick={() => onOpenDeleteConfirm('binding', row.id)}
+                        disabled={deletingId === row.id}>Delete</button
+                      >
+                    </td>
+                  </tr>
+                {/each}
+              {/if}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {/if}
+  </div>
+{/if}
 
 <style>
   .manager-wrap {
@@ -316,12 +385,48 @@
   }
 
   .manager-header {
-    padding: 10px 12px;
+    padding: 14px 14px 12px;
+    display: grid;
+    gap: 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-card) 88%, #09111f 12%),
+      color-mix(in srgb, var(--bg-card) 96%, #09111f 4%)
+    );
+  }
+
+  .manager-heading {
+    display: grid;
+    gap: 4px;
+  }
+
+  .manager-kicker {
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-primary) 72%, white 28%);
+  }
+
+  .manager-title {
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 900;
+  }
+
+  .manager-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+    line-height: 1.45;
+  }
+
+  .manager-header-main {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap;
   }
 
   .manager-tabs {
@@ -487,7 +592,7 @@
   }
 
   @media (max-width: 960px) {
-    .manager-header {
+    .manager-header-main {
       flex-direction: column;
       align-items: stretch;
     }

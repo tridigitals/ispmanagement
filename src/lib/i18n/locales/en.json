@@ -3578,15 +3578,109 @@
         "back_to_noc": "Back to NOC",
         "back_to_installation": "Back to Installation",
         "bbox": "Viewport bbox",
+        "workspace": {
+          "kicker": "Topology workspace",
+          "title": "Monitor the network before you edit it",
+          "copy": "Start from the map, inspect live topology signals, then drill into customers, services, and risky paths.",
+          "subtitle": "Visualize nodes, links, service zones, and operational context from the current viewport.",
+          "freshness_not_loaded": "Viewport data has not loaded yet.",
+          "freshness_cache": "Viewport data restored from cache {age}.",
+          "freshness_live": "Viewport data updated {age}.",
+          "router_overlay_unavailable": "Router overlay is unavailable for this role.",
+          "router_overlay_empty": "Router overlay is enabled, but no router markers are available in this viewport.",
+          "customer_context_limited": "Customer and field context is limited for this role."
+        },
+        "insight": {
+          "empty": "No insight cards yet for this viewport.",
+          "scope_viewport": "Current viewport"
+        },
+        "search": {
+          "kicker": "Unified search",
+          "title": "Jump to any mapped asset, service, or customer",
+          "hint": "Search across infrastructure, customer endpoints, services, zones, and router inventory.",
+          "placeholder": "Search customer, service, node, link, zone, or router...",
+          "empty_title": "No matching results",
+          "empty_hint": "Try another keyword or switch quick mode to widen the result scope.",
+          "summary_idle": "{count} assets loaded in this workspace",
+          "summary_results": "{count} matching results across {groups} sections"
+        },
+        "quick_modes": {
+          "kicker": "Quick modes",
+          "title": "Swap workspace focus in one click",
+          "hint": "Each mode changes what matters most in the current map session.",
+          "all": "All",
+          "all_hint": "Balanced workspace across the loaded map",
+          "issues": "Issues",
+          "issues_hint": "Focus degraded links, risky zones, and unstable nodes",
+          "customers": "Customers",
+          "customers_hint": "Inspect customer endpoints and last-mile placements",
+          "services": "Services",
+          "services_hint": "Track mapped service nodes and activation context",
+          "topology": "Topology",
+          "topology_hint": "Show the infrastructure graph and router overlay",
+          "field": "Field",
+          "field_hint": "Prioritize impacted services and field-relevant assets"
+        },
         "stats": {
           "nodes": "Nodes",
           "links": "Links",
           "zones": "Zones"
         },
         "layers": {
+          "title": "Layer visibility",
+          "subtitle": "Tune what stays on the map while you inspect routes and customers.",
           "nodes": "Nodes",
           "links": "Links",
-          "zones": "Zones"
+          "zones": "Zones",
+          "routers": "Routers",
+          "customers": "Customers"
+        },
+        "floating": {
+          "title": "Map controls",
+          "subtitle": "Tune layers, change view, and jump into investigation mode.",
+          "subtitle_manage": "Balanced overview with manage tools nearby.",
+          "subtitle_noc": "Issue tracing is prioritized for this role.",
+          "subtitle_technician": "Field and service investigation is prioritized for this role.",
+          "subtitle_viewer": "Tune the map for the current investigation.",
+          "layers": "Layers",
+          "view": "View",
+          "tools": "Trace tools",
+          "manage": "Manage",
+          "service_mode": "Service mode",
+          "trace_mode": "Trace mode",
+          "clear_mode": "Clear",
+          "open_nodes": "Manage nodes",
+          "open_links": "Manage links",
+          "open_zones": "Manage zones",
+          "open_bindings": "Manage bindings",
+          "add_node": "Add node",
+          "add_link": "Add link",
+          "add_zone": "Add zone"
+        },
+        "manage": {
+          "title": "Topology editor workspace",
+          "subtitle": "Editing lives in a separate workspace so monitoring and investigation stay focused."
+        },
+        "inspector": {
+          "title": "Smart inspector",
+          "default_kicker": "Workspace",
+          "selected_kicker": "Selection",
+          "investigation_kicker": "Investigation",
+          "collapse": "Collapse inspector",
+          "expand": "Expand inspector",
+          "clear": "Clear",
+          "no_selection": "No object selected yet. Use the map, popup actions, or search above.",
+          "workspace_title": "Topology workspace",
+          "workspace_subtitle": "Select an asset on the map or use search to inspect service, customer, and topology context.",
+          "live_summary": "Live summary",
+          "data_readiness": "Data readiness",
+          "role_focus": "Role focus",
+          "role_manage": "Manage-capable view: stay in overview first, then open topology editing when needed.",
+          "role_noc": "NOC-first view: tracing unstable paths and degraded links is prioritized.",
+          "role_technician": "Field-first view: impacted services and customer endpoints are prioritized.",
+          "role_viewer": "Monitoring-first view: inspect topology before taking action.",
+          "noc_available": "NOC context is available for issue tracing.",
+          "noc_limited": "NOC tracing is limited for this role."
         },
         "view": {
           "label": "View",
@@ -3598,8 +3692,8 @@
           "hide": "Hide My Location"
         },
         "filters": {
-          "search": "Search",
-          "search_placeholder": "Search node/link/zone...",
+          "search": "Data filter",
+          "search_placeholder": "Filter fetched data by node/link/zone...",
           "status": "Status",
           "kind": "Type",
           "any_status": "Any status",

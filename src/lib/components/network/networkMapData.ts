@@ -7,6 +7,8 @@ import {
   linksToFeatureCollection,
   nodesToFeatureCollection,
   routersToFeatureCollection,
+  hasServiceMetadata,
+  isCustomerNodeType,
   zonesToFeatureCollection,
   type NMLink,
   type NMNode,
@@ -37,6 +39,25 @@ export type NetworkMapFetchResult = {
   zonesRes: PaginatedResponse<any>;
   routersRes: NMRouter[];
 };
+
+export type NetworkMapExtractedRows = {
+  nodeRows: NMNode[];
+  linkRows: NMLink[];
+  zoneRows: NMZone[];
+  routerRows: NMRouter[];
+  customerRows: NMNode[];
+  serviceRows: NMNode[];
+  nodeCount: number;
+  linkCount: number;
+  zoneCount: number;
+};
+
+function buildDerivedRows(nodeRows: NMNode[]) {
+  return {
+    customerRows: (nodeRows || []).filter((row) => isCustomerNodeType(row.node_type)),
+    serviceRows: (nodeRows || []).filter((row) => hasServiceMetadata(row)),
+  };
+}
 
 export function buildMapDataCacheKey(params: NetworkMapQueryParams, zoomSig: string) {
   return JSON.stringify({
@@ -140,37 +161,29 @@ export async function syncTopologyAssetsIfNeeded({
   }
 }
 
-export function extractMapRows(result: NetworkMapFetchResult): {
-  nodeRows: NMNode[];
-  linkRows: NMLink[];
-  zoneRows: NMZone[];
-  routerRows: NMRouter[];
-  nodeCount: number;
-  linkCount: number;
-  zoneCount: number;
-} {
+export function extractMapRows(result: NetworkMapFetchResult): NetworkMapExtractedRows {
+  const nodeRows = (result.nodesRes.data || []) as NMNode[];
+  const linkRows = (result.linksRes.data || []) as NMLink[];
+  const zoneRows = (result.zonesRes.data || []) as NMZone[];
+  const derivedRows = buildDerivedRows(nodeRows);
+
   return {
-    nodeRows: (result.nodesRes.data || []) as NMNode[],
-    linkRows: (result.linksRes.data || []) as NMLink[],
-    zoneRows: (result.zonesRes.data || []) as NMZone[],
+    nodeRows,
+    linkRows,
+    zoneRows,
     routerRows: result.routersRes,
     nodeCount: result.nodesRes.total || result.nodesRes.data?.length || 0,
     linkCount: result.linksRes.total || result.linksRes.data?.length || 0,
     zoneCount: result.zonesRes.total || result.zonesRes.data?.length || 0,
+    ...derivedRows,
   };
 }
 
+type NetworkMapRowViewState = NetworkMapExtractedRows;
+
 export function applyCachedMapData(args: {
   cached: NetworkMapCacheEntry;
-  setRows: (rows: {
-    nodeRows: NMNode[];
-    linkRows: NMLink[];
-    zoneRows: NMZone[];
-    routerRows: NMRouter[];
-    nodeCount: number;
-    linkCount: number;
-    zoneCount: number;
-  }) => void;
+  setRows: (rows: NetworkMapRowViewState) => void;
   setSourceData: (sourceId: string, data: FeatureCollection) => void;
   sourceIds: {
     nodes: string;
@@ -185,6 +198,7 @@ export function applyCachedMapData(args: {
   const linkRows = (args.cached.links.data || []) as NMLink[];
   const zoneRows = (args.cached.zones.data || []) as NMZone[];
   const routerRows = (args.cached.routers || []) as NMRouter[];
+  const derivedRows = buildDerivedRows(nodeRows);
   const routerOverlayRows = filterRoutersForOverlay(routerRows, nodeRows);
 
   args.setRows({
@@ -195,6 +209,7 @@ export function applyCachedMapData(args: {
     nodeCount: args.cached.nodes.total || args.cached.nodes.data?.length || 0,
     linkCount: args.cached.links.total || args.cached.links.data?.length || 0,
     zoneCount: args.cached.zones.total || args.cached.zones.data?.length || 0,
+    ...derivedRows,
   });
 
   args.setSourceData(args.sourceIds.nodes, nodesToFeatureCollection(nodeRows));
@@ -207,15 +222,7 @@ export function applyCachedMapData(args: {
 
 export function applyFetchedMapData(args: {
   result: NetworkMapFetchResult;
-  setRows: (rows: {
-    nodeRows: NMNode[];
-    linkRows: NMLink[];
-    zoneRows: NMZone[];
-    routerRows: NMRouter[];
-    nodeCount: number;
-    linkCount: number;
-    zoneCount: number;
-  }) => void;
+  setRows: (rows: NetworkMapRowViewState) => void;
   setSourceData: (sourceId: string, data: FeatureCollection) => void;
   sourceIds: {
     nodes: string;

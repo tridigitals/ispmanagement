@@ -3364,15 +3364,109 @@
         "back_to_noc": "Kembali ke NOC",
         "back_to_installation": "Kembali ke Instalasi",
         "bbox": "BBox viewport",
+        "workspace": {
+          "kicker": "Workspace topologi",
+          "title": "Pantau jaringan dulu, baru lakukan perubahan",
+          "copy": "Mulai dari peta, lihat sinyal topologi yang aktif, lalu masuk ke customer, service, dan jalur yang berisiko.",
+          "subtitle": "Visualisasikan node, link, zona layanan, dan konteks operasional dari viewport saat ini.",
+          "freshness_not_loaded": "Data viewport belum dimuat.",
+          "freshness_cache": "Data viewport dipulihkan dari cache {age}.",
+          "freshness_live": "Data viewport diperbarui {age}.",
+          "router_overlay_unavailable": "Overlay router tidak tersedia untuk role ini.",
+          "router_overlay_empty": "Overlay router aktif, tetapi belum ada marker router di viewport ini.",
+          "customer_context_limited": "Konteks customer dan pekerjaan lapangan terbatas untuk role ini."
+        },
+        "insight": {
+          "empty": "Belum ada insight untuk viewport ini.",
+          "scope_viewport": "Viewport saat ini"
+        },
+        "search": {
+          "kicker": "Pencarian terpadu",
+          "title": "Lompat ke asset, service, atau customer yang sudah dipetakan",
+          "hint": "Cari infrastruktur, endpoint customer, service, zona, dan inventory router dari satu tempat.",
+          "placeholder": "Cari customer, service, node, link, zona, atau router...",
+          "empty_title": "Hasil tidak ditemukan",
+          "empty_hint": "Coba kata kunci lain atau ganti quick mode agar cakupan hasil lebih luas.",
+          "summary_idle": "{count} aset termuat di workspace ini",
+          "summary_results": "{count} hasil cocok di {groups} kelompok"
+        },
+        "quick_modes": {
+          "kicker": "Quick mode",
+          "title": "Ganti fokus workspace dalam satu klik",
+          "hint": "Setiap mode mengubah prioritas utama di sesi map saat ini.",
+          "all": "Semua",
+          "all_hint": "Workspace seimbang untuk seluruh data yang dimuat",
+          "issues": "Gangguan",
+          "issues_hint": "Fokus ke link degradasi, zona berisiko, dan node tidak stabil",
+          "customers": "Customer",
+          "customers_hint": "Periksa endpoint customer dan penempatan last-mile",
+          "services": "Service",
+          "services_hint": "Lacak node service yang dipetakan dan konteks aktivasinya",
+          "topology": "Topologi",
+          "topology_hint": "Tampilkan graph infrastruktur dan overlay router",
+          "field": "Lapangan",
+          "field_hint": "Prioritaskan service terdampak dan aset yang relevan untuk teknisi"
+        },
         "stats": {
           "nodes": "Node",
           "links": "Link",
           "zones": "Zona"
         },
         "layers": {
+          "title": "Visibilitas layer",
+          "subtitle": "Atur elemen yang tetap tampil di peta saat menelusuri jalur dan customer.",
           "nodes": "Node",
           "links": "Link",
-          "zones": "Zona"
+          "zones": "Zona",
+          "routers": "Router",
+          "customers": "Customer"
+        },
+        "floating": {
+          "title": "Kontrol peta",
+          "subtitle": "Atur layer, ganti tampilan, dan masuk ke mode investigasi dengan cepat.",
+          "subtitle_manage": "Ringkasan seimbang dengan alat kelola tetap dekat.",
+          "subtitle_noc": "Pelacakan gangguan diprioritaskan untuk role ini.",
+          "subtitle_technician": "Investigasi lapangan dan service diprioritaskan untuk role ini.",
+          "subtitle_viewer": "Atur peta sesuai investigasi saat ini.",
+          "layers": "Layer",
+          "view": "Tampilan",
+          "tools": "Alat telusur",
+          "manage": "Kelola",
+          "service_mode": "Mode service",
+          "trace_mode": "Mode trace",
+          "clear_mode": "Bersihkan",
+          "open_nodes": "Kelola node",
+          "open_links": "Kelola link",
+          "open_zones": "Kelola zona",
+          "open_bindings": "Kelola binding",
+          "add_node": "Tambah node",
+          "add_link": "Tambah link",
+          "add_zone": "Tambah zona"
+        },
+        "manage": {
+          "title": "Workspace editor topologi",
+          "subtitle": "Aktivitas edit dipisahkan ke workspace sendiri agar monitoring dan investigasi tetap fokus."
+        },
+        "inspector": {
+          "title": "Inspector cerdas",
+          "default_kicker": "Workspace",
+          "selected_kicker": "Pilihan",
+          "investigation_kicker": "Investigasi",
+          "collapse": "Ciutkan inspector",
+          "expand": "Buka inspector",
+          "clear": "Bersihkan",
+          "no_selection": "Belum ada objek terpilih. Gunakan map, aksi popup, atau pencarian di atas.",
+          "workspace_title": "Workspace topologi",
+          "workspace_subtitle": "Pilih aset di peta atau gunakan pencarian untuk melihat konteks service, customer, dan topologi.",
+          "live_summary": "Ringkasan langsung",
+          "data_readiness": "Kesiapan data",
+          "role_focus": "Fokus role",
+          "role_manage": "Tampilan berizin kelola: tetap di overview dulu, lalu buka editor topologi saat diperlukan.",
+          "role_noc": "Tampilan NOC: pelacakan jalur tidak stabil dan link degradasi diprioritaskan.",
+          "role_technician": "Tampilan lapangan: service terdampak dan endpoint customer diprioritaskan.",
+          "role_viewer": "Tampilan monitoring: inspeksi topologi dulu sebelum mengambil tindakan.",
+          "noc_available": "Konteks NOC tersedia untuk pelacakan gangguan.",
+          "noc_limited": "Pelacakan NOC terbatas untuk role ini."
         },
         "view": {
           "label": "Tampilan",
@@ -3384,8 +3478,8 @@
           "hide": "Sembunyikan Lokasi Saya"
         },
         "filters": {
-          "search": "Cari",
-          "search_placeholder": "Cari node/link/zona...",
+          "search": "Filter data",
+          "search_placeholder": "Filter data yang termuat berdasarkan node/link/zona...",
           "status": "Status",
           "kind": "Tipe",
           "any_status": "Semua status",

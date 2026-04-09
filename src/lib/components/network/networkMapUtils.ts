@@ -56,6 +56,32 @@ export type LinkFieldConfig = {
   helper: string;
 };
 
+export type NetworkMapPopupActionKey =
+  | 'trace'
+  | 'impact'
+  | 'inspect'
+  | 'connect'
+  | 'edit'
+  | 'delete'
+  | 'open-router';
+
+export type NetworkMapPopupActionModel = {
+  key: NetworkMapPopupActionKey;
+  label: string;
+  tone: 'primary' | 'secondary' | 'danger';
+};
+
+export type NetworkMapPopupModel = {
+  kicker: string;
+  title: string;
+  subtitle: string;
+  statusText: string;
+  tone: 'ok' | 'warn' | 'muted';
+  impactText: string;
+  detailPairs: Array<{ label: string; value: string }>;
+  actions: NetworkMapPopupActionModel[];
+};
+
 export const nodeTypeOptions = [
   { label: 'Core', value: 'core' },
   { label: 'POP', value: 'pop' },
@@ -422,6 +448,226 @@ function buildSyncedAssetKeySet(rows: NMNode[]) {
 export function filterRoutersForOverlay(rows: NMRouter[], nodes: NMNode[]) {
   const syncedKeys = buildSyncedAssetKeySet(nodes);
   return (rows || []).filter((row) => !syncedKeys.has(`mikrotik_router:${row.id}`));
+}
+
+function normalizedStatus(value: unknown) {
+  return String(value || '')
+    .trim()
+    .toLowerCase();
+}
+
+function metadataNumber(row: NMNode | null | undefined, keys: string[]) {
+  for (const key of keys) {
+    const raw = row?.metadata?.[key];
+    const value = Number(raw);
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+  return 0;
+}
+
+function hasRiskStatus(statusRaw: unknown) {
+  const status = normalizedStatus(statusRaw);
+  return (
+    status === 'down' ||
+    status === 'degraded' ||
+    status === 'maintenance' ||
+    status === 'inactive' ||
+    status === 'offline' ||
+    status === 'critical' ||
+    status === 'warning'
+  );
+}
+
+export function hasServiceMetadata(row: NMNode | null | undefined) {
+  return !!(
+    row?.metadata?.service_id ||
+    row?.metadata?.service_name ||
+    row?.metadata?.service_type ||
+    row?.metadata?.service_label
+  );
+}
+
+export function countNodesAtRisk(rows: NMNode[]) {
+  return (rows || []).filter((row) => hasRiskStatus(row.status)).length;
+}
+
+export function countDegradedLinks(rows: NMLink[]) {
+  return (rows || []).filter((row) => {
+    if (normalizedStatus(row.status) === 'retired') return false;
+    const health = computeLinkHealth(row);
+    return health.tone !== 'good';
+  }).length;
+}
+
+export function countImpactedServices(rows: NMNode[]) {
+  let total = 0;
+  for (const row of rows || []) {
+    const explicitCount = metadataNumber(row, [
+      'impacted_services',
+      'service_count',
+      'services_affected',
+      'customer_services',
+      'affected_services',
+    ]);
+
+    if (explicitCount > 0) {
+      total += explicitCount;
+      continue;
+    }
+
+    if (isCustomerNodeType(row.node_type) && hasRiskStatus(row.status)) {
+      total += 1;
+    }
+  }
+  return total;
+}
+
+function popupAction(
+  key: NetworkMapPopupActionKey,
+  label: string,
+  tone: NetworkMapPopupActionModel['tone'] = 'secondary',
+): NetworkMapPopupActionModel {
+  return { key, label, tone };
+}
+
+function popupStatusText(status: string) {
+  return String(status || '-').trim() || '-';
+}
+
+function popupImpactText(node: NMNode) {
+  const impacted = countImpactedServices([node]);
+  if (impacted > 0) return `${impacted} impacted services`;
+  if (hasServiceMetadata(node)) return 'Mapped service context available';
+  if (isCustomerNodeType(node.node_type)) return 'Customer endpoint mapped';
+  return 'No direct service impact mapped';
+}
+
+export function buildNodePopupModel(node: NMNode): NetworkMapPopupModel {
+  const managedSource = systemManagedNodeSourceLabel(node);
+  return {
+    kicker: 'Node',
+    title: String(node.name || node.id || 'Node').trim(),
+    subtitle: nodeTypeLabel(node.node_type),
+    statusText: popupStatusText(node.status),
+    tone: statusTone(node.status),
+    impactText: popupImpactText(node),
+    detailPairs: [
+      { label: 'Type', value: nodeTypeLabel(node.node_type) },
+      { label: 'Status', value: popupStatusText(node.status) },
+      ...(managedSource ? [{ label: 'Source', value: managedSource }] : []),
+    ],
+    actions: [
+      popupAction('trace', 'Trace path', 'primary'),
+      popupAction('impact', 'View impact'),
+      popupAction('inspect', 'Open inspector'),
+      popupAction('connect', 'Connect'),
+      ...(isSystemManagedNode(node) ? [] : [popupAction('edit', 'Edit')]),
+    ],
+  };
+}
+
+export function buildServicePopupModel(node: NMNode): NetworkMapPopupModel {
+  const serviceName = String(
+    node.metadata?.service_name ||
+      node.metadata?.service_label ||
+      node.name ||
+      node.id ||
+      'Service',
+  ).trim();
+  const customerName = String(
+    node.metadata?.customer_name || node.metadata?.customer_label || '',
+  ).trim();
+  const serviceType = String(
+    node.metadata?.service_type || node.metadata?.service_kind || '',
+  ).trim();
+
+  return {
+    kicker: 'Service',
+    title: serviceName,
+    subtitle: customerName || nodeTypeLabel(node.node_type),
+    statusText: popupStatusText(node.status),
+    tone: statusTone(node.status),
+    impactText: popupImpactText(node),
+    detailPairs: [
+      { label: 'Service', value: serviceName },
+      { label: 'Status', value: popupStatusText(node.status) },
+      { label: 'Type', value: serviceType || nodeTypeLabel(node.node_type) },
+    ],
+    actions: [
+      popupAction('inspect', 'Open inspector', 'primary'),
+      popupAction('trace', 'Trace service path'),
+      popupAction('impact', 'View impact'),
+      popupAction('connect', 'Connect'),
+    ],
+  };
+}
+
+export function buildLinkPopupModel(link: NMLink): NetworkMapPopupModel {
+  const health = computeLinkHealth(link);
+  return {
+    kicker: 'Link',
+    title: String(link.name || link.id || 'Link').trim(),
+    subtitle: `${String(link.from_node_id || '-')} -> ${String(link.to_node_id || '-')}`,
+    statusText: popupStatusText(link.status),
+    tone: health.tone === 'good' ? 'ok' : health.tone === 'warn' ? 'warn' : 'muted',
+    impactText:
+      health.tone === 'good'
+        ? 'Link health is currently stable'
+        : `Health score ${health.score} needs attention`,
+    detailPairs: [
+      { label: 'Type', value: String(link.link_type || '-') },
+      { label: 'Status', value: popupStatusText(link.status) },
+      {
+        label: 'Endpoints',
+        value: `${String(link.from_node_id || '-')} -> ${String(link.to_node_id || '-')}`,
+      },
+    ],
+    actions: [
+      popupAction('trace', 'Trace path', 'primary'),
+      popupAction('inspect', 'Open inspector'),
+      popupAction('delete', 'Delete', 'danger'),
+    ],
+  };
+}
+
+export function buildZonePopupModel(zone: NMZone): NetworkMapPopupModel {
+  return {
+    kicker: 'Zone',
+    title: String(zone.name || zone.id || 'Zone').trim(),
+    subtitle: String(zone.zone_type || '-'),
+    statusText: popupStatusText(zone.status),
+    tone: statusTone(zone.status),
+    impactText:
+      normalizedStatus(zone.status) === 'active'
+        ? 'Zone coverage is available'
+        : `Zone status is ${popupStatusText(zone.status).toLowerCase()}`,
+    detailPairs: [
+      { label: 'Type', value: String(zone.zone_type || '-') },
+      { label: 'Status', value: popupStatusText(zone.status) },
+    ],
+    actions: [
+      popupAction('inspect', 'Open inspector', 'primary'),
+      popupAction('impact', 'View impact'),
+    ],
+  };
+}
+
+export function summarizeZoneRisk(rows: NMZone[]) {
+  const byStatus: Record<string, number> = {};
+  let atRisk = 0;
+
+  for (const row of rows || []) {
+    const status = normalizedStatus(row.status) || 'unknown';
+    byStatus[status] = (byStatus[status] || 0) + 1;
+    if (hasRiskStatus(status)) atRisk += 1;
+  }
+
+  return {
+    total: (rows || []).length,
+    atRisk,
+    healthy: Math.max(0, (rows || []).length - atRisk),
+    byStatus,
+  };
 }
 
 export function computeLinkHealth(row: NMLink): { score: number; tone: 'good' | 'warn' | 'bad' } {
