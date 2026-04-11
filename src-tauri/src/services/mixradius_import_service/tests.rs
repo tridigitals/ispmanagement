@@ -5,6 +5,10 @@ const MIXRADIUS_IMPORT_FOUNDATION_UP_SQL: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/migrations/20260411120000_add_mixradius_import_foundation.up.sql");
 const MIXRADIUS_IMPORT_FOUNDATION_DOWN_SQL: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/migrations/20260411120000_add_mixradius_import_foundation.down.sql");
+const VALIDATED_BACKUP_GZ: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../MixRadiusDB_Gasal_2026-04-11_101103.sql.gz"
+);
 
 async fn isolated_pool() -> (sqlx::PgPool, String) {
     let db_name = format!("mixradius_import_schema_{}", Uuid::new_v4().simple());
@@ -73,6 +77,20 @@ async fn drop_test_database(pool: sqlx::PgPool, db_name: &str) {
         .expect("temporary migration smoke test database should be droppable");
 
     admin_pool.close().await;
+}
+
+async fn seed_test_tenant(pool: &sqlx::PgPool, tenant_id: &str) {
+    sqlx::query("INSERT INTO public.tenants (id) VALUES ($1)")
+        .bind(tenant_id)
+        .execute(pool)
+        .await
+        .expect("test tenant should be insertable");
+
+    sqlx::query("INSERT INTO public.users (id) VALUES ($1)")
+        .bind("user-stage")
+        .execute(pool)
+        .await
+        .expect("test user should be insertable");
 }
 
 #[cfg(test)]
@@ -531,6 +549,114 @@ async fn mixradius_import_schema() {
     ] {
         assert_table_missing(&pool, table_name).await;
     }
+
+    drop_test_database(pool, &db_name).await;
+}
+
+#[tokio::test]
+async fn mixradius_import_stage_registers_batch_and_stages_counts() {
+    let (pool, db_name) = isolated_pool().await;
+    seed_test_tenant(&pool, "tenant-stage").await;
+
+    let service = super::MixradiusImportService::new(pool.clone());
+    let batch = service
+        .stage_backup(
+            "tenant-stage",
+            Some("user-stage"),
+            std::path::Path::new(VALIDATED_BACKUP_GZ),
+        )
+        .await
+        .expect("validated MixRadius backup should stage");
+
+    let batch_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM public.mixradius_import_batches WHERE tenant_id = $1",
+    )
+    .bind("tenant-stage")
+    .fetch_one(&pool)
+    .await
+    .expect("batch count should query");
+    assert_eq!(batch_count, 1);
+    assert_eq!(batch.parse_status, crate::models::MixradiusImportParseStatus::Ready);
+    assert_eq!(batch.execution_status, crate::models::MixradiusImportBatchStatus::Pending);
+
+    let customer_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM public.mixradius_staging_customers WHERE import_batch_id = $1",
+    )
+    .bind(&batch.id)
+    .fetch_one(&pool)
+    .await
+    .expect("customer staging count should query");
+    assert_eq!(customer_count, 545);
+
+    let plan_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM public.mixradius_staging_plans WHERE import_batch_id = $1",
+    )
+    .bind(&batch.id)
+    .fetch_one(&pool)
+    .await
+    .expect("plan staging count should query");
+    assert_eq!(plan_count, 15);
+
+    let nas_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM public.mixradius_staging_nas WHERE import_batch_id = $1",
+    )
+    .bind(&batch.id)
+    .fetch_one(&pool)
+    .await
+    .expect("nas staging count should query");
+    assert_eq!(nas_count, 2);
+
+    let orphan_location_count: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)
+        FROM public.mixradius_staging_customer_locations l
+        LEFT JOIN public.mixradius_staging_customers c
+          ON c.import_batch_id = l.import_batch_id
+         AND c.member_id = l.member_id
+        WHERE l.import_batch_id = $1
+          AND c.id IS NULL
+        "#,
+    )
+    .bind(&batch.id)
+    .fetch_one(&pool)
+    .await
+    .expect("location join integrity should query");
+    assert_eq!(orphan_location_count, 0);
+
+    let staged_nas_name: String = sqlx::query_scalar(
+        "SELECT nas_name FROM public.mixradius_staging_nas WHERE source_ref = '5' AND import_batch_id = $1",
+    )
+    .bind(&batch.id)
+    .fetch_one(&pool)
+    .await
+    .expect("staged NAS name should query");
+    assert_eq!(staged_nas_name, "Deres");
+
+    let usage_directional_count: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)
+        FROM public.mixradius_staging_usage
+        WHERE import_batch_id = $1
+          AND (download_bytes IS NOT NULL OR upload_bytes IS NOT NULL)
+        "#,
+    )
+    .bind(&batch.id)
+    .fetch_one(&pool)
+    .await
+    .expect("usage directional byte count should query");
+    assert_eq!(usage_directional_count, 0);
+
+    let summary: serde_json::Value = sqlx::query_scalar(
+        "SELECT summary_json FROM public.mixradius_import_batches WHERE id = $1",
+    )
+    .bind(&batch.id)
+    .fetch_one(&pool)
+    .await
+    .expect("batch summary should query");
+    assert_eq!(summary["customersTotal"], 545);
+    assert_eq!(summary["customersPpp"], 543);
+    assert_eq!(summary["plansPpp"], 12);
+    assert_eq!(summary["nas"], 2);
 
     drop_test_database(pool, &db_name).await;
 }
