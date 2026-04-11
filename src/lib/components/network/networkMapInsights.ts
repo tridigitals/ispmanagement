@@ -29,8 +29,7 @@ export type NetworkMapInsightCardKey =
   | 'field-work'
   | 'nodes-at-risk'
   | 'degraded-links'
-  | 'zone-risk'
-  | 'routers';
+  | 'zone-risk';
 
 export type NetworkMapInsightCard = {
   key: NetworkMapInsightCardKey;
@@ -78,7 +77,10 @@ function normalizeText(value: unknown) {
     .toLowerCase();
 }
 
-function matchesQuery(item: { label: string; subtitle: string; status: string; kind: string }, query: string) {
+function matchesQuery(
+  item: { label: string; subtitle: string; status: string; kind: string },
+  query: string,
+) {
   if (!query) return true;
   const haystack = `${item.label} ${item.subtitle} ${item.status} ${item.kind}`.toLowerCase();
   return haystack.includes(query);
@@ -101,16 +103,6 @@ function resolveInsightRole(
   }
   if (capabilities.canReadCustomers || capabilities.canReadWorkOrders) return 'technician';
   return 'viewer';
-}
-
-function summarizeRouters(routers: Array<Partial<NMRouter>>) {
-  const total = (routers || []).length;
-  const online = (routers || []).filter((row) => row?.is_online === true).length;
-  return {
-    total,
-    online,
-    offline: Math.max(0, total - online),
-  };
 }
 
 function buildInsightCard(args: {
@@ -155,7 +147,6 @@ export function buildNetworkMapInsightCards(args: {
   const nodesAtRisk = countNodesAtRisk(nodes);
   const degradedLinks = countDegradedLinks(links);
   const zoneRisk = summarizeZoneRisk(zones);
-  const routerSummary = summarizeRouters(routers);
   const fieldWork = nodesAtRisk + degradedLinks + zoneRisk.atRisk;
 
   const cardsByKey = new Map<NetworkMapInsightCardKey, NetworkMapInsightCard>();
@@ -230,28 +221,11 @@ export function buildNetworkMapInsightCards(args: {
     );
   }
 
-  if (routerSummary.total > 0) {
-    cardsByKey.set(
-      'routers',
-      buildInsightCard({
-        key: 'routers',
-        label: 'Routers',
-        value: routerSummary.total,
-        detail:
-          routerSummary.online > 0
-            ? `${routerSummary.online} online / ${routerSummary.total} total`
-            : `${routerSummary.total} total`,
-        tone: routerSummary.online > 0 ? 'ok' : 'muted',
-        viewportMode,
-      }),
-    );
-  }
-
   const roleOrder: Record<NetworkMapInsightRole, NetworkMapInsightCardKey[]> = {
-    technician: ['impacted-services', 'field-work', 'nodes-at-risk', 'degraded-links', 'zone-risk', 'routers'],
-    noc: ['nodes-at-risk', 'degraded-links', 'zone-risk', 'routers', 'impacted-services', 'field-work'],
-    manage: ['field-work', 'impacted-services', 'nodes-at-risk', 'degraded-links', 'zone-risk', 'routers'],
-    viewer: ['nodes-at-risk', 'degraded-links', 'zone-risk', 'routers', 'impacted-services', 'field-work'],
+    technician: ['impacted-services', 'field-work', 'nodes-at-risk', 'degraded-links', 'zone-risk'],
+    noc: ['nodes-at-risk', 'degraded-links', 'zone-risk', 'impacted-services', 'field-work'],
+    manage: ['field-work', 'impacted-services', 'nodes-at-risk', 'degraded-links', 'zone-risk'],
+    viewer: ['nodes-at-risk', 'degraded-links', 'zone-risk', 'impacted-services', 'field-work'],
   };
 
   return roleOrder[role]
@@ -263,7 +237,11 @@ function buildNodeSearchItem(row: NMNode): NetworkMapSearchResultItem {
   const label = String(row.name || row.id || 'Node').trim();
   const subtitle = nodeTypeLabel(row.node_type);
   return {
-    kind: isCustomerNodeType(row.node_type) ? 'customer' : hasServiceMetadata(row) ? 'service' : 'node',
+    kind: isCustomerNodeType(row.node_type)
+      ? 'customer'
+      : hasServiceMetadata(row)
+        ? 'service'
+        : 'node',
     id: row.id,
     label,
     subtitle,
@@ -298,7 +276,9 @@ function buildZoneSearchItem(row: NMZone): NetworkMapSearchResultItem {
 
 function buildRouterSearchItem(row: Partial<NMRouter>): NetworkMapSearchResultItem {
   const label = String(row.identity || row.name || row.id || 'Router').trim();
-  const subtitle = [row.host, row.port].filter((part) => part != null && String(part).trim() !== '').join(':');
+  const subtitle = [row.host, row.port]
+    .filter((part) => part != null && String(part).trim() !== '')
+    .join(':');
   return {
     kind: 'router',
     id: String(row.id || label),
@@ -319,8 +299,10 @@ export function groupNetworkMapSearchResults(args: {
   serviceRows?: NMNode[];
 }): NetworkMapSearchResultGroup[] {
   const query = normalizeText(args.query);
-  const customerRows = args.customerRows ?? (args.nodes || []).filter((row) => isCustomerNodeType(row.node_type));
-  const serviceRows = args.serviceRows ?? (args.nodes || []).filter((row) => hasServiceMetadata(row));
+  const customerRows =
+    args.customerRows ?? (args.nodes || []).filter((row) => isCustomerNodeType(row.node_type));
+  const serviceRows =
+    args.serviceRows ?? (args.nodes || []).filter((row) => hasServiceMetadata(row));
   const excludedIds = new Set([...customerRows, ...serviceRows].map((row) => row.id));
   const generalNodeRows = (args.nodes || []).filter((row) => !excludedIds.has(row.id));
 
@@ -349,17 +331,23 @@ export function groupNetworkMapSearchResults(args: {
     {
       key: 'links',
       label: 'Links',
-      items: (args.links || []).map(buildLinkSearchItem).filter((item) => matchesQuery(item, query)),
+      items: (args.links || [])
+        .map(buildLinkSearchItem)
+        .filter((item) => matchesQuery(item, query)),
     },
     {
       key: 'zones',
       label: 'Zones',
-      items: (args.zones || []).map(buildZoneSearchItem).filter((item) => matchesQuery(item, query)),
+      items: (args.zones || [])
+        .map(buildZoneSearchItem)
+        .filter((item) => matchesQuery(item, query)),
     },
     {
       key: 'routers',
       label: 'Routers',
-      items: (args.routers || []).map(buildRouterSearchItem).filter((item) => matchesQuery(item, query)),
+      items: (args.routers || [])
+        .map(buildRouterSearchItem)
+        .filter((item) => matchesQuery(item, query)),
     },
   ];
 

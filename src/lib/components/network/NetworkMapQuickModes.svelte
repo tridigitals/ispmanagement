@@ -35,21 +35,22 @@
 
 <style>
   .quick-modes {
-    display: flex;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    align-items: stretch;
     overflow-x: auto;
     padding-bottom: 2px;
     scrollbar-width: thin;
   }
 
   .quick-mode {
-    flex: 0 0 auto;
-    min-width: 156px;
+    min-width: 0;
     display: grid;
-    gap: 8px;
+    gap: 6px;
     text-align: left;
-    padding: 12px 14px;
-    border-radius: 16px;
+    padding: 10px 12px;
+    border-radius: 14px;
     border: 1px solid color-mix(in srgb, var(--border-color) 82%, transparent);
     background: color-mix(in srgb, var(--bg-card) 95%, #07111f 5%);
     color: var(--text-primary);
@@ -75,7 +76,7 @@
         var(--bg-card)
       ),
       var(--bg-card);
-    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.18);
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
   }
 
   .quick-mode-top {
@@ -87,15 +88,15 @@
 
   .quick-mode-label {
     font-weight: 800;
-    font-size: 0.9rem;
+    font-size: 0.84rem;
   }
 
   .quick-mode-count {
-    min-width: 28px;
+    min-width: 24px;
     border-radius: 999px;
-    padding: 4px 8px;
+    padding: 3px 7px;
     text-align: center;
-    font-size: 0.74rem;
+    font-size: 0.7rem;
     font-weight: 900;
     color: var(--text-primary);
     background: color-mix(in srgb, var(--bg-surface) 80%, transparent);
@@ -103,7 +104,24 @@
 
   .quick-mode-hint {
     color: var(--text-secondary);
-    font-size: 0.79rem;
-    line-height: 1.35;
+    font-size: 0.73rem;
+    line-height: 1.28;
+    line-clamp: 2;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  @media (max-width: 980px) {
+    .quick-modes {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 640px) {
+    .quick-modes {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

@@ -3,34 +3,73 @@ import {
   buildLinkPopupHtml,
   buildNodePopupHtml,
   buildRouterPopupHtml,
+  computePopupPlacement,
+  nudgePopupElementIntoView,
   pointCoordinates,
 } from './networkMapInteractionUtils';
 import {
-  computeLinkHealth,
   buildLinkPopupModel,
   buildNodePopupModel,
+  buildRouterPopupModel,
+  buildRouterPopupModelFromNode,
+  findLiveRouterForNode,
   buildServicePopupModel,
-  escapeHtml,
-  statusTone,
   type NMLink,
   type NMNode,
+  type NMRouter,
 } from './networkMapUtils';
 
 type PopupInstance = import('maplibre-gl').Popup;
 type MaplibreLike = Pick<typeof import('maplibre-gl'), 'Popup'>;
+type PopupDismissEvent = 'movestart' | 'zoomstart' | 'dragstart';
+
+function popupOptionsForMap(
+  map: import('maplibre-gl').Map,
+  coords: [number, number],
+  popupSize: { width: number; height: number } = { width: 288, height: 320 },
+) {
+  const container = map.getContainer();
+  const projected = map.project(coords);
+  const placement = computePopupPlacement({
+    point: { x: projected.x, y: projected.y },
+    mapSize: { width: container.clientWidth, height: container.clientHeight },
+    popupSize,
+    padding: 18,
+    offset: 14,
+  });
+
+  return {
+    closeButton: false,
+    closeOnClick: true,
+    anchor: placement.anchor,
+    offset: placement.offset,
+  };
+}
+
+export function bindPopupNavigationDismiss(args: {
+  map: Pick<import('maplibre-gl').Map, 'on' | 'off'>;
+  popup: { remove: () => void };
+}) {
+  const events: PopupDismissEvent[] = ['movestart', 'zoomstart', 'dragstart'];
+  const dismiss = () => args.popup.remove();
+  for (const event of events) args.map.on(event, dismiss);
+  return () => {
+    for (const event of events) args.map.off(event, dismiss);
+  };
+}
 
 export function openNodePopup(args: {
   map: import('maplibre-gl').Map;
   maplibre: MaplibreLike;
   feature: { properties?: Record<string, any>; geometry: Geometry };
   nodeRows: NMNode[];
+  routerRows: NMRouter[];
   activePopup: PopupInstance | null;
   setActivePopup: (popup: PopupInstance | null) => void;
+  onClose?: () => void;
   onConnect: (nodeId: string) => void;
   onEdit: (node: NMNode) => void;
-  onTrace?: (node: NMNode) => void;
-  onInspect?: (node: NMNode) => void;
-  onViewImpact?: (node: NMNode) => void;
+  onOpenRouter: (routerId: string) => void;
 }) {
   const props = args.feature.properties || {};
   const coords = pointCoordinates(args.feature.geometry);
@@ -38,17 +77,33 @@ export function openNodePopup(args: {
   const node = args.nodeRows.find((x) => x.id === nodeId);
   const popupUid = `nm-popup-${Math.random().toString(36).slice(2, 10)}`;
   if (!node) return;
+  const liveRouter = findLiveRouterForNode(node, args.routerRows);
   const popupModel = node.metadata?.service_id
     ? buildServicePopupModel(node)
-    : buildNodePopupModel(node);
+    : liveRouter
+      ? buildRouterPopupModelFromNode(node, liveRouter)
+      : buildNodePopupModel(node);
   const popupContent = buildNodePopupHtml({ popupUid, model: popupModel });
 
   args.activePopup?.remove();
-  const popup = new args.maplibre.Popup({ closeButton: false, closeOnClick: true })
+  const popup = new args.maplibre.Popup(popupOptionsForMap(args.map, coords as [number, number]))
     .setLngLat(coords as [number, number])
     .setHTML(popupContent.html);
+  let cleanupNavigationDismiss: (() => void) | null = null;
 
   popup.on('open', () => {
+    requestAnimationFrame(() => {
+      nudgePopupElementIntoView({
+        popupElement:
+          typeof (popup as any).getElement === 'function' ? ((popup as any).getElement() as HTMLElement) : null,
+        mapElement: args.map.getContainer(),
+        padding: 18,
+      });
+    });
+    cleanupNavigationDismiss = bindPopupNavigationDismiss({
+      map: args.map,
+      popup,
+    });
     const closeBtn = document.getElementById(popupContent.closeBtnId) as HTMLButtonElement | null;
     for (const actionButton of popupContent.actionButtons) {
       const button = document.getElementById(actionButton.buttonId) as HTMLButtonElement | null;
@@ -56,9 +111,7 @@ export function openNodePopup(args: {
         popup.remove();
         if (actionButton.key === 'connect') args.onConnect(nodeId);
         if (actionButton.key === 'edit') args.onEdit(node);
-        if (actionButton.key === 'trace') args.onTrace?.(node);
-        if (actionButton.key === 'inspect') args.onInspect?.(node);
-        if (actionButton.key === 'impact') args.onViewImpact?.(node);
+        if (actionButton.key === 'open-router' && liveRouter) args.onOpenRouter(liveRouter.id);
       });
     }
     closeBtn?.addEventListener('click', () => {
@@ -66,7 +119,10 @@ export function openNodePopup(args: {
     });
   });
   popup.on('close', () => {
+    cleanupNavigationDismiss?.();
+    cleanupNavigationDismiss = null;
     args.setActivePopup(null);
+    args.onClose?.();
   });
   args.setActivePopup(popup);
   popup.addTo(args.map);
@@ -78,9 +134,8 @@ export function openLinkPopup(args: {
   feature: { properties?: Record<string, any> };
   lngLat: { lng: number; lat: number };
   linkRows: NMLink[];
+  onClose?: () => void;
   onDelete: (linkId: string, linkName?: string) => void;
-  onTrace?: (link: NMLink) => void;
-  onInspect?: (link: NMLink) => void;
 }) {
   const props = args.feature.properties || {};
   const linkId = String(props.id || '');
@@ -89,22 +144,40 @@ export function openLinkPopup(args: {
 
   const popupUid = `nm-link-popup-${Math.random().toString(36).slice(2, 10)}`;
   const popupContent = buildLinkPopupHtml({ popupUid, model: buildLinkPopupModel(link) });
-  const popup = new args.maplibre.Popup({ closeButton: false, closeOnClick: true })
+  const popup = new args.maplibre.Popup(
+    popupOptionsForMap(args.map, [args.lngLat.lng, args.lngLat.lat], { width: 272, height: 250 }),
+  )
     .setLngLat([args.lngLat.lng, args.lngLat.lat])
     .setHTML(popupContent.html);
+  let cleanupNavigationDismiss: (() => void) | null = null;
 
   popup.on('open', () => {
+    requestAnimationFrame(() => {
+      nudgePopupElementIntoView({
+        popupElement:
+          typeof (popup as any).getElement === 'function' ? ((popup as any).getElement() as HTMLElement) : null,
+        mapElement: args.map.getContainer(),
+        padding: 18,
+      });
+    });
+    cleanupNavigationDismiss = bindPopupNavigationDismiss({
+      map: args.map,
+      popup,
+    });
     const closeBtn = document.getElementById(popupContent.closeBtnId) as HTMLButtonElement | null;
     for (const actionButton of popupContent.actionButtons) {
       const button = document.getElementById(actionButton.buttonId) as HTMLButtonElement | null;
       button?.addEventListener('click', () => {
         popup.remove();
         if (actionButton.key === 'delete') args.onDelete(linkId, link.name);
-        if (actionButton.key === 'trace') args.onTrace?.(link);
-        if (actionButton.key === 'inspect') args.onInspect?.(link);
       });
     }
     closeBtn?.addEventListener('click', () => popup.remove());
+  });
+  popup.on('close', () => {
+    cleanupNavigationDismiss?.();
+    cleanupNavigationDismiss = null;
+    args.onClose?.();
   });
   popup.addTo(args.map);
 }
@@ -115,35 +188,49 @@ export function openRouterPopup(args: {
   feature: { properties?: Record<string, any>; geometry: Geometry };
   activePopup: PopupInstance | null;
   setActivePopup: (popup: PopupInstance | null) => void;
+  onClose?: () => void;
   onOpenRouter: (routerId: string) => void;
 }) {
   const props = args.feature.properties || {};
   const coords = pointCoordinates(args.feature.geometry);
   const routerId = String(props.id || '');
-  const status = props.is_online ? 'online' : 'offline';
-  const tone: 'ok' | 'muted' = props.is_online ? 'ok' : 'muted';
-  const name = escapeHtml(props.name || '-');
-  const host = escapeHtml(props.host || '-');
-  const port = escapeHtml(props.port || '-');
-  const latency = props.latency_ms != null ? `${escapeHtml(props.latency_ms)} ms` : '-';
-  const popupUid = `nm-router-popup-${Math.random().toString(36).slice(2, 10)}`;
-  const popupContent = buildRouterPopupHtml({
-    popupUid,
-    name,
-    tone,
-    status,
-    host,
-    port,
-    latency,
+  const model = buildRouterPopupModel({
+    id: routerId,
+    name: String(props.name || ''),
+    identity: String(props.identity || ''),
+    host: String(props.host || ''),
+    port: Number(props.port || 0),
+    is_online: Boolean(props.is_online),
+    enabled: Boolean(props.enabled ?? true),
+    ros_version: props.ros_version != null ? String(props.ros_version) : null,
+    latency_ms: props.latency_ms != null ? Number(props.latency_ms) : null,
   });
+  const popupUid = `nm-router-popup-${Math.random().toString(36).slice(2, 10)}`;
+  const popupContent = buildRouterPopupHtml({ popupUid, model });
 
   args.activePopup?.remove();
-  const popup = new args.maplibre.Popup({ closeButton: false, closeOnClick: true })
+  const popup = new args.maplibre.Popup(popupOptionsForMap(args.map, coords as [number, number]))
     .setLngLat(coords as [number, number])
     .setHTML(popupContent.html);
+  let cleanupNavigationDismiss: (() => void) | null = null;
 
   popup.on('open', () => {
-    const openBtn = document.getElementById(popupContent.openBtnId) as HTMLButtonElement | null;
+    requestAnimationFrame(() => {
+      nudgePopupElementIntoView({
+        popupElement:
+          typeof (popup as any).getElement === 'function' ? ((popup as any).getElement() as HTMLElement) : null,
+        mapElement: args.map.getContainer(),
+        padding: 18,
+      });
+    });
+    cleanupNavigationDismiss = bindPopupNavigationDismiss({
+      map: args.map,
+      popup,
+    });
+    const openBtnMeta = popupContent.actionButtons.find((button) => button.key === 'open-router');
+    const openBtn = openBtnMeta
+      ? (document.getElementById(openBtnMeta.buttonId) as HTMLButtonElement | null)
+      : null;
     const closeBtn = document.getElementById(popupContent.closeBtnId) as HTMLButtonElement | null;
     openBtn?.addEventListener('click', () => {
       popup.remove();
@@ -152,7 +239,10 @@ export function openRouterPopup(args: {
     closeBtn?.addEventListener('click', () => popup.remove());
   });
   popup.on('close', () => {
+    cleanupNavigationDismiss?.();
+    cleanupNavigationDismiss = null;
     args.setActivePopup(null);
+    args.onClose?.();
   });
   args.setActivePopup(popup);
   popup.addTo(args.map);

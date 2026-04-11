@@ -56,19 +56,18 @@ export type LinkFieldConfig = {
   helper: string;
 };
 
-export type NetworkMapPopupActionKey =
-  | 'trace'
-  | 'impact'
-  | 'inspect'
-  | 'connect'
-  | 'edit'
-  | 'delete'
-  | 'open-router';
+export type NetworkMapPopupActionKey = 'connect' | 'edit' | 'delete' | 'open-router';
 
 export type NetworkMapPopupActionModel = {
   key: NetworkMapPopupActionKey;
   label: string;
   tone: 'primary' | 'secondary' | 'danger';
+};
+
+export type NetworkMapPopupSummaryItem = {
+  label: string;
+  value: string;
+  tone?: 'ok' | 'warn' | 'muted';
 };
 
 export type NetworkMapPopupModel = {
@@ -77,9 +76,16 @@ export type NetworkMapPopupModel = {
   subtitle: string;
   statusText: string;
   tone: 'ok' | 'warn' | 'muted';
-  impactText: string;
+  contextText: string;
+  summaryItems: NetworkMapPopupSummaryItem[];
   detailPairs: Array<{ label: string; value: string }>;
   actions: NetworkMapPopupActionModel[];
+};
+
+export type RouterPopupNodeContext = {
+  zoneName?: string;
+  sourceLabel?: string;
+  topologyLabel?: string;
 };
 
 export const nodeTypeOptions = [
@@ -534,33 +540,281 @@ function popupStatusText(status: string) {
   return String(status || '-').trim() || '-';
 }
 
-function popupImpactText(node: NMNode) {
-  const impacted = countImpactedServices([node]);
-  if (impacted > 0) return `${impacted} impacted services`;
-  if (hasServiceMetadata(node)) return 'Mapped service context available';
-  if (isCustomerNodeType(node.node_type)) return 'Customer endpoint mapped';
-  return 'No direct service impact mapped';
+function popupToneFromRouterState(
+  router: Pick<NMRouter, 'is_online' | 'enabled'>,
+): NetworkMapPopupModel['tone'] {
+  if (router.is_online) return 'ok';
+  if (router.enabled) return 'warn';
+  return 'muted';
+}
+
+function popupStatusFromRouterState(router: Pick<NMRouter, 'is_online' | 'enabled'>) {
+  if (router.is_online) return 'online';
+  if (router.enabled) return 'offline';
+  return 'disabled';
+}
+
+function metadataText(row: NMNode | null | undefined, keys: string[]) {
+  for (const key of keys) {
+    const value = String(row?.metadata?.[key] || '').trim();
+    if (value) return value;
+  }
+  return '';
+}
+
+function metadataNumberText(row: NMNode | null | undefined, keys: string[]) {
+  const value = metadataNumber(row, keys);
+  return value > 0 ? String(value) : '';
+}
+
+function normalizePopupValue(value: string | number | null | undefined, fallback = '-') {
+  const text = String(value ?? '').trim();
+  return text || fallback;
+}
+
+function popupContextText(node: NMNode) {
+  const managedSource = systemManagedNodeSourceLabel(node);
+  if (hasServiceMetadata(node)) return 'Customer service endpoint';
+  if (node.node_type === 'odp') return 'ODP distribution point';
+  if (node.node_type === 'odc') return 'ODC distribution cabinet';
+  if (node.node_type === 'olt') return 'Optical line terminal';
+  if (node.node_type === 'pop') return 'Point of presence hub';
+  if (node.node_type === 'core') return 'Core backbone node';
+  if (node.node_type === 'router') return managedSource || 'Routing node';
+  if (node.node_type === 'switch') return 'Switching node';
+  if (node.node_type === 'tower') return 'Tower distribution site';
+  if (node.node_type === 'ap') return 'Wireless access point';
+  if (node.node_type === 'splitter') return 'Optical splitter point';
+  if (node.node_type === 'junction') return 'Physical junction node';
+  if (isCustomerNodeType(node.node_type)) return 'Customer premise endpoint';
+  return managedSource || `${nodeTypeLabel(node.node_type)} asset`;
+}
+
+function popupKickerForNode(nodeType: string) {
+  const normalized = String(nodeType || '').trim().toLowerCase();
+  if (normalized === 'odp') return 'ODP';
+  if (normalized === 'odc') return 'ODC';
+  if (normalized === 'olt') return 'OLT';
+  if (normalized === 'pop') return 'POP';
+  if (normalized === 'ap') return 'AP';
+  if (normalized === 'core') return 'Core';
+  if (normalized === 'customer_premise' || normalized === 'customer_endpoint') return 'Customer';
+  const label = nodeTypeLabel(nodeType);
+  return label === '-' ? 'Node' : label;
+}
+
+function buildNodeSummaryItems(node: NMNode): NetworkMapPopupSummaryItem[] {
+  const services = metadataNumberText(node, [
+    'service_count',
+    'customer_services',
+    'affected_services',
+    'impacted_services',
+  ]);
+  const splitters = metadataNumberText(node, ['splitter_count', 'splitters']);
+  const customers = metadataNumberText(node, ['customer_count', 'subscriber_count']);
+  const ports = metadataNumberText(node, ['port_count', 'ports', 'used_ports']);
+
+  if (node.node_type === 'odp') {
+    return [
+      { label: 'Services', value: normalizePopupValue(services) },
+      { label: 'Splitters', value: normalizePopupValue(splitters) },
+    ];
+  }
+
+  if (node.node_type === 'odc') {
+    return [
+      {
+        label: 'ODP',
+        value: normalizePopupValue(metadataNumberText(node, ['odp_count', 'distribution_points'])),
+      },
+      { label: 'Services', value: normalizePopupValue(services) },
+    ];
+  }
+
+  if (node.node_type === 'olt') {
+    return [
+      { label: 'Ports', value: normalizePopupValue(ports) },
+      { label: 'Services', value: normalizePopupValue(services || customers) },
+    ];
+  }
+
+  if (node.node_type === 'router' || node.node_type === 'switch') {
+    return [
+      { label: 'Ports', value: normalizePopupValue(ports) },
+      { label: 'Services', value: normalizePopupValue(services || customers) },
+    ];
+  }
+
+  if (node.node_type === 'ap' || node.node_type === 'tower') {
+    return [
+      { label: 'Clients', value: normalizePopupValue(customers || services) },
+      { label: 'Status', value: popupStatusText(node.status), tone: statusTone(node.status) },
+    ];
+  }
+
+  if (node.node_type === 'splitter') {
+    return [
+      { label: 'Branches', value: normalizePopupValue(splitters || ports) },
+      { label: 'Services', value: normalizePopupValue(services || customers) },
+    ];
+  }
+
+  if (node.node_type === 'junction') {
+    return [
+      {
+        label: 'Links',
+        value: normalizePopupValue(metadataNumberText(node, ['link_count', 'connections'])),
+      },
+      { label: 'Status', value: popupStatusText(node.status), tone: statusTone(node.status) },
+    ];
+  }
+
+  if (isCustomerNodeType(node.node_type)) {
+    return [
+      { label: 'Services', value: normalizePopupValue(services || '1') },
+      { label: 'Status', value: popupStatusText(node.status), tone: statusTone(node.status) },
+    ];
+  }
+
+  return [
+    { label: 'Services', value: normalizePopupValue(services || customers) },
+    { label: 'Status', value: popupStatusText(node.status), tone: statusTone(node.status) },
+  ];
+}
+
+function buildNodeDetailPairs(node: NMNode) {
+  const managedSource = systemManagedNodeSourceLabel(node);
+  const zoneName = metadataText(node, ['zone_name', 'coverage_zone_name', 'zone_label']);
+  const parentName = metadataText(node, [
+    'parent_node_name',
+    'upstream_node_name',
+    'parent_name',
+    'uplink_name',
+  ]);
+  const packageName = metadataText(node, ['package_name', 'package_label']);
+  const accountName = metadataText(node, ['pppoe_username', 'username', 'account_username']);
+  const hostName = metadataText(node, ['host', 'management_host', 'ip_address']);
+  const coverageName = metadataText(node, ['coverage_name', 'coverage_area', 'area_name']);
+
+  if (node.node_type === 'odp') {
+    return [
+      { label: 'Zone', value: normalizePopupValue(zoneName) },
+      { label: 'Upstream', value: normalizePopupValue(parentName) },
+      { label: 'Source', value: normalizePopupValue(managedSource) },
+      { label: 'Type', value: nodeTypeLabel(node.node_type) },
+    ];
+  }
+
+  if (node.node_type === 'odc') {
+    return [
+      { label: 'Upstream', value: normalizePopupValue(parentName) },
+      { label: 'Zone', value: normalizePopupValue(zoneName) },
+      { label: 'Source', value: normalizePopupValue(managedSource) },
+      { label: 'Type', value: nodeTypeLabel(node.node_type) },
+    ];
+  }
+
+  if (hasServiceMetadata(node)) {
+    return [
+      {
+        label: 'Customer',
+        value: normalizePopupValue(metadataText(node, ['customer_name', 'customer_label'])),
+      },
+      { label: 'Package', value: normalizePopupValue(packageName) },
+      { label: 'Account', value: normalizePopupValue(accountName) },
+      {
+        label: 'Service',
+        value: normalizePopupValue(
+          metadataText(node, ['service_type', 'service_kind']),
+          nodeTypeLabel(node.node_type),
+        ),
+      },
+    ];
+  }
+
+  if (node.node_type === 'router') {
+    return [
+      { label: 'Type', value: nodeTypeLabel(node.node_type) },
+      { label: 'Host', value: normalizePopupValue(hostName) },
+      { label: 'Source', value: normalizePopupValue(managedSource) },
+      ...(zoneName ? [{ label: 'Zone', value: zoneName }] : []),
+    ];
+  }
+
+  if (node.node_type === 'switch') {
+    return [
+      { label: 'Type', value: nodeTypeLabel(node.node_type) },
+      { label: 'Zone', value: normalizePopupValue(zoneName) },
+      { label: 'Source', value: normalizePopupValue(managedSource) },
+      ...(parentName ? [{ label: 'Uplink', value: parentName }] : []),
+    ];
+  }
+
+  if (node.node_type === 'ap' || node.node_type === 'tower') {
+    return [
+      { label: 'Type', value: nodeTypeLabel(node.node_type) },
+      { label: 'Coverage', value: normalizePopupValue(coverageName || zoneName) },
+      { label: 'Source', value: normalizePopupValue(managedSource) },
+      ...(parentName ? [{ label: 'Upstream', value: parentName }] : []),
+    ];
+  }
+
+  if (node.node_type === 'splitter') {
+    return [
+      { label: 'Type', value: nodeTypeLabel(node.node_type) },
+      { label: 'Upstream', value: normalizePopupValue(parentName) },
+      { label: 'Zone', value: normalizePopupValue(zoneName) },
+      { label: 'Source', value: normalizePopupValue(managedSource) },
+    ];
+  }
+
+  if (node.node_type === 'junction') {
+    return [
+      { label: 'Type', value: nodeTypeLabel(node.node_type) },
+      { label: 'Zone', value: normalizePopupValue(zoneName) },
+      { label: 'Source', value: normalizePopupValue(managedSource) },
+      ...(parentName ? [{ label: 'Upstream', value: parentName }] : []),
+    ];
+  }
+
+  if (node.node_type === 'pop' || node.node_type === 'core' || node.node_type === 'olt') {
+    return [
+      { label: 'Type', value: nodeTypeLabel(node.node_type) },
+      { label: 'Zone', value: normalizePopupValue(zoneName) },
+      { label: 'Source', value: normalizePopupValue(managedSource) },
+      ...(parentName ? [{ label: 'Upstream', value: parentName }] : []),
+    ];
+  }
+
+  if (isCustomerNodeType(node.node_type)) {
+    return [
+      { label: 'Type', value: nodeTypeLabel(node.node_type) },
+      { label: 'Zone', value: normalizePopupValue(zoneName || coverageName) },
+      { label: 'Source', value: normalizePopupValue(managedSource) },
+      ...(accountName ? [{ label: 'Account', value: accountName }] : []),
+    ];
+  }
+
+  return [
+    { label: 'Type', value: nodeTypeLabel(node.node_type) },
+    { label: 'Status', value: popupStatusText(node.status) },
+    ...(managedSource ? [{ label: 'Source', value: managedSource }] : []),
+    ...(zoneName ? [{ label: 'Zone', value: zoneName }] : []),
+  ];
 }
 
 export function buildNodePopupModel(node: NMNode): NetworkMapPopupModel {
-  const managedSource = systemManagedNodeSourceLabel(node);
   return {
-    kicker: 'Node',
+    kicker: popupKickerForNode(node.node_type),
     title: String(node.name || node.id || 'Node').trim(),
     subtitle: nodeTypeLabel(node.node_type),
     statusText: popupStatusText(node.status),
     tone: statusTone(node.status),
-    impactText: popupImpactText(node),
-    detailPairs: [
-      { label: 'Type', value: nodeTypeLabel(node.node_type) },
-      { label: 'Status', value: popupStatusText(node.status) },
-      ...(managedSource ? [{ label: 'Source', value: managedSource }] : []),
-    ],
+    contextText: popupContextText(node),
+    summaryItems: buildNodeSummaryItems(node),
+    detailPairs: buildNodeDetailPairs(node),
     actions: [
-      popupAction('trace', 'Trace path', 'primary'),
-      popupAction('impact', 'View impact'),
-      popupAction('inspect', 'Open inspector'),
-      popupAction('connect', 'Connect'),
+      popupAction('connect', 'Connect', 'primary'),
       ...(isSystemManagedNode(node) ? [] : [popupAction('edit', 'Edit')]),
     ],
   };
@@ -587,45 +841,142 @@ export function buildServicePopupModel(node: NMNode): NetworkMapPopupModel {
     subtitle: customerName || nodeTypeLabel(node.node_type),
     statusText: popupStatusText(node.status),
     tone: statusTone(node.status),
-    impactText: popupImpactText(node),
+    contextText: 'customer service',
+    summaryItems: [
+      { label: 'Status', value: popupStatusText(node.status), tone: statusTone(node.status) },
+      { label: 'Type', value: normalizePopupValue(serviceType || nodeTypeLabel(node.node_type)) },
+    ],
     detailPairs: [
-      { label: 'Service', value: serviceName },
-      { label: 'Status', value: popupStatusText(node.status) },
-      { label: 'Type', value: serviceType || nodeTypeLabel(node.node_type) },
+      { label: 'Customer', value: normalizePopupValue(customerName) },
+      {
+        label: 'Package',
+        value: normalizePopupValue(
+          metadataText(node, ['package_name', 'package_label', 'service_label']),
+        ),
+      },
+      {
+        label: 'Account',
+        value: normalizePopupValue(
+          metadataText(node, ['pppoe_username', 'username', 'account_username']),
+        ),
+      },
+      {
+        label: 'Service',
+        value: normalizePopupValue(serviceType || nodeTypeLabel(node.node_type)),
+      },
     ],
-    actions: [
-      popupAction('inspect', 'Open inspector', 'primary'),
-      popupAction('trace', 'Trace service path'),
-      popupAction('impact', 'View impact'),
-      popupAction('connect', 'Connect'),
-    ],
+    actions: [popupAction('connect', 'Connect', 'primary')],
   };
 }
 
 export function buildLinkPopupModel(link: NMLink): NetworkMapPopupModel {
   const health = computeLinkHealth(link);
+  const endpoints = `${String(link.from_node_id || '-')} -> ${String(link.to_node_id || '-')}`;
+  const capacity = link.capacity_mbps != null ? `${link.capacity_mbps} Mbps` : '-';
+  const latency = link.latency_ms != null ? `${link.latency_ms} ms` : '-';
+  const utilization = link.utilization_pct != null ? `${link.utilization_pct}%` : '-';
+  const loss = link.loss_db != null ? `${link.loss_db} dB` : '-';
   return {
     kicker: 'Link',
     title: String(link.name || link.id || 'Link').trim(),
-    subtitle: `${String(link.from_node_id || '-')} -> ${String(link.to_node_id || '-')}`,
+    subtitle: endpoints,
     statusText: popupStatusText(link.status),
     tone: health.tone === 'good' ? 'ok' : health.tone === 'warn' ? 'warn' : 'muted',
-    impactText:
-      health.tone === 'good'
-        ? 'Link health is currently stable'
-        : `Health score ${health.score} needs attention`,
-    detailPairs: [
-      { label: 'Type', value: String(link.link_type || '-') },
-      { label: 'Status', value: popupStatusText(link.status) },
+    contextText: `${String(link.link_type || 'link')} transport path`,
+    summaryItems: [
       {
-        label: 'Endpoints',
-        value: `${String(link.from_node_id || '-')} -> ${String(link.to_node_id || '-')}`,
+        label: 'Health',
+        value: String(health.score),
+        tone: health.tone === 'good' ? 'ok' : health.tone === 'warn' ? 'warn' : 'muted',
+      },
+      { label: 'Capacity', value: capacity },
+      { label: 'Latency', value: latency },
+    ],
+    detailPairs: [
+      { label: 'Type', value: normalizePopupValue(link.link_type) },
+      { label: 'Endpoints', value: endpoints },
+      { label: 'Status', value: popupStatusText(link.status) },
+      { label: 'Utilization', value: utilization },
+      { label: 'Loss', value: loss },
+    ],
+    actions: [popupAction('delete', 'Delete', 'danger')],
+  };
+}
+
+export function buildRouterPopupModel(router: NMRouter): NetworkMapPopupModel {
+  const statusText = popupStatusFromRouterState(router);
+  const tone = popupToneFromRouterState(router);
+  const endpoint = `${router.host}:${router.port}`;
+  return {
+    kicker: 'Mikrotik',
+    title: String(router.identity || router.name || router.id || 'Router').trim(),
+    subtitle: String(router.name || router.host || router.id || 'Router').trim(),
+    statusText,
+    tone,
+    contextText: router.is_online
+      ? 'Mikrotik control-plane session is reachable for this router.'
+      : router.enabled
+        ? 'Mikrotik inventory exists, but the device is not responding right now.'
+        : 'Mikrotik inventory entry is disabled and will not be polled.',
+    summaryItems: [
+      {
+        label: 'Connectivity',
+        value: router.is_online ? 'Live' : router.enabled ? 'Down' : 'Disabled',
+        tone,
+      },
+      {
+        label: 'Latency',
+        value: router.latency_ms != null ? `${router.latency_ms} ms` : '-',
+        tone,
+      },
+      {
+        label: 'Access',
+        value: router.enabled ? 'Enabled' : 'Disabled',
+        tone: router.enabled ? (router.is_online ? 'ok' : 'warn') : 'muted',
       },
     ],
-    actions: [
-      popupAction('trace', 'Trace path', 'primary'),
-      popupAction('inspect', 'Open inspector'),
-      popupAction('delete', 'Delete', 'danger'),
+    detailPairs: [
+      { label: 'Endpoint', value: endpoint },
+      { label: 'RouterOS', value: normalizePopupValue(router.ros_version) },
+      { label: 'Identity', value: normalizePopupValue(router.identity || router.name) },
+      { label: 'Inventory', value: normalizePopupValue(router.name) },
+    ],
+    actions: [popupAction('open-router', 'Open Router', 'primary')],
+  };
+}
+
+export function findLiveRouterForNode(node: NMNode, routerRows: NMRouter[]): NMRouter | null {
+  const assetId = String(node.metadata?.asset_id || '').trim();
+  const nodeId = String(node.id || '').trim();
+  const nodeName = String(node.name || '').trim().toLowerCase();
+  const assetSource = String(node.metadata?.asset_source || node.metadata?.asset_type || '').trim();
+
+  if (assetSource !== 'mikrotik_router' && node.node_type !== 'router') return null;
+
+  return (
+    routerRows.find((row) => String(row.id || '').trim() === assetId) ||
+    routerRows.find((row) => String(row.id || '').trim() === nodeId) ||
+    routerRows.find((row) => String(row.name || '').trim().toLowerCase() === nodeName) ||
+    routerRows.find((row) => String(row.identity || '').trim().toLowerCase() === nodeName) ||
+    null
+  );
+}
+
+export function buildRouterPopupModelFromNode(
+  node: NMNode,
+  router: NMRouter,
+): NetworkMapPopupModel {
+  const zoneName = metadataText(node, ['zone_name', 'coverage_zone_name', 'zone_label']);
+  const sourceLabel = systemManagedNodeSourceLabel(node);
+  const baseModel = buildRouterPopupModel(router);
+
+  return {
+    ...baseModel,
+    subtitle: String(node.name || baseModel.subtitle).trim(),
+    detailPairs: [
+      ...baseModel.detailPairs,
+      ...(sourceLabel ? [{ label: 'Source', value: sourceLabel }] : []),
+      ...(zoneName ? [{ label: 'Zone', value: zoneName }] : []),
     ],
   };
 }
@@ -637,18 +988,18 @@ export function buildZonePopupModel(zone: NMZone): NetworkMapPopupModel {
     subtitle: String(zone.zone_type || '-'),
     statusText: popupStatusText(zone.status),
     tone: statusTone(zone.status),
-    impactText:
+    contextText:
       normalizedStatus(zone.status) === 'active'
         ? 'Zone coverage is available'
         : `Zone status is ${popupStatusText(zone.status).toLowerCase()}`,
+    summaryItems: [
+      { label: 'Status', value: popupStatusText(zone.status), tone: statusTone(zone.status) },
+    ],
     detailPairs: [
       { label: 'Type', value: String(zone.zone_type || '-') },
       { label: 'Status', value: popupStatusText(zone.status) },
     ],
-    actions: [
-      popupAction('inspect', 'Open inspector', 'primary'),
-      popupAction('impact', 'View impact'),
-    ],
+    actions: [],
   };
 }
 

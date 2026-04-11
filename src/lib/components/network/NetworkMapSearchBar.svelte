@@ -163,16 +163,16 @@
   .search-shell {
     position: relative;
     display: grid;
-    gap: 10px;
+    gap: 8px;
   }
 
   .search-input-wrap {
     display: flex;
     align-items: center;
-    gap: 10px;
-    border-radius: 16px;
+    gap: 9px;
+    border-radius: 14px;
     border: 1px solid color-mix(in srgb, var(--border-color) 80%, transparent);
-    padding: 0 14px;
+    padding: 0 12px;
     background: linear-gradient(
       180deg,
       color-mix(in srgb, var(--bg-card) 92%, #05101a 8%),
@@ -188,17 +188,17 @@
 
   .search-input {
     width: 100%;
-    min-height: 48px;
+    min-height: 44px;
     border: none;
     outline: none;
     background: transparent;
     color: var(--text-primary);
-    font-size: 0.96rem;
+    font-size: 0.92rem;
   }
 
   .search-summary {
     color: var(--text-secondary);
-    font-size: 0.82rem;
+    font-size: 0.76rem;
   }
 
   .search-results {

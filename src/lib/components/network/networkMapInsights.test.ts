@@ -76,7 +76,13 @@ const links: NMLink[] = [
     utilization_pct: 94,
     loss_db: 3.4,
     latency_ms: 52,
-    geometry: { type: 'LineString', coordinates: [[106.8, -6.2], [106.81, -6.21]] },
+    geometry: {
+      type: 'LineString',
+      coordinates: [
+        [106.8, -6.2],
+        [106.81, -6.21],
+      ],
+    },
   },
 ];
 
@@ -88,7 +94,15 @@ const zones: NMZone[] = [
     status: 'planning',
     geometry: {
       type: 'Polygon',
-      coordinates: [[[106.79, -6.19], [106.83, -6.19], [106.83, -6.23], [106.79, -6.23], [106.79, -6.19]]],
+      coordinates: [
+        [
+          [106.79, -6.19],
+          [106.83, -6.19],
+          [106.83, -6.23],
+          [106.79, -6.23],
+          [106.79, -6.19],
+        ],
+      ],
     },
   },
 ];
@@ -138,7 +152,7 @@ describe('buildNetworkMapInsightCards', () => {
     expect(cards.map((card) => card.key).slice(0, 2)).toEqual(['nodes-at-risk', 'degraded-links']);
   });
 
-  it('keeps partial router data safe in summaries', () => {
+  it('does not generate standalone router insight cards anymore', () => {
     const cards = buildNetworkMapInsightCards({
       capabilities: nocCapabilities,
       nodes: [],
@@ -148,12 +162,7 @@ describe('buildNetworkMapInsightCards', () => {
       viewportMode: 'viewport',
     });
 
-    expect(cards).toEqual([
-      expect.objectContaining({
-        key: 'routers',
-        value: 1,
-      }),
-    ]);
+    expect(cards).toEqual([]);
   });
 
   it('returns empty insight collections for empty topology data', () => {
@@ -209,7 +218,13 @@ describe('network map utility counts', () => {
           status: 'retired',
           from_node_id: 'node-1',
           to_node_id: 'node-2',
-          geometry: { type: 'LineString', coordinates: [[106.8, -6.2], [106.81, -6.21]] },
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [106.8, -6.2],
+              [106.81, -6.21],
+            ],
+          },
         },
       ]),
     ).toBe(0);

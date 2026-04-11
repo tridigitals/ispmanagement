@@ -6,6 +6,16 @@ import type {
   NetworkMapPopupModel,
 } from './networkMapUtils';
 
+export type PopupAnchorPlacement =
+  | 'top'
+  | 'bottom'
+  | 'left'
+  | 'right'
+  | 'top-left'
+  | 'top-right'
+  | 'bottom-left'
+  | 'bottom-right';
+
 function escapePopupHtml(input: unknown): string {
   return String(input ?? '-')
     .replaceAll('&', '&amp;')
@@ -137,7 +147,25 @@ function renderPopupModel(args: { popupUid: string; model: NetworkMapPopupModel 
           </div>
           <span class="nm-popup-badge ${args.model.tone}">${escapePopupHtml(args.model.statusText)}</span>
         </div>
-        <div class="nm-popup-impact">${escapePopupHtml(args.model.impactText)}</div>
+        <div class="nm-popup-context">${escapePopupHtml(args.model.contextText)}</div>
+        ${
+          args.model.summaryItems.length
+            ? `
+          <div class="nm-popup-summary">
+            ${args.model.summaryItems
+              .map(
+                (item) => `
+              <div class="nm-popup-summary-item ${item.tone || 'muted'}">
+                <div class="nm-popup-summary-label">${escapePopupHtml(item.label)}</div>
+                <div class="nm-popup-summary-value">${escapePopupHtml(item.value)}</div>
+              </div>
+            `,
+              )
+              .join('')}
+          </div>
+        `
+            : ''
+        }
         <div class="nm-popup-grid">
           ${args.model.detailPairs
             .map(
@@ -165,41 +193,90 @@ export function buildLinkPopupHtml(args: { popupUid: string; model: NetworkMapPo
   return renderPopupModel(args);
 }
 
-export function buildRouterPopupHtml(args: {
-  popupUid: string;
-  name: string;
-  tone: 'ok' | 'muted';
-  status: string;
-  host: string;
-  port: string;
-  latency: string;
-}) {
-  const openBtnId = `${args.popupUid}-open`;
-  const closeBtnId = `${args.popupUid}-close`;
-  return {
-    openBtnId,
-    closeBtnId,
-    html: `
-      <div class="nm-popup-card">
-        <div class="nm-popup-head">
-          <div class="nm-popup-title">${args.name}</div>
-          <span class="nm-popup-badge ${args.tone}">${args.status}</span>
-        </div>
-        <div class="nm-popup-grid">
-          <div class="nm-popup-label">Host</div>
-          <div class="nm-popup-value mono">${args.host}:${args.port}</div>
-          <div class="nm-popup-label">Latency</div>
-          <div class="nm-popup-value">${args.latency}</div>
-        </div>
-        <div class="nm-popup-actions">
-          <button id="${openBtnId}" class="nm-popup-btn primary" type="button">Open Router</button>
-          <button id="${closeBtnId}" class="nm-popup-btn" type="button">Close</button>
-        </div>
-      </div>
-    `,
-  };
+export function buildRouterPopupHtml(args: { popupUid: string; model: NetworkMapPopupModel }) {
+  return renderPopupModel(args);
 }
 
 export function pointCoordinates(geometry: Geometry): [number, number] {
   return (geometry as Point).coordinates as [number, number];
+}
+
+export function computePopupPlacement(args: {
+  point: { x: number; y: number };
+  mapSize: { width: number; height: number };
+  popupSize: { width: number; height: number };
+  padding?: number;
+  offset?: number;
+}): { anchor: PopupAnchorPlacement; offset: number } {
+  const padding = args.padding ?? 16;
+  const offset = args.offset ?? 14;
+  const spaceLeft = args.point.x - padding;
+  const spaceRight = args.mapSize.width - args.point.x - padding;
+  const spaceTop = args.point.y - padding;
+  const spaceBottom = args.mapSize.height - args.point.y - padding;
+
+  if (spaceRight < args.popupSize.width * 0.65 && spaceLeft > args.popupSize.width * 0.45) {
+    return { anchor: 'left', offset };
+  }
+
+  if (spaceLeft < args.popupSize.width * 0.45 && spaceRight > args.popupSize.width * 0.55) {
+    return { anchor: 'right', offset };
+  }
+
+  if (spaceTop < args.popupSize.height * 0.45 && spaceBottom > args.popupSize.height * 0.45) {
+    return { anchor: 'bottom', offset };
+  }
+
+  if (spaceBottom < args.popupSize.height * 0.35 && spaceTop > args.popupSize.height * 0.45) {
+    return { anchor: 'top', offset };
+  }
+
+  return { anchor: 'top', offset };
+}
+
+export function computePopupViewportNudge(args: {
+  popupRect: Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom'>;
+  mapRect: Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom'>;
+  padding?: number;
+}) {
+  const padding = args.padding ?? 16;
+  let x = 0;
+  let y = 0;
+
+  const minLeft = args.mapRect.left + padding;
+  const maxRight = args.mapRect.right - padding;
+  const minTop = args.mapRect.top + padding;
+  const maxBottom = args.mapRect.bottom - padding;
+
+  if (args.popupRect.left < minLeft) {
+    x = minLeft - args.popupRect.left;
+  } else if (args.popupRect.right > maxRight) {
+    x = maxRight - args.popupRect.right;
+  }
+
+  if (args.popupRect.top < minTop) {
+    y = minTop - args.popupRect.top;
+  } else if (args.popupRect.bottom > maxBottom) {
+    y = maxBottom - args.popupRect.bottom;
+  }
+
+  return { x, y };
+}
+
+export function nudgePopupElementIntoView(args: {
+  popupElement: HTMLElement | null | undefined;
+  mapElement: HTMLElement | null | undefined;
+  padding?: number;
+}) {
+  if (!args.popupElement || !args.mapElement) return;
+  const nudge = computePopupViewportNudge({
+    popupRect: args.popupElement.getBoundingClientRect(),
+    mapRect: args.mapElement.getBoundingClientRect(),
+    padding: args.padding,
+  });
+  const baseTransform =
+    args.popupElement.dataset.nmPopupBaseTransform || args.popupElement.style.transform || '';
+  args.popupElement.dataset.nmPopupBaseTransform = baseTransform;
+  args.popupElement.style.transform =
+    nudge.x || nudge.y ? `${baseTransform} translate(${nudge.x}px, ${nudge.y}px)` : baseTransform;
 }
