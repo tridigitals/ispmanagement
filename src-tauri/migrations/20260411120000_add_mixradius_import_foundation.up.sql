@@ -3,10 +3,10 @@ CREATE TABLE IF NOT EXISTS public.mixradius_import_batches (
     tenant_id text NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
     source_filename text NOT NULL,
     source_sha256 text NOT NULL,
-    source_size_bytes bigint NOT NULL DEFAULT 0,
+    source_size_bytes bigint NOT NULL,
     parse_status text NOT NULL DEFAULT 'pending',
     execution_status text NOT NULL DEFAULT 'pending',
-    execution_mode text NOT NULL DEFAULT 'preview',
+    execution_mode text NOT NULL DEFAULT 'preview_only',
     started_at timestamp with time zone,
     completed_at timestamp with time zone,
     progress_json jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -15,12 +15,18 @@ CREATE TABLE IF NOT EXISTS public.mixradius_import_batches (
     created_by text REFERENCES public.users(id) ON DELETE SET NULL,
     created_at timestamp with time zone NOT NULL,
     updated_at timestamp with time zone NOT NULL,
+    CONSTRAINT chk_mixradius_import_batches_source_filename
+        CHECK (btrim(source_filename) <> ''),
+    CONSTRAINT chk_mixradius_import_batches_source_sha256
+        CHECK (btrim(source_sha256) <> ''),
+    CONSTRAINT chk_mixradius_import_batches_source_size_bytes
+        CHECK (source_size_bytes > 0),
     CONSTRAINT chk_mixradius_import_batches_parse_status
         CHECK (parse_status IN ('pending', 'running', 'ready', 'failed')),
     CONSTRAINT chk_mixradius_import_batches_execution_status
         CHECK (execution_status IN ('pending', 'running', 'completed', 'failed', 'cancelled')),
     CONSTRAINT chk_mixradius_import_batches_execution_mode
-        CHECK (execution_mode IN ('preview', 'execute'))
+        CHECK (execution_mode IN ('preview_only', 'safe_import', 'force_sync'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_mixradius_import_batches_tenant_status

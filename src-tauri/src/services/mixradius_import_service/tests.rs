@@ -75,6 +75,134 @@ async fn drop_test_database(pool: sqlx::PgPool, db_name: &str) {
     admin_pool.close().await;
 }
 
+#[cfg(test)]
+mod mixradius_import_models {
+    use crate::models::mixradius_import::{
+        MixradiusImportBatchStatus, MixradiusImportConflictState, MixradiusImportExecuteRequest,
+        MixradiusImportExecutionMode, MixradiusImportExecutionSummary,
+        MixradiusImportPreviewRequest, MixradiusImportUploadRequest,
+    };
+    use serde_json::json;
+    use validator::Validate;
+
+    #[test]
+    fn batch_status_serde_contract_uses_snake_case() {
+        let serialized = serde_json::to_value(MixradiusImportBatchStatus::Running)
+            .expect("batch status should serialize");
+        assert_eq!(serialized, json!("running"));
+
+        let deserialized: MixradiusImportBatchStatus =
+            serde_json::from_value(json!("completed")).expect("batch status should deserialize");
+        assert_eq!(deserialized, MixradiusImportBatchStatus::Completed);
+    }
+
+    #[test]
+    fn preview_row_conflict_state_serde_contract_uses_snake_case() {
+        let serialized = serde_json::to_value(MixradiusImportConflictState::NeedsReview)
+            .expect("conflict state should serialize");
+        assert_eq!(serialized, json!("needs_review"));
+
+        let deserialized: MixradiusImportConflictState =
+            serde_json::from_value(json!("blocked")).expect("conflict state should deserialize");
+        assert_eq!(deserialized, MixradiusImportConflictState::Blocked);
+    }
+
+    #[test]
+    fn execution_summary_shape_serializes_expected_fields() {
+        let summary = MixradiusImportExecutionSummary {
+            batch_id: "batch-123".into(),
+            mode: MixradiusImportExecutionMode::SafeImport,
+            total_rows: 42,
+            imported_rows: 30,
+            updated_rows: 4,
+            skipped_rows: 6,
+            blocked_rows: 2,
+            conflict_rows: 3,
+            warnings: vec!["router mapping missing".into()],
+        };
+
+        assert_eq!(
+            serde_json::to_value(summary).expect("summary should serialize"),
+            json!({
+                "batchId": "batch-123",
+                "mode": "safe_import",
+                "totalRows": 42,
+                "importedRows": 30,
+                "updatedRows": 4,
+                "skippedRows": 6,
+                "blockedRows": 2,
+                "conflictRows": 3,
+                "warnings": ["router mapping missing"]
+            })
+        );
+    }
+
+    #[test]
+    fn request_dto_validation_shape_rejects_empty_required_fields() {
+        let upload = MixradiusImportUploadRequest {
+            file_name: "   ".into(),
+            file_size_bytes: 1,
+            content_type: None,
+            source_checksum: None,
+        };
+        assert!(upload.validate().is_err());
+
+        let upload_size = MixradiusImportUploadRequest {
+            file_name: "valid.sql.gz".into(),
+            file_size_bytes: 0,
+            content_type: None,
+            source_checksum: None,
+        };
+        assert!(upload_size.validate().is_err());
+
+        let preview = MixradiusImportPreviewRequest {
+            batch_id: "   ".into(),
+            mapping_overrides: vec![],
+            customer_conflict_resolution: None,
+            location_strategy: None,
+        };
+        assert!(preview.validate().is_err());
+
+        let preview_override = MixradiusImportPreviewRequest {
+            batch_id: "batch-1".into(),
+            mapping_overrides: vec![crate::models::mixradius_import::MixradiusImportMappingOverride {
+                source_kind: "   ".into(),
+                source_value: "   ".into(),
+                target_kind: "   ".into(),
+                target_value: "   ".into(),
+            }],
+            customer_conflict_resolution: None,
+            location_strategy: None,
+        };
+        assert!(preview.validate().is_err());
+        assert!(preview_override.validate().is_err());
+
+        let execute = MixradiusImportExecuteRequest {
+            batch_id: "   ".into(),
+            execution_mode: MixradiusImportExecutionMode::ForceSync,
+            mapping_overrides: vec![],
+            customer_conflict_resolution: None,
+            location_strategy: None,
+        };
+        assert!(execute.validate().is_err());
+
+        let execute_override = MixradiusImportExecuteRequest {
+            batch_id: "batch-2".into(),
+            execution_mode: MixradiusImportExecutionMode::ForceSync,
+            mapping_overrides: vec![crate::models::mixradius_import::MixradiusImportMappingOverride {
+                source_kind: "   ".into(),
+                source_value: "   ".into(),
+                target_kind: "   ".into(),
+                target_value: "   ".into(),
+            }],
+            customer_conflict_resolution: None,
+            location_strategy: None,
+        };
+        assert!(execute.validate().is_err());
+        assert!(execute_override.validate().is_err());
+    }
+}
+
 async fn assert_table_exists(pool: &sqlx::PgPool, table_name: &str) {
     let exists: bool = sqlx::query_scalar(
         r#"
@@ -196,6 +324,192 @@ async fn mixradius_import_schema() {
     ] {
         assert_index_exists(&pool, index_name).await;
     }
+
+    sqlx::query(
+        r#"
+        INSERT INTO public.tenants (id)
+        VALUES ('tenant-1')
+        "#,
+    )
+    .execute(&pool)
+    .await
+    .expect("test tenant should be insertable");
+
+    let default_execution_mode: String = sqlx::query_scalar(
+        r#"
+        INSERT INTO public.mixradius_import_batches (
+            id,
+            tenant_id,
+            source_filename,
+            source_sha256,
+            source_size_bytes,
+            created_at,
+            updated_at
+        )
+        VALUES (
+            'batch-1',
+            'tenant-1',
+            'MixRadius.sql.gz',
+            'sha256',
+            128,
+            now(),
+            now()
+        )
+        RETURNING execution_mode
+        "#,
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("batch defaults should satisfy schema constraints");
+    assert_eq!(default_execution_mode, "preview_only");
+
+    let explicit_safe_import: String = sqlx::query_scalar(
+        r#"
+        INSERT INTO public.mixradius_import_batches (
+            id,
+            tenant_id,
+            source_filename,
+            source_sha256,
+            source_size_bytes,
+            execution_mode,
+            created_at,
+            updated_at
+        )
+        VALUES (
+            'batch-2',
+            'tenant-1',
+            'MixRadius-2.sql.gz',
+            'sha256-2',
+            256,
+            'safe_import',
+            now(),
+            now()
+        )
+        RETURNING execution_mode
+        "#,
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("safe_import execution mode should satisfy schema constraints");
+    assert_eq!(explicit_safe_import, "safe_import");
+
+    let legacy_execution_mode_result = sqlx::query(
+        r#"
+        INSERT INTO public.mixradius_import_batches (
+            id,
+            tenant_id,
+            source_filename,
+            source_sha256,
+            source_size_bytes,
+            execution_mode,
+            created_at,
+            updated_at
+        )
+        VALUES (
+            'batch-legacy',
+            'tenant-1',
+            'legacy.sql.gz',
+            'legacy-sha',
+            512,
+            'preview',
+            now(),
+            now()
+        )
+        "#,
+    )
+    .execute(&pool)
+    .await;
+    assert!(
+        legacy_execution_mode_result.is_err(),
+        "legacy execution mode should be rejected by schema constraints"
+    );
+
+    let blank_filename_result = sqlx::query(
+        r#"
+        INSERT INTO public.mixradius_import_batches (
+            id,
+            tenant_id,
+            source_filename,
+            source_sha256,
+            source_size_bytes,
+            created_at,
+            updated_at
+        )
+        VALUES (
+            'batch-blank',
+            'tenant-1',
+            '   ',
+            'sha256-blank',
+            10,
+            now(),
+            now()
+        )
+        "#,
+    )
+    .execute(&pool)
+    .await;
+    assert!(
+        blank_filename_result.is_err(),
+        "blank source_filename should be rejected by schema constraints"
+    );
+
+    let blank_sha256_result = sqlx::query(
+        r#"
+        INSERT INTO public.mixradius_import_batches (
+            id,
+            tenant_id,
+            source_filename,
+            source_sha256,
+            source_size_bytes,
+            created_at,
+            updated_at
+        )
+        VALUES (
+            'batch-blank-sha',
+            'tenant-1',
+            'blank-sha.sql.gz',
+            '   ',
+            10,
+            now(),
+            now()
+        )
+        "#,
+    )
+    .execute(&pool)
+    .await;
+    assert!(
+        blank_sha256_result.is_err(),
+        "blank source_sha256 should be rejected by schema constraints"
+    );
+
+    let zero_size_result = sqlx::query(
+        r#"
+        INSERT INTO public.mixradius_import_batches (
+            id,
+            tenant_id,
+            source_filename,
+            source_sha256,
+            source_size_bytes,
+            created_at,
+            updated_at
+        )
+        VALUES (
+            'batch-zero',
+            'tenant-1',
+            'zero.sql.gz',
+            'sha256-zero',
+            0,
+            now(),
+            now()
+        )
+        "#,
+    )
+    .execute(&pool)
+    .await;
+    assert!(
+        zero_size_result.is_err(),
+        "non-positive source_size_bytes should be rejected by schema constraints"
+    );
 
     let down_sql = std::fs::read_to_string(MIXRADIUS_IMPORT_FOUNDATION_DOWN_SQL)
         .expect("mixradius import down migration should be readable");
