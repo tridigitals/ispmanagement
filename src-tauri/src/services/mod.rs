@@ -8,6 +8,7 @@ pub mod email_outbox_service;
 pub mod email_service;
 pub mod managed_radius_service;
 pub mod mixradius_import_service;
+pub mod mixradius_sql_parser;
 pub mod metrics_service;
 pub mod network_mapping_service;
 pub mod rate_limiter;
@@ -55,3 +56,6 @@ pub use system_service::SystemService;
 pub use team_service::TeamService;
 pub use unsubscribe_token::*;
 pub use user_service::UserService;
+
+#[cfg(test)]
+mod mixradius_sql_parser_tests;
