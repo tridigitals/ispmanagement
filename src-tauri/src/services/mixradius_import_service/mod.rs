@@ -1,9 +1,10 @@
 use crate::db::DbPool;
 use crate::models::{
-    MixradiusImportBatch, MixradiusImportConflictState, MixradiusImportExecuteRequest,
-    MixradiusImportExecutionResult, MixradiusImportExecutionSummary, MixradiusImportParseStatus,
-    MixradiusImportPreview, MixradiusImportPreviewRequest, MixradiusImportPreviewRow,
-    PaginatedResponse,
+    MixradiusImportBatch, MixradiusImportConflictState,
+    MixradiusImportCustomerConflictResolution, MixradiusImportExecuteRequest,
+    MixradiusImportExecutionResult, MixradiusImportExecutionSummary, MixradiusImportLocationStrategy,
+    MixradiusImportParseStatus, MixradiusImportPreview, MixradiusImportPreviewRequest,
+    MixradiusImportPreviewRow, PaginatedResponse,
 };
 use crate::services::mixradius_sql_parser::{
     parse_mixradius_backup, MixradiusParsedBackup, MixradiusSourceRow,
@@ -279,8 +280,22 @@ impl MixradiusImportService {
             return Err(anyhow!("MixRadius batch is not ready for preview"));
         }
 
+        self.persist_progress_payload(
+            tenant_id,
+            &request.batch_id,
+            "previewRequest",
+            serde_json::to_value(request).context("failed to serialize preview request")?,
+        )
+        .await?;
+
         let rows = self
-            .preview_rows_for_batch(tenant_id, &request.batch_id)
+            .preview_rows_for_batch(
+                tenant_id,
+                &request.batch_id,
+                &request.mapping_overrides,
+                request.customer_conflict_resolution,
+                request.location_strategy,
+            )
             .await?;
         Ok(MixradiusImportPreview {
             batch_id: request.batch_id.clone(),
@@ -296,6 +311,13 @@ impl MixradiusImportService {
         request: &MixradiusImportExecuteRequest,
     ) -> Result<MixradiusImportExecutionResult> {
         let batch = self.get_batch(tenant_id, &request.batch_id).await?;
+        self.persist_progress_payload(
+            tenant_id,
+            &request.batch_id,
+            "executeRequest",
+            serde_json::to_value(request).context("failed to serialize execute request")?,
+        )
+        .await?;
         let preview_request = MixradiusImportPreviewRequest {
             batch_id: request.batch_id.clone(),
             mapping_overrides: request.mapping_overrides.clone(),
@@ -376,6 +398,9 @@ impl MixradiusImportService {
         &self,
         tenant_id: &str,
         batch_id: &str,
+        mapping_overrides: &[crate::models::MixradiusImportMappingOverride],
+        customer_conflict_resolution: Option<MixradiusImportCustomerConflictResolution>,
+        location_strategy: Option<MixradiusImportLocationStrategy>,
     ) -> Result<Vec<MixradiusImportPreviewRow>> {
         let nas_rows = sqlx::query_as::<_, (String, String)>(
             r#"
@@ -422,34 +447,78 @@ impl MixradiusImportService {
 
         let mut rows = Vec::new();
         for (index, (source_ref, name)) in nas_rows.into_iter().enumerate() {
+            let override_target = find_mapping_override(mapping_overrides, "nas", &source_ref);
             rows.push(MixradiusImportPreviewRow {
                 row_number: (index + 1) as i64,
                 source_kind: "nas".into(),
-                source_ref,
+                source_ref: source_ref.clone(),
                 target_kind: Some("router".into()),
-                target_id: None,
+                target_id: override_target.map(|value| value.to_string()),
                 display_name: Some(name),
-                conflict_state: MixradiusImportConflictState::Blocked,
-                notes: Some("Router target belum dipilih di preview MixRadius.".into()),
+                conflict_state: if override_target.is_some() {
+                    MixradiusImportConflictState::AutoMatched
+                } else {
+                    MixradiusImportConflictState::Blocked
+                },
+                notes: Some(if override_target.is_some() {
+                    "Router target dipilih dari mapping override admin.".into()
+                } else {
+                    "Router target belum dipilih di preview MixRadius.".into()
+                }),
             });
         }
 
         let base = rows.len() as i64;
         for (index, (source_ref, name)) in plan_rows.into_iter().enumerate() {
+            let override_target = find_mapping_override(mapping_overrides, "plan", &source_ref);
             rows.push(MixradiusImportPreviewRow {
                 row_number: base + index as i64 + 1,
                 source_kind: "plan".into(),
-                source_ref,
+                source_ref: source_ref.clone(),
                 target_kind: Some("package".into()),
-                target_id: None,
+                target_id: override_target.map(|value| value.to_string()),
                 display_name: Some(name),
-                conflict_state: MixradiusImportConflictState::NeedsReview,
-                notes: Some("Package akan di-resolve oleh mapper/executor MixRadius.".into()),
+                conflict_state: if override_target.is_some() {
+                    MixradiusImportConflictState::AutoMatched
+                } else {
+                    MixradiusImportConflictState::NeedsReview
+                },
+                notes: Some(if override_target.is_some() {
+                    "Package target dipilih dari mapping override admin.".into()
+                } else {
+                    "Package akan di-resolve oleh mapper/executor MixRadius.".into()
+                }),
             });
         }
 
         let base = rows.len() as i64;
         for (index, (source_ref, name)) in customer_rows.into_iter().enumerate() {
+            let conflict_state = match customer_conflict_resolution {
+                Some(MixradiusImportCustomerConflictResolution::Skip) => {
+                    MixradiusImportConflictState::Skipped
+                }
+                _ => MixradiusImportConflictState::NeedsReview,
+            };
+            let resolution_note = match customer_conflict_resolution {
+                Some(MixradiusImportCustomerConflictResolution::Merge) => {
+                    "Customer akan di-merge mengikuti keputusan admin."
+                }
+                Some(MixradiusImportCustomerConflictResolution::CreateNew) => {
+                    "Customer akan dibuat baru mengikuti keputusan admin."
+                }
+                Some(MixradiusImportCustomerConflictResolution::Skip) => {
+                    "Customer dilewati mengikuti keputusan admin."
+                }
+                None => "Customer akan di-review terhadap data lokal sebelum execute.",
+            };
+            let location_note = match location_strategy {
+                Some(MixradiusImportLocationStrategy::Preserve) => {
+                    " Strategi lokasi: preserve."
+                }
+                Some(MixradiusImportLocationStrategy::Merge) => " Strategi lokasi: merge.",
+                Some(MixradiusImportLocationStrategy::Replace) => " Strategi lokasi: replace.",
+                None => "",
+            };
             rows.push(MixradiusImportPreviewRow {
                 row_number: base + index as i64 + 1,
                 source_kind: "customer".into(),
@@ -457,12 +526,45 @@ impl MixradiusImportService {
                 target_kind: Some("customer".into()),
                 target_id: None,
                 display_name: Some(name),
-                conflict_state: MixradiusImportConflictState::NeedsReview,
-                notes: Some("Customer akan di-review terhadap data lokal sebelum execute.".into()),
+                conflict_state,
+                notes: Some(format!("{resolution_note}{location_note}")),
             });
         }
 
         Ok(rows)
+    }
+
+    async fn persist_progress_payload(
+        &self,
+        tenant_id: &str,
+        batch_id: &str,
+        key: &str,
+        payload: Value,
+    ) -> Result<()> {
+        let mut batch = self.get_batch(tenant_id, batch_id).await?;
+        let progress = batch
+            .progress_json
+            .as_object_mut()
+            .ok_or_else(|| anyhow!("MixRadius batch progress_json must be an object"))?;
+        progress.insert(key.to_string(), payload);
+
+        sqlx::query(
+            r#"
+            UPDATE public.mixradius_import_batches
+            SET progress_json = $3,
+                updated_at = $4
+            WHERE tenant_id = $1 AND id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(batch_id)
+        .bind(batch.progress_json)
+        .bind(Utc::now())
+        .execute(&self.pool)
+        .await
+        .context("failed to persist MixRadius progress payload")?;
+
+        Ok(())
     }
 
     async fn stage_parsed_backup(
@@ -765,6 +867,17 @@ fn optional_validity(
 
 fn source_json(row: &MixradiusSourceRow) -> Value {
     json!({ "values": row.values })
+}
+
+fn find_mapping_override<'a>(
+    overrides: &'a [crate::models::MixradiusImportMappingOverride],
+    source_kind: &str,
+    source_value: &str,
+) -> Option<&'a str> {
+    overrides
+        .iter()
+        .find(|item| item.source_kind == source_kind && item.source_value == source_value)
+        .map(|item| item.target_value.as_str())
 }
 
 #[cfg(all(test, feature = "postgres"))]

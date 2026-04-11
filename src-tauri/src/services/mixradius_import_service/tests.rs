@@ -86,7 +86,7 @@ async fn seed_test_tenant(pool: &sqlx::PgPool, tenant_id: &str) {
         .await
         .expect("test tenant should be insertable");
 
-    sqlx::query("INSERT INTO public.users (id) VALUES ($1)")
+    sqlx::query("INSERT INTO public.users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")
         .bind("user-stage")
         .execute(pool)
         .await
@@ -657,6 +657,234 @@ async fn mixradius_import_stage_registers_batch_and_stages_counts() {
     assert_eq!(summary["customersPpp"], 543);
     assert_eq!(summary["plansPpp"], 12);
     assert_eq!(summary["nas"], 2);
+
+    drop_test_database(pool, &db_name).await;
+}
+
+#[tokio::test]
+async fn mixradius_import_authorization_scopes_batches_to_their_tenant() {
+    let (pool, db_name) = isolated_pool().await;
+    seed_test_tenant(&pool, "tenant-a").await;
+    seed_test_tenant(&pool, "tenant-b").await;
+
+    let service = super::MixradiusImportService::new(pool.clone());
+    let batch = service
+        .stage_backup(
+            "tenant-a",
+            Some("user-stage"),
+            std::path::Path::new(VALIDATED_BACKUP_GZ),
+        )
+        .await
+        .expect("validated MixRadius backup should stage");
+
+    let wrong_tenant_get = service.get_batch("tenant-b", &batch.id).await;
+    assert!(
+        wrong_tenant_get.is_err(),
+        "tenant-b must not be able to read tenant-a batch"
+    );
+
+    let wrong_tenant_preview = service
+        .build_preview(
+            "tenant-b",
+            &crate::models::MixradiusImportPreviewRequest {
+                batch_id: batch.id.clone(),
+                mapping_overrides: vec![],
+                customer_conflict_resolution: None,
+                location_strategy: None,
+            },
+        )
+        .await;
+    assert!(
+        wrong_tenant_preview.is_err(),
+        "tenant-b must not be able to preview tenant-a batch"
+    );
+
+    let wrong_tenant_execute = service
+        .execute_preview(
+            "tenant-b",
+            &crate::models::MixradiusImportExecuteRequest {
+                batch_id: batch.id.clone(),
+                execution_mode: crate::models::MixradiusImportExecutionMode::SafeImport,
+                mapping_overrides: vec![],
+                customer_conflict_resolution: None,
+                location_strategy: None,
+            },
+        )
+        .await;
+    assert!(
+        wrong_tenant_execute.is_err(),
+        "tenant-b must not be able to execute tenant-a batch"
+    );
+
+    let wrong_tenant_cancel = service.cancel_batch("tenant-b", &batch.id).await;
+    assert!(
+        wrong_tenant_cancel.is_err(),
+        "tenant-b must not be able to cancel tenant-a batch"
+    );
+
+    drop_test_database(pool, &db_name).await;
+}
+
+#[tokio::test]
+async fn mixradius_import_authorization_cancel_marks_pending_batch_cancelled() {
+    let (pool, db_name) = isolated_pool().await;
+    seed_test_tenant(&pool, "tenant-stage").await;
+
+    let service = super::MixradiusImportService::new(pool.clone());
+    let batch = service
+        .stage_backup(
+            "tenant-stage",
+            Some("user-stage"),
+            std::path::Path::new(VALIDATED_BACKUP_GZ),
+        )
+        .await
+        .expect("validated MixRadius backup should stage");
+
+    let cancelled = service
+        .cancel_batch("tenant-stage", &batch.id)
+        .await
+        .expect("pending MixRadius batch should be cancellable");
+
+    assert_eq!(
+        cancelled.execution_status,
+        crate::models::MixradiusImportBatchStatus::Cancelled
+    );
+    assert_eq!(cancelled.progress_json["stage"], "cancelled");
+
+    drop_test_database(pool, &db_name).await;
+}
+
+#[tokio::test]
+async fn mixradius_import_overrides_preview_and_execute_reuse_submitted_decisions() {
+    let (pool, db_name) = isolated_pool().await;
+    seed_test_tenant(&pool, "tenant-stage").await;
+
+    let service = super::MixradiusImportService::new(pool.clone());
+    let batch = service
+        .stage_backup(
+            "tenant-stage",
+            Some("user-stage"),
+            std::path::Path::new(VALIDATED_BACKUP_GZ),
+        )
+        .await
+        .expect("validated MixRadius backup should stage");
+
+    let preview_request = crate::models::MixradiusImportPreviewRequest {
+        batch_id: batch.id.clone(),
+        mapping_overrides: vec![
+            crate::models::mixradius_import::MixradiusImportMappingOverride {
+                source_kind: "nas".into(),
+                source_value: "5".into(),
+                target_kind: "router".into(),
+                target_value: "router-override-1".into(),
+            },
+            crate::models::mixradius_import::MixradiusImportMappingOverride {
+                source_kind: "plan".into(),
+                source_value: "10".into(),
+                target_kind: "package".into(),
+                target_value: "package-override-1".into(),
+            },
+        ],
+        customer_conflict_resolution:
+            Some(crate::models::MixradiusImportCustomerConflictResolution::Skip),
+        location_strategy: Some(crate::models::MixradiusImportLocationStrategy::Replace),
+    };
+
+    let preview = service
+        .build_preview("tenant-stage", &preview_request)
+        .await
+        .expect("preview with overrides should build");
+
+    let nas_row = preview
+        .rows
+        .iter()
+        .find(|row| row.source_kind == "nas" && row.source_ref == "5")
+        .expect("NAS override row should exist");
+    assert_eq!(
+        nas_row.conflict_state,
+        crate::models::MixradiusImportConflictState::AutoMatched
+    );
+    assert_eq!(nas_row.target_id.as_deref(), Some("router-override-1"));
+
+    let plan_row = preview
+        .rows
+        .iter()
+        .find(|row| row.source_kind == "plan" && row.source_ref == "10")
+        .expect("plan override row should exist");
+    assert_eq!(
+        plan_row.conflict_state,
+        crate::models::MixradiusImportConflictState::AutoMatched
+    );
+    assert_eq!(plan_row.target_id.as_deref(), Some("package-override-1"));
+
+    let customer_row = preview
+        .rows
+        .iter()
+        .find(|row| row.source_kind == "customer")
+        .expect("customer preview row should exist");
+    assert_eq!(
+        customer_row.conflict_state,
+        crate::models::MixradiusImportConflictState::Skipped
+    );
+    assert!(customer_row
+        .notes
+        .as_deref()
+        .unwrap_or_default()
+        .contains("replace"));
+
+    let persisted_preview_progress: serde_json::Value = sqlx::query_scalar(
+        "SELECT progress_json FROM public.mixradius_import_batches WHERE id = $1",
+    )
+    .bind(&batch.id)
+    .fetch_one(&pool)
+    .await
+    .expect("persisted progress json should query");
+    assert_eq!(
+        persisted_preview_progress["previewRequest"]["customerConflictResolution"],
+        "skip"
+    );
+    assert_eq!(
+        persisted_preview_progress["previewRequest"]["locationStrategy"],
+        "replace"
+    );
+
+    let execute = service
+        .execute_preview(
+            "tenant-stage",
+            &crate::models::MixradiusImportExecuteRequest {
+                batch_id: batch.id.clone(),
+                execution_mode: crate::models::MixradiusImportExecutionMode::SafeImport,
+                mapping_overrides: preview_request.mapping_overrides.clone(),
+                customer_conflict_resolution: preview_request.customer_conflict_resolution,
+                location_strategy: preview_request.location_strategy,
+            },
+        )
+        .await
+        .expect("execute preview should reuse submitted overrides");
+
+    let execute_preview = execute.preview.expect("execute should return preview snapshot");
+    let execute_nas_row = execute_preview
+        .rows
+        .iter()
+        .find(|row| row.source_kind == "nas" && row.source_ref == "5")
+        .expect("execute preview NAS row should exist");
+    assert_eq!(execute_nas_row.target_id.as_deref(), Some("router-override-1"));
+
+    let persisted_execute_progress: serde_json::Value = sqlx::query_scalar(
+        "SELECT progress_json FROM public.mixradius_import_batches WHERE id = $1",
+    )
+    .bind(&batch.id)
+    .fetch_one(&pool)
+    .await
+    .expect("persisted execute progress json should query");
+    assert_eq!(
+        persisted_execute_progress["executeRequest"]["executionMode"],
+        "safe_import"
+    );
+    assert_eq!(
+        persisted_execute_progress["executeRequest"]["mappingOverrides"][0]["targetValue"],
+        "router-override-1"
+    );
 
     drop_test_database(pool, &db_name).await;
 }
