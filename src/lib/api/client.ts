@@ -7,6 +7,7 @@ import { emailOutbox } from './emailOutbox';
 import { install } from './install';
 import { ispPackages } from './ispPackages';
 import { mikrotik } from './mikrotik';
+import { mixradiusImport } from './mixradiusImport';
 import { networkMapping } from './networkMapping';
 import { notifications } from './notifications';
 import { payment } from './payment';
@@ -31,6 +32,7 @@ export { emailOutbox } from './emailOutbox';
 export { install } from './install';
 export { ispPackages } from './ispPackages';
 export { mikrotik } from './mikrotik';
+export { mixradiusImport } from './mixradiusImport';
 export { networkMapping } from './networkMapping';
 export { notifications } from './notifications';
 export { payment } from './payment';
@@ -61,6 +63,7 @@ export const api = {
   superadmin,
   audit,
   mikrotik,
+  mixradiusImport,
   support,
   announcements,
   settings,

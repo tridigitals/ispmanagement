@@ -1,5 +1,10 @@
 use crate::db::DbPool;
-use crate::models::MixradiusImportBatch;
+use crate::models::{
+    MixradiusImportBatch, MixradiusImportConflictState, MixradiusImportExecuteRequest,
+    MixradiusImportExecutionResult, MixradiusImportExecutionSummary, MixradiusImportParseStatus,
+    MixradiusImportPreview, MixradiusImportPreviewRequest, MixradiusImportPreviewRow,
+    PaginatedResponse,
+};
 use crate::services::mixradius_sql_parser::{
     parse_mixradius_backup, MixradiusParsedBackup, MixradiusSourceRow,
 };
@@ -109,10 +114,7 @@ impl MixradiusImportService {
             }
         };
 
-        if let Err(error) = self
-            .stage_parsed_backup(&batch_id, tenant_id, parsed)
-            .await
-        {
+        if let Err(error) = self.stage_parsed_backup(&batch_id, tenant_id, parsed).await {
             let error_text = error.to_string();
             sqlx::query(
                 r#"
@@ -163,6 +165,304 @@ impl MixradiusImportService {
         .context("failed to load staged MixRadius import batch")?;
 
         Ok(batch)
+    }
+
+    pub async fn list_batches(
+        &self,
+        tenant_id: &str,
+        page: u32,
+        per_page: u32,
+        status: Option<&str>,
+    ) -> Result<PaginatedResponse<MixradiusImportBatch>> {
+        let page = page.max(1);
+        let per_page = per_page.max(1);
+        let offset = ((page - 1) * per_page) as i64;
+        let status = status
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string);
+
+        let total: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)
+            FROM public.mixradius_import_batches
+            WHERE tenant_id = $1
+              AND ($2::text IS NULL OR execution_status = $2 OR parse_status = $2)
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(status.as_deref())
+        .fetch_one(&self.pool)
+        .await
+        .context("failed to count MixRadius import batches")?;
+
+        let data = sqlx::query_as::<_, MixradiusImportBatch>(
+            r#"
+            SELECT
+                id,
+                tenant_id,
+                source_filename,
+                source_sha256,
+                source_size_bytes,
+                parse_status,
+                execution_status,
+                execution_mode,
+                started_at,
+                completed_at,
+                progress_json,
+                summary_json,
+                error_json,
+                created_by,
+                created_at,
+                updated_at
+            FROM public.mixradius_import_batches
+            WHERE tenant_id = $1
+              AND ($2::text IS NULL OR execution_status = $2 OR parse_status = $2)
+            ORDER BY created_at DESC
+            LIMIT $3 OFFSET $4
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(status.as_deref())
+        .bind(per_page as i64)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await
+        .context("failed to list MixRadius import batches")?;
+
+        Ok(PaginatedResponse {
+            data,
+            total,
+            page,
+            per_page,
+        })
+    }
+
+    pub async fn get_batch(&self, tenant_id: &str, batch_id: &str) -> Result<MixradiusImportBatch> {
+        sqlx::query_as::<_, MixradiusImportBatch>(
+            r#"
+            SELECT
+                id,
+                tenant_id,
+                source_filename,
+                source_sha256,
+                source_size_bytes,
+                parse_status,
+                execution_status,
+                execution_mode,
+                started_at,
+                completed_at,
+                progress_json,
+                summary_json,
+                error_json,
+                created_by,
+                created_at,
+                updated_at
+            FROM public.mixradius_import_batches
+            WHERE tenant_id = $1 AND id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(batch_id)
+        .fetch_one(&self.pool)
+        .await
+        .context("failed to load MixRadius import batch")
+    }
+
+    pub async fn build_preview(
+        &self,
+        tenant_id: &str,
+        request: &MixradiusImportPreviewRequest,
+    ) -> Result<MixradiusImportPreview> {
+        let batch = self.get_batch(tenant_id, &request.batch_id).await?;
+        if batch.parse_status != MixradiusImportParseStatus::Ready {
+            return Err(anyhow!("MixRadius batch is not ready for preview"));
+        }
+
+        let rows = self
+            .preview_rows_for_batch(tenant_id, &request.batch_id)
+            .await?;
+        Ok(MixradiusImportPreview {
+            batch_id: request.batch_id.clone(),
+            total_rows: rows.len() as i64,
+            rows,
+            generated_at: Utc::now(),
+        })
+    }
+
+    pub async fn execute_preview(
+        &self,
+        tenant_id: &str,
+        request: &MixradiusImportExecuteRequest,
+    ) -> Result<MixradiusImportExecutionResult> {
+        let batch = self.get_batch(tenant_id, &request.batch_id).await?;
+        let preview_request = MixradiusImportPreviewRequest {
+            batch_id: request.batch_id.clone(),
+            mapping_overrides: request.mapping_overrides.clone(),
+            customer_conflict_resolution: request.customer_conflict_resolution,
+            location_strategy: request.location_strategy,
+        };
+        let preview = self.build_preview(tenant_id, &preview_request).await?;
+
+        let blocked_rows = preview
+            .rows
+            .iter()
+            .filter(|row| row.conflict_state == MixradiusImportConflictState::Blocked)
+            .count() as i64;
+        let conflict_rows = preview
+            .rows
+            .iter()
+            .filter(|row| row.conflict_state == MixradiusImportConflictState::Conflict)
+            .count() as i64;
+        let skipped_rows = preview
+            .rows
+            .iter()
+            .filter(|row| row.conflict_state == MixradiusImportConflictState::Skipped)
+            .count() as i64;
+
+        let mut warnings = Vec::new();
+        if request.execution_mode != crate::models::MixradiusImportExecutionMode::PreviewOnly {
+            warnings.push(
+                "Execution pipeline MixRadius belum diaktifkan penuh; hasil ini masih preview-only."
+                    .to_string(),
+            );
+        }
+
+        Ok(MixradiusImportExecutionResult {
+            batch,
+            summary: MixradiusImportExecutionSummary {
+                batch_id: request.batch_id.clone(),
+                mode: request.execution_mode,
+                total_rows: preview.total_rows,
+                imported_rows: 0,
+                updated_rows: 0,
+                skipped_rows,
+                blocked_rows,
+                conflict_rows,
+                warnings: warnings.clone(),
+            },
+            preview: Some(preview),
+            warnings,
+        })
+    }
+
+    pub async fn cancel_batch(
+        &self,
+        tenant_id: &str,
+        batch_id: &str,
+    ) -> Result<MixradiusImportBatch> {
+        sqlx::query(
+            r#"
+            UPDATE public.mixradius_import_batches
+            SET execution_status = 'cancelled',
+                progress_json = jsonb_set(progress_json, '{stage}', '"cancelled"', true),
+                updated_at = $3
+            WHERE tenant_id = $1
+              AND id = $2
+              AND execution_status IN ('pending', 'running')
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(batch_id)
+        .bind(Utc::now())
+        .execute(&self.pool)
+        .await
+        .context("failed to cancel MixRadius import batch")?;
+
+        self.get_batch(tenant_id, batch_id).await
+    }
+
+    async fn preview_rows_for_batch(
+        &self,
+        tenant_id: &str,
+        batch_id: &str,
+    ) -> Result<Vec<MixradiusImportPreviewRow>> {
+        let nas_rows = sqlx::query_as::<_, (String, String)>(
+            r#"
+            SELECT source_ref, nas_name
+            FROM public.mixradius_staging_nas
+            WHERE tenant_id = $1 AND import_batch_id = $2
+            ORDER BY created_at ASC
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(batch_id)
+        .fetch_all(&self.pool)
+        .await
+        .context("failed to load MixRadius NAS preview rows")?;
+
+        let plan_rows = sqlx::query_as::<_, (String, String)>(
+            r#"
+            SELECT source_ref, plan_name
+            FROM public.mixradius_staging_plans
+            WHERE tenant_id = $1 AND import_batch_id = $2
+            ORDER BY created_at ASC
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(batch_id)
+        .fetch_all(&self.pool)
+        .await
+        .context("failed to load MixRadius plan preview rows")?;
+
+        let customer_rows = sqlx::query_as::<_, (String, String)>(
+            r#"
+            SELECT member_id, COALESCE(fullname, username, member_id)
+            FROM public.mixradius_staging_customers
+            WHERE tenant_id = $1 AND import_batch_id = $2
+            ORDER BY created_at ASC
+            LIMIT 100
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(batch_id)
+        .fetch_all(&self.pool)
+        .await
+        .context("failed to load MixRadius customer preview rows")?;
+
+        let mut rows = Vec::new();
+        for (index, (source_ref, name)) in nas_rows.into_iter().enumerate() {
+            rows.push(MixradiusImportPreviewRow {
+                row_number: (index + 1) as i64,
+                source_kind: "nas".into(),
+                source_ref,
+                target_kind: Some("router".into()),
+                target_id: None,
+                display_name: Some(name),
+                conflict_state: MixradiusImportConflictState::Blocked,
+                notes: Some("Router target belum dipilih di preview MixRadius.".into()),
+            });
+        }
+
+        let base = rows.len() as i64;
+        for (index, (source_ref, name)) in plan_rows.into_iter().enumerate() {
+            rows.push(MixradiusImportPreviewRow {
+                row_number: base + index as i64 + 1,
+                source_kind: "plan".into(),
+                source_ref,
+                target_kind: Some("package".into()),
+                target_id: None,
+                display_name: Some(name),
+                conflict_state: MixradiusImportConflictState::NeedsReview,
+                notes: Some("Package akan di-resolve oleh mapper/executor MixRadius.".into()),
+            });
+        }
+
+        let base = rows.len() as i64;
+        for (index, (source_ref, name)) in customer_rows.into_iter().enumerate() {
+            rows.push(MixradiusImportPreviewRow {
+                row_number: base + index as i64 + 1,
+                source_kind: "customer".into(),
+                source_ref,
+                target_kind: Some("customer".into()),
+                target_id: None,
+                display_name: Some(name),
+                conflict_state: MixradiusImportConflictState::NeedsReview,
+                notes: Some("Customer akan di-review terhadap data lokal sebelum execute.".into()),
+            });
+        }
+
+        Ok(rows)
     }
 
     async fn stage_parsed_backup(
@@ -453,7 +753,11 @@ fn parse_date_from_datetime(row: &MixradiusSourceRow, idx: usize) -> Option<chro
     parse_datetime(row, idx).map(|dt| dt.date_naive())
 }
 
-fn optional_validity(row: &MixradiusSourceRow, value_idx: usize, unit_idx: usize) -> Option<String> {
+fn optional_validity(
+    row: &MixradiusSourceRow,
+    value_idx: usize,
+    unit_idx: usize,
+) -> Option<String> {
     let value = optional_value(row, value_idx)?;
     let unit = optional_value(row, unit_idx)?;
     Some(format!("{value} {unit}"))

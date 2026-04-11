@@ -45,6 +45,7 @@ pub use email_service::EmailService;
 pub use isp_package_service::IspPackageService;
 pub use managed_radius_service::ManagedRadiusService;
 pub use mikrotik_service::MikrotikService;
+pub use mixradius_import_service::MixradiusImportService;
 pub use network_mapping_service::NetworkMappingService;
 pub use notification_service::NotificationService;
 pub use payment_service::{BillingCollectionRunResult, BulkGenerateInvoicesResult, PaymentService};

@@ -422,6 +422,21 @@ const commandMap: Record<string, { method: string; path: string }> = {
     path: '/admin/pppoe/routers/:routerId/import/preview',
   },
   import_pppoe_from_router: { method: 'POST', path: '/admin/pppoe/routers/:routerId/import' },
+  upload_mixradius_import: { method: 'POST', path: '/admin/pppoe/mixradius/imports' },
+  list_mixradius_import_batches: { method: 'GET', path: '/admin/pppoe/mixradius/imports' },
+  get_mixradius_import_batch: { method: 'GET', path: '/admin/pppoe/mixradius/imports/:batchId' },
+  preview_mixradius_import: {
+    method: 'POST',
+    path: '/admin/pppoe/mixradius/imports/:batchId/preview',
+  },
+  execute_mixradius_import: {
+    method: 'POST',
+    path: '/admin/pppoe/mixradius/imports/:batchId/execute',
+  },
+  cancel_mixradius_import: {
+    method: 'POST',
+    path: '/admin/pppoe/mixradius/imports/:batchId/cancel',
+  },
   list_isp_packages: { method: 'GET', path: '/admin/isp-packages/packages' },
   create_isp_package: { method: 'POST', path: '/admin/isp-packages/packages' },
   update_isp_package: { method: 'PUT', path: '/admin/isp-packages/packages/:id' },

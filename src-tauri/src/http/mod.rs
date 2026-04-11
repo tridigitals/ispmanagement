@@ -1,8 +1,8 @@
 use crate::services::{
     AuditService, AuthService, CustomerService, EmailService, IspPackageService,
-    ManagedRadiusService, MikrotikService, NetworkMappingService, NotificationService,
-    PaymentService, PlanService, PppoeService, RoleService, SettingsService, StorageService,
-    SystemService, TeamService, UserService,
+    ManagedRadiusService, MikrotikService, MixradiusImportService, NetworkMappingService,
+    NotificationService, PaymentService, PlanService, PppoeService, RoleService, SettingsService,
+    StorageService, SystemService, TeamService, UserService,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -20,6 +20,7 @@ pub mod install;
 pub mod isp_packages;
 pub mod middleware;
 pub mod mikrotik;
+pub mod mixradius_import;
 pub mod network_mapping;
 pub mod notifications;
 pub mod payment;
@@ -70,6 +71,7 @@ pub struct AppState {
     pub notification_service: Arc<NotificationService>,
     pub mikrotik_service: Arc<MikrotikService>,
     pub managed_radius_service: Arc<ManagedRadiusService>,
+    pub mixradius_import_service: Arc<MixradiusImportService>,
     pub customer_service: Arc<CustomerService>,
     pub pppoe_service: Arc<PppoeService>,
     pub isp_package_service: Arc<IspPackageService>,

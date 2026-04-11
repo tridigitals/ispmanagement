@@ -1,8 +1,8 @@
 use crate::services::{
     AuditService, AuthService, CustomerService, EmailService, IspPackageService,
-    ManagedRadiusService, MikrotikService, NetworkMappingService, NotificationService,
-    PaymentService, PlanService, PppoeService, RoleService, SettingsService, StorageService,
-    SystemService, TeamService, UserService,
+    ManagedRadiusService, MikrotikService, MixradiusImportService, NetworkMappingService,
+    NotificationService, PaymentService, PlanService, PppoeService, RoleService, SettingsService,
+    StorageService, SystemService, TeamService, UserService,
 };
 use axum::{
     extract::DefaultBodyLimit,
@@ -27,9 +27,9 @@ use std::{collections::HashMap, time::Instant};
 
 use crate::http::{
     announcements, audit, auth, backup, customers, email_outbox, install, isp_packages, middleware,
-    mikrotik, network_mapping, notifications, payment, plans, pppoe, public, roles, settings,
-    storage, superadmin, support, system, team, tenant, users, websocket, work_orders, AppState,
-    SecurityRuntimeConfig, WsHub,
+    mikrotik, mixradius_import, network_mapping, notifications, payment, plans, pppoe, public,
+    roles, settings, storage, superadmin, support, system, team, tenant, users, websocket,
+    work_orders, AppState, SecurityRuntimeConfig, WsHub,
 };
 
 type IpBlockMap = HashMap<String, chrono::DateTime<chrono::Utc>>;
@@ -179,6 +179,7 @@ pub async fn start_server_impl(
         notification_service: Arc::new(notification_service),
         mikrotik_service: Arc::new(mikrotik_service),
         managed_radius_service: Arc::new(ManagedRadiusService::new(pool.clone())),
+        mixradius_import_service: Arc::new(MixradiusImportService::new(pool.clone())),
         customer_service: Arc::new(customer_service),
         pppoe_service: Arc::new(pppoe_service),
         isp_package_service: Arc::new(isp_package_service),
@@ -484,6 +485,8 @@ pub async fn start_server_impl(
         .nest("/api/admin/work-orders", work_orders::router())
         // PPPoE accounts (tenant scoped)
         .nest("/api/admin/pppoe", pppoe::router())
+        // MixRadius import wizard (tenant scoped)
+        .nest("/api/admin/pppoe/mixradius", mixradius_import::router())
         // ISP packages + router mapping (tenant scoped)
         .nest("/api/admin/isp-packages", isp_packages::router())
         // Network topology mapping (tenant scoped)
