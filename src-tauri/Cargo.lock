@@ -5289,6 +5289,7 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "dotenvy",
+ "flate2",
  "futures",
  "jsonwebtoken",
  "lettre",
