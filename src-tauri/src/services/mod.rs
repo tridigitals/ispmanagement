@@ -7,6 +7,7 @@ pub mod cache;
 pub mod email_outbox_service;
 pub mod email_service;
 pub mod managed_radius_service;
+pub mod mixradius_import_service;
 pub mod metrics_service;
 pub mod network_mapping_service;
 pub mod rate_limiter;

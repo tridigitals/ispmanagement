@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS public.mixradius_import_conflicts;
+DROP TABLE IF EXISTS public.mixradius_staging_usage;
+DROP TABLE IF EXISTS public.mixradius_staging_transactions;
+DROP TABLE IF EXISTS public.mixradius_staging_customer_locations;
+DROP TABLE IF EXISTS public.mixradius_staging_customers;
+DROP TABLE IF EXISTS public.mixradius_staging_plans;
+DROP TABLE IF EXISTS public.mixradius_staging_nas;
+DROP TABLE IF EXISTS public.mixradius_import_external_refs;
+DROP TABLE IF EXISTS public.mixradius_import_batches;
