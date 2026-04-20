@@ -3,9 +3,7 @@
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
   import { downloadFile } from '$lib/utils/download';
-
-  import { renderAsync } from 'docx-preview';
-  import * as XLSX from 'xlsx';
+  import { getOfficePreviewKind } from './documentPreview';
 
   type AnyFile = {
     id: string;
@@ -25,22 +23,27 @@
   let error = $state<string | null>(null);
   let host = $state<HTMLDivElement | null>(null);
 
-  const ext = $derived((file?.original_name || '').split('.').pop()?.toLowerCase() || '');
+  const previewKind = $derived(getOfficePreviewKind(file));
+  const isDocx = $derived(previewKind === 'docx');
+  const isXlsx = $derived(previewKind === 'xlsx');
+  const isPptx = $derived(previewKind === 'pptx');
 
-  const isDocx = $derived(
-    ext === 'docx' ||
-      file?.content_type ===
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  );
-  const isXlsx = $derived(
-    ext === 'xlsx' ||
-      file?.content_type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  );
-  const isPptx = $derived(
-    ext === 'pptx' ||
-      file?.content_type ===
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  );
+  let docxRendererPromise: Promise<typeof import('docx-preview')> | null = null;
+  let xlsxPromise: Promise<typeof import('xlsx')> | null = null;
+
+  function loadDocxRenderer() {
+    if (!docxRendererPromise) {
+      docxRendererPromise = import('docx-preview');
+    }
+    return docxRendererPromise;
+  }
+
+  function loadXlsx() {
+    if (!xlsxPromise) {
+      xlsxPromise = import('xlsx');
+    }
+    return xlsxPromise;
+  }
 
   $effect(() => {
     void file?.id; // track file change
@@ -61,6 +64,7 @@
       if (!host) return;
 
       if (isDocx) {
+        const { renderAsync } = await loadDocxRenderer();
         // Render DOCX to HTML
         await renderAsync(buf, host, host, {
           className: 'docx',
@@ -71,6 +75,7 @@
           useBase64URL: true,
         } as any);
       } else if (isXlsx) {
+        const XLSX = await loadXlsx();
         // Render first sheet to HTML
         const wb = XLSX.read(buf, { type: 'array' });
         const name = wb.SheetNames?.[0];

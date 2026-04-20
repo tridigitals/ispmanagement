@@ -1,10 +1,5 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { Editor } from '@tiptap/core';
-  import StarterKit from '@tiptap/starter-kit';
-  import Link from '@tiptap/extension-link';
-  import Underline from '@tiptap/extension-underline';
-  import Placeholder from '@tiptap/extension-placeholder';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { sanitizeHtml, stripHtmlToText } from '$lib/utils/sanitizeHtml';
 
@@ -25,7 +20,8 @@
   } = $props();
 
   let editorHost: HTMLDivElement | null = $state(null);
-  let editor: Editor | null = $state(null);
+  let editor: any = $state(null);
+  let editorModulesReady = $state(false);
   let settingFromOutside = false;
 
   function currentHtml() {
@@ -71,35 +67,55 @@
 
   onMount(() => {
     if (!editorHost) return;
-    editor = new Editor({
-      element: editorHost,
-      editable: !disabled,
-      content: currentHtml(),
-      extensions: [
-        StarterKit.configure({
-          heading: { levels: [1, 2, 3] },
-        }),
-        Underline,
-        Link.configure({
-          openOnClick: true,
-          autolink: true,
-          linkOnPaste: true,
-          HTMLAttributes: {
-            rel: 'nofollow noopener noreferrer',
-            target: '_blank',
-          },
-        }),
-        Placeholder.configure({
-          placeholder: placeholder || '',
-        }),
-      ],
-      onUpdate: () => {
-        if (settingFromOutside) return;
-        updateValueFromEditor();
-      },
+    let disposed = false;
+
+    void Promise.all([
+      import('@tiptap/core'),
+      import('@tiptap/starter-kit'),
+      import('@tiptap/extension-link'),
+      import('@tiptap/extension-underline'),
+      import('@tiptap/extension-placeholder'),
+    ]).then(([core, starterKit, link, underline, placeholderExtension]) => {
+      if (disposed || !editorHost) return;
+
+      const Editor = core.Editor;
+      const StarterKit = starterKit.default;
+      const Link = link.default;
+      const Underline = underline.default;
+      const Placeholder = placeholderExtension.default;
+
+      editor = new Editor({
+        element: editorHost,
+        editable: !disabled,
+        content: currentHtml(),
+        extensions: [
+          StarterKit.configure({
+            heading: { levels: [1, 2, 3] },
+          }),
+          Underline,
+          Link.configure({
+            openOnClick: true,
+            autolink: true,
+            linkOnPaste: true,
+            HTMLAttributes: {
+              rel: 'nofollow noopener noreferrer',
+              target: '_blank',
+            },
+          }),
+          Placeholder.configure({
+            placeholder: placeholder || '',
+          }),
+        ],
+        onUpdate: () => {
+          if (settingFromOutside) return;
+          updateValueFromEditor();
+        },
+      });
+      editorModulesReady = true;
     });
 
     return () => {
+      disposed = true;
       editor?.destroy();
       editor = null;
     };
@@ -201,6 +217,9 @@
 
   <div class="editor-shell" style={`min-height: ${minHeight}px;`}>
     <div class="editor" bind:this={editorHost}></div>
+    {#if !editorModulesReady}
+      <div class="editor-loading">{placeholder || 'Loading editor...'}</div>
+    {/if}
   </div>
 
   {#if help}
@@ -274,6 +293,7 @@
   }
 
   .editor-shell {
+    position: relative;
     width: 100%;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
@@ -286,6 +306,16 @@
 
   .editor {
     min-height: 100%;
+  }
+
+  .editor-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-start;
+    padding: 0.75rem;
+    color: var(--text-secondary);
+    pointer-events: none;
   }
 
   /* TipTap attaches ProseMirror node inside. */

@@ -6,12 +6,6 @@
   import { downloadFile } from '$lib/utils/download';
   import { isTauri } from '@tauri-apps/api/core';
 
-  // pdfjs-dist legacy build: better compatibility with older WebView2 runtimes.
-  import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mjs';
-  import workerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
-
-  GlobalWorkerOptions.workerSrc = workerSrc;
-
   const DEV = import.meta.env.DEV;
   function dlog(...args: any[]) {
     if (DEV) console.debug('[PdfViewer]', ...args);
@@ -54,6 +48,26 @@
     standardFontDataUrl: assetUrl('/pdfjs/standard_fonts/'),
     wasmUrl: assetUrl('/pdfjs/wasm/'),
   };
+  let pdfJsPromise:
+    | Promise<typeof import('pdfjs-dist/legacy/build/pdf.mjs') & { workerSrc: string }>
+    | null = null;
+
+  async function loadPdfJs() {
+    if (!pdfJsPromise) {
+      pdfJsPromise = Promise.all([
+        import('pdfjs-dist/legacy/build/pdf.mjs'),
+        import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'),
+      ]).then(([pdfjs, worker]) => {
+        pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+        return {
+          ...pdfjs,
+          workerSrc: worker.default,
+        };
+      });
+    }
+
+    return pdfJsPromise;
+  }
 
   // Wait until the container is mounted; otherwise the first render may no-op and never re-run.
   $effect(() => {
@@ -127,6 +141,7 @@
 
       // (Re)load pdf document for this render.
       stage = 'parse';
+      const { getDocument } = await loadPdfJs();
       // In desktop WebViews (esp. WebView2), PDF.js can hang if it tries to lazy-load
       // cmaps/standard_fonts. We ship those assets into `static/pdfjs/` to keep it deterministic.
       dlog('pdfjs assets', PDFJS_ASSETS);

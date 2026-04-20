@@ -6,6 +6,8 @@ import { locale } from 'svelte-i18n';
 import { can } from '$lib/stores/auth';
 import '../i18n'; // Initialize i18n
 
+const SETTINGS_BOOTSTRAP_TTL_MS = 60_000;
+
 // Tipe data setting
 export interface AppSettings {
   app_name: string;
@@ -41,10 +43,39 @@ const defaults: AppSettings = {
   auth: undefined,
 };
 
+export function shouldReuseSettingsBootstrap(args: {
+  lastLoadedAt: number;
+  now: number;
+  ttlMs: number;
+}): boolean {
+  return args.lastLoadedAt > 0 && args.now - args.lastLoadedAt < args.ttlMs;
+}
+
 function createSettingsStore() {
   const { subscribe, set, update } = writable<AppSettings>(defaults);
+  let settingsLoadInFlight: Promise<void> | null = null;
+  let lastLoadedAt = 0;
 
-  const loadSettings = async () => {
+  const loadSettings = async (opts?: { force?: boolean }) => {
+    const force = opts?.force === true;
+    const now = Date.now();
+
+    if (!force && settingsLoadInFlight) {
+      return settingsLoadInFlight;
+    }
+
+    if (
+      !force &&
+      shouldReuseSettingsBootstrap({
+        lastLoadedAt,
+        now,
+        ttlMs: SETTINGS_BOOTSTRAP_TTL_MS,
+      })
+    ) {
+      return;
+    }
+
+    settingsLoadInFlight = (async () => {
     try {
       const canReadSettings = get(can)('read', 'settings');
       const [authSettingsResult, publicSettingsResult, tenantSettingsResult, appVersionResult] =
@@ -100,9 +131,15 @@ function createSettingsStore() {
       }
 
       updateWindowTitle(finalSettings.app_name);
+      lastLoadedAt = Date.now();
     } catch (err) {
       console.error('Failed to load settings:', err);
     }
+    })().finally(() => {
+      settingsLoadInFlight = null;
+    });
+
+    return settingsLoadInFlight;
   };
 
   return {
@@ -111,10 +148,12 @@ function createSettingsStore() {
       await loadSettings();
     },
     refresh: async () => {
-      await loadSettings();
+      await loadSettings({ force: true });
     },
     reset: () => {
       set(defaults);
+      lastLoadedAt = 0;
+      settingsLoadInFlight = null;
     },
     updateSetting: (key: string, value: any) => {
       update((s) => {
@@ -138,7 +177,7 @@ async function updateWindowTitle(title: string) {
 
   try {
     await getCurrentWindow().setTitle(title);
-        } catch (e) {
+  } catch (e) {
     console.warn('Failed to set window title:', e);
   }
 }
