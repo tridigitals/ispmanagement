@@ -885,6 +885,11 @@ impl CustomerService {
             )
             .await;
 
+        if dto.is_active.is_some() {
+            self.sync_customer_pppoe_disabled_state(tenant_id, customer_id, customer.is_active)
+                .await?;
+        }
+
         Ok(customer)
     }
 

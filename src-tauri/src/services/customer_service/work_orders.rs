@@ -644,10 +644,8 @@ impl CustomerService {
                     s.grace_until = None;
                 }
 
-                let should_disable_pppoe = !matches!(
-                    resolved,
-                    SubscriptionLifecycleStatus::Active | SubscriptionLifecycleStatus::GraceActive
-                );
+                let should_disable_pppoe =
+                    should_disable_pppoe_for_subscription_status(resolved.as_str());
                 let _ = self
                     .set_location_pppoe_disabled_state(
                         tenant_id,

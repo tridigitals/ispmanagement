@@ -237,3 +237,35 @@ fn installation_completion_auto_invoice_only_runs_for_unpaid_grace_activation() 
         )
     );
 }
+
+#[test]
+fn customer_inactive_forces_pppoe_disabled_even_if_subscription_is_active() {
+    assert!(CustomerService::should_disable_customer_location_pppoe(
+        false,
+        &["active".to_string()]
+    ));
+    assert!(CustomerService::should_disable_customer_location_pppoe(
+        false,
+        &["grace_active".to_string()]
+    ));
+}
+
+#[test]
+fn customer_active_only_enables_pppoe_when_subscription_is_serviceable() {
+    assert!(!CustomerService::should_disable_customer_location_pppoe(
+        true,
+        &["active".to_string()]
+    ));
+    assert!(!CustomerService::should_disable_customer_location_pppoe(
+        true,
+        &["suspended".to_string(), "grace_active".to_string()]
+    ));
+    assert!(CustomerService::should_disable_customer_location_pppoe(
+        true,
+        &["suspended".to_string(), "cancelled".to_string()]
+    ));
+    assert!(CustomerService::should_disable_customer_location_pppoe(
+        true,
+        &[]
+    ));
+}

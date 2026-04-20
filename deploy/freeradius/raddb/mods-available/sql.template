@@ -11,6 +11,22 @@ sql {
     read_clients = yes
     read_groups = no
     delete_stale_sessions = no
+    sql_user_name = "%{User-Name}"
+
+    # FreeRADIUS 3.2.x still expects these variables to exist when loading the
+    # stock PostgreSQL queries.conf. Our managed-RADIUS deployment overrides the
+    # actual auth/client queries below, but the module parser fails early if the
+    # table variables are undefined.
+    client_table = "managed_radius_nas"
+    authcheck_table = "managed_radius_accounts"
+    authreply_table = "managed_radius_accounts"
+    groupcheck_table = "radgroupcheck"
+    groupreply_table = "radgroupreply"
+    group_attribute = "Group"
+    usergroup_table = "radusergroup"
+    acct_table1 = "radacct"
+    acct_table2 = "radacct"
+    postauth_table = "radpostauth"
 
     pool {
         start = 1
@@ -24,11 +40,10 @@ sql {
         idle_timeout = 60
     }
 
-    client_query = "SELECT nas_ip_or_cidr AS nasname, COALESCE(shortname, nas_name) AS shortname, 'other' AS type, shared_secret AS secret, NULL AS server FROM managed_radius_nas WHERE is_active = true"
+    client_query = "SELECT id, nas_ip_or_cidr AS nasname, COALESCE(shortname, nas_name) AS shortname, 'other' AS type, shared_secret AS secret, NULL AS server FROM managed_radius_nas WHERE is_active = true"
 
-    authorize_check_query = "SELECT id, username, 'Cleartext-Password' AS attribute, cleartext_password AS value, ':=' AS op FROM managed_radius_accounts WHERE username = '%{SQL-User-Name}' AND disabled = false LIMIT 1"
+    authorize_check_query = "SELECT a.id, a.username, 'Cleartext-Password' AS attribute, a.cleartext_password AS value, ':=' AS op FROM managed_radius_accounts a INNER JOIN managed_radius_nas n ON n.tenant_id = a.tenant_id AND n.router_id = a.router_id WHERE a.username = '%{SQL-User-Name}' AND a.disabled = false AND n.is_active = true AND COALESCE(n.shortname, n.nas_name) = '%{client:shortname}' LIMIT 1"
 
-    authorize_reply_query = "SELECT id, username, attribute, value, ':=' AS op FROM (SELECT id, username, 'Mikrotik-Group' AS attribute, profile_name AS value FROM managed_radius_accounts WHERE username = '%{SQL-User-Name}' AND profile_name IS NOT NULL UNION ALL SELECT id, username, 'Framed-IP-Address' AS attribute, remote_address AS value FROM managed_radius_accounts WHERE username = '%{SQL-User-Name}' AND remote_address IS NOT NULL UNION ALL SELECT id, username, 'Framed-Pool' AS attribute, address_pool AS value FROM managed_radius_accounts WHERE username = '%{SQL-User-Name}' AND address_pool IS NOT NULL) attrs"
+    authorize_reply_query = "SELECT attrs.id, attrs.username, attrs.attribute, attrs.value, ':=' AS op FROM (SELECT a.id, a.username, 'Mikrotik-Group' AS attribute, a.profile_name AS value FROM managed_radius_accounts a INNER JOIN managed_radius_nas n ON n.tenant_id = a.tenant_id AND n.router_id = a.router_id WHERE a.username = '%{SQL-User-Name}' AND a.disabled = false AND a.profile_name IS NOT NULL AND n.is_active = true AND COALESCE(n.shortname, n.nas_name) = '%{client:shortname}' UNION ALL SELECT a.id, a.username, 'Framed-IP-Address' AS attribute, a.remote_address AS value FROM managed_radius_accounts a INNER JOIN managed_radius_nas n ON n.tenant_id = a.tenant_id AND n.router_id = a.router_id WHERE a.username = '%{SQL-User-Name}' AND a.disabled = false AND a.remote_address IS NOT NULL AND n.is_active = true AND COALESCE(n.shortname, n.nas_name) = '%{client:shortname}' UNION ALL SELECT a.id, a.username, 'Framed-Pool' AS attribute, a.address_pool AS value FROM managed_radius_accounts a INNER JOIN managed_radius_nas n ON n.tenant_id = a.tenant_id AND n.router_id = a.router_id WHERE a.username = '%{SQL-User-Name}' AND a.disabled = false AND a.address_pool IS NOT NULL AND n.is_active = true AND COALESCE(n.shortname, n.nas_name) = '%{client:shortname}') attrs"
 
-    $INCLUDE ${modconfdir}/sql/main/${dialect}/queries.conf
 }

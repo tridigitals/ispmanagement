@@ -23,7 +23,8 @@ use std::collections::HashSet;
 use uuid::Uuid;
 
 use crate::services::subscription_lifecycle::{
-    resolve_activation_status, SubscriptionLifecycleStatus,
+    resolve_activation_status, should_disable_pppoe_for_subscription_status,
+    SubscriptionLifecycleStatus,
 };
 use crate::services::{NotificationService, PppoeService};
 
@@ -1284,6 +1285,13 @@ impl PaymentService {
                 {
                     Ok(true) => {
                         result.suspended_count += 1;
+                        let _ = self
+                            .set_subscription_pppoe_disabled_state(
+                                tenant_id,
+                                &subscription_id,
+                                should_disable_pppoe_for_subscription_status("suspended"),
+                            )
+                            .await;
                         let _ = self
                             .insert_billing_collection_log(
                                 tenant_id,

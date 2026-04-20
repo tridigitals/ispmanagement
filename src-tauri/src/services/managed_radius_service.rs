@@ -9,6 +9,7 @@ use chrono::Utc;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use std::collections::HashSet;
+use tokio::process::Command;
 use uuid::Uuid;
 
 const PURPOSE_MANAGED_RADIUS_DB: &str = "managed_radius_db";
@@ -16,6 +17,8 @@ const PURPOSE_MANAGED_RADIUS_SHARED_SECRET: &str = "managed_radius_shared_secret
 const DEFAULT_RADIUS_AUTH_PORT: i32 = 1812;
 const DEFAULT_RADIUS_ACCT_PORT: i32 = 1813;
 const MANAGED_RADIUS_UPGRADE_PATH: &str = "/admin/subscription";
+const MANAGED_RADIUS_RESTART_COMMAND_ENV: &str = "MANAGED_RADIUS_RESTART_COMMAND";
+const MANAGED_RADIUS_RESTART_WORKDIR_ENV: &str = "MANAGED_RADIUS_RESTART_WORKDIR";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManagedRadiusAccountPayload {
@@ -306,6 +309,71 @@ impl ManagedRadiusService {
         .map_err(AppError::Database)?;
 
         Ok(())
+    }
+
+    async fn load_server_by_id(&self, radius_server_id: &str) -> AppResult<ManagedRadiusServer> {
+        sqlx::query_as::<_, ManagedRadiusServer>("SELECT * FROM radius_servers WHERE id = $1")
+            .bind(radius_server_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(AppError::Database)?
+            .ok_or_else(|| AppError::NotFound("Managed RADIUS server not found".into()))
+    }
+
+    async fn sync_runtime_nas(&self, nas: &ManagedRadiusNas) -> AppResult<()> {
+        let server = self.load_server_by_id(&nas.radius_server_id).await?;
+        let radius_pool = self.connect_radius_db(&server).await?;
+        self.ensure_radius_schema(&radius_pool).await?;
+        self.upsert_nas(&radius_pool, nas).await
+    }
+
+    async fn sync_runtime_nas_by_mapping_id(&self, mapping_id: &str) -> AppResult<()> {
+        let nas =
+            sqlx::query_as::<_, ManagedRadiusNas>("SELECT * FROM managed_radius_nas WHERE id = $1")
+                .bind(mapping_id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(AppError::Database)?
+                .ok_or_else(|| AppError::NotFound("Managed RADIUS mapping not found".into()))?;
+
+        self.sync_runtime_nas(&nas).await
+    }
+
+    async fn restart_freeradius_after_mapping_change_if_configured(&self) -> AppResult<()> {
+        let Some(command) = resolve_managed_radius_restart_command() else {
+            return Ok(());
+        };
+
+        let mut process = Command::new("sh");
+        process.arg("-lc").arg(&command);
+
+        if let Some(workdir) = resolve_managed_radius_restart_workdir() {
+            process.current_dir(workdir);
+        }
+
+        let output = process.output().await.map_err(|error| {
+            AppError::ServiceUnavailable(format!(
+                "Failed to execute managed RADIUS restart command: {error}"
+            ))
+        })?;
+
+        if output.status.success() {
+            return Ok(());
+        }
+
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let detail = if !stderr.is_empty() {
+            stderr
+        } else if !stdout.is_empty() {
+            stdout
+        } else {
+            format!("exit status {}", output.status)
+        };
+
+        Err(AppError::ServiceUnavailable(format!(
+            "Managed RADIUS restart command failed: {detail}"
+        )))
     }
 
     pub async fn apply_account(
@@ -786,7 +854,7 @@ impl ManagedRadiusService {
         let shared_secret_enc = Self::encrypt_shared_secret(&shared_secret)?;
         let now = Utc::now();
 
-        sqlx::query_as::<_, ManagedRadiusNas>(
+        let mapping = sqlx::query_as::<_, ManagedRadiusNas>(
             r#"
             INSERT INTO managed_radius_nas (
               id, tenant_id, router_id, radius_server_id, nas_name, nas_ip_or_cidr, shared_secret_enc, shortname, is_active, created_at, updated_at
@@ -807,7 +875,11 @@ impl ManagedRadiusService {
         .bind(now)
         .fetch_one(&self.pool)
         .await
-        .map_err(AppError::Database)
+        .map_err(AppError::Database)?;
+
+        self.sync_runtime_nas_by_mapping_id(&mapping.id).await?;
+
+        Ok(mapping)
     }
 
     pub async fn auto_create_mapping_for_router(
@@ -881,11 +953,19 @@ impl ManagedRadiusService {
         let shared_secret_enc =
             match normalize_optional_secret_input(input.shared_secret.as_deref()) {
                 Some(secret) => Self::encrypt_shared_secret(&secret)?,
-                None => existing.shared_secret_enc,
+                None => existing.shared_secret_enc.clone(),
             };
+        let needs_freeradius_restart = mapping_change_requires_freeradius_restart(
+            &existing,
+            nas_name,
+            nas_ip_or_cidr,
+            shortname.as_deref(),
+            &shared_secret_enc,
+            input.is_active,
+        );
         let now = Utc::now();
 
-        sqlx::query_as::<_, ManagedRadiusNas>(
+        let mapping = sqlx::query_as::<_, ManagedRadiusNas>(
             r#"
             UPDATE managed_radius_nas
             SET router_id = $1,
@@ -912,7 +992,16 @@ impl ManagedRadiusService {
         .bind(tenant_id)
         .fetch_one(&self.pool)
         .await
-        .map_err(AppError::Database)
+        .map_err(AppError::Database)?;
+
+        self.sync_runtime_nas_by_mapping_id(mapping_id).await?;
+
+        if needs_freeradius_restart {
+            self.restart_freeradius_after_mapping_change_if_configured()
+                .await?;
+        }
+
+        Ok(mapping)
     }
 
     pub async fn set_mapping_active(
@@ -923,7 +1012,7 @@ impl ManagedRadiusService {
     ) -> AppResult<ManagedRadiusNas> {
         let tenant_id = required_trimmed("tenant_id", tenant_id)?;
         let now = Utc::now();
-        sqlx::query_as::<_, ManagedRadiusNas>(
+        let mapping = sqlx::query_as::<_, ManagedRadiusNas>(
             "UPDATE managed_radius_nas SET is_active = $1, updated_at = $2 WHERE id = $3 AND tenant_id = $4 RETURNING *",
         )
         .bind(is_active)
@@ -933,7 +1022,11 @@ impl ManagedRadiusService {
         .fetch_optional(&self.pool)
         .await
         .map_err(AppError::Database)?
-        .ok_or_else(|| AppError::NotFound("Managed RADIUS mapping not found".into()))
+        .ok_or_else(|| AppError::NotFound("Managed RADIUS mapping not found".into()))?;
+
+        self.sync_runtime_nas_by_mapping_id(mapping_id).await?;
+
+        Ok(mapping)
     }
 
     pub async fn rotate_mapping_secret(
@@ -962,6 +1055,8 @@ impl ManagedRadiusService {
                 "Managed RADIUS mapping not found".into(),
             ));
         }
+
+        self.sync_runtime_nas_by_mapping_id(mapping_id).await?;
 
         Ok(next_secret)
     }
@@ -1233,6 +1328,20 @@ fn normalize_optional_secret_input(value: Option<&str>) -> Option<String> {
         .map(ToOwned::to_owned)
 }
 
+fn resolve_managed_radius_restart_command() -> Option<String> {
+    std::env::var(MANAGED_RADIUS_RESTART_COMMAND_ENV)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn resolve_managed_radius_restart_workdir() -> Option<String> {
+    std::env::var(MANAGED_RADIUS_RESTART_WORKDIR_ENV)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
 fn build_default_nas_name(router: &MikrotikRouter) -> String {
     let base = if !router.identity.as_deref().unwrap_or("").trim().is_empty() {
         router.identity.as_deref().unwrap_or("router")
@@ -1359,6 +1468,34 @@ fn mask_shared_secret(secret: &str) -> String {
     format!("{prefix}••••••••{suffix}")
 }
 
+fn mapping_change_requires_freeradius_restart(
+    existing: &ManagedRadiusNas,
+    next_nas_name: &str,
+    next_nas_ip_or_cidr: &str,
+    next_shortname: Option<&str>,
+    next_shared_secret_enc: &str,
+    next_is_active: bool,
+) -> bool {
+    existing.nas_name != next_nas_name
+        || existing.nas_ip_or_cidr != next_nas_ip_or_cidr
+        || existing.shortname.as_deref() != next_shortname
+        || existing.shared_secret_enc != next_shared_secret_enc
+        || existing.is_active != next_is_active
+}
+
+#[cfg(test)]
+fn managed_radius_service_source() -> &'static str {
+    include_str!("managed_radius_service.rs")
+}
+
+#[cfg(test)]
+fn managed_radius_sql_template() -> &'static str {
+    include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../deploy/freeradius/raddb/mods-available/sql.template"
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1470,6 +1607,53 @@ mod tests {
     }
 
     #[test]
+    fn sql_template_scopes_auth_to_active_nas_and_disabled_flag() {
+        let template = managed_radius_sql_template();
+        assert!(template.contains("COALESCE(n.shortname, n.nas_name) = '%{client:shortname}'"));
+        assert!(template.contains("a.disabled = false"));
+        assert!(template.contains(
+            "INNER JOIN managed_radius_nas n ON n.tenant_id = a.tenant_id AND n.router_id = a.router_id"
+        ));
+    }
+
+    #[test]
+    fn restart_command_resolution_treats_blank_values_as_missing() {
+        let _guard = env_lock().lock().expect("env lock");
+        unsafe {
+            std::env::set_var(
+                MANAGED_RADIUS_RESTART_COMMAND_ENV,
+                "  docker compose restart freeradius  ",
+            );
+            std::env::set_var(
+                MANAGED_RADIUS_RESTART_WORKDIR_ENV,
+                "  /opt/isp-management  ",
+            );
+        }
+
+        assert_eq!(
+            resolve_managed_radius_restart_command(),
+            Some("docker compose restart freeradius".into())
+        );
+        assert_eq!(
+            resolve_managed_radius_restart_workdir(),
+            Some("/opt/isp-management".into())
+        );
+
+        unsafe {
+            std::env::set_var(MANAGED_RADIUS_RESTART_COMMAND_ENV, "   ");
+            std::env::set_var(MANAGED_RADIUS_RESTART_WORKDIR_ENV, "   ");
+        }
+
+        assert_eq!(resolve_managed_radius_restart_command(), None);
+        assert_eq!(resolve_managed_radius_restart_workdir(), None);
+
+        unsafe {
+            std::env::remove_var(MANAGED_RADIUS_RESTART_COMMAND_ENV);
+            std::env::remove_var(MANAGED_RADIUS_RESTART_WORKDIR_ENV);
+        }
+    }
+
+    #[test]
     fn optional_secret_input_treats_blank_values_as_none() {
         assert_eq!(normalize_optional_secret_input(None), None);
         assert_eq!(normalize_optional_secret_input(Some("   ")), None);
@@ -1484,5 +1668,109 @@ mod tests {
         let secret = generate_managed_radius_shared_secret();
         assert_eq!(secret.len(), 32);
         assert!(secret.chars().all(|ch| ch.is_ascii_alphanumeric()));
+    }
+
+    #[test]
+    fn mapping_change_detection_ignores_unchanged_values() {
+        let now = Utc::now();
+        let existing = ManagedRadiusNas {
+            id: "mapping-1".into(),
+            tenant_id: "tenant-1".into(),
+            router_id: "router-1".into(),
+            radius_server_id: "server-1".into(),
+            nas_name: "router-pop-a".into(),
+            nas_ip_or_cidr: "10.10.10.1/32".into(),
+            shared_secret_enc: "enc-secret".into(),
+            shortname: Some("POP-A".into()),
+            is_active: true,
+            created_at: now,
+            updated_at: now,
+        };
+
+        assert!(!mapping_change_requires_freeradius_restart(
+            &existing,
+            "router-pop-a",
+            "10.10.10.1/32",
+            Some("POP-A"),
+            "enc-secret",
+            true,
+        ));
+    }
+
+    #[test]
+    fn mapping_change_detection_flags_runtime_client_changes() {
+        let now = Utc::now();
+        let existing = ManagedRadiusNas {
+            id: "mapping-1".into(),
+            tenant_id: "tenant-1".into(),
+            router_id: "router-1".into(),
+            radius_server_id: "server-1".into(),
+            nas_name: "router-pop-a".into(),
+            nas_ip_or_cidr: "10.10.10.1/32".into(),
+            shared_secret_enc: "enc-secret".into(),
+            shortname: Some("POP-A".into()),
+            is_active: true,
+            created_at: now,
+            updated_at: now,
+        };
+
+        assert!(mapping_change_requires_freeradius_restart(
+            &existing,
+            "router-pop-a",
+            "10.10.10.2/32",
+            Some("POP-A"),
+            "enc-secret",
+            true,
+        ));
+        assert!(mapping_change_requires_freeradius_restart(
+            &existing,
+            "router-pop-a",
+            "10.10.10.1/32",
+            Some("POP-B"),
+            "enc-secret",
+            true,
+        ));
+        assert!(mapping_change_requires_freeradius_restart(
+            &existing,
+            "router-pop-a",
+            "10.10.10.1/32",
+            Some("POP-A"),
+            "enc-secret-2",
+            true,
+        ));
+        assert!(mapping_change_requires_freeradius_restart(
+            &existing,
+            "router-pop-a",
+            "10.10.10.1/32",
+            Some("POP-A"),
+            "enc-secret",
+            false,
+        ));
+    }
+
+    #[test]
+    fn mapping_mutations_sync_runtime_nas_state() {
+        let source = super::managed_radius_service_source();
+
+        assert!(
+            source.contains("self.sync_runtime_nas_by_mapping_id(&mapping.id).await?;"),
+            "expected create_mapping to sync runtime NAS state"
+        );
+        let mapping_id_sync_calls = source
+            .matches("self.sync_runtime_nas_by_mapping_id(mapping_id).await?;")
+            .count();
+        assert!(
+            mapping_id_sync_calls >= 3,
+            "expected update, active-state, and secret-rotation mapping mutations to sync runtime NAS state"
+        );
+
+        assert!(
+            source.contains("mapping_change_requires_freeradius_restart("),
+            "expected update_mapping to evaluate whether a runtime client change needs a freeradius restart"
+        );
+        assert!(
+            source.contains("self.restart_freeradius_after_mapping_change_if_configured()"),
+            "expected update_mapping to trigger the configured freeradius restart hook after runtime client changes"
+        );
     }
 }

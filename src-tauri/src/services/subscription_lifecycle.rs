@@ -153,11 +153,18 @@ pub fn resolve_activation_status(
     }
 }
 
+pub fn should_disable_pppoe_for_subscription_status(status: &str) -> bool {
+    !matches!(
+        SubscriptionLifecycleStatus::parse(status),
+        Ok(SubscriptionLifecycleStatus::Active | SubscriptionLifecycleStatus::GraceActive)
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        resolve_activation_status, transition_status, LifecycleTransitionError,
-        SubscriptionLifecycleEvent, SubscriptionLifecycleStatus,
+        resolve_activation_status, should_disable_pppoe_for_subscription_status, transition_status,
+        LifecycleTransitionError, SubscriptionLifecycleEvent, SubscriptionLifecycleStatus,
     };
 
     #[test]
@@ -223,5 +230,21 @@ mod tests {
             resolve_activation_status(SubscriptionLifecycleStatus::GraceActive, true, true)
                 .expect("paid grace subscription should resolve to active");
         assert_eq!(target, SubscriptionLifecycleStatus::Active);
+    }
+
+    #[test]
+    fn pppoe_disable_policy_matches_subscription_lifecycle_states() {
+        assert!(!should_disable_pppoe_for_subscription_status("active"));
+        assert!(!should_disable_pppoe_for_subscription_status(
+            "grace_active"
+        ));
+        assert!(should_disable_pppoe_for_subscription_status(
+            "pending_installation"
+        ));
+        assert!(should_disable_pppoe_for_subscription_status(
+            "installation_done_awaiting_payment"
+        ));
+        assert!(should_disable_pppoe_for_subscription_status("suspended"));
+        assert!(should_disable_pppoe_for_subscription_status("cancelled"));
     }
 }

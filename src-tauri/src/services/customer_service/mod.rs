@@ -32,8 +32,8 @@ use crate::models::{
 };
 use crate::security::secret::encrypt_secret_for;
 use crate::services::subscription_lifecycle::{
-    resolve_activation_status, transition_status, SubscriptionLifecycleEvent,
-    SubscriptionLifecycleStatus,
+    resolve_activation_status, should_disable_pppoe_for_subscription_status, transition_status,
+    SubscriptionLifecycleEvent, SubscriptionLifecycleStatus,
 };
 use crate::services::{
     AuditService, AuthService, NotificationService, PaymentService, PppoeService, UserService,

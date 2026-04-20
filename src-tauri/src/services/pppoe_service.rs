@@ -13,9 +13,17 @@ use std::time::Instant;
 use tokio::time::{timeout, Duration};
 use uuid::Uuid;
 
-const PURPOSE_PPPOE: &str = "pppoe_secrets";
+pub(crate) const PURPOSE_PPPOE: &str = "pppoe_secrets";
 const IMPORT_PLACEHOLDER_CUSTOMER_NAME: &str = "Imported (Unassigned)";
 const IMPORT_PLACEHOLDER_LOCATION_LABEL: &str = "Unassigned";
+
+pub(crate) fn encrypt_pppoe_password_for_storage(plaintext: &str) -> AppResult<String> {
+    encrypt_secret_for(PURPOSE_PPPOE, plaintext)
+}
+
+fn should_disable_local_router_secret(account_source: PppoeAccountSource) -> bool {
+    matches!(account_source, PppoeAccountSource::ManagedRadius)
+}
 
 #[derive(Debug, Clone)]
 struct RouterSecretRow {
@@ -452,6 +460,70 @@ impl PppoeService {
                 .await?
                 .unwrap_or_default())
         }
+    }
+
+    async fn router_set_secret_disabled_by_name(
+        &self,
+        dev: &MikrotikDevice,
+        username: &str,
+        disabled: bool,
+    ) -> Result<Option<String>, anyhow::Error> {
+        let Some(id) = self.router_find_secret_id_by_name(dev, username).await? else {
+            return Ok(None);
+        };
+
+        let cmd = CommandBuilder::new()
+            .command("/ppp/secret/set")
+            .attribute("numbers", Some(id.as_str()))
+            .attribute("disabled", Some(if disabled { "yes" } else { "no" }))
+            .build();
+        let mut rx = dev.send_command(cmd).await?;
+        while let Some(res) = rx.recv().await {
+            let r = res?;
+            if let CommandResponse::Done(_) = r {
+                break;
+            }
+        }
+
+        Ok(Some(id))
+    }
+
+    async fn router_disconnect_active_sessions_by_name(
+        &self,
+        dev: &MikrotikDevice,
+        username: &str,
+    ) -> Result<u32, anyhow::Error> {
+        let cmd = CommandBuilder::new().command("/ppp/active/print").build();
+        let mut rx = dev.send_command(cmd).await?;
+        let mut active_ids: Vec<String> = Vec::new();
+
+        while let Some(res) = rx.recv().await {
+            let r = res?;
+            if let CommandResponse::Reply(reply) = r {
+                let active_username = reply.attributes.get("name").and_then(|v| v.clone());
+                if active_username.as_deref() == Some(username) {
+                    if let Some(id) = reply.attributes.get(".id").and_then(|v| v.clone()) {
+                        active_ids.push(id);
+                    }
+                }
+            }
+        }
+
+        for id in active_ids.iter() {
+            let cmd = CommandBuilder::new()
+                .command("/ppp/active/remove")
+                .attribute("numbers", Some(id.as_str()))
+                .build();
+            let mut rx = dev.send_command(cmd).await?;
+            while let Some(res) = rx.recv().await {
+                let r = res?;
+                if let CommandResponse::Done(_) = r {
+                    break;
+                }
+            }
+        }
+
+        Ok(active_ids.len() as u32)
     }
 
     // ========================
@@ -1380,6 +1452,15 @@ impl PppoeService {
 
                 match res {
                     Ok(router_secret_id) => {
+                        if account.disabled {
+                            let _ = self
+                                .router_disconnect_active_sessions_by_name(
+                                    &dev,
+                                    account.username.as_str(),
+                                )
+                                .await;
+                        }
+
                         account.router_present = true;
                         account.router_secret_id = if router_secret_id.trim().is_empty() {
                             None
@@ -1447,6 +1528,28 @@ impl PppoeService {
 
                 match res {
                     Ok(radius) => {
+                        if should_disable_local_router_secret(account.account_source) {
+                            let dev = self
+                                .connect_router(tenant_id, account.router_id.as_str())
+                                .await?;
+                            let _ = self
+                                .router_set_secret_disabled_by_name(
+                                    &dev,
+                                    account.username.as_str(),
+                                    true,
+                                )
+                                .await
+                                .map_err(|e| AppError::Internal(e.to_string()))?;
+                            if account.disabled {
+                                let _ = self
+                                    .router_disconnect_active_sessions_by_name(
+                                        &dev,
+                                        account.username.as_str(),
+                                    )
+                                    .await;
+                            }
+                        }
+
                         account.router_present = false;
                         account.router_secret_id = None;
                         account.radius_present = true;
@@ -1662,5 +1765,20 @@ impl PppoeService {
             "missing": missing,
             "router_total": router_usernames.len() as i64
         }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{should_disable_local_router_secret, PppoeAccountSource};
+
+    #[test]
+    fn managed_radius_accounts_disable_local_router_secret() {
+        assert!(!should_disable_local_router_secret(
+            PppoeAccountSource::Router
+        ));
+        assert!(should_disable_local_router_secret(
+            PppoeAccountSource::ManagedRadius
+        ));
     }
 }

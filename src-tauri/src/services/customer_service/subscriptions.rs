@@ -1,6 +1,171 @@
 use super::*;
 
 impl CustomerService {
+    pub async fn get_customer_subscription(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        subscription_id: &str,
+    ) -> AppResult<CustomerSubscriptionView> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "billing", "read")
+            .await?;
+
+        #[cfg(feature = "postgres")]
+        let row: Option<CustomerSubscriptionView> = sqlx::query_as(
+            r#"
+            SELECT
+              cs.id, cs.tenant_id, cs.customer_id, cs.location_id, cs.package_id, cs.router_id,
+              cs.billing_cycle, cs.price::float8 as price, cs.currency_code, cs.status,
+              cs.starts_at, cs.ends_at, cs.grace_started_at, cs.grace_until, cs.notes,
+              cs.created_at, cs.updated_at,
+              p.name AS package_name,
+              cl.label AS location_label,
+              mr.name AS router_name,
+              (
+                SELECT iwo.id
+                FROM installation_work_orders iwo
+                WHERE iwo.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY iwo.created_at DESC
+                LIMIT 1
+              ) AS latest_work_order_id,
+              (
+                SELECT iwo.status
+                FROM installation_work_orders iwo
+                WHERE iwo.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY iwo.created_at DESC
+                LIMIT 1
+              ) AS latest_work_order_status,
+              EXISTS (
+                SELECT 1
+                FROM installation_work_orders iwo
+                WHERE iwo.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                  AND iwo.status = 'cancelled'
+              ) AS can_request_reopen,
+              (
+                SELECT wrr.status
+                FROM work_order_reschedule_requests wrr
+                INNER JOIN installation_work_orders iwo
+                  ON iwo.id = wrr.work_order_id
+                 AND iwo.tenant_id = wrr.tenant_id
+                WHERE wrr.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY wrr.created_at DESC
+                LIMIT 1
+              ) AS latest_reschedule_status,
+              (
+                SELECT wrr.requested_schedule_at::text
+                FROM work_order_reschedule_requests wrr
+                INNER JOIN installation_work_orders iwo
+                  ON iwo.id = wrr.work_order_id
+                 AND iwo.tenant_id = wrr.tenant_id
+                WHERE wrr.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY wrr.created_at DESC
+                LIMIT 1
+              ) AS latest_reschedule_requested_at
+            FROM customer_subscriptions cs
+            LEFT JOIN isp_packages p
+              ON p.id = cs.package_id
+             AND p.tenant_id = cs.tenant_id
+            LEFT JOIN customer_locations cl
+              ON cl.id = cs.location_id
+             AND cl.tenant_id = cs.tenant_id
+            LEFT JOIN mikrotik_routers mr
+              ON mr.id = cs.router_id
+             AND mr.tenant_id = cs.tenant_id
+            WHERE cs.tenant_id = $1
+              AND cs.id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let row: Option<CustomerSubscriptionView> = sqlx::query_as(
+            r#"
+            SELECT
+              cs.id, cs.tenant_id, cs.customer_id, cs.location_id, cs.package_id, cs.router_id,
+              cs.billing_cycle, cs.price as price, cs.currency_code, cs.status,
+              cs.starts_at, cs.ends_at, cs.grace_started_at, cs.grace_until, cs.notes,
+              cs.created_at, cs.updated_at,
+              p.name AS package_name,
+              cl.label AS location_label,
+              mr.name AS router_name,
+              (
+                SELECT iwo.id
+                FROM installation_work_orders iwo
+                WHERE iwo.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY iwo.created_at DESC
+                LIMIT 1
+              ) AS latest_work_order_id,
+              (
+                SELECT iwo.status
+                FROM installation_work_orders iwo
+                WHERE iwo.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY iwo.created_at DESC
+                LIMIT 1
+              ) AS latest_work_order_status,
+              EXISTS (
+                SELECT 1
+                FROM installation_work_orders iwo
+                WHERE iwo.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                  AND iwo.status = 'cancelled'
+              ) AS can_request_reopen,
+              (
+                SELECT wrr.status
+                FROM work_order_reschedule_requests wrr
+                INNER JOIN installation_work_orders iwo
+                  ON iwo.id = wrr.work_order_id
+                 AND iwo.tenant_id = wrr.tenant_id
+                WHERE wrr.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY wrr.created_at DESC
+                LIMIT 1
+              ) AS latest_reschedule_status,
+              (
+                SELECT wrr.requested_schedule_at
+                FROM work_order_reschedule_requests wrr
+                INNER JOIN installation_work_orders iwo
+                  ON iwo.id = wrr.work_order_id
+                 AND iwo.tenant_id = wrr.tenant_id
+                WHERE wrr.tenant_id = cs.tenant_id
+                  AND iwo.subscription_id = cs.id
+                ORDER BY wrr.created_at DESC
+                LIMIT 1
+              ) AS latest_reschedule_requested_at
+            FROM customer_subscriptions cs
+            LEFT JOIN isp_packages p
+              ON p.id = cs.package_id
+             AND p.tenant_id = cs.tenant_id
+            LEFT JOIN customer_locations cl
+              ON cl.id = cs.location_id
+             AND cl.tenant_id = cs.tenant_id
+            LEFT JOIN mikrotik_routers mr
+              ON mr.id = cs.router_id
+             AND mr.tenant_id = cs.tenant_id
+            WHERE cs.tenant_id = ?
+              AND cs.id = ?
+            LIMIT 1
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(subscription_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        row.ok_or_else(|| AppError::NotFound("Subscription not found".to_string()))
+    }
+
     pub async fn create_customer_subscription(
         &self,
         actor_id: &str,
@@ -377,6 +542,12 @@ impl CustomerService {
                 Some("Updated customer subscription"),
                 ip_address,
             )
+            .await;
+
+        let should_disable_pppoe =
+            should_disable_pppoe_for_subscription_status(row.status.as_str());
+        let _ = self
+            .set_location_pppoe_disabled_state(tenant_id, &row.location_id, should_disable_pppoe)
             .await;
 
         self.auto_provision_pppoe_for_subscription(actor_id, tenant_id, &row, ip_address)

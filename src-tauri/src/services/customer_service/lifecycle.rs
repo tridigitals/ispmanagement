@@ -125,6 +125,74 @@ impl CustomerService {
             .await
     }
 
+    pub(super) fn should_disable_customer_location_pppoe(
+        customer_is_active: bool,
+        subscription_statuses: &[String],
+    ) -> bool {
+        if !customer_is_active {
+            return true;
+        }
+
+        !subscription_statuses
+            .iter()
+            .any(|status| !should_disable_pppoe_for_subscription_status(status))
+    }
+
+    pub(super) async fn sync_customer_pppoe_disabled_state(
+        &self,
+        tenant_id: &str,
+        customer_id: &str,
+        customer_is_active: bool,
+    ) -> AppResult<()> {
+        #[cfg(feature = "postgres")]
+        let location_ids: Vec<String> = sqlx::query_scalar(
+            "SELECT DISTINCT location_id FROM pppoe_accounts WHERE tenant_id = $1 AND customer_id = $2",
+        )
+        .bind(tenant_id)
+        .bind(customer_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let location_ids: Vec<String> = sqlx::query_scalar(
+            "SELECT DISTINCT location_id FROM pppoe_accounts WHERE tenant_id = ? AND customer_id = ?",
+        )
+        .bind(tenant_id)
+        .bind(customer_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        for location_id in location_ids {
+            #[cfg(feature = "postgres")]
+            let statuses: Vec<String> = sqlx::query_scalar(
+                "SELECT status FROM customer_subscriptions WHERE tenant_id = $1 AND customer_id = $2 AND location_id = $3",
+            )
+            .bind(tenant_id)
+            .bind(customer_id)
+            .bind(&location_id)
+            .fetch_all(&self.pool)
+            .await?;
+
+            #[cfg(feature = "sqlite")]
+            let statuses: Vec<String> = sqlx::query_scalar(
+                "SELECT status FROM customer_subscriptions WHERE tenant_id = ? AND customer_id = ? AND location_id = ?",
+            )
+            .bind(tenant_id)
+            .bind(customer_id)
+            .bind(&location_id)
+            .fetch_all(&self.pool)
+            .await?;
+
+            let disabled =
+                Self::should_disable_customer_location_pppoe(customer_is_active, &statuses);
+            let _ = self
+                .set_location_pppoe_disabled_state(tenant_id, &location_id, disabled)
+                .await;
+        }
+
+        Ok(())
+    }
+
     pub(super) async fn list_tenant_installation_alert_user_ids(
         &self,
         tenant_id: &str,
