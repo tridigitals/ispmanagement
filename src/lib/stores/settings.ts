@@ -1,5 +1,6 @@
 import { writable, derived, get } from 'svelte/store';
-import { api, type AuthSettings } from '$lib/api/client';
+import type { AuthSettings } from '$lib/api/types';
+import { settings as settingsApi } from '$lib/api/settings';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { locale } from 'svelte-i18n';
 import { can } from '$lib/stores/auth';
@@ -45,44 +46,34 @@ function createSettingsStore() {
 
   const loadSettings = async () => {
     try {
-      // Fetch public auth settings
-      const authSettings = await api.settings.getAuthSettings();
+      const canReadSettings = get(can)('read', 'settings');
+      const [authSettingsResult, publicSettingsResult, tenantSettingsResult, appVersionResult] =
+        await Promise.allSettled([
+          settingsApi.getAuthSettings(),
+          settingsApi.getPublicSettings(),
+          canReadSettings ? settingsApi.getAll() : Promise.resolve([]),
+          settingsApi.getAppVersion(),
+        ]);
 
-      // Fetch public general settings (name, description)
-      let publicSettings = {};
-      try {
-        const ps = await api.settings.getPublicSettings();
-        if (ps) publicSettings = ps;
-      } catch (e) {
-        // console.debug("Could not load public settings", e);
+      const authSettings =
+        authSettingsResult.status === 'fulfilled' ? authSettingsResult.value : undefined;
+
+      const publicSettings =
+        publicSettingsResult.status === 'fulfilled' && publicSettingsResult.value
+          ? publicSettingsResult.value
+          : {};
+
+      const tenantSettings: Record<string, any> = {};
+      if (tenantSettingsResult.status === 'fulfilled') {
+        tenantSettingsResult.value.forEach((item) => {
+          if (item.value === 'true') tenantSettings[item.key] = true;
+          else if (item.value === 'false') tenantSettings[item.key] = false;
+          else tenantSettings[item.key] = item.value;
+        });
       }
 
-      // Fetch admin/tenant settings (might fail if not logged in, which is fine)
-      // If logged in, getAll() will now return tenant-specific settings because backend extracts tenant_id from token
-      let tenantSettings: any = {};
-
-      // Only fetch if has permission
-      if (get(can)('read', 'settings')) {
-        try {
-          const data = await api.settings.getAll();
-          data.forEach((item) => {
-            if (item.value === 'true') tenantSettings[item.key] = true;
-            else if (item.value === 'false') tenantSettings[item.key] = false;
-            else tenantSettings[item.key] = item.value;
-          });
-        } catch (e) {
-          // Ignore error if not logged in or unauthorized
-          // console.debug("Could not load tenant settings (likely not logged in)");
-        }
-      }
-
-      // Fetch app version from backend (from Cargo.toml)
-      let appVersion = defaults.app_version;
-      try {
-        appVersion = await api.settings.getAppVersion();
-      } catch (e) {
-        // Use default if fails
-      }
+      const appVersion =
+        appVersionResult.status === 'fulfilled' ? appVersionResult.value : defaults.app_version;
 
       const finalSettings = {
         ...defaults,
@@ -147,7 +138,7 @@ async function updateWindowTitle(title: string) {
 
   try {
     await getCurrentWindow().setTitle(title);
-  } catch (e) {
+        } catch (e) {
     console.warn('Failed to set window title:', e);
   }
 }

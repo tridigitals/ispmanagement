@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import { api } from '$lib/api/client';
+import { settings as settingsApi } from '$lib/api/settings';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Image } from '@tauri-apps/api/image';
 
@@ -74,7 +74,7 @@ function createLogoStore() {
     },
     refresh: async (token?: string) => {
       try {
-        const logo = await api.settings.getLogo(token);
+        const logo = await settingsApi.getLogo(token);
         if (logo) {
           set(logo);
           saveLogoToStorage(logo);

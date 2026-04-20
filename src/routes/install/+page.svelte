@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { install } from '$lib/api/client';
+  import { install } from '$lib/api/install';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { t } from 'svelte-i18n';

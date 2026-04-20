@@ -10,10 +10,9 @@
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { isPlatformDomain } from '$lib/utils/domain';
-  import { publicApi } from '$lib/api/client';
+  import { auth as authApi } from '$lib/api/auth';
+  import { publicApi } from '$lib/api/public';
   import { getDefaultTenantLandingPath } from '$lib/utils/appLanding';
-
-  import { api } from '$lib/api/client';
 
   let email = '';
   let password = '';
@@ -128,7 +127,7 @@
     emailOtpSending = true;
     error = '';
     try {
-      await api.auth.requestEmailOtp(tempToken);
+      await authApi.requestEmailOtp(tempToken);
       emailOtpSent = true;
       startResendCountdown();
 
@@ -167,9 +166,9 @@
     try {
       let response;
       if (selected2FAMethod === 'email') {
-        response = await api.auth.verifyEmailOtp(tempToken, twoFactorCode, trustDevice);
+        response = await authApi.verifyEmailOtp(tempToken, twoFactorCode, trustDevice);
       } else {
-        response = await api.auth.verifyLogin2FA(tempToken, twoFactorCode, trustDevice);
+        response = await authApi.verifyLogin2FA(tempToken, twoFactorCode, trustDevice);
       }
 
       if (response.token && response.user) {

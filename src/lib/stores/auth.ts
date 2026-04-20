@@ -3,7 +3,10 @@
  * Manages user authentication state
  */
 import { writable, derived, get } from 'svelte/store';
-import { api, auth, publicApi, type User, type Tenant, type AuthResponse } from '$lib/api/client';
+import { auth } from '$lib/api/auth';
+import { publicApi } from '$lib/api/public';
+import { tenant as tenantApi } from '$lib/api/tenant';
+import type { User, Tenant, AuthResponse } from '$lib/api/types';
 import { appSettings } from './settings';
 import { appLogo } from './logo';
 
@@ -348,7 +351,7 @@ export async function checkAuth(opts?: { force?: boolean }): Promise<boolean> {
 
     // Fetch current tenant info if logged in
     try {
-      const currentTenant = await api.tenant.getSelf();
+      const currentTenant = await tenantApi.getSelf();
       tenant.set(currentTenant);
       const curr = get(user);
       if (curr && !curr.tenant_slug && currentTenant?.slug) {

@@ -10,7 +10,7 @@
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { isPlatformDomain } from '$lib/utils/domain';
-  import { publicApi } from '$lib/api/client';
+  import { publicApi } from '$lib/api/public';
   import { getDefaultTenantLandingPath } from '$lib/utils/appLanding';
 
   let email = '';

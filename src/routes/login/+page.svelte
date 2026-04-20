@@ -1,6 +1,6 @@
 <script lang="ts">
   import { login, isAuthenticated, user, token } from '$lib/stores/auth';
-  import { api } from '$lib/api/client';
+  import { auth as authApi } from '$lib/api/auth';
   import { appSettings } from '$lib/stores/settings';
   import { appLogo } from '$lib/stores/logo';
   import { goto } from '$app/navigation';
@@ -12,7 +12,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import { isPlatformDomain } from '$lib/utils/domain';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
-  import { publicApi } from '$lib/api/client';
+  import { publicApi } from '$lib/api/public';
   import { getDefaultTenantLandingPath } from '$lib/utils/appLanding';
 
   let email = '';
@@ -250,7 +250,7 @@
     emailOtpSending = true;
     error = '';
     try {
-      await api.auth.requestEmailOtp(tempToken);
+      await authApi.requestEmailOtp(tempToken);
       emailOtpSent = true;
       startResendCountdown();
 
@@ -275,9 +275,9 @@
     try {
       let response;
       if (selected2FAMethod === 'email') {
-        response = await api.auth.verifyEmailOtp(tempToken, twoFactorCode, trustDevice);
+        response = await authApi.verifyEmailOtp(tempToken, twoFactorCode, trustDevice);
       } else {
-        response = await api.auth.verifyLogin2FA(tempToken, twoFactorCode, trustDevice);
+        response = await authApi.verifyLogin2FA(tempToken, twoFactorCode, trustDevice);
       }
 
       if (response.token) {

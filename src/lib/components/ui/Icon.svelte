@@ -1,100 +1,13 @@
 <script lang="ts">
-  import {
-    LayoutDashboard,
-    Users,
-    Settings,
-    Shield,
-    ShieldCheck,
-    ShieldOff,
-    Ban,
-    Star,
-    User,
-    LogOut,
-    ChevronUp,
-    ChevronDown,
-    ChevronLeft,
-    ChevronRight,
-    ArrowLeft,
-    Search,
-    Bell,
-    HelpCircle,
-    LifeBuoy,
-    Database,
-    Rocket,
-    Mail,
-    Lock as LockIcon,
-    Globe,
-    Menu,
-    PanelLeft,
-    Activity,
-    Calendar,
-    CheckCircle,
-    AlertTriangle,
-    AlertCircle,
-    ArrowRight,
-    Camera,
-    Eye,
-    EyeOff,
-    Plus,
-    Edit,
-    Trash2,
-    X,
-    Slash,
-    Info,
-    Key,
-    Save,
-    Image,
-    FileText,
-    Film,
-    Music,
-    Archive,
-    File,
-    RefreshCw,
-    Grid,
-    List,
-    ListOrdered,
-    HardDrive,
-    Folder,
-    Download,
-    CreditCard,
-    Server,
-    Cpu,
-    Building2,
-    UserCheck,
-    XCircle,
-    Moon,
-    Sun,
-    Cloud,
-    Zap,
-    Send,
-    Megaphone,
-    MessageCircle,
-    Landmark,
-    Circle,
-    TrendingUp,
-    TrendingDown,
-    Minus,
-    ExternalLink,
-    Link2,
-    Smartphone,
-    Monitor,
-    Bold,
-    Italic,
-    Underline,
-    Quote,
-    Eraser,
-    MapPin,
-    Router,
-    Package,
-    Layers,
-    Receipt,
-    FolderKanban,
-    GripVertical,
-    Pause,
-    Play,
-    Filter,
-    Clock3,
-  } from 'lucide-svelte';
+  import { getLucideIconImportPath } from '$lib/utils/iconResolver';
+
+  type LucideModule = {
+    default: any;
+  };
+
+  const iconModules = import.meta.glob<LucideModule>(
+    '../../../../node_modules/lucide-svelte/dist/icons/*.js',
+  );
 
   let {
     name,
@@ -105,111 +18,47 @@
     ...restProps
   } = $props();
 
-  // Mapping string name to Lucide Component
-  const icons: Record<string, any> = {
-    dashboard: LayoutDashboard,
-    users: Users,
-    settings: Settings,
-    shield: Shield,
-    'shield-check': ShieldCheck,
-    'shield-off': ShieldOff,
-    ban: Ban,
-    star: Star,
-    profile: User,
-    user: User,
-    logout: LogOut,
-    'chevron-up': ChevronUp,
-    'chevron-down': ChevronDown,
-    'chevron-left': ChevronLeft,
-    'chevron-right': ChevronRight,
-    'arrow-left': ArrowLeft,
-    search: Search,
-    bell: Bell,
-    'help-circle': HelpCircle,
-    'life-buoy': LifeBuoy,
-    database: Database,
-    app: Rocket,
-    mail: Mail,
-    lock: LockIcon,
-    global: Globe,
-    globe: Globe,
-    menu: Menu,
-    'sidebar-toggle': PanelLeft,
-    activity: Activity,
-    calendar: Calendar,
-    check: CheckCircle, // Alias
-    'check-circle': CheckCircle,
-    alert: AlertCircle, // Alias
-    'alert-triangle': AlertTriangle,
-    'alert-circle': AlertCircle,
-    'arrow-right': ArrowRight,
-    camera: Camera,
-    eye: Eye,
-    'eye-off': EyeOff,
-    plus: Plus,
-    edit: Edit,
-    trash: Trash2,
-    'trash-2': Trash2,
-    x: X,
-    slash: Slash,
-    info: Info,
-    image: Image,
-    'file-text': FileText,
-    film: Film,
-    music: Music,
-    archive: Archive,
-    file: File,
-    'refresh-cw': RefreshCw,
-    grid: Grid,
-    list: List,
-    'list-ordered': ListOrdered,
-    'hard-drive': HardDrive,
-    folder: Folder,
-    download: Download,
-    'credit-card': CreditCard,
-    server: Server,
-    cpu: Cpu,
-    building: Building2,
-    'building-2': Building2,
-    'user-check': UserCheck,
-    'x-circle': XCircle,
-    moon: Moon,
-    sun: Sun,
-    cloud: Cloud,
-    zap: Zap,
-    send: Send,
-    landmark: Landmark,
-    circle: Circle,
-    'trending-up': TrendingUp,
-    'trending-down': TrendingDown,
-    minus: Minus,
-    'external-link': ExternalLink,
-    link: Link2,
-    bold: Bold,
-    italic: Italic,
-    underline: Underline,
-    quote: Quote,
-    eraser: Eraser,
-    key: Key,
-    save: Save,
-    smartphone: Smartphone,
-    monitor: Monitor,
-    'message-circle': MessageCircle,
-    megaphone: Megaphone,
-    'map-pin': MapPin,
-    router: Router,
-    package: Package,
-    layers: Layers,
-    receipt: Receipt,
-    'folder-kanban': FolderKanban,
-    'grip-vertical': GripVertical,
-    pause: Pause,
-    play: Play,
-    filter: Filter,
-    clock: Clock3,
-  };
+  let IconComponent = $state<any>(null);
+  let loadId = 0;
 
-  let IconComponent = $derived(icons[name] || HelpCircle);
+  async function loadIcon(iconName: string | undefined) {
+    const nextLoadId = ++loadId;
+    const iconPath = getLucideIconImportPath(iconName);
+    const modulePath = `../../../../node_modules/lucide-svelte/dist/icons/${iconPath}.js`;
+    const fallbackPath = '../../../../node_modules/lucide-svelte/dist/icons/help-circle.js';
+
+    try {
+      const loadModule = iconModules[modulePath];
+      if (!loadModule) {
+        throw new Error(`Unknown lucide icon: ${iconPath}`);
+      }
+      const module = await loadModule();
+      if (nextLoadId === loadId) {
+        IconComponent = module.default;
+      }
+    } catch {
+      const loadFallback = iconModules[fallbackPath];
+      if (!loadFallback) return;
+      const fallback = await loadFallback();
+      if (nextLoadId === loadId) {
+        IconComponent = fallback.default;
+      }
+    }
+  }
+
+  $effect(() => {
+    void loadIcon(name);
+  });
 </script>
 
-<IconComponent {size} {strokeWidth} {color} class={className} {...restProps} />
+{#if IconComponent}
+  <IconComponent {size} {strokeWidth} {color} class={className} {...restProps} />
+{:else}
+  <span
+    class={className}
+    style:display="inline-flex"
+    style:width={`${size}px`}
+    style:height={`${size}px`}
+    aria-hidden="true"
+  ></span>
+{/if}

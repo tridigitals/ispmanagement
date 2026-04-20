@@ -6,23 +6,25 @@
   import { appSettings } from '$lib/stores/settings';
   import { appLogo } from '$lib/stores/logo';
   import { theme } from '$lib/stores/theme';
-  import { install } from '$lib/api/client';
+  import { install } from '$lib/api/install';
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { connectWebSocket, disconnectWebSocket } from '$lib/stores/websocket';
   import { refreshUnreadCount, resetNotificationsState } from '$lib/stores/notifications';
-  import { Toaster } from 'svelte-sonner';
-  import GlobalUploads from '$lib/components/layout/GlobalUploads.svelte';
   import { getSlugFromDomain, isPlatformDomain } from '$lib/utils/domain';
   import { browser } from '$app/environment';
   import { getApiBaseUrl } from '$lib/utils/apiUrl';
+  import { normalizeLegacyBasePath, shouldLookupCustomDomain } from '$lib/utils/appBoot';
+  import type { Component } from 'svelte';
 
   let loading = true;
   let i18nReady = false;
   let authExpiredHandled = false;
   let keepAliveHandle: ReturnType<typeof setInterval> | null = null;
   let lastUserActivityAt = Date.now();
+  let ToasterComponent: Component | null = null;
+  let GlobalUploadsComponent: Component | null = null;
 
   function markUserActivity() {
     lastUserActivityAt = Date.now();
@@ -89,11 +91,98 @@
     console.log(`[root-layout] ${message}`, meta || {});
   }
 
+  async function loadDeferredGlobals() {
+    const [{ Toaster }, { default: GlobalUploads }] = await Promise.all([
+      import('svelte-sonner'),
+      import('$lib/components/layout/GlobalUploads.svelte'),
+    ]);
+    ToasterComponent = Toaster;
+    GlobalUploadsComponent = GlobalUploads;
+  }
+
+  async function initializeLocale() {
+    try {
+      await appSettings.init();
+      await waitLocale();
+      i18nReady = true;
+    } catch (error) {
+      console.error('[root-layout] Failed to initialize locale:', error);
+      i18nReady = true;
+    }
+  }
+
+  async function lookupCustomDomainIfNeeded(hostname: string) {
+    const knownSlug = getSlugFromDomain(hostname);
+    const isMainPlatformDomain = isPlatformDomain(hostname);
+    debugLog('domain-check', { hostname, knownSlug, isMainPlatformDomain });
+
+    if (
+      !shouldLookupCustomDomain({
+        hostname,
+        knownSlug,
+        isPlatformDomain: isMainPlatformDomain,
+      })
+    ) {
+      return;
+    }
+
+    try {
+      const apiUrl = getApiBaseUrl();
+      let res = await fetch(`${apiUrl}/public/domains/${encodeURIComponent(hostname)}`);
+      if (res.status === 404) {
+        res = await fetch(`${apiUrl}/public/tenant-lookup?domain=${encodeURIComponent(hostname)}`);
+      }
+
+      if (!res.ok) return;
+      const tenant = await res.json();
+      if (tenant && tenant.slug) {
+        debugLog('domain-lookup-success-reload', {
+          hostname,
+          slug: tenant.slug,
+        });
+        await import('$lib/utils/domain').then((m) => m.cacheDomainMapping(hostname, tenant.slug));
+        window.location.reload();
+      }
+    } catch (error) {
+      console.warn('[Domain] Failed to lookup custom domain:', error);
+    }
+  }
+
+  function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    void navigator.serviceWorker.register('/sw.js').catch((error) => {
+      console.error('[SW] Registration failed:', error);
+    });
+  }
+
+  function syncRealtimeConnections() {
+    if (!$isAuthenticated) return;
+    debugLog('ws-connect', { isAuthenticated: $isAuthenticated });
+    connectWebSocket();
+    refreshUnreadCount();
+  }
+
+  function applyMaintenanceRedirect(currentPath: string) {
+    const settings = $appSettings as any;
+    const isMaintenanceMode =
+      settings.maintenance_mode === true || settings.maintenance_mode === 'true';
+    const allowedPaths = ['/login', '/maintenance', '/install', '/superadmin'];
+    const isAllowedPath = allowedPaths.some((p) => currentPath.startsWith(p));
+
+    if (isMaintenanceMode && !$isSuperAdmin && !isAllowedPath) {
+      debugLog('maintenance-redirect', { path: currentPath });
+      goto('/maintenance');
+      return true;
+    }
+
+    return false;
+  }
+
   onMount(async () => {
     if (typeof window !== 'undefined') {
-      if ($page.url.pathname === '/isp-management' || $page.url.pathname.startsWith('/isp-management/')) {
-        const cleanPath = $page.url.pathname.replace(/^\/isp-management/, '') || '/';
-        goto(`${cleanPath}${$page.url.search}`, { replaceState: true });
+      const legacyPath = normalizeLegacyBasePath($page.url.pathname, $page.url.search);
+      if (legacyPath) {
+        goto(legacyPath, { replaceState: true });
         return;
       }
 
@@ -113,91 +202,23 @@
     }
     try {
       debugLog('boot-start', { path: $page.url.pathname, host: window.location.hostname });
-      // 1. Validate Auth & Session first
-      // This ensures we have the correct tenant context before fetching data
-      await checkAuth();
-
-      // Apply saved theme
       theme.init();
-
-      // Load global settings & logo from cache immediately
-      // Logo is only refreshed from backend when user logs in (handled by auth store)
-      await Promise.all([appSettings.init(), appLogo.init()]);
-
-      // Wait for i18n to be ready (locale set in appSettings.init)
-      // Wait for i18n to be ready (locale set in appSettings.init)
-      await waitLocale();
-      i18nReady = true;
-
-      // --- Dynamic Custom Domain Lookup ---
       const hostname = window.location.hostname;
-      const knownSlug = getSlugFromDomain(hostname);
+      appLogo.init();
+      const settingsTask = initializeLocale();
+      void loadDeferredGlobals();
+      registerServiceWorker();
 
-      // If we are on a custom domain (not localhost/IP) and we DON'T know the slug yet
-      // We need to ask the backend.
-      const isLocal =
-        hostname.includes('localhost') ||
-        hostname.includes('127.0.0.1') ||
-        hostname.includes('tauri');
-      const isMainPlatformDomain = isPlatformDomain(hostname);
-      debugLog('domain-check', { hostname, knownSlug, isMainPlatformDomain });
-
-      // Service Worker Registration
-      if ('serviceWorker' in navigator) {
-        try {
-          await navigator.serviceWorker.register('/sw.js');
-        } catch (e) {
-          console.error('[SW] Registration failed:', e);
-        }
-      }
-
-      if (!knownSlug && !isLocal && !isMainPlatformDomain) {
-        try {
-          // We use fetch directly here to avoid auth store dependencies loop if possible
-          // or use the 'api' client but it might not be ready? 'api.public' is stateless usually.
-          // Let's use fetch for safety and simplicity on this "boot" phase.
-          const apiUrl = getApiBaseUrl();
-          // Support both new and legacy public lookup endpoints.
-          // Newer backend: /public/domains/:domain
-          // Older backend: /public/tenant-lookup?domain=...
-          let res = await fetch(`${apiUrl}/public/domains/${encodeURIComponent(hostname)}`);
-          if (res.status === 404) {
-            res = await fetch(`${apiUrl}/public/tenant-lookup?domain=${encodeURIComponent(hostname)}`);
-          }
-
-          if (!res.ok) return;
-          const tenant = await res.json();
-          if (tenant && tenant.slug) {
-            debugLog('domain-lookup-success-reload', {
-              hostname,
-              slug: tenant.slug,
-            });
-            console.log(
-              `[Domain] Found tenant '${tenant.slug}' for '${hostname}'. Caching and reloading...`,
-            );
-            // Cache it
-            await import('$lib/utils/domain').then((m) =>
-              m.cacheDomainMapping(hostname, tenant.slug),
-            );
-
-            // RELOAD to let hooks.ts reroute handle it
-            window.location.reload();
-            return; // Stop initialization
-          }
-        } catch (e) {
-          console.warn('[Domain] Failed to lookup custom domain:', e);
-        }
-      }
-      // ------------------------------------
-
-      // Check if app is installed
-      const isInstalled = await install.checkIsInstalled();
+      const [authOk, isInstalled] = await Promise.all([
+        checkAuth(),
+        install.checkIsInstalled(),
+        lookupCustomDomainIfNeeded(hostname),
+      ]);
       const currentPath = $page.url.pathname;
 
       if (!isInstalled) {
         debugLog('install-state', { isInstalled, path: currentPath });
         if (currentPath !== '/install') {
-          // console.log("App not installed, redirecting to /install");
           goto('/install');
         }
       } else {
@@ -206,32 +227,21 @@
           console.log('App installed, leaving /install page for /login');
           goto('/login');
         }
-        await checkAuth();
-
-        // Check maintenance mode - redirect non-superadmin users
-        const settings = $appSettings as any;
-        const isMaintenanceMode =
-          settings.maintenance_mode === true || settings.maintenance_mode === 'true';
-        const allowedPaths = ['/login', '/maintenance', '/install', '/superadmin'];
-        const isAllowedPath = allowedPaths.some((p) => currentPath.startsWith(p));
-
-        if (isMaintenanceMode && !$isSuperAdmin && !isAllowedPath) {
-          debugLog('maintenance-redirect', { path: currentPath });
-          goto('/maintenance');
-          return;
+        if (authOk) {
+          syncRealtimeConnections();
         }
+      }
 
-        // Connect to WebSocket for real-time updates (only if authenticated)
-        if ($isAuthenticated) {
-          debugLog('ws-connect', { isAuthenticated: $isAuthenticated });
-          connectWebSocket();
-          refreshUnreadCount();
+      loading = false;
+      await settingsTask;
+      if (isInstalled) {
+        if (applyMaintenanceRedirect(currentPath)) return;
+        if (authOk) {
+          syncRealtimeConnections();
         }
       }
     } catch (e) {
       console.error('Critical Error during app initialization in +layout.svelte:', e);
-      // We stop here to prevent loops. The user will see a loading screen,
-      // and the real error will be in the console.
     } finally {
       loading = false;
     }
@@ -276,8 +286,12 @@
     <p>{i18nReady ? $t('common.loading') || 'Loading...' : 'Loading...'}</p>
   </div>
 {:else}
-  <Toaster />
-  <GlobalUploads />
+  {#if ToasterComponent}
+    <svelte:component this={ToasterComponent} />
+  {/if}
+  {#if GlobalUploadsComponent}
+    <svelte:component this={GlobalUploadsComponent} />
+  {/if}
   <slot />
 {/if}
 
