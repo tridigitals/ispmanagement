@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildCustomerPackageInvoiceRelationFromSubscription,
   findCustomerPackageInvoiceRelation,
   getCustomerPackageSubscriptionId,
 } from './customerPackageInvoice';
@@ -32,5 +33,38 @@ describe('customer package invoice helpers', () => {
       label: 'Acme - 20 Mbps',
       status: 'active',
     });
+  });
+
+  it('builds invoice relation directly from a single subscription payload', () => {
+    expect(
+      buildCustomerPackageInvoiceRelationFromSubscription(
+        { external_id: 'pkgsub:sub-99:monthly' },
+        {
+          id: 'sub-99',
+          customer_id: 'cust-1',
+          status: 'active',
+          package_name: 'Acme - 20 Mbps',
+        },
+      ),
+    ).toEqual({
+      subscriptionId: 'sub-99',
+      customerId: 'cust-1',
+      label: 'Acme - 20 Mbps',
+      status: 'active',
+    });
+  });
+
+  it('returns null when single subscription does not match invoice external id', () => {
+    expect(
+      buildCustomerPackageInvoiceRelationFromSubscription(
+        { external_id: 'pkgsub:sub-99:monthly' },
+        {
+          id: 'sub-100',
+          customer_id: 'cust-1',
+          status: 'active',
+          package_name: 'Acme - 20 Mbps',
+        },
+      ),
+    ).toBeNull();
   });
 });

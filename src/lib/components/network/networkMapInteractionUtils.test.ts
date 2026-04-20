@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildNodePopupHtml,
   computePopupPlacement,
   computePopupViewportNudge,
+  getPopupSizeForModel,
 } from './networkMapInteractionUtils';
 
 describe('computePopupViewportNudge', () => {
@@ -50,5 +52,53 @@ describe('computePopupPlacement', () => {
 
     expect(result.anchor).toBe('bottom');
     expect(result.offset).toBe(14);
+  });
+});
+
+describe('getPopupSizeForModel', () => {
+  it('uses a wider size for workflow service popups only', () => {
+    expect(
+      getPopupSizeForModel({
+        variant: 'workflow-service',
+      }),
+    ).toEqual({ width: 332, height: 320 });
+
+    expect(
+      getPopupSizeForModel({
+        variant: 'default',
+      }),
+    ).toEqual({ width: 288, height: 320 });
+  });
+});
+
+describe('buildNodePopupHtml', () => {
+  it('truncates long popup text for display while preserving the full value in title attributes', () => {
+    const html = buildNodePopupHtml({
+      popupUid: 'popup-1',
+      model: {
+        variant: 'workflow-service',
+        kicker: 'Service',
+        title: 'Home-Silver-20Mbps',
+        subtitle: 'Arif Yudiyanto',
+        statusText: 'active',
+        tone: 'ok',
+        contextText: 'Active • PPPoE • Account ready',
+        summaryItems: [
+          { label: 'Customer', value: 'Arif Yudiyanto Dengan Nama Sangat Panjang Sekali' },
+          { label: 'Account', value: 'bandungan-duren-asepmulyana-super-panjang' },
+        ],
+        detailPairs: [
+          { label: 'Package', value: 'Home-Silver-20Mbps-Super-Panjang-Sekali' },
+          { label: 'Service', value: 'internet_pppoe' },
+        ],
+        actions: [],
+      },
+    });
+
+    expect(html.html).toContain('title="Arif Yudiyanto Dengan Nama Sangat Panjang Sekali"');
+    expect(html.html).toContain('title="bandungan-duren-asepmulyana-super-panjang"');
+    expect(html.html).toContain('Arif Yudiyanto Dengan Nama...');
+    expect(html.html).toContain('bandungan-duren-asepmulyana...');
+    expect(html.html).toContain('Home-Silver-20Mbps-Super-Panj...');
   });
 });

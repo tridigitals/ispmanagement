@@ -1302,7 +1302,7 @@
         },
         "api_rate_limit": {
           "label": "Batas API",
-          "desc": "Maksimal permintaan API per menit untuk setiap pengguna."
+          "desc": "Batas dasar permintaan API per menit untuk setiap pengguna; auth dan endpoint berat tetap lebih ketat."
         }
       },
       "twofa": {

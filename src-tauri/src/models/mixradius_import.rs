@@ -19,6 +19,7 @@ pub enum MixradiusImportBatchStatus {
     #[default]
     Pending,
     Running,
+    PartialSuccess,
     Completed,
     Failed,
     Cancelled,
@@ -72,6 +73,15 @@ pub enum MixradiusImportLocationStrategy {
     Preserve,
     Merge,
     Replace,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, Default)]
+#[serde(rename_all = "snake_case")]
+#[sqlx(type_name = "text", rename_all = "snake_case")]
+pub enum MixradiusImportPppoeProvisioningTarget {
+    #[default]
+    Router,
+    ManagedRadius,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -160,6 +170,7 @@ pub struct MixradiusImportUploadRequest {
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
 pub struct MixradiusImportPreviewRequest {
+    #[serde(default)]
     #[validate(length(min = 1, message = "batch_id is required"))]
     #[validate(custom(function = "validate_non_blank"))]
     pub batch_id: String,
@@ -168,12 +179,15 @@ pub struct MixradiusImportPreviewRequest {
     pub mapping_overrides: Vec<MixradiusImportMappingOverride>,
     pub customer_conflict_resolution: Option<MixradiusImportCustomerConflictResolution>,
     pub location_strategy: Option<MixradiusImportLocationStrategy>,
+    #[serde(alias = "pppoe_provisioning_target")]
+    pub pppoe_provisioning_target: Option<MixradiusImportPppoeProvisioningTarget>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
 pub struct MixradiusImportExecuteRequest {
+    #[serde(default)]
     #[validate(length(min = 1, message = "batch_id is required"))]
     #[validate(custom(function = "validate_non_blank"))]
     pub batch_id: String,
@@ -183,21 +197,27 @@ pub struct MixradiusImportExecuteRequest {
     pub mapping_overrides: Vec<MixradiusImportMappingOverride>,
     pub customer_conflict_resolution: Option<MixradiusImportCustomerConflictResolution>,
     pub location_strategy: Option<MixradiusImportLocationStrategy>,
+    #[serde(alias = "pppoe_provisioning_target")]
+    pub pppoe_provisioning_target: Option<MixradiusImportPppoeProvisioningTarget>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
 pub struct MixradiusImportMappingOverride {
+    #[serde(alias = "source_kind")]
     #[validate(length(min = 1, message = "source_kind is required"))]
     #[validate(custom(function = "validate_non_blank"))]
     pub source_kind: String,
+    #[serde(alias = "source_value")]
     #[validate(length(min = 1, message = "source_value is required"))]
     #[validate(custom(function = "validate_non_blank"))]
     pub source_value: String,
+    #[serde(alias = "target_kind")]
     #[validate(length(min = 1, message = "target_kind is required"))]
     #[validate(custom(function = "validate_non_blank"))]
     pub target_kind: String,
+    #[serde(alias = "target_value")]
     #[validate(length(min = 1, message = "target_value is required"))]
     #[validate(custom(function = "validate_non_blank"))]
     pub target_value: String,

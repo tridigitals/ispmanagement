@@ -2,16 +2,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getTokenOrThrow = vi.fn();
 const safeInvoke = vi.fn();
+const getApiBaseUrl = vi.fn();
 
 vi.mock('./core', () => ({
   getTokenOrThrow,
   safeInvoke,
 }));
 
+vi.mock('$lib/utils/apiUrl', () => ({
+  getApiBaseUrl,
+}));
+
 describe('mixradius import api wrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getTokenOrThrow.mockReturnValue('token-123');
+    getApiBaseUrl.mockReturnValue('/api');
+    vi.stubGlobal('fetch', vi.fn());
   });
 
   it('uploads a MixRadius backup with file metadata and optional local path', async () => {
@@ -41,6 +48,29 @@ describe('mixradius import api wrapper', () => {
     });
   });
 
+  it('uploads a browser-selected MixRadius file as multipart form data', async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'batch-web' }),
+    } as Response);
+
+    const { mixradiusImport } = await import('./mixradiusImport');
+    const result = await mixradiusImport.upload({
+      file_name: 'MixRadius.sql.gz',
+      file_size_bytes: 1024,
+      file: new File(['backup'], 'MixRadius.sql.gz', { type: 'application/gzip' }),
+    });
+
+    expect(result).toEqual({ id: 'batch-web' });
+    expect(safeInvoke).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith('/api/admin/pppoe/mixradius/imports/upload', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer token-123' },
+      body: expect.any(FormData),
+    });
+  });
+
   it('lists and gets import batches through stable route keys', async () => {
     safeInvoke.mockResolvedValueOnce({ data: [], total: 0, page: 1, per_page: 25 });
     safeInvoke.mockResolvedValueOnce({ id: 'batch-1' });
@@ -54,6 +84,7 @@ describe('mixradius import api wrapper', () => {
       page: 2,
       per_page: 50,
       status: 'pending',
+      __suppress_error_log: true,
     });
     expect(safeInvoke).toHaveBeenNthCalledWith(2, 'get_mixradius_import_batch', {
       token: 'token-123',
@@ -80,6 +111,7 @@ describe('mixradius import api wrapper', () => {
       mapping_overrides: overrides,
       customer_conflict_resolution: 'merge',
       location_strategy: 'preserve',
+      pppoe_provisioning_target: 'managed_radius',
     });
     await mixradiusImport.execute({
       batch_id: 'batch-1',
@@ -87,6 +119,7 @@ describe('mixradius import api wrapper', () => {
       mapping_overrides: overrides,
       customer_conflict_resolution: 'skip',
       location_strategy: 'merge',
+      pppoe_provisioning_target: 'managed_radius',
     });
 
     expect(safeInvoke).toHaveBeenNthCalledWith(1, 'preview_mixradius_import', {
@@ -99,6 +132,8 @@ describe('mixradius import api wrapper', () => {
       customer_conflict_resolution: 'merge',
       locationStrategy: 'preserve',
       location_strategy: 'preserve',
+      pppoeProvisioningTarget: 'managed_radius',
+      pppoe_provisioning_target: 'managed_radius',
     });
     expect(safeInvoke).toHaveBeenNthCalledWith(2, 'execute_mixradius_import', {
       token: 'token-123',
@@ -112,6 +147,9 @@ describe('mixradius import api wrapper', () => {
       customer_conflict_resolution: 'skip',
       locationStrategy: 'merge',
       location_strategy: 'merge',
+      pppoeProvisioningTarget: 'managed_radius',
+      pppoe_provisioning_target: 'managed_radius',
+      __timeout_ms: 900000,
     });
   });
 

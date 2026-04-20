@@ -57,3 +57,23 @@ export function readCustomerDetailTabFromUrlValue(
   if (!trimmed) return null;
   return normalizeCustomerDetailTab(trimmed, access);
 }
+
+export function shouldAutoLoadCustomerDetailTab(
+  tab: CustomerDetailTab,
+  access: CustomerDetailAccessState,
+): boolean {
+  const visibleTabs = getVisibleCustomerDetailTabs(access);
+  if (!visibleTabs.includes(tab)) return false;
+  return tab === 'subscriptions' || tab === 'billing' || tab === 'timeline' || tab === 'pppoe';
+}
+
+export function getCustomerDetailAutoLoadKey(
+  tab: CustomerDetailTab,
+  customerId: string | null | undefined,
+  access: CustomerDetailAccessState,
+): string | null {
+  const normalizedCustomerId = String(customerId || '').trim();
+  if (!normalizedCustomerId) return null;
+  if (!shouldAutoLoadCustomerDetailTab(tab, access)) return null;
+  return `${tab}:${normalizedCustomerId}`;
+}

@@ -243,6 +243,12 @@ export const customers = {
         page: params?.page,
         per_page: params?.per_page,
       }),
+    get: (subscriptionId: string): Promise<CustomerSubscriptionView> =>
+      safeInvoke('get_customer_subscription', {
+        token: getTokenOrThrow(),
+        subscriptionId,
+        subscription_id: subscriptionId,
+      }),
     create: (
       customerId: string,
       dto: {

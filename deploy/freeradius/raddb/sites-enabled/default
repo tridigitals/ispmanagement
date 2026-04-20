@@ -13,10 +13,20 @@ server default {
 
     authorize {
         sql
+        chap
+        mschap
         pap
     }
 
     authenticate {
+        Auth-Type CHAP {
+            chap
+        }
+
+        Auth-Type MS-CHAP {
+            mschap
+        }
+
         Auth-Type PAP {
             pap
         }

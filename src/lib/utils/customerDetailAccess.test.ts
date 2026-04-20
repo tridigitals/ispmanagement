@@ -4,6 +4,8 @@ import {
   getVisibleCustomerDetailTabs,
   normalizeCustomerDetailTab,
   readCustomerDetailTabFromUrlValue,
+  getCustomerDetailAutoLoadKey,
+  shouldAutoLoadCustomerDetailTab,
   type CustomerDetailAccessState,
 } from './customerDetailAccess';
 
@@ -44,5 +46,23 @@ describe('customer detail access helpers', () => {
     expect(readCustomerDetailTabFromUrlValue('', technicianAccess)).toBeNull();
     expect(readCustomerDetailTabFromUrlValue(null, technicianAccess)).toBeNull();
     expect(readCustomerDetailTabFromUrlValue('locations', technicianAccess)).toBe('locations');
+  });
+
+  it('marks pppoe as an auto-loading tab when access is available', () => {
+    expect(shouldAutoLoadCustomerDetailTab('pppoe', technicianAccess)).toBe(true);
+    expect(shouldAutoLoadCustomerDetailTab('timeline', technicianAccess)).toBe(false);
+  });
+
+  it('keeps forbidden tabs from auto-loading', () => {
+    expect(shouldAutoLoadCustomerDetailTab('billing', technicianAccess)).toBe(false);
+    expect(shouldAutoLoadCustomerDetailTab('subscriptions', technicianAccess)).toBe(false);
+  });
+
+  it('builds a stable auto-load key from tab and customer only when allowed', () => {
+    expect(getCustomerDetailAutoLoadKey('pppoe', 'customer-1', technicianAccess)).toBe(
+      'pppoe:customer-1',
+    );
+    expect(getCustomerDetailAutoLoadKey('billing', 'customer-1', technicianAccess)).toBeNull();
+    expect(getCustomerDetailAutoLoadKey('pppoe', '', technicianAccess)).toBeNull();
   });
 });

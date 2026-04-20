@@ -3823,57 +3823,6 @@ impl PaymentService {
             .await
     }
 
-    async fn has_previous_paid_customer_package_invoice(
-        &self,
-        tenant_id: &str,
-        subscription_id: &str,
-        current_invoice_id: &str,
-    ) -> AppResult<bool> {
-        let pattern = format!("{}{}:%", CUSTOMER_PACKAGE_INVOICE_PREFIX, subscription_id);
-
-        #[cfg(feature = "postgres")]
-        let exists: bool = sqlx::query_scalar(
-            r#"
-            SELECT EXISTS(
-              SELECT 1
-              FROM invoices
-              WHERE tenant_id = $1
-                AND id <> $2
-                AND external_id LIKE $3
-                AND status = 'paid'
-            )
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(current_invoice_id)
-        .bind(&pattern)
-        .fetch_one(&self.pool)
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
-
-        #[cfg(feature = "sqlite")]
-        let exists: bool = sqlx::query_scalar(
-            r#"
-            SELECT EXISTS(
-              SELECT 1
-              FROM invoices
-              WHERE tenant_id = ?
-                AND id <> ?
-                AND external_id LIKE ?
-                AND status = 'paid'
-            )
-            "#,
-        )
-        .bind(tenant_id)
-        .bind(current_invoice_id)
-        .bind(&pattern)
-        .fetch_one(&self.pool)
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?;
-
-        Ok(exists)
-    }
-
     async fn upsert_customer_service_assignment_from_paid_invoice(
         &self,
         tenant_id: &str,

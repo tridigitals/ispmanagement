@@ -96,6 +96,9 @@
     if (path.startsWith('/admin/network/pppoe')) {
       return $can('read', 'pppoe') || $can('manage', 'pppoe');
     }
+    if (path.startsWith('/admin/network/import')) {
+      return $can('manage', 'pppoe');
+    }
     if (path.startsWith('/admin/services') || path.startsWith('/admin/network/packages')) {
       return $can('read', 'isp_packages') || $can('manage', 'isp_packages');
     }

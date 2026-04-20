@@ -75,7 +75,7 @@ pub async fn start_server_impl(
     });
 
     let security_config = Arc::new(TokioRwLock::new(SecurityRuntimeConfig {
-        api_rate_limit_per_minute: 100,
+        api_rate_limit_per_minute: 300,
         enable_ip_blocking: false,
         ip_block_threshold: 5,
         ip_block_duration_minutes: 15,
@@ -100,7 +100,7 @@ pub async fn start_server_impl(
                     .flatten()
                     .and_then(|s| s.parse::<u32>().ok())
                     .filter(|v| *v >= 10 && *v <= 10_000)
-                    .unwrap_or(100);
+                    .unwrap_or(300);
 
                 let enable_ip_blocking = settings
                     .get_value(None, "enable_ip_blocking")

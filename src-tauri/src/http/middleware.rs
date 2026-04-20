@@ -83,8 +83,8 @@ async fn rate_limit_key_for_request(
     headers: &HeaderMap,
     path: &str,
 ) -> Option<String> {
-    // For pre-auth endpoints, we intentionally key by IP.
-    if path.starts_with("/api/auth/") || path == "/api/public/customer-register" {
+    // For pre-auth abuse-prone endpoints, we intentionally key by IP.
+    if should_rate_limit_by_ip(path) {
         return Some(format!("ip:{client_ip}"));
     }
 
@@ -102,11 +102,92 @@ async fn rate_limit_key_for_request(
     Some(format!("ip:{client_ip}"))
 }
 
+fn should_rate_limit_by_ip(path: &str) -> bool {
+    matches!(
+        path,
+        "/api/auth/login"
+            | "/api/auth/register"
+            | "/api/auth/forgot-password"
+            | "/api/auth/reset-password"
+            | "/api/auth/2fa/verify"
+            | "/api/auth/2fa/email/verify"
+            | "/api/auth/2fa/email/request"
+            | "/api/auth/2fa/email/enable-request"
+            | "/api/public/customer-register"
+    )
+}
+
+fn is_session_path(path: &str) -> bool {
+    matches!(
+        path,
+        "/api/auth/validate" | "/api/auth/me" | "/api/tenant/me"
+    )
+}
+
+fn is_notification_path(path: &str) -> bool {
+    path.starts_with("/api/notifications")
+}
+
+fn is_billing_read_path(path: &str) -> bool {
+    if path == "/api/payment/invoices"
+        || path == "/api/payment/invoices/all"
+        || path == "/api/payment/invoices/customer-package"
+    {
+        return true;
+    }
+
+    let Some(rest) = path.strip_prefix("/api/payment/invoices/") else {
+        return false;
+    };
+    let segments: Vec<&str> = rest.split('/').filter(|segment| !segment.is_empty()).collect();
+
+    match segments.as_slice() {
+        [invoice_id] => !matches!(*invoice_id, "plan" | "all" | "customer-package" | "installation"),
+        [invoice_id, "status"] => {
+            !matches!(*invoice_id, "plan" | "all" | "customer-package" | "installation")
+        }
+        _ => false,
+    }
+}
+
 fn policy_for_path(path: &str, default_limit: u32) -> (u32, u64) {
     // Wallboard live traffic is intentionally high-frequency.
     // Keep it isolated with a dedicated key scope and higher budget.
     if is_wallboard_live_path(path) {
         return (1800, 60);
+    }
+
+    // Chunked uploads are bursty during normal use, so keep them higher than
+    // the general API baseline to avoid false-positive 429s.
+    if path == "/api/storage/upload/chunk" {
+        return (600, 60);
+    }
+    if path == "/api/storage/upload/init" || path == "/api/storage/upload/complete" {
+        return (120, 60);
+    }
+
+    // Expensive operations should stay protected even with a more forgiving
+    // default API budget for regular CRUD traffic.
+    if path.starts_with("/api/backups") {
+        return (30, 60);
+    }
+    if path.starts_with("/api/admin/pppoe/mixradius/") {
+        return (30, 60);
+    }
+    if path == "/api/superadmin/diagnostics" {
+        return (60, 60);
+    }
+
+    // Frequent background sync from authenticated UI should not contend with
+    // general CRUD traffic or auth abuse protection.
+    if is_session_path(path) {
+        return (600, 60);
+    }
+    if path == "/api/notifications/unread-count" {
+        return (600, 60);
+    }
+    if is_billing_read_path(path) {
+        return (600, 60);
     }
 
     // Keep these strict and predictable: they are abuse magnets.
@@ -133,7 +214,7 @@ fn policy_for_path(path: &str, default_limit: u32) -> (u32, u64) {
         return (30, 60);
     }
 
-    (default_limit.max(10), 60)
+    (default_limit.max(300), 60)
 }
 
 fn is_wallboard_live_path(path: &str) -> bool {
@@ -143,6 +224,12 @@ fn is_wallboard_live_path(path: &str) -> bool {
 fn rate_limit_scope(path: &str) -> &'static str {
     if is_wallboard_live_path(path) {
         "wallboard_live"
+    } else if is_session_path(path) {
+        "session"
+    } else if is_notification_path(path) {
+        "notifications"
+    } else if is_billing_read_path(path) {
+        "billing_read"
     } else {
         "api"
     }
@@ -400,7 +487,10 @@ pub async fn security_headers_middleware(request: Request<Body>, next: Next) -> 
 
 #[cfg(test)]
 mod tests {
-    use super::{correlation_id_middleware, CorrelationId};
+    use super::{
+        correlation_id_middleware, policy_for_path, rate_limit_scope, should_bypass_rate_limit,
+        should_rate_limit_by_ip, CorrelationId,
+    };
     use axum::{
         body::Body,
         extract::Extension,
@@ -469,6 +559,96 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
         assert!(!generated.is_empty());
+    }
+
+    #[test]
+    fn policy_keeps_auth_endpoints_strict() {
+        assert_eq!(policy_for_path("/api/auth/login", 300), (20, 60));
+        assert_eq!(policy_for_path("/api/auth/register", 300), (10, 60));
+        assert_eq!(policy_for_path("/api/auth/forgot-password", 300), (10, 60));
+    }
+
+    #[test]
+    fn policy_applies_special_limits_for_expensive_paths() {
+        assert_eq!(
+            policy_for_path("/api/admin/mikrotik/routers/abc/interfaces/live", 300),
+            (1800, 60)
+        );
+        assert_eq!(policy_for_path("/api/storage/upload/chunk", 300), (600, 60));
+        assert_eq!(policy_for_path("/api/storage/upload/init", 300), (120, 60));
+        assert_eq!(policy_for_path("/api/backups/restore", 300), (30, 60));
+        assert_eq!(
+            policy_for_path("/api/admin/pppoe/mixradius/imports/batch-1/execute", 300),
+            (30, 60)
+        );
+    }
+
+    #[test]
+    fn policy_uses_more_forgiving_baseline_for_general_api_traffic() {
+        assert_eq!(policy_for_path("/api/users", 300), (300, 60));
+        assert_eq!(policy_for_path("/api/settings", 300), (300, 60));
+    }
+
+    #[test]
+    fn policy_is_more_forgiving_for_expected_background_session_paths() {
+        assert_eq!(policy_for_path("/api/auth/validate", 300), (600, 60));
+        assert_eq!(policy_for_path("/api/auth/me", 300), (600, 60));
+        assert_eq!(policy_for_path("/api/tenant/me", 300), (600, 60));
+    }
+
+    #[test]
+    fn policy_gives_ui_reads_their_own_budget() {
+        assert_eq!(
+            policy_for_path("/api/notifications/unread-count", 300),
+            (600, 60)
+        );
+        assert_eq!(
+            policy_for_path("/api/payment/invoices/abc-123", 300),
+            (600, 60)
+        );
+        assert_eq!(policy_for_path("/api/payment/invoices", 300), (600, 60));
+        assert_eq!(policy_for_path("/api/payment/invoices/plan", 300), (300, 60));
+    }
+
+    #[test]
+    fn rate_limit_scope_separates_session_and_billing_reads_from_general_api() {
+        assert_eq!(rate_limit_scope("/api/auth/validate"), "session");
+        assert_eq!(rate_limit_scope("/api/auth/me"), "session");
+        assert_eq!(rate_limit_scope("/api/tenant/me"), "session");
+        assert_eq!(
+            rate_limit_scope("/api/notifications/unread-count"),
+            "notifications"
+        );
+        assert_eq!(
+            rate_limit_scope("/api/payment/invoices/abc-123"),
+            "billing_read"
+        );
+        assert_eq!(
+            rate_limit_scope("/api/payment/invoices/abc-123/status"),
+            "billing_read"
+        );
+        assert_eq!(rate_limit_scope("/api/payment/invoices/plan"), "api");
+        assert_eq!(rate_limit_scope("/api/users"), "api");
+    }
+
+    #[test]
+    fn only_pre_auth_abuse_prone_paths_are_keyed_by_ip() {
+        assert!(should_rate_limit_by_ip("/api/auth/login"));
+        assert!(should_rate_limit_by_ip("/api/auth/register"));
+        assert!(should_rate_limit_by_ip("/api/auth/forgot-password"));
+        assert!(should_rate_limit_by_ip("/api/auth/reset-password"));
+        assert!(!should_rate_limit_by_ip("/api/auth/validate"));
+        assert!(!should_rate_limit_by_ip("/api/auth/me"));
+        assert!(!should_rate_limit_by_ip("/api/tenant/me"));
+    }
+
+    #[test]
+    fn bypass_list_still_skips_public_and_version_routes() {
+        assert!(should_bypass_rate_limit("/"));
+        assert!(should_bypass_rate_limit("/api/version"));
+        assert!(should_bypass_rate_limit("/api/public/tenant-lookup"));
+        assert!(!should_bypass_rate_limit("/api/public/customer-register"));
+        assert!(!should_bypass_rate_limit("/api/users"));
     }
 }
 

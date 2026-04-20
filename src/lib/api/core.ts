@@ -116,6 +116,7 @@ const commandMap: Record<string, { method: string; path: string }> = {
     path: '/customers/portal-users/:customerUserId',
   },
   list_customer_subscriptions: { method: 'GET', path: '/customers/:customerId/subscriptions' },
+  get_customer_subscription: { method: 'GET', path: '/customers/subscriptions/:subscriptionId' },
   create_customer_subscription: {
     method: 'POST',
     path: '/customers/:customerId/subscriptions',
@@ -705,10 +706,16 @@ export async function safeInvoke<T>(command: string, args?: any): Promise<T> {
             errorBody?.detail ||
             errorBody?.details ||
             `HTTP Error ${response.status}`;
-          throw new Error(message);
+          const error = new Error(message) as Error & { status?: number };
+          error.status = response.status;
+          throw error;
         }
         const errorText = (await response.text().catch(() => '')).trim();
-        throw new Error(errorText || `HTTP Error ${response.status}`);
+        const error = new Error(errorText || `HTTP Error ${response.status}`) as Error & {
+          status?: number;
+        };
+        error.status = response.status;
+        throw error;
       }
 
       if (response.status === 204) return undefined as T;
@@ -753,7 +760,7 @@ export async function safeInvoke<T>(command: string, args?: any): Promise<T> {
     if (isAuthError) {
       handleAuthExpired(`Auth error from ${command}: ${error.message || error}`);
       console.warn(`API Warning (${command}):`, error.message);
-    } else {
+    } else if (!args?.__suppress_error_log) {
       console.error(`API Error (${command}):`, error);
     }
     throw error;

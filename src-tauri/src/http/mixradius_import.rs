@@ -5,20 +5,46 @@ use crate::models::{
     MixradiusImportPreview, MixradiusImportPreviewRequest, PaginatedResponse,
 };
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Multipart, Path, Query, State},
     http::HeaderMap,
     routing::{get, post},
     Json, Router,
 };
 use serde::Deserialize;
+use tracing::{error, info, warn};
+use uuid::Uuid;
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/imports", get(list_batches).post(upload_backup))
+        .route("/imports/upload", post(upload_backup_file))
         .route("/imports/{batch_id}", get(get_batch))
         .route("/imports/{batch_id}/preview", post(preview_batch))
         .route("/imports/{batch_id}/execute", post(execute_batch))
         .route("/imports/{batch_id}/cancel", post(cancel_batch))
+}
+
+fn safe_upload_filename(raw: &str) -> String {
+    let trimmed = raw
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or("mixradius-backup.sql.gz")
+        .trim();
+    let sanitized: String = trimmed
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_') {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    if sanitized.is_empty() {
+        "mixradius-backup.sql.gz".to_string()
+    } else {
+        sanitized
+    }
 }
 
 fn bearer_token(headers: &HeaderMap) -> AppResult<String> {
@@ -115,10 +141,26 @@ async fn upload_backup(
     let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
     require_mixradius_permission(&state, &claims, &tenant_id, "manage").await?;
 
+    info!(
+        tenant_id = %tenant_id,
+        user_id = %claims.sub,
+        file_name = %dto.file_name,
+        file_size_bytes = dto.file_size_bytes,
+        has_local_path = dto.local_path.as_ref().map(|v| !v.trim().is_empty()).unwrap_or(false),
+        "MixRadius local-path upload request received"
+    );
+
     if dto.file_name.trim().is_empty() {
+        warn!(tenant_id = %tenant_id, user_id = %claims.sub, "MixRadius upload rejected: empty file_name");
         return Err(AppError::Validation("file_name is required".into()));
     }
     if dto.file_size_bytes <= 0 {
+        warn!(
+            tenant_id = %tenant_id,
+            user_id = %claims.sub,
+            file_size_bytes = dto.file_size_bytes,
+            "MixRadius upload rejected: non-positive file_size_bytes"
+        );
         return Err(AppError::Validation(
             "file_size_bytes must be greater than zero".into(),
         ));
@@ -130,6 +172,11 @@ async fn upload_backup(
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .ok_or_else(|| {
+            warn!(
+                tenant_id = %tenant_id,
+                user_id = %claims.sub,
+                "MixRadius upload rejected: missing local_path"
+            );
             AppError::Validation(
                 "local_path is required for MixRadius import upload in the current implementation"
                     .into(),
@@ -151,9 +198,145 @@ async fn upload_backup(
         .mixradius_import_service
         .stage_backup(&tenant_id, Some(&claims.sub), local_path)
         .await
-        .map_err(|error| AppError::Internal(error.to_string()))?;
+        .map_err(|error| {
+            error!(
+                tenant_id = %tenant_id,
+                user_id = %claims.sub,
+                local_path = %local_path,
+                error = %error,
+                "MixRadius local-path upload failed during stage_backup"
+            );
+            AppError::Internal(error.to_string())
+        })?;
+
+    info!(
+        tenant_id = %tenant_id,
+        user_id = %claims.sub,
+        batch_id = %batch.id,
+        source_filename = %batch.source_filename,
+        "MixRadius local-path upload staged successfully"
+    );
 
     Ok(Json(batch))
+}
+
+async fn upload_backup_file(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    mut multipart: Multipart,
+) -> AppResult<Json<MixradiusImportBatch>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_mixradius_permission(&state, &claims, &tenant_id, "manage").await?;
+
+    info!(
+        tenant_id = %tenant_id,
+        user_id = %claims.sub,
+        "MixRadius browser upload request received"
+    );
+
+    let temp_dir = std::env::temp_dir();
+    let mut temp_path = None;
+
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|error| AppError::Internal(error.to_string()))?
+    {
+        if field.name().unwrap_or_default() != "file" {
+            continue;
+        }
+
+        let filename = safe_upload_filename(field.file_name().unwrap_or("mixradius-backup.sql.gz"));
+        let path = temp_dir.join(format!("mixradius_import_{}_{}", Uuid::new_v4(), filename));
+        let data = field.bytes().await.map_err(|error| {
+            error!(
+                tenant_id = %tenant_id,
+                user_id = %claims.sub,
+                file_name = %filename,
+                error = %error,
+                "MixRadius browser upload failed while reading multipart field"
+            );
+            AppError::Internal(error.to_string())
+        })?;
+
+        info!(
+            tenant_id = %tenant_id,
+            user_id = %claims.sub,
+            file_name = %filename,
+            temp_path = %path.display(),
+            file_size_bytes = data.len(),
+            "MixRadius browser upload file extracted from multipart"
+        );
+
+        if data.is_empty() {
+            warn!(
+                tenant_id = %tenant_id,
+                user_id = %claims.sub,
+                file_name = %filename,
+                "MixRadius browser upload rejected: empty file payload"
+            );
+            return Err(AppError::Validation("No file uploaded".to_string()));
+        }
+
+        tokio::fs::write(&path, data).await.map_err(|error| {
+            error!(
+                tenant_id = %tenant_id,
+                user_id = %claims.sub,
+                temp_path = %path.display(),
+                error = %error,
+                "MixRadius browser upload failed while writing temp file"
+            );
+            AppError::Internal(error.to_string())
+        })?;
+        temp_path = Some(path);
+        break;
+    }
+
+    let temp_path = temp_path.ok_or_else(|| {
+        warn!(
+            tenant_id = %tenant_id,
+            user_id = %claims.sub,
+            "MixRadius browser upload rejected: multipart did not contain file field"
+        );
+        AppError::Validation("No file uploaded".to_string())
+    })?;
+
+    let result = state
+        .mixradius_import_service
+        .stage_backup(&tenant_id, Some(&claims.sub), &temp_path)
+        .await
+        .map_err(|error| {
+            error!(
+                tenant_id = %tenant_id,
+                user_id = %claims.sub,
+                temp_path = %temp_path.display(),
+                error = %error,
+                "MixRadius browser upload failed during stage_backup"
+            );
+            AppError::Internal(error.to_string())
+        });
+
+    if let Err(error) = tokio::fs::remove_file(&temp_path).await {
+        warn!(
+            tenant_id = %tenant_id,
+            user_id = %claims.sub,
+            temp_path = %temp_path.display(),
+            error = %error,
+            "MixRadius browser upload temp file cleanup failed"
+        );
+    }
+
+    if let Ok(batch) = &result {
+        info!(
+            tenant_id = %tenant_id,
+            user_id = %claims.sub,
+            batch_id = %batch.id,
+            source_filename = %batch.source_filename,
+            "MixRadius browser upload staged successfully"
+        );
+    }
+
+    result.map(Json)
 }
 
 async fn preview_batch(

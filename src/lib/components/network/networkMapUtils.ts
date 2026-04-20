@@ -56,7 +56,13 @@ export type LinkFieldConfig = {
   helper: string;
 };
 
-export type NetworkMapPopupActionKey = 'connect' | 'edit' | 'delete' | 'open-router';
+export type NetworkMapPopupActionKey =
+  | 'connect'
+  | 'edit'
+  | 'delete'
+  | 'open-router'
+  | 'open-customer'
+  | 'open-service';
 
 export type NetworkMapPopupActionModel = {
   key: NetworkMapPopupActionKey;
@@ -71,6 +77,7 @@ export type NetworkMapPopupSummaryItem = {
 };
 
 export type NetworkMapPopupModel = {
+  variant?: 'default' | 'workflow-service';
   kicker: string;
   title: string;
   subtitle: string;
@@ -540,6 +547,24 @@ function popupStatusText(status: string) {
   return String(status || '-').trim() || '-';
 }
 
+function popupTitleText(value: unknown) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  return text
+    .replaceAll('_', ' ')
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    .replace(/\bPppoe\b/g, 'PPPoE');
+}
+
+function workflowServiceTypeText(value: unknown) {
+  const text = String(value || '').trim();
+  if (!text || text === '-') return '';
+  if (text.toLowerCase().includes('pppoe')) return 'PPPoE';
+  return popupTitleText(text);
+}
+
 function popupToneFromRouterState(
   router: Pick<NMRouter, 'is_online' | 'enabled'>,
 ): NetworkMapPopupModel['tone'] {
@@ -834,38 +859,50 @@ export function buildServicePopupModel(node: NMNode): NetworkMapPopupModel {
   const serviceType = String(
     node.metadata?.service_type || node.metadata?.service_kind || '',
   ).trim();
+  const customerId = String(node.metadata?.customer_id || '').trim();
+  const serviceId = String(node.metadata?.service_id || node.metadata?.subscription_id || '').trim();
+  const accountName = metadataText(node, ['pppoe_username', 'username', 'account_username']);
+  const packageName = metadataText(node, ['package_name', 'package_label', 'service_label']);
+  const normalizedServiceType = normalizePopupValue(serviceType || nodeTypeLabel(node.node_type));
+  const statusLabel = popupTitleText(popupStatusText(node.status)) || popupStatusText(node.status);
+  const serviceTypeLabel = workflowServiceTypeText(normalizedServiceType);
+  const contextParts = [
+    statusLabel,
+    serviceTypeLabel,
+    accountName ? 'Account ready' : '',
+  ].filter(Boolean);
 
   return {
+    variant: 'workflow-service',
     kicker: 'Service',
     title: serviceName,
     subtitle: customerName || nodeTypeLabel(node.node_type),
     statusText: popupStatusText(node.status),
     tone: statusTone(node.status),
-    contextText: 'customer service',
+    contextText: contextParts.join(' • ') || 'customer service',
     summaryItems: [
-      { label: 'Status', value: popupStatusText(node.status), tone: statusTone(node.status) },
-      { label: 'Type', value: normalizePopupValue(serviceType || nodeTypeLabel(node.node_type)) },
+      { label: 'Customer', value: normalizePopupValue(customerName) },
+      { label: 'Account', value: normalizePopupValue(accountName) },
     ],
     detailPairs: [
-      { label: 'Customer', value: normalizePopupValue(customerName) },
       {
         label: 'Package',
-        value: normalizePopupValue(
-          metadataText(node, ['package_name', 'package_label', 'service_label']),
-        ),
-      },
-      {
-        label: 'Account',
-        value: normalizePopupValue(
-          metadataText(node, ['pppoe_username', 'username', 'account_username']),
-        ),
+        value: normalizePopupValue(packageName),
       },
       {
         label: 'Service',
-        value: normalizePopupValue(serviceType || nodeTypeLabel(node.node_type)),
+        value: normalizedServiceType,
+      },
+      {
+        label: 'Status',
+        value: popupStatusText(node.status),
       },
     ],
-    actions: [popupAction('connect', 'Connect', 'primary')],
+    actions: [
+      ...(customerId ? [popupAction('open-customer', 'Customer', 'primary')] : []),
+      ...(customerId && serviceId ? [popupAction('open-service', 'Service')] : []),
+      popupAction('connect', 'Connect'),
+    ],
   };
 }
 

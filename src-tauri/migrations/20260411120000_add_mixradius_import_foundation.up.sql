@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS public.mixradius_import_batches (
     CONSTRAINT chk_mixradius_import_batches_parse_status
         CHECK (parse_status IN ('pending', 'running', 'ready', 'failed')),
     CONSTRAINT chk_mixradius_import_batches_execution_status
-        CHECK (execution_status IN ('pending', 'running', 'completed', 'failed', 'cancelled')),
+        CHECK (execution_status IN ('pending', 'running', 'partial_success', 'completed', 'failed', 'cancelled')),
     CONSTRAINT chk_mixradius_import_batches_execution_mode
         CHECK (execution_mode IN ('preview_only', 'safe_import', 'force_sync'))
 );

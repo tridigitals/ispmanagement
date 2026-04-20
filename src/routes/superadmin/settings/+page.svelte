@@ -256,7 +256,7 @@
         settingsMap['lockout_duration_minutes'] ||
         '15',
     );
-    apiRateLimitPerMinute = parseInt(settingsMap['api_rate_limit_per_minute'] || '100');
+    apiRateLimitPerMinute = parseInt(settingsMap['api_rate_limit_per_minute'] || '300');
     enableIpBlocking = settingsMap['enable_ip_blocking'] === 'true';
 
     // 2FA Configuration
@@ -290,7 +290,9 @@
     paymentManualInstructions =
       settingsMap['payment_manual_instructions'] || 'Please transfer to our bank account.';
     installationSlaReminderEnabled = settingsMap['installation_sla_reminder_enabled'] !== 'false';
-    installationSlaOverdueMinutes = parseInt(settingsMap['installation_sla_overdue_minutes'] || '120');
+    installationSlaOverdueMinutes = parseInt(
+      settingsMap['installation_sla_overdue_minutes'] || '120',
+    );
     installationSlaReminderCooldownMinutes = parseInt(
       settingsMap['installation_sla_reminder_cooldown_minutes'] || '180',
     );

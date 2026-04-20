@@ -96,7 +96,6 @@ fn parse_args() -> Result<Options> {
 #[derive(Debug, sqlx::FromRow)]
 struct RouterRow {
     id: String,
-    tenant_id: String,
     name: String,
     host: String,
 }
@@ -110,7 +109,7 @@ async fn main() -> Result<()> {
     let pool = PgPool::connect(&billing_db_url).await?;
 
     let router = sqlx::query_as::<_, RouterRow>(
-        "SELECT id, tenant_id, name, host FROM mikrotik_routers WHERE id = $1 AND tenant_id = $2",
+        "SELECT id, name, host FROM mikrotik_routers WHERE id = $1 AND tenant_id = $2",
     )
     .bind(&opts.router_id)
     .bind(&opts.tenant_id)

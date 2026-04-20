@@ -5,6 +5,150 @@ use crate::models::{NetworkImpactCustomer, NetworkImpactResponse, SyncTopologyAs
 use std::collections::HashSet;
 
 impl NetworkMappingService {
+    pub(super) fn build_customer_location_metadata(
+        row: &SyncCustomerLocationRow,
+    ) -> serde_json::Map<String, serde_json::Value> {
+        let mut metadata = serde_json::Map::from_iter([
+            ("system_managed".to_string(), serde_json::Value::Bool(true)),
+            (
+                "asset_source".to_string(),
+                serde_json::Value::String("customer_location".to_string()),
+            ),
+            (
+                "asset_type".to_string(),
+                serde_json::Value::String("customer_location".to_string()),
+            ),
+            (
+                "asset_id".to_string(),
+                serde_json::Value::String(row.location_id.clone()),
+            ),
+            (
+                "location_id".to_string(),
+                serde_json::Value::String(row.location_id.clone()),
+            ),
+            (
+                "customer_id".to_string(),
+                serde_json::Value::String(row.customer_id.clone()),
+            ),
+            (
+                "customer_name".to_string(),
+                serde_json::Value::String(row.customer_name.clone()),
+            ),
+            (
+                "location_label".to_string(),
+                serde_json::Value::String(row.label.clone()),
+            ),
+            (
+                "subscription_id".to_string(),
+                serde_json::Value::String(row.subscription_id.clone()),
+            ),
+            (
+                "subscription_status".to_string(),
+                serde_json::Value::String(row.subscription_status.clone()),
+            ),
+        ]);
+
+        let package_name = row
+            .package_name
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string);
+        let package_service_type = row
+            .package_service_type
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string);
+        let pppoe_username = row
+            .pppoe_username
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string);
+        let pppoe_account_source = row
+            .pppoe_account_source
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string);
+        let pppoe_router_profile_name = row
+            .pppoe_router_profile_name
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string);
+        let router_id = row
+            .router_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string);
+
+        metadata.insert(
+            "service_id".to_string(),
+            serde_json::Value::String(row.subscription_id.clone()),
+        );
+
+        if let Some(service_name) = package_name
+            .clone()
+            .or_else(|| pppoe_router_profile_name.clone())
+            .or_else(|| pppoe_username.clone())
+        {
+            metadata.insert(
+                "service_name".to_string(),
+                serde_json::Value::String(service_name),
+            );
+        }
+
+        if let Some(service_label) = pppoe_router_profile_name
+            .clone()
+            .or_else(|| package_name.clone())
+        {
+            metadata.insert(
+                "service_label".to_string(),
+                serde_json::Value::String(service_label),
+            );
+        }
+
+        if let Some(service_type) = package_service_type
+            .clone()
+            .or_else(|| pppoe_username.as_ref().map(|_| "pppoe".to_string()))
+        {
+            metadata.insert(
+                "service_type".to_string(),
+                serde_json::Value::String(service_type),
+            );
+        }
+
+        if let Some(value) = package_name {
+            metadata.insert("package_name".to_string(), serde_json::Value::String(value));
+        }
+        if let Some(value) = pppoe_username {
+            metadata.insert(
+                "pppoe_username".to_string(),
+                serde_json::Value::String(value),
+            );
+        }
+        if let Some(value) = pppoe_account_source {
+            metadata.insert(
+                "pppoe_account_source".to_string(),
+                serde_json::Value::String(value),
+            );
+        }
+        if let Some(value) = pppoe_router_profile_name {
+            metadata.insert(
+                "router_profile_name".to_string(),
+                serde_json::Value::String(value),
+            );
+        }
+        if let Some(value) = router_id {
+            metadata.insert("router_id".to_string(), serde_json::Value::String(value));
+        }
+
+        metadata
+    }
+
     pub(super) async fn sync_topology_asset_nodes_flow(
         &self,
         actor_id: &str,
@@ -39,7 +183,14 @@ impl NetworkMappingService {
               cl.customer_id::text AS customer_id,
               c.name AS customer_name,
               COALESCE(NULLIF(BTRIM(cl.label), ''), c.name || ' Location') AS label,
+              svc.subscription_id AS subscription_id,
               svc.subscription_status AS subscription_status,
+              p.name AS package_name,
+              p.service_type AS package_service_type,
+              acct.username AS pppoe_username,
+              acct.account_source AS pppoe_account_source,
+              acct.router_profile_name AS pppoe_router_profile_name,
+              COALESCE(svc.router_id, acct.router_id) AS router_id,
               cl.latitude::float8 AS latitude,
               cl.longitude::float8 AS longitude
             FROM customer_locations cl
@@ -47,22 +198,55 @@ impl NetworkMappingService {
               ON c.tenant_id::text = cl.tenant_id::text
              AND c.id::text = cl.customer_id::text
             INNER JOIN LATERAL (
-              SELECT cs.status AS subscription_status
+              SELECT
+                cs.id::text AS subscription_id,
+                cs.status AS subscription_status,
+                cs.package_id,
+                cs.router_id
               FROM customer_subscriptions cs
               WHERE cs.tenant_id = cl.tenant_id
                 AND cs.location_id = cl.id
-                AND cs.status IN ('active', 'pending_installation', 'suspended')
+                AND cs.status IN (
+                  'active',
+                  'grace_active',
+                  'pending_installation',
+                  'installation_done_awaiting_payment',
+                  'suspended'
+                )
               ORDER BY
                 CASE cs.status
                   WHEN 'active' THEN 0
-                  WHEN 'pending_installation' THEN 1
-                  WHEN 'suspended' THEN 2
-                  ELSE 3
+                  WHEN 'grace_active' THEN 1
+                  WHEN 'pending_installation' THEN 2
+                  WHEN 'installation_done_awaiting_payment' THEN 3
+                  WHEN 'suspended' THEN 4
+                  ELSE 5
                 END,
                 cs.updated_at DESC,
                 cs.created_at DESC
               LIMIT 1
             ) svc ON TRUE
+            LEFT JOIN isp_packages p
+              ON p.tenant_id = cl.tenant_id
+             AND p.id = svc.package_id
+            LEFT JOIN LATERAL (
+              SELECT
+                pa.username,
+                pa.account_source,
+                pa.router_profile_name,
+                pa.router_id
+              FROM pppoe_accounts pa
+              WHERE pa.tenant_id = cl.tenant_id
+                AND pa.location_id = cl.id
+              ORDER BY
+                CASE
+                  WHEN pa.account_source = 'managed_radius' THEN 0
+                  ELSE 1
+                END,
+                pa.updated_at DESC,
+                pa.created_at DESC
+              LIMIT 1
+            ) acct ON TRUE
             WHERE cl.tenant_id = $1::text
               AND cl.latitude IS NOT NULL
               AND cl.longitude IS NOT NULL
@@ -133,17 +317,7 @@ impl NetworkMappingService {
                     Self::customer_subscription_to_node_status(&row.subscription_status),
                     row.latitude,
                     row.longitude,
-                    serde_json::json!({
-                        "system_managed": true,
-                        "asset_source": "customer_location",
-                        "asset_type": "customer_location",
-                        "asset_id": row.location_id,
-                        "location_id": row.location_id,
-                        "customer_id": row.customer_id,
-                        "customer_name": row.customer_name,
-                        "location_label": row.label,
-                        "subscription_status": row.subscription_status,
-                    }),
+                    serde_json::Value::Object(Self::build_customer_location_metadata(&row)),
                 )
                 .await?;
             if created {

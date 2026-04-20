@@ -1,11 +1,11 @@
 use crate::db::DbPool;
 use crate::models::{
-    MixradiusImportBatch, MixradiusImportConflictState,
-    MixradiusImportCustomerConflictResolution, MixradiusImportExecuteRequest,
-    MixradiusImportExecutionResult, MixradiusImportExecutionSummary, MixradiusImportLocationStrategy,
-    MixradiusImportParseStatus, MixradiusImportPreview, MixradiusImportPreviewRequest,
-    MixradiusImportPreviewRow, PaginatedResponse,
+    MixradiusImportBatch, MixradiusImportConflictState, MixradiusImportCustomerConflictResolution,
+    MixradiusImportExecuteRequest, MixradiusImportExecutionResult, MixradiusImportExecutionSummary,
+    MixradiusImportLocationStrategy, MixradiusImportParseStatus, MixradiusImportPreview,
+    MixradiusImportPreviewRequest, MixradiusImportPreviewRow, PaginatedResponse,
 };
+use crate::services::mixradius_import_executor::MixradiusImportExecutor;
 use crate::services::mixradius_sql_parser::{
     parse_mixradius_backup, MixradiusParsedBackup, MixradiusSourceRow,
 };
@@ -310,7 +310,6 @@ impl MixradiusImportService {
         tenant_id: &str,
         request: &MixradiusImportExecuteRequest,
     ) -> Result<MixradiusImportExecutionResult> {
-        let batch = self.get_batch(tenant_id, &request.batch_id).await?;
         self.persist_progress_payload(
             tenant_id,
             &request.batch_id,
@@ -323,8 +322,13 @@ impl MixradiusImportService {
             mapping_overrides: request.mapping_overrides.clone(),
             customer_conflict_resolution: request.customer_conflict_resolution,
             location_strategy: request.location_strategy,
+            pppoe_provisioning_target: request.pppoe_provisioning_target,
         };
         let preview = self.build_preview(tenant_id, &preview_request).await?;
+        let legacy_transaction_count = self
+            .legacy_transaction_count(tenant_id, &request.batch_id)
+            .await?;
+        let production_invoice_count = self.production_invoice_count(tenant_id).await.unwrap_or(0);
 
         let blocked_rows = preview
             .rows
@@ -343,12 +347,397 @@ impl MixradiusImportService {
             .count() as i64;
 
         let mut warnings = Vec::new();
+        let mut imported_rows = 0;
+        let mut updated_rows = 0;
+        let mut execution_conflict_rows = 0;
+
         if request.execution_mode != crate::models::MixradiusImportExecutionMode::PreviewOnly {
+            sqlx::query(
+                r#"
+                UPDATE public.mixradius_import_batches
+                SET execution_status = 'running',
+                    execution_mode = $3,
+                    started_at = COALESCE(started_at, $4),
+                    progress_json = jsonb_set(progress_json, '{stage}', '"executing_packages"', true),
+                    updated_at = $4
+                WHERE tenant_id = $1 AND id = $2
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(&request.batch_id)
+            .bind(request.execution_mode)
+            .bind(Utc::now())
+            .execute(&self.pool)
+            .await
+            .context("failed to mark MixRadius batch as running")?;
+
+            let executor = MixradiusImportExecutor::new(self.pool.clone());
+            let mut phase_reports = serde_json::Map::new();
+            let mut execution_errors: Vec<Value> = Vec::new();
+            let mut progress_stage: &str;
+
+            let package_summary = match executor
+                .execute_package_imports_with_mode(
+                    tenant_id,
+                    &request.batch_id,
+                    &request.mapping_overrides,
+                    request.execution_mode,
+                )
+                .await
+            {
+                Ok(summary) => summary,
+                Err(error) => {
+                    let error_message = format!("{error:#}");
+                    execution_errors
+                        .push(json!({"phase": "packages", "message": error_message.clone()}));
+                    phase_reports.insert(
+                        "packages".to_string(),
+                        json!({"status": "failed", "message": error_message}),
+                    );
+                    progress_stage = "packages_failed";
+                    let summary_json = build_execution_report_json(
+                        request,
+                        preview.total_rows,
+                        imported_rows,
+                        updated_rows,
+                        skipped_rows,
+                        blocked_rows,
+                        conflict_rows + execution_conflict_rows,
+                        &warnings,
+                        &phase_reports,
+                        &execution_errors,
+                        legacy_transaction_count,
+                        production_invoice_count,
+                    );
+                    self.finalize_execution_report(
+                        tenant_id,
+                        &request.batch_id,
+                        request.execution_mode,
+                        "failed",
+                        progress_stage,
+                        summary_json,
+                        json!(execution_errors),
+                        &phase_reports,
+                    )
+                    .await?;
+                    let batch = self.get_batch(tenant_id, &request.batch_id).await?;
+                    return Ok(MixradiusImportExecutionResult {
+                        batch,
+                        summary: MixradiusImportExecutionSummary {
+                            batch_id: request.batch_id.clone(),
+                            mode: request.execution_mode,
+                            total_rows: preview.total_rows,
+                            imported_rows,
+                            updated_rows,
+                            skipped_rows,
+                            blocked_rows,
+                            conflict_rows: conflict_rows + execution_conflict_rows,
+                            warnings: warnings.clone(),
+                        },
+                        preview: Some(preview),
+                        warnings,
+                    });
+                }
+            };
+            imported_rows = package_summary.imported_rows;
+            updated_rows = package_summary.updated_rows;
+            execution_conflict_rows = package_summary.conflict_rows;
+            warnings.extend(package_summary.warnings);
+            phase_reports.insert(
+                "packages".to_string(),
+                json!({
+                    "status": "completed",
+                    "importedRows": package_summary.imported_rows,
+                    "updatedRows": package_summary.updated_rows,
+                    "skippedRows": package_summary.skipped_rows,
+                    "conflictRows": package_summary.conflict_rows
+                }),
+            );
+            progress_stage = "packages_imported_partial";
+
+            let customer_summary = match executor
+                .execute_customer_imports(tenant_id, &request.batch_id)
+                .await
+            {
+                Ok(summary) => summary,
+                Err(error) => {
+                    let error_message = format!("{error:#}");
+                    execution_errors
+                        .push(json!({"phase": "customers", "message": error_message.clone()}));
+                    phase_reports.insert(
+                        "customers".to_string(),
+                        json!({"status": "failed", "message": error_message}),
+                    );
+                    progress_stage = "customers_failed_partial";
+                    let summary_json = build_execution_report_json(
+                        request,
+                        preview.total_rows,
+                        imported_rows,
+                        updated_rows,
+                        skipped_rows,
+                        blocked_rows,
+                        conflict_rows + execution_conflict_rows,
+                        &warnings,
+                        &phase_reports,
+                        &execution_errors,
+                        legacy_transaction_count,
+                        production_invoice_count,
+                    );
+                    self.finalize_execution_report(
+                        tenant_id,
+                        &request.batch_id,
+                        request.execution_mode,
+                        "partial_success",
+                        progress_stage,
+                        summary_json,
+                        json!(execution_errors),
+                        &phase_reports,
+                    )
+                    .await?;
+                    let batch = self.get_batch(tenant_id, &request.batch_id).await?;
+                    return Ok(MixradiusImportExecutionResult {
+                        batch,
+                        summary: MixradiusImportExecutionSummary {
+                            batch_id: request.batch_id.clone(),
+                            mode: request.execution_mode,
+                            total_rows: preview.total_rows,
+                            imported_rows,
+                            updated_rows,
+                            skipped_rows,
+                            blocked_rows,
+                            conflict_rows: conflict_rows + execution_conflict_rows,
+                            warnings: warnings.clone(),
+                        },
+                        preview: Some(preview),
+                        warnings,
+                    });
+                }
+            };
+            if customer_summary.total_rows > 0 {
+                imported_rows +=
+                    customer_summary.imported_rows + customer_summary.location_imported_rows;
+                updated_rows +=
+                    customer_summary.updated_rows + customer_summary.location_updated_rows;
+                execution_conflict_rows += customer_summary.conflict_rows;
+                warnings.extend(customer_summary.warnings);
+                progress_stage = "customers_imported_partial";
+            }
+            phase_reports.insert(
+                "customers".to_string(),
+                json!({
+                    "status": "completed",
+                    "totalRows": customer_summary.total_rows,
+                    "importedRows": customer_summary.imported_rows,
+                    "updatedRows": customer_summary.updated_rows,
+                    "locationImportedRows": customer_summary.location_imported_rows,
+                    "locationUpdatedRows": customer_summary.location_updated_rows,
+                    "skippedRows": customer_summary.skipped_rows,
+                    "conflictRows": customer_summary.conflict_rows
+                }),
+            );
+
+            let subscription_summary = match executor
+                .execute_subscription_imports(tenant_id, &request.batch_id)
+                .await
+            {
+                Ok(summary) => summary,
+                Err(error) => {
+                    let error_message = format!("{error:#}");
+                    execution_errors
+                        .push(json!({"phase": "subscriptions", "message": error_message.clone()}));
+                    phase_reports.insert(
+                        "subscriptions".to_string(),
+                        json!({"status": "failed", "message": error_message}),
+                    );
+                    progress_stage = "subscriptions_failed_partial";
+                    let summary_json = build_execution_report_json(
+                        request,
+                        preview.total_rows,
+                        imported_rows,
+                        updated_rows,
+                        skipped_rows,
+                        blocked_rows,
+                        conflict_rows + execution_conflict_rows,
+                        &warnings,
+                        &phase_reports,
+                        &execution_errors,
+                        legacy_transaction_count,
+                        production_invoice_count,
+                    );
+                    self.finalize_execution_report(
+                        tenant_id,
+                        &request.batch_id,
+                        request.execution_mode,
+                        "partial_success",
+                        progress_stage,
+                        summary_json,
+                        json!(execution_errors),
+                        &phase_reports,
+                    )
+                    .await?;
+                    let batch = self.get_batch(tenant_id, &request.batch_id).await?;
+                    return Ok(MixradiusImportExecutionResult {
+                        batch,
+                        summary: MixradiusImportExecutionSummary {
+                            batch_id: request.batch_id.clone(),
+                            mode: request.execution_mode,
+                            total_rows: preview.total_rows,
+                            imported_rows,
+                            updated_rows,
+                            skipped_rows,
+                            blocked_rows,
+                            conflict_rows: conflict_rows + execution_conflict_rows,
+                            warnings: warnings.clone(),
+                        },
+                        preview: Some(preview),
+                        warnings,
+                    });
+                }
+            };
+            if subscription_summary.total_rows > 0 {
+                imported_rows += subscription_summary.imported_rows;
+                updated_rows += subscription_summary.updated_rows;
+                execution_conflict_rows += subscription_summary.conflict_rows;
+                warnings.extend(subscription_summary.warnings);
+                progress_stage = "subscriptions_imported_partial";
+            }
+            phase_reports.insert(
+                "subscriptions".to_string(),
+                json!({
+                    "status": "completed",
+                    "totalRows": subscription_summary.total_rows,
+                    "importedRows": subscription_summary.imported_rows,
+                    "updatedRows": subscription_summary.updated_rows,
+                    "skippedRows": subscription_summary.skipped_rows,
+                    "conflictRows": subscription_summary.conflict_rows
+                }),
+            );
+
+            let pppoe_summary = match executor
+                .execute_pppoe_imports_with_target(
+                    tenant_id,
+                    &request.batch_id,
+                    &request.mapping_overrides,
+                    request.pppoe_provisioning_target.unwrap_or_default(),
+                )
+                .await
+            {
+                Ok(summary) => summary,
+                Err(error) => {
+                    let error_message = format!("{error:#}");
+                    execution_errors
+                        .push(json!({"phase": "pppoe", "message": error_message.clone()}));
+                    phase_reports.insert(
+                        "pppoe".to_string(),
+                        json!({"status": "failed", "message": error_message}),
+                    );
+                    progress_stage = "pppoe_failed_partial";
+                    warnings.push(format!(
+                        "Import PPPoE MixRadius gagal setelah fase sebelumnya sukses: {error}"
+                    ));
+                    let summary_json = build_execution_report_json(
+                        request,
+                        preview.total_rows,
+                        imported_rows,
+                        updated_rows,
+                        skipped_rows,
+                        blocked_rows,
+                        conflict_rows + execution_conflict_rows,
+                        &warnings,
+                        &phase_reports,
+                        &execution_errors,
+                        legacy_transaction_count,
+                        production_invoice_count,
+                    );
+                    self.finalize_execution_report(
+                        tenant_id,
+                        &request.batch_id,
+                        request.execution_mode,
+                        "partial_success",
+                        progress_stage,
+                        summary_json,
+                        json!(execution_errors),
+                        &phase_reports,
+                    )
+                    .await?;
+                    let batch = self.get_batch(tenant_id, &request.batch_id).await?;
+                    return Ok(MixradiusImportExecutionResult {
+                        batch,
+                        summary: MixradiusImportExecutionSummary {
+                            batch_id: request.batch_id.clone(),
+                            mode: request.execution_mode,
+                            total_rows: preview.total_rows,
+                            imported_rows,
+                            updated_rows,
+                            skipped_rows,
+                            blocked_rows,
+                            conflict_rows: conflict_rows + execution_conflict_rows,
+                            warnings: warnings.clone(),
+                        },
+                        preview: Some(preview),
+                        warnings,
+                    });
+                }
+            };
+            if pppoe_summary.total_rows > 0
+                && (pppoe_summary.imported_rows > 0
+                    || pppoe_summary.updated_rows > 0
+                    || pppoe_summary.conflict_rows > 0
+                    || pppoe_summary.skipped_rows > 0
+                    || !pppoe_summary.warnings.is_empty())
+            {
+                imported_rows += pppoe_summary.imported_rows;
+                updated_rows += pppoe_summary.updated_rows;
+                execution_conflict_rows += pppoe_summary.conflict_rows;
+                warnings.extend(pppoe_summary.warnings);
+                progress_stage = "pppoe_imported_partial";
+            }
+            phase_reports.insert(
+                "pppoe".to_string(),
+                json!({
+                    "status": "completed",
+                    "totalRows": pppoe_summary.total_rows,
+                    "importedRows": pppoe_summary.imported_rows,
+                    "updatedRows": pppoe_summary.updated_rows,
+                    "skippedRows": pppoe_summary.skipped_rows,
+                    "conflictRows": pppoe_summary.conflict_rows
+                }),
+            );
+
             warnings.push(
-                "Execution pipeline MixRadius belum diaktifkan penuh; hasil ini masih preview-only."
+                "Import MixRadius sudah mengeksekusi sinkronisasi package, customer, lokasi, subscription, dan PPPoE. Billing invoice produksi masih tahap berikutnya."
                     .to_string(),
             );
+
+            let summary_json = build_execution_report_json(
+                request,
+                preview.total_rows,
+                imported_rows,
+                updated_rows,
+                skipped_rows,
+                blocked_rows,
+                conflict_rows + execution_conflict_rows,
+                &warnings,
+                &phase_reports,
+                &execution_errors,
+                legacy_transaction_count,
+                production_invoice_count,
+            );
+
+            self.finalize_execution_report(
+                tenant_id,
+                &request.batch_id,
+                request.execution_mode,
+                "completed",
+                progress_stage,
+                summary_json,
+                json!(execution_errors),
+                &phase_reports,
+            )
+            .await?;
         }
+
+        let batch = self.get_batch(tenant_id, &request.batch_id).await?;
 
         Ok(MixradiusImportExecutionResult {
             batch,
@@ -356,11 +745,11 @@ impl MixradiusImportService {
                 batch_id: request.batch_id.clone(),
                 mode: request.execution_mode,
                 total_rows: preview.total_rows,
-                imported_rows: 0,
-                updated_rows: 0,
+                imported_rows,
+                updated_rows,
                 skipped_rows,
                 blocked_rows,
-                conflict_rows,
+                conflict_rows: conflict_rows + execution_conflict_rows,
                 warnings: warnings.clone(),
             },
             preview: Some(preview),
@@ -394,6 +783,50 @@ impl MixradiusImportService {
         self.get_batch(tenant_id, batch_id).await
     }
 
+    async fn legacy_transaction_count(&self, tenant_id: &str, batch_id: &str) -> Result<i64> {
+        let staged_count: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)
+            FROM public.mixradius_staging_transactions
+            WHERE tenant_id = $1 AND import_batch_id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(batch_id)
+        .fetch_one(&self.pool)
+        .await
+        .context("failed to count staged MixRadius transactions")?;
+
+        if staged_count > 0 {
+            return Ok(staged_count);
+        }
+
+        sqlx::query_scalar(
+            r#"
+            SELECT COALESCE(
+                (summary_json->>'transactions')::bigint,
+                (summary_json->>'legacyTransactionCount')::bigint,
+                0
+            )
+            FROM public.mixradius_import_batches
+            WHERE tenant_id = $1 AND id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(batch_id)
+        .fetch_one(&self.pool)
+        .await
+        .context("failed to load MixRadius legacy transaction count from batch summary")
+    }
+
+    async fn production_invoice_count(&self, tenant_id: &str) -> Result<i64> {
+        sqlx::query_scalar("SELECT COUNT(*) FROM public.invoices WHERE tenant_id = $1")
+            .bind(tenant_id)
+            .fetch_one(&self.pool)
+            .await
+            .context("failed to count production invoices")
+    }
+
     async fn preview_rows_for_batch(
         &self,
         tenant_id: &str,
@@ -421,6 +854,7 @@ impl MixradiusImportService {
             SELECT source_ref, plan_name
             FROM public.mixradius_staging_plans
             WHERE tenant_id = $1 AND import_batch_id = $2
+              AND COALESCE(source_json->'values'->>8, 'PPP') = 'PPP'
             ORDER BY created_at ASC
             "#,
         )
@@ -435,8 +869,8 @@ impl MixradiusImportService {
             SELECT member_id, COALESCE(fullname, username, member_id)
             FROM public.mixradius_staging_customers
             WHERE tenant_id = $1 AND import_batch_id = $2
+              AND COALESCE(source_json->'values'->>3, 'PPP') = 'PPP'
             ORDER BY created_at ASC
-            LIMIT 100
             "#,
         )
         .bind(tenant_id)
@@ -512,9 +946,7 @@ impl MixradiusImportService {
                 None => "Customer akan di-review terhadap data lokal sebelum execute.",
             };
             let location_note = match location_strategy {
-                Some(MixradiusImportLocationStrategy::Preserve) => {
-                    " Strategi lokasi: preserve."
-                }
+                Some(MixradiusImportLocationStrategy::Preserve) => " Strategi lokasi: preserve.",
                 Some(MixradiusImportLocationStrategy::Merge) => " Strategi lokasi: merge.",
                 Some(MixradiusImportLocationStrategy::Replace) => " Strategi lokasi: replace.",
                 None => "",
@@ -563,6 +995,50 @@ impl MixradiusImportService {
         .execute(&self.pool)
         .await
         .context("failed to persist MixRadius progress payload")?;
+
+        Ok(())
+    }
+
+    async fn finalize_execution_report(
+        &self,
+        tenant_id: &str,
+        batch_id: &str,
+        execution_mode: crate::models::MixradiusImportExecutionMode,
+        execution_status: &str,
+        progress_stage: &str,
+        summary_json: Value,
+        error_json: Value,
+        phase_reports: &serde_json::Map<String, Value>,
+    ) -> Result<()> {
+        let progress_patch = json!({
+            "stage": progress_stage,
+            "phaseReports": phase_reports,
+        });
+
+        sqlx::query(
+            r#"
+            UPDATE public.mixradius_import_batches
+            SET execution_status = $3,
+                execution_mode = $4,
+                completed_at = $5,
+                summary_json = $6,
+                error_json = $7,
+                progress_json = progress_json || $8,
+                updated_at = $5
+            WHERE tenant_id = $1 AND id = $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(batch_id)
+        .bind(execution_status)
+        .bind(execution_mode)
+        .bind(Utc::now())
+        .bind(summary_json)
+        .bind(error_json)
+        .bind(progress_patch)
+        .execute(&self.pool)
+        .await
+        .context("failed to persist MixRadius execution report")?;
 
         Ok(())
     }
@@ -867,6 +1343,37 @@ fn optional_validity(
 
 fn source_json(row: &MixradiusSourceRow) -> Value {
     json!({ "values": row.values })
+}
+
+fn build_execution_report_json(
+    request: &MixradiusImportExecuteRequest,
+    total_rows: i64,
+    imported_rows: i64,
+    updated_rows: i64,
+    skipped_rows: i64,
+    blocked_rows: i64,
+    conflict_rows: i64,
+    warnings: &[String],
+    phase_reports: &serde_json::Map<String, Value>,
+    errors: &[Value],
+    legacy_transaction_count: i64,
+    production_invoice_count: i64,
+) -> Value {
+    json!({
+        "batchId": request.batch_id,
+        "mode": request.execution_mode,
+        "totalRows": total_rows,
+        "importedRows": imported_rows,
+        "updatedRows": updated_rows,
+        "skippedRows": skipped_rows,
+        "blockedRows": blocked_rows,
+        "conflictRows": conflict_rows,
+        "warnings": warnings,
+        "phaseReports": phase_reports,
+        "errors": errors,
+        "legacyTransactionCount": legacy_transaction_count,
+        "productionInvoiceCount": production_invoice_count,
+    })
 }
 
 fn find_mapping_override<'a>(

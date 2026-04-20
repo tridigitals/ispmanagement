@@ -73,7 +73,9 @@ pub fn router() -> Router<AppState> {
         )
         .route(
             "/subscriptions/{subscription_id}",
-            axum::routing::put(update_subscription).delete(delete_subscription),
+            get(get_subscription)
+                .put(update_subscription)
+                .delete(delete_subscription),
         )
         // Customer portal
         .route(
@@ -834,6 +836,21 @@ async fn create_subscription(
     let row = state
         .customer_service
         .create_customer_subscription(&claims.sub, &tenant_id, dto, Some(&ip))
+        .await?;
+    Ok(Json(row))
+}
+
+// GET /api/customers/subscriptions/{subscription_id}
+async fn get_subscription(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(subscription_id): Path<String>,
+) -> AppResult<Json<CustomerSubscriptionView>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "billing", "read").await?;
+    let row = state
+        .customer_service
+        .get_customer_subscription(&claims.sub, &tenant_id, &subscription_id)
         .await?;
     Ok(Json(row))
 }

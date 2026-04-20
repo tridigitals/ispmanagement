@@ -54,6 +54,7 @@ describe('network map popup models', () => {
       lng: 106.82,
       metadata: {
         service_id: 'svc-20',
+        customer_id: 'cust-20',
         service_name: 'Internet 20 Mbps',
         service_type: 'pppoe',
         service_label: 'PPPoE Bronze',
@@ -66,16 +67,33 @@ describe('network map popup models', () => {
     const model = buildServicePopupModel(serviceNode);
 
     expect(model.kicker).toBe('Service');
-    expect(model.contextText).toContain('customer service');
+    expect(model.contextText).toBe('Active • PPPoE • Account ready');
     expect(model.title).toContain('Internet 20 Mbps');
     expect(model.subtitle).toContain('Budi Santoso');
     expect(model.detailPairs).toEqual(
       expect.arrayContaining([
         { label: 'Package', value: 'Bronze 20 Mbps' },
-        { label: 'Account', value: 'budi-pppoe' },
+        { label: 'Service', value: 'pppoe' },
+        { label: 'Status', value: 'active' },
       ]),
     );
-    expect(model.actions.map((action) => action.key)).toEqual(['connect']);
+    expect(model.summaryItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: 'Customer', value: 'Budi Santoso' }),
+        expect.objectContaining({ label: 'Account', value: 'budi-pppoe' }),
+      ]),
+    );
+    expect(model.actions.map((action) => action.key)).toEqual([
+      'open-customer',
+      'open-service',
+      'connect',
+    ]);
+    expect(model.actions[0]).toEqual(
+      expect.objectContaining({ key: 'open-customer', label: 'Customer', tone: 'primary' }),
+    );
+    expect(model.actions[1]).toEqual(
+      expect.objectContaining({ key: 'open-service', label: 'Service', tone: 'secondary' }),
+    );
   });
 
   it('builds link popups with health and transport metrics', () => {

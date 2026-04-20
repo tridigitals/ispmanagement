@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { t } from 'svelte-i18n';
@@ -19,17 +19,28 @@
   import type { PppoeAccountPublic } from '$lib/api/client';
   import { getPppoeAssignmentPayload } from '$lib/utils/pppoePackageAssignment';
   import {
+    getCustomerDetailAutoLoadKey,
     normalizeCustomerDetailTab,
     readCustomerDetailTabFromUrlValue,
     getVisibleCustomerDetailTabs,
+    shouldAutoLoadCustomerDetailTab,
     type CustomerDetailTab,
   } from '$lib/utils/customerDetailAccess';
   import {
     createThenApplyPppoeAccount,
     PppoeCreateApplyError,
   } from '$lib/utils/pppoeCreateProvisioning';
+  import {
+    getPppoeApplyActionFallback,
+    getPppoeProvisioningTargetFallback,
+    getPppoeSyncDisplay,
+  } from '$lib/utils/pppoeSource';
   import { timeAgo } from '$lib/utils/date';
   import { formatMoney } from '$lib/utils/money';
+  import {
+    formatLocationCoordinates,
+    validateOptionalCoordinates,
+  } from '$lib/utils/customerLocationCoordinates';
 
   import Icon from '$lib/components/ui/Icon.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
@@ -164,6 +175,8 @@
   let locState = $state('');
   let locPostal = $state('');
   let locCountry = $state('');
+  let locLatitude = $state('');
+  let locLongitude = $state('');
   let locNotes = $state('');
 
   // Deletes
@@ -173,6 +186,10 @@
   const locColumns = $derived.by(() => [
     { key: 'label', label: $t('admin.customers.locations.columns.label') || 'Label' },
     { key: 'address', label: $t('admin.customers.locations.columns.address') || 'Address' },
+    {
+      key: 'coordinates',
+      label: $t('admin.customers.locations.columns.coordinates') || 'Coordinates',
+    },
     { key: 'updated_at', label: $t('admin.customers.locations.columns.updated') || 'Updated' },
     { key: 'actions', label: '', align: 'right' as const },
   ]);
@@ -242,6 +259,12 @@
       canReadAudit,
     }),
   );
+  const customerDetailAccess = $derived.by(() => ({
+    canReadCustomerLocations,
+    canReadBilling,
+    canReadPppoe,
+    canReadAudit,
+  }));
   const timelineFilteredLogs = $derived.by(() => {
     if (timelineType === 'all') return timelineLogs;
     if (timelineType === 'customer') return timelineLogs.filter((l) => l.resource === 'customers');
@@ -319,25 +342,51 @@
   });
 
   $effect(() => {
+    const autoLoadKey = getCustomerDetailAutoLoadKey(activeTab, customerId, customerDetailAccess);
+    if (!autoLoadKey) return;
     if (activeTab !== 'subscriptions') return;
     if (!canReadCustomers) return;
-    void loadSubscriptions();
-    if (subscriptionPackages.length === 0) {
-      void loadSubscriptionPackages();
-    }
+    untrack(() => {
+      void loadSubscriptions();
+      if (subscriptionPackages.length === 0) {
+        void loadSubscriptionPackages();
+      }
+    });
   });
 
   $effect(() => {
+    const autoLoadKey = getCustomerDetailAutoLoadKey(activeTab, customerId, customerDetailAccess);
+    if (!autoLoadKey) return;
     if (activeTab !== 'billing') return;
     if (!canReadBilling) return;
-    void loadSubscriptions();
-    void loadBillingInvoices();
+    untrack(() => {
+      void loadSubscriptions();
+      void loadBillingInvoices();
+    });
   });
 
   $effect(() => {
+    const autoLoadKey = getCustomerDetailAutoLoadKey(activeTab, customerId, customerDetailAccess);
+    if (!autoLoadKey) return;
     if (activeTab !== 'timeline') return;
     if (!canReadAudit) return;
-    void loadTimeline();
+    untrack(() => {
+      void loadTimeline();
+    });
+  });
+
+  $effect(() => {
+    const autoLoadKey = getCustomerDetailAutoLoadKey(activeTab, customerId, customerDetailAccess);
+    if (!autoLoadKey) return;
+    if (activeTab !== 'pppoe') return;
+    if (!canReadPppoe) return;
+    const shouldLoadRouters = pppoeRouters.length === 0 && !loadingPppoeRouters;
+    untrack(() => {
+      void loadPppoeAccounts();
+      if (shouldLoadRouters) {
+        void loadPppoeRouters();
+      }
+    });
   });
 
   async function loadPppoePackages(routerId: string) {
@@ -1029,6 +1078,19 @@
 
   async function addLocation() {
     if (!locLabel.trim()) return;
+    const parsedCoordinates = validateOptionalCoordinates(locLatitude, locLongitude);
+    if (parsedCoordinates.error) {
+      if (parsedCoordinates.error === 'both_required') {
+        toast.error('Latitude dan longitude harus diisi berpasangan');
+      } else if (parsedCoordinates.error === 'invalid_number') {
+        toast.error('Koordinat lokasi tidak valid');
+      } else if (parsedCoordinates.error === 'latitude_range') {
+        toast.error('Latitude harus di antara -90 hingga 90');
+      } else if (parsedCoordinates.error === 'longitude_range') {
+        toast.error('Longitude harus di antara -180 hingga 180');
+      }
+      return;
+    }
     creatingLocation = true;
     try {
       await api.customers.locations.create({
@@ -1040,6 +1102,8 @@
         state: locState.trim() || null,
         postal_code: locPostal.trim() || null,
         country: locCountry.trim() || null,
+        latitude: parsedCoordinates.latitude,
+        longitude: parsedCoordinates.longitude,
         notes: locNotes.trim() || null,
       });
       showAddLocation = false;
@@ -1050,6 +1114,8 @@
       locState = '';
       locPostal = '';
       locCountry = '';
+      locLatitude = '';
+      locLongitude = '';
       locNotes = '';
       await loadLocations();
       toast.success(get(t)('admin.customers.locations.toasts.created') || 'Location added');
@@ -1087,6 +1153,8 @@
     locState = row?.state || '';
     locPostal = row?.postal_code || '';
     locCountry = row?.country || '';
+    locLatitude = row?.latitude != null ? String(row.latitude) : '';
+    locLongitude = row?.longitude != null ? String(row.longitude) : '';
     locNotes = row?.notes || '';
   }
 
@@ -1104,6 +1172,19 @@
 
   async function submitUpdateLocation() {
     if (!editingLocation || !locLabel.trim()) return;
+    const parsedCoordinates = validateOptionalCoordinates(locLatitude, locLongitude);
+    if (parsedCoordinates.error) {
+      if (parsedCoordinates.error === 'both_required') {
+        toast.error('Latitude dan longitude harus diisi berpasangan');
+      } else if (parsedCoordinates.error === 'invalid_number') {
+        toast.error('Koordinat lokasi tidak valid');
+      } else if (parsedCoordinates.error === 'latitude_range') {
+        toast.error('Latitude harus di antara -90 hingga 90');
+      } else if (parsedCoordinates.error === 'longitude_range') {
+        toast.error('Longitude harus di antara -180 hingga 180');
+      }
+      return;
+    }
     updatingLocation = true;
     try {
       await api.customers.locations.update(editingLocation.id, {
@@ -1114,6 +1195,8 @@
         state: locState.trim() || null,
         postal_code: locPostal.trim() || null,
         country: locCountry.trim() || null,
+        latitude: parsedCoordinates.latitude,
+        longitude: parsedCoordinates.longitude,
         notes: locNotes.trim() || null,
       });
       showEditLocation = false;
@@ -1384,6 +1467,8 @@
                 {[loc.city, loc.state, loc.postal_code, loc.country].filter(Boolean).join(', ') ||
                   '-'}
               </div>
+            {:else if key === 'coordinates'}
+              <div class="mono">{formatLocationCoordinates(loc.latitude, loc.longitude) || '-'}</div>
             {:else if key === 'updated_at'}
               <span class="mono">{new Date(loc.updated_at).toLocaleString()}</span>
             {:else if key === 'actions'}
@@ -1823,12 +1908,16 @@
             {@const row = item as PppoeAccountPublic}
             {@const routerName = pppoeRouters.find((r) => r.id === row.router_id)?.name || '-'}
             {@const locName = locations.find((l) => l.id === row.location_id)?.label || '-'}
+            {@const syncMeta = getPppoeSyncDisplay(row)}
             {#if key === 'username'}
               <div class="name">{row.username}</div>
               <div class="sub mono">
                 {row.disabled
                   ? $t('common.disabled') || 'Disabled'
                   : $t('common.active') || 'Active'}
+              </div>
+              <div class="sub mono">
+                {getPppoeProvisioningTargetFallback(row.account_source)}
               </div>
             {:else if key === 'router'}
               <div class="name">{routerName}</div>
@@ -1850,26 +1939,24 @@
               </div>
             {:else if key === 'sync'}
               <div class="sub">
-                {#if row.router_present}
-                  <span class="badge ok"
-                    >{$t('admin.customers.pppoe.sync.present') || 'On router'}</span
-                  >
-                {:else}
-                  <span class="badge warn"
-                    >{$t('admin.customers.pppoe.sync.missing') || 'Missing'}</span
-                  >
-                {/if}
-                <span class="mono">{row.last_sync_at ? timeAgo(row.last_sync_at) : '-'}</span>
+                <span class={`badge ${syncMeta.tone === 'ok' ? 'ok' : 'warn'}`}>
+                  {syncMeta.label}
+                </span>
+                <span class="mono">{syncMeta.syncedAt ? timeAgo(syncMeta.syncedAt) : '-'}</span>
               </div>
-              {#if row.last_error}
-                <div class="sub error">{row.last_error}</div>
+              {#if syncMeta.error}
+                <div class="sub error">{syncMeta.error}</div>
+              {/if}
+              {#if row.account_source === 'managed_radius' && row.radius_identity}
+                <div class="sub mono">Identity: {row.radius_identity}</div>
               {/if}
             {:else if key === 'actions'}
               <div class="row-actions">
                 {#if $can('manage', 'pppoe')}
                   <button
                     class="btn-icon"
-                    title={$t('admin.customers.pppoe.actions.apply') || 'Apply to router'}
+                    title={$t('admin.customers.pppoe.actions.apply') ||
+                      getPppoeApplyActionFallback(row.account_source)}
                     onclick={() => applyPppoe(row)}
                   >
                     <Icon name="send" size={16} />
@@ -2397,6 +2484,16 @@
         <input class="input" bind:value={locCountry} />
       </label>
     </div>
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.locations.fields.latitude') || 'Latitude'}</span>
+        <input class="input mono" bind:value={locLatitude} placeholder="-7.275233" />
+      </label>
+      <label>
+        <span>{$t('admin.customers.locations.fields.longitude') || 'Longitude'}</span>
+        <input class="input mono" bind:value={locLongitude} placeholder="110.355211" />
+      </label>
+    </div>
     <label>
       <span>{$t('admin.customers.locations.fields.notes') || 'Notes'}</span>
       <textarea class="input" rows="3" bind:value={locNotes}></textarea>
@@ -2453,6 +2550,16 @@
       <label>
         <span>{$t('admin.customers.locations.fields.country') || 'Country'}</span>
         <input class="input" bind:value={locCountry} />
+      </label>
+    </div>
+    <div class="grid2">
+      <label>
+        <span>{$t('admin.customers.locations.fields.latitude') || 'Latitude'}</span>
+        <input class="input mono" bind:value={locLatitude} placeholder="-7.275233" />
+      </label>
+      <label>
+        <span>{$t('admin.customers.locations.fields.longitude') || 'Longitude'}</span>
+        <input class="input mono" bind:value={locLongitude} placeholder="110.355211" />
       </label>
     </div>
     <label>

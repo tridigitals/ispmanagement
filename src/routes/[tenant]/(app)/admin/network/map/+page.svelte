@@ -693,6 +693,9 @@
       activePopup: activeNodePopup,
       setActivePopup: (popup) => (activeNodePopup = popup),
       onClose: clearMapPopupSelection,
+      onOpenCustomer: (customerId) => void goto(`${tenantPrefix}/admin/customers/${customerId}`),
+      onOpenService: (customerId, serviceId) =>
+        void goto(`${tenantPrefix}/admin/customers/${customerId}?tab=subscriptions&service_id=${encodeURIComponent(serviceId)}`),
       onConnect: startConnectFromNode,
       onEdit: openEditNodeModal,
       onOpenRouter: (routerId) => void goto(`${tenantPrefix}/admin/network/routers/${routerId}`),
@@ -1895,6 +1898,11 @@
     overflow: hidden;
   }
 
+  :global(.maplibregl-popup.nm-popup-workflow-shell .maplibregl-popup-content) {
+    width: min(332px, calc(100vw - 44px));
+    max-width: min(332px, calc(100vw - 44px)) !important;
+  }
+
   :global(.maplibregl-popup-tip) {
     border-top-color: #0f172a !important;
     border-bottom-color: #0f172a !important;
@@ -1915,6 +1923,10 @@
     max-height: min(430px, calc(100vh - 180px));
     overflow-y: auto;
     padding-right: 2px;
+  }
+
+  :global(.nm-popup-card-workflow) {
+    gap: 10px;
   }
 
   :global(.nm-popup-head) {
@@ -1995,10 +2007,21 @@
     border: 1px solid rgba(148, 163, 184, 0.14);
   }
 
+  :global(.nm-popup-context-workflow) {
+    background: rgba(8, 47, 73, 0.36);
+    border-color: rgba(56, 189, 248, 0.2);
+    color: #dbeafe;
+    font-weight: 600;
+  }
+
   :global(.nm-popup-summary) {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 7px;
+  }
+
+  :global(.nm-popup-summary-workflow) {
+    gap: 8px;
   }
 
   :global(.nm-popup-summary-item) {
@@ -2064,6 +2087,49 @@
     margin-top: 6px;
     padding-top: 7px;
     border-top: 1px solid rgba(148, 163, 184, 0.2);
+  }
+
+  :global(.nm-popup-actions-workflow) {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    gap: 5px;
+  }
+
+  :global(.nm-popup-actions-workflow .nm-popup-btn.primary) {
+    flex: 1 1 auto;
+    min-width: 0;
+    order: -1;
+  }
+
+  :global(.nm-popup-actions-workflow .nm-popup-btn) {
+    min-height: 28px;
+    padding: 5px 7px;
+    font-size: 0.69rem;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  :global(.nm-popup-actions-workflow .nm-popup-btn:not(.primary)) {
+    flex: 0 0 auto;
+  }
+
+  :global(.nm-popup-actions-workflow .action-open-service) {
+    border-color: rgba(56, 189, 248, 0.34);
+    background: rgba(56, 189, 248, 0.1);
+    color: #dbeafe;
+  }
+
+  :global(.nm-popup-actions-workflow .action-connect) {
+    border-color: rgba(148, 163, 184, 0.26);
+    background: rgba(15, 23, 42, 0.72);
+    color: #cbd5e1;
+  }
+
+  :global(.nm-popup-actions-workflow .nm-popup-btn-close) {
+    margin-left: auto;
+    border-color: rgba(148, 163, 184, 0.18);
+    background: transparent;
+    color: #94a3b8;
   }
 
   :global(.nm-popup-btn) {

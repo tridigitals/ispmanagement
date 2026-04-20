@@ -4,6 +4,7 @@ import {
   buildNodePopupHtml,
   buildRouterPopupHtml,
   computePopupPlacement,
+  getPopupSizeForModel,
   nudgePopupElementIntoView,
   pointCoordinates,
 } from './networkMapInteractionUtils';
@@ -67,6 +68,8 @@ export function openNodePopup(args: {
   activePopup: PopupInstance | null;
   setActivePopup: (popup: PopupInstance | null) => void;
   onClose?: () => void;
+  onOpenCustomer: (customerId: string) => void;
+  onOpenService: (customerId: string, serviceId: string) => void;
   onConnect: (nodeId: string) => void;
   onEdit: (node: NMNode) => void;
   onOpenRouter: (routerId: string) => void;
@@ -77,6 +80,8 @@ export function openNodePopup(args: {
   const node = args.nodeRows.find((x) => x.id === nodeId);
   const popupUid = `nm-popup-${Math.random().toString(36).slice(2, 10)}`;
   if (!node) return;
+  const customerId = String(node.metadata?.customer_id || '').trim();
+  const serviceId = String(node.metadata?.service_id || node.metadata?.subscription_id || '').trim();
   const liveRouter = findLiveRouterForNode(node, args.routerRows);
   const popupModel = node.metadata?.service_id
     ? buildServicePopupModel(node)
@@ -84,18 +89,25 @@ export function openNodePopup(args: {
       ? buildRouterPopupModelFromNode(node, liveRouter)
       : buildNodePopupModel(node);
   const popupContent = buildNodePopupHtml({ popupUid, model: popupModel });
+  const popupSize = getPopupSizeForModel(popupModel);
 
   args.activePopup?.remove();
-  const popup = new args.maplibre.Popup(popupOptionsForMap(args.map, coords as [number, number]))
+  const popup = new args.maplibre.Popup(
+    popupOptionsForMap(args.map, coords as [number, number], popupSize),
+  )
     .setLngLat(coords as [number, number])
     .setHTML(popupContent.html);
   let cleanupNavigationDismiss: (() => void) | null = null;
 
   popup.on('open', () => {
+    const popupElement =
+      typeof (popup as any).getElement === 'function' ? ((popup as any).getElement() as HTMLElement) : null;
+    if (popupModel.variant === 'workflow-service') {
+      popupElement?.classList.add('nm-popup-workflow-shell');
+    }
     requestAnimationFrame(() => {
       nudgePopupElementIntoView({
-        popupElement:
-          typeof (popup as any).getElement === 'function' ? ((popup as any).getElement() as HTMLElement) : null,
+        popupElement,
         mapElement: args.map.getContainer(),
         padding: 18,
       });
@@ -109,6 +121,10 @@ export function openNodePopup(args: {
       const button = document.getElementById(actionButton.buttonId) as HTMLButtonElement | null;
       button?.addEventListener('click', () => {
         popup.remove();
+        if (actionButton.key === 'open-customer' && customerId) args.onOpenCustomer(customerId);
+        if (actionButton.key === 'open-service' && customerId && serviceId) {
+          args.onOpenService(customerId, serviceId);
+        }
         if (actionButton.key === 'connect') args.onConnect(nodeId);
         if (actionButton.key === 'edit') args.onEdit(node);
         if (actionButton.key === 'open-router' && liveRouter) args.onOpenRouter(liveRouter.id);

@@ -5,6 +5,7 @@ import {
   getPppoeCreateActionFallback,
   getPppoeCreatedAndAppliedToastFallback,
   getPppoeProvisioningTargetFallback,
+  getPppoeSyncDisplay,
 } from './pppoeSource';
 
 describe('pppoe source helpers', () => {
@@ -24,5 +25,43 @@ describe('pppoe source helpers', () => {
     expect(getPppoeCreatedAndAppliedToastFallback('managed_radius')).toBe(
       'PPPoE account created and applied to RADIUS',
     );
+  });
+
+  it('uses radius presence for managed radius sync status', () => {
+    expect(
+      getPppoeSyncDisplay({
+        account_source: 'managed_radius',
+        router_present: false,
+        radius_present: true,
+        last_sync_at: null,
+        radius_last_sync_at: '2026-04-14T01:00:00Z',
+        last_error: null,
+        radius_last_error: null,
+      }),
+    ).toEqual({
+      label: 'On RADIUS',
+      tone: 'ok',
+      syncedAt: '2026-04-14T01:00:00Z',
+      error: null,
+    });
+  });
+
+  it('keeps router presence for router sync status', () => {
+    expect(
+      getPppoeSyncDisplay({
+        account_source: 'router',
+        router_present: false,
+        radius_present: true,
+        last_sync_at: '2026-04-14T02:00:00Z',
+        radius_last_sync_at: '2026-04-14T01:00:00Z',
+        last_error: 'router missing',
+        radius_last_error: null,
+      }),
+    ).toEqual({
+      label: 'Missing',
+      tone: 'warn',
+      syncedAt: '2026-04-14T02:00:00Z',
+      error: 'router missing',
+    });
   });
 });

@@ -1,15 +1,15 @@
 import { getTokenOrThrow, safeInvoke } from './core';
-
-export type MixradiusImportConflictResolution = 'merge' | 'create_new' | 'skip';
-export type MixradiusImportLocationStrategy = 'preserve' | 'merge' | 'replace';
-export type MixradiusImportExecutionMode = 'preview_only' | 'safe_import' | 'force_sync';
-
-export interface MixradiusImportMappingOverrideInput {
-  source_kind: string;
-  source_value: string;
-  target_kind: string;
-  target_value: string;
-}
+import { getApiBaseUrl } from '$lib/utils/apiUrl';
+import type {
+  MixradiusImportBatch,
+  MixradiusImportConflictResolution,
+  MixradiusImportExecutionMode,
+  MixradiusImportExecutionResult,
+  MixradiusImportLocationStrategy,
+  MixradiusImportMappingOverrideInput,
+  MixradiusImportPppoeProvisioningTarget,
+  MixradiusImportPreview,
+} from '$lib/components/network/mixradius/mixradiusImportTypes';
 
 export interface MixradiusImportUploadInput {
   file_name: string;
@@ -17,6 +17,7 @@ export interface MixradiusImportUploadInput {
   content_type?: string | null;
   source_checksum?: string | null;
   local_path?: string | null;
+  file?: File | null;
 }
 
 export interface MixradiusImportPreviewInput {
@@ -24,6 +25,7 @@ export interface MixradiusImportPreviewInput {
   mapping_overrides?: MixradiusImportMappingOverrideInput[];
   customer_conflict_resolution?: MixradiusImportConflictResolution | null;
   location_strategy?: MixradiusImportLocationStrategy | null;
+  pppoe_provisioning_target?: MixradiusImportPppoeProvisioningTarget | null;
 }
 
 export interface MixradiusImportExecuteInput extends MixradiusImportPreviewInput {
@@ -31,9 +33,43 @@ export interface MixradiusImportExecuteInput extends MixradiusImportPreviewInput
 }
 
 export const mixradiusImport = {
-  upload: (dto: MixradiusImportUploadInput): Promise<any> =>
-    safeInvoke('upload_mixradius_import', {
-      token: getTokenOrThrow(),
+  upload: async (dto: MixradiusImportUploadInput): Promise<MixradiusImportBatch> => {
+    const token = getTokenOrThrow();
+
+    if (dto.file) {
+      const formData = new FormData();
+      formData.append('file', dto.file);
+      formData.append('file_name', dto.file_name);
+      formData.append('file_size_bytes', String(dto.file_size_bytes));
+      if (dto.content_type) formData.append('content_type', dto.content_type);
+      if (dto.source_checksum) formData.append('source_checksum', dto.source_checksum);
+
+      const response = await fetch(`${getApiBaseUrl()}/admin/pppoe/mixradius/imports/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const raw = await response.text().catch(() => '');
+        let message = 'Gagal upload backup MixRadius';
+        if (raw) {
+          try {
+            const errorBody = JSON.parse(raw);
+            message =
+              errorBody?.error || errorBody?.message || errorBody?.detail || errorBody?.details || raw;
+          } catch {
+            message = raw;
+          }
+        }
+        throw new Error(message);
+      }
+
+      return (await response.json()) as MixradiusImportBatch;
+    }
+
+    return await safeInvoke('upload_mixradius_import', {
+      token,
       fileName: dto.file_name,
       file_name: dto.file_name,
       fileSizeBytes: dto.file_size_bytes,
@@ -44,28 +80,30 @@ export const mixradiusImport = {
       source_checksum: dto.source_checksum ?? undefined,
       localPath: dto.local_path ?? undefined,
       local_path: dto.local_path ?? undefined,
-    }),
+    });
+  },
 
   list: (params?: {
     page?: number;
     per_page?: number;
     status?: string;
-  }): Promise<any> =>
+  }): Promise<{ data: MixradiusImportBatch[]; total: number; page: number; per_page: number }> =>
     safeInvoke('list_mixradius_import_batches', {
       token: getTokenOrThrow(),
       page: params?.page,
       per_page: params?.per_page,
       status: params?.status,
+      __suppress_error_log: true,
     }),
 
-  get: (batchId: string): Promise<any> =>
+  get: (batchId: string): Promise<MixradiusImportBatch> =>
     safeInvoke('get_mixradius_import_batch', {
       token: getTokenOrThrow(),
       batchId,
       batch_id: batchId,
     }),
 
-  preview: (dto: MixradiusImportPreviewInput): Promise<any> =>
+  preview: (dto: MixradiusImportPreviewInput): Promise<MixradiusImportPreview> =>
     safeInvoke('preview_mixradius_import', {
       token: getTokenOrThrow(),
       batchId: dto.batch_id,
@@ -76,9 +114,11 @@ export const mixradiusImport = {
       customer_conflict_resolution: dto.customer_conflict_resolution ?? undefined,
       locationStrategy: dto.location_strategy ?? undefined,
       location_strategy: dto.location_strategy ?? undefined,
+      pppoeProvisioningTarget: dto.pppoe_provisioning_target ?? undefined,
+      pppoe_provisioning_target: dto.pppoe_provisioning_target ?? undefined,
     }),
 
-  execute: (dto: MixradiusImportExecuteInput): Promise<any> =>
+  execute: (dto: MixradiusImportExecuteInput): Promise<MixradiusImportExecutionResult> =>
     safeInvoke('execute_mixradius_import', {
       token: getTokenOrThrow(),
       batchId: dto.batch_id,
@@ -91,9 +131,12 @@ export const mixradiusImport = {
       customer_conflict_resolution: dto.customer_conflict_resolution ?? undefined,
       locationStrategy: dto.location_strategy ?? undefined,
       location_strategy: dto.location_strategy ?? undefined,
+      pppoeProvisioningTarget: dto.pppoe_provisioning_target ?? undefined,
+      pppoe_provisioning_target: dto.pppoe_provisioning_target ?? undefined,
+      __timeout_ms: 900000,
     }),
 
-  cancel: (batchId: string): Promise<any> =>
+  cancel: (batchId: string): Promise<MixradiusImportBatch> =>
     safeInvoke('cancel_mixradius_import', {
       token: getTokenOrThrow(),
       batchId,

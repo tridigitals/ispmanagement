@@ -1352,7 +1352,7 @@ impl NetworkMappingService {
 
 #[cfg(test)]
 mod tests {
-    use super::dto::{CandidateNodeRow, PathLinkRow};
+    use super::dto::{CandidateNodeRow, PathLinkRow, SyncCustomerLocationRow};
     use super::NetworkMappingService;
     use crate::error::AppError;
 
@@ -1490,6 +1490,16 @@ mod tests {
             "active"
         );
         assert_eq!(
+            NetworkMappingService::customer_subscription_to_node_status("grace_active"),
+            "active"
+        );
+        assert_eq!(
+            NetworkMappingService::customer_subscription_to_node_status(
+                "installation_done_awaiting_payment"
+            ),
+            "active"
+        );
+        assert_eq!(
             NetworkMappingService::customer_subscription_to_node_status("suspended"),
             "maintenance"
         );
@@ -1500,6 +1510,73 @@ mod tests {
         assert_eq!(
             NetworkMappingService::customer_subscription_to_node_status("cancelled"),
             "inactive"
+        );
+    }
+
+    #[test]
+    fn customer_location_sync_metadata_includes_service_fields() {
+        let row = SyncCustomerLocationRow {
+            location_id: "loc-1".into(),
+            customer_id: "cust-1".into(),
+            customer_name: "Budi".into(),
+            label: "Rumah Budi".into(),
+            subscription_id: "sub-1".into(),
+            subscription_status: "active".into(),
+            package_name: Some("Paket 20 Mbps".into()),
+            package_service_type: Some("internet_pppoe".into()),
+            pppoe_username: Some("budi-pppoe".into()),
+            pppoe_account_source: Some("managed_radius".into()),
+            pppoe_router_profile_name: Some("PPPOE-20M".into()),
+            router_id: Some("router-1".into()),
+            latitude: -7.0,
+            longitude: 110.0,
+        };
+
+        let metadata = NetworkMappingService::build_customer_location_metadata(&row);
+
+        assert_eq!(
+            metadata.get("service_id").and_then(|value| value.as_str()),
+            Some("sub-1")
+        );
+        assert_eq!(
+            metadata
+                .get("service_name")
+                .and_then(|value| value.as_str()),
+            Some("Paket 20 Mbps")
+        );
+        assert_eq!(
+            metadata
+                .get("service_label")
+                .and_then(|value| value.as_str()),
+            Some("PPPOE-20M")
+        );
+        assert_eq!(
+            metadata
+                .get("service_type")
+                .and_then(|value| value.as_str()),
+            Some("internet_pppoe")
+        );
+        assert_eq!(
+            metadata
+                .get("package_name")
+                .and_then(|value| value.as_str()),
+            Some("Paket 20 Mbps")
+        );
+        assert_eq!(
+            metadata
+                .get("pppoe_username")
+                .and_then(|value| value.as_str()),
+            Some("budi-pppoe")
+        );
+        assert_eq!(
+            metadata
+                .get("pppoe_account_source")
+                .and_then(|value| value.as_str()),
+            Some("managed_radius")
+        );
+        assert_eq!(
+            metadata.get("router_id").and_then(|value| value.as_str()),
+            Some("router-1")
         );
     }
 

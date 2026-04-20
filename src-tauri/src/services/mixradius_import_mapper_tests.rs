@@ -136,6 +136,15 @@ mod mixradius_import_mapper_tests {
         );
         assert_eq!(pending.status, "pending_installation");
         assert!(pending.requires_review);
+
+        let postpaid = MixradiusImportMapperPolicy::normalize_subscription_lifecycle(
+            Some("POSTPAID"),
+            Some(Utc.with_ymd_and_hms(2026, 5, 1, 0, 0, 0).unwrap()),
+            now,
+        );
+        assert_eq!(postpaid.status, "active");
+        assert!(!postpaid.requires_review);
+        assert!(postpaid.warnings.is_empty());
     }
 
     #[test]

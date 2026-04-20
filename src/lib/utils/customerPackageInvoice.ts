@@ -9,6 +9,13 @@ type SubscriptionOptionLike = {
   status: string;
 };
 
+type SubscriptionLike = {
+  id: string;
+  customer_id: string;
+  status: string;
+  package_name?: string | null;
+};
+
 export function getCustomerPackageSubscriptionId(externalId?: string | null): string | null {
   const value = String(externalId || '').trim();
   if (!value.startsWith('pkgsub:')) return null;
@@ -32,5 +39,20 @@ export function findCustomerPackageInvoiceRelation(
     customerId: matched.customerId,
     label: matched.label,
     status: matched.status,
+  };
+}
+
+export function buildCustomerPackageInvoiceRelationFromSubscription(
+  invoice: InvoiceLike,
+  subscription: SubscriptionLike | null | undefined,
+) {
+  const subscriptionId = getCustomerPackageSubscriptionId(invoice.external_id);
+  if (!subscriptionId || !subscription || subscription.id !== subscriptionId) return null;
+
+  return {
+    subscriptionId,
+    customerId: subscription.customer_id,
+    label: subscription.package_name || subscription.id,
+    status: subscription.status,
   };
 }

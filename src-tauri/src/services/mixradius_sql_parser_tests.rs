@@ -37,7 +37,9 @@ mod mixradius_sql_parser_tests {
         assert_eq!(parsed.summary.customers_ppp_count, 543);
         assert_eq!(parsed.summary.plans_ppp_count, 12);
         assert_eq!(parsed.summary.nas_count, 2);
-        assert!(parsed.detected_tables.contains(&"tbl_customers".to_string()));
+        assert!(parsed
+            .detected_tables
+            .contains(&"tbl_customers".to_string()));
     }
 
     #[test]

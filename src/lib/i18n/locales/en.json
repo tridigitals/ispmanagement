@@ -1302,7 +1302,7 @@
         },
         "api_rate_limit": {
           "label": "API Rate Limit",
-          "desc": "Maximum API requests allowed per minute per user."
+          "desc": "Baseline API requests allowed per minute per user; auth and heavy endpoints stay stricter."
         }
       },
       "twofa": {

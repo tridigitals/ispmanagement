@@ -80,7 +80,7 @@
         </label>
         <p class="setting-description">
           {$t('superadmin.settings.security.api_rate_limit.desc') ||
-            'Maximum API requests allowed per minute per user.'}
+            'Baseline API requests allowed per minute per user; auth and heavy endpoints stay stricter.'}
         </p>
       </div>
       <div class="input-group">
@@ -89,8 +89,8 @@
           id="api-rate-limit"
           bind:value={apiRateLimitPerMinute}
           on:input={handleChange}
-          min="10"
-          max="1000"
+          min="300"
+          max="5000"
           class="form-input"
         />
         <span class="input-suffix">{$t('common.units.req_per_min') || 'req/min'}</span>

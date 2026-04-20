@@ -5125,10 +5125,6 @@ fn mikrotik_log_retention_cutoff(
     retention_days.map(|days| now - ChronoDuration::days(days))
 }
 
-fn should_skip_log_prune(retention_days: Option<i64>) -> bool {
-    retention_days.is_none()
-}
-
 fn validate_log_calendar_filters(month: Option<u32>, year: Option<i32>) -> AppResult<()> {
     if let Some(month) = month {
         if !(1..=12).contains(&month) {
@@ -5278,7 +5274,6 @@ mod tests {
             .unwrap()
             .with_timezone(&Utc);
         assert_eq!(mikrotik_log_retention_cutoff(now, None), None);
-        assert!(should_skip_log_prune(None));
     }
 
     #[test]

@@ -137,6 +137,11 @@ impl MixradiusImportMapperPolicy {
                 warnings: vec![],
                 requires_review: false,
             },
+            "POSTPAID" => MixradiusLifecyclePreview {
+                status: "active".into(),
+                warnings: vec![],
+                requires_review: false,
+            },
             "UNPAID" if expired_on.is_some_and(|expired_at| expired_at < now) => {
                 MixradiusLifecyclePreview {
                     status: "suspended".into(),

@@ -122,7 +122,8 @@ pub fn parse_mixradius_backup<P: AsRef<Path>>(path: P) -> Result<MixradiusParsed
 }
 
 fn read_backup_sql(path: &Path) -> Result<String> {
-    let bytes = fs::read(path).with_context(|| format!("failed to read backup file `{}`", path.display()))?;
+    let bytes = fs::read(path)
+        .with_context(|| format!("failed to read backup file `{}`", path.display()))?;
     let looks_gzip = path
         .extension()
         .and_then(|ext| ext.to_str())
@@ -171,7 +172,10 @@ fn ensure_required_tables(detected_tables: &[String]) -> Result<()> {
         return Ok(());
     }
 
-    bail!("MixRadius backup is missing required tables: {}", missing.join(", "));
+    bail!(
+        "MixRadius backup is missing required tables: {}",
+        missing.join(", ")
+    );
 }
 
 fn parse_table_rows(sql: &str, table_name: &str) -> Result<Vec<MixradiusSourceRow>> {

@@ -15,7 +15,10 @@
   import { can, user, tenant, token } from '$lib/stores/auth';
   import { getApiBaseUrl } from '$lib/utils/apiUrl';
   import { getAdminBillingNavigation } from '$lib/utils/adminBillingNavigation';
-  import { findCustomerPackageInvoiceRelation } from '$lib/utils/customerPackageInvoice';
+  import {
+    buildCustomerPackageInvoiceRelationFromSubscription,
+    getCustomerPackageSubscriptionId,
+  } from '$lib/utils/customerPackageInvoice';
 
   let invoice = $state<Invoice | null>(null);
   let loading = $state(true);
@@ -91,27 +94,18 @@
   }
 
   async function resolveRelatedCustomerId(row: Invoice): Promise<string | null> {
-    const customerRes = await api.customers.list({ page: 1, perPage: 200 });
-    const customerRows = customerRes.data || [];
-    if (customerRows.length === 0) return null;
+    const subscriptionId = getCustomerPackageSubscriptionId(row.external_id);
+    if (!subscriptionId) return null;
 
-    const subscriptionRows = await Promise.all(
-      customerRows.map(async (customer) => {
-        const subRes = await api.customers.subscriptions.list(customer.id, {
-          page: 1,
-          per_page: 200,
-        });
-        return (subRes.data || []).map((sub) => ({
-          id: sub.id,
-          customerId: customer.id,
-          label: `${customer.name} - ${sub.package_name || 'Package'} (${sub.billing_cycle})`,
-          status: sub.status,
-        }));
-      }),
-    );
-
-    const relation = findCustomerPackageInvoiceRelation(row, subscriptionRows.flat());
-    return relation?.customerId || null;
+    try {
+      const subscription = await api.customers.subscriptions.get(subscriptionId);
+      const relation = buildCustomerPackageInvoiceRelationFromSubscription(row, subscription);
+      return relation?.customerId || null;
+    } catch {
+      // Optional relation lookup only. Invoice detail should still load even if
+      // customer billing context is unavailable for this user.
+      return null;
+    }
   }
 
   function openCustomerDetail() {

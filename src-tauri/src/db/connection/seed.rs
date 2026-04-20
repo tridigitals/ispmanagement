@@ -30,7 +30,7 @@ pub async fn seed_defaults(pool: &DbPool) -> Result<(), sqlx::Error> {
         ("auth_allow_registration", "true", "Allow public user registration"),
         ("auth_require_email_verification", "false", "Require email verification after registration"),
         // API Security
-        ("api_rate_limit_per_minute", "100", "API rate limit per minute (per user/IP)"),
+        ("api_rate_limit_per_minute", "300", "Baseline API rate limit per minute (per user/IP); auth and expensive endpoints use stricter policies"),
         ("enable_ip_blocking", "false", "Enable automatic IP blocking on suspicious activity"),
         ("ip_block_threshold", "5", "How many rate-limit hits within a window will trigger blocking"),
         ("ip_block_duration_minutes", "15", "How long an IP stays blocked after triggering"),

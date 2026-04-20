@@ -16,7 +16,7 @@ This project now supports PPPoE accounts with `account_source = managed_radius`.
 - Configures a minimal PAP/PPPoE-oriented `default` virtual server.
 - Uses PostgreSQL as the source for:
   - PPP credentials / reply attributes
-  - NAS/client definitions via `read_clients = yes`
+  - NAS/client definitions via dynamic client lookup at request time
 - Lets the billing app render a copy-paste MikroTik CLI snippet when `MANAGED_RADIUS_HOST` is set in the app environment.
 
 ## Bring Up the Stack
@@ -49,10 +49,11 @@ The current implementation wires billing-side provisioning first. Admin CRUD scr
 - The FreeRADIUS image reads SQL configuration from:
   - `deploy/freeradius/raddb/mods-available/sql.template`
   - `deploy/freeradius/raddb/sites-enabled/default`
+  - `deploy/freeradius/raddb/sites-available/dynamic-clients`
 - Query behavior is aligned to the tenant-aware tables created in `radius-postgres`.
 - Tenant isolation relies on NAS lookup first, then PPP username lookup.
 - Usernames do not need to be globally unique across tenants.
-- Active NAS clients are read from PostgreSQL during FreeRADIUS startup.
+- Active NAS clients are resolved from PostgreSQL at request time through FreeRADIUS dynamic clients.
 
 ## Router Expectations
 
@@ -60,12 +61,25 @@ The current implementation wires billing-side provisioning first. Admin CRUD scr
 - Router IP / CIDR in `managed_radius_nas.nas_ip_or_cidr` must match the request source seen by FreeRADIUS.
 - Configure MikroTik PPP authentication to use the shared FreeRADIUS server and the router-specific secret.
 
-## Important Operational Note
+## Runtime Behavior
 
-Because this setup uses SQL client loading on startup, adding a brand-new router/NAS mapping usually requires a FreeRADIUS restart or container recreate before that router can authenticate:
+Managed RADIUS account changes continue to apply directly from PostgreSQL during auth.
+
+Managed RADIUS NAS mapping changes also apply without restarting the container because FreeRADIUS now resolves NAS clients dynamically from PostgreSQL. Dynamic client entries are cached briefly by FreeRADIUS, so source IP or shared-secret changes should converge within a few seconds instead of requiring a container restart.
+
+## Optional Fallback Restart Hook
+
+If you still want `/superadmin/radius/mappings` edits to force a FreeRADIUS restart as an operational fallback, configure the API server environment:
 
 ```bash
-docker compose -f docker-compose.radius.yml restart freeradius
+MANAGED_RADIUS_RESTART_COMMAND="/opt/isp-management/scripts/restart-freeradius.sh"
+MANAGED_RADIUS_RESTART_WORKDIR="/opt/isp-management"
+MANAGED_RADIUS_COMPOSE_FILE="docker-compose.radius.yml"
+MANAGED_RADIUS_SERVICE_NAME="freeradius"
 ```
 
-Updating user credentials does not require a restart; billing writes those into PostgreSQL and FreeRADIUS reads them during auth.
+Operational requirement:
+
+- The API server process user must be allowed to execute the restart command successfully.
+- In the provided systemd unit, that means the `ispmanagement` user needs access to Docker or a tightly-scoped wrapper/sudoers rule.
+- The provided wrapper script lives at `scripts/restart-freeradius.sh`.
