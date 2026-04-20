@@ -13,8 +13,9 @@
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
   import { can, user, tenant, token } from '$lib/stores/auth';
-  import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { getApiBaseUrl } from '$lib/utils/apiUrl';
+  import { getAdminBillingNavigation } from '$lib/utils/adminBillingNavigation';
+  import { findCustomerPackageInvoiceRelation } from '$lib/utils/customerPackageInvoice';
 
   let invoice = $state<Invoice | null>(null);
   let loading = $state(true);
@@ -38,9 +39,10 @@
   ]);
   let showLightbox = $state(false);
   let lightboxFiles = $state<any[]>([]);
+  let relatedCustomerId = $state<string | null>(null);
 
-  const tenantCtx = $derived.by(() =>
-    resolveTenantContext({
+  const billingNav = $derived.by(() =>
+    getAdminBillingNavigation({
       hostname: $page.url.hostname,
       userTenantSlug: $user?.tenant_slug,
       tenantSlug: $tenant?.slug,
@@ -48,9 +50,9 @@
     }),
   );
   const invoiceId = $derived($page.params.id ?? '');
-  const tenantPrefix = $derived(tenantCtx.tenantPrefix);
-  const backPath = $derived(`${tenantPrefix}/admin/invoices`);
-  const billingLogsPath = $derived(`${tenantPrefix}/admin/invoices/collection`);
+  const backPath = $derived(billingNav.billingPath);
+  const billingLogsPath = $derived(billingNav.collectionsPath);
+  const customerBasePath = $derived(`${billingNav.tenantPrefix}/admin/customers`);
 
   onMount(() => {
     if (!$can('read', 'billing') && !$can('manage', 'billing')) {
@@ -73,15 +75,48 @@
         );
       }
       invoice = row;
+      relatedCustomerId = await resolveRelatedCustomerId(row);
     } catch (e: any) {
       error = e?.message || String(e);
       toast.error(
-        error || get(t)('admin.package_invoices.detail.errors.load_failed') || 'Failed to load invoice',
+        error ||
+          get(t)('admin.package_invoices.detail.errors.load_failed') ||
+          'Failed to load invoice',
       );
       invoice = null;
+      relatedCustomerId = null;
     } finally {
       loading = false;
     }
+  }
+
+  async function resolveRelatedCustomerId(row: Invoice): Promise<string | null> {
+    const customerRes = await api.customers.list({ page: 1, perPage: 200 });
+    const customerRows = customerRes.data || [];
+    if (customerRows.length === 0) return null;
+
+    const subscriptionRows = await Promise.all(
+      customerRows.map(async (customer) => {
+        const subRes = await api.customers.subscriptions.list(customer.id, {
+          page: 1,
+          per_page: 200,
+        });
+        return (subRes.data || []).map((sub) => ({
+          id: sub.id,
+          customerId: customer.id,
+          label: `${customer.name} - ${sub.package_name || 'Package'} (${sub.billing_cycle})`,
+          status: sub.status,
+        }));
+      }),
+    );
+
+    const relation = findCustomerPackageInvoiceRelation(row, subscriptionRows.flat());
+    return relation?.customerId || null;
+  }
+
+  function openCustomerDetail() {
+    if (!relatedCustomerId) return;
+    void goto(`${customerBasePath}/${relatedCustomerId}`);
   }
 
   async function checkStatus() {
@@ -90,7 +125,9 @@
     try {
       await api.payment.checkStatus(invoice.id);
       await loadInvoice();
-      toast.success(get(t)('admin.package_invoices.detail.toasts.status_updated') || 'Status updated');
+      toast.success(
+        get(t)('admin.package_invoices.detail.toasts.status_updated') || 'Status updated',
+      );
     } catch (e: any) {
       toast.error(
         e?.message ||
@@ -136,15 +173,21 @@
   function paymentMethodLabel(row: Invoice | null): string {
     if (!row) return '-';
     if (isManualPaymentInvoice(row)) {
-      return get(t)('admin.package_invoices.detail.payment_methods.bank_transfer') || 'Bank Transfer';
+      return (
+        get(t)('admin.package_invoices.detail.payment_methods.bank_transfer') || 'Bank Transfer'
+      );
     }
 
     const method = String(row.payment_method || '').toLowerCase();
     if (method.includes('midtrans')) {
-      return get(t)('admin.package_invoices.detail.payment_methods.online_payment') || 'Online Payment';
+      return (
+        get(t)('admin.package_invoices.detail.payment_methods.online_payment') || 'Online Payment'
+      );
     }
     if (!method) {
-      return get(t)('admin.package_invoices.detail.payment_methods.online_payment') || 'Online Payment';
+      return (
+        get(t)('admin.package_invoices.detail.payment_methods.online_payment') || 'Online Payment'
+      );
     }
     return row.payment_method || '-';
   }
@@ -185,7 +228,8 @@
       await api.payment.verifyCustomerPackagePayment(invoice.id, status, rejectionReason);
       await loadInvoice();
       toast.success(
-        (get(t)('admin.package_invoices.detail.toasts.marked') || 'Invoice marked as') + ` ${status}`,
+        (get(t)('admin.package_invoices.detail.toasts.marked') || 'Invoice marked as') +
+          ` ${status}`,
       );
     } catch (e: any) {
       toast.error(
@@ -217,7 +261,8 @@
     const reason = rejectReason.trim();
     if (!reason) {
       toast.error(
-        get(t)('admin.package_invoices.detail.reject.reason_required') || 'Rejection reason is required',
+        get(t)('admin.package_invoices.detail.reject.reason_required') ||
+          'Rejection reason is required',
       );
       return;
     }
@@ -248,6 +293,13 @@
       <span>{$t('admin.package_invoices.detail.back') || 'Back to Invoices'}</span>
     </button>
     <div class="header-right">
+      {#if relatedCustomerId}
+        <button class="btn btn-secondary" onclick={openCustomerDetail}>
+          <Icon name="users" size={16} />
+          <span>{$t('admin.package_invoices.detail.actions.open_customer') || 'Open Customer'}</span
+          >
+        </button>
+      {/if}
       <button class="btn btn-secondary" onclick={() => goto(billingLogsPath)}>
         <Icon name="activity" size={16} />
         <span>{$t('admin.package_invoices.list.actions.billing_logs') || 'Billing Logs'}</span>
@@ -266,14 +318,19 @@
   </div>
 
   {#if loading}
-    <div class="state-card">{$t('admin.package_invoices.detail.loading') || 'Loading invoice...'}</div>
+    <div class="state-card">
+      {$t('admin.package_invoices.detail.loading') || 'Loading invoice...'}
+    </div>
   {:else if error}
     <div class="state-card error">{error}</div>
   {:else if invoice}
     <div class="invoice-card">
       <div class="invoice-head">
         <div>
-          <h1>{$t('admin.package_invoices.detail.invoice_prefix') || 'Invoice #'}{invoice.invoice_number}</h1>
+          <h1>
+            {$t('admin.package_invoices.detail.invoice_prefix') ||
+              'Invoice #'}{invoice.invoice_number}
+          </h1>
           <p>{invoice.description || '-'}</p>
         </div>
         <span class="status-pill {invoice.status}">{statusLabel(invoice.status)}</span>
@@ -286,7 +343,9 @@
         </div>
         <div class="field">
           <span>{$t('admin.package_invoices.detail.labels.due_date') || 'Due Date'}</span>
-          <strong>{formatDateTime(invoice.due_date, { timeZone: $appSettings.app_timezone })}</strong>
+          <strong
+            >{formatDateTime(invoice.due_date, { timeZone: $appSettings.app_timezone })}</strong
+          >
         </div>
         <div class="field">
           <span>{$t('admin.package_invoices.detail.labels.created') || 'Created'}</span>
@@ -305,12 +364,28 @@
           >
         </div>
         <div class="field">
-          <span>{$t('admin.package_invoices.detail.labels.payment_method') || 'Payment Method'}</span>
+          <span
+            >{$t('admin.package_invoices.detail.labels.payment_method') || 'Payment Method'}</span
+          >
           <strong>{paymentMethodLabel(invoice)}</strong>
         </div>
+        {#if relatedCustomerId}
+          <div class="field">
+            <span
+              >{$t('admin.package_invoices.detail.labels.related_customer') ||
+                'Related Customer'}</span
+            >
+            <button type="button" class="inline-link-btn" onclick={openCustomerDetail}>
+              {$t('admin.package_invoices.detail.actions.open_customer') || 'Open Customer'}
+            </button>
+          </div>
+        {/if}
         {#if invoice.status === 'failed' && invoice.rejection_reason}
           <div class="field field-wide">
-            <span>{$t('admin.package_invoices.detail.labels.rejection_reason') || 'Rejection Reason'}</span>
+            <span
+              >{$t('admin.package_invoices.detail.labels.rejection_reason') ||
+                'Rejection Reason'}</span
+            >
             <strong>{invoice.rejection_reason}</strong>
           </div>
         {/if}
@@ -321,7 +396,8 @@
           <div class="proof-head">
             <h2>{$t('admin.package_invoices.detail.payment_proof.title') || 'Payment Proof'}</h2>
             <span class="proof-hint"
-              >{$t('admin.package_invoices.detail.payment_proof.hint') || 'Click image to enlarge'}</span
+              >{$t('admin.package_invoices.detail.payment_proof.hint') ||
+                'Click image to enlarge'}</span
             >
           </div>
           <button class="proof-image-button" type="button" onclick={openProofLightbox}>
@@ -346,7 +422,11 @@
           </button>
         {/if}
         {#if invoice.status === 'pending' || invoice.status === 'verification_pending'}
-          <button class="btn btn-success" onclick={() => requestMarkPayment('paid')} disabled={processing}>
+          <button
+            class="btn btn-success"
+            onclick={() => requestMarkPayment('paid')}
+            disabled={processing}
+          >
             <Icon name="check" size={16} />
             <span
               >{processing
@@ -354,7 +434,11 @@
                 : $t('admin.package_invoices.detail.actions.mark_paid') || 'Mark Paid'}</span
             >
           </button>
-          <button class="btn btn-danger" onclick={() => requestMarkPayment('failed')} disabled={processing}>
+          <button
+            class="btn btn-danger"
+            onclick={() => requestMarkPayment('failed')}
+            disabled={processing}
+          >
             <Icon name="x" size={16} />
             <span
               >{processing
@@ -367,6 +451,70 @@
     </div>
   {/if}
 </div>
+
+<ConfirmDialog
+  bind:show={showConfirm}
+  title={pendingVerifyStatus === 'paid'
+    ? $t('admin.package_invoices.detail.confirm.mark_paid_title') || 'Mark Invoice as Paid'
+    : $t('admin.package_invoices.detail.confirm.mark_failed_title') || 'Mark Invoice as Failed'}
+  message={pendingVerifyStatus === 'paid'
+    ? $t('admin.package_invoices.detail.confirm.mark_paid_message') ||
+      'This will set the invoice status to paid.'
+    : $t('admin.package_invoices.detail.confirm.mark_failed_message') ||
+      'This will set the invoice status to failed.'}
+  type={pendingVerifyStatus === 'paid' ? 'info' : 'danger'}
+  confirmText={pendingVerifyStatus === 'paid'
+    ? $t('admin.package_invoices.detail.confirm.mark_paid_confirm') || 'Mark Paid'
+    : $t('admin.package_invoices.detail.confirm.mark_failed_confirm') || 'Mark Failed'}
+  onconfirm={confirmMarkPayment}
+  loading={processing}
+/>
+
+{#if showLightbox}
+  <Lightbox files={lightboxFiles} onclose={() => (showLightbox = false)} />
+{/if}
+
+{#if showRejectModal}
+  <div class="reject-modal-backdrop">
+    <div class="reject-modal">
+      <h3>{$t('admin.package_invoices.detail.reject.title') || 'Mark Invoice as Failed'}</h3>
+      <p>
+        {$t('admin.package_invoices.detail.reject.description') ||
+          'Provide a clear reason so customer can fix and re-upload payment proof.'}
+      </p>
+      <div class="reject-presets">
+        {#each rejectReasonOptions as opt}
+          <button class="reject-chip" type="button" onclick={() => (rejectReason = opt)}>
+            {opt}
+          </button>
+        {/each}
+      </div>
+      <textarea
+        class="reject-reason-input"
+        bind:value={rejectReason}
+        placeholder={$t('admin.package_invoices.detail.reject.placeholder') ||
+          'Write rejection reason...'}
+      ></textarea>
+      <div class="reject-actions">
+        <button class="btn btn-secondary" type="button" onclick={() => (showRejectModal = false)}>
+          {$t('common.cancel') || 'Cancel'}
+        </button>
+        <button
+          class="btn btn-danger"
+          type="button"
+          onclick={submitRejectPayment}
+          disabled={processing}
+        >
+          {#if processing}
+            {$t('admin.package_invoices.detail.actions.processing') || 'Processing...'}
+          {:else}
+            {$t('admin.package_invoices.detail.actions.mark_failed') || 'Mark Failed'}
+          {/if}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .page-container {
@@ -473,6 +621,18 @@
   }
   .field strong {
     font-size: 0.95rem;
+  }
+  .inline-link-btn {
+    border: 0;
+    background: transparent;
+    color: var(--color-primary);
+    padding: 0;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: left;
+  }
+  .inline-link-btn:hover {
+    text-decoration: underline;
   }
   .actions {
     margin-top: 1rem;
@@ -647,61 +807,3 @@
     }
   }
 </style>
-
-<ConfirmDialog
-  bind:show={showConfirm}
-  title={pendingVerifyStatus === 'paid'
-    ? $t('admin.package_invoices.detail.confirm.mark_paid_title') || 'Mark Invoice as Paid'
-    : $t('admin.package_invoices.detail.confirm.mark_failed_title') || 'Mark Invoice as Failed'}
-  message={pendingVerifyStatus === 'paid'
-    ? $t('admin.package_invoices.detail.confirm.mark_paid_message') ||
-      'This will set the invoice status to paid.'
-    : $t('admin.package_invoices.detail.confirm.mark_failed_message') ||
-      'This will set the invoice status to failed.'}
-  type={pendingVerifyStatus === 'paid' ? 'info' : 'danger'}
-  confirmText={pendingVerifyStatus === 'paid'
-    ? $t('admin.package_invoices.detail.confirm.mark_paid_confirm') || 'Mark Paid'
-    : $t('admin.package_invoices.detail.confirm.mark_failed_confirm') || 'Mark Failed'}
-  onconfirm={confirmMarkPayment}
-  loading={processing}
-/>
-
-{#if showLightbox}
-  <Lightbox files={lightboxFiles} onclose={() => (showLightbox = false)} />
-{/if}
-
-{#if showRejectModal}
-  <div class="reject-modal-backdrop">
-    <div class="reject-modal">
-      <h3>{$t('admin.package_invoices.detail.reject.title') || 'Mark Invoice as Failed'}</h3>
-      <p>
-        {$t('admin.package_invoices.detail.reject.description') ||
-          'Provide a clear reason so customer can fix and re-upload payment proof.'}
-      </p>
-      <div class="reject-presets">
-        {#each rejectReasonOptions as opt}
-          <button class="reject-chip" type="button" onclick={() => (rejectReason = opt)}>
-            {opt}
-          </button>
-        {/each}
-      </div>
-      <textarea
-        class="reject-reason-input"
-        bind:value={rejectReason}
-        placeholder={$t('admin.package_invoices.detail.reject.placeholder') || 'Write rejection reason...'}
-      ></textarea>
-      <div class="reject-actions">
-        <button class="btn btn-secondary" type="button" onclick={() => (showRejectModal = false)}>
-          {$t('common.cancel') || 'Cancel'}
-        </button>
-        <button class="btn btn-danger" type="button" onclick={submitRejectPayment} disabled={processing}>
-          {#if processing}
-            {$t('admin.package_invoices.detail.actions.processing') || 'Processing...'}
-          {:else}
-            {$t('admin.package_invoices.detail.actions.mark_failed') || 'Mark Failed'}
-          {/if}
-        </button>
-      </div>
-    </div>
-  </div>
-{/if}

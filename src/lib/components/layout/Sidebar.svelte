@@ -357,6 +357,12 @@
             href: `${tenantPrefix}/admin/network/pppoe`,
             show: $can('read', 'pppoe') || $can('manage', 'pppoe'),
           },
+          {
+            label: $t('sidebar.imports') || 'Imports',
+            icon: 'download',
+            href: `${tenantPrefix}/admin/network/import`,
+            show: $can('manage', 'pppoe'),
+          },
         ]),
       },
       {
@@ -418,19 +424,13 @@
         title: $t('sidebar.sections.billing') || 'Billing',
         items: visibleItems([
           {
-            label: $t('sidebar.subscription') || 'Subscription',
-            icon: 'credit-card',
-            href: `${tenantPrefix}/admin/subscription`,
-            show: $can('read', 'billing') || $can('manage', 'billing'),
-          },
-          {
-            label: $t('sidebar.invoices') || 'Invoices',
+            label: $t('sidebar.billing') || 'Billing',
             icon: 'file-text',
             href: `${tenantPrefix}/admin/invoices`,
             show: $can('read', 'billing') || $can('manage', 'billing'),
           },
           {
-            label: $t('sidebar.billing_collection') || 'Billing Logs',
+            label: $t('sidebar.collections') || 'Collections',
             icon: 'activity',
             href: `${tenantPrefix}/admin/invoices/collection`,
             show: $can('read', 'billing') || $can('manage', 'billing'),

@@ -12,7 +12,8 @@
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
   import { can, user, tenant } from '$lib/stores/auth';
-  import { resolveTenantContext } from '$lib/utils/tenantRouting';
+  import { getAdminBillingNavigation } from '$lib/utils/adminBillingNavigation';
+  import { findCustomerPackageInvoiceRelation } from '$lib/utils/customerPackageInvoice';
 
   let invoices = $state<Invoice[]>([]);
   let loading = $state(true);
@@ -32,16 +33,17 @@
     Array<{ id: string; customerId: string; label: string; status: string }>
   >([]);
   let customers = $state<Array<{ id: string; name: string }>>([]);
-  const tenantCtx = $derived.by(() =>
-    resolveTenantContext({
+  const billingNav = $derived.by(() =>
+    getAdminBillingNavigation({
       hostname: $page.url.hostname,
       userTenantSlug: $user?.tenant_slug,
       tenantSlug: $tenant?.slug,
       routeTenantSlug: $page.params.tenant,
     }),
   );
-  const tenantPrefix = $derived(tenantCtx.tenantPrefix);
-  const adminHomePath = $derived(`${tenantPrefix}/admin`);
+  const adminHomePath = $derived(`${billingNav.tenantPrefix}/admin`);
+  const collectionsPath = $derived(billingNav.collectionsPath);
+  const customerBasePath = $derived(`${billingNav.tenantPrefix}/admin/customers`);
 
   const columns = $derived.by(() => [
     {
@@ -104,7 +106,9 @@
       return Number.isFinite(due) && due < now;
     }).length;
     const pending = source.filter((inv) => inv.status === 'pending').length;
-    const verificationPending = source.filter((inv) => inv.status === 'verification_pending').length;
+    const verificationPending = source.filter(
+      (inv) => inv.status === 'verification_pending',
+    ).length;
     const paid = source.filter((inv) => inv.status === 'paid').length;
     return {
       total: source.length,
@@ -114,6 +118,7 @@
       overdue,
     };
   });
+  const actionableInvoices = $derived(invoiceStats.pending + invoiceStats.verificationPending);
 
   onMount(() => {
     if (!$can('read', 'billing') && !$can('manage', 'billing')) {
@@ -148,7 +153,10 @@
 
       const subResults = await Promise.all(
         customers.map(async (customer) => {
-          const subRes = await api.customers.subscriptions.list(customer.id, { page: 1, per_page: 200 });
+          const subRes = await api.customers.subscriptions.list(customer.id, {
+            page: 1,
+            per_page: 200,
+          });
           return (subRes.data || []).map((sub) => ({
             id: sub.id,
             customerId: customer.id,
@@ -219,6 +227,10 @@
     void goto(`${basePath}/${id}`);
   }
 
+  function openCustomerDetail(customerId: string) {
+    void goto(`${customerBasePath}/${customerId}`);
+  }
+
   function formatCurrency(amount: number, currency?: string) {
     return formatMoney(amount, { currency });
   }
@@ -261,11 +273,7 @@
   }
 
   function goToBillingLogs() {
-    const basePath =
-      typeof window !== 'undefined'
-        ? window.location.pathname.replace(/\/$/, '')
-        : '/admin/invoices';
-    void goto(`${basePath}/collection`);
+    void goto(collectionsPath);
   }
 </script>
 
@@ -275,21 +283,24 @@
       {$t('sidebar.overview') || 'Overview'}
     </button>
     <span class="crumb-sep">/</span>
-    <span class="crumb-current">{$t('sidebar.invoices') || 'Invoices'}</span>
+    <span class="crumb-current">{$t('sidebar.billing') || 'Billing'}</span>
   </nav>
 
   <div class="page-header">
     <div class="header-content">
-      <h1>{$t('admin.package_invoices.list.title') || 'Customer Package Invoices'}</h1>
+      <span class="page-eyebrow">
+        {$t('admin.package_invoices.list.eyebrow') || 'Customer billing workspace'}
+      </span>
+      <h1>{$t('admin.package_invoices.list.title') || 'Billing'}</h1>
       <p class="subtitle">
         {$t('admin.package_invoices.list.subtitle') ||
-          'Generate and manage invoices for customer internet packages.'}
+          'Monitor collections, generate due invoices, and handle manual customer billing from one place.'}
       </p>
     </div>
     <div class="header-actions">
       <button class="btn btn-secondary" onclick={goToBillingLogs}>
         <Icon name="activity" size={16} />
-        <span>{$t('admin.package_invoices.list.actions.billing_logs') || 'Billing Logs'}</span>
+        <span>{$t('sidebar.collections') || 'Collections'}</span>
       </button>
       <button class="btn btn-primary" onclick={generateDueInvoicesBulk} disabled={bulkGenerating}>
         <Icon name="layers" size={16} />
@@ -307,130 +318,236 @@
     </div>
   </div>
 
-  <div class="create-row">
-    <select bind:value={selectedCustomerId} class="select-input">
-      <option value="">
-        {$t('admin.package_invoices.list.fields.select_customer') || 'Select customer'}
-      </option>
-      {#each customers as customer}
-        <option value={customer.id}>{customer.name}</option>
-      {/each}
-    </select>
-
-    <select bind:value={selectedSubscriptionId} class="select-input" disabled={!selectedCustomerId}>
-      <option value="">
-        {$t('admin.package_invoices.list.fields.select_subscription') || 'Select subscription'}
-      </option>
-      {#each filteredSubscriptions as sub}
-        <option value={sub.id}>{sub.label} - {sub.status}</option>
-      {/each}
-    </select>
-
-    <button
-      class="btn btn-primary"
-      onclick={createInvoiceFromSubscription}
-      disabled={!selectedSubscriptionId || creating}
-    >
-      <Icon name="plus" size={16} />
-      <span
-        >{creating
-          ? $t('admin.package_invoices.list.actions.creating') || 'Creating...'
-          : $t('admin.package_invoices.list.actions.generate_invoice') || 'Generate Invoice'}</span
-      >
-    </button>
-  </div>
-
-  <div class="stats-grid">
-    <article class="stat-card">
-      <span class="stat-label">{$t('admin.package_invoices.list.stats.total') || 'Total'}</span>
-      <strong class="stat-value">{invoiceStats.total}</strong>
+  <div class="workspace-grid">
+    <article class="workspace-card workspace-card--primary">
+      <div class="workspace-card__icon">
+        <Icon name="receipt" size={18} />
+      </div>
+      <div>
+        <h2>{$t('admin.package_invoices.list.workspace.queue_title') || 'Invoice queue'}</h2>
+        <p>
+          {$t('admin.package_invoices.list.workspace.queue_desc') ||
+            'Keep overdue, pending verification, and paid invoices visible without leaving the billing workspace.'}
+        </p>
+      </div>
     </article>
-    <article class="stat-card">
-      <span class="stat-label">{$t('admin.package_invoices.list.stats.paid') || 'Paid'}</span>
-      <strong class="stat-value tone-paid">{invoiceStats.paid}</strong>
+    <article class="workspace-card">
+      <span class="workspace-card__label">
+        {$t('admin.package_invoices.list.workspace.action_needed') || 'Need action'}
+      </span>
+      <strong class="workspace-card__value tone-pending">{actionableInvoices}</strong>
+      <p>
+        {$t('admin.package_invoices.list.workspace.action_needed_desc') ||
+          'Pending and verification-pending invoices still need follow-up.'}
+      </p>
     </article>
-    <article class="stat-card">
-      <span class="stat-label">{$t('admin.package_invoices.list.stats.pending') || 'Pending'}</span>
-      <strong class="stat-value tone-pending">{invoiceStats.pending + invoiceStats.verificationPending}</strong>
-    </article>
-    <article class="stat-card">
-      <span class="stat-label">{$t('admin.package_invoices.list.stats.overdue') || 'Overdue'}</span>
-      <strong class="stat-value tone-overdue">{invoiceStats.overdue}</strong>
+    <article class="workspace-card">
+      <span class="workspace-card__label">
+        {$t('admin.package_invoices.list.workspace.overdue_now') || 'Overdue now'}
+      </span>
+      <strong class="workspace-card__value tone-overdue">{invoiceStats.overdue}</strong>
+      <p>
+        {$t('admin.package_invoices.list.workspace.overdue_now_desc') ||
+          'Focus collection reminders and service actions on these accounts first.'}
+      </p>
     </article>
   </div>
 
-  <div class="card content-card">
-    {#if error}
-      <div class="alert alert-error">{error}</div>
-    {/if}
-
-    <div class="filter-row">
-      <select bind:value={statusFilter} class="select-input">
-        <option value="all">
-          {$t('admin.package_invoices.list.filters.all_status') || 'All status'}
-        </option>
-        <option value="pending">{$t('admin.package_invoices.list.filters.pending') || 'Pending'}</option>
-        <option value="verification_pending">
-          {$t('admin.package_invoices.list.filters.verification_pending') || 'Verification pending'}
-        </option>
-        <option value="paid">{$t('admin.package_invoices.list.filters.paid') || 'Paid'}</option>
-        <option value="failed">{$t('admin.package_invoices.list.filters.failed') || 'Failed'}</option>
-      </select>
-
-      <input
-        class="select-input"
-        type="date"
-        bind:value={dateFrom}
-        title={$t('admin.package_invoices.list.filters.created_from') || 'Created from'}
-      />
-      <input
-        class="select-input"
-        type="date"
-        bind:value={dateTo}
-        title={$t('admin.package_invoices.list.filters.created_to') || 'Created to'}
-      />
-
-      <button class="btn btn-secondary btn-sm" onclick={clearFilters}>
-        {$t('admin.package_invoices.list.filters.clear') || 'Clear'}
-      </button>
+  <section class="section-block">
+    <div class="section-heading">
+      <div>
+        <h2>
+          {$t('admin.package_invoices.list.sections.manual_title') || 'Manual billing action'}
+        </h2>
+        <p>
+          {$t('admin.package_invoices.list.sections.manual_desc') ||
+            'Select a customer subscription to generate a targeted invoice immediately.'}
+        </p>
+      </div>
     </div>
 
-    <Table
-      {loading}
-      data={filteredInvoices}
-      {columns}
-      searchable={true}
-      searchPlaceholder={$t('admin.package_invoices.list.search_placeholder') ||
-        'Search customer service invoices...'}
-      sortKey={invoiceSortBy}
-      sortDirection={invoiceSortDirection}
-      onsort={handleInvoiceSort}
-    >
-      {#snippet cell({ item, column })}
-        {#if column.key === 'amount'}
-          {formatCurrency(item.amount, item.currency_code)}
-        {:else if column.key === 'status'}
-          <span class="status-pill {item.status}">{statusLabel(item.status)}</span>
-        {:else if column.key === 'due_date'}
-          {formatDate(item[column.key], { timeZone: $appSettings.app_timezone })}
-        {:else if column.key === 'actions'}
-          <div class="actions">
-            <button
-              type="button"
-              class="action-btn"
-              title={$t('admin.package_invoices.list.actions.view_details') || 'View Details'}
-              aria-label={$t('admin.package_invoices.list.actions.view_details') || 'View Details'}
-              onclick={() => openInvoiceDetail(item.id)}
-            >
-              <Icon name="eye" size={18} />
-            </button>
-          </div>
-        {:else}
-          {item[column.key]}
-        {/if}
-      {/snippet}
-    </Table>
-  </div>
+    <div class="create-row">
+      <select bind:value={selectedCustomerId} class="select-input">
+        <option value="">
+          {$t('admin.package_invoices.list.fields.select_customer') || 'Select customer'}
+        </option>
+        {#each customers as customer}
+          <option value={customer.id}>{customer.name}</option>
+        {/each}
+      </select>
+
+      <select
+        bind:value={selectedSubscriptionId}
+        class="select-input"
+        disabled={!selectedCustomerId}
+      >
+        <option value="">
+          {$t('admin.package_invoices.list.fields.select_subscription') || 'Select subscription'}
+        </option>
+        {#each filteredSubscriptions as sub}
+          <option value={sub.id}>{sub.label} - {sub.status}</option>
+        {/each}
+      </select>
+
+      <button
+        class="btn btn-primary"
+        onclick={createInvoiceFromSubscription}
+        disabled={!selectedSubscriptionId || creating}
+      >
+        <Icon name="plus" size={16} />
+        <span
+          >{creating
+            ? $t('admin.package_invoices.list.actions.creating') || 'Creating...'
+            : $t('admin.package_invoices.list.actions.generate_invoice') ||
+              'Generate Invoice'}</span
+        >
+      </button>
+    </div>
+  </section>
+
+  <section class="section-block">
+    <div class="section-heading">
+      <div>
+        <h2>{$t('admin.package_invoices.list.sections.summary_title') || 'Billing overview'}</h2>
+        <p>
+          {$t('admin.package_invoices.list.sections.summary_desc') ||
+            'Track payment status distribution before drilling into the full invoice queue.'}
+        </p>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <article class="stat-card">
+        <span class="stat-label">{$t('admin.package_invoices.list.stats.total') || 'Total'}</span>
+        <strong class="stat-value">{invoiceStats.total}</strong>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">{$t('admin.package_invoices.list.stats.paid') || 'Paid'}</span>
+        <strong class="stat-value tone-paid">{invoiceStats.paid}</strong>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label"
+          >{$t('admin.package_invoices.list.stats.pending') || 'Pending'}</span
+        >
+        <strong class="stat-value tone-pending"
+          >{invoiceStats.pending + invoiceStats.verificationPending}</strong
+        >
+      </article>
+      <article class="stat-card">
+        <span class="stat-label"
+          >{$t('admin.package_invoices.list.stats.overdue') || 'Overdue'}</span
+        >
+        <strong class="stat-value tone-overdue">{invoiceStats.overdue}</strong>
+      </article>
+    </div>
+  </section>
+
+  <section class="section-block">
+    <div class="section-heading">
+      <div>
+        <h2>{$t('admin.package_invoices.list.sections.queue_title') || 'Invoice queue'}</h2>
+        <p>
+          {$t('admin.package_invoices.list.sections.queue_desc') ||
+            'Filter and inspect customer invoices by status, created window, and payment progress.'}
+        </p>
+      </div>
+    </div>
+
+    <div class="card content-card">
+      {#if error}
+        <div class="alert alert-error">{error}</div>
+      {/if}
+
+      <div class="filter-row">
+        <select bind:value={statusFilter} class="select-input">
+          <option value="all">
+            {$t('admin.package_invoices.list.filters.all_status') || 'All status'}
+          </option>
+          <option value="pending"
+            >{$t('admin.package_invoices.list.filters.pending') || 'Pending'}</option
+          >
+          <option value="verification_pending">
+            {$t('admin.package_invoices.list.filters.verification_pending') ||
+              'Verification pending'}
+          </option>
+          <option value="paid">{$t('admin.package_invoices.list.filters.paid') || 'Paid'}</option>
+          <option value="failed"
+            >{$t('admin.package_invoices.list.filters.failed') || 'Failed'}</option
+          >
+        </select>
+
+        <input
+          class="select-input"
+          type="date"
+          bind:value={dateFrom}
+          title={$t('admin.package_invoices.list.filters.created_from') || 'Created from'}
+        />
+        <input
+          class="select-input"
+          type="date"
+          bind:value={dateTo}
+          title={$t('admin.package_invoices.list.filters.created_to') || 'Created to'}
+        />
+
+        <button class="btn btn-secondary btn-sm" onclick={clearFilters}>
+          {$t('admin.package_invoices.list.filters.clear') || 'Clear'}
+        </button>
+      </div>
+
+      <Table
+        {loading}
+        data={filteredInvoices}
+        {columns}
+        searchable={true}
+        searchPlaceholder={$t('admin.package_invoices.list.search_placeholder') ||
+          'Search customer service invoices...'}
+        sortKey={invoiceSortBy}
+        sortDirection={invoiceSortDirection}
+        onsort={handleInvoiceSort}
+      >
+        {#snippet cell({ item, column })}
+          {#if column.key === 'amount'}
+            {formatCurrency(item.amount, item.currency_code)}
+          {:else if column.key === 'status'}
+            <span class="status-pill {item.status}">{statusLabel(item.status)}</span>
+          {:else if column.key === 'due_date'}
+            {formatDate(item[column.key], { timeZone: $appSettings.app_timezone })}
+          {:else if column.key === 'actions'}
+            <div class="actions">
+              {#if findCustomerPackageInvoiceRelation(item, subscriptionOptions)?.customerId}
+                <button
+                  type="button"
+                  class="action-btn"
+                  title={$t('admin.package_invoices.list.actions.open_customer') || 'Open customer'}
+                  aria-label={$t('admin.package_invoices.list.actions.open_customer') ||
+                    'Open customer'}
+                  onclick={() =>
+                    openCustomerDetail(
+                      findCustomerPackageInvoiceRelation(item, subscriptionOptions)?.customerId ||
+                        '',
+                    )}
+                >
+                  <Icon name="users" size={18} />
+                </button>
+              {/if}
+              <button
+                type="button"
+                class="action-btn"
+                title={$t('admin.package_invoices.list.actions.view_details') || 'View Details'}
+                aria-label={$t('admin.package_invoices.list.actions.view_details') ||
+                  'View Details'}
+                onclick={() => openInvoiceDetail(item.id)}
+              >
+                <Icon name="eye" size={18} />
+              </button>
+            </div>
+          {:else}
+            {item[column.key]}
+          {/if}
+        {/snippet}
+      </Table>
+    </div>
+  </section>
 </div>
 
 <style>
@@ -474,10 +591,95 @@
     gap: 1rem;
     flex-wrap: wrap;
   }
+  .page-eyebrow {
+    display: inline-flex;
+    margin-bottom: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-primary);
+  }
   .header-actions {
     display: flex;
     gap: 0.75rem;
     align-items: center;
+    flex-wrap: wrap;
+  }
+  .workspace-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr;
+    gap: 0.9rem;
+    margin-bottom: 1rem;
+  }
+  .workspace-card {
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: var(--bg-surface);
+    padding: 1rem 1.05rem;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  }
+  .workspace-card--primary {
+    display: flex;
+    gap: 0.9rem;
+    align-items: flex-start;
+  }
+  .workspace-card__icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    flex-shrink: 0;
+  }
+  .workspace-card h2 {
+    margin: 0 0 0.35rem;
+    font-size: 1rem;
+    color: var(--text-primary);
+  }
+  .workspace-card p {
+    margin: 0;
+    color: var(--text-secondary);
+    line-height: 1.55;
+  }
+  .workspace-card__label {
+    display: inline-flex;
+    margin-bottom: 0.45rem;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .workspace-card__value {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 1.45rem;
+    line-height: 1;
+    color: var(--text-primary);
+  }
+  .section-block {
+    margin-bottom: 1rem;
+  }
+  .section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .section-heading h2 {
+    margin: 0 0 0.2rem;
+    font-size: 1rem;
+    color: var(--text-primary);
+  }
+  .section-heading p {
+    margin: 0;
+    color: var(--text-secondary);
+    line-height: 1.5;
   }
   .create-row {
     display: grid;
@@ -635,6 +837,9 @@
       flex-direction: column;
       align-items: stretch;
     }
+    .workspace-grid {
+      grid-template-columns: 1fr;
+    }
     .create-row {
       grid-template-columns: 1fr;
     }
@@ -643,6 +848,9 @@
     }
     .filter-row {
       grid-template-columns: 1fr;
+    }
+    .section-heading {
+      align-items: stretch;
     }
 
     .btn.btn-secondary {

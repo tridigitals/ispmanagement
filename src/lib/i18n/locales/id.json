@@ -402,7 +402,9 @@
     "roles": "Peran",
     "tenants": "Tenant",
     "plans": "Paket",
+    "billing": "Billing",
     "invoices": "Invoice",
+    "collections": "Koleksi",
     "billing_collection": "Log Billing",
     "storage": "Penyimpanan",
     "subscription": "Langganan",
@@ -422,6 +424,7 @@
     "installations": "Instalasi",
     "logs": "Log",
     "pppoe": "PPPoE",
+    "imports": "Import",
     "ppp_profiles": "Profil PPP",
     "ip_pools": "Pool IP",
     "services": "Layanan",
@@ -2508,6 +2511,7 @@
         "columns": {
           "label": "Label",
           "address": "Alamat",
+          "coordinates": "Koordinat",
           "updated": "Diperbarui"
         },
         "new": {
@@ -2528,6 +2532,8 @@
           "state": "Provinsi",
           "postal": "Kode pos",
           "country": "Negara",
+          "latitude": "Latitude",
+          "longitude": "Longitude",
           "notes": "Catatan"
         },
         "toasts": {
@@ -2747,6 +2753,21 @@
       }
     },
     "network": {
+      "import_center": {
+        "title": "Import Network",
+        "subtitle": "Pusat import data jaringan dari MixRadius dan source lain yang bisa ditambahkan nanti.",
+        "panel_title": "Import aman untuk lifecycle ISP",
+        "panel_description": "Setiap source diproses lewat staging, mapping, preview, dan eksekusi agar paket, pelanggan, langganan, billing, dan akun PPPoE tetap konsisten.",
+        "sources_count": "Source tersedia",
+        "lifecycle_count": "Area lifecycle terjaga",
+        "sources_title": "Pilih source import",
+        "sources_subtitle": "Mulai dari MixRadius, lalu area ini bisa diperluas untuk Radbox atau sistem RADIUS lain.",
+        "open_wizard": "Buka wizard",
+        "status": {
+          "ready": "Siap",
+          "coming_soon": "Segera hadir"
+        }
+      },
       "packages": {
         "title": "Paket",
         "subtitle": "Buat paket internet dan map ke profil PPP router (per-router).",
@@ -4004,6 +4025,12 @@
     },
     "subscription": {
       "title": "Langganan",
+      "context": {
+        "eyebrow": "Workspace billing tenant",
+        "description": "Halaman detail ini tetap tersedia, tetapi pusat navigasi tenant billing sekarang ada di Settings > Billing & Plan.",
+        "open_customer_billing": "Buka Billing Pelanggan",
+        "back_to_settings": "Kembali ke Billing & Plan"
+      },
       "tabs": {
         "overview": "Ringkasan",
         "plans": "Paket Tersedia",
@@ -4173,9 +4200,26 @@
         "failed": "Gagal"
       },
       "list": {
-        "title": "Invoice Layanan Pelanggan",
-        "subtitle": "Buat dan kelola invoice untuk layanan internet pelanggan.",
+        "eyebrow": "Workspace billing pelanggan",
+        "title": "Billing",
+        "subtitle": "Pantau collection, generate invoice jatuh tempo, dan tangani billing pelanggan manual dari satu tempat.",
         "search_placeholder": "Cari invoice layanan pelanggan...",
+        "workspace": {
+          "queue_title": "Antrian invoice",
+          "queue_desc": "Pantau invoice overdue, menunggu verifikasi, dan lunas tanpa keluar dari workspace billing.",
+          "action_needed": "Butuh aksi",
+          "action_needed_desc": "Invoice pending dan menunggu verifikasi masih perlu tindak lanjut.",
+          "overdue_now": "Overdue saat ini",
+          "overdue_now_desc": "Prioritaskan reminder collection dan aksi layanan untuk akun-akun ini lebih dulu."
+        },
+        "sections": {
+          "manual_title": "Aksi billing manual",
+          "manual_desc": "Pilih langganan pelanggan untuk membuat invoice terarah secara langsung.",
+          "summary_title": "Ringkasan billing",
+          "summary_desc": "Pantau distribusi status pembayaran sebelum masuk ke antrian invoice lengkap.",
+          "queue_title": "Antrian invoice",
+          "queue_desc": "Filter dan periksa invoice pelanggan berdasarkan status, rentang pembuatan, dan progres pembayaran."
+        },
         "columns": {
           "invoice_number": "Invoice #",
           "description": "Deskripsi",
@@ -4189,6 +4233,7 @@
         },
         "actions": {
           "view_details": "Lihat detail",
+          "open_customer": "Buka pelanggan",
           "generate_invoice": "Buat Invoice",
           "creating": "Membuat...",
           "billing_logs": "Log Billing",
@@ -4230,10 +4275,12 @@
           "created": "Dibuat",
           "updated": "Diperbarui",
           "payment_method": "Metode Pembayaran",
+          "related_customer": "Pelanggan Terkait",
           "rejection_reason": "Alasan Penolakan"
         },
         "actions": {
           "pay_now": "Bayar Sekarang",
+          "open_customer": "Buka Pelanggan",
           "check_status": "Cek Status",
           "checking": "Mengecek...",
           "processing": "Memproses...",
@@ -4415,7 +4462,29 @@
         "security": "Keamanan",
         "email": "Email",
         "branding": "Branding & Domain",
+        "billing_plan": "Billing & Plan",
         "payment": "Pembayaran"
+      },
+      "billing_plan": {
+        "eyebrow": "Billing tenant",
+        "title": "Kelola paket workspace dan langganan platform",
+        "description": "Area ini dipakai untuk melihat paket ISP Management yang aktif, entitlement upgrade, dan membuka halaman detail langganan tenant tanpa tercampur dengan billing pelanggan harian.",
+        "primary_cta": "Buka detail billing tenant",
+        "secondary_cta": "Lihat halaman langganan saat ini",
+        "cards": {
+          "plan": {
+            "title": "Paket & entitlement",
+            "desc": "Cek paket workspace yang sedang aktif, termasuk fitur seperti custom domain dan batas platform."
+          },
+          "payments": {
+            "title": "Pembayaran platform",
+            "desc": "Tinjau riwayat billing SaaS tenant dan kewajiban pembayaran platform berikutnya."
+          },
+          "operations": {
+            "title": "Terpisah dari billing pelanggan",
+            "desc": "Invoice pelanggan dan collection tetap ada di Billing agar tim operasional fokus ke pekerjaan ISP harian."
+          }
+        }
       },
       "network": {
         "alerting": {

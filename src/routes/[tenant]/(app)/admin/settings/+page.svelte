@@ -1,12 +1,14 @@
 <script lang="ts">
+  import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
-  import { user, isAdmin, can, getToken } from '$lib/stores/auth';
+  import { user, tenant, isAdmin, can, getToken } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import { appLogo } from '$lib/stores/logo';
   import { goto } from '$app/navigation';
   import { locale, t, waitLocale } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import TenantBillingPlanPanel from '$lib/components/billing/TenantBillingPlanPanel.svelte';
   import MobileFabMenu from '$lib/components/ui/MobileFabMenu.svelte';
   import Input from '$lib/components/ui/Input.svelte';
   import Select from '$lib/components/ui/Select.svelte';
@@ -14,10 +16,14 @@
   import { toast } from 'svelte-sonner';
   import { get } from 'svelte/store';
   import { adminSettingsCache } from '$lib/stores/adminSettingsCache';
+  import { getAdminBillingNavigation } from '$lib/utils/adminBillingNavigation';
 
   let loading = $state(true);
   let saving = $state(false);
-  let emailVerificationReadiness = $state<EmailVerificationReadiness>({ ready: true, reason: null });
+  let emailVerificationReadiness = $state<EmailVerificationReadiness>({
+    ready: true,
+    reason: null,
+  });
   let settings = $state<Record<string, Setting>>({});
   let localSettings = $state<Record<string, string>>({});
   let logoBase64 = $state<string | null>(null);
@@ -35,6 +41,16 @@
   let baselineLogoBase64 = $state<string | null>(null);
   let baselineTenantInfo = $state<any>(null);
   let baselineCustomDomainAccess = $state(false);
+  const billingNav = $derived.by(() =>
+    getAdminBillingNavigation({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      tenantSlug: $tenant?.slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
+  );
+  const tenantSubscriptionPath = $derived(billingNav.subscriptionPath);
+  const billingPlanSettingsPath = $derived(billingNav.billingPlanSettingsPath);
 
   // Categories configuration (i18n-aware)
   let categories = $derived.by(() => ({
@@ -55,6 +71,11 @@
       label: $t('admin.settings.categories.branding') || 'Branding & Domain',
       icon: 'globe',
       keys: [], // Managed manually
+    },
+    billing_plan: {
+      label: $t('admin.settings.categories.billing_plan') || 'Billing & Plan',
+      icon: 'credit-card',
+      keys: [],
     },
     security: {
       label: $t('admin.settings.categories.security') || 'Security',
@@ -704,7 +725,7 @@
                     </div>
                     <button
                       class="btn btn-primary btn-sm"
-                      onclick={() => goto(`/${tenantInfo?.slug}/admin/subscription`)}
+                      onclick={() => goto(billingPlanSettingsPath)}
                     >
                       {$t('common.upgrade_plan') || 'Upgrade Plan'}
                     </button>
@@ -716,6 +737,8 @@
                   />
                 {/if}
               </div>
+            {:else if activeTab === 'billing_plan'}
+              <TenantBillingPlanPanel openSubscription={() => goto(tenantSubscriptionPath)} />
             {:else if activeTab === 'security'}
               <!-- Security Settings -->
               <div class="setting-item setting-item-row mt-6">
@@ -805,8 +828,7 @@
                     type="checkbox"
                     checked={localSettings['mikrotik_alerting_enabled'] === 'true'}
                     onchange={(e) =>
-                      handleChange('mikrotik_alerting_enabled', e.currentTarget.checked)
-                    }
+                      handleChange('mikrotik_alerting_enabled', e.currentTarget.checked)}
                   />
                   <span class="slider"></span>
                 </label>
@@ -821,7 +843,8 @@
                 <p class="help-text">
                   {$t('admin.settings.network.thresholds.sla_preview', {
                     values: { warn: slaWarnPreview, breach: slaBreachPreview },
-                  }) || `Incidents become warning after ${slaWarnPreview} minutes and breach after ${slaBreachPreview} minutes.`}
+                  }) ||
+                    `Incidents become warning after ${slaWarnPreview} minutes and breach after ${slaBreachPreview} minutes.`}
                 </p>
 
                 <div class="config-grid">
@@ -837,8 +860,7 @@
                         min="0"
                         value={localSettings['mikrotik_alert_offline_after_secs']}
                         oninput={(e: any) =>
-                          handleChange('mikrotik_alert_offline_after_secs', e.target.value)
-                        }
+                          handleChange('mikrotik_alert_offline_after_secs', e.target.value)}
                       />
                     </div>
                   </div>
@@ -853,8 +875,7 @@
                         type="number"
                         value={localSettings['mikrotik_alert_cpu_risk']}
                         oninput={(e: any) =>
-                          handleChange('mikrotik_alert_cpu_risk', e.target.value)
-                        }
+                          handleChange('mikrotik_alert_cpu_risk', e.target.value)}
                       />
                     </div>
                   </div>
@@ -868,9 +889,7 @@
                         id="mikrotik-alert-cpu-hot"
                         type="number"
                         value={localSettings['mikrotik_alert_cpu_hot']}
-                        oninput={(e: any) =>
-                          handleChange('mikrotik_alert_cpu_hot', e.target.value)
-                        }
+                        oninput={(e: any) => handleChange('mikrotik_alert_cpu_hot', e.target.value)}
                       />
                     </div>
                   </div>
@@ -885,8 +904,7 @@
                         type="number"
                         value={localSettings['mikrotik_alert_latency_risk_ms']}
                         oninput={(e: any) =>
-                          handleChange('mikrotik_alert_latency_risk_ms', e.target.value)
-                        }
+                          handleChange('mikrotik_alert_latency_risk_ms', e.target.value)}
                       />
                     </div>
                   </div>
@@ -901,8 +919,7 @@
                         type="number"
                         value={localSettings['mikrotik_alert_latency_hot_ms']}
                         oninput={(e: any) =>
-                          handleChange('mikrotik_alert_latency_hot_ms', e.target.value)
-                        }
+                          handleChange('mikrotik_alert_latency_hot_ms', e.target.value)}
                       />
                     </div>
                   </div>
@@ -919,8 +936,7 @@
                         min="1"
                         value={localSettings['mikrotik_incident_sla_warn_minutes']}
                         oninput={(e: any) =>
-                          handleChange('mikrotik_incident_sla_warn_minutes', e.target.value)
-                        }
+                          handleChange('mikrotik_incident_sla_warn_minutes', e.target.value)}
                       />
                     </div>
                   </div>
@@ -937,8 +953,7 @@
                         min="1"
                         value={localSettings['mikrotik_incident_sla_breach_minutes']}
                         oninput={(e: any) =>
-                          handleChange('mikrotik_incident_sla_breach_minutes', e.target.value)
-                        }
+                          handleChange('mikrotik_incident_sla_breach_minutes', e.target.value)}
                       />
                     </div>
                   </div>
@@ -955,8 +970,7 @@
                         min="5"
                         value={localSettings['mikrotik_incident_escalation_minutes']}
                         oninput={(e: any) =>
-                          handleChange('mikrotik_incident_escalation_minutes', e.target.value)
-                        }
+                          handleChange('mikrotik_incident_escalation_minutes', e.target.value)}
                       />
                     </div>
                   </div>
@@ -982,8 +996,7 @@
                       handleChange(
                         'mikrotik_incident_correlation_enabled',
                         e.currentTarget.checked,
-                      )
-                    }
+                      )}
                   />
                   <span class="slider"></span>
                 </label>
@@ -1008,8 +1021,7 @@
                       handleChange(
                         'mikrotik_incident_auto_escalation_enabled',
                         e.currentTarget.checked,
-                      )
-                    }
+                      )}
                   />
                   <span class="slider"></span>
                 </label>
@@ -1028,8 +1040,7 @@
                     type="checkbox"
                     checked={localSettings['mikrotik_alert_email_enabled'] === 'true'}
                     onchange={(e) =>
-                      handleChange('mikrotik_alert_email_enabled', e.currentTarget.checked)
-                    }
+                      handleChange('mikrotik_alert_email_enabled', e.currentTarget.checked)}
                   />
                   <span class="slider"></span>
                 </label>
@@ -1054,8 +1065,7 @@
                       handleChange(
                         'mikrotik_incident_assignment_email_enabled',
                         e.currentTarget.checked,
-                      )
-                    }
+                      )}
                   />
                   <span class="slider"></span>
                 </label>
@@ -1446,7 +1456,10 @@
                       type="checkbox"
                       checked={localSettings['customer_invoice_auto_generate_enabled'] !== 'false'}
                       onchange={(e: any) =>
-                        handleChange('customer_invoice_auto_generate_enabled', e.currentTarget.checked)}
+                        handleChange(
+                          'customer_invoice_auto_generate_enabled',
+                          e.currentTarget.checked,
+                        )}
                     />
                     <span>
                       {$t('admin.settings.payment.customer_invoice_auto_generate_enabled_label') ||
@@ -1485,8 +1498,9 @@
 
                 <div class="setting-item full-width mb-4">
                   <label for="customer-invoice-scheduler-interval-minutes">
-                    {$t('admin.settings.payment.customer_invoice_scheduler_interval_minutes_label') ||
-                      'Customer invoice scheduler interval (minutes)'}
+                    {$t(
+                      'admin.settings.payment.customer_invoice_scheduler_interval_minutes_label',
+                    ) || 'Customer invoice scheduler interval (minutes)'}
                   </label>
                   <Input
                     id="customer-invoice-scheduler-interval-minutes"
@@ -1502,8 +1516,9 @@
                     placeholder="60"
                   />
                   <p class="help-text">
-                    {$t('admin.settings.payment.customer_invoice_scheduler_interval_minutes_help') ||
-                      'How often background worker checks for due customer invoices.'}
+                    {$t(
+                      'admin.settings.payment.customer_invoice_scheduler_interval_minutes_help',
+                    ) || 'How often background worker checks for due customer invoices.'}
                   </p>
                 </div>
 

@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { user, can } from '$lib/stores/auth';
+  import { page } from '$app/stores';
+  import { user, tenant, can } from '$lib/stores/auth';
   import { onMount } from 'svelte';
   import { api, type TenantSubscriptionDetails, type Invoice } from '$lib/api/client';
   import { goto } from '$app/navigation';
@@ -11,6 +12,7 @@
   import { appSettings } from '$lib/stores/settings';
   import { formatDate } from '$lib/utils/date';
   import { t } from 'svelte-i18n';
+  import { getAdminBillingNavigation } from '$lib/utils/adminBillingNavigation';
 
   let loading = $state(true);
   let subscription = $state<TenantSubscriptionDetails | null>(null);
@@ -24,6 +26,16 @@
   let fxSource = $state<string | null>(null);
   let fxLoading = $state(false);
   let fxError = $state<string | null>(null);
+  const billingNav = $derived.by(() =>
+    getAdminBillingNavigation({
+      hostname: $page.url.hostname,
+      userTenantSlug: $user?.tenant_slug,
+      tenantSlug: $tenant?.slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
+  );
+  const billingPlanSettingsPath = $derived(billingNav.billingPlanSettingsPath);
+  const customerBillingPath = $derived(billingNav.billingPath);
 
   let tenantCurrencyCode = $derived.by(() =>
     String($appSettings?.currency_code || baseCurrencyCode).toUpperCase(),
@@ -249,6 +261,37 @@
 </script>
 
 <div class="subscription-page" in:fade>
+  <div class="context-banner">
+    <div class="context-copy">
+      <span class="context-eyebrow">
+        {$t('admin.subscription.context.eyebrow') || 'Tenant billing workspace'}
+      </span>
+      <h1>{$t('admin.subscription.title') || 'Subscription'}</h1>
+      <p>
+        {$t('admin.subscription.context.description') ||
+          'This detailed page is still available, but the tenant billing home now lives in Settings > Billing & Plan.'}
+      </p>
+    </div>
+    <div class="context-actions">
+      <button
+        class="btn btn-secondary btn-sm"
+        type="button"
+        onclick={() => goto(customerBillingPath)}
+      >
+        <Icon name="receipt" size={16} />
+        {$t('admin.subscription.context.open_customer_billing') || 'Open Customer Billing'}
+      </button>
+      <button
+        class="btn btn-secondary btn-sm"
+        type="button"
+        onclick={() => goto(billingPlanSettingsPath)}
+      >
+        <Icon name="arrow-left" size={16} />
+        {$t('admin.subscription.context.back_to_settings') || 'Back to Billing & Plan'}
+      </button>
+    </div>
+  </div>
+
   <div class="tabs">
     <button
       class="tab-btn"
@@ -580,6 +623,56 @@
     --glass-border: rgba(255, 255, 255, 0.08);
     --accent-indigo: #6366f1;
     --accent-emerald: #10b981;
+  }
+
+  .context-banner {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 1.15rem 1.2rem;
+    border-radius: 18px;
+    border: 1px solid var(--glass-border);
+    background:
+      radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.14), transparent 45%),
+      linear-gradient(145deg, var(--bg-surface), #0b0c10);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+  }
+
+  .context-copy {
+    min-width: 0;
+  }
+
+  .context-eyebrow {
+    display: inline-flex;
+    margin-bottom: 0.35rem;
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-indigo);
+  }
+
+  .context-banner h1 {
+    margin: 0;
+    font-size: 1.3rem;
+    color: var(--text-primary);
+  }
+
+  .context-banner p {
+    margin: 0.45rem 0 0;
+    max-width: 760px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  .context-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   /* Tabs */
@@ -972,6 +1065,19 @@
   @media (max-width: 768px) {
     .subscription-page {
       padding: 1rem;
+    }
+
+    .context-banner {
+      flex-direction: column;
+    }
+
+    .context-actions {
+      width: 100%;
+    }
+
+    .context-actions :global(.btn) {
+      width: 100%;
+      justify-content: center;
     }
 
     .detail-body {

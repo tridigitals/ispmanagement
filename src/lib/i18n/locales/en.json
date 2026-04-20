@@ -402,7 +402,9 @@
     "roles": "Roles",
     "tenants": "Tenants",
     "plans": "Plans",
+    "billing": "Billing",
     "invoices": "Invoices",
+    "collections": "Collections",
     "billing_collection": "Billing Logs",
     "storage": "Storage",
     "subscription": "Subscription",
@@ -422,6 +424,7 @@
     "installations": "Installations",
     "logs": "Logs",
     "pppoe": "PPPoE",
+    "imports": "Imports",
     "ppp_profiles": "PPP Profiles",
     "ip_pools": "IP Pools",
     "services": "Services",
@@ -2563,7 +2566,29 @@
         "security": "Security",
         "email": "Email",
         "branding": "Branding & Domain",
+        "billing_plan": "Billing & Plan",
         "payment": "Payments"
+      },
+      "billing_plan": {
+        "eyebrow": "Tenant billing",
+        "title": "Manage your workspace plan and platform subscription",
+        "description": "Use this area to review your current ISP Management package, upgrade entitlements, and access the detailed tenant subscription page without mixing it into daily customer billing.",
+        "primary_cta": "Open tenant billing details",
+        "secondary_cta": "View current subscription page",
+        "cards": {
+          "plan": {
+            "title": "Plan & entitlements",
+            "desc": "Check which workspace package is active, including features like custom domain and platform limits."
+          },
+          "payments": {
+            "title": "Platform payments",
+            "desc": "Review your tenant's SaaS billing history and upcoming platform payment responsibilities."
+          },
+          "operations": {
+            "title": "Separated from customer billing",
+            "desc": "Customer invoices and collections stay in Billing so the operations team can focus on daily ISP work."
+          }
+        }
       },
       "network": {
         "alerting": {
@@ -2722,6 +2747,7 @@
         "columns": {
           "label": "Label",
           "address": "Address",
+          "coordinates": "Coordinates",
           "updated": "Updated"
         },
         "new": {
@@ -2742,6 +2768,8 @@
           "state": "State",
           "postal": "Postal code",
           "country": "Country",
+          "latitude": "Latitude",
+          "longitude": "Longitude",
           "notes": "Notes"
         },
         "toasts": {
@@ -2961,6 +2989,21 @@
       }
     },
     "network": {
+      "import_center": {
+        "title": "Network Imports",
+        "subtitle": "Import network data from MixRadius and other sources that can be added later.",
+        "panel_title": "Safe imports for ISP lifecycle",
+        "panel_description": "Every source goes through staging, mapping, preview, and execution so packages, customers, subscriptions, billing, and PPPoE accounts stay consistent.",
+        "sources_count": "Sources available",
+        "lifecycle_count": "Lifecycle areas guarded",
+        "sources_title": "Choose an import source",
+        "sources_subtitle": "Start with MixRadius, then expand this area for Radbox or other RADIUS systems.",
+        "open_wizard": "Open wizard",
+        "status": {
+          "ready": "Ready",
+          "coming_soon": "Coming soon"
+        }
+      },
       "packages": {
         "title": "Packages",
         "subtitle": "Create internet packages and map them to router PPP profiles (per-router).",
@@ -4218,6 +4261,12 @@
     },
     "subscription": {
       "title": "Subscription",
+      "context": {
+        "eyebrow": "Tenant billing workspace",
+        "description": "This detailed page is still available, but the tenant billing home now lives in Settings > Billing & Plan.",
+        "open_customer_billing": "Open Customer Billing",
+        "back_to_settings": "Back to Billing & Plan"
+      },
       "tabs": {
         "overview": "Overview",
         "plans": "Available Plans",
@@ -4387,9 +4436,26 @@
         "failed": "Failed"
       },
       "list": {
-        "title": "Customer Service Invoices",
-        "subtitle": "Generate and manage invoices for customer internet services.",
+        "eyebrow": "Customer billing workspace",
+        "title": "Billing",
+        "subtitle": "Monitor collections, generate due invoices, and handle manual customer billing from one place.",
         "search_placeholder": "Search customer service invoices...",
+        "workspace": {
+          "queue_title": "Invoice queue",
+          "queue_desc": "Keep overdue, pending verification, and paid invoices visible without leaving the billing workspace.",
+          "action_needed": "Need action",
+          "action_needed_desc": "Pending and verification-pending invoices still need follow-up.",
+          "overdue_now": "Overdue now",
+          "overdue_now_desc": "Focus collection reminders and service actions on these accounts first."
+        },
+        "sections": {
+          "manual_title": "Manual billing action",
+          "manual_desc": "Select a customer subscription to generate a targeted invoice immediately.",
+          "summary_title": "Billing overview",
+          "summary_desc": "Track payment status distribution before drilling into the full invoice queue.",
+          "queue_title": "Invoice queue",
+          "queue_desc": "Filter and inspect customer invoices by status, created window, and payment progress."
+        },
         "columns": {
           "invoice_number": "Invoice #",
           "description": "Description",
@@ -4403,6 +4469,7 @@
         },
         "actions": {
           "view_details": "View Details",
+          "open_customer": "Open customer",
           "generate_invoice": "Generate Invoice",
           "creating": "Creating...",
           "billing_logs": "Billing Logs",
@@ -4444,10 +4511,12 @@
           "created": "Created",
           "updated": "Updated",
           "payment_method": "Payment Method",
+          "related_customer": "Related Customer",
           "rejection_reason": "Rejection Reason"
         },
         "actions": {
           "pay_now": "Pay Now",
+          "open_customer": "Open Customer",
           "check_status": "Check Status",
           "checking": "Checking...",
           "processing": "Processing...",
