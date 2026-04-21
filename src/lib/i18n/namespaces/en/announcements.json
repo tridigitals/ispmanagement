@@ -1,0 +1,76 @@
+{
+  "title": "Announcements",
+  "subtitle": "Broadcast messages to users as banners and notifications.",
+  "feed_subtitle": "Product updates, maintenance windows, and important notices.",
+  "search_placeholder": "Search announcements...",
+  "tip_title": "Tip",
+  "banner_aria": "Announcements",
+  "more": "+{count} more",
+  "not_found": "Announcement not found.",
+  "ends": "Ends",
+  "scopes": {
+    "tenant": "Tenant",
+    "global": "Global"
+  },
+  "audiences": {
+    "all": "All users",
+    "admins": "Admins only"
+  },
+  "modes": {
+    "post": "Post",
+    "banner": "Banner"
+  },
+  "severity": {
+    "info": "Info",
+    "success": "Success",
+    "warning": "Warning",
+    "error": "Error"
+  },
+  "status": {
+    "scheduled": "Scheduled",
+    "expired": "Expired"
+  },
+  "fields": {
+    "scope": "Scope",
+    "audience": "Audience",
+    "severity": "Severity",
+    "mode": "Mode",
+    "status": "Status",
+    "cover": "Cover image (optional)",
+    "deliver_in_app": "Deliver in-app",
+    "deliver_in_app_desc": "Show to users in the app and send a notification.",
+    "deliver_email": "Send email",
+    "deliver_email_desc": "Send this announcement to all recipients via email (ignores preferences).",
+    "deliver_email_force": "Ignore email preferences",
+    "deliver_email_force_desc": "When disabled, only users who enabled email announcements will receive it.",
+    "title": "Title",
+    "body": "Body",
+    "starts_at": "Starts at",
+    "ends_at": "Ends at"
+  },
+  "placeholders": {
+    "body": "Write something clear and short..."
+  },
+  "actions": {
+    "publish": "Publish",
+    "read": "Read"
+  },
+  "create": {
+    "title": "Create broadcast"
+  },
+  "list": {
+    "title": "History"
+  },
+  "empty": "No announcements yet.",
+  "empty_feed": "No announcements yet.",
+  "confirm_delete": "Delete this announcement?",
+  "hints": {
+    "schedule": "Leave dates empty to publish immediately. End date controls when the banner stops showing.",
+    "rich": "Tip: Keep it concise. Links are allowed; images should be added as cover."
+  },
+  "toasts": {
+    "created": "Announcement created",
+    "deleted": "Deleted",
+    "delivery_required": "Choose at least one delivery channel."
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "toasts": {
+    "push_not_supported": "Push notifications not supported",
+    "blocked": "Notifications are blocked. Please allow notifications in your browser settings.",
+    "permission_denied": "Permission denied. You need to allow notifications.",
+    "missing_vapid": "Configuration error: Missing VAPID key",
+    "enabled": "Push notifications enabled successfully!",
+    "disabled": "Push notifications disabled",
+    "test_sent": "Test notification sent!",
+    "test_failed": "Failed to send test notification",
+    "generic_error": "Error: {message}"
+  }
+}

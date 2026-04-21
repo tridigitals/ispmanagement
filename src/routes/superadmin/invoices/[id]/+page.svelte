@@ -8,7 +8,7 @@
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import { formatMoney } from '$lib/utils/money';
   import { formatDateTime } from '$lib/utils/date';
-  import Lightbox from '$lib/components/ui/Lightbox.svelte';
+  import { loadLightboxModule } from '$lib/components/ui/lightboxModule';
   import { t } from 'svelte-i18n';
   import { getTenantsCached } from '$lib/stores/superadminTenantsCache';
   import { appSettings } from '$lib/stores/settings';
@@ -25,6 +25,7 @@
   // For Lightbox
   let showLightbox = $state(false);
   let lightboxFiles = $state<any[]>([]);
+  let LightboxComponent = $state<any>(null);
 
   // For Confirmation
   let showConfirm = $state(false);
@@ -38,6 +39,13 @@
 
   $effect(() => {
     invoiceId = $page.params.id ?? '';
+  });
+
+  $effect(() => {
+    if (!showLightbox) return;
+    void loadLightboxModule().then(({ LightboxComponent: Lightbox }) => {
+      LightboxComponent = Lightbox;
+    });
   });
 
   onMount(() => {
@@ -294,8 +302,8 @@
   loading={processing}
 />
 
-{#if showLightbox}
-  <Lightbox files={lightboxFiles} onclose={() => (showLightbox = false)} />
+{#if showLightbox && LightboxComponent}
+  <LightboxComponent files={lightboxFiles} onclose={() => (showLightbox = false)} />
 {/if}
 
 <style>

@@ -1,0 +1,150 @@
+{
+  "title": "Settings",
+  "subtitle": "Manage your account settings and preferences.",
+  "fallback": {
+    "user": "User",
+    "member": "Member"
+  },
+  "tabs": {
+    "general": "General",
+    "security": "Security",
+    "addresses": "Addresses",
+    "preferences": "Preferences",
+    "notifications": "Notifications"
+  },
+  "addresses": {
+    "title": "Addresses",
+    "subtitle": "Manage multiple addresses for future billing and shipping.",
+    "add": "Add Address",
+    "add_title": "Add Address",
+    "edit_title": "Edit Address",
+    "untitled": "Untitled",
+    "default_shipping": "Default Shipping",
+    "default_billing": "Default Billing",
+    "recipient": "Recipient",
+    "empty_title": "No addresses yet",
+    "empty_subtitle": "Add one so you can reuse it for shipping and billing.",
+    "delete_title": "Delete address?",
+    "delete_message": "This address will be removed permanently.",
+    "fields": {
+      "label": "Label",
+      "recipient_name": "Recipient name",
+      "phone": "Phone",
+      "line1": "Address line 1",
+      "line2": "Address line 2",
+      "city": "City",
+      "state": "State/Province",
+      "postal_code": "Postal code",
+      "country_code": "Country code",
+      "default_shipping": "Default shipping",
+      "default_billing": "Default billing"
+    },
+    "validation": {
+      "line1_required": "Address line is required."
+    }
+  },
+  "general": {
+    "title": "Profile Information",
+    "subtitle": "Update your account details and public profile.",
+    "change_avatar": "Change Avatar",
+    "your_name": "Your Name",
+    "role_label": "Role",
+    "display_name": "Display Name",
+    "display_name_placeholder": "Enter your full name",
+    "email_address": "Email Address",
+    "email_placeholder": "name@example.com",
+    "save_button": "Save Changes",
+    "saving": "Saving..."
+  },
+  "security": {
+    "title": "Password & Security",
+    "subtitle": "Manage your password and security settings.",
+    "current_password": "Current Password",
+    "new_password": "New Password",
+    "confirm_password": "Confirm Password",
+    "password_placeholder": "••••••••",
+    "requirements_title": "Password requirements:",
+    "req_length": "At least {length} characters long",
+    "req_uppercase": "One uppercase letter",
+    "req_number": "One number",
+    "req_special": "One special character",
+    "update_button": "Update Password",
+    "updating": "Updating...",
+    "twofa": {
+      "title": "Two-Factor Authentication",
+      "subtitle": "Protect your account with an extra layer of security.",
+      "enabled_title": "2FA is Enabled",
+      "enabled_desc": "Your account is secured with 2FA.",
+      "recovery_title": "Save your Recovery Codes!",
+      "recovery": {
+        "saved_button": "I have saved them"
+      },
+      "disable_title": "Disable 2FA",
+      "methods": {
+        "authenticator_app": "Authenticator App",
+        "email_verification": "Email Verification"
+      },
+      "disable": {
+        "placeholder": "Enter authentication code"
+      }
+    }
+  },
+  "preferences": {
+    "title": "Appearance",
+    "subtitle": "Customize the look and feel of the application.",
+    "dark_mode": "Dark Mode",
+    "dark_mode_desc": "Toggle between dark and light themes."
+  },
+  "notifications": {
+    "title": "Notification Preferences",
+    "subtitle": "Customize how and when you want to be notified.",
+    "view_all": "View all",
+    "test": "Test Notification",
+    "push": {
+      "active_title": "Push Notifications Active",
+      "active_desc": "You are subscribed to real-time updates on this device.",
+      "disable": "Disable",
+      "enable_title": "Enable Push Notifications",
+      "enable_desc": "Get real-time updates even when the app is closed.",
+      "enable": "Enable Push"
+    },
+    "channels": {
+      "in_app": "In-App",
+      "email": "Email",
+      "push": "Push",
+      "required": "Required"
+    },
+    "categories": {
+      "system": {
+        "label": "System Updates",
+        "desc": "Maintenance & announcements"
+      },
+      "support": {
+        "label": "Support Tickets",
+        "desc": "New tickets & replies"
+      },
+      "team": {
+        "label": "Team Activity",
+        "desc": "Member changes & invites"
+      },
+      "payment": {
+        "label": "Billing",
+        "desc": "Invoices & subscriptions"
+      },
+      "security": {
+        "label": "Security",
+        "desc": "Login alerts & password changes"
+      }
+    }
+  },
+  "messages": {
+    "profile_updated": "Profile updated successfully!",
+    "password_changed": "Password changed successfully!",
+    "password_mismatch": "New passwords do not match",
+    "update_failed": "Failed to update profile",
+    "change_password_failed": "Failed to change password",
+    "twofa_required": "Your organization requires Two-Factor Authentication. Please enable it to continue.",
+    "2fa_method_totp": "2FA method changed to Authenticator App",
+    "2fa_method_email": "2FA method changed to Email"
+  }
+}

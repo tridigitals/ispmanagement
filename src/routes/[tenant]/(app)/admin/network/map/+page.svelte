@@ -27,6 +27,7 @@
     currentDraftPathCoords,
     hasExistingLinkBetweenNodes,
   } from '$lib/components/network/networkMapInteractionUtils';
+  import { snapshotMapFeature } from '$lib/components/network/networkMapEventSnapshot';
   import {
     removeCrud,
     submitLinkCrud,
@@ -89,10 +90,7 @@
     applyNetworkMapWorkspaceDefaults,
     buildNetworkMapWorkspaceDefaults,
     buildSelectedMapObject,
-    clearWorkspaceSelection,
     createNetworkMapWorkspaceState,
-    enterInvestigationMode,
-    selectNetworkMapObject,
     type NetworkMapWorkspaceState,
     type NetworkMapWorkspaceCapabilities,
   } from '$lib/components/network/networkMapWorkspaceState';
@@ -102,7 +100,9 @@
     loadNetworkMapDialogModules,
     loadNetworkMapInteractionModule,
     loadNetworkMapPopupModule,
+    loadNetworkMapWorkspaceModule,
     type NetworkMapInteractionModule,
+    type NetworkMapWorkspaceModule,
   } from '$lib/components/network/networkMapUiModules';
   import Icon from '$lib/components/ui/Icon.svelte';
   import MapCanvasShell from '$lib/components/network/MapCanvasShell.svelte';
@@ -128,6 +128,7 @@
   let map = $state<MapInstance | null>(null);
   let maplibre = $state<MaplibreModule | null>(null);
   let interactionModule = $state<NetworkMapInteractionModule | null>(null);
+  let workspaceModule = $state<NetworkMapWorkspaceModule | null>(null);
   let mapReady = $state(false);
   let mapUnavailable = $state(false);
   let mapErrorMessage = $state('');
@@ -422,15 +423,22 @@
     }
   }
 
-  function updateWorkspaceSelection(nextSelectedObject: ReturnType<typeof buildSelectedMapObject>) {
-    workspaceState = selectNetworkMapObject(workspaceState, nextSelectedObject);
+  async function updateWorkspaceSelection(
+    nextSelectedObject: ReturnType<typeof buildSelectedMapObject>,
+  ) {
+    const module = await getWorkspaceModule();
+    workspaceState = module.selectNetworkMapObject(workspaceState, nextSelectedObject);
     if (workspaceDefaults.mode === 'investigate') {
-      workspaceState = enterInvestigationMode(workspaceState, workspaceDefaults.investigationKind);
+      workspaceState = module.enterInvestigationMode(
+        workspaceState,
+        workspaceDefaults.investigationKind,
+      );
     }
   }
 
-  function clearMapPopupSelection() {
-    workspaceState = clearWorkspaceSelection(workspaceState);
+  async function clearMapPopupSelection() {
+    const module = await getWorkspaceModule();
+    workspaceState = module.clearWorkspaceSelection(workspaceState);
   }
 
   function focusMapOnCoordinates(lng: number, lat: number, zoomFloor = 13) {
@@ -546,7 +554,7 @@
       const row = nodeRows.find((candidate) => candidate.id === item.id);
       if (!row) return;
       focusMapOnCoordinates(row.lng, row.lat, 14);
-      updateWorkspaceSelection(
+      void updateWorkspaceSelection(
         buildSelectedMapObject({
           kind: item.kind,
           id: row.id,
@@ -562,7 +570,7 @@
       if (!row) return;
       const coord = coordinateFromGeometry(row.geometry);
       if (coord) focusMapOnCoordinates(coord[0], coord[1], 13);
-      updateWorkspaceSelection(
+      void updateWorkspaceSelection(
         buildSelectedMapObject({
           kind: 'link',
           id: row.id,
@@ -578,7 +586,7 @@
       if (!row) return;
       const coord = coordinateFromGeometry(row.geometry);
       if (coord) focusMapOnCoordinates(coord[0], coord[1], 12);
-      updateWorkspaceSelection(
+      void updateWorkspaceSelection(
         buildSelectedMapObject({
           kind: 'zone',
           id: row.id,
@@ -594,7 +602,7 @@
     if (router.longitude != null && router.latitude != null) {
       focusMapOnCoordinates(Number(router.longitude), Number(router.latitude), 13);
     }
-    updateWorkspaceSelection(
+    void updateWorkspaceSelection(
       buildSelectedMapObject({
         kind: 'router',
         id: router.id,
@@ -604,10 +612,11 @@
   }
 
   async function handleNodeLayerClick(e: any) {
-    if (!map || !e.features?.[0] || !maplibre) return;
-    const props = e.features[0].properties || {};
+    const clickedFeature = snapshotMapFeature(e.features?.[0]);
+    if (!map || !clickedFeature || !maplibre) return;
+    const props = clickedFeature.properties || {};
     const nodeId = String(props.id || '');
-    updateWorkspaceSelection(
+    await updateWorkspaceSelection(
       buildSelectedMapObject({
         kind: 'node',
         id: nodeId,
@@ -623,7 +632,7 @@
     openNodePopup({
       map,
       maplibre,
-      feature: e.features[0],
+      feature: clickedFeature.feature as any,
       nodeRows,
       routerRows,
       activePopup: activeNodePopup,
@@ -639,10 +648,11 @@
   }
 
   async function handleLinkLayerClick(e: any) {
-    if (!map || !e.features?.[0] || !maplibre || linkPickMode) return;
-    const props = e.features[0].properties || {};
+    const clickedFeature = snapshotMapFeature(e.features?.[0]);
+    if (!map || !clickedFeature || !maplibre || linkPickMode) return;
+    const props = clickedFeature.properties || {};
     const linkId = String(props.id || '');
-    updateWorkspaceSelection(
+    await updateWorkspaceSelection(
       buildSelectedMapObject({
         kind: 'link',
         id: linkId,
@@ -654,7 +664,7 @@
     openLinkPopup({
       map,
       maplibre,
-      feature: e.features[0],
+      feature: clickedFeature.feature as any,
       lngLat: e.lngLat,
       linkRows,
       onClose: clearMapPopupSelection,
@@ -663,10 +673,11 @@
   }
 
   async function handleRouterLayerClick(e: any) {
-    if (!map || !e.features?.[0] || !maplibre) return;
-    const props = e.features[0].properties || {};
+    const clickedFeature = snapshotMapFeature(e.features?.[0]);
+    if (!map || !clickedFeature || !maplibre) return;
+    const props = clickedFeature.properties || {};
     const routerId = String(props.id || '');
-    updateWorkspaceSelection(
+    await updateWorkspaceSelection(
       buildSelectedMapObject({
         kind: 'router',
         id: routerId,
@@ -677,7 +688,7 @@
     openRouterPopup({
       map,
       maplibre,
-      feature: e.features[0],
+      feature: clickedFeature.feature as any,
       activePopup: activeNodePopup,
       setActivePopup: (popup) => (activeNodePopup = popup),
       onClose: clearMapPopupSelection,
@@ -689,6 +700,12 @@
     if (interactionModule) return interactionModule;
     interactionModule = await loadNetworkMapInteractionModule();
     return interactionModule;
+  }
+
+  async function getWorkspaceModule() {
+    if (workspaceModule) return workspaceModule;
+    workspaceModule = await loadNetworkMapWorkspaceModule();
+    return workspaceModule;
   }
 
   async function initMap() {
@@ -1306,11 +1323,11 @@
     toast.success(result.toastMessage);
   }
 
-  function startConnectFromNode(nodeId: string) {
+  async function startConnectFromNode(nodeId: string) {
     activeNodePopup?.remove();
     const next = buildConnectFromNodeResult(nodeId, nodeRows);
     const nodeRow = nodeRows.find((row) => row.id === nodeId);
-    updateWorkspaceSelection(
+    await updateWorkspaceSelection(
       buildSelectedMapObject({
         kind: 'node',
         id: nodeId,

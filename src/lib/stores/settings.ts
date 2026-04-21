@@ -2,7 +2,6 @@ import { writable, derived, get } from 'svelte/store';
 import type { AuthSettings } from '$lib/api/types';
 import { settings as settingsApi } from '$lib/api/settings';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { locale } from 'svelte-i18n';
 import { can } from '$lib/stores/auth';
 import '../i18n'; // Initialize i18n
 
@@ -123,12 +122,6 @@ function createSettingsStore() {
       };
 
       set(finalSettings);
-
-      // Set locale from settings with logging
-      if (finalSettings.default_locale) {
-        locale.set(finalSettings.default_locale);
-      } else {
-      }
 
       updateWindowTitle(finalSettings.app_name);
       lastLoadedAt = Date.now();

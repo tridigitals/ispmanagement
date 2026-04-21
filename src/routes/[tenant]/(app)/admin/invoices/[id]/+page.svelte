@@ -9,7 +9,7 @@
   import { formatMoney } from '$lib/utils/money';
   import Icon from '$lib/components/ui/Icon.svelte';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
-  import Lightbox from '$lib/components/ui/Lightbox.svelte';
+  import { loadLightboxModule } from '$lib/components/ui/lightboxModule';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
   import { can, user, tenant, token } from '$lib/stores/auth';
@@ -42,6 +42,7 @@
   ]);
   let showLightbox = $state(false);
   let lightboxFiles = $state<any[]>([]);
+  let LightboxComponent = $state<any>(null);
   let relatedCustomerId = $state<string | null>(null);
 
   const billingNav = $derived.by(() =>
@@ -56,6 +57,13 @@
   const backPath = $derived(billingNav.billingPath);
   const billingLogsPath = $derived(billingNav.collectionsPath);
   const customerBasePath = $derived(`${billingNav.tenantPrefix}/admin/customers`);
+
+  $effect(() => {
+    if (!showLightbox) return;
+    void loadLightboxModule().then(({ LightboxComponent: Lightbox }) => {
+      LightboxComponent = Lightbox;
+    });
+  });
 
   onMount(() => {
     if (!$can('read', 'billing') && !$can('manage', 'billing')) {
@@ -464,8 +472,8 @@
   loading={processing}
 />
 
-{#if showLightbox}
-  <Lightbox files={lightboxFiles} onclose={() => (showLightbox = false)} />
+{#if showLightbox && LightboxComponent}
+  <LightboxComponent files={lightboxFiles} onclose={() => (showLightbox = false)} />
 {/if}
 
 {#if showRejectModal}

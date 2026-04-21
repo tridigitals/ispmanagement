@@ -1,0 +1,1002 @@
+{
+  "dashboard": {
+    "loading": "Memuat data sistem...",
+    "stats_aria": "Statistik superadmin",
+    "stats": {
+      "tenants": "Tenant",
+      "active_tenants": "Tenant Aktif",
+      "users": "Pengguna",
+      "system_health": "Kesehatan Sistem",
+      "health_ok": "OK",
+      "health_down": "DB Down"
+    },
+    "quick_actions": {
+      "title": "Aksi Cepat",
+      "tenants": {
+        "title": "Kelola Tenant",
+        "desc": "Buat, ubah, dan kelola organisasi."
+      },
+      "users": {
+        "title": "Kelola Pengguna",
+        "desc": "Lihat pengguna global, peran, dan akses."
+      },
+      "audit": {
+        "title": "Log Audit",
+        "desc": "Lacak aktivitas dan event keamanan."
+      },
+      "settings": {
+        "title": "Pengaturan Platform",
+        "desc": "Atur kebijakan dan default sistem."
+      }
+    }
+  },
+  "audit_logs": {
+    "title": "Log Audit",
+    "subtitle": "Lacak aktivitas sistem dan event keamanan",
+    "count": "log",
+    "refresh": "Muat ulang log",
+    "search": "Cari log...",
+    "loading": "Memuat log...",
+    "columns": {
+      "time": "Waktu",
+      "action": "Aksi",
+      "user": "Pengguna",
+      "tenant": "Tenant",
+      "resource": "Resource",
+      "details": "Detail",
+      "ip": "IP",
+      "time_ip": "Waktu / IP",
+      "user_tenant": "Pengguna / Tenant",
+      "action_resource": "Aksi / Resource"
+    },
+    "filters": {
+      "action": "Aksi (tepat)",
+      "action_placeholder": "contoh: login, create_user",
+      "from": "Dari",
+      "to": "Sampai"
+    },
+    "view": {
+      "table": "Tampilan tabel",
+      "cards": "Tampilan kartu"
+    },
+    "aria": {
+      "quick_ranges": "Rentang cepat",
+      "view_mode": "Mode tampilan",
+      "cards": "Log audit"
+    },
+    "actions": {
+      "expand_details": "Perluas detail",
+      "collapse_details": "Tutup detail",
+      "expand": "Perluas",
+      "collapse": "Tutup"
+    },
+    "labels": {
+      "user": "Pengguna",
+      "tenant": "Tenant",
+      "resource": "Resource",
+      "ip": "IP",
+      "details": "Detail"
+    },
+    "empty": {
+      "title": "Tidak ada log",
+      "subtitle": "Coba sesuaikan filter Anda."
+    }
+  },
+  "users": {
+    "title": "Pengguna",
+    "subtitle": "Kelola pengguna global dan akses",
+    "count": "pengguna",
+    "search": "Cari pengguna...",
+    "filters": {
+      "all_roles": "Semua Peran",
+      "admin": "Admin",
+      "user": "User",
+      "superadmin": "Super Admin",
+      "all": "Semua",
+      "active": "Aktif",
+      "inactive": "Nonaktif"
+    },
+    "empty": {
+      "title": "Pengguna tidak ditemukan",
+      "subtitle": "Coba ubah pencarian atau filter.",
+      "hint": "Coba ubah pencarian atau filter."
+    },
+    "columns": {
+      "user": "Pengguna",
+      "email": "Email",
+      "role": "Peran",
+      "tenant": "Tenant",
+      "status": "Status",
+      "joined": "Bergabung"
+    },
+    "aria": {
+      "stats": "Statistik pengguna",
+      "list": "Daftar pengguna"
+    },
+    "stats": {
+      "show_all": "Tampilkan semua pengguna",
+      "show_active": "Tampilkan pengguna aktif",
+      "show_inactive": "Tampilkan pengguna nonaktif",
+      "show_superadmins": "Tampilkan super admin",
+      "all_title": "Semua Pengguna",
+      "active_title": "Pengguna Aktif",
+      "inactive_title": "Pengguna Nonaktif",
+      "superadmins_title": "Super Admin"
+    },
+    "view": {
+      "aria": "Mode tampilan",
+      "table": "Tampilan tabel",
+      "cards": "Tampilan kartu"
+    },
+    "actions": {
+      "view_details": "Lihat detail",
+      "reset_2fa": "Reset 2FA",
+      "activate_user": "Aktifkan pengguna",
+      "deactivate_user": "Nonaktifkan pengguna",
+      "activate": "Aktifkan",
+      "deactivate": "Nonaktifkan"
+    },
+    "status": {
+      "activate_title": "Aktifkan Pengguna",
+      "deactivate_title": "Nonaktifkan Pengguna",
+      "this_user": "pengguna ini",
+      "activate_message": "Aktifkan {name}? Mereka bisa login kembali.",
+      "deactivate_message": "Nonaktifkan {name}? Mereka tidak bisa login."
+    },
+    "reset2fa": {
+      "title": "Reset Autentikasi Dua Faktor",
+      "message": "Reset 2FA untuk pengguna ini? Mereka dapat login tanpa kode tambahan.",
+      "confirm": "Reset 2FA"
+    },
+    "details": {
+      "title": "Detail Pengguna",
+      "title_with_name": "Detail Pengguna — {name}",
+      "sections": {
+        "account": "Akun",
+        "tenant": "Tenant",
+        "security": "Keamanan"
+      },
+      "labels": {
+        "name": "Nama",
+        "email": "Email",
+        "role": "Peran",
+        "status": "Status",
+        "created": "Dibuat",
+        "last_login": "Login Terakhir",
+        "tenant": "Tenant",
+        "slug": "Slug",
+        "tenant_role": "Peran Tenant",
+        "twofa_enabled": "2FA Aktif",
+        "preferred_2fa": "2FA Pilihan"
+      }
+    },
+    "toasts": {
+      "reset_2fa_success": "Autentikasi dua faktor berhasil direset",
+      "reset_2fa_failed": "Gagal mereset 2FA: {message}",
+      "superadmin_cannot_deactivate": "Akun Super Admin tidak bisa dinonaktifkan di sini",
+      "cannot_deactivate_self": "Anda tidak bisa menonaktifkan akun sendiri",
+      "activated": "Pengguna diaktifkan",
+      "deactivated": "Pengguna dinonaktifkan",
+      "update_status_failed": "Gagal memperbarui status pengguna: {message}"
+    }
+  },
+  "radius": {
+    "title": "Managed RADIUS",
+    "subtitle": "Pantau infrastruktur RADIUS global dan user PPPoE yang diprovisikan lintas tenant.",
+    "refresh": "Muat ulang",
+    "loading": "Memuat observabilitas managed RADIUS...",
+    "stats": {
+      "servers": "Server",
+      "assignments": "Assignment",
+      "mappings": "Mapping NAS",
+      "routers": "Router Terhubung",
+      "users": "User",
+      "out_of_sync": "Perlu Perhatian"
+    },
+    "filters": {
+      "search_servers": "Cari server...",
+      "search_assignments": "Cari assignment...",
+      "search_mappings": "Cari mapping...",
+      "search_users": "Cari user...",
+      "all_statuses": "Semua status",
+      "active": "Aktif",
+      "inactive": "Nonaktif",
+      "all_tenants": "Semua tenant",
+      "all_servers": "Semua server",
+      "all_routers": "Semua router",
+      "all_users": "Semua user",
+      "provisioned": "Tersedia",
+      "not_provisioned": "Belum tersedia"
+    },
+    "sections": {
+      "servers": "Server",
+      "assignments": "Assignment Tenant",
+      "mappings": "Mapping NAS",
+      "users": "User"
+    },
+    "columns": {
+      "server": "Server",
+      "tenant": "Tenant",
+      "tenants": "Tenant",
+      "host": "Host",
+      "ports": "Port",
+      "database": "Database",
+      "status": "Status",
+      "routers": "Router",
+      "updated": "Diperbarui",
+      "actions": "Aksi",
+      "router": "Router",
+      "username": "Username",
+      "identity": "Identitas RADIUS",
+      "profile": "Profil",
+      "nas": "NAS",
+      "secret": "Secret",
+      "last_sync": "Sinkron Terakhir",
+      "last_error": "Error Terakhir"
+    },
+    "status": {
+      "active": "Aktif",
+      "inactive": "Nonaktif",
+      "default": "Default",
+      "provisioned": "Tersedia",
+      "not_provisioned": "Belum tersedia",
+      "needs_attention": "Perlu perhatian"
+    },
+    "empty": {
+      "servers_title": "Belum ada server managed RADIUS",
+      "servers_subtitle": "Buat infrastruktur RADIUS global di sini, lalu assign tenant dan map router.",
+      "assignments_title": "Belum ada assignment tenant",
+      "assignments_subtitle": "Assign satu server global aktif per tenant sebelum membuat mapping NAS.",
+      "mappings_title": "Belum ada mapping NAS",
+      "mappings_subtitle": "Buat assignment tenant terlebih dahulu, lalu map router agar CLI MikroTik siap-copy langsung tersedia di sini.",
+      "users_title": "Belum ada user managed RADIUS",
+      "users_subtitle": "User PPPoE dengan sumber managed RADIUS akan muncul di sini setelah tenant admin menerapkannya."
+    },
+    "labels": {
+      "unknown_router": "Router tidak diketahui",
+      "none": "Tidak ada",
+      "never": "Belum pernah"
+    },
+    "actions": {
+      "new_server": "Server baru",
+      "new_assignment": "Assignment baru",
+      "new_mapping": "Mapping baru",
+      "create_server": "Buat server",
+      "save_server": "Simpan server",
+      "create_assignment": "Buat assignment",
+      "save_assignment": "Simpan assignment",
+      "create_mapping": "Buat mapping",
+      "save_mapping": "Simpan mapping",
+      "edit": "Edit",
+      "set_default": "Jadikan default",
+      "activate": "Aktifkan",
+      "deactivate": "Nonaktifkan",
+      "view_mappings": "Lihat mapping",
+      "copy_cli": "Salin CLI",
+      "copy_secret": "Salin secret",
+      "reveal_secret": "Tampilkan secret",
+      "rotate_secret": "Putar secret",
+      "generate_secret": "Generate"
+    },
+    "form": {
+      "tenant": "Tenant",
+      "server": "Server",
+      "router": "Router",
+      "select_tenant": "Pilih tenant",
+      "select_server": "Pilih server",
+      "select_router": "Pilih router",
+      "server_name": "Nama server",
+      "server_name_placeholder": "Primary RADIUS DB",
+      "db_host": "Host DB",
+      "db_port": "Port DB",
+      "db_name": "Nama DB",
+      "db_user": "User DB",
+      "db_password": "Password DB",
+      "db_password_placeholder": "Disimpan terenkripsi",
+      "db_password_placeholder_edit": "Biarkan kosong untuk mempertahankan password saat ini",
+      "notes": "Catatan",
+      "notes_placeholder": "Catatan operasional opsional",
+      "active_server_hint": "Izinkan server global ini menerima assignment tenant",
+      "active_assignment_hint": "Biarkan assignment ini aktif untuk tenant",
+      "nas_name": "Nama NAS",
+      "nas_name_placeholder": "router-pop-a",
+      "shortname": "Shortname",
+      "shortname_placeholder": "POP-A",
+      "nas_ip_or_cidr": "IP / CIDR NAS",
+      "shared_secret": "Shared secret",
+      "shared_secret_placeholder": "Kosongkan untuk auto-generate",
+      "active_mapping_hint": "Aktifkan mapping NAS ini sekarang"
+    },
+    "modals": {
+      "server": {
+        "create_title": "Server Managed RADIUS baru",
+        "edit_title": "Edit server Managed RADIUS"
+      },
+      "assignment": {
+        "create_title": "Assignment tenant baru",
+        "edit_title": "Edit assignment tenant"
+      },
+      "mapping": {
+        "create_title": "Mapping NAS baru",
+        "edit_title": "Edit mapping NAS"
+      },
+      "secret": {
+        "rotate_title": "Putar shared secret",
+        "reveal_title": "Tampilkan shared secret",
+        "mapping": "Mapping",
+        "masked": "Secret tersamarkan",
+        "revealed": "Secret asli",
+        "not_loaded": "Klik tampilkan untuk memuat secret"
+      }
+    },
+    "toasts": {
+      "server_validation": "Lengkapi form server terlebih dahulu",
+      "server_password_required": "Password database wajib diisi untuk server baru",
+      "server_created": "Server Managed RADIUS berhasil dibuat",
+      "server_updated": "Server Managed RADIUS berhasil diperbarui",
+      "server_default_set": "Server default berhasil diperbarui",
+      "server_activated": "Server berhasil diaktifkan",
+      "server_deactivated": "Server berhasil dinonaktifkan",
+      "assignment_validation": "Lengkapi form assignment terlebih dahulu",
+      "assignment_created": "Assignment tenant berhasil dibuat",
+      "assignment_updated": "Assignment tenant berhasil diperbarui",
+      "assignment_activated": "Assignment berhasil diaktifkan",
+      "assignment_deactivated": "Assignment berhasil dinonaktifkan",
+      "mapping_validation": "Lengkapi form mapping terlebih dahulu",
+      "mapping_created": "Mapping NAS berhasil dibuat",
+      "mapping_updated": "Mapping NAS berhasil diperbarui",
+      "mapping_activated": "Mapping berhasil diaktifkan",
+      "mapping_deactivated": "Mapping berhasil dinonaktifkan",
+      "secret_revealed": "Shared secret berhasil dimuat",
+      "secret_rotated": "Shared secret berhasil diputar",
+      "cli_copied": "CLI RouterOS berhasil disalin"
+    }
+  },
+  "tenants": {
+    "title": "Tenant",
+    "subtitle": "Kelola semua organisasi di platform",
+    "count": "{count} tenant",
+    "search": "Cari tenant...",
+    "refreshing_title": "Menyegarkan...",
+    "refreshing": "Menyegarkan",
+    "aria": {
+      "stats": "Statistik tenant",
+      "cards": "Kartu tenant"
+    },
+    "stats": {
+      "show_all": "Tampilkan semua tenant",
+      "show_active": "Tampilkan tenant aktif",
+      "show_inactive": "Tampilkan tenant nonaktif",
+      "all_title": "Semua Tenant",
+      "active_title": "Tenant Aktif",
+      "inactive_title": "Tenant Nonaktif"
+    },
+    "filters": {
+      "all": "Semua",
+      "active": "Aktif",
+      "inactive": "Nonaktif"
+    },
+    "view": {
+      "table": "Tampilan tabel",
+      "cards": "Tampilan kartu"
+    },
+    "meta": {
+      "created": "Dibuat"
+    },
+    "actions": {
+      "new": "Tenant Baru",
+      "activate": "Aktifkan",
+      "deactivate": "Nonaktifkan"
+    },
+    "toggle": {
+      "activate_title": "Aktifkan Tenant",
+      "deactivate_title": "Nonaktifkan Tenant",
+      "this_tenant": "tenant ini",
+      "activate_message": "Aktifkan {name}? Pengguna pada tenant ini akan mendapat akses kembali.",
+      "deactivate_message": "Nonaktifkan {name}? Pengguna pada tenant ini akan diblokir mengakses aplikasi."
+    },
+    "delete": {
+      "title": "Hapus Tenant",
+      "message": "Yakin ingin menghapus tenant ini? Tindakan ini tidak dapat dibatalkan dan akan menghapus semua data terkait.",
+      "confirm": "Hapus Permanen"
+    },
+    "modal": {
+      "edit_title": "Edit Tenant",
+      "create_title": "Buat Tenant Baru",
+      "sections": {
+        "initial_subscription": "Langganan Awal",
+        "initial_admin": "Admin Awal"
+      },
+      "labels": {
+        "name": "Nama Tenant",
+        "slug": "Slug (URL)",
+        "custom_domain": "Domain Kustom (Opsional)",
+        "plan": "Paket Langganan",
+        "owner_email": "Email Owner",
+        "owner_password": "Kata Sandi Owner",
+        "active_status": "Status Aktif"
+      },
+      "placeholders": {
+        "name": "contoh: Acme Corp",
+        "slug": "contoh: acme-corp",
+        "custom_domain": "contoh: app.acme.com",
+        "plan": "Pilih paket",
+        "owner_email": "admin@acme.com",
+        "owner_password": "Kata sandi kuat"
+      },
+      "actions": {
+        "create": "Buat Tenant",
+        "update": "Perbarui Tenant"
+      }
+    },
+    "empty": {
+      "title": "Tenant tidak ditemukan",
+      "hint": "Coba ubah pencarian atau filter."
+    },
+    "toasts": {
+      "updated": "Tenant berhasil diperbarui",
+      "update_failed": "Gagal memperbarui tenant: {message}",
+      "created": "Tenant berhasil dibuat",
+      "create_failed": "Gagal membuat tenant: {message}",
+      "deleted": "Tenant berhasil dihapus",
+      "delete_failed": "Gagal menghapus tenant: {message}",
+      "activated": "Tenant diaktifkan",
+      "deactivated": "Tenant dinonaktifkan"
+    }
+  },
+  "invoices": {
+    "aria": {
+      "stats": "Statistik invoice",
+      "cards": "Kartu invoice",
+      "table": "Tabel invoice"
+    },
+    "actions": {
+      "check_status": "Cek status",
+      "view_details": "Lihat detail"
+    },
+    "cards": {
+      "amount": "Jumlah",
+      "due": "Jatuh Tempo"
+    },
+    "list": {
+      "title": "Semua Invoice",
+      "subtitle": "Pantau semua pembayaran dan transaksi di platform",
+      "search": "Cari invoice...",
+      "loading": "Memuat invoice...",
+      "empty": "Invoice tidak ditemukan",
+      "empty_hint": "Coba ubah pencarian atau filter.",
+      "view": {
+        "cards": "Tampilan kartu",
+        "table": "Tampilan tabel"
+      },
+      "filters": {
+        "all": "Semua",
+        "pending": "Pending",
+        "paid": "Lunas",
+        "failed": "Gagal"
+      },
+      "columns": {
+        "invoice_number": "Invoice #",
+        "tenant": "Tenant",
+        "amount": "Jumlah",
+        "status": "Status",
+        "due_date": "Jatuh Tempo",
+        "created_at": "Dibuat",
+        "actions": "Aksi"
+      },
+      "errors": {
+        "load_failed": "Gagal memuat invoice",
+        "check_failed": "Gagal mengecek status: "
+      },
+      "toasts": {
+        "status": "Status invoice: "
+      }
+    },
+    "detail": {
+      "title": "Detail Invoice",
+      "back": "Kembali ke Invoice",
+      "loading": "Memuat detail...",
+      "missing_id": "ID invoice tidak ditemukan",
+      "load_failed": "Gagal memuat invoice",
+      "invoice": "Invoice",
+      "tenant": "Tenant",
+      "description": "Deskripsi",
+      "amount": "Jumlah",
+      "created_at": "Dibuat",
+      "updated_at": "Diperbarui",
+      "manual_verification": "Verifikasi Manual",
+      "approve_title": "Setujui Pembayaran",
+      "reject_title": "Tolak Pembayaran",
+      "approve_message": "Yakin ingin menyetujui pembayaran ini? Langganan akan aktif segera.",
+      "reject_message": "Yakin ingin menolak pembayaran ini? Pengguna akan diberi notifikasi.",
+      "approve": "Setujui",
+      "reject": "Tolak",
+      "marked_as": "Invoice diubah menjadi",
+      "verify_failed": "Verifikasi gagal",
+      "already_status": "Status invoice sudah",
+      "payment_proof": "Bukti Pembayaran",
+      "click_enlarge": "Klik untuk memperbesar",
+      "no_proof": "Belum ada bukti yang diunggah.",
+      "not_found": "Invoice tidak ditemukan"
+    }
+  },
+  "system": {
+    "tabs": {
+      "health": "Kesehatan",
+      "diagnostics": "Diagnostik"
+    },
+    "diagnostics": {
+      "loading": "Memuat diagnostik...",
+      "database": "Database",
+      "migrations": "Migrasi",
+      "applied": "Terpasang",
+      "resolved": "Tersedia",
+      "show_applied": "Tampilkan migrasi terpasang",
+      "platform": "Pengaturan Platform",
+      "backups": "Backup",
+      "collected_at": "Diambil pada:"
+    },
+    "request_metrics": {
+      "title": "Metrik Permintaan"
+    },
+    "title": "Kesehatan Sistem",
+    "subtitle": "Pantau status platform dan metrik",
+    "loading": "Memuat kesehatan sistem...",
+    "retry": "Coba Lagi",
+    "db_connected": "Database Terhubung",
+    "db_disconnected": "Database Terputus",
+    "tables": "tabel",
+    "uptime": "Uptime:",
+    "cpu_usage": "Penggunaan CPU",
+    "memory_usage": "Penggunaan Memori",
+    "database_tables": "Tabel Database",
+    "recent_activity": "Aktivitas Terbaru",
+    "no_recent_activity": "Tidak ada aktivitas terbaru",
+    "last_updated": "Terakhir diperbarui:",
+    "stats": {
+      "total_tenants": "Total Tenant",
+      "total_users": "Total Pengguna",
+      "active_users": "Pengguna Aktif",
+      "audit_logs": "Audit Log"
+    },
+    "table_headers": {
+      "table": "Tabel",
+      "rows": "Baris"
+    }
+  },
+  "settings": {
+    "title": "Pengaturan Platform",
+    "subtitle": "Konfigurasi Global",
+    "loading": "Memuat pengaturan...",
+    "errors": {
+      "load_failed": "Gagal memuat pengaturan",
+      "save_failed": "Gagal menyimpan pengaturan",
+      "missing_test_email": "Silakan masukkan alamat email",
+      "test_email_failed": "Gagal mengirim email tes: ",
+      "bank_add_failed": "Gagal menambahkan bank",
+      "bank_remove_failed": "Gagal menghapus bank"
+    },
+    "toasts": {
+      "saved": "Pengaturan berhasil disimpan",
+      "bank_added": "Akun bank berhasil ditambahkan",
+      "bank_removed": "Akun bank berhasil dihapus"
+    },
+    "confirm": {
+      "are_you_sure": "Yakin?"
+    },
+    "sections": {
+      "general": "Pengaturan Umum",
+      "auth": "Kebijakan Autentikasi",
+      "password": "Kebijakan Password",
+      "security": "Keamanan & Rate Limit",
+      "twofa": "Autentikasi Dua Faktor",
+      "storage": "Konfigurasi Storage",
+      "payment": "Payment Gateway (Midtrans)",
+      "manual_bank_transfer": "Transfer Bank Manual",
+      "backup_global": "Cadangan Global",
+      "backup_tenant": "Cadangan Tenant"
+    },
+    "security": {
+      "ip_blocking": {
+        "aria": "Aktifkan Pemblokiran IP",
+        "label": "Aktifkan Pemblokiran IP",
+        "desc": "Blokir otomatis alamat IP dengan aktivitas mencurigakan."
+      },
+      "max_login_attempts": {
+        "label": "Maks Percobaan Login",
+        "desc": "Jumlah percobaan login gagal sebelum akun dikunci."
+      },
+      "lockout_duration": {
+        "label": "Durasi Lockout",
+        "desc": "Berapa lama pengguna dikunci setelah percobaan gagal maksimal."
+      },
+      "api_rate_limit": {
+        "label": "Batas API",
+        "desc": "Batas dasar permintaan API per menit untuk setiap pengguna; auth dan endpoint berat tetap lebih ketat."
+      }
+    },
+    "twofa": {
+      "enable_2fa": {
+        "aria": "Aktifkan 2FA",
+        "label": "Aktifkan 2FA",
+        "desc": "Izinkan pengguna menyiapkan 2FA untuk keamanan tambahan."
+      },
+      "enable_totp": {
+        "aria": "Aktifkan TOTP",
+        "label": "TOTP (Aplikasi Authenticator)",
+        "desc": "Izinkan verifikasi dengan Google Authenticator, Authy, dll."
+      },
+      "enable_email_otp": {
+        "aria": "Aktifkan OTP Email"
+      },
+      "email_otp": {
+        "label": "OTP Email",
+        "desc": "Izinkan pengguna menerima kode verifikasi via email."
+      },
+      "email_otp_expiry": {
+        "label": "Masa Berlaku OTP Email",
+        "desc": "Berapa lama kode verifikasi email tetap berlaku."
+      }
+    },
+    "auth": {
+      "allow_public_registration": {
+        "label": "Izinkan Pendaftaran Publik",
+        "desc": "Izinkan pengguna baru mendaftar bebas."
+      },
+      "require_email_verification": {
+        "label": "Wajib Verifikasi Email",
+        "desc": "Pengguna harus verifikasi email sebelum login.",
+        "not_ready": "Konfigurasi email belum siap. Atur provider email terlebih dahulu."
+      },
+      "jwt_expiry": {
+        "label": "Masa berlaku JWT (Jam)",
+        "desc": "Berapa lama token autentikasi berlaku."
+      },
+      "session_timeout": {
+        "label": "Timeout Sesi (Menit)",
+        "desc": "Logout otomatis setelah tidak aktif."
+      }
+    },
+    "password": {
+      "min_length": {
+        "label": "Panjang Minimum"
+      },
+      "require_uppercase": {
+        "label": "Wajib Huruf Besar"
+      },
+      "require_number": {
+        "label": "Wajib Angka"
+      },
+      "require_special": {
+        "label": "Wajib Karakter Spesial"
+      }
+    },
+    "storage": {
+      "driver": {
+        "label": "Driver Storage",
+        "desc": "Pilih lokasi penyimpanan file. Local menggunakan disk server.",
+        "options": {
+          "local": "Disk Lokal",
+          "s3": "AWS S3 / MinIO",
+          "r2": "Cloudflare R2"
+        }
+      },
+      "s3": {
+        "bucket_name": "Nama Bucket",
+        "region": "Region",
+        "region_hint": "Gunakan 'auto' untuk R2.",
+        "endpoint_url": "URL Endpoint",
+        "endpoint_hint": "Wajib untuk R2 (https://ID.r2.cloudflarestorage.com) atau MinIO.",
+        "access_key_id": "Access Key ID",
+        "secret_access_key": "Secret Access Key",
+        "public_url_optional": "URL Akses Publik (Opsional)",
+        "public_url_hint": "URL CDN jika file disajikan publik."
+      },
+      "max_file_size_mb": "Ukuran File Maks (MB)",
+      "max_file_size_mb_desc": "Ukuran maksimum untuk satu file saat upload.",
+      "allowed_extensions": "Ekstensi yang Diizinkan",
+      "allowed_extensions_desc": "Daftar ekstensi yang diizinkan dipisahkan koma (mis. jpg, png, pdf). Gunakan * untuk semua."
+    },
+    "payment": {
+      "midtrans": {
+        "title": "Gerbang Pembayaran Midtrans",
+        "enable": {
+          "label": "Aktifkan Midtrans",
+          "desc": "Izinkan pengguna membayar online via Midtrans."
+        },
+        "merchant_id": "Merchant ID",
+        "server_key": "Server Key",
+        "server_key_hint": "Dari Dashboard Midtrans > Settings > Access Keys.",
+        "client_key": "Client Key",
+        "client_key_hint": "Kunci publik untuk frontend Snap.js.",
+        "production_mode": "Mode Produksi",
+        "production_mode_desc": "Aktifkan untuk transaksi nyata. Nonaktifkan untuk Sandbox."
+      },
+      "manual": {
+        "title": "Transfer Bank Manual",
+        "enable": {
+          "label": "Aktifkan Transfer Manual",
+          "desc": "Izinkan pengguna membayar via transfer bank dan unggah bukti."
+        },
+        "instructions_label": "Instruksi Pembayaran",
+        "instructions_desc": "Instruksi yang ditampilkan saat pengguna memilih Transfer Manual.",
+        "bank_accounts_title": "Rekening Bank"
+      },
+      "installation_sla": {
+        "title": "Pengingat SLA Instalasi",
+        "enable": {
+          "label": "Aktifkan pengingat SLA instalasi",
+          "desc": "Kirim notifikasi otomatis saat work order instalasi melewati SLA."
+        },
+        "overdue_minutes": {
+          "label": "Batas terlambat (menit)",
+          "desc": "Work order terjadwal dianggap terlambat setelah melewati menit ini."
+        },
+        "cooldown_minutes": {
+          "label": "Jeda pengingat (menit)",
+          "desc": "Jeda minimum sebelum pengingat yang sama dikirim ulang untuk work order yang sama."
+        },
+        "scheduler_interval_minutes": {
+          "label": "Interval scheduler (menit)",
+          "desc": "Seberapa sering backend mengecek work order instalasi overdue di semua tenant."
+        }
+      }
+    },
+    "fields": {
+      "public_url": {
+        "label": "URL Aplikasi Publik",
+        "desc": "URL dasar untuk pengalihan, email, dan callback pembayaran (misal: https://app.example.com)."
+      },
+      "main_domain": {
+        "label": "Domain Utama",
+        "desc": "Domain utama tempat aplikasi dihosting (contoh: example.com). Digunakan untuk validasi domain dan routing tenant."
+      },
+      "currency": {
+        "label": "Mata Uang Utama",
+        "desc": "Mata uang untuk harga paket dan tampilan invoice (ISO 4217, misal: IDR, USD)."
+      },
+      "maintenance_mode": {
+        "label": "Aktifkan Mode Pemeliharaan",
+        "desc": "Saat diaktifkan, semua pengguna kecuali superadmin akan melihat halaman pemeliharaan."
+      },
+      "maintenance_message": {
+        "label": "Pesan Pemeliharaan",
+        "desc": "Pesan yang ditampilkan kepada pengguna saat mode pemeliharaan aktif."
+      },
+      "timezone": {
+        "label": "Timezone",
+        "desc": "Dipakai untuk interpretasi jam jadwal (mis. backup). Pilih timezone IANA.",
+        "search": "Cari timezone..."
+      }
+    },
+    "placeholders": {
+      "url": "https://...",
+      "domain": "contoh.com",
+      "public_url": "https://cdn.example.com",
+      "maintenance_message": "Masukkan pesan maintenance...",
+      "manual_instructions": "Silakan transfer ke salah satu rekening di bawah dan unggah bukti.",
+      "s3_bucket": "contoh: my-app-uploads",
+      "s3_region": "us-east-1",
+      "extensions": "jpg, png, pdf...",
+      "bank_name": "Nama Bank (contoh: BCA)",
+      "bank_account_number": "Nomor Rekening",
+      "bank_account_holder": "Nama Pemilik Rekening"
+    },
+    "actions": {
+      "remove": "Hapus",
+      "add": "Tambah",
+      "reset": "Reset",
+      "save": "Simpan Perubahan",
+      "saving": "Menyimpan..."
+    },
+    "alerting": {
+      "title": "Peringatan Error",
+      "enabled": {
+        "label": "Aktifkan Peringatan",
+        "desc": "Kirim peringatan email ketika ambang batas error terlampaui."
+      },
+      "email": {
+        "label": "Email Peringatan",
+        "desc": "Alamat email untuk menerima peringatan."
+      },
+      "error_threshold": {
+        "label": "Ambang Batas Error (%)",
+        "desc": "Peringatan ketika tingkat error melebihi persentase ini."
+      },
+      "rate_limit_threshold": {
+        "label": "Ambang Batas Rate Limit",
+        "desc": "Peringatan ketika permintaan yang terkena rate limit melebihi jumlah ini."
+      },
+      "response_time_threshold": {
+        "label": "Ambang Batas Waktu Respon P95 (ms)",
+        "desc": "Peringatan ketika waktu respon P95 melebihi nilai ini."
+      },
+      "cooldown": {
+        "label": "Cooldown Peringatan (menit)",
+        "desc": "Menit untuk menunggu sebelum mengirim tipe peringatan yang sama lagi."
+      }
+    },
+    "bank": {
+      "add_new_account": "Tambah Akun Baru",
+      "empty": "Belum ada akun bank yang ditambahkan.",
+      "table": {
+        "bank": "Bank",
+        "number": "Nomor",
+        "holder": "Pemilik",
+        "action": "Aksi"
+      }
+    },
+    "categories": {
+      "general": "Umum & Maintenance",
+      "auth": "Autentikasi",
+      "password": "Kebijakan Password",
+      "security": "Keamanan & Rate Limit",
+      "storage": "Konfigurasi Storage",
+      "payment": "Payment Gateway",
+      "alerting": "Peringatan Error",
+      "backup": "Cadangan"
+    },
+    "backups": {
+      "schedule_desc": "Gunakan format cron (menit jam * * *) atau HH:MM. Contoh: 0 2 * * *",
+      "retention_desc": "Cadangan yang lebih lama dari ini akan dihapus otomatis.",
+      "global": {
+        "enable": "Aktifkan Jadwal Cadangan Global",
+        "enable_desc": "Jalankan cadangan global otomatis dengan jadwal sederhana (pakai timezone aplikasi).",
+        "enable_aria": "Aktifkan jadwal cadangan global",
+        "schedule": "Jadwal",
+        "retention": "Retensi (hari)",
+        "run_now": "Jalankan Cadangan Global Sekarang",
+        "run_now_desc": "Antrikan cadangan global sekali jalan melalui scheduler.",
+        "run_now_btn": "Jalankan Sekarang"
+      },
+      "tenant": {
+        "enable": "Aktifkan Jadwal Cadangan Tenant",
+        "enable_desc": "Jalankan cadangan data tenant otomatis dengan jadwal sederhana (pakai timezone aplikasi).",
+        "enable_aria": "Aktifkan jadwal cadangan tenant",
+        "schedule": "Jadwal",
+        "retention": "Retensi (hari)",
+        "run_now": "Jalankan Cadangan Tenant Sekarang",
+        "run_now_desc": "Antrikan cadangan sekali jalan untuk semua tenant aktif.",
+        "run_now_btn": "Jalankan Sekarang"
+      },
+      "mode": {
+        "label": "Tipe Jadwal",
+        "desc": "Pilih seberapa sering cadangan dibuat."
+      },
+      "modes": {
+        "minute": "Setiap N menit",
+        "hour": "Setiap N jam",
+        "day": "Harian pada jam tertentu",
+        "week": "Mingguan pada jam tertentu"
+      },
+      "every": {
+        "label": "Setiap",
+        "desc": "Nilai interval. Contoh: 15 menit atau 6 jam."
+      },
+      "at": {
+        "label": "Jam",
+        "desc": "Jam eksekusi untuk menjalankan cadangan."
+      },
+      "weekday": {
+        "label": "Hari",
+        "desc": "Hari dalam minggu untuk menjalankan cadangan."
+      },
+      "timezone": {
+        "label": "Timezone",
+        "desc": "Dipakai untuk interpretasi jam jadwal harian/mingguan."
+      }
+    }
+  },
+  "plans": {
+    "page_title": "Paket | Superadmin",
+    "title": "Paket Berlangganan",
+    "subtitle": "Kelola tier harga dan status paket",
+    "search": "Cari paket...",
+    "loading": "Memuat paket...",
+    "actions": {
+      "create": "Buat paket",
+      "activate": "Aktifkan",
+      "deactivate": "Nonaktifkan",
+      "set_default": "Jadikan default",
+      "already_default": "Sudah default"
+    },
+    "price": {
+      "free": "Gratis"
+    },
+    "aria": {
+      "stats": "Statistik paket",
+      "cards": "Kartu paket",
+      "table": "Tabel paket"
+    },
+    "stats": {
+      "show_all": "Tampilkan semua paket",
+      "show_active": "Tampilkan paket aktif",
+      "show_inactive": "Tampilkan paket nonaktif",
+      "current_default": "Paket default saat ini",
+      "all_title": "Semua Paket",
+      "active_title": "Aktif",
+      "inactive_title": "Nonaktif",
+      "default_title": "Default"
+    },
+    "filters": {
+      "all": "Semua",
+      "active": "Aktif",
+      "inactive": "Nonaktif"
+    },
+    "view": {
+      "cards": "Tampilan kartu",
+      "table": "Tampilan tabel"
+    },
+    "badges": {
+      "default_title": "Paket default",
+      "default": "Default"
+    },
+    "refreshing_title": "Menyegarkan...",
+    "refreshing": "Menyegarkan",
+    "errors": {
+      "load_failed": "Gagal memuat data",
+      "default_cannot_deactivate": "Paket default tidak dapat dinonaktifkan. Tetapkan default lain terlebih dahulu."
+    },
+    "confirm": {
+      "delete_title": "Hapus Paket",
+      "delete_message": "Hapus \"{name}\"? Tindakan ini tidak dapat dibatalkan.",
+      "activate_title": "Aktifkan Paket",
+      "activate_message": "Aktifkan \"{name}\"? Tenant dapat ditetapkan kembali.",
+      "deactivate_title": "Nonaktifkan Paket",
+      "deactivate_message": "Nonaktifkan \"{name}\"? Tenant tidak dapat ditetapkan lagi.",
+      "default_title": "Set Default Paket",
+      "default_message": "Jadikan \"{name}\" sebagai paket default untuk tenant baru?"
+    },
+    "toasts": {
+      "deleted": "Paket dihapus",
+      "activated": "Paket diaktifkan",
+      "deactivated": "Paket dinonaktifkan",
+      "default_updated": "Paket default diperbarui"
+    },
+    "empty": {
+      "title": "Paket tidak ditemukan",
+      "subtitle": "Coba ubah pencarian atau filter.",
+      "description": "Tidak ada deskripsi"
+    },
+    "editor": {
+      "head": {
+        "new": "Paket Baru"
+      },
+      "header": {
+        "create_title": "Buat Paket Baru",
+        "edit_title": "Edit {name}"
+      },
+      "aria": {
+        "actions": "Aksi paket",
+        "tabs": "Tab editor paket"
+      },
+      "actions": {
+        "save": "Simpan Paket"
+      },
+      "tabs": {
+        "general": "Umum",
+        "features": "Fitur & Batas"
+      },
+      "fields": {
+        "name": "Nama Paket",
+        "slug": "Slug (Kode)",
+        "description": "Deskripsi",
+        "sort_order": "Urutan"
+      },
+      "placeholders": {
+        "name": "contoh: Pro Plan",
+        "slug": "contoh: pro-plan"
+      },
+      "help": {
+        "slug": "Identifier unik untuk kode/API."
+      },
+      "toasts": {
+        "created": "Paket berhasil dibuat",
+        "updated": "Paket berhasil diperbarui"
+      },
+      "errors": {
+        "save_failed": "Gagal menyimpan paket"
+      }
+    }
+  }
+}

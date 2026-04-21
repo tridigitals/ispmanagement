@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
+  import type { Component } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { t } from 'svelte-i18n';
@@ -13,8 +14,10 @@
   import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
   import RowActionButtons from '$lib/components/network/RowActionButtons.svelte';
-  import IncidentDetailDrawer from '$lib/components/network/IncidentDetailDrawer.svelte';
-  import IncidentSimulateDrawer from '$lib/components/network/IncidentSimulateDrawer.svelte';
+  import {
+    loadIncidentDetailDrawer,
+    loadIncidentSimulateDrawer,
+  } from '$lib/components/network/networkIncidentModules';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
   import { exportCsvRows, exportExcelRows } from '$lib/utils/tabularExport';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
@@ -63,6 +66,7 @@
     free_memory_bytes?: number | null;
     total_memory_bytes?: number | null;
   };
+  type DeferredComponent = Component<any>;
 
   let loading = $state(true);
   let refreshing = $state(false);
@@ -106,6 +110,8 @@
   let nowMs = $state(Date.now());
   let refreshHandle: any = null;
   let slaTickHandle: any = null;
+  let IncidentDetailDrawerComponent = $state<DeferredComponent | null>(null);
+  let IncidentSimulateDrawerComponent = $state<DeferredComponent | null>(null);
   let tenantCtx = $derived.by(() =>
     resolveTenantContext({
       hostname: $page.url.hostname,
@@ -350,6 +356,10 @@
   }
 
   async function openSimulateDialog() {
+    if (!IncidentSimulateDrawerComponent) {
+      const { IncidentSimulateDrawerComponent: component } = await loadIncidentSimulateDrawer();
+      IncidentSimulateDrawerComponent = component;
+    }
     if (simulateRouters.length === 0) {
       try {
         simulateRouters = ((await api.mikrotik.routers.list()) || []) as RouterRow[];
@@ -461,6 +471,10 @@
   }
 
   async function openDetail(item: IncidentRow) {
+    if (!IncidentDetailDrawerComponent) {
+      const { IncidentDetailDrawerComponent: component } = await loadIncidentDetailDrawer();
+      IncidentDetailDrawerComponent = component;
+    }
     detailOpen = true;
     detailLoading = true;
     detailIncident = item;
@@ -1251,74 +1265,78 @@
     </Table>
   </div>
 
-  <IncidentDetailDrawer
-    open={detailOpen}
-    incident={detailIncident}
-    loading={detailLoading}
-    router={detailRouter}
-    metric={detailMetric}
-    teamMembers={teamMembers}
-    selectedOwnerId={selectedOwnerId}
-    draftNotes={draftNotes}
-    saving={detailSaving}
-    canManage={$can('manage', 'network_incidents')}
-    emailNotifyEnabled={assignmentEmailEnabled}
-    slaState={detailIncident ? slaLevel(detailIncident) : 'ok'}
-    slaOpenDuration={detailIncident ? formatOpenDuration(incidentOpenMs(detailIncident)) : '—'}
-    appTimezone={$appSettings.app_timezone}
-    runbookSteps={detailIncident ? runbookStepsFor(detailIncident) : []}
-    activityItems={detailIncident ? buildIncidentActivity(detailIncident) : []}
-    impactedLoading={detailImpactedLoading}
-    impactedCustomers={detailImpactedCustomers}
-    {ownerLabel}
-    {typeLabel}
-    {severityLabel}
-    {formatDateTime}
-    {formatBps}
-    {memoryUsePct}
-    onClose={closeDetail}
-    onOpenRouter={openRouter}
-    onAcknowledge={ack}
-    onResolve={resolve}
-    onSave={saveIncidentMeta}
-    onOpenNetworkSettings={openNetworkSettings}
-    onOwnerChange={(value) => {
-      selectedOwnerId = value;
-    }}
-    onNotesChange={(value) => {
-      draftNotes = value;
-    }}
-    onCopyRunbookCommand={copyRunbookCommand}
-    onAddRunbookStep={addRunbookStepToNotes}
-  />
+  {#if IncidentDetailDrawerComponent}
+    <IncidentDetailDrawerComponent
+      open={detailOpen}
+      incident={detailIncident}
+      loading={detailLoading}
+      router={detailRouter}
+      metric={detailMetric}
+      teamMembers={teamMembers}
+      selectedOwnerId={selectedOwnerId}
+      draftNotes={draftNotes}
+      saving={detailSaving}
+      canManage={$can('manage', 'network_incidents')}
+      emailNotifyEnabled={assignmentEmailEnabled}
+      slaState={detailIncident ? slaLevel(detailIncident) : 'ok'}
+      slaOpenDuration={detailIncident ? formatOpenDuration(incidentOpenMs(detailIncident)) : '—'}
+      appTimezone={$appSettings.app_timezone}
+      runbookSteps={detailIncident ? runbookStepsFor(detailIncident) : []}
+      activityItems={detailIncident ? buildIncidentActivity(detailIncident) : []}
+      impactedLoading={detailImpactedLoading}
+      impactedCustomers={detailImpactedCustomers}
+      {ownerLabel}
+      {typeLabel}
+      {severityLabel}
+      {formatDateTime}
+      {formatBps}
+      {memoryUsePct}
+      onClose={closeDetail}
+      onOpenRouter={openRouter}
+      onAcknowledge={ack}
+      onResolve={resolve}
+      onSave={saveIncidentMeta}
+      onOpenNetworkSettings={openNetworkSettings}
+      onOwnerChange={(value: string) => {
+        selectedOwnerId = value;
+      }}
+      onNotesChange={(value: string) => {
+        draftNotes = value;
+      }}
+      onCopyRunbookCommand={copyRunbookCommand}
+      onAddRunbookStep={addRunbookStepToNotes}
+    />
+  {/if}
 
-  <IncidentSimulateDrawer
-    open={simulateOpen}
-    busy={simulateBusy}
-    routers={simulateRouters}
-    routerId={simulateRouterId}
-    incidentType={simulateType}
-    severity={simulateSeverity}
-    interfaceName={simulateInterface}
-    message={simulateMessage}
-    onClose={closeSimulateDialog}
-    onSubmit={submitSimulateIncident}
-    onRouterChange={(value) => {
-      simulateRouterId = value;
-    }}
-    onTypeChange={(value) => {
-      simulateType = value;
-    }}
-    onSeverityChange={(value) => {
-      simulateSeverity = value;
-    }}
-    onInterfaceChange={(value) => {
-      simulateInterface = value;
-    }}
-    onMessageChange={(value) => {
-      simulateMessage = value;
-    }}
-  />
+  {#if IncidentSimulateDrawerComponent}
+    <IncidentSimulateDrawerComponent
+      open={simulateOpen}
+      busy={simulateBusy}
+      routers={simulateRouters}
+      routerId={simulateRouterId}
+      incidentType={simulateType}
+      severity={simulateSeverity}
+      interfaceName={simulateInterface}
+      message={simulateMessage}
+      onClose={closeSimulateDialog}
+      onSubmit={submitSimulateIncident}
+      onRouterChange={(value: string) => {
+        simulateRouterId = value;
+      }}
+      onTypeChange={(value: string) => {
+        simulateType = value;
+      }}
+      onSeverityChange={(value: string) => {
+        simulateSeverity = value;
+      }}
+      onInterfaceChange={(value: string) => {
+        simulateInterface = value;
+      }}
+      onMessageChange={(value: string) => {
+        simulateMessage = value;
+      }}
+    />
+  {/if}
 </div>
 
 <style>

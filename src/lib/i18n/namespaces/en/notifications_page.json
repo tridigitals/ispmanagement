@@ -1,0 +1,24 @@
+{
+  "title": "Notifications",
+  "subtitle": "Updates, alerts, and system messages.",
+  "search_placeholder": "Search notifications...",
+  "loading": "Loading notifications...",
+  "load_more": "Load more",
+  "confirm_delete": {
+    "title": "Delete notification",
+    "message": "Delete this notification? This action cannot be undone."
+  },
+  "confirm_mark_all": {
+    "title": "Mark all as read",
+    "message": "Mark all notifications as read?"
+  },
+  "filters": {
+    "aria": "Filters",
+    "all": "All",
+    "unread": "Unread"
+  },
+  "empty": {
+    "title": "You're all caught up",
+    "subtitle": "No notifications to show."
+  }
+}

@@ -1,0 +1,401 @@
+{
+  "greeting": {
+    "morning": "Good Morning",
+    "afternoon": "Good Afternoon",
+    "evening": "Good Evening",
+    "welcome_message": "Here's what's happening with your account today."
+  },
+  "manage_files": "Manage Files",
+  "generate_report": "Generate Report",
+  "admin_mode": {
+    "title": "Administrator Mode",
+    "description": "You have system-wide permissions. Access management tools here."
+  },
+  "locations": {
+    "kicker": "Customer portal",
+    "title": "My Locations",
+    "subtitle": "Your service locations. If something looks wrong, contact support.",
+    "location": "Location",
+    "source": {
+      "customer": "Customer",
+      "profile": "Profile"
+    },
+    "summary": {
+      "total": "Total locations",
+      "customer": "Customer-linked",
+      "profile": "Profile addresses"
+    },
+    "empty": "No locations yet.",
+    "empty_hint": "Your admin has not linked your account to a customer location.",
+    "toasts": {
+      "load_failed": "Failed to load locations"
+    }
+  },
+  "stats": {
+    "account_role": "Account Role",
+    "member_since": "Member Since",
+    "system_status": "System Status",
+    "active": "Active"
+  },
+  "recent_activity": {
+    "title": "Recent Activity",
+    "view_all": "View All",
+    "loading": "Loading activity...",
+    "empty": {
+      "title": "No activity yet",
+      "description": "When you start using the app, your activity will appear here.",
+      "learn_more": "Learn More"
+    }
+  },
+  "announcements": {
+    "title": "Announcements",
+    "view_all": "View All",
+    "empty": {
+      "title": "No announcements yet",
+      "description": "When the team publishes updates, they will show up here.",
+      "open": "Open announcements"
+    }
+  },
+  "packages": {
+    "title": "Internet Services",
+    "subtitle": "Manage your services and submit installation request instantly.",
+    "tabs": {
+      "ordered": "My Services",
+      "order_new": "Order Service"
+    },
+    "fields": {
+      "location": "Location",
+      "billing_cycle": "Billing cycle",
+      "package": "Package",
+      "total": "Total"
+    },
+    "builder": {
+      "title": "Order Builder",
+      "subtitle": "Create multiple package orders for different addresses in one checkout flow.",
+      "checkout_all": "Checkout all",
+      "empty": "No order items yet"
+    },
+    "cycles": {
+      "monthly": "Monthly",
+      "yearly": "Yearly"
+    },
+    "current": {
+      "title": "Current subscription",
+      "none": "No active package on this location"
+    },
+    "ordered": {
+      "title": "Ordered Services",
+      "subtitle": "All subscriptions from your linked locations.",
+      "empty": "No service order yet. Start from Order Service tab."
+    },
+    "coverage": {
+      "title": "Coverage zone",
+      "select_location": "Select a location first",
+      "checking": "Checking coverage...",
+      "missing_coordinates": "This location has no coordinates yet. Coverage filter is disabled.",
+      "not_covered": "This location is outside active coverage zones.",
+      "zone_packages": "Packages available in this zone",
+      "no_packages_for_zone": "No packages in this coverage zone",
+      "no_packages_for_zone_hint": "Your location is covered, but no package offer is configured for this zone yet."
+    },
+    "actions": {
+      "buy": "Buy package",
+      "switch": "Switch package",
+      "current": "Current package",
+      "add_location": "Add location",
+      "add_to_order": "Add to order",
+      "request_again": "Request Again",
+      "request_reopen": "Request Re-open",
+      "order_again": "Order Again"
+    },
+    "badges": {
+      "active": "Active",
+      "rerequested": "Re-requested"
+    },
+    "empty": {
+      "no_locations": "No locations available",
+      "no_locations_hint": "Ask admin to link your account with a customer location first.",
+      "no_packages": "No active packages yet",
+      "no_packages_hint": "Your admin has not published package catalog yet."
+    },
+    "toasts": {
+      "load_failed": "Failed to load package catalog",
+      "select_location": "Select a location first",
+      "yearly_unavailable": "Yearly billing is not available for this package",
+      "already_active": "This package is already active",
+      "checkout_success": "Invoice created. Continue to payment.",
+      "checkout_failed": "Checkout failed",
+      "request_success": "Installation request submitted.",
+      "request_failed": "Failed to submit installation request",
+      "added_to_order": "Added to order builder",
+      "bulk_checkout_success": "invoices created successfully",
+      "bulk_request_success": "installation requests submitted successfully",
+      "package_unavailable": "Package is no longer available. Please choose another package.",
+      "location_unavailable": "Location is no longer available. Please add/select another location."
+    }
+  },
+  "internet_order": {
+    "hero": {
+      "title": "Internet Service Order",
+      "subtitle": "Flow: choose address, choose package, review your order, then submit installation request."
+    },
+    "steps": {
+      "address": "Address",
+      "package": "Package",
+      "review": "Review"
+    },
+    "actions": {
+      "service_types": "Service Types",
+      "billing_invoices": "Billing & Invoices",
+      "refresh": "Refresh",
+      "add_location": "Add Location",
+      "next_choose_package": "Next: Choose Package",
+      "back_to_address": "Back to Address",
+      "selected": "Selected",
+      "select_package": "Select Package",
+      "order_now": "Order Now",
+      "back_to_package": "Back to Package",
+      "add_more": "Add More",
+      "submit_installation_request": "Submit Installation Request",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "labels": {
+      "location": "Location",
+      "coverage_zone": "Coverage Zone",
+      "billing_cycle": "Billing Cycle",
+      "selected_address": "Selected Address",
+      "monthly_plan": "Monthly plan",
+      "yearly_available": "yearly option available",
+      "yearly_not_available": "Yearly plan not available",
+      "current_item_total": "Current item total",
+      "total_order_amount": "Total order amount"
+    },
+    "coverage": {
+      "checking": "Checking coverage...",
+      "select_location": "Select a location first",
+      "missing_coordinates": "This location has no coordinates yet. Coverage filter is disabled.",
+      "not_covered": "This location is outside active coverage zones."
+    },
+    "stage": {
+      "address": {
+        "title": "Select Address",
+        "subtitle": "Choose existing address or add a new one first."
+      },
+      "package": {
+        "title": "Choose Package"
+      },
+      "review": {
+        "title": "Review & Submit",
+        "subtitle": "All items below will be submitted as installation requests."
+      }
+    },
+    "empty": {
+      "no_locations_title": "No locations available",
+      "no_locations_subtitle": "Add at least one location to continue internet ordering.",
+      "no_packages_title": "No internet packages are available yet",
+      "no_packages_subtitle": "Please contact the admin to enable the package catalog.",
+      "no_order_items_title": "No order item yet",
+      "no_order_items_subtitle": "Add at least one package first."
+    },
+    "sidecard": {
+      "title": "Current Selection",
+      "step_badge": "Step 2 / 3",
+      "address": "Address",
+      "package": "Package",
+      "billing": "Billing",
+      "hint": "You can add more services later from the Review step."
+    },
+    "modal": {
+      "add_location_title": "Add Location",
+      "fields": {
+        "label": "Label",
+        "address": "Address",
+        "city": "City",
+        "state": "State",
+        "postal_code": "Postal code",
+        "country": "Country",
+        "notes": "Notes",
+        "latitude": "Latitude",
+        "longitude": "Longitude"
+      },
+      "placeholders": {
+        "label": "Home / Office",
+        "address": "Street address"
+      }
+    },
+    "status": {
+      "loading_packages": "Loading packages...",
+      "processing": "Processing...",
+      "saving": "Saving..."
+    },
+    "cycles": {
+      "monthly": "Monthly",
+      "yearly": "Yearly"
+    },
+    "badges": {
+      "selected": "Selected"
+    },
+    "toasts": {
+      "load_failed": "Failed to load internet service catalog",
+      "coverage_failed": "Failed to check coverage",
+      "select_location_first": "Select a location first",
+      "yearly_unavailable": "Yearly billing is not available for this package",
+      "invalid_package": "Invalid package",
+      "added_to_order": "Item added to your order",
+      "invalid_package_in_order": "Invalid package in order list",
+      "request_submitted_single": "Installation request submitted ({id})",
+      "request_submitted_multi": "{count} installation requests submitted",
+      "request_submit_failed": "Failed to submit installation request",
+      "latitude_range": "Latitude must be between -90 and 90",
+      "longitude_range": "Longitude must be between -180 and 180",
+      "location_saved": "Location saved",
+      "location_create_failed": "Failed to create location"
+    }
+  },
+  "services_portal": {
+    "page": {
+      "title": "Customer Services",
+      "subtitle": "List of all services you have ordered."
+    },
+    "actions": {
+      "billing_invoices": "Billing & Invoices",
+      "order_new_service": "Order New Service",
+      "show_all_services": "Show All Services",
+      "view_invoices": "View Invoices",
+      "track_installation": "Track Installation",
+      "request_reopen": "Request Reopen",
+      "reopening": "Reopening..."
+    },
+    "stats": {
+      "total": "Total Services",
+      "active": "Active",
+      "pending_installation": "Pending Installation",
+      "needs_attention": "Needs Attention"
+    },
+    "list": {
+      "title": "Ordered Services",
+      "subtitle": "Services requested by your account.",
+      "services_suffix": "services",
+      "filter": "Filter",
+      "sort": "Sort"
+    },
+    "filters": {
+      "all": "All Services",
+      "active": "Active",
+      "pending_installation": "Pending Installation",
+      "needs_attention": "Needs Attention"
+    },
+    "sort": {
+      "updated_at": "Updated",
+      "price": "Price",
+      "status": "Status",
+      "location": "Location",
+      "service": "Service"
+    },
+    "table": {
+      "service": "Service",
+      "status": "Status",
+      "location": "Location",
+      "billing_cycle": "Billing Cycle",
+      "price": "Price",
+      "updated_at": "Updated",
+      "actions": "Actions"
+    },
+    "empty": {
+      "no_services": "No ordered services yet.",
+      "no_match": "No service found for selected filter."
+    },
+    "toasts": {
+      "load_failed": "Failed to load services",
+      "reopen_success_with_id": "Installation request reopened (WO {id})",
+      "reopen_success": "Installation request reopened",
+      "reopen_failed": "Failed to reopen installation request"
+    },
+    "status": {
+      "grace_active": "Grace Active",
+      "pending_installation": "Pending Installation",
+      "awaiting_payment": "Awaiting Payment",
+      "suspended": "Suspended",
+      "cancelled": "Cancelled"
+    },
+    "status_hint": {
+      "active": "Service is active and running.",
+      "grace_active": "Service is temporarily active for post-installation testing while awaiting first payment.",
+      "pending_installation": "Waiting assignment and installation scheduling.",
+      "awaiting_payment": "Installation is complete. Waiting for first invoice/payment confirmation.",
+      "suspended": "Service is suspended. Please check billing or contact support.",
+      "cancelled": "Request was cancelled.",
+      "cancelled_reopen": "Request was cancelled. You can submit reopen request."
+    },
+    "tracker": {
+      "title": "Installation Tracker",
+      "loading": "Loading tracker...",
+      "scheduled_at": "Scheduled At",
+      "last_update": "Last Update",
+      "latest_notes": "Latest Notes",
+      "steps": {
+        "requested": "Requested",
+        "assigned": "Assigned",
+        "scheduled": "Scheduled",
+        "onsite": "On-site",
+        "active": "Active"
+      }
+    },
+    "reschedule": {
+      "badge": {
+        "pending": "Reschedule Pending",
+        "approved": "Reschedule Approved",
+        "rejected": "Reschedule Rejected"
+      },
+      "latest_title": "Latest Reschedule Request",
+      "labels": {
+        "requested_at": "Reschedule At",
+        "requested_schedule": "Requested Schedule",
+        "requested_by": "Requested By",
+        "reason": "Reason",
+        "admin_notes": "Admin Notes"
+      },
+      "form": {
+        "title": "Request Reschedule",
+        "subtitle": "You can request new installation time before onsite work starts.",
+        "new_schedule": "New Schedule",
+        "reason_optional": "Reason (optional)",
+        "reason_placeholder": "Need different time slot",
+        "submit": "Submit Reschedule",
+        "submitting": "Submitting...",
+        "wait_schedule": "Reschedule will be available after admin/technician sets your installation schedule."
+      },
+      "toasts": {
+        "select_schedule": "Please select new installation schedule",
+        "invalid_datetime": "Invalid date time",
+        "submit_success": "Reschedule request submitted",
+        "submit_failed": "Failed to submit reschedule request"
+      }
+    }
+  },
+  "portal_summary": {
+    "title": "Service Overview",
+    "health": "Status",
+    "active_package": "Active package",
+    "next_invoice": "Next invoice",
+    "no_pending_invoice": "No pending invoice",
+    "none": "-",
+    "due": "Due",
+    "manage_package": "Manage service",
+    "manage_service": "Manage service",
+    "pay_now": "Pay now",
+    "status": {
+      "normal": "Normal",
+      "pending": "Pending invoice",
+      "overdue": "Overdue"
+    }
+  },
+  "quick_actions": {
+    "title": "Quick Actions",
+    "update_profile": "Update Profile",
+    "check_messages": "Check Messages",
+    "security_settings": "Security Settings",
+    "contact_support": "Contact Support"
+  }
+}

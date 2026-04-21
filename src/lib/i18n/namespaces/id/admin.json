@@ -1,0 +1,2399 @@
+{
+  "dashboard": {
+    "eyebrow": "Dashboard admin adaptif",
+    "role_scoped": "Hanya modul yang bisa Anda akses yang ditampilkan di sini",
+    "last_updated": "Terakhir diperbarui",
+    "loading": "Memuat ringkasan workspace Anda...",
+    "open_area": "Buka area",
+    "empty": {
+      "title": "Belum ada modul dashboard yang tersedia",
+      "description": "Akun ini belum menampilkan bagian dashboard apa pun. Minta owner atau admin untuk memberi satu atau beberapa permission tenant."
+    },
+    "audience": {
+      "admin": {
+        "title": "Pusat kendali tenant",
+        "subtitle": "Pantau akses, billing, pertumbuhan pelanggan, dan beban kerja lintas tim dalam satu tampilan."
+      },
+      "operations": {
+        "title": "Operasional lapangan hari ini",
+        "subtitle": "Mulai dari instalasi, tindak lanjut PPPoE, dan konteks pelanggan yang dibutuhkan teknisi di lapangan."
+      },
+      "support": {
+        "title": "Workspace customer service",
+        "subtitle": "Prioritaskan follow-up billing, handoff aktivasi, dan percakapan support yang masih terbuka."
+      },
+      "noc": {
+        "title": "Pantauan jaringan",
+        "subtitle": "Fokus pada incident, alert, dan router yang dimonitor sebelum eskalasi."
+      },
+      "hybrid": {
+        "title": "Ringkasan operasional",
+        "subtitle": "Hanya modul yang bisa Anda akses yang ditampilkan di sini, diurutkan dari yang paling mungkin butuh perhatian."
+      }
+    },
+    "sections": {
+      "primary": {
+        "kicker": "Ringkasan",
+        "title": "KPI terpilih"
+      },
+      "focus": {
+        "kicker": "Aksi",
+        "title": "Fokus Hari Ini"
+      },
+      "actions": {
+        "kicker": "Lanjut ke",
+        "title": "Aksi Cepat"
+      },
+      "trends": {
+        "kicker": "Distribusi",
+        "title": "Tren ringkas"
+      }
+    },
+    "widgets": {
+      "customers": {
+        "title": "Pelanggan",
+        "meta": "menunggu aktivasi"
+      },
+      "invoices_due": {
+        "title": "Invoice yang perlu ditindaklanjuti",
+        "meta": "terlambat"
+      },
+      "team_members": {
+        "title": "Anggota tim"
+      },
+      "subscription_plan": {
+        "title": "Paket langganan",
+        "meta": "member terpakai"
+      },
+      "work_orders_active": {
+        "title": "Instalasi aktif",
+        "meta": "menunggu mulai"
+      },
+      "pppoe_accounts": {
+        "title": "Akun PPPoE",
+        "meta": "perlu sinkron router"
+      },
+      "incidents_open": {
+        "title": "Incident terbuka",
+        "meta": "kritis"
+      },
+      "alerts_active": {
+        "title": "Alert aktif",
+        "meta": "kritis"
+      },
+      "routers_monitored": {
+        "title": "Router termonitor"
+      },
+      "support_open": {
+        "title": "Tiket support terbuka",
+        "meta": "menunggu balasan"
+      }
+    },
+    "focus": {
+      "work_orders_attention": {
+        "title": "Instalasi yang menunggu aksi",
+        "description": "Prioritaskan work order pending dan in-progress untuk teknisi."
+      },
+      "pppoe_sync_issues": {
+        "title": "Masalah sinkron PPPoE",
+        "description": "Periksa akun yang hilang di router atau nonaktif secara tidak terduga."
+      },
+      "billing_followup": {
+        "title": "Follow-up billing",
+        "description": "Invoice overdue dan pending yang masih perlu ditindaklanjuti hari ini."
+      },
+      "customer_activation": {
+        "title": "Pelanggan menunggu aktivasi",
+        "description": "Pelanggan yang sudah dekat ke aktivasi layanan atau handoff pembayaran."
+      },
+      "support_queue": {
+        "title": "Antrian support",
+        "description": "Tiket open dan pending yang butuh respons terkoordinasi."
+      },
+      "network_watch": {
+        "title": "Watchlist jaringan",
+        "description": "Alert dan incident yang perlu ditinjau NOC sebelum eskalasi."
+      }
+    },
+    "actions": {
+      "team": {
+        "title": "Tim",
+        "description": "Tinjau anggota, undangan, dan pembagian tanggung jawab."
+      },
+      "roles": {
+        "title": "Role & permission",
+        "description": "Atur akses granular tanpa membuka modul yang tidak terkait."
+      },
+      "settings": {
+        "title": "Pengaturan",
+        "description": "Ubah kebijakan tenant, default, dan perilaku jaringan."
+      },
+      "customers": {
+        "title": "Pelanggan",
+        "description": "Buka data pelanggan, riwayat layanan, dan konteks field yang bersifat read-only."
+      },
+      "invoices": {
+        "title": "Invoice",
+        "description": "Tinjau invoice outstanding dan ulangi collection bila diperlukan."
+      },
+      "installations": {
+        "title": "Instalasi",
+        "description": "Claim work order, pantau progres, dan selesaikan pekerjaan lapangan."
+      },
+      "pppoe": {
+        "title": "PPPoE",
+        "description": "Kelola akun dan selesaikan masalah sinkron router atau RADIUS."
+      },
+      "noc": {
+        "title": "Wallboard NOC",
+        "description": "Buka wallboard live untuk situasi jaringan saat ini."
+      },
+      "alerts": {
+        "title": "Alert",
+        "description": "Triage alert router aktif dan akui noise dengan cepat."
+      },
+      "incidents": {
+        "title": "Incident",
+        "description": "Tinjau incident aktif, owner, dan eskalasi severity."
+      },
+      "routers": {
+        "title": "Router",
+        "description": "Periksa inventaris router, health, dan detail per perangkat."
+      },
+      "support": {
+        "title": "Support",
+        "description": "Buka antrian tiket bersama dan lanjutkan balasan pelanggan."
+      },
+      "audit": {
+        "title": "Audit log",
+        "description": "Tinjau perubahan sensitif dan aktivitas di level permission."
+      },
+      "email_outbox": {
+        "title": "Outbox email",
+        "description": "Cek pengiriman gagal dan retry pesan outbound yang penting."
+      }
+    },
+    "trends": {
+      "invoice_status": {
+        "title": "Distribusi status invoice",
+        "overdue": "Terlambat",
+        "pending": "Pending",
+        "paid": "Lunas"
+      },
+      "incident_severity": {
+        "title": "Severity incident",
+        "critical": "Kritis",
+        "warning": "Peringatan"
+      },
+      "alert_severity": {
+        "title": "Severity alert",
+        "critical": "Kritis",
+        "warning": "Peringatan"
+      }
+    }
+  },
+  "customers": {
+    "title": "Pelanggan",
+    "subtitle": "Kelola data pelanggan dan lokasi layanan.",
+    "read_only_hint": "Role ini bisa meninjau data pelanggan, tetapi aksi pengelolaan pelanggan dinonaktifkan.",
+    "actions": {
+      "new": "Pelanggan baru"
+    },
+    "search": "Cari pelanggan...",
+    "results": "hasil",
+    "empty": "Belum ada pelanggan.",
+    "stats": {
+      "total": "Total",
+      "active": "Aktif",
+      "inactive": "Nonaktif"
+    },
+    "columns": {
+      "customer": "Pelanggan",
+      "contact": "Kontak",
+      "status": "Status",
+      "updated": "Diperbarui"
+    },
+    "fields": {
+      "name": "Nama",
+      "email": "Email",
+      "phone": "Telepon",
+      "notes": "Catatan",
+      "active": "Aktif"
+    },
+    "new": {
+      "title": "Pelanggan baru",
+      "portal": {
+        "title": "Buat login portal",
+        "subtitle": "Jika aktif, customer langsung dibuatkan akun login dashboard.",
+        "password": "Password",
+        "password_confirm": "Konfirmasi password",
+        "validation": {
+          "email_required": "Email wajib diisi jika membuat login portal.",
+          "password_min": "Password minimal 6 karakter.",
+          "password_mismatch": "Konfirmasi password tidak sama."
+        },
+        "toasts": {
+          "create_failed": "Customer berhasil dibuat, tapi akun login portal gagal dibuat.",
+          "create_failed_atomic": "Akun login portal gagal dibuat. Pembuatan customer dibatalkan (rollback).",
+          "create_failed_with_rollback": "Akun login portal gagal dibuat dan rollback pembuatan customer juga gagal."
+        }
+      }
+    },
+    "delete": {
+      "title": "Hapus pelanggan",
+      "message": "Ini akan menghapus pelanggan dan semua data terkait."
+    },
+    "detail": {
+      "title": "Pelanggan",
+      "subtitle": "Detail pelanggan",
+      "read_only_hint": "Role ini bisa memeriksa data pelanggan dan konteks layanan di sini, tetapi perubahan data pelanggan dinonaktifkan."
+    },
+    "tabs": {
+      "overview": "Ringkasan",
+      "locations": "Lokasi",
+      "portal": "User portal",
+      "subscriptions": "Langganan",
+      "billing": "Billing",
+      "pppoe": "PPPoE"
+    },
+    "overview": {
+      "title": "Profil pelanggan"
+    },
+    "locations": {
+      "title": "Lokasi",
+      "subtitle": "Lokasi layanan di bawah pelanggan ini.",
+      "actions": {
+        "add": "Tambah lokasi"
+      },
+      "empty": "Belum ada lokasi.",
+      "columns": {
+        "label": "Label",
+        "address": "Alamat",
+        "coordinates": "Koordinat",
+        "updated": "Diperbarui"
+      },
+      "new": {
+        "title": "Tambah lokasi"
+      },
+      "edit": {
+        "title": "Edit lokasi"
+      },
+      "delete": {
+        "title": "Hapus lokasi",
+        "message": "Lokasi ini akan dihapus."
+      },
+      "fields": {
+        "label": "Label",
+        "address1": "Alamat baris 1",
+        "address2": "Alamat baris 2",
+        "city": "Kota",
+        "state": "Provinsi",
+        "postal": "Kode pos",
+        "country": "Negara",
+        "latitude": "Latitude",
+        "longitude": "Longitude",
+        "notes": "Catatan"
+      },
+      "toasts": {
+        "load_failed": "Gagal memuat lokasi",
+        "created": "Lokasi ditambahkan",
+        "create_failed": "Gagal menambahkan lokasi: {message}"
+      }
+    },
+    "portal": {
+      "title": "User portal",
+      "subtitle": "User yang bisa login ke portal pelanggan.",
+      "actions": {
+        "add": "Tambah user"
+      },
+      "empty": "Belum ada user portal.",
+      "columns": {
+        "user": "User",
+        "added": "Ditambahkan"
+      },
+      "new": {
+        "title": "Tambah user portal",
+        "hint": "User ini akan ditautkan ke pelanggan dan bisa login ke dashboard.",
+        "fields": {
+          "email": "Email",
+          "name": "Nama",
+          "password": "Password"
+        }
+      },
+      "remove": {
+        "title": "Hapus user portal",
+        "message": "Ini hanya akan melepas tautan user dari pelanggan."
+      },
+      "toasts": {
+        "load_failed": "Gagal memuat user portal",
+        "created": "User portal ditambahkan",
+        "create_failed": "Gagal menambahkan user portal: {message}",
+        "removed": "User portal dihapus",
+        "remove_failed": "Gagal menghapus user portal: {message}"
+      }
+    },
+    "subscriptions": {
+      "title": "Langganan",
+      "subtitle": "Langganan layanan pelanggan untuk kebutuhan billing dan assignment layanan.",
+      "empty": "Belum ada langganan.",
+      "new": {
+        "title": "Tambah langganan"
+      },
+      "edit": {
+        "title": "Edit langganan"
+      },
+      "fields": {
+        "location": "Lokasi",
+        "package": "Paket",
+        "router": "Router (opsional)",
+        "billing_cycle": "Siklus tagihan",
+        "price": "Harga",
+        "currency": "Mata uang",
+        "status": "Status",
+        "starts_at": "Mulai",
+        "ends_at": "Berakhir",
+        "notes": "Catatan"
+      }
+    },
+    "billing": {
+      "title": "Billing",
+      "subtitle": "Riwayat invoice yang terbentuk dari langganan pelanggan ini.",
+      "empty": "Belum ada invoice untuk pelanggan ini.",
+      "stats": {
+        "total": "Total invoice",
+        "unpaid": "Belum lunas",
+        "paid": "Lunas",
+        "overdue": "Lewat jatuh tempo"
+      },
+      "filters": {
+        "status": "Status",
+        "all": "Semua",
+        "today": "Hari ini",
+        "last_7d": "7H",
+        "last_30d": "30H",
+        "this_month": "Bulan ini",
+        "from": "Dari",
+        "to": "Sampai",
+        "clear": "Reset"
+      },
+      "columns": {
+        "invoice_number": "Invoice #",
+        "subscription": "Langganan",
+        "amount": "Jumlah",
+        "status": "Status",
+        "due_date": "Jatuh tempo"
+      },
+      "actions": {
+        "generate_from_subscription": "Generate invoice"
+      },
+      "toasts": {
+        "load_failed": "Gagal memuat invoice billing: {message}",
+        "generated": "Invoice berhasil dibuat",
+        "generate_failed": "Gagal membuat invoice: {message}"
+      }
+    },
+    "pppoe": {
+      "title": "Akun PPPoE",
+      "subtitle": "Kelola PPPoE secret untuk pelanggan ini (per-router). Database adalah sumber kebenaran.",
+      "search": "Cari username...",
+      "empty": "Belum ada akun PPPoE.",
+      "confirm_delete": "Hapus akun PPPoE ini?",
+      "columns": {
+        "username": "Username",
+        "router": "Router",
+        "location": "Lokasi",
+        "assignment": "IP / Profile",
+        "sync": "Sinkron"
+      },
+      "fields": {
+        "router": "Router",
+        "customer": "Pelanggan",
+        "location": "Lokasi",
+        "username": "Username",
+        "password": "Password",
+        "package": "Paket",
+        "profile": "Profile",
+        "remote_address": "Remote IP / Pool",
+        "pool": "IP Pool",
+        "comment": "Catatan",
+        "disabled": "Nonaktif"
+      },
+      "sync": {
+        "present": "Ada di router",
+        "missing": "Tidak ada"
+      },
+      "actions": {
+        "add": "Tambah PPPoE",
+        "apply": "Terapkan ke router",
+        "reconcile": "Sinkronkan",
+        "reconcile_hint": "Tandai akun mana yang ada di router"
+      },
+      "new": {
+        "title": "Tambah akun PPPoE"
+      },
+      "edit": {
+        "title": "Edit akun PPPoE",
+        "password_hint": "Kosongkan untuk tetap"
+      },
+      "toasts": {
+        "routers_failed": "Gagal memuat router",
+        "load_failed": "Gagal memuat akun PPPoE: {message}",
+        "created": "Akun PPPoE dibuat",
+        "create_failed": "Gagal membuat akun PPPoE: {message}",
+        "updated": "Akun PPPoE diperbarui",
+        "update_failed": "Gagal memperbarui akun PPPoE: {message}",
+        "applied": "Berhasil diterapkan ke router",
+        "apply_failed": "Gagal menerapkan akun PPPoE: {message}",
+        "reconciled": "Berhasil sinkron dengan router",
+        "reconcile_failed": "Gagal sinkron dengan router: {message}",
+        "deleted": "Akun PPPoE dihapus",
+        "delete_failed": "Gagal menghapus akun PPPoE: {message}"
+      }
+    },
+    "toasts": {
+      "load_failed": "Gagal memuat pelanggan",
+      "created": "Pelanggan dibuat",
+      "create_failed": "Gagal membuat pelanggan: {message}",
+      "updated": "Pelanggan diperbarui",
+      "update_failed": "Gagal memperbarui pelanggan: {message}",
+      "deleted": "Pelanggan dihapus",
+      "delete_failed": "Gagal menghapus pelanggan: {message}"
+    }
+  },
+  "services": {
+    "title": "Layanan",
+    "subtitle": "Buat layanan dan atur opsi sesuai tipe layanan.",
+    "search": "Cari layanan...",
+    "empty": "Belum ada layanan.",
+    "confirm_delete": "Hapus layanan ini?",
+    "columns": {
+      "name": "Nama",
+      "type": "Tipe",
+      "status": "Status",
+      "mappings": "Ter-mapping",
+      "price": "Harga"
+    },
+    "fields": {
+      "service_type": "Tipe layanan"
+    },
+    "actions": {
+      "add": "Tambah layanan",
+      "edit": "Edit layanan"
+    },
+    "type_picker": {
+      "title": "Pilih Tipe Layanan",
+      "subtitle": "Pilih kategori layanan dulu, lalu lanjut ke form detail layanan.",
+      "continue": "Lanjut",
+      "change": "Ubah tipe",
+      "add_as_feature": "Tambahkan sebagai fitur",
+      "internet_subtitle": "Layanan internet tetap dengan provisioning PPPoE dan opsi mapping profil router.",
+      "hotspot_subtitle": "Layanan voucher atau captive portal untuk akses wireless publik/bersama.",
+      "vpn_subtitle": "Layanan tunnel aman untuk cabang, tim remote, atau akses private khusus.",
+      "tag_provisioning": "Provisioning",
+      "tag_mapping": "Mapping router",
+      "tag_shared_access": "Akses bersama",
+      "tag_portal_ready": "Siap portal",
+      "tag_secure_tunnel": "Tunnel aman",
+      "tag_private_access": "Akses private"
+    },
+    "types": {
+      "internet_pppoe": "Internet / PPPoE",
+      "hotspot": "Hotspot",
+      "vpn": "VPN"
+    },
+    "mapping": {
+      "only_internet": "Mapping router hanya tersedia untuk layanan Internet / PPPoE.",
+      "not_required": "Mapping profil PPP router tidak diperlukan untuk tipe layanan ini."
+    },
+    "toasts": {
+      "created": "Layanan dibuat",
+      "updated": "Layanan diperbarui"
+    }
+  },
+  "network": {
+    "import_center": {
+      "title": "Import Network",
+      "subtitle": "Pusat import data jaringan dari MixRadius dan source lain yang bisa ditambahkan nanti.",
+      "panel_title": "Import aman untuk lifecycle ISP",
+      "panel_description": "Setiap source diproses lewat staging, mapping, preview, dan eksekusi agar paket, pelanggan, langganan, billing, dan akun PPPoE tetap konsisten.",
+      "sources_count": "Source tersedia",
+      "lifecycle_count": "Area lifecycle terjaga",
+      "sources_title": "Pilih source import",
+      "sources_subtitle": "Mulai dari MixRadius, lalu area ini bisa diperluas untuk Radbox atau sistem RADIUS lain.",
+      "open_wizard": "Buka wizard",
+      "status": {
+        "ready": "Siap",
+        "coming_soon": "Segera hadir"
+      }
+    },
+    "packages": {
+      "title": "Paket",
+      "subtitle": "Buat paket internet dan map ke profil PPP router (per-router).",
+      "search": "Cari paket...",
+      "empty": "Belum ada paket.",
+      "confirm_delete": "Hapus paket ini?",
+      "columns": {
+        "name": "Nama",
+        "status": "Status",
+        "mappings": "Ter-mapping",
+        "price": "Harga"
+      },
+      "fields": {
+        "name": "Nama",
+        "description": "Deskripsi",
+        "features": "Fitur",
+        "feature_placeholder": "Tambah fitur lalu tekan Enter",
+        "features_empty": "Belum ada fitur.",
+        "active": "Aktif",
+        "active_hint": "Paket nonaktif akan disembunyikan dari pilihan.",
+        "price_monthly": "Harga per bulan",
+        "price_hint": "Disimpan dalam mata uang dasar; akan ditampilkan dalam mata uang tenant bila memungkinkan.",
+        "price_yearly": "Harga per tahun",
+        "enable_yearly": "Aktifkan harga tahunan",
+        "enable_yearly_hint": "Nyalakan jika paket ini punya tagihan tahunan.",
+        "currency_active": "Mata uang aktif",
+        "currency_base": "Mata uang dasar"
+      },
+      "mapping": {
+        "title": "Mapping Router",
+        "package": "Paket",
+        "router": "Router",
+        "profile": "Profil PPP Router",
+        "pool": "IP Pool (opsional)",
+        "profile_empty": "Belum ada profil PPP aktif untuk router ini. Sinkronkan PPP profile terlebih dahulu.",
+        "pool_empty": "Belum ada IP pool aktif untuk router ini. Sinkronkan IP pool terlebih dahulu.",
+        "inline_title": "Mapping ke router sekarang",
+        "inline_hint": "Opsional: isi otomatis profile/pool router untuk paket ini (per-router)."
+      },
+      "actions": {
+        "add": "Tambah paket",
+        "edit": "Edit paket",
+        "map": "Map ke router",
+        "add_feature": "Tambah fitur"
+      },
+      "tabs": {
+        "details": "Detail",
+        "features": "Fitur"
+      },
+      "toasts": {
+        "created": "Paket dibuat",
+        "updated": "Paket diperbarui",
+        "mapping_saved": "Mapping tersimpan"
+      },
+      "validation": {
+        "monthly_required": "Harga bulanan wajib diisi dan harus lebih dari 0.",
+        "yearly_required": "Harga tahunan harus lebih dari 0 saat diaktifkan."
+      }
+    },
+    "pppoe": {
+      "title": "PPPoE",
+      "subtitle": "Tampilan tenant untuk akun PPPoE di semua router.",
+      "auto_apply_on": "Auto-apply AKTIF",
+      "auto_apply_edits_on": "Auto-apply edit AKTIF",
+      "search": "Cari PPPoE...",
+      "empty": "Tidak ada akun PPPoE.",
+      "import": {
+        "cta": "Import",
+        "title": "Import PPPoE dari MikroTik",
+        "subtitle": "Scan /ppp/secret dan import akun terpilih ke database (per-router).",
+        "search": "Cari username...",
+        "done": "Import selesai",
+        "labels": {
+          "new": "Baru",
+          "update": "Perbarui",
+          "same": "Sama",
+          "enabled": "Aktif",
+          "disabled": "Nonaktif"
+        },
+        "result": {
+          "created": "Dibuat",
+          "updated": "Diperbarui",
+          "skipped": "Dilewati",
+          "missing_password": "Password tidak tersedia"
+        },
+        "errors": {
+          "select_router": "Pilih router",
+          "permission": "Tidak punya izin",
+          "select_one": "Pilih minimal satu item",
+          "customer_location_pair": "Pilih pelanggan dan lokasi sekaligus, atau kosongkan keduanya."
+        },
+        "steps": {
+          "select": "Pilih",
+          "preview": "Preview",
+          "import": "Import"
+        },
+        "fields": {
+          "source": "Sumber",
+          "include_disabled": "Sertakan yang nonaktif",
+          "include_disabled_hint": "Ikut scan secret yang statusnya disabled di router.",
+          "customer_optional": "Tetapkan ke pelanggan (opsional)",
+          "location_optional": "Lokasi (opsional)",
+          "location_hint": "Jika pilih pelanggan, wajib pilih lokasi juga.",
+          "unassigned": "Belum ditetapkan"
+        },
+        "actions": {
+          "scan": "Scan secret",
+          "select_new_update": "Pilih baru+update",
+          "import": "Import terpilih",
+          "import_more": "Import lagi",
+          "go_to_list": "Ke daftar PPPoE"
+        },
+        "columns": {
+          "password": "Password"
+        },
+        "summary": {
+          "items": "item"
+        }
+      },
+      "stats": {
+        "total": "Total",
+        "present": "Sudah diprovisikan",
+        "missing": "Belum diprovisikan",
+        "disabled": "Nonaktif"
+      },
+      "fields": {
+        "source": "Sumber akun"
+      },
+      "filters": {
+        "all": "Semua",
+        "router": "Router",
+        "sync": "Sinkron",
+        "provisioning": "Provisioning",
+        "disabled": "Status",
+        "any": "Semua",
+        "present": "Sudah diprovisikan",
+        "missing": "Belum diprovisikan",
+        "enabled": "Aktif",
+        "disabled_only": "Nonaktif"
+      },
+      "columns": {
+        "username": "Username",
+        "customer": "Pelanggan",
+        "router": "Router",
+        "source": "Sumber",
+        "provisioning": "Provisioning",
+        "sync": "Sinkron"
+      },
+      "sources": {
+        "router": "Secret router",
+        "managed_radius": "Managed RADIUS"
+      },
+      "provisioning": {
+        "draft": "Draft",
+        "applied": "Applied",
+        "failed": "Gagal",
+        "retrying": "Mencoba ulang"
+      },
+      "sync": {
+        "present": "Ada di router",
+        "missing": "Tidak ada",
+        "present_radius": "Ada di RADIUS",
+        "missing_radius": "Tidak ada di RADIUS"
+      },
+      "actions": {
+        "reconcile": "Sinkronkan",
+        "open_customer": "Buka pelanggan",
+        "open_customer_billing": "Buka billing pelanggan",
+        "apply": "Terapkan ke router",
+        "apply_radius": "Terapkan ke RADIUS",
+        "create_apply": "Buat & terapkan ke router",
+        "create_apply_radius": "Buat & terapkan ke RADIUS",
+        "retry_apply_batch": "Ulang apply"
+      },
+      "form": {
+        "package_hint": "Pilih paket untuk mengatur profile PPP dan addressing sesuai router yang dipilih.",
+        "assignment_title": "Assignment dari paket",
+        "assignment_hint": "PPP profile dan addressing akan mengikuti paket yang dipilih untuk router ini.",
+        "package_mapping_missing": "Paket ini belum punya mapping router. Nilai akun yang sudah ada akan tetap dipakai sampai mapping ditambahkan.",
+        "disabled_hint": "Nonaktifkan akun PPPoE ini (akan diterapkan ke router saat Anda klik Terapkan).",
+        "source_radius_hint": "Akun ini akan diprovisikan ke managed RADIUS dan membutuhkan konfigurasi managed RADIUS server serta NAS mapping untuk router yang dipilih.",
+        "source_router_hint": "Akun ini akan diprovisikan ke tabel PPP secret lokal di router.",
+        "disabled_hint_radius": "Untuk managed RADIUS, ini menonaktifkan autentikasi terpusat untuk akun tersebut.",
+        "disabled_hint_radius_apply": "Nonaktifkan akun PPPoE ini di managed RADIUS saat Anda klik Terapkan ke RADIUS."
+      },
+      "toasts": {
+        "applied": "Berhasil diterapkan ke router",
+        "applied_radius": "Berhasil diterapkan ke RADIUS",
+        "apply_failed": "Gagal menerapkan akun PPPoE: {message}",
+        "created_applied": "Akun PPPoE berhasil dibuat dan diterapkan ke router",
+        "created_applied_radius": "Akun PPPoE berhasil dibuat dan diterapkan ke RADIUS",
+        "auto_applied": "Berhasil disimpan dan diterapkan otomatis ke router",
+        "auto_applied_radius": "Berhasil disimpan dan diterapkan otomatis ke RADIUS",
+        "auto_apply_failed": "Data tersimpan, tetapi auto-apply gagal: {message}",
+        "retry_batch_ok": "{count} akun berhasil diterapkan",
+        "retry_batch_fail": "{count} akun gagal diterapkan",
+        "reconciled": "Berhasil sinkron dengan router",
+        "reconcile_failed": "Gagal sinkron dengan router: {message}"
+      }
+    },
+    "routers": {
+      "title": "Router",
+      "subtitle": "Kelola router MikroTik dan monitoring",
+      "search": "Cari router...",
+      "empty": "Belum ada router",
+      "actions": {
+        "add": "Tambah Router",
+        "edit": "Edit",
+        "delete": "Hapus",
+        "test": "Test Koneksi",
+        "open": "Buka",
+        "refresh": "Refresh"
+      },
+      "columns": {
+        "name": "Nama",
+        "host": "Host",
+        "status": "Status",
+        "latency": "Latensi",
+        "seen": "Terakhir Terlihat",
+        "actions": "Aksi"
+      },
+      "tabs": {
+        "traffic": "Trafik",
+        "ppp_profiles": "Profil PPP",
+        "ip_pools": "Pool IP"
+      },
+      "managed_radius": {
+        "title": "Setup RADIUS",
+        "subtitle": "Salin CLI MikroTik untuk autentikasi PPP",
+        "trigger": {
+          "label": "Managed RADIUS"
+        },
+        "labels": {
+          "server": "Server",
+          "host": "Host RADIUS",
+          "ports": "Port",
+          "nas_source": "Sumber NAS",
+          "shared_secret": "Shared secret"
+        },
+        "actions": {
+          "assign_default": "Assign Default RADIUS",
+          "create_mapping": "Buat NAS Mapping",
+          "show_secret": "Tampilkan secret",
+          "hide_secret": "Sembunyikan secret",
+          "copy_secret": "Salin secret",
+          "copy_cli": "Salin CLI"
+        },
+        "toasts": {
+          "cli_copied": "CLI RADIUS berhasil disalin",
+          "secret_copied": "Shared secret berhasil disalin",
+          "default_assigned": "Default Managed RADIUS berhasil di-assign",
+          "mapping_created": "NAS mapping Managed RADIUS berhasil dibuat"
+        },
+        "default_ready": "Server default Managed RADIUS tersedia. Assign ke tenant ini untuk melanjutkan onboarding router.",
+        "assignment_only": "Assignment Managed RADIUS sudah aktif untuk tenant ini, tetapi router ini masih memerlukan NAS mapping sebelum CLI setup bisa dibuat.",
+        "assignment_only_hint": "Gunakan tombol di atas untuk membuat NAS mapping otomatis dari data router ini.",
+        "upgrade": {
+          "title": "Plan Anda belum mendukung Managed RADIUS",
+          "body": "Upgrade langganan untuk membuka onboarding RADIUS terpusat dan setup CLI MikroTik untuk router ini.",
+          "cta": "Upgrade plan"
+        },
+        "empty": "Managed RADIUS belum dikonfigurasi untuk router ini. Saat ini router masih dapat memakai PPP secret lokal MikroTik."
+      },
+      "badges": {
+        "online": "Online",
+        "offline": "Offline",
+        "unknown": "Unknown",
+        "maintenance": "Maintenance"
+      },
+      "ppp_profiles": {
+        "title": "Profil PPP",
+        "subtitle": "Profil PPP RouterOS per-router (disinkronkan ke database untuk mapping & import).",
+        "search": "Cari profil...",
+        "empty": "Belum ada profil.",
+        "actions": {
+          "sync": "Sinkron dari router",
+          "add": "Tambah profil",
+          "edit": "Ubah",
+          "delete": "Hapus"
+        },
+        "columns": {
+          "name": "Nama",
+          "local": "Local",
+          "remote": "Remote",
+          "rate": "Rate",
+          "dns": "DNS",
+          "only_one": "Satu sesi",
+          "state": "Status",
+          "synced": "Sinkron"
+        },
+        "state": {
+          "present": "Ada di router",
+          "missing": "Tidak ada"
+        },
+        "form": {
+          "create_title": "Tambah Profil PPP",
+          "edit_title": "Ubah Profil PPP",
+          "create_action": "Buat profil",
+          "router_required": "Pilih router terlebih dahulu",
+          "name_required": "Nama profil wajib diisi",
+          "comment": "Komentar",
+          "no_remote_pool": "Tanpa remote pool",
+          "only_one": "Izinkan hanya satu sesi"
+        },
+        "delete": {
+          "title": "Hapus Profil PPP",
+          "confirm": "Hapus profil PPP {name} dari router?",
+          "blocked": "Tidak bisa menghapus {name}. Profil ini masih dipakai oleh {count} data."
+        },
+        "toasts": {
+          "synced": "Profil PPP berhasil disinkron",
+          "created": "Profil PPP berhasil dibuat",
+          "updated": "Profil PPP berhasil diperbarui",
+          "deleted": "Profil PPP berhasil dihapus",
+          "stale_deleted_sync": "Profil PPP ini ternyata sudah hilang di router. Daftar sudah saya segarkan."
+        }
+      },
+      "ip_pools": {
+        "title": "Pool IP",
+        "subtitle": "IP pool RouterOS per-router (dipakai untuk mapping PPPoE remote-address).",
+        "search": "Cari pool...",
+        "empty": "Belum ada IP pool.",
+        "actions": {
+          "sync": "Sinkron dari router",
+          "add": "Tambah pool",
+          "edit": "Ubah",
+          "delete": "Hapus"
+        },
+        "columns": {
+          "name": "Nama",
+          "ranges": "Range",
+          "next": "Pool berikutnya",
+          "state": "Status",
+          "synced": "Sinkron"
+        },
+        "state": {
+          "present": "Ada di router",
+          "missing": "Tidak ada"
+        },
+        "form": {
+          "create_title": "Tambah Pool IP",
+          "edit_title": "Ubah Pool IP",
+          "router_required": "Pilih router terlebih dahulu",
+          "name_required": "Nama pool wajib diisi",
+          "comment": "Komentar",
+          "router_note": "Perubahan akan diterapkan langsung ke router yang dipilih sebelum mirror lokal diperbarui.",
+          "no_next_pool": "Tanpa next pool",
+          "next_pool_manual": "Isi next pool manual",
+          "next_pool_manual_label": "Next pool manual"
+        },
+        "delete": {
+          "title": "Hapus Pool IP",
+          "confirm": "Hapus pool IP {name} dari router?",
+          "warning": "Hapus pool IP {name} dari router? Peringatan: masih ada {count} data internal yang mereferensikan pool ini.",
+          "confirm_warning": "Hapus dengan peringatan"
+        },
+        "toasts": {
+          "synced": "IP pool berhasil disinkron",
+          "created": "IP pool berhasil dibuat",
+          "updated": "IP pool berhasil diperbarui",
+          "deleted": "IP pool berhasil dihapus",
+          "deleted_with_warning": "IP pool {name} tetap dihapus dengan {count} referensi peringatan.",
+          "stale_deleted_sync": "IP pool ini ternyata sudah hilang di router. Daftar sudah saya segarkan."
+        }
+      },
+      "traffic": {
+        "watch": "Pantau Interface",
+        "realtime": "Trafik Realtime",
+        "search": "Cari interface...",
+        "empty": "Pilih satu atau lebih interface untuk dipantau.",
+        "max_watch": "Maksimal 6 interface."
+      },
+      "form": {
+        "name": "Nama",
+        "host": "Host",
+        "port": "Port",
+        "username": "Username",
+        "password": "Password",
+        "enabled": "Aktif",
+        "maintenance": "Maintenance (mute alert)",
+        "maintenance_until": "Maintenance sampai",
+        "maintenance_reason": "Alasan (opsional)"
+      },
+      "toasts": {
+        "created": "Router berhasil dibuat",
+        "updated": "Router berhasil diperbarui",
+        "deleted": "Router berhasil dihapus"
+      }
+    },
+    "wallboard": {
+      "kicker": "WALLBOARD",
+      "title": "Network Wallboard",
+      "subtitle": "Tampilan NOC live yang nyaman untuk ditayangkan 24/7.",
+      "search": "Cari router...",
+      "empty": "Tidak ada router yang sesuai filter.",
+      "poll": "Polling",
+      "kiosk": "Kiosk",
+      "fullscreen": "Layar penuh",
+      "exit_fullscreen": "Keluar layar penuh",
+      "keep_awake": "Jaga layar aktif",
+      "fit": "Pas",
+      "pause": "Jeda",
+      "resume": "Lanjut",
+      "sound_on": "Suara Aktif",
+      "sound_off": "Suara Mati",
+      "sound_toggle": "Aktif/nonaktif suara alert kritis",
+      "insights": "Ringkasan",
+      "settings": "Pengaturan",
+      "stale": "Tertunda",
+      "poll_error": "Error polling",
+      "alerts_ack_visible": "Ack terlihat",
+      "maintenance": "Maintenance",
+      "unmute": "Buka mute",
+      "unmuted": "Maintenance dibersihkan",
+      "drag": "Geser untuk urutkan",
+      "show_controls": "Tampilkan kontrol",
+      "exit": "Keluar wallboard",
+      "last_seen": "Terakhir terlihat",
+      "watch": "Pantau",
+      "view": "Lihat",
+      "watch_select": "Pilih",
+      "watch_search": "Cari interface...",
+      "watch_selected": "terpilih",
+      "watch_loading": "Memuat interface...",
+      "watch_none": "Tidak ada interface.",
+      "interface_state": {
+        "disabled": "nonaktif",
+        "up": "aktif",
+        "down": "down"
+      },
+      "watch_max": "Maks 8 interface per router.",
+      "watch_placeholder": "ether1, ether2, ether3",
+      "watch_hint": "Pisahkan dengan koma. Maks 8 per router.",
+      "auto_fill": "Isi otomatis",
+      "add_tile": "Tambah tile interface",
+      "add_tile_sub": "Pilih router + interface",
+      "pick_tile": "Tambah tile interface",
+      "edit_tile": "Edit tile interface",
+      "pick_router": "Pilih router",
+      "pick_search": "Cari router...",
+      "pick_interface": "Interface",
+      "pick_interface_hint": "Pilih router terlebih dahulu.",
+      "pick_interface_search": "Cari interface...",
+      "full_kicker": "TAMPILAN INTERFACE",
+      "tile_settings": "Pengaturan tile",
+      "warn_below_rx": "Peringatan jika RX di bawah",
+      "warn_below_tx": "Peringatan jika TX di bawah",
+      "alerts_open": "Peringatan aktif",
+      "ack_router_alerts": "Tandai peringatan router",
+      "focus_mode": "Mode fokus",
+      "focus_mode_hint": "Aktif/nonaktif mode fokus (F)",
+      "pager": {
+        "aria": "Halaman",
+        "prev": "Halaman sebelumnya",
+        "next": "Halaman berikutnya"
+      },
+      "tabs": {
+        "live": "Live",
+        "metrics": "Metrik"
+      },
+      "summary": {
+        "status": "Status",
+        "online": "ONLINE",
+        "offline": "OFFLINE",
+        "rx_now": "RX Saat Ini",
+        "tx_now": "TX Saat Ini",
+        "samples": "Sampel"
+      },
+      "thresholds": {
+        "title": "Threshold",
+        "change_interface": "Ganti interface",
+        "current_rx": "Threshold RX Saat Ini",
+        "current_tx": "Threshold TX Saat Ini",
+        "not_set": "Belum diatur",
+        "hint": "Kosongkan untuk menonaktifkan peringatan."
+      },
+      "chart": {
+        "peak": "Puncak RX",
+        "avg": "Rata-rata RX",
+        "peak_tx": "Puncak TX",
+        "avg_tx": "Rata-rata TX"
+      },
+      "slo": {
+        "availability": "Ketersediaan",
+        "routers_online": "Router Online",
+        "critical": "Alert Kritis",
+        "warning": "Alert Peringatan",
+        "avg_latency": "Rata-rata Latensi"
+      },
+      "top_issues": {
+        "title": "Masalah Teratas (1j)",
+        "subtitle": "Masalah aktif paling sering muncul",
+        "empty": "Tidak ada masalah berulang dalam 1 jam terakhir.",
+        "mute_30m": "Mute 30m",
+        "mute_for": "Durasi mute",
+        "apply_mute": "Mute"
+      },
+      "incidents": {
+        "title": "Insiden Aktif",
+        "subtitle": "Insiden aktif terbaru dari mesin monitoring",
+        "empty": "Tidak ada insiden aktif."
+      },
+      "timeline": {
+        "title": "Timeline Insiden",
+        "subtitle": "20 event wallboard terbaru",
+        "empty": "Belum ada event terbaru."
+      },
+      "trend": {
+        "up": "Naik",
+        "down": "Turun",
+        "stable": "Stabil"
+      },
+      "metrics_agg_label": "Agregasi",
+      "metrics_agg_title": "Level agregasi yang dipakai untuk rentang ini",
+      "metrics_points": "titik",
+      "metrics": {
+        "range": "Rentang",
+        "range_24h": "24 Jam Terakhir",
+        "range_7d": "7 Hari Terakhir",
+        "range_30d": "30 Hari Terakhir",
+        "range_month": "Bulan Ini",
+        "range_custom": "Kustom",
+        "export_csv": "Ekspor CSV",
+        "export_empty": "Tidak ada data metrik untuk diekspor.",
+        "reset_zoom": "Reset Zoom",
+        "zoomed": "Diperbesar",
+        "zoom_area": "Area zoom chart metrik",
+        "peak_marker": "Puncak",
+        "historical": "Metrik Historis",
+        "empty_range": "Belum ada metrik historis untuk rentang tanggal terpilih."
+      },
+      "metrics_agg": {
+        "detail": "Detail",
+        "hourly": "Rata-rata per Jam",
+        "daily": "Rata-rata per Hari"
+      },
+      "metrics_agg_hint": {
+        "detail": "tanpa ringkasan",
+        "hourly": "diringkas per jam",
+        "daily": "diringkas per hari"
+      },
+      "layouts": {
+        "2x2": "Layout 2x2",
+        "3x2": "Layout 3x2",
+        "3x3": "Layout 3x3",
+        "4x3": "Layout 4x3",
+        "4x4": "Layout 4x4",
+        "5x4": "Layout 5x4",
+        "6x4": "Layout 6x4"
+      },
+      "filters": {
+        "all": "Semua",
+        "online": "Online",
+        "offline": "Offline"
+      },
+      "controls": {
+        "filter": "Filter",
+        "layout": "Layout",
+        "pager": "Pager",
+        "manual": "Manual",
+        "auto_rotate": "Putar otomatis",
+        "rotate_every": "Interval",
+        "open": "Buka pengaturan",
+        "title": "Pengaturan Wallboard"
+      }
+    },
+    "noc": {
+      "title": "Network NOC",
+      "subtitle": "Tampilan operasional cepat untuk semua router: status, kesehatan, dan trafik.",
+      "search": "Cari router...",
+      "empty": "Belum ada router",
+      "stats": {
+        "total": "Total",
+        "online": "Online",
+        "offline": "Offline",
+        "hot": "Hot"
+      },
+      "tooltips": {
+        "status_all": "Tampilkan semua router",
+        "status_online": "Tampilkan router yang sedang bisa diakses",
+        "status_offline": "Tampilkan router yang sedang tidak bisa diakses",
+        "risk_any": "Tanpa filter risiko tambahan",
+        "risk_hot": "Perlu perhatian: offline, CPU sangat tinggi, atau latensi sangat tinggi",
+        "risk_latency": "Tampilkan router dengan latensi tinggi",
+        "risk_cpu": "Tampilkan router dengan beban CPU tinggi"
+      },
+      "filters": {
+        "status": "Status",
+        "risk": "Risiko",
+        "sort": "Urutkan",
+        "any": "Semua",
+        "online": "Online",
+        "offline": "Offline",
+        "hot": "Hot",
+        "latency": "Latensi",
+        "cpu": "CPU",
+        "sort_health_desc": "Risiko kesehatan (tertinggi)",
+        "sort_last_seen_desc": "Terakhir terlihat (terbaru)",
+        "sort_latency_desc": "Latensi (tertinggi)",
+        "sort_cpu_desc": "CPU (tertinggi)",
+        "reset": "Reset"
+      },
+      "columns": {
+        "router": "Router",
+        "status": "Status",
+        "health": "Kesehatan",
+        "traffic": "Trafik",
+        "latency": "Latensi",
+        "seen": "Terakhir Terlihat"
+      }
+    },
+    "map": {
+      "title": "Peta Topologi Jaringan",
+      "subtitle": "Visualisasi node, link, dan zona layanan pada viewport saat ini.",
+      "back_to_noc": "Kembali ke NOC",
+      "back_to_installation": "Kembali ke Instalasi",
+      "bbox": "BBox viewport",
+      "workspace": {
+        "kicker": "Workspace topologi",
+        "title": "Pantau jaringan dulu, baru lakukan perubahan",
+        "copy": "Mulai dari peta, lihat sinyal topologi yang aktif, lalu masuk ke customer, service, dan jalur yang berisiko.",
+        "subtitle": "Visualisasikan node, link, zona layanan, dan konteks operasional dari viewport saat ini.",
+        "freshness_not_loaded": "Data viewport belum dimuat.",
+        "freshness_cache": "Data viewport dipulihkan dari cache {age}.",
+        "freshness_live": "Data viewport diperbarui {age}.",
+        "router_overlay_unavailable": "Overlay router tidak tersedia untuk role ini.",
+        "router_overlay_empty": "Overlay router aktif, tetapi belum ada marker router di viewport ini.",
+        "customer_context_limited": "Konteks customer dan pekerjaan lapangan terbatas untuk role ini."
+      },
+      "insight": {
+        "empty": "Belum ada insight untuk viewport ini.",
+        "scope_viewport": "Viewport saat ini"
+      },
+      "search": {
+        "kicker": "Pencarian terpadu",
+        "title": "Lompat ke asset, service, atau customer yang sudah dipetakan",
+        "hint": "Cari infrastruktur, endpoint customer, service, zona, dan inventory router dari satu tempat.",
+        "placeholder": "Cari customer, service, node, link, zona, atau router...",
+        "empty_title": "Hasil tidak ditemukan",
+        "empty_hint": "Coba kata kunci lain atau ganti quick mode agar cakupan hasil lebih luas.",
+        "summary_idle": "{count} aset termuat di workspace ini",
+        "summary_results": "{count} hasil cocok di {groups} kelompok"
+      },
+      "quick_modes": {
+        "kicker": "Quick mode",
+        "title": "Ganti fokus workspace dalam satu klik",
+        "hint": "Setiap mode mengubah prioritas utama di sesi map saat ini.",
+        "all": "Semua",
+        "all_hint": "Workspace seimbang untuk seluruh data yang dimuat",
+        "issues": "Gangguan",
+        "issues_hint": "Fokus ke link degradasi, zona berisiko, dan node tidak stabil",
+        "customers": "Customer",
+        "customers_hint": "Periksa endpoint customer dan penempatan last-mile",
+        "services": "Service",
+        "services_hint": "Lacak node service yang dipetakan dan konteks aktivasinya",
+        "topology": "Topologi",
+        "topology_hint": "Tampilkan graph infrastruktur dan overlay router",
+        "field": "Lapangan",
+        "field_hint": "Prioritaskan service terdampak dan aset yang relevan untuk teknisi"
+      },
+      "stats": {
+        "nodes": "Node",
+        "links": "Link",
+        "zones": "Zona"
+      },
+      "layers": {
+        "title": "Visibilitas layer",
+        "subtitle": "Atur elemen yang tetap tampil di peta saat menelusuri jalur dan customer.",
+        "nodes": "Node",
+        "links": "Link",
+        "zones": "Zona",
+        "routers": "Router",
+        "customers": "Customer"
+      },
+      "floating": {
+        "title": "Kontrol peta",
+        "subtitle": "Atur layer, ganti tampilan, dan masuk ke mode investigasi dengan cepat.",
+        "subtitle_manage": "Ringkasan seimbang dengan alat kelola tetap dekat.",
+        "subtitle_noc": "Pelacakan gangguan diprioritaskan untuk role ini.",
+        "subtitle_technician": "Investigasi lapangan dan service diprioritaskan untuk role ini.",
+        "subtitle_viewer": "Atur peta sesuai investigasi saat ini.",
+        "layers": "Layer",
+        "view": "Tampilan",
+        "tools": "Alat telusur",
+        "manage": "Kelola",
+        "service_mode": "Mode service",
+        "trace_mode": "Mode trace",
+        "clear_mode": "Bersihkan",
+        "open_nodes": "Kelola node",
+        "open_links": "Kelola link",
+        "open_zones": "Kelola zona",
+        "open_bindings": "Kelola binding",
+        "add_node": "Tambah node",
+        "add_link": "Tambah link",
+        "add_zone": "Tambah zona"
+      },
+      "manage": {
+        "title": "Workspace editor topologi",
+        "subtitle": "Aktivitas edit dipisahkan ke workspace sendiri agar monitoring dan investigasi tetap fokus."
+      },
+      "inspector": {
+        "title": "Inspector cerdas",
+        "default_kicker": "Workspace",
+        "selected_kicker": "Pilihan",
+        "investigation_kicker": "Investigasi",
+        "collapse": "Ciutkan inspector",
+        "expand": "Buka inspector",
+        "clear": "Bersihkan",
+        "no_selection": "Belum ada objek terpilih. Gunakan map, aksi popup, atau pencarian di atas.",
+        "workspace_title": "Workspace topologi",
+        "workspace_subtitle": "Pilih aset di peta atau gunakan pencarian untuk melihat konteks service, customer, dan topologi.",
+        "live_summary": "Ringkasan langsung",
+        "data_readiness": "Kesiapan data",
+        "role_focus": "Fokus role",
+        "role_manage": "Tampilan berizin kelola: tetap di overview dulu, lalu buka editor topologi saat diperlukan.",
+        "role_noc": "Tampilan NOC: pelacakan jalur tidak stabil dan link degradasi diprioritaskan.",
+        "role_technician": "Tampilan lapangan: service terdampak dan endpoint customer diprioritaskan.",
+        "role_viewer": "Tampilan monitoring: inspeksi topologi dulu sebelum mengambil tindakan.",
+        "noc_available": "Konteks NOC tersedia untuk pelacakan gangguan.",
+        "noc_limited": "Pelacakan NOC terbatas untuk role ini."
+      },
+      "view": {
+        "label": "Tampilan",
+        "standard": "Standar",
+        "satellite": "Satelit"
+      },
+      "location": {
+        "show": "Lokasi Saya",
+        "hide": "Sembunyikan Lokasi Saya"
+      },
+      "filters": {
+        "search": "Filter data",
+        "search_placeholder": "Filter data yang termuat berdasarkan node/link/zona...",
+        "status": "Status",
+        "kind": "Tipe",
+        "any_status": "Semua status",
+        "any_kind": "Semua tipe",
+        "actions": "Aksi"
+      }
+    },
+    "alerts": {
+      "title": "Alert Router",
+      "subtitle": "Insiden terdeteksi dari polling router.",
+      "search": "Cari alert...",
+      "empty": "Tidak ada alert",
+      "actions": {
+        "toggle": "Tampilkan aktif/selesai",
+        "active": "Aktif",
+        "all": "Semua",
+        "ack": "Acknowledgement",
+        "resolve": "Selesaikan",
+        "snooze_30m": "Tunda 30m"
+      },
+      "columns": {
+        "alert": "Alert",
+        "type": "Tipe",
+        "severity": "Severity",
+        "status": "Status",
+        "seen": "Terakhir Terlihat"
+      },
+      "types": {
+        "offline": "Offline",
+        "cpu": "CPU",
+        "latency": "Latensi"
+      },
+      "severity": {
+        "info": "Info",
+        "warning": "Peringatan",
+        "critical": "Kritis"
+      },
+      "toasts": {
+        "acked": "Alert di-acknowledge",
+        "resolved": "Alert diselesaikan",
+        "snoozed": "Router dimute"
+      },
+      "filters": {
+        "all_status": "Semua status",
+        "all_severity": "Semua severity",
+        "all_types": "Semua tipe",
+        "sort": "Urutkan",
+        "sort_last_seen_desc": "Terakhir terlihat (terbaru)",
+        "sort_last_seen_asc": "Terakhir terlihat (terlama)",
+        "sort_severity_desc": "Severity (tertinggi)",
+        "from": "Dari",
+        "to": "Sampai",
+        "reset": "Reset"
+      }
+    },
+    "incidents": {
+      "title": "Insiden Jaringan",
+      "subtitle": "Catatan insiden operasional hasil deduplikasi dari alert.",
+      "search": "Cari insiden...",
+      "empty": "Tidak ada insiden",
+      "actions": {
+        "toggle": "Tampilkan aktif/selesai",
+        "active": "Aktif",
+        "all": "Semua",
+        "simulate": "Simulasi",
+        "run_auto_escalation": "Jalankan Auto Eskalasi"
+      },
+      "labels": {
+        "auto_escalated": "Auto Eskalasi"
+      },
+      "toasts": {
+        "auto_escalation_done": "{count} insiden berhasil dieskalasi"
+      },
+      "simulate": {
+        "subtitle": "Buat insiden uji secara manual",
+        "router": "Router",
+        "type": "Tipe insiden",
+        "severity": "Severity",
+        "interface": "Interface (opsional)",
+        "message": "Pesan (opsional)",
+        "message_placeholder": "Pesan simulasi opsional",
+        "select_router": "Pilih router terlebih dahulu",
+        "created": "Insiden simulasi berhasil dibuat"
+      },
+      "export": {
+        "title": "Ekspor",
+        "csv": "Ekspor CSV",
+        "excel": "Ekspor Excel",
+        "empty": "Tidak ada data untuk diekspor"
+      },
+      "columns": {
+        "incident": "Insiden",
+        "type": "Tipe",
+        "severity": "Severity",
+        "status": "Status",
+        "seen": "Terakhir Terlihat"
+      },
+      "filters": {
+        "assignee": "Penanggung Jawab",
+        "all_assignees": "Semua penanggung jawab",
+        "unassigned": "Belum ditugaskan",
+        "all_status": "Semua status",
+        "all_severity": "Semua severity",
+        "all_types": "Semua tipe",
+        "sort": "Urutkan",
+        "sort_last_seen_desc": "Terakhir terlihat (terbaru)",
+        "sort_last_seen_asc": "Terakhir terlihat (terlama)",
+        "sort_severity_desc": "Severity (tertinggi)",
+        "sort_open_duration_desc": "Durasi terbuka (terlama)",
+        "from": "Dari",
+        "to": "Sampai",
+        "reset": "Reset"
+      },
+      "bulk": {
+        "select_filtered": "Pilih hasil filter",
+        "selected": "{count} dipilih",
+        "ack": "Ack Massal",
+        "resolve": "Resolve Massal",
+        "assign": "Assign Massal",
+        "assign_placeholder": "Assign ke...",
+        "clear": "Bersihkan"
+      },
+      "analytics": {
+        "open": "Open",
+        "ack": "Ack",
+        "in_progress": "Dalam Proses",
+        "resolved": "Resolved",
+        "mtta": "MTTA",
+        "mttr": "MTTR",
+        "top_type_24h": "Tipe Teratas (24j)"
+      },
+      "impact": {
+        "title": "Pelanggan Terdampak",
+        "empty": "Tidak ada pelanggan terdampak dari topologi yang dipetakan."
+      },
+      "activity": {
+        "title": "Timeline Aktivitas",
+        "first_seen": "Pertama terdeteksi",
+        "acked": "Di-acknowledge",
+        "assigned": "Ditugaskan",
+        "auto_escalated": "Dieskalasi otomatis menjadi kritis",
+        "notes_updated": "Catatan diperbarui",
+        "resolved": "Diselesaikan",
+        "last_seen": "Terakhir terlihat"
+      },
+      "runbook": {
+        "title": "Langkah Tindak Lanjut",
+        "subtitle": "Checklist operator berdasarkan tipe insiden.",
+        "copied": "Command berhasil disalin",
+        "copy_failed": "Gagal menyalin command",
+        "offline": {
+          "step1": "Verifikasi power dan link fisik",
+          "step1_desc": "Cek sumber daya perangkat, kabel, dan konektivitas upstream.",
+          "step2": "Uji keterjangkauan manajemen",
+          "step3": "Validasi service/port API"
+        },
+        "cpu": {
+          "step1": "Identifikasi penggunaan resource tertinggi",
+          "step2": "Tinjau trafik aktif/beban interface",
+          "step3": "Cek lonjakan log terbaru"
+        },
+        "latency": {
+          "step1": "Ukur packet loss dan RTT",
+          "step2": "Periksa counter interface WAN",
+          "step3": "Cek kesehatan jalur upstream",
+          "step3_desc": "Validasi uplink provider dan hop perantara."
+        },
+        "interface_down": {
+          "step1": "Verifikasi status interface",
+          "step2": "Cek counter flap/down link",
+          "step3": "Periksa transceiver/kabel",
+          "step3_desc": "Ganti kabel/SFP jika perlu lalu cek ulang status link."
+        },
+        "generic": {
+          "step1": "Kumpulkan konteks dari router",
+          "step1_desc": "Cek status terkini dan log terbaru.",
+          "step2": "Stabilkan dampak layanan",
+          "step2_desc": "Lakukan mitigasi dan monitor pemulihan."
+        }
+      },
+      "sla": {
+        "title": "Timer SLA",
+        "open_for": "Terbuka"
+      },
+      "drawer": {
+        "assignee": "Penanggung Jawab",
+        "unassigned": "Belum ditugaskan",
+        "email_notify": "Notifikasi email",
+        "on": "Aktif",
+        "off": "Nonaktif",
+        "notes": "Catatan",
+        "notes_placeholder": "Tambahkan catatan operator, konteks handover, dan tindakan...",
+        "save": "Simpan Catatan",
+        "open_network_settings": "Buka Pengaturan Network"
+      }
+    },
+    "installations": {
+      "title": "Work Order Instalasi",
+      "subtitle": "Alur teknisi dari order terbayar sampai layanan teruji, aktif sementara, lalu aktif penuh.",
+      "empty": "Belum ada work order instalasi",
+      "search": "Cari work order...",
+      "show_closed": "Tampilkan closed",
+      "hide_closed": "Sembunyikan closed",
+      "assign_required": "Pilih assignee terlebih dahulu",
+      "schedule_required": "Pilih jadwal terlebih dahulu",
+      "checklist_required": "Lengkapi semua checklist sebelum aktivasi.",
+      "plan_required": "Tentukan assignee dan jadwal sebelum memulai.",
+      "invoice_created": "Invoice berhasil dibuat",
+      "invoice_create_failed": "Gagal membuat invoice",
+      "assigned": "Work order berhasil di-assign",
+      "claim_ok": "Work order berhasil diambil",
+      "claim_fail": "Gagal mengambil work order",
+      "release_ok": "Assignee berhasil dilepas",
+      "release_fail": "Gagal melepas assignee",
+      "start_ok": "Pekerjaan instalasi dimulai",
+      "complete_ok": "Pekerjaan selesai dan status layanan diperbarui",
+      "cancel_ok": "Work order dibatalkan",
+      "reopen_ok": "Work order dibuka kembali",
+      "closed_revealed": "Work order dipindah ke daftar closed. Filter closed sekarang ditampilkan.",
+      "reschedule_pending_title": "Permintaan reschedule menunggu",
+      "reschedule_approved": "Permintaan reschedule disetujui",
+      "reschedule_rejected": "Permintaan reschedule ditolak",
+      "reschedule_reject_reason_required": "Alasan wajib diisi untuk menolak permintaan reschedule.",
+      "reschedule_decision_notes": "Catatan keputusan",
+      "override_schedule_optional": "Override jadwal (opsional)",
+      "cancel_reason_required": "Alasan pembatalan wajib diisi (minimal 10 karakter).",
+      "cancel_reason_hint": "Isi alasan pembatalan (minimal 10 karakter) di detail work order.",
+      "details_title": "Detail Instalasi",
+      "step_assign": "Assign",
+      "step_schedule": "Jadwal",
+      "step_onsite": "On-site & Tes",
+      "step_activate": "Selesai",
+      "step_assign_help": "Pilih teknisi terlebih dahulu, lalu lanjut ke jadwal.",
+      "step_take_help": "Ambil work order ini terlebih dahulu, lalu lanjut ke jadwal.",
+      "step_schedule_help": "Tentukan tanggal/waktu instalasi, lalu mulai pekerjaan.",
+      "step_onsite_help": "Selesaikan instalasi fisik, pastikan tes internet berhasil, lalu simpan bukti lapangan.",
+      "step_active_help": "Checklist lengkap. Selesaikan instalasi untuk memicu status layanan akhir.",
+      "subscription_status": "Status Layanan",
+      "status_grace_active": "Aktif Sementara",
+      "status_pending_installation": "Menunggu Instalasi",
+      "focus_kicker": "Fokus Saat Ini",
+      "focus_assign_title": "Tentukan teknisi penanggung jawab",
+      "focus_assign_hint": "Pilih siapa yang memegang kunjungan ini supaya alur berikutnya tetap di satu teknisi.",
+      "focus_schedule_title": "Kunci jadwal instalasi",
+      "focus_schedule_hint": "Tentukan waktu kunjungan yang pasti sebelum pekerjaan onsite dimulai.",
+      "focus_onsite_title": "Selesaikan tugas instalasi lapangan",
+      "focus_onsite_hint": "Kerjakan satu tugas onsite per langkah agar handover dan bukti kerja tetap rapi.",
+      "focus_test_title": "Tes akses internet pelanggan",
+      "focus_test_hint": "Gunakan nilai mapping paket secara otomatis, lalu pastikan akun benar-benar bisa terkoneksi.",
+      "focus_finish_title": "Selesaikan dan konfirmasi hasil layanan",
+      "focus_finish_hint": "Setelah selesai, layanan akan masuk aktif sementara atau aktif penuh tergantung status pembayaran.",
+      "focus_grace_title": "Layanan aktif sementara",
+      "focus_grace_hint": "Pelanggan bisa memakai layanan untuk sementara. Billing akan menangguhkan otomatis jika invoice pertama masih belum dibayar setelah deadline.",
+      "focus_done_title": "Instalasi sudah selesai",
+      "focus_done_hint": "Tidak ada aksi teknisi lagi kecuali diperlukan tindak lanjut billing atau reopen.",
+      "focus_cancelled_title": "Work order dibatalkan",
+      "focus_cancelled_hint": "Permintaan ini tetap tertutup sampai admin memutuskan untuk membuka ulang.",
+      "topology_context": "Konteks Topologi",
+      "assignment_status": "Status Assignment",
+      "selected_zone": "Zona Terpilih",
+      "selected_node": "Node Terpilih",
+      "node_score": "Skor Node",
+      "path_nodes": "Path Node",
+      "path_links": "Path Link",
+      "assignee_placeholder": "Pilih assignee",
+      "save_assign": "Simpan Assignee",
+      "save_schedule": "Simpan Jadwal",
+      "checklist": "Checklist Instalasi",
+      "no_assignable_members": "Tidak ada installer yang memenuhi syarat. Hanya Admin/Teknisi atau role dengan izin instalasi yang ditampilkan.",
+      "already_taken_by_you": "Work order ini sudah Anda ambil. Lanjut ke langkah Jadwal.",
+      "taken_by_other": "Work order ini sudah diambil teknisi lain.",
+      "notes_placeholder": "Catatan teknisi dan hasil kunjungan",
+      "final_state": "Status Akhir",
+      "final_waiting_payment": "Instalasi selesai. Menunggu konfirmasi pembayaran sebelum layanan diaktifkan.",
+      "final_grace_active": "Instalasi selesai. Layanan aktif sementara selama masa grace.",
+      "final_completed": "Instalasi sudah selesai dan layanan aktif.",
+      "grace_deadline": "Aktif sementara sampai",
+      "grace_followup": "Jika invoice pertama masih belum dibayar setelah batas ini, layanan akan ditangguhkan otomatis.",
+      "internet_test_title": "Tes Internet",
+      "internet_test_help": "Teknisi hanya mengisi username dan password. Router, profile, dan pool mengikuti mapping paket internet aktif.",
+      "internet_test_configured": "Terkonfigurasi",
+      "target_managed_radius": "Managed RADIUS",
+      "pppoe_username": "Username",
+      "pppoe_password": "Password",
+      "pppoe_comment": "Komentar",
+      "pppoe_existing": "PPPoE yang ada:",
+      "username_required": "Username wajib diisi",
+      "password_required": "Password wajib diisi",
+      "managed_radius_not_configured": "Managed RADIUS belum dikonfigurasi untuk router ini",
+      "managed_radius_load_failed": "Setup Managed RADIUS tidak bisa dimuat. Periksa izin akses atau konfigurasi router.",
+      "managed_radius_plan_required": "Fitur Managed RADIUS belum aktif untuk tenant ini.",
+      "managed_radius_assignment_inactive": "Assignment tenant untuk Managed RADIUS belum aktif.",
+      "managed_radius_mapping_inactive": "NAS mapping Managed RADIUS untuk router ini belum aktif.",
+      "pppoe_created": "Akun PPPoE berhasil dibuat",
+      "pppoe_applied": "Akun PPPoE berhasil diterapkan ke router",
+      "test_account_created_radius": "Akun uji untuk RADIUS berhasil dibuat",
+      "test_account_updated": "Akun uji berhasil diperbarui",
+      "test_account_applied_radius": "Akun uji berhasil diterapkan ke Managed RADIUS",
+      "password_keep_existing_placeholder": "Kosongkan untuk memakai password yang sekarang",
+      "provision_to": "Provision ke",
+      "provision_target": "Target Provision",
+      "target_detail": "Detail Target",
+      "managed_radius_ready_hint": "Managed RADIUS siap dipakai pada router ini. Teknisi bisa memilih router lokal atau RADIUS sebelum menerapkan akun.",
+      "radius_ready_state": "Akun RADIUS siap untuk tes live.",
+      "radius_pending_state": "Buat akun terlebih dahulu, lalu lakukan tes koneksi nyata melalui RADIUS.",
+      "create_apply_radius": "Buat & Terapkan ke RADIUS",
+      "save_reapply_radius": "Simpan & Terapkan Ulang ke RADIUS",
+      "save_reapply_router": "Simpan & Terapkan Ulang ke Router",
+      "apply_existing_radius": "Terapkan Akun yang Ada ke RADIUS",
+      "create_and_test": "Buat & Tes Koneksi",
+      "apply_test": "Terapkan Tes ke Router",
+      "test_ready_state": "Akun router sudah siap untuk tes live.",
+      "test_pending_state": "Buat akun terlebih dahulu, lalu lakukan tes koneksi nyata dari sisi pelanggan.",
+      "final_cancelled": "Instalasi dibatalkan.",
+      "create_invoice": "Buat invoice pembayaran",
+      "reopen_notes": "Catatan opsional sebelum membuka ulang work order",
+      "save_plan": "Simpan Rencana",
+      "history": "Catatan Terakhir",
+      "timeline": "Timeline Work Order"
+    },
+    "logs": {
+      "title": "Log Router",
+      "subtitle": "Baca dan simpan log MikroTik untuk troubleshooting dan audit.",
+      "search": "Cari pesan log...",
+      "empty": "Tidak ada log",
+      "actions": {
+        "refresh": "Refresh",
+        "sync_selected": "Sinkron router terpilih",
+        "sync_all": "Sinkron semua router"
+      },
+      "filters": {
+        "router": "Router",
+        "all_routers": "Semua router",
+        "level": "Level",
+        "all_levels": "Semua level",
+        "topic": "Topik"
+      },
+      "columns": {
+        "time": "Waktu",
+        "router": "Router",
+        "level": "Level",
+        "topics": "Topik",
+        "message": "Pesan"
+      },
+      "toasts": {
+        "sync_ok": "Sinkron log selesai",
+        "sync_failed": "Gagal sinkron log"
+      }
+    }
+  },
+  "roles": {
+    "title": "Semua Peran",
+    "subtitle": "Kelola definisi peran dan izin",
+    "count": "peran",
+    "search": "Cari peran...",
+    "empty": "Tidak ada peran",
+    "permissions_settings": "Pengaturan Izin",
+    "columns": {
+      "name": "Nama Peran",
+      "type": "Tipe",
+      "level": "Level",
+      "permissions": "Izin"
+    },
+    "badges": {
+      "system": "Sistem",
+      "custom": "Kustom"
+    },
+    "level_prefix": "Lvl",
+    "permissions": "izin",
+    "actions": {
+      "create": "Buat Peran",
+      "edit": "Edit Peran",
+      "delete": "Hapus Peran",
+      "delete_short": "Hapus",
+      "save": "Simpan Peran"
+    },
+    "delete": {
+      "title": "Hapus Peran",
+      "message": "Yakin ingin menghapus permanen peran \"{name}\"? Semua pengguna dengan peran ini mungkin kehilangan izin.",
+      "confirm": "Hapus Peran"
+    },
+    "placeholders": {
+      "name": "contoh: Editor",
+      "description": "Deskripsi peran"
+    },
+    "form": {
+      "name_label": "Nama Peran",
+      "description_label": "Deskripsi",
+      "level_label": "Level",
+      "system_name_locked": "Nama peran sistem tidak dapat diubah"
+    },
+    "toasts": {
+      "created": "Peran berhasil dibuat",
+      "updated": "Peran berhasil diperbarui",
+      "deleted": "Peran berhasil dihapus"
+    },
+    "errors": {
+      "save_failed": "Gagal menyimpan peran",
+      "delete_failed": "Gagal menghapus peran: "
+    }
+  },
+  "support": {
+    "title": "Tiket Dukungan",
+    "subtitle": "Kelola permintaan dukungan tenant",
+    "search": "Cari tiket...",
+    "empty": "Tidak ada tiket",
+    "columns": {
+      "subject": "Subjek",
+      "user": "User",
+      "status": "Status",
+      "priority": "Prioritas",
+      "updated": "Diperbarui",
+      "messages": "Pesan"
+    },
+    "panels": {
+      "manage": "Kelola",
+      "reply": "Balas"
+    },
+    "fields": {
+      "status": "Status",
+      "priority": "Prioritas",
+      "assignee": "Penanggung Jawab",
+      "internal": "Catatan internal"
+    },
+    "hints": {
+      "assign": "Penanggung jawab menggunakan user_id anggota tim. Kosongkan jika tidak ditugaskan."
+    },
+    "toasts": {
+      "updated": "Tiket diperbarui"
+    }
+  },
+  "email_outbox": {
+    "title": "Email Outbox",
+    "subtitle": "Pantau email yang antri/gagal, dan retry pengiriman.",
+    "search": "Cari berdasarkan penerima atau subjek...",
+    "empty": "Tidak ada data outbox",
+    "confirm_delete": "Hapus item outbox ini?",
+    "columns": {
+      "to": "Ke",
+      "subject": "Subjek",
+      "status": "Status",
+      "attempts": "Percobaan",
+      "scheduled": "Jadwal",
+      "updated": "Diperbarui"
+    },
+    "scope": {
+      "tenant": "Tenant",
+      "global": "Global",
+      "all": "Semua"
+    },
+    "status": {
+      "queued": "Antri",
+      "sending": "Mengirim",
+      "sent": "Terkirim",
+      "failed": "Gagal"
+    },
+    "actions": {
+      "retry": "Retry",
+      "view": "Lihat",
+      "select": "Pilih",
+      "select_visible": "Pilih yang terlihat",
+      "export_csv": "Ekspor CSV",
+      "retry_selected": "Coba lagi yang dipilih",
+      "delete_selected": "Hapus yang dipilih"
+    },
+    "toasts": {
+      "requeued": "Dimasukkan ulang ke antrian",
+      "bulk_requeued": "Masuk antrian lagi",
+      "exported": "Berhasil diekspor"
+    },
+    "details": {
+      "title": "Detail email",
+      "to": "Ke",
+      "status": "Status",
+      "attempts": "Percobaan",
+      "scheduled": "Jadwal",
+      "sent": "Terkirim",
+      "subject": "Subjek",
+      "last_error": "Error terakhir",
+      "text": "Teks",
+      "html": "HTML",
+      "no_html": "Tidak ada HTML",
+      "view_source": "Lihat source",
+      "not_found": "Tidak ditemukan."
+    },
+    "selected": "Dipilih",
+    "confirm_bulk_delete": "Hapus item outbox yang dipilih?"
+  },
+  "backups": {
+    "disabled_title": "Dinonaktifkan untuk Tenant",
+    "disabled_desc": "Backup dikelola oleh Super Admin. Hubungi support jika perlu restore.",
+    "disabled_body": "Backup/restore tenant dinonaktifkan untuk mengurangi risiko keamanan. Data Anda tetap tercakup oleh backup global."
+  },
+  "overview": {
+    "loading": "Memuat data sistem...",
+    "stats": {
+      "team_members": "Anggota Tim",
+      "global_settings": "Pengaturan Global",
+      "used": "terpakai",
+      "free": "Gratis",
+      "plan_status": "Status Paket"
+    },
+    "quick_actions": {
+      "title": "Aksi Cepat",
+      "team": {
+        "title": "Kelola Tim",
+        "desc": "Lihat, ubah, dan undang anggota tim."
+      },
+      "roles": {
+        "title": "Peran & Hak Akses",
+        "desc": "Kelola peran dan kontrol akses."
+      },
+      "settings": {
+        "title": "Pengaturan Global",
+        "desc": "Atur kebijakan aplikasi dan default."
+      },
+      "billing": {
+        "title": "Penagihan",
+        "desc": "Kelola langganan dan invoice."
+      }
+    }
+  },
+  "subscription": {
+    "title": "Langganan",
+    "context": {
+      "eyebrow": "Workspace billing tenant",
+      "description": "Halaman detail ini tetap tersedia, tetapi pusat navigasi tenant billing sekarang ada di Settings > Billing & Plan.",
+      "open_customer_billing": "Buka Billing Pelanggan",
+      "back_to_settings": "Kembali ke Billing & Plan"
+    },
+    "tabs": {
+      "overview": "Ringkasan",
+      "plans": "Paket Tersedia",
+      "history": "Riwayat Pembayaran"
+    },
+    "loading": "Memuat detail...",
+    "errors": {
+      "load_failed": "Gagal memuat detail langganan",
+      "create_invoice_failed": "Gagal membuat invoice"
+    },
+    "toasts": {
+      "invoice_created": "Invoice berhasil dibuat"
+    },
+    "common": {
+      "free": "Gratis",
+      "unlimited": "Tanpa batas",
+      "base": "Dasar:",
+      "fx": "Kurs:",
+      "fx_updating": "Memperbarui kurs…",
+      "fx_unavailable": "Kurs tidak tersedia",
+      "per_month": "/ bulan"
+    },
+    "overview": {
+      "plan_suffix": "Paket",
+      "current_active": "Langganan aktif saat ini",
+      "usage_title": "Pemakaian Resource",
+      "storage": "Penyimpanan",
+      "team_members": "Anggota Tim",
+      "billing_details": "Detail Tagihan",
+      "active_until": "Aktif Sampai",
+      "lifetime": "Selamanya",
+      "billing_cycle": "Siklus Tagihan",
+      "billing_cycle_paid": "Bulanan / Tahunan",
+      "billing_cycle_free": "Paket Gratis",
+      "includes": "Termasuk"
+    },
+    "plans": {
+      "select_title": "Pilih Paket",
+      "current": "Paket Saat Ini",
+      "upgrade": "Upgrade"
+    },
+    "features": {
+      "free": {
+        "community_support": "Dukungan Komunitas",
+        "basic_analytics": "Analitik Dasar",
+        "subdomain_only": "Hanya Subdomain"
+      },
+      "pro": {
+        "priority_support": "Dukungan Prioritas",
+        "advanced_analytics": "Analitik Lanjutan",
+        "custom_domain": "Domain Kustom",
+        "remove_branding": "Hapus Branding"
+      },
+      "enterprise": {
+        "dedicated_support": "Dukungan Dedicated 24/7",
+        "audit_logs": "Audit Log",
+        "custom_domain": "Domain Kustom",
+        "sso_security": "SSO & Keamanan",
+        "api_access": "Akses API"
+      }
+    },
+    "invoices": {
+      "invoice_number": "Invoice #",
+      "description": "Deskripsi",
+      "amount": "Jumlah",
+      "status": "Status",
+      "due_date": "Jatuh Tempo",
+      "actions": "Aksi",
+      "search_placeholder": "Cari invoice...",
+      "pay": "Bayar",
+      "view_details": "Lihat detail"
+    }
+  },
+  "invoices": {
+    "title": "Tagihan & Invoice",
+    "subtitle": "Lihat dan kelola pembayaran langganan",
+    "search_placeholder": "Cari invoice...",
+    "pay_now": "Bayar sekarang",
+    "view_details": "Lihat detail",
+    "columns": {
+      "invoice_number": "Invoice #",
+      "description": "Deskripsi",
+      "amount": "Jumlah",
+      "status": "Status",
+      "due_date": "Jatuh Tempo"
+    },
+    "toasts": {
+      "load_failed": "Gagal memuat invoice"
+    }
+  },
+  "billing_collection": {
+    "title": "Log Billing Collection",
+    "subtitle": "Pantau pengiriman reminder, aksi suspend/resume, dan jalankan collection manual.",
+    "tabs": {
+      "collection": "Log Collection",
+      "reminders": "Log Reminder"
+    },
+    "columns": {
+      "time": "Waktu",
+      "invoice": "Invoice",
+      "customer": "Pelanggan",
+      "action": "Aksi",
+      "result": "Hasil",
+      "subscription_status": "Langganan",
+      "reason": "Alasan",
+      "reminder_code": "Reminder",
+      "channel": "Channel",
+      "recipient": "Penerima",
+      "status": "Status",
+      "detail": "Detail"
+    },
+    "actions": {
+      "run_now": "Jalankan Sekarang",
+      "running": "Memproses...",
+      "export": "Export",
+      "reminder": "Reminder",
+      "suspend": "Suspend",
+      "resume": "Resume"
+    },
+    "export": {
+      "csv": "Export CSV",
+      "excel": "Export Excel"
+    },
+    "results": {
+      "success": "Berhasil",
+      "failed": "Gagal",
+      "skipped": "Dilewati"
+    },
+    "reminders": {
+      "d7": "H-7",
+      "d3": "H-3",
+      "d0": "H-0"
+    },
+    "filters": {
+      "all_actions": "Semua aksi",
+      "all_results": "Semua hasil",
+      "all_reminders": "Semua reminder",
+      "all_statuses": "Semua status",
+      "search_placeholder": "Cari invoice/pelanggan/alasan...",
+      "search_reminder": "Cari invoice/detail...",
+      "clear": "Reset"
+    },
+    "meta": {
+      "showing": "Menampilkan"
+    },
+    "summary": {
+      "evaluated": "Dievaluasi",
+      "reminders_sent": "Reminder terkirim",
+      "suspended": "Tersuspend",
+      "resumed": "Kembali aktif",
+      "failed": "Gagal"
+    },
+    "toasts": {
+      "load_collection_failed": "Gagal memuat log billing collection",
+      "load_reminders_failed": "Gagal memuat log reminder",
+      "run_ok": "Billing collection selesai dijalankan",
+      "run_failed": "Gagal menjalankan billing collection",
+      "no_data_export": "Tidak ada data untuk diexport",
+      "export_ok": "Export berhasil"
+    }
+  },
+  "package_invoices": {
+    "statuses": {
+      "pending": "Menunggu",
+      "verification_pending": "Menunggu verifikasi",
+      "paid": "Lunas",
+      "failed": "Gagal"
+    },
+    "list": {
+      "eyebrow": "Workspace billing pelanggan",
+      "title": "Billing",
+      "subtitle": "Pantau collection, generate invoice jatuh tempo, dan tangani billing pelanggan manual dari satu tempat.",
+      "search_placeholder": "Cari invoice layanan pelanggan...",
+      "workspace": {
+        "queue_title": "Antrian invoice",
+        "queue_desc": "Pantau invoice overdue, menunggu verifikasi, dan lunas tanpa keluar dari workspace billing.",
+        "action_needed": "Butuh aksi",
+        "action_needed_desc": "Invoice pending dan menunggu verifikasi masih perlu tindak lanjut.",
+        "overdue_now": "Overdue saat ini",
+        "overdue_now_desc": "Prioritaskan reminder collection dan aksi layanan untuk akun-akun ini lebih dulu."
+      },
+      "sections": {
+        "manual_title": "Aksi billing manual",
+        "manual_desc": "Pilih langganan pelanggan untuk membuat invoice terarah secara langsung.",
+        "summary_title": "Ringkasan billing",
+        "summary_desc": "Pantau distribusi status pembayaran sebelum masuk ke antrian invoice lengkap.",
+        "queue_title": "Antrian invoice",
+        "queue_desc": "Filter dan periksa invoice pelanggan berdasarkan status, rentang pembuatan, dan progres pembayaran."
+      },
+      "columns": {
+        "invoice_number": "Invoice #",
+        "description": "Deskripsi",
+        "amount": "Jumlah",
+        "status": "Status",
+        "due_date": "Jatuh Tempo"
+      },
+      "fields": {
+        "select_customer": "Pilih pelanggan",
+        "select_subscription": "Pilih langganan"
+      },
+      "actions": {
+        "view_details": "Lihat detail",
+        "open_customer": "Buka pelanggan",
+        "generate_invoice": "Buat Invoice",
+        "creating": "Membuat...",
+        "billing_logs": "Log Billing",
+        "generate_due_bulk": "Generate Invoice Jatuh Tempo",
+        "bulk_generating": "Memproses..."
+      },
+      "filters": {
+        "all_status": "Semua status",
+        "pending": "Menunggu",
+        "verification_pending": "Menunggu verifikasi",
+        "paid": "Lunas",
+        "failed": "Gagal",
+        "created_from": "Dibuat dari",
+        "created_to": "Dibuat sampai",
+        "clear": "Reset"
+      },
+      "toasts": {
+        "load_failed": "Gagal memuat invoice layanan pelanggan",
+        "load_subscriptions_failed": "Gagal memuat langganan pelanggan",
+        "created": "Invoice layanan pelanggan berhasil dibuat",
+        "create_failed": "Gagal membuat invoice",
+        "bulk_generated": "Generate massal selesai",
+        "bulk_generate_failed": "Gagal generate invoice jatuh tempo"
+      },
+      "stats": {
+        "total": "Total",
+        "paid": "Lunas",
+        "pending": "Menunggu",
+        "overdue": "Terlambat"
+      }
+    },
+    "detail": {
+      "back": "Kembali ke Invoice",
+      "loading": "Memuat invoice...",
+      "invoice_prefix": "Invoice #",
+      "labels": {
+        "amount": "Jumlah",
+        "due_date": "Jatuh Tempo",
+        "created": "Dibuat",
+        "updated": "Diperbarui",
+        "payment_method": "Metode Pembayaran",
+        "related_customer": "Pelanggan Terkait",
+        "rejection_reason": "Alasan Penolakan"
+      },
+      "actions": {
+        "pay_now": "Bayar Sekarang",
+        "open_customer": "Buka Pelanggan",
+        "check_status": "Cek Status",
+        "checking": "Mengecek...",
+        "processing": "Memproses...",
+        "mark_paid": "Tandai Lunas",
+        "mark_failed": "Tandai Gagal",
+        "open_payment_page": "Buka Halaman Pembayaran",
+        "view_payment_proof": "Lihat Bukti Pembayaran"
+      },
+      "payment_methods": {
+        "online_payment": "Pembayaran Online",
+        "bank_transfer": "Transfer Bank"
+      },
+      "payment_proof": {
+        "title": "Bukti Pembayaran",
+        "hint": "Klik gambar untuk memperbesar"
+      },
+      "confirm": {
+        "mark_paid_title": "Tandai Invoice sebagai Lunas",
+        "mark_failed_title": "Tandai Invoice sebagai Gagal",
+        "mark_paid_message": "Ini akan mengubah status invoice menjadi lunas.",
+        "mark_failed_message": "Ini akan mengubah status invoice menjadi gagal.",
+        "mark_paid_confirm": "Tandai Lunas",
+        "mark_failed_confirm": "Tandai Gagal"
+      },
+      "reject": {
+        "title": "Tandai Invoice sebagai Gagal",
+        "description": "Berikan alasan yang jelas agar pelanggan bisa memperbaiki dan unggah ulang bukti pembayaran.",
+        "placeholder": "Tulis alasan penolakan...",
+        "reason_required": "Alasan penolakan wajib diisi",
+        "options": {
+          "blurry": "Gambar bukti kurang jelas",
+          "amount_mismatch": "Nominal transfer tidak sesuai total invoice",
+          "wrong_destination": "Rekening tujuan transfer tidak sesuai",
+          "invalid_proof": "Bukti pembayaran tidak valid atau tidak terkait",
+          "duplicate": "Bukti pembayaran duplikat"
+        }
+      },
+      "errors": {
+        "not_customer_package": "Invoice ini bukan invoice layanan pelanggan",
+        "load_failed": "Gagal memuat invoice",
+        "check_failed": "Gagal mengecek status",
+        "verify_failed": "Gagal memverifikasi invoice",
+        "proof_not_available": "Bukti pembayaran belum tersedia"
+      },
+      "toasts": {
+        "status_updated": "Status diperbarui",
+        "marked": "Invoice ditandai sebagai"
+      }
+    }
+  },
+  "settings": {
+    "title": "Pengaturan Global",
+    "subtitle": "Kelola konfigurasi aplikasi, keamanan, dan integrasi.",
+    "save_success": "Perubahan berhasil disimpan",
+    "save_error": "Gagal menyimpan pengaturan",
+    "load_error": "Gagal memuat pengaturan",
+    "reset_button": "Atur Ulang",
+    "save_button": "Simpan Perubahan",
+    "saving": "Menyimpan...",
+    "toasts": {
+      "load_failed": "Gagal memuat pengaturan",
+      "logo_uploaded": "Logo berhasil diunggah",
+      "logo_upload_failed": "Gagal mengunggah logo",
+      "saved": "Pengaturan tersimpan",
+      "save_failed": "Gagal menyimpan pengaturan"
+    },
+    "placeholders": {
+      "custom_domain": "contoh: app.perusahaanmu.com",
+      "locked": "Terkunci"
+    },
+    "subtitle_dynamic": "Kelola pengaturan {tab}",
+    "branding": {
+      "custom_domain_help_prefix": "Arahkan record CNAME domain Anda ke",
+      "custom_domain_help_suffix": "(atau alias yang dikonfigurasi).",
+      "custom_domain_pro_title": "Custom Domain adalah fitur Pro",
+      "custom_domain_pro_desc": "Upgrade paket untuk menggunakan domain sendiri."
+    },
+    "security": {
+      "enforce_2fa_desc": "Wajibkan semua anggota organisasi ini mengaktifkan 2FA sebelum mengakses dashboard.",
+      "require_email_verification_title": "Wajib Verifikasi Email",
+      "require_email_verification_desc": "Wajibkan pengguna tenant ini memverifikasi email sebelum login. Hanya bisa diaktifkan setelah provider email dikonfigurasi.",
+      "require_email_verification_not_ready": "Konfigurasi email belum siap. Simpan dulu pengaturan Email yang valid, lalu aktifkan opsi ini.",
+      "customer_self_registration_title": "Pendaftaran Mandiri Pelanggan",
+      "customer_self_registration_desc": "Izinkan pelanggan mendaftar dari custom domain tenant ini. Default nonaktif."
+    },
+    "storage": {
+      "select_provider": "Pilih Penyedia Storage"
+    },
+    "email": {
+      "provider_label": "Penyedia Pengiriman Email",
+      "connection_details": "Detail Koneksi",
+      "queue": {
+        "title": "Antrian & Retry",
+        "desc": "Antrikan email keluar dan retry otomatis jika gagal sementara.",
+        "enabled": "Aktifkan Email Outbox",
+        "enabled_desc": "Disarankan untuk produksi agar email tidak hilang.",
+        "max_attempts": "Maks Percobaan",
+        "base_delay": "Delay Dasar (detik)",
+        "view_outbox": "Lihat Outbox"
+      },
+      "placeholders": {
+        "from_name": "contoh: Acme Support",
+        "from_address": "noreply@domainmu.com",
+        "smtp_host": "smtp.mailtrap.io",
+        "smtp_port": "587"
+      },
+      "test": {
+        "desc": "Kirim email tes atau verifikasi koneksi SMTP.",
+        "recipient_placeholder": "Masukkan email penerima",
+        "sending": "Mengirim...",
+        "send": "Kirim Tes"
+      },
+      "smtp_test": {
+        "button": "Tes SMTP",
+        "testing": "Menguji...",
+        "ok": "Koneksi SMTP terverifikasi",
+        "failed": "Tes SMTP gagal",
+        "hint": "Cek koneksi dan autentikasi tanpa mengirim email."
+      }
+    },
+    "payment": {
+      "methods_label": "Metode Pembayaran",
+      "customer_invoice_auto_generate_enabled_label": "Aktifkan generate invoice pelanggan otomatis",
+      "customer_invoice_auto_generate_enabled_help": "Berjalan di background dan membuat invoice jatuh tempo otomatis sesuai lead days.",
+      "invoice_generation_days_before_due_label": "Generate invoice pelanggan (hari sebelum jatuh tempo)",
+      "invoice_generation_days_before_due_help": "Invoice akan tergenerate otomatis oleh proses bulk saat masuk jendela ini.",
+      "customer_invoice_scheduler_interval_minutes_label": "Interval scheduler invoice pelanggan (menit)",
+      "customer_invoice_scheduler_interval_minutes_help": "Seberapa sering worker background mengecek invoice pelanggan yang jatuh tempo.",
+      "customer_invoice_last_run_at_label": "Waktu terakhir proses generate invoice pelanggan",
+      "customer_invoice_last_run_at_help": "Diperbarui saat proses generate invoice jatuh tempo dijalankan (manual atau otomatis).",
+      "midtrans": {
+        "merchant_id": "Merchant ID",
+        "client_key": "Client Key",
+        "server_key": "Server Key"
+      },
+      "manual": {
+        "add_one": "Tambah",
+        "instructions_label": "Instruksi Pembayaran",
+        "placeholder_instructions": "Silakan transfer ke BCA 1234567890 a/n PT Company...",
+        "bank_accounts": "Rekening Bank",
+        "add_bank": "Tambah Bank",
+        "bank_form": {
+          "bank_name_label": "Nama Bank",
+          "bank_name_placeholder": "Nama Bank (contoh: BCA)",
+          "account_number_label": "Nomor Rekening",
+          "account_number_placeholder": "Nomor Rekening",
+          "account_holder_label": "Nama Pemilik Rekening",
+          "account_holder_placeholder": "Nama Pemilik Rekening",
+          "add": "Tambah",
+          "add_account": "Tambah Rekening",
+          "remove_account": "Hapus Rekening"
+        }
+      },
+      "installation_sla": {
+        "title": "Pengingat SLA Instalasi",
+        "enable": {
+          "label": "Aktifkan pengingat SLA instalasi",
+          "desc": "Kirim notifikasi otomatis saat work order instalasi melewati SLA."
+        },
+        "overdue_minutes": {
+          "label": "Batas terlambat (menit)",
+          "desc": "Work order terjadwal dianggap terlambat setelah melewati menit ini."
+        },
+        "cooldown_minutes": {
+          "label": "Jeda pengingat (menit)",
+          "desc": "Jeda minimum sebelum pengingat yang sama dikirim ulang untuk work order yang sama."
+        },
+        "scheduler_interval_minutes": {
+          "label": "Interval scheduler (menit)",
+          "desc": "Seberapa sering backend mengecek work order instalasi overdue di semua tenant."
+        }
+      }
+    },
+    "categories": {
+      "general": "Umum",
+      "network": "Jaringan",
+      "storage": "Penyimpanan",
+      "auth": "Autentikasi",
+      "security": "Keamanan",
+      "email": "Email",
+      "branding": "Branding & Domain",
+      "billing_plan": "Billing & Plan",
+      "payment": "Pembayaran"
+    },
+    "billing_plan": {
+      "eyebrow": "Billing tenant",
+      "title": "Kelola paket workspace dan langganan platform",
+      "description": "Area ini dipakai untuk melihat paket ISP Management yang aktif, entitlement upgrade, dan membuka halaman detail langganan tenant tanpa tercampur dengan billing pelanggan harian.",
+      "primary_cta": "Buka detail billing tenant",
+      "secondary_cta": "Lihat halaman langganan saat ini",
+      "cards": {
+        "plan": {
+          "title": "Paket & entitlement",
+          "desc": "Cek paket workspace yang sedang aktif, termasuk fitur seperti custom domain dan batas platform."
+        },
+        "payments": {
+          "title": "Pembayaran platform",
+          "desc": "Tinjau riwayat billing SaaS tenant dan kewajiban pembayaran platform berikutnya."
+        },
+        "operations": {
+          "title": "Terpisah dari billing pelanggan",
+          "desc": "Invoice pelanggan dan collection tetap ada di Billing agar tim operasional fokus ke pekerjaan ISP harian."
+        }
+      }
+    },
+    "network": {
+      "alerting": {
+        "title": "Alert Router",
+        "desc": "Aktifkan insiden dan notifikasi yang dihasilkan dari polling MikroTik.",
+        "correlation_title": "Korelasi insiden",
+        "correlation_desc": "Tekan insiden CPU/latensi saat insiden offline aktif sebagai akar masalah.",
+        "email_title": "Alert email",
+        "email_desc": "Juga kirim email ke anggota yang bisa mengakses Network Routers.",
+        "auto_escalation_title": "Auto eskalasi",
+        "auto_escalation_desc": "Eskalasi insiden open yang belum di-ack menjadi critical setelah menit ambang batas.",
+        "assignment_email_title": "Email assignment insiden",
+        "assignment_email_desc": "Kirim email ke anggota yang ditugaskan saat assignee insiden berubah.",
+        "pppoe_auto_apply_title": "PPPoE auto-apply setelah simpan",
+        "pppoe_auto_apply_desc": "Terapkan perubahan PPPoE create/update ke MikroTik otomatis setelah disimpan."
+      },
+      "thresholds": {
+        "title": "Ambang Batas",
+        "desc": "Dipakai oleh filter NOC dan background poller untuk membuka insiden.",
+        "sla_preview": "Insiden menjadi warning setelah {warn} menit dan breach setelah {breach} menit.",
+        "offline_after_secs": "Insiden offline setelah (detik)",
+        "cpu_risk": "CPU risk (%)",
+        "cpu_hot": "CPU hot (%)",
+        "latency_risk": "Latensi risk (ms)",
+        "latency_hot": "Latensi hot (ms)",
+        "incident_sla_warn_minutes": "Peringatan SLA insiden (menit)",
+        "incident_sla_breach_minutes": "Pelanggaran SLA insiden (menit)",
+        "incident_escalation_minutes": "Auto eskalasi insiden (menit)"
+      }
+    },
+    "keys": {
+      "app_name": "Nama Aplikasi",
+      "app_description": "Deskripsi Aplikasi",
+      "app_version": "Versi Aplikasi",
+      "organization_name": "Nama Organisasi",
+      "custom_domain": "Custom Domain",
+      "support_email": "Email Dukungan",
+      "default_locale": "Bahasa Default",
+      "currency_symbol": "Simbol Mata Uang",
+      "maintenance_mode": "Mode Pemeliharaan",
+      "app_logo_path": "Logo Aplikasi",
+      "storage_provider": "Penyedia Penyimpanan",
+      "storage_local_path": "Path Lokal",
+      "storage_s3_bucket": "Nama Bucket",
+      "storage_s3_region": "Wilayah (Region)",
+      "auth_allow_registration": "Izinkan Pendaftaran",
+      "auth_require_email_verification": "Wajib Verifikasi Email",
+      "auth_jwt_expiry_hours": "Kedaluwarsa JWT (Jam)",
+      "auth_session_timeout_minutes": "Batas Waktu Sesi (Menit)",
+      "auth_password_min_length": "Min Panjang Sandi",
+      "auth_password_require_uppercase": "Wajib Huruf Besar",
+      "auth_password_require_number": "Wajib Angka",
+      "auth_password_require_special": "Wajib Karakter Spesial",
+      "auth_max_login_attempts": "Max Percobaan Login",
+      "auth_lockout_duration_minutes": "Durasi Kunci Akun (Menit)",
+      "auth_logout_all_on_password_change": "Keluar Semua Perangkat saat Ganti Sandi",
+      "email_provider": "Penyedia Email",
+      "email_smtp_host": "Host SMTP",
+      "email_smtp_port": "Port SMTP",
+      "email_smtp_username": "Username SMTP",
+      "email_smtp_password": "Password SMTP",
+      "email_smtp_encryption": "Enkripsi",
+      "email_api_key": "API Key",
+      "email_from_address": "Alamat Pengirim",
+      "email_from_name": "Nama Pengirim"
+    },
+    "test_email": {
+      "title": "Tes Konfigurasi Email",
+      "description": "Simpan perubahan terlebih dahulu, lalu kirim email tes untuk memverifikasi pengaturan SMTP.",
+      "placeholder": "Masukkan alamat email",
+      "button": "Kirim Email Tes",
+      "sending": "Mengirim..."
+    },
+    "sections": {
+      "enforce_2fa": "Wajibkan Autentikasi Dua Faktor",
+      "configuration": "Konfigurasi",
+      "sender_info": "Informasi Pengirim",
+      "test_configuration": "Tes Konfigurasi",
+      "midtrans": "Payment Gateway Midtrans",
+      "bank_transfer_manual": "Transfer Bank (Manual)"
+    }
+  },
+  "team": {
+    "title": "Anggota Tim",
+    "subtitle": "Kelola anggota organisasi dan akses",
+    "count": "{count} anggota",
+    "search": "Cari anggota...",
+    "invite_button": "Tambah Anggota",
+    "add_member_modal_title": "Tambah Anggota Tim",
+    "name_label": "Nama",
+    "email_label": "Email",
+    "password_label": "Kata Sandi (Opsional)",
+    "role_label": "Peran",
+    "cancel": "Batal",
+    "submit": "Tambah Anggota",
+    "columns": {
+      "member": "Anggota",
+      "role": "Peran",
+      "status": "Status",
+      "created_at": "Tanggal Ditambahkan"
+    },
+    "filters": {
+      "all_roles": "Semua Peran",
+      "all": "Semua",
+      "active": "Aktif",
+      "inactive": "Nonaktif"
+    },
+    "stats": {
+      "show_all": "Tampilkan semua anggota",
+      "show_active": "Tampilkan anggota aktif",
+      "show_inactive": "Tampilkan anggota nonaktif",
+      "total_title": "Total Anggota",
+      "active_title": "Anggota Aktif",
+      "inactive_title": "Anggota Nonaktif"
+    },
+    "actions": {
+      "edit_role": "Edit Peran",
+      "remove_member": "Hapus Anggota"
+    },
+    "roles": {
+      "member": "Anggota"
+    },
+    "placeholders": {
+      "name": "John Doe",
+      "email": "colleague@company.com",
+      "password_auto": "Otomatis dibuat jika kosong"
+    },
+    "remove": {
+      "title": "Hapus Anggota Tim",
+      "message": "Yakin ingin menghapus {name} dari tim? Mereka akan langsung kehilangan akses.",
+      "confirm": "Hapus Anggota"
+    },
+    "edit_role": {
+      "title": "Edit Peran Anggota",
+      "member_name": "Nama Anggota",
+      "role_label": "Peran"
+    },
+    "toasts": {
+      "load_failed": "Gagal memuat data tim",
+      "added": "Anggota tim berhasil ditambahkan",
+      "add_failed": "Gagal menambahkan anggota: {message}",
+      "removed": "Anggota berhasil dihapus",
+      "remove_failed": "Gagal menghapus anggota: {message}",
+      "role_updated": "Peran anggota berhasil diperbarui",
+      "role_update_failed": "Gagal memperbarui peran: {message}"
+    },
+    "empty": {
+      "title": "Belum Ada Anggota Tim",
+      "description": "Tambahkan rekan kerja Anda untuk berkolaborasi di ruang kerja ini.",
+      "no_results": "Anggota tidak ditemukan",
+      "try_adjusting": "Coba ubah pencarian atau filter."
+    }
+  }
+}

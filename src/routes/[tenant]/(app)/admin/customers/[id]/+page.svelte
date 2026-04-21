@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
+  import type { Component } from 'svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { t } from 'svelte-i18n';
@@ -42,13 +43,18 @@
   } from '$lib/utils/customerLocationCoordinates';
 
   import Icon from '$lib/components/ui/Icon.svelte';
-  import Modal from '$lib/components/ui/Modal.svelte';
-  import Select2 from '$lib/components/ui/Select2.svelte';
-  import Toggle from '$lib/components/ui/Toggle.svelte';
-  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import Table from '$lib/components/ui/Table.svelte';
+  import { loadCustomerDetailDialogModules } from './customerDetailModules';
+  import { createCustomerDetailResourceLoader } from './customerDetailResourceLoader';
+  import {
+    loadCustomerBillingTab,
+    loadCustomerPppoeTab,
+    loadCustomerSubscriptionsTab,
+    loadCustomerTimelineTab,
+  } from './customerDetailTabModules';
 
   const customerId = $derived(String($page.params.id || ''));
+  type DeferredComponent = Component<any>;
   const customerNav = $derived.by(() =>
     getAdminCustomerNavigation({
       hostname: $page.url.hostname,
@@ -59,6 +65,15 @@
   const customersPath = $derived(customerNav.customersPath);
 
   let activeTab = $state<CustomerDetailTab>('overview');
+  let ModalComponent = $state<DeferredComponent | null>(null);
+  let Select2Component = $state<DeferredComponent | null>(null);
+  let ToggleComponent = $state<DeferredComponent | null>(null);
+  let ConfirmDialogComponent = $state<DeferredComponent | null>(null);
+  let SubscriptionsTabComponent = $state<DeferredComponent | null>(null);
+  let BillingTabComponent = $state<DeferredComponent | null>(null);
+  let PppoeTabComponent = $state<DeferredComponent | null>(null);
+  let TimelineTabComponent = $state<DeferredComponent | null>(null);
+  let activeDeferredTabLoading = $state<CustomerDetailTab | null>(null);
 
   let customer = $state<Customer | null>(null);
   let loadingCustomer = $state(true);
@@ -94,7 +109,6 @@
   let subNotes = $state('');
   let billingInvoices = $state<Invoice[]>([]);
   let loadingBilling = $state(false);
-  let billingLoadInFlight = false;
   let billingStatus = $state<'all' | 'pending' | 'verification_pending' | 'paid' | 'failed'>('all');
   let billingDateFrom = $state('');
   let billingDateTo = $state('');
@@ -187,6 +201,15 @@
   // Deletes
   let showDeleteCustomer = $state(false);
   let deletingCustomer = $state(false);
+
+  const locationsResourceLoader = createCustomerDetailResourceLoader<CustomerLocation[]>();
+  const subscriptionsResourceLoader = createCustomerDetailResourceLoader<{
+    rows: CustomerSubscriptionView[];
+    lifecycle: CustomerLifecycleObservability | null;
+  }>();
+  const billingResourceLoader = createCustomerDetailResourceLoader<Invoice[]>();
+  const pppoeResourceLoader = createCustomerDetailResourceLoader<PppoeAccountPublic[]>();
+  const timelineResourceLoader = createCustomerDetailResourceLoader<AuditLog[]>();
 
   const locColumns = $derived.by(() => [
     { key: 'label', label: $t('admin.customers.locations.columns.label') || 'Label' },
@@ -341,9 +364,53 @@
     if (fromUrl) activeTab = fromUrl;
     await loadCustomer();
     if (canReadCustomerLocations) {
-      await loadLocations();
+      await loadLocations({ force: true });
     }
   });
+
+  async function ensureCustomerDetailDialogComponents() {
+    if (ModalComponent && Select2Component && ToggleComponent && ConfirmDialogComponent) return;
+
+    const modules = await loadCustomerDetailDialogModules();
+    ModalComponent = modules.ModalComponent;
+    Select2Component = modules.Select2Component;
+    ToggleComponent = modules.ToggleComponent;
+    ConfirmDialogComponent = modules.ConfirmDialogComponent;
+  }
+
+  async function ensureCustomerDeferredTabComponent(tab: CustomerDetailTab) {
+    if (tab === 'subscriptions') {
+      if (SubscriptionsTabComponent) return;
+      activeDeferredTabLoading = tab;
+      const module = await loadCustomerSubscriptionsTab();
+      SubscriptionsTabComponent = module.default;
+      activeDeferredTabLoading = null;
+      return;
+    }
+    if (tab === 'billing') {
+      if (BillingTabComponent) return;
+      activeDeferredTabLoading = tab;
+      const module = await loadCustomerBillingTab();
+      BillingTabComponent = module.default;
+      activeDeferredTabLoading = null;
+      return;
+    }
+    if (tab === 'pppoe') {
+      if (PppoeTabComponent) return;
+      activeDeferredTabLoading = tab;
+      const module = await loadCustomerPppoeTab();
+      PppoeTabComponent = module.default;
+      activeDeferredTabLoading = null;
+      return;
+    }
+    if (tab === 'timeline') {
+      if (TimelineTabComponent) return;
+      activeDeferredTabLoading = tab;
+      const module = await loadCustomerTimelineTab();
+      TimelineTabComponent = module.default;
+      activeDeferredTabLoading = null;
+    }
+  }
 
   $effect(() => {
     const fromUrl = readActiveTabFromUrl();
@@ -352,6 +419,21 @@
     }
     if (!visibleTabs.includes(activeTab)) {
       activeTab = 'overview';
+    }
+  });
+
+  $effect(() => {
+    const autoLoadKey = getCustomerDetailAutoLoadKey(activeTab, customerId, customerDetailAccess);
+    if (!autoLoadKey) return;
+    if (
+      activeTab === 'subscriptions' ||
+      activeTab === 'billing' ||
+      activeTab === 'pppoe' ||
+      activeTab === 'timeline'
+    ) {
+      untrack(() => {
+        void ensureCustomerDeferredTabComponent(activeTab);
+      });
     }
   });
 
@@ -456,11 +538,28 @@
     }
   }
 
-  async function loadLocations() {
+  function getCustomerResourceKey(): string {
+    return customerId;
+  }
+
+  function getPppoeResourceKey(): string {
+    return `${customerId}:${pppoeQuery.trim()}`;
+  }
+
+  async function loadLocations(options: { force?: boolean } = {}) {
     if (!$can('read', 'customer_locations') && !$can('manage', 'customer_locations')) return;
+    const key = getCustomerResourceKey();
+    if (!options.force && locationsResourceLoader.hasLoaded(key)) return;
     loadingLocations = true;
     try {
-      locations = await api.customers.locations.list(customerId);
+      const result = await locationsResourceLoader.load(
+        key,
+        () => api.customers.locations.list(customerId),
+        options,
+      );
+      if (result.status === 'loaded') {
+        locations = result.value;
+      }
     } catch (e: any) {
       toast.error(
         get(t)('admin.customers.locations.toasts.load_failed') ||
@@ -480,16 +579,31 @@
     }
   }
 
-  async function loadSubscriptions() {
+  async function loadSubscriptions(options: { force?: boolean } = {}) {
+    const key = getCustomerResourceKey();
+    if (!options.force && subscriptionsResourceLoader.hasLoaded(key)) return;
     loadingSubscriptions = true;
     loadingLifecycleObservability = true;
     try {
-      const [res, metrics] = await Promise.all([
-        api.customers.subscriptions.list(customerId, { page: 1, per_page: 200 }),
-        api.customers.observability.lifecycle(customerId),
-      ]);
-      subscriptions = res.data || [];
-      lifecycleObservability = metrics;
+      const result = await subscriptionsResourceLoader.load(
+        key,
+        async () => {
+          const [res, metrics] = await Promise.all([
+            api.customers.subscriptions.list(customerId, { page: 1, per_page: 200 }),
+            api.customers.observability.lifecycle(customerId),
+          ]);
+
+          return {
+            rows: res.data || [],
+            lifecycle: metrics,
+          };
+        },
+        options,
+      );
+      if (result.status === 'loaded') {
+        subscriptions = result.value.rows;
+        lifecycleObservability = result.value.lifecycle;
+      }
     } catch (e: any) {
       toast.error(`Failed to load subscriptions: ${e?.message || e}`);
     } finally {
@@ -551,13 +665,19 @@
     return map[status] || status;
   }
 
-  async function loadBillingInvoices() {
-    if (billingLoadInFlight) return;
-    billingLoadInFlight = true;
+  async function loadBillingInvoices(options: { force?: boolean } = {}) {
+    const key = getCustomerResourceKey();
+    if (!options.force && billingResourceLoader.hasLoaded(key)) return;
     loadingBilling = true;
     try {
-      const invoices = await api.payment.listCustomerPackageInvoices();
-      billingInvoices = invoices;
+      const result = await billingResourceLoader.load(
+        key,
+        () => api.payment.listCustomerPackageInvoices(),
+        options,
+      );
+      if (result.status === 'loaded') {
+        billingInvoices = result.value;
+      }
     } catch (e: any) {
       toast.error(
         get(t)('admin.customers.billing.toasts.load_failed', {
@@ -566,7 +686,6 @@
       );
     } finally {
       loadingBilling = false;
-      billingLoadInFlight = false;
     }
   }
 
@@ -579,7 +698,7 @@
         get(t)('admin.customers.billing.toasts.generated') || 'Invoice generated successfully',
       );
       activeTab = 'billing';
-      await loadBillingInvoices();
+      await loadBillingInvoices({ force: true });
     } catch (e: any) {
       toast.error(
         get(t)('admin.customers.billing.toasts.generate_failed', {
@@ -623,35 +742,51 @@
     billingQuickRange = '';
   }
 
-  async function loadTimeline() {
+  async function loadTimeline(options: { force?: boolean } = {}) {
     if (!canReadAudit) return;
+    const key = getCustomerResourceKey();
+    if (!options.force && timelineResourceLoader.hasLoaded(key)) {
+      timelineType = 'all';
+      return;
+    }
     loadingTimeline = true;
     try {
-      const [res, locRows, subRes] = await Promise.all([
-        api.audit.listTenant(1, 100, { customer_id: customerId }),
-        api.customers.locations.list(customerId).catch(() => [] as CustomerLocation[]),
-        api.customers.subscriptions
-          .list(customerId, { page: 1, per_page: 500 })
-          .catch(() => ({ data: [] as CustomerSubscriptionView[] }) as any),
-      ]);
+      const result = await timelineResourceLoader.load(
+        key,
+        async () => {
+          const [res, locRows, subRes] = await Promise.all([
+            api.audit.listTenant(1, 100, { customer_id: customerId }),
+            locationsResourceLoader.hasLoaded(key)
+              ? Promise.resolve(locations)
+              : api.customers.locations.list(customerId).catch(() => [] as CustomerLocation[]),
+            api.customers.subscriptions
+              .list(customerId, { page: 1, per_page: 500 })
+              .catch(() => ({ data: [] as CustomerSubscriptionView[] }) as any),
+          ]);
 
-      const allowedLocationIds = new Set((locRows || []).map((l) => l.id));
-      const allowedSubscriptionIds = new Set(
-        ((subRes?.data as CustomerSubscriptionView[]) || []).map((s) => s.id),
+          const allowedLocationIds = new Set((locRows || []).map((l) => l.id));
+          const allowedSubscriptionIds = new Set(
+            ((subRes?.data as CustomerSubscriptionView[]) || []).map((s) => s.id),
+          );
+
+          return (res.data || []).filter((log) => {
+            if (log.resource === 'customers') {
+              return log.resource_id === customerId;
+            }
+            if (log.resource === 'customer_locations') {
+              return !!log.resource_id && allowedLocationIds.has(log.resource_id);
+            }
+            if (log.resource === 'customer_subscriptions') {
+              return !!log.resource_id && allowedSubscriptionIds.has(log.resource_id);
+            }
+            return false;
+          });
+        },
+        options,
       );
-
-      timelineLogs = (res.data || []).filter((log) => {
-        if (log.resource === 'customers') {
-          return log.resource_id === customerId;
-        }
-        if (log.resource === 'customer_locations') {
-          return !!log.resource_id && allowedLocationIds.has(log.resource_id);
-        }
-        if (log.resource === 'customer_subscriptions') {
-          return !!log.resource_id && allowedSubscriptionIds.has(log.resource_id);
-        }
-        return false;
-      });
+      if (result.status === 'loaded') {
+        timelineLogs = result.value;
+      }
       timelineType = 'all';
     } catch (e: any) {
       toast.error(`Failed to load timeline: ${e?.message || e}`);
@@ -663,11 +798,11 @@
   async function refreshCurrent() {
     await Promise.all([
       loadCustomer(),
-      loadLocations(),
-      activeTab === 'subscriptions' ? loadSubscriptions() : Promise.resolve(),
-      activeTab === 'billing' ? loadBillingInvoices() : Promise.resolve(),
-      activeTab === 'pppoe' ? loadPppoeAccounts() : Promise.resolve(),
-      activeTab === 'timeline' && canReadAudit ? loadTimeline() : Promise.resolve(),
+      loadLocations({ force: true }),
+      activeTab === 'subscriptions' ? loadSubscriptions({ force: true }) : Promise.resolve(),
+      activeTab === 'billing' ? loadBillingInvoices({ force: true }) : Promise.resolve(),
+      activeTab === 'pppoe' ? loadPppoeAccounts({ force: true }) : Promise.resolve(),
+      activeTab === 'timeline' && canReadAudit ? loadTimeline({ force: true }) : Promise.resolve(),
     ]);
   }
 
@@ -684,13 +819,15 @@
     subNotes = '';
   }
 
-  function openCreateSubscription() {
+  async function openCreateSubscription() {
+    await ensureCustomerDetailDialogComponents();
     resetSubscriptionForm();
     subCurrency = subCurrency || 'IDR';
     showAddSubscription = true;
   }
 
-  function openEditSubscription(row: CustomerSubscriptionView) {
+  async function openEditSubscription(row: CustomerSubscriptionView) {
+    await ensureCustomerDetailDialogComponents();
     editingSubscription = row;
     subLocationId = row.location_id;
     subPackageId = row.package_id;
@@ -728,7 +865,7 @@
       });
       toast.success('Subscription created');
       showAddSubscription = false;
-      await loadSubscriptions();
+      await loadSubscriptions({ force: true });
     } catch (e: any) {
       toast.error(`Failed to create subscription: ${e?.message || e}`);
     } finally {
@@ -757,7 +894,7 @@
       toast.success('Subscription updated');
       showEditSubscription = false;
       editingSubscription = null;
-      await loadSubscriptions();
+      await loadSubscriptions({ force: true });
     } catch (e: any) {
       toast.error(`Failed to update subscription: ${e?.message || e}`);
     } finally {
@@ -771,7 +908,7 @@
     try {
       await api.customers.subscriptions.delete(id);
       toast.success('Subscription deleted');
-      await loadSubscriptions();
+      await loadSubscriptions({ force: true });
     } catch (e: any) {
       toast.error(`Failed to delete subscription: ${e?.message || e}`);
     } finally {
@@ -787,7 +924,7 @@
     try {
       await api.customers.subscriptions.update(row.id, { status: nextStatus });
       toast.success(nextStatus === 'suspended' ? 'Subscription suspended' : 'Subscription resumed');
-      await loadSubscriptions();
+      await loadSubscriptions({ force: true });
     } catch (e: any) {
       toast.error(`Failed to update status: ${e?.message || e}`);
     } finally {
@@ -809,16 +946,27 @@
     }
   }
 
-  async function loadPppoeAccounts() {
+  async function loadPppoeAccounts(options: { force?: boolean } = {}) {
+    const key = getPppoeResourceKey();
+    if (!options.force && pppoeResourceLoader.hasLoaded(key)) return;
     loadingPppoe = true;
     try {
-      const res = await api.pppoe.accounts.list({
-        customer_id: customerId,
-        q: pppoeQuery.trim() || undefined,
-        page: 1,
-        per_page: 200,
-      });
-      pppoeAccounts = res.data || [];
+      const result = await pppoeResourceLoader.load(
+        key,
+        async () => {
+          const res = await api.pppoe.accounts.list({
+            customer_id: customerId,
+            q: pppoeQuery.trim() || undefined,
+            page: 1,
+            per_page: 200,
+          });
+          return res.data || [];
+        },
+        options,
+      );
+      if (result.status === 'loaded') {
+        pppoeAccounts = result.value;
+      }
     } catch (e: any) {
       toast.error(
         get(t)('admin.customers.pppoe.toasts.load_failed', {
@@ -843,7 +991,8 @@
     pppoePackageMappings = [];
   }
 
-  function openEditPppoe(row: PppoeAccountPublic) {
+  async function openEditPppoe(row: PppoeAccountPublic) {
+    await ensureCustomerDetailDialogComponents();
     editingPppoe = row;
     pppoeRouterId = row.router_id;
     pppoeUsername = row.username;
@@ -894,7 +1043,7 @@
       showEditPppoe = false;
       editingPppoe = null;
       resetPppoeForm();
-      await loadPppoeAccounts();
+      await loadPppoeAccounts({ force: true });
     } catch (e: any) {
       toast.error(
         get(t)('admin.customers.pppoe.toasts.update_failed', {
@@ -910,7 +1059,7 @@
     try {
       await api.pppoe.accounts.apply(row.id);
       toast.success(get(t)('admin.customers.pppoe.toasts.applied') || 'Applied to router');
-      await loadPppoeAccounts();
+      await loadPppoeAccounts({ force: true });
     } catch (e: any) {
       toast.error(
         get(t)('admin.customers.pppoe.toasts.apply_failed', {
@@ -926,7 +1075,7 @@
     try {
       await api.pppoe.accounts.delete(row.id);
       toast.success(get(t)('admin.customers.pppoe.toasts.deleted') || 'Deleted');
-      await loadPppoeAccounts();
+      await loadPppoeAccounts({ force: true });
     } catch (e: any) {
       toast.error(
         get(t)('admin.customers.pppoe.toasts.delete_failed', {
@@ -1000,7 +1149,7 @@
       locLatitude = '';
       locLongitude = '';
       locNotes = '';
-      await loadLocations();
+      await loadLocations({ force: true });
       toast.success(get(t)('admin.customers.locations.toasts.created') || 'Location added');
     } catch (e: any) {
       toast.error(
@@ -1041,13 +1190,15 @@
     locNotes = row?.notes || '';
   }
 
-  function openCreateLocation() {
+  async function openCreateLocation() {
+    await ensureCustomerDetailDialogComponents();
     editingLocation = null;
     resetLocationForm();
     showAddLocation = true;
   }
 
-  function openEditLocation(row: CustomerLocation) {
+  async function openEditLocation(row: CustomerLocation) {
+    await ensureCustomerDetailDialogComponents();
     editingLocation = row;
     resetLocationForm(row);
     showEditLocation = true;
@@ -1085,7 +1236,7 @@
       showEditLocation = false;
       editingLocation = null;
       toast.success('Location updated');
-      await loadLocations();
+      await loadLocations({ force: true });
     } catch (e: any) {
       toast.error(`Failed to update location: ${e?.message || e}`);
     } finally {
@@ -1093,9 +1244,15 @@
     }
   }
 
-  function confirmDeleteLocation(row: CustomerLocation) {
+  async function confirmDeleteLocation(row: CustomerLocation) {
+    await ensureCustomerDetailDialogComponents();
     locationToDelete = row;
     showDeleteLocation = true;
+  }
+
+  async function openDeleteCustomerConfirm() {
+    await ensureCustomerDetailDialogComponents();
+    showDeleteCustomer = true;
   }
 
   async function doDeleteLocation() {
@@ -1168,7 +1325,7 @@
           {$t('common.refresh') || 'Refresh'}
         </button>
         {#if canManageCustomers}
-          <button class="btn btn-danger" onclick={() => (showDeleteCustomer = true)}>
+          <button class="btn btn-danger" onclick={() => void openDeleteCustomerConfirm()}>
             <Icon name="trash-2" size={16} />
             {$t('common.delete') || 'Delete'}
           </button>
@@ -1325,7 +1482,7 @@
             </p>
           </div>
           {#if canManageCustomerLocations}
-            <button class="btn btn-primary" onclick={openCreateLocation}>
+            <button class="btn btn-primary" onclick={() => void openCreateLocation()}>
               <Icon name="plus" size={16} />
               {$t('admin.customers.locations.actions.add') || 'Add location'}
             </button>
@@ -1359,7 +1516,7 @@
                 <button
                   class="btn-icon"
                   title={$t('common.refresh') || 'Refresh'}
-                  onclick={loadLocations}
+                  onclick={() => void loadLocations({ force: true })}
                 >
                   <Icon name="refresh-cw" size={16} />
                 </button>
@@ -1367,14 +1524,14 @@
                   <button
                     class="btn-icon"
                     title={$t('common.edit') || 'Edit'}
-                    onclick={() => openEditLocation(loc)}
+                    onclick={() => void openEditLocation(loc)}
                   >
                     <Icon name="edit-3" size={16} />
                   </button>
                   <button
                     class="btn-icon danger"
                     title={$t('common.delete') || 'Delete'}
-                    onclick={() => confirmDeleteLocation(loc)}
+                    onclick={() => void confirmDeleteLocation(loc)}
                   >
                     <Icon name="trash-2" size={16} />
                   </button>
@@ -1387,535 +1544,112 @@
         </Table>
       </div>
     {:else if activeTab === 'subscriptions'}
-      <div class="card section">
-        <div class="section-head">
-          <div>
-            <h3>{$t('admin.customers.subscriptions.title') || 'Subscriptions'}</h3>
-            <p class="subtitle">
-              {$t('admin.customers.subscriptions.subtitle') ||
-                'Customer service subscriptions for billing and service assignment.'}
-            </p>
-          </div>
-          <div class="header-actions">
-            <button
-              class="btn btn-secondary"
-              onclick={loadSubscriptions}
-              disabled={loadingSubscriptions}
-            >
-              <Icon name="refresh-cw" size={16} />
-              {$t('common.refresh') || 'Refresh'}
-            </button>
-            {#if $can('manage', 'customers')}
-              <button class="btn btn-primary" onclick={openCreateSubscription}>
-                <Icon name="plus" size={16} />
-                {$t('common.add') || 'Add'}
-              </button>
-            {/if}
-          </div>
+      {#if SubscriptionsTabComponent}
+        <SubscriptionsTabComponent
+          t={t}
+          loadingSubscriptions={loadingSubscriptions}
+          loadingLifecycleObservability={loadingLifecycleObservability}
+          lifecycleObservability={lifecycleObservability}
+          metricCount={metricCount}
+          agingBucketCount={agingBucketCount}
+          timeAgo={timeAgo}
+          subscriptionColumns={subscriptionColumns}
+          subscriptions={subscriptions}
+          subscriptionStatusLabel={subscriptionStatusLabel}
+          canManageCustomers={$can('manage', 'customers')}
+          onRefresh={() => loadSubscriptions({ force: true })}
+          onAdd={openCreateSubscription}
+          onGenerateInvoice={generateInvoiceForSubscription}
+          generatingInvoiceFor={generatingInvoiceFor}
+          deletingSubscription={deletingSubscription}
+          onSetSubscriptionStatus={setSubscriptionStatus}
+          togglingSubscription={togglingSubscription}
+          onEditSubscription={openEditSubscription}
+          onDeleteSubscription={deleteSubscription}
+        />
+      {:else if activeDeferredTabLoading === 'subscriptions'}
+        <div class="card loading-card">
+          <div class="spinner"></div>
+          <p>{$t('common.loading') || 'Loading...'}</p>
         </div>
-
-        <div class="lifecycle-observability card">
-          <div class="observability-head">
-            <div>
-              <h4>Lifecycle observability</h4>
-              <p class="subtitle">
-                Operational funnel and aging snapshot for this customer's activations.
-              </p>
-            </div>
-            <span class="meta-pill">
-              <Icon name="activity" size={14} />
-              {#if loadingLifecycleObservability}
-                Loading...
-              {:else if lifecycleObservability?.generated_at}
-                {`Updated ${timeAgo(lifecycleObservability.generated_at)}`}
-              {:else}
-                Waiting for data
-              {/if}
-            </span>
-          </div>
-
-          <div class="observability-grid">
-            <div class="metric-tile">
-              <span class="metric-label">Pending installation</span>
-              <strong>{metricCount('pending_installation')}</strong>
-            </div>
-            <div class="metric-tile emphasis">
-              <span class="metric-label">Grace active</span>
-              <strong
-                >{metricCount('grace_active') ||
-                  metricCount('installation_done_awaiting_payment')}</strong
-              >
-            </div>
-            <div class="metric-tile">
-              <span class="metric-label">Active</span>
-              <strong>{metricCount('active')}</strong>
-            </div>
-            <div class="metric-tile">
-              <span class="metric-label">Cancelled</span>
-              <strong>{metricCount('cancelled')}</strong>
-            </div>
-            <div class="metric-tile">
-              <span class="metric-label">WO pending</span>
-              <strong>{metricCount('pending', 'work_order')}</strong>
-            </div>
-            <div class="metric-tile">
-              <span class="metric-label">WO in progress</span>
-              <strong>{metricCount('in_progress', 'work_order')}</strong>
-            </div>
-            <div class="metric-tile">
-              <span class="metric-label">WO completed</span>
-              <strong>{metricCount('completed', 'work_order')}</strong>
-            </div>
-          </div>
-
-          <div class="aging-row">
-            <span class="aging-pill">0-1d: {agingBucketCount('0-1d')}</span>
-            <span class="aging-pill">2-3d: {agingBucketCount('2-3d')}</span>
-            <span class="aging-pill">4-7d: {agingBucketCount('4-7d')}</span>
-            <span class="aging-pill">>7d: {agingBucketCount('>7d')}</span>
-          </div>
-        </div>
-
-        <Table
-          columns={subscriptionColumns}
-          data={subscriptions}
-          loading={loadingSubscriptions}
-          emptyText={$t('admin.customers.subscriptions.empty') || 'No subscriptions yet.'}
-          pagination
-        >
-          {#snippet cell({ item, key })}
-            {@const row = item as CustomerSubscriptionView}
-            {#if key === 'package'}
-              <div class="name">{row.package_name || row.package_id}</div>
-              <div class="sub">{subscriptionStatusLabel(row.status)}</div>
-            {:else if key === 'billing'}
-              <div class="name">{row.billing_cycle}</div>
-              <div class="sub mono">
-                {row.currency_code}
-                {Number(row.price || 0).toLocaleString()}
-              </div>
-            {:else if key === 'location'}
-              <div>{row.location_label || '-'}</div>
-            {:else if key === 'router'}
-              <div>{row.router_name || '-'}</div>
-            {:else if key === 'period'}
-              <div class="sub">
-                {row.starts_at ? new Date(row.starts_at).toLocaleDateString() : '-'}
-              </div>
-              <div class="sub">
-                {row.ends_at ? new Date(row.ends_at).toLocaleDateString() : '-'}
-              </div>
-            {:else if key === 'actions'}
-              <div class="row-actions">
-                {#if $can('manage', 'customers')}
-                  <button
-                    class="btn-icon"
-                    title={$t('admin.customers.billing.actions.generate_from_subscription') ||
-                      'Generate invoice'}
-                    onclick={() => generateInvoiceForSubscription(row.id)}
-                    disabled={generatingInvoiceFor === row.id || deletingSubscription === row.id}
-                  >
-                    <Icon name="file-text" size={16} />
-                  </button>
-                  {#if row.status === 'active'}
-                    <button
-                      class="btn-icon"
-                      title="Suspend"
-                      onclick={() => setSubscriptionStatus(row, 'suspended')}
-                      disabled={togglingSubscription === row.id || deletingSubscription === row.id}
-                    >
-                      <Icon name="pause" size={16} />
-                    </button>
-                  {:else if row.status === 'suspended'}
-                    <button
-                      class="btn-icon"
-                      title="Resume"
-                      onclick={() => setSubscriptionStatus(row, 'active')}
-                      disabled={togglingSubscription === row.id || deletingSubscription === row.id}
-                    >
-                      <Icon name="play" size={16} />
-                    </button>
-                  {/if}
-                  <button
-                    class="btn-icon"
-                    title={$t('common.edit') || 'Edit'}
-                    onclick={() => openEditSubscription(row)}
-                  >
-                    <Icon name="edit-3" size={16} />
-                  </button>
-                  <button
-                    class="btn-icon danger"
-                    title={$t('common.delete') || 'Delete'}
-                    onclick={() => deleteSubscription(row.id)}
-                    disabled={deletingSubscription === row.id}
-                  >
-                    <Icon name="trash-2" size={16} />
-                  </button>
-                {/if}
-              </div>
-            {:else}
-              {item[key] ?? ''}
-            {/if}
-          {/snippet}
-        </Table>
-      </div>
+      {/if}
     {:else if activeTab === 'billing'}
-      <div class="card section">
-        <div class="section-head">
-          <div>
-            <h3>{$t('admin.customers.billing.title') || 'Billing'}</h3>
-            <p class="subtitle">
-              {$t('admin.customers.billing.subtitle') ||
-                'Invoice history generated from this customer subscriptions.'}
-            </p>
-          </div>
-          <div class="header-actions">
-            <label class="inline-filter">
-              <span>{$t('admin.customers.billing.filters.status') || 'Status'}</span>
-              <select class="input" bind:value={billingStatus}>
-                <option value="all">{$t('admin.customers.billing.filters.all') || 'All'}</option>
-                <option value="pending"
-                  >{$t('admin.package_invoices.statuses.pending') || 'Pending'}</option
-                >
-                <option value="verification_pending">
-                  {$t('admin.package_invoices.statuses.verification_pending') ||
-                    'Verification pending'}
-                </option>
-                <option value="paid">{$t('admin.package_invoices.statuses.paid') || 'Paid'}</option>
-                <option value="failed"
-                  >{$t('admin.package_invoices.statuses.failed') || 'Failed'}</option
-                >
-              </select>
-            </label>
-            <div class="quick-ranges">
-              <button
-                class="btn btn-secondary btn-quick"
-                class:active={billingQuickRange === 'today'}
-                onclick={() => applyBillingQuickRange('today')}
-              >
-                {$t('admin.customers.billing.filters.today') || 'Today'}
-              </button>
-              <button
-                class="btn btn-secondary btn-quick"
-                class:active={billingQuickRange === '7d'}
-                onclick={() => applyBillingQuickRange('7d')}
-              >
-                {$t('admin.customers.billing.filters.last_7d') || '7D'}
-              </button>
-              <button
-                class="btn btn-secondary btn-quick"
-                class:active={billingQuickRange === '30d'}
-                onclick={() => applyBillingQuickRange('30d')}
-              >
-                {$t('admin.customers.billing.filters.last_30d') || '30D'}
-              </button>
-              <button
-                class="btn btn-secondary btn-quick"
-                class:active={billingQuickRange === 'month'}
-                onclick={() => applyBillingQuickRange('month')}
-              >
-                {$t('admin.customers.billing.filters.this_month') || 'This Month'}
-              </button>
-            </div>
-            <label class="inline-filter">
-              <span>{$t('admin.customers.billing.filters.from') || 'From'}</span>
-              <input
-                class="input"
-                type="date"
-                bind:value={billingDateFrom}
-                oninput={onBillingDateChange}
-              />
-            </label>
-            <label class="inline-filter">
-              <span>{$t('admin.customers.billing.filters.to') || 'To'}</span>
-              <input
-                class="input"
-                type="date"
-                bind:value={billingDateTo}
-                oninput={onBillingDateChange}
-              />
-            </label>
-            <button
-              class="btn btn-secondary"
-              onclick={clearBillingFilters}
-              disabled={billingStatus === 'all' && !billingDateFrom && !billingDateTo}
-            >
-              <Icon name="eraser" size={16} />
-              {$t('admin.customers.billing.filters.clear') || 'Clear'}
-            </button>
-            <button
-              class="btn btn-secondary"
-              onclick={loadBillingInvoices}
-              disabled={loadingBilling}
-            >
-              <Icon name="refresh-cw" size={16} />
-              {$t('common.refresh') || 'Refresh'}
-            </button>
-          </div>
+      {#if BillingTabComponent}
+        <BillingTabComponent
+          t={t}
+          bind:billingStatus
+          bind:billingDateFrom
+          bind:billingDateTo
+          bind:billingQuickRange
+          onApplyQuickRange={applyBillingQuickRange}
+          onBillingDateChange={onBillingDateChange}
+          onClearFilters={clearBillingFilters}
+          onRefresh={() => loadBillingInvoices({ force: true })}
+          loadingBilling={loadingBilling}
+          billingStats={billingStats}
+          billingColumns={billingColumns}
+          billingRows={billingRows}
+          getSubscriptionIdFromInvoice={getSubscriptionIdFromInvoice}
+          subscriptionById={subscriptionById}
+          billingStatusLabel={billingStatusLabel}
+          formatMoney={formatMoney}
+          onOpenInvoiceDetail={openInvoiceDetail}
+        />
+      {:else if activeDeferredTabLoading === 'billing'}
+        <div class="card loading-card">
+          <div class="spinner"></div>
+          <p>{$t('common.loading') || 'Loading...'}</p>
         </div>
-
-        <div class="billing-stats">
-          <div class="billing-stat">
-            <div class="billing-stat-label">
-              {$t('admin.customers.billing.stats.total') || 'Total invoices'}
-            </div>
-            <div class="billing-stat-value">{billingStats.total}</div>
-          </div>
-          <div class="billing-stat">
-            <div class="billing-stat-label">
-              {$t('admin.customers.billing.stats.unpaid') || 'Unpaid'}
-            </div>
-            <div class="billing-stat-value">{billingStats.unpaid}</div>
-          </div>
-          <div class="billing-stat">
-            <div class="billing-stat-label">
-              {$t('admin.customers.billing.stats.paid') || 'Paid'}
-            </div>
-            <div class="billing-stat-value">{billingStats.paid}</div>
-          </div>
-          <div class="billing-stat">
-            <div class="billing-stat-label">
-              {$t('admin.customers.billing.stats.overdue') || 'Overdue'}
-            </div>
-            <div class="billing-stat-value">{billingStats.overdue}</div>
-          </div>
-        </div>
-
-        <Table
-          columns={billingColumns}
-          data={billingRows}
-          loading={loadingBilling}
-          emptyText={$t('admin.customers.billing.empty') || 'No invoices for this customer yet.'}
-          pagination
-        >
-          {#snippet cell({ item, key })}
-            {@const row = item as Invoice}
-            {@const subscriptionId = getSubscriptionIdFromInvoice(row)}
-            {@const subscription = subscriptionId ? subscriptionById.get(subscriptionId) : null}
-            {#if key === 'invoice_number'}
-              <div class="name">#{row.invoice_number}</div>
-              <div class="sub mono">
-                {row.created_at ? new Date(row.created_at).toLocaleString() : '-'}
-              </div>
-            {:else if key === 'subscription'}
-              <div class="name">
-                {subscription?.package_name || subscription?.package_id || '-'}
-              </div>
-              <div class="sub">{subscription?.billing_cycle || '-'}</div>
-            {:else if key === 'amount'}
-              <div class="name">
-                {formatMoney(row.amount, { currency: row.currency_code || undefined })}
-              </div>
-            {:else if key === 'status'}
-              <span
-                class={`badge ${row.status === 'paid' ? 'ok' : row.status === 'failed' ? 'danger' : 'warn'}`}
-              >
-                {billingStatusLabel(row.status)}
-              </span>
-            {:else if key === 'due_date'}
-              <div class="name">{new Date(row.due_date).toLocaleDateString()}</div>
-              <div class="sub mono">{new Date(row.due_date).toLocaleTimeString()}</div>
-            {:else if key === 'actions'}
-              <div class="row-actions">
-                <button
-                  class="btn-icon"
-                  title={$t('admin.package_invoices.list.actions.view_details') || 'View details'}
-                  onclick={() => openInvoiceDetail(row.id)}
-                >
-                  <Icon name="eye" size={16} />
-                </button>
-              </div>
-            {:else}
-              {item[key] ?? ''}
-            {/if}
-          {/snippet}
-        </Table>
-      </div>
+      {/if}
     {:else if activeTab === 'pppoe'}
-      <div class="card section">
-        <div class="section-head">
-          <div>
-            <h3>{$t('admin.customers.pppoe.title') || 'PPPoE accounts'}</h3>
-            <p class="subtitle">
-              {$t('admin.customers.pppoe.subtitle') ||
-                'Manage PPPoE secrets for this customer (per-router). The database is the source of truth.'}
-            </p>
-          </div>
-          <div class="pppoe-toolbar">
-            {#if pppoeToolbar.showSearch}
-              <label class="pppoe-search" for="customer-pppoe-search">
-                <Icon name="search" size={16} />
-                <span class="sr-only">{$t('common.search') || 'Search'}</span>
-                <input
-                  id="customer-pppoe-search"
-                  class="pppoe-search-input"
-                  bind:value={pppoeQuery}
-                  placeholder={$t('admin.customers.pppoe.search') || 'Search username...'}
-                  oninput={() => void loadPppoeAccounts()}
-                />
-              </label>
-            {/if}
-            {#if pppoeToolbar.showRefresh}
-              <button class="btn btn-secondary" onclick={loadPppoeAccounts} disabled={loadingPppoe}>
-                <Icon name="refresh-cw" size={16} />
-                {$t('common.refresh') || 'Refresh'}
-              </button>
-            {/if}
-          </div>
+      {#if PppoeTabComponent}
+        <PppoeTabComponent
+          t={t}
+          pppoeToolbar={pppoeToolbar}
+          bind:pppoeQuery
+          onRefresh={() => loadPppoeAccounts({ force: true })}
+          loadingPppoe={loadingPppoe}
+          pppoeColumns={pppoeColumns}
+          pppoeAccounts={pppoeAccounts}
+          pppoeRouters={pppoeRouters}
+          locations={locations}
+          getPppoeSyncDisplay={getPppoeSyncDisplay}
+          getPppoeProvisioningTargetFallback={getPppoeProvisioningTargetFallback}
+          getPppoeApplyActionFallback={getPppoeApplyActionFallback}
+          timeAgo={timeAgo}
+          canManagePppoe={$can('manage', 'pppoe')}
+          onApplyPppoe={applyPppoe}
+          onEditPppoe={openEditPppoe}
+          onDeletePppoe={deletePppoe}
+        />
+      {:else if activeDeferredTabLoading === 'pppoe'}
+        <div class="card loading-card">
+          <div class="spinner"></div>
+          <p>{$t('common.loading') || 'Loading...'}</p>
         </div>
-
-        <Table
-          columns={pppoeColumns}
-          data={pppoeAccounts}
-          loading={loadingPppoe}
-          emptyText={$t('admin.customers.pppoe.empty') || 'No PPPoE accounts yet.'}
-          pagination
-        >
-          {#snippet cell({ item, key })}
-            {@const row = item as PppoeAccountPublic}
-            {@const routerName = pppoeRouters.find((r) => r.id === row.router_id)?.name || '-'}
-            {@const locName = locations.find((l) => l.id === row.location_id)?.label || '-'}
-            {@const syncMeta = getPppoeSyncDisplay(row)}
-            {#if key === 'username'}
-              <div class="name">{row.username}</div>
-              <div class="sub mono">
-                {row.disabled
-                  ? $t('common.disabled') || 'Disabled'
-                  : $t('common.active') || 'Active'}
-              </div>
-              <div class="sub mono">
-                {getPppoeProvisioningTargetFallback(row.account_source)}
-              </div>
-            {:else if key === 'router'}
-              <div class="name">{routerName}</div>
-              <div class="sub mono">{row.router_id}</div>
-            {:else if key === 'location'}
-              <div class="name">{locName}</div>
-              <div class="sub mono">{row.location_id}</div>
-            {:else if key === 'assignment'}
-              <div class="sub">
-                <span class="pill"
-                  >{$t('admin.customers.pppoe.fields.profile') || 'Profile'}: {row.router_profile_name ||
-                    '-'}</span
-                >
-                <span class="pill"
-                  >{$t('admin.customers.pppoe.fields.remote_address') || 'Remote'}: {row.remote_address ||
-                    row.address_pool ||
-                    '-'}</span
-                >
-              </div>
-            {:else if key === 'sync'}
-              <div class="sub">
-                <span class={`badge ${syncMeta.tone === 'ok' ? 'ok' : 'warn'}`}>
-                  {syncMeta.label}
-                </span>
-                <span class="mono">{syncMeta.syncedAt ? timeAgo(syncMeta.syncedAt) : '-'}</span>
-              </div>
-              {#if syncMeta.error}
-                <div class="sub error">{syncMeta.error}</div>
-              {/if}
-              {#if row.account_source === 'managed_radius' && row.radius_identity}
-                <div class="sub mono">Identity: {row.radius_identity}</div>
-              {/if}
-            {:else if key === 'actions'}
-              <div class="row-actions">
-                {#if $can('manage', 'pppoe')}
-                  <button
-                    class="btn-icon"
-                    title={$t('admin.customers.pppoe.actions.apply') ||
-                      getPppoeApplyActionFallback(row.account_source)}
-                    onclick={() => applyPppoe(row)}
-                  >
-                    <Icon name="send" size={16} />
-                  </button>
-                  <button
-                    class="btn-icon"
-                    title={$t('common.edit') || 'Edit'}
-                    onclick={() => openEditPppoe(row)}
-                  >
-                    <Icon name="edit" size={16} />
-                  </button>
-                  <button
-                    class="btn-icon danger"
-                    title={$t('common.delete') || 'Delete'}
-                    onclick={() => deletePppoe(row)}
-                  >
-                    <Icon name="trash-2" size={16} />
-                  </button>
-                {/if}
-              </div>
-            {:else}
-              {item[key] ?? ''}
-            {/if}
-          {/snippet}
-        </Table>
-      </div>
+      {/if}
     {:else if activeTab === 'timeline'}
-      <div class="card section">
-        <div class="section-head">
-          <div>
-            <h3>Timeline</h3>
-            <p class="subtitle">Recent customer activity and audit history.</p>
-          </div>
-          <button class="btn btn-secondary" onclick={loadTimeline} disabled={loadingTimeline}>
-            <Icon name="refresh-cw" size={16} />
-            {$t('common.refresh') || 'Refresh'}
-          </button>
+      {#if TimelineTabComponent}
+        <TimelineTabComponent
+          loadingTimeline={loadingTimeline}
+          onRefresh={() => loadTimeline({ force: true })}
+          bind:timelineType
+          timelineColumns={timelineColumns}
+          timelineRows={timelineRows}
+          timeAgo={timeAgo}
+        />
+      {:else if activeDeferredTabLoading === 'timeline'}
+        <div class="card loading-card">
+          <div class="spinner"></div>
+          <p>{$t('common.loading') || 'Loading...'}</p>
         </div>
-        <div class="timeline-filters">
-          <button class:active={timelineType === 'all'} onclick={() => (timelineType = 'all')}
-            >All</button
-          >
-          <button
-            class:active={timelineType === 'customer'}
-            onclick={() => (timelineType = 'customer')}>Profile</button
-          >
-          <button
-            class:active={timelineType === 'location'}
-            onclick={() => (timelineType = 'location')}>Location</button
-          >
-          <button
-            class:active={timelineType === 'subscription'}
-            onclick={() => (timelineType = 'subscription')}>Subscription</button
-          >
-        </div>
-        <Table
-          columns={timelineColumns}
-          data={timelineRows}
-          loading={loadingTimeline}
-          emptyText="No timeline yet."
-          pagination
-          searchable
-          searchPlaceholder="Search timeline..."
-          mobileView="scroll"
-        >
-          {#snippet cell({ item, key })}
-            {#if key === 'created_at'}
-              <div class="timeline-table-time">
-                <div>{new Date(item.created_at).toLocaleString()}</div>
-                <div class="sub">{timeAgo(item.created_at)}</div>
-              </div>
-            {:else if key === 'action'}
-              <div class="timeline-table-action">{item.action}</div>
-            {:else if key === 'resource'}
-              <span class="pill">{item.resource}</span>
-            {:else if key === 'actor'}
-              <div class="timeline-table-actor">{item.actor}</div>
-            {:else if key === 'details'}
-              <div class:subtle-empty={!item.details}>
-                {item.details || 'No detail'}
-              </div>
-            {:else}
-              {item[key] ?? ''}
-            {/if}
-          {/snippet}
-        </Table>
-      </div>
+      {/if}
     {/if}
   {/if}
 </div>
 
-<Modal
+{#if ModalComponent}
+<ModalComponent
   show={showEditPppoe}
   title={$t('admin.customers.pppoe.edit.title') || 'Edit PPPoE account'}
   onclose={() => (showEditPppoe = false)}
@@ -1924,7 +1658,8 @@
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.pppoe.fields.router') || 'Router'}</span>
-        <Select2
+        {#if Select2Component}
+        <Select2Component
           bind:value={pppoeRouterId}
           options={pppoeRouters.map((r) => ({ label: r.name, value: r.id }))}
           placeholder={($t('common.select') || 'Select') + '...'}
@@ -1940,13 +1675,15 @@
             pppoeAddressPool = '';
           }}
         />
+        {/if}
       </label>
       <div></div>
     </div>
 
     <label>
       <span>{$t('admin.customers.pppoe.fields.package') || 'Package'}</span>
-      <Select2
+      {#if Select2Component}
+      <Select2Component
         bind:value={pppoePackageId}
         options={pppoePackageOptions}
         placeholder={($t('common.select') || 'Select') + '...'}
@@ -1957,6 +1694,7 @@
         noResultsText={$t('common.no_results') || 'No results'}
         onchange={() => applyPppoePackage(pppoePackageId)}
       />
+      {/if}
       <div class="field-hint">
         {$t('admin.network.pppoe.form.package_hint') ||
           'Choose a package to control PPP profile and addressing for the selected router.'}
@@ -1999,10 +1737,12 @@
             'Disable this PPPoE account (will be applied to router when you click Apply).'}
         </div>
       </div>
-      <Toggle
+      {#if ToggleComponent}
+      <ToggleComponent
         bind:checked={pppoeDisabled}
         ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}
       />
+      {/if}
     </div>
 
     <div class="actions">
@@ -2019,9 +1759,9 @@
       </button>
     </div>
   </div>
-</Modal>
+</ModalComponent>
 
-<Modal
+<ModalComponent
   show={showAddSubscription}
   title={$t('admin.customers.subscriptions.new.title') || 'Add subscription'}
   onclose={() => (showAddSubscription = false)}
@@ -2030,36 +1770,44 @@
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.subscriptions.fields.location') || 'Location'}</span>
-        <Select2
+        {#if Select2Component}
+        <Select2Component
           bind:value={subLocationId}
           options={subscriptionLocationOptions}
           placeholder={($t('common.select') || 'Select') + '...'}
           width="100%"
         />
+        {/if}
       </label>
       <label>
         <span>{$t('admin.customers.subscriptions.fields.package') || 'Package'}</span>
-        <Select2
+        {#if Select2Component}
+        <Select2Component
           bind:value={subPackageId}
           options={subscriptionPackageOptions}
           placeholder={($t('common.select') || 'Select') + '...'}
           width="100%"
         />
+        {/if}
       </label>
     </div>
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.subscriptions.fields.router') || 'Router (optional)'}</span>
-        <Select2
+        {#if Select2Component}
+        <Select2Component
           bind:value={subRouterId}
           options={subscriptionRouterOptions}
           placeholder={($t('common.select') || 'Select') + '...'}
           width="100%"
         />
+        {/if}
       </label>
       <label>
         <span>{$t('admin.customers.subscriptions.fields.billing_cycle') || 'Billing cycle'}</span>
-        <Select2 bind:value={subBillingCycle} options={billingCycleOptions} width="100%" />
+        {#if Select2Component}
+        <Select2Component bind:value={subBillingCycle} options={billingCycleOptions} width="100%" />
+        {/if}
       </label>
     </div>
     <div class="grid2">
@@ -2075,7 +1823,9 @@
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.subscriptions.fields.status') || 'Status'}</span>
-        <Select2 bind:value={subStatus} options={subscriptionStatusOptions} width="100%" />
+        {#if Select2Component}
+        <Select2Component bind:value={subStatus} options={subscriptionStatusOptions} width="100%" />
+        {/if}
       </label>
       <div></div>
     </div>
@@ -2107,9 +1857,9 @@
       </button>
     </div>
   </div>
-</Modal>
+</ModalComponent>
 
-<Modal
+<ModalComponent
   show={showEditSubscription}
   title={$t('admin.customers.subscriptions.edit.title') || 'Edit subscription'}
   onclose={() => {
@@ -2121,36 +1871,44 @@
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.subscriptions.fields.location') || 'Location'}</span>
-        <Select2
+        {#if Select2Component}
+        <Select2Component
           bind:value={subLocationId}
           options={subscriptionLocationOptions}
           placeholder={($t('common.select') || 'Select') + '...'}
           width="100%"
         />
+        {/if}
       </label>
       <label>
         <span>{$t('admin.customers.subscriptions.fields.package') || 'Package'}</span>
-        <Select2
+        {#if Select2Component}
+        <Select2Component
           bind:value={subPackageId}
           options={subscriptionPackageOptions}
           placeholder={($t('common.select') || 'Select') + '...'}
           width="100%"
         />
+        {/if}
       </label>
     </div>
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.subscriptions.fields.router') || 'Router (optional)'}</span>
-        <Select2
+        {#if Select2Component}
+        <Select2Component
           bind:value={subRouterId}
           options={subscriptionRouterOptions}
           placeholder={($t('common.select') || 'Select') + '...'}
           width="100%"
         />
+        {/if}
       </label>
       <label>
         <span>{$t('admin.customers.subscriptions.fields.billing_cycle') || 'Billing cycle'}</span>
-        <Select2 bind:value={subBillingCycle} options={billingCycleOptions} width="100%" />
+        {#if Select2Component}
+        <Select2Component bind:value={subBillingCycle} options={billingCycleOptions} width="100%" />
+        {/if}
       </label>
     </div>
     <div class="grid2">
@@ -2166,7 +1924,9 @@
     <div class="grid2">
       <label>
         <span>{$t('admin.customers.subscriptions.fields.status') || 'Status'}</span>
-        <Select2 bind:value={subStatus} options={subscriptionStatusOptions} width="100%" />
+        {#if Select2Component}
+        <Select2Component bind:value={subStatus} options={subscriptionStatusOptions} width="100%" />
+        {/if}
       </label>
       <div></div>
     </div>
@@ -2198,9 +1958,9 @@
       </button>
     </div>
   </div>
-</Modal>
+</ModalComponent>
 
-<Modal
+<ModalComponent
   show={showAddLocation}
   title={$t('admin.customers.locations.new.title') || 'Add location'}
   onclose={() => (showAddLocation = false)}
@@ -2266,9 +2026,9 @@
       </button>
     </div>
   </div>
-</Modal>
+</ModalComponent>
 
-<Modal
+<ModalComponent
   show={showEditLocation}
   title={$t('admin.customers.locations.edit.title') || 'Edit location'}
   onclose={() => (showEditLocation = false)}
@@ -2334,9 +2094,10 @@
       </button>
     </div>
   </div>
-</Modal>
+</ModalComponent>
 
-<ConfirmDialog
+{#if ConfirmDialogComponent}
+<ConfirmDialogComponent
   show={showDeleteCustomer}
   title={$t('admin.customers.delete.title') || 'Delete customer'}
   message={$t('admin.customers.delete.message') ||
@@ -2348,7 +2109,7 @@
   oncancel={() => (showDeleteCustomer = false)}
 />
 
-<ConfirmDialog
+<ConfirmDialogComponent
   show={showDeleteLocation}
   title={$t('admin.customers.locations.delete.title') || 'Delete location'}
   message={$t('admin.customers.locations.delete.message') || 'This location will be removed.'}
@@ -2358,6 +2119,8 @@
   onconfirm={doDeleteLocation}
   oncancel={() => (showDeleteLocation = false)}
 />
+{/if}
+{/if}
 
 <style>
   .page-content {
@@ -2650,11 +2413,6 @@
     margin-bottom: 0.9rem;
   }
 
-  .observability-head h4 {
-    margin: 0;
-    font-size: 1rem;
-  }
-
   .observability-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -2678,11 +2436,6 @@
     font-size: 0.78rem;
     color: var(--text-secondary);
     margin-bottom: 0.35rem;
-  }
-
-  .metric-tile strong {
-    font-size: 1.4rem;
-    line-height: 1;
   }
 
   .aging-row {
@@ -2965,23 +2718,6 @@
     flex-wrap: wrap;
     gap: 0.45rem;
     margin-bottom: 0.75rem;
-  }
-
-  .timeline-filters button {
-    border: 1px solid var(--border-color);
-    background: var(--bg-surface);
-    color: var(--text-secondary);
-    border-radius: 999px;
-    padding: 0.28rem 0.65rem;
-    font-size: 0.82rem;
-    font-weight: 650;
-    cursor: pointer;
-  }
-
-  .timeline-filters button.active {
-    color: var(--text-primary);
-    border-color: rgba(99, 102, 241, 0.45);
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
   }
 
   .timeline-table-time,

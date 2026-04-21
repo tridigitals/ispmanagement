@@ -1,0 +1,13 @@
+{
+  "toasts": {
+    "push_not_supported": "Push notifikasi tidak didukung",
+    "blocked": "Notifikasi diblokir. Silakan izinkan notifikasi di pengaturan browser Anda.",
+    "permission_denied": "Izin ditolak. Anda perlu mengizinkan notifikasi.",
+    "missing_vapid": "Kesalahan konfigurasi: Kunci VAPID tidak ada",
+    "enabled": "Push notifikasi berhasil diaktifkan!",
+    "disabled": "Push notifikasi dinonaktifkan",
+    "test_sent": "Notifikasi percobaan terkirim!",
+    "test_failed": "Gagal mengirim notifikasi percobaan",
+    "generic_error": "Error: {message}"
+  }
+}

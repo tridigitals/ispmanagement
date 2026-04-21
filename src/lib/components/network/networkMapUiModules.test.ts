@@ -18,6 +18,11 @@ const sentinels = vi.hoisted(() => ({
     fitMapToMarkers: vi.fn(),
     buildSelectionFeatureCollections: vi.fn(),
   },
+  workspaceModule: {
+    selectNetworkMapObject: vi.fn(),
+    enterInvestigationMode: vi.fn(),
+    clearWorkspaceSelection: vi.fn(),
+  },
   popupModule: {
     openNodePopup: vi.fn(),
     openLinkPopup: vi.fn(),
@@ -50,6 +55,7 @@ vi.mock('$lib/components/ui/ConfirmDialog.svelte', () => ({
 }));
 
 vi.mock('$lib/components/network/networkMapInteractionRuntime', () => sentinels.interactionModule);
+vi.mock('$lib/components/network/networkMapWorkspaceActions', () => sentinels.workspaceModule);
 
 vi.mock('$lib/components/network/networkMapPopups', () => sentinels.popupModule);
 
@@ -58,6 +64,7 @@ import {
   loadNetworkMapDialogModules,
   loadNetworkMapInteractionModule,
   loadNetworkMapPopupModule,
+  loadNetworkMapWorkspaceModule,
 } from './networkMapUiModules';
 
 describe('network map ui modules', () => {
@@ -107,6 +114,16 @@ describe('network map ui modules', () => {
     expect(first.buildSelectionFeatureCollections).toBe(
       sentinels.interactionModule.buildSelectionFeatureCollections,
     );
+    expect(second).toBe(first);
+  });
+
+  it('loads and caches the workspace action module', async () => {
+    const first = await loadNetworkMapWorkspaceModule();
+    const second = await loadNetworkMapWorkspaceModule();
+
+    expect(first.selectNetworkMapObject).toBe(sentinels.workspaceModule.selectNetworkMapObject);
+    expect(first.enterInvestigationMode).toBe(sentinels.workspaceModule.enterInvestigationMode);
+    expect(first.clearWorkspaceSelection).toBe(sentinels.workspaceModule.clearWorkspaceSelection);
     expect(second).toBe(first);
   });
 });

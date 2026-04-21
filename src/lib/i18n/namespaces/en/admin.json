@@ -1,0 +1,2398 @@
+{
+  "dashboard": {
+    "eyebrow": "Adaptive admin dashboard",
+    "role_scoped": "Only modules you can access are shown here",
+    "last_updated": "Last updated",
+    "loading": "Loading your workspace snapshot...",
+    "open_area": "Open area",
+    "empty": {
+      "title": "No dashboard modules available yet",
+      "description": "This account does not currently expose a dashboard section. Ask an owner or admin to grant one or more tenant permissions."
+    },
+    "audience": {
+      "admin": {
+        "title": "Tenant control room",
+        "subtitle": "Keep access, billing, customer growth, and cross-team workload in one view."
+      },
+      "operations": {
+        "title": "Field operations today",
+        "subtitle": "Start with installations, PPPoE follow-up, and the customer context needed in the field."
+      },
+      "support": {
+        "title": "Customer service workspace",
+        "subtitle": "Prioritize billing follow-up, activation handoff, and open support conversations."
+      },
+      "noc": {
+        "title": "Network watch",
+        "subtitle": "Focus on incidents, alerts, and monitored routers before they escalate."
+      },
+      "hybrid": {
+        "title": "Operational snapshot",
+        "subtitle": "Only the modules you can access are shown here, ordered by what likely needs attention first."
+      }
+    },
+    "sections": {
+      "primary": {
+        "kicker": "Snapshot",
+        "title": "Selected KPIs"
+      },
+      "focus": {
+        "kicker": "Action",
+        "title": "My Focus Today"
+      },
+      "actions": {
+        "kicker": "Go next",
+        "title": "Quick Actions"
+      },
+      "trends": {
+        "kicker": "Distribution",
+        "title": "Compact trends"
+      }
+    },
+    "widgets": {
+      "customers": {
+        "title": "Customers",
+        "meta": "awaiting activation"
+      },
+      "invoices_due": {
+        "title": "Invoices needing follow-up",
+        "meta": "overdue"
+      },
+      "team_members": {
+        "title": "Team members"
+      },
+      "subscription_plan": {
+        "title": "Subscription plan",
+        "meta": "members used"
+      },
+      "work_orders_active": {
+        "title": "Active installations",
+        "meta": "waiting to start"
+      },
+      "pppoe_accounts": {
+        "title": "PPPoE accounts",
+        "meta": "need router sync"
+      },
+      "incidents_open": {
+        "title": "Open incidents",
+        "meta": "critical"
+      },
+      "alerts_active": {
+        "title": "Active alerts",
+        "meta": "critical"
+      },
+      "routers_monitored": {
+        "title": "Monitored routers"
+      },
+      "support_open": {
+        "title": "Open support tickets",
+        "meta": "pending reply"
+      }
+    },
+    "focus": {
+      "work_orders_attention": {
+        "title": "Installations waiting for action",
+        "description": "Prioritize pending and in-progress work orders for technicians."
+      },
+      "pppoe_sync_issues": {
+        "title": "PPPoE sync issues",
+        "description": "Check accounts missing on router or disabled unexpectedly."
+      },
+      "billing_followup": {
+        "title": "Billing follow-up",
+        "description": "Overdue and pending invoices that still need action today."
+      },
+      "customer_activation": {
+        "title": "Customers awaiting activation",
+        "description": "Customers who are close to service activation or payment handoff."
+      },
+      "support_queue": {
+        "title": "Support queue",
+        "description": "Open and pending tickets that need a coordinated response."
+      },
+      "network_watch": {
+        "title": "Network watchlist",
+        "description": "Alerts and incidents that need NOC review before they escalate."
+      }
+    },
+    "actions": {
+      "team": {
+        "title": "Team",
+        "description": "Review members, invitations, and responsibilities."
+      },
+      "roles": {
+        "title": "Roles & permissions",
+        "description": "Adjust granular access without opening unrelated modules."
+      },
+      "settings": {
+        "title": "Settings",
+        "description": "Update tenant-level policies, defaults, and network behavior."
+      },
+      "customers": {
+        "title": "Customers",
+        "description": "Open customer records, service history, and read-only field context."
+      },
+      "invoices": {
+        "title": "Invoices",
+        "description": "Review outstanding invoices and retry collections when needed."
+      },
+      "installations": {
+        "title": "Installations",
+        "description": "Claim work orders, track progress, and complete field jobs."
+      },
+      "pppoe": {
+        "title": "PPPoE",
+        "description": "Manage accounts and resolve router or RADIUS sync issues."
+      },
+      "noc": {
+        "title": "NOC wallboard",
+        "description": "Open the live wallboard for the current network situation."
+      },
+      "alerts": {
+        "title": "Alerts",
+        "description": "Triage active router alerts and acknowledge noise quickly."
+      },
+      "incidents": {
+        "title": "Incidents",
+        "description": "Review active incidents, owners, and severity escalations."
+      },
+      "routers": {
+        "title": "Routers",
+        "description": "Inspect router inventory, health, and per-device details."
+      },
+      "support": {
+        "title": "Support",
+        "description": "Open the shared ticket queue and continue customer replies."
+      },
+      "audit": {
+        "title": "Audit logs",
+        "description": "Review sensitive changes and permission-level activity."
+      },
+      "email_outbox": {
+        "title": "Email outbox",
+        "description": "Check failed deliveries and retry critical outbound messages."
+      }
+    },
+    "trends": {
+      "invoice_status": {
+        "title": "Invoice status distribution",
+        "overdue": "Overdue",
+        "pending": "Pending",
+        "paid": "Paid"
+      },
+      "incident_severity": {
+        "title": "Incident severity",
+        "critical": "Critical",
+        "warning": "Warning"
+      },
+      "alert_severity": {
+        "title": "Alert severity",
+        "critical": "Critical",
+        "warning": "Warning"
+      }
+    }
+  },
+  "settings": {
+    "title": "Global Settings",
+    "subtitle": "Manage application configuration, security, and integrations.",
+    "save_success": "Changes saved successfully",
+    "save_error": "Failed to save settings",
+    "load_error": "Failed to load settings",
+    "reset_button": "Reset",
+    "save_button": "Save Changes",
+    "saving": "Saving...",
+    "toasts": {
+      "load_failed": "Failed to load settings",
+      "logo_uploaded": "Logo uploaded",
+      "logo_upload_failed": "Failed to upload logo",
+      "saved": "Settings saved",
+      "save_failed": "Failed to save settings"
+    },
+    "placeholders": {
+      "custom_domain": "e.g. app.yourcompany.com",
+      "locked": "Locked"
+    },
+    "subtitle_dynamic": "Manage your {tab} settings",
+    "branding": {
+      "custom_domain_help_prefix": "Point your domain's CNAME record to",
+      "custom_domain_help_suffix": "(or configured alias).",
+      "custom_domain_pro_title": "Custom Domain is a Pro Feature",
+      "custom_domain_pro_desc": "Upgrade your plan to use your own domain name."
+    },
+    "security": {
+      "enforce_2fa_desc": "Require all members of this organization to enable 2FA before accessing the dashboard.",
+      "require_email_verification_title": "Require Email Verification",
+      "require_email_verification_desc": "Require users in this tenant to verify email before login. Can only be enabled after email provider is configured.",
+      "require_email_verification_not_ready": "Email configuration is not ready. Save valid Email settings first, then enable this option.",
+      "customer_self_registration_title": "Customer Self Registration",
+      "customer_self_registration_desc": "Allow customer signup from this tenant custom domain. Default is disabled."
+    },
+    "storage": {
+      "select_provider": "Select Storage Provider"
+    },
+    "email": {
+      "provider_label": "Email Delivery Provider",
+      "connection_details": "Connection Details",
+      "queue": {
+        "title": "Delivery Queue & Retry",
+        "desc": "Queue outgoing emails and automatically retry transient failures.",
+        "enabled": "Enable Email Outbox",
+        "enabled_desc": "Recommended for production to prevent lost emails.",
+        "max_attempts": "Max Attempts",
+        "base_delay": "Base Delay (seconds)",
+        "view_outbox": "View Outbox"
+      },
+      "placeholders": {
+        "from_name": "e.g. Acme Support",
+        "from_address": "noreply@yourdomain.com",
+        "smtp_host": "smtp.mailtrap.io",
+        "smtp_port": "587"
+      },
+      "test": {
+        "desc": "Send a test email or verify SMTP connectivity.",
+        "recipient_placeholder": "Enter recipient email",
+        "sending": "Sending...",
+        "send": "Send Test"
+      },
+      "smtp_test": {
+        "button": "Test SMTP",
+        "testing": "Testing...",
+        "ok": "SMTP connection verified",
+        "failed": "SMTP test failed",
+        "hint": "Checks connectivity and auth without sending an email."
+      }
+    },
+    "payment": {
+      "methods_label": "Payment Methods",
+      "customer_invoice_auto_generate_enabled_label": "Enable automatic customer invoice generation",
+      "customer_invoice_auto_generate_enabled_help": "Runs in background and creates due invoices automatically based on lead days.",
+      "invoice_generation_days_before_due_label": "Generate customer invoice (days before due)",
+      "invoice_generation_days_before_due_help": "Invoices will be generated automatically by bulk process when entering this window.",
+      "customer_invoice_scheduler_interval_minutes_label": "Customer invoice scheduler interval (minutes)",
+      "customer_invoice_scheduler_interval_minutes_help": "How often background worker checks for due customer invoices.",
+      "customer_invoice_last_run_at_label": "Last customer invoice generation run",
+      "customer_invoice_last_run_at_help": "Updated when due invoice generation process runs (manual or automatic).",
+      "midtrans": {
+        "merchant_id": "Merchant ID",
+        "client_key": "Client Key",
+        "server_key": "Server Key"
+      },
+      "manual": {
+        "add_one": "Add One",
+        "instructions_label": "Payment Instructions",
+        "placeholder_instructions": "Please transfer to BCA 1234567890 a/n PT Company...",
+        "bank_accounts": "Bank Accounts",
+        "add_bank": "Add Bank",
+        "bank_form": {
+          "bank_name_label": "Bank Name",
+          "bank_name_placeholder": "Bank Name (e.g. BCA)",
+          "account_number_label": "Account Number",
+          "account_number_placeholder": "Account Number",
+          "account_holder_label": "Account Holder Name",
+          "account_holder_placeholder": "Account Holder Name",
+          "add": "Add",
+          "add_account": "Add Account",
+          "remove_account": "Remove Account"
+        }
+      },
+      "installation_sla": {
+        "title": "Installation SLA Reminders",
+        "enable": {
+          "label": "Enable installation SLA reminders",
+          "desc": "Send automatic notifications when installation work orders are overdue."
+        },
+        "overdue_minutes": {
+          "label": "Overdue threshold (minutes)",
+          "desc": "A scheduled work order is considered overdue after this many minutes."
+        },
+        "cooldown_minutes": {
+          "label": "Reminder cooldown (minutes)",
+          "desc": "Minimum delay before the same reminder is sent again for the same work order."
+        },
+        "scheduler_interval_minutes": {
+          "label": "Scheduler interval (minutes)",
+          "desc": "How often the backend checks all tenants for overdue installation work orders."
+        }
+      }
+    },
+    "categories": {
+      "general": "General",
+      "network": "Network",
+      "storage": "Storage",
+      "auth": "Authentication",
+      "security": "Security",
+      "email": "Email",
+      "branding": "Branding & Domain",
+      "billing_plan": "Billing & Plan",
+      "payment": "Payments"
+    },
+    "billing_plan": {
+      "eyebrow": "Tenant billing",
+      "title": "Manage your workspace plan and platform subscription",
+      "description": "Use this area to review your current ISP Management package, upgrade entitlements, and access the detailed tenant subscription page without mixing it into daily customer billing.",
+      "primary_cta": "Open tenant billing details",
+      "secondary_cta": "View current subscription page",
+      "cards": {
+        "plan": {
+          "title": "Plan & entitlements",
+          "desc": "Check which workspace package is active, including features like custom domain and platform limits."
+        },
+        "payments": {
+          "title": "Platform payments",
+          "desc": "Review your tenant's SaaS billing history and upcoming platform payment responsibilities."
+        },
+        "operations": {
+          "title": "Separated from customer billing",
+          "desc": "Customer invoices and collections stay in Billing so the operations team can focus on daily ISP work."
+        }
+      }
+    },
+    "network": {
+      "alerting": {
+        "title": "Router Alerting",
+        "desc": "Enable incidents and notifications derived from MikroTik polling.",
+        "correlation_title": "Incident correlation",
+        "correlation_desc": "Suppress CPU/latency incidents when offline incident is active as root cause.",
+        "email_title": "Email alerts",
+        "email_desc": "Also send alert emails to team members who can access Network Routers.",
+        "auto_escalation_title": "Auto escalation",
+        "auto_escalation_desc": "Escalate unacknowledged open incidents to critical after threshold minutes.",
+        "assignment_email_title": "Incident assignment emails",
+        "assignment_email_desc": "Send email to the assigned member when incident assignee is changed.",
+        "pppoe_auto_apply_title": "PPPoE auto-apply after save",
+        "pppoe_auto_apply_desc": "Automatically apply PPPoE create/update changes to MikroTik right after save."
+      },
+      "thresholds": {
+        "title": "Thresholds",
+        "desc": "Used by NOC filters and by the background poller to open incidents.",
+        "sla_preview": "Incidents become warning after {warn} minutes and breach after {breach} minutes.",
+        "cpu_risk": "CPU risk (%)",
+        "cpu_hot": "CPU hot (%)",
+        "latency_risk": "Latency risk (ms)",
+        "latency_hot": "Latency hot (ms)",
+        "offline_after_secs": "Offline incident after (seconds)",
+        "incident_sla_warn_minutes": "Incident SLA warning (minutes)",
+        "incident_sla_breach_minutes": "Incident SLA breach (minutes)",
+        "incident_escalation_minutes": "Incident auto escalation (minutes)"
+      }
+    },
+    "keys": {
+      "app_name": "App Name",
+      "app_description": "App Description",
+      "app_version": "App Version",
+      "organization_name": "Organization Name",
+      "custom_domain": "Custom Domain",
+      "support_email": "Support Email",
+      "default_locale": "Default Language",
+      "currency_symbol": "Currency Symbol",
+      "maintenance_mode": "Maintenance Mode",
+      "app_logo_path": "App Logo",
+      "storage_provider": "Storage Provider",
+      "storage_local_path": "Local Path",
+      "storage_s3_bucket": "Bucket Name",
+      "storage_s3_region": "Region",
+      "auth_allow_registration": "Allow Registration",
+      "auth_require_email_verification": "Require Email Verification",
+      "auth_jwt_expiry_hours": "JWT Expiry (Hours)",
+      "auth_session_timeout_minutes": "Session Timeout (Minutes)",
+      "auth_password_min_length": "Min Password Length",
+      "auth_password_require_uppercase": "Require Uppercase",
+      "auth_password_require_number": "Require Number",
+      "auth_password_require_special": "Require Special Char",
+      "auth_max_login_attempts": "Max Login Attempts",
+      "auth_lockout_duration_minutes": "Lockout Duration (Minutes)",
+      "auth_logout_all_on_password_change": "Logout All on Password Change",
+      "email_provider": "Email Provider",
+      "email_smtp_host": "SMTP Host",
+      "email_smtp_port": "SMTP Port",
+      "email_smtp_username": "SMTP Username",
+      "email_smtp_password": "SMTP Password",
+      "email_smtp_encryption": "Encryption",
+      "email_api_key": "API Key",
+      "email_from_address": "From Address",
+      "email_from_name": "From Name"
+    },
+    "test_email": {
+      "title": "Test Email Configuration",
+      "description": "Save your changes first, then send a test email to verify your SMTP settings.",
+      "placeholder": "Enter email address",
+      "button": "Send Test Email",
+      "sending": "Sending..."
+    },
+    "sections": {
+      "enforce_2fa": "Enforce Two-Factor Authentication",
+      "configuration": "Configuration",
+      "sender_info": "Sender Information",
+      "test_configuration": "Test Configuration",
+      "midtrans": "Midtrans Payment Gateway",
+      "bank_transfer_manual": "Bank Transfer (Manual)"
+    }
+  },
+  "customers": {
+    "title": "Customers",
+    "subtitle": "Manage customer accounts and service locations.",
+    "read_only_hint": "This role can review customer records, but customer management actions are disabled.",
+    "actions": {
+      "new": "New customer"
+    },
+    "search": "Search customers...",
+    "results": "results",
+    "empty": "No customers yet.",
+    "stats": {
+      "total": "Total",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "columns": {
+      "customer": "Customer",
+      "contact": "Contact",
+      "status": "Status",
+      "updated": "Updated"
+    },
+    "fields": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "notes": "Notes",
+      "active": "Active"
+    },
+    "new": {
+      "title": "New customer",
+      "portal": {
+        "title": "Create portal login",
+        "password": "Password",
+        "password_confirm": "Confirm password",
+        "validation": {
+          "email_required": "Email is required when creating portal login.",
+          "password_min": "Password must be at least 6 characters.",
+          "password_mismatch": "Password confirmation does not match."
+        },
+        "toasts": {
+          "create_failed": "Customer created, but failed to create portal login account.",
+          "create_failed_atomic": "Failed to create portal login account. Customer creation was rolled back.",
+          "create_failed_with_rollback": "Failed to create portal login account and failed to rollback customer creation."
+        }
+      }
+    },
+    "delete": {
+      "title": "Delete customer",
+      "message": "This will remove the customer and all related data."
+    },
+    "detail": {
+      "title": "Customer",
+      "subtitle": "Customer details",
+      "read_only_hint": "This role can inspect customer data and service context here, but customer mutations are disabled."
+    },
+    "tabs": {
+      "overview": "Overview",
+      "locations": "Locations",
+      "portal": "Portal users",
+      "subscriptions": "Subscriptions",
+      "billing": "Billing",
+      "pppoe": "PPPoE"
+    },
+    "overview": {
+      "title": "Customer profile"
+    },
+    "locations": {
+      "title": "Locations",
+      "subtitle": "Service locations under this customer.",
+      "actions": {
+        "add": "Add location"
+      },
+      "empty": "No locations yet.",
+      "columns": {
+        "label": "Label",
+        "address": "Address",
+        "coordinates": "Coordinates",
+        "updated": "Updated"
+      },
+      "new": {
+        "title": "Add location"
+      },
+      "edit": {
+        "title": "Edit location"
+      },
+      "delete": {
+        "title": "Delete location",
+        "message": "This location will be removed."
+      },
+      "fields": {
+        "label": "Label",
+        "address1": "Address line 1",
+        "address2": "Address line 2",
+        "city": "City",
+        "state": "State",
+        "postal": "Postal code",
+        "country": "Country",
+        "latitude": "Latitude",
+        "longitude": "Longitude",
+        "notes": "Notes"
+      },
+      "toasts": {
+        "load_failed": "Failed to load locations",
+        "created": "Location added",
+        "create_failed": "Failed to add location: {message}"
+      }
+    },
+    "portal": {
+      "title": "Portal users",
+      "subtitle": "Users who can login to the customer portal.",
+      "actions": {
+        "add": "Add user"
+      },
+      "empty": "No portal users yet.",
+      "columns": {
+        "user": "User",
+        "added": "Added"
+      },
+      "new": {
+        "title": "Add portal user",
+        "hint": "This user will be linked to the customer and can login to the dashboard.",
+        "fields": {
+          "email": "Email",
+          "name": "Name",
+          "password": "Password"
+        }
+      },
+      "remove": {
+        "title": "Remove portal user",
+        "message": "This will unlink the user from the customer."
+      },
+      "toasts": {
+        "load_failed": "Failed to load portal users",
+        "created": "Portal user added",
+        "create_failed": "Failed to add portal user: {message}",
+        "removed": "Portal user removed",
+        "remove_failed": "Failed to remove portal user: {message}"
+      }
+    },
+    "subscriptions": {
+      "title": "Subscriptions",
+      "subtitle": "Customer service subscriptions for billing and service assignment.",
+      "empty": "No subscriptions yet.",
+      "new": {
+        "title": "Add subscription"
+      },
+      "edit": {
+        "title": "Edit subscription"
+      },
+      "fields": {
+        "location": "Location",
+        "package": "Package",
+        "router": "Router (optional)",
+        "billing_cycle": "Billing cycle",
+        "price": "Price",
+        "currency": "Currency",
+        "status": "Status",
+        "starts_at": "Starts at",
+        "ends_at": "Ends at",
+        "notes": "Notes"
+      }
+    },
+    "billing": {
+      "title": "Billing",
+      "subtitle": "Invoice history generated from this customer subscriptions.",
+      "empty": "No invoices for this customer yet.",
+      "stats": {
+        "total": "Total invoices",
+        "unpaid": "Unpaid",
+        "paid": "Paid",
+        "overdue": "Overdue"
+      },
+      "filters": {
+        "status": "Status",
+        "all": "All",
+        "today": "Today",
+        "last_7d": "7D",
+        "last_30d": "30D",
+        "this_month": "This Month",
+        "from": "From",
+        "to": "To",
+        "clear": "Clear"
+      },
+      "columns": {
+        "invoice_number": "Invoice #",
+        "subscription": "Subscription",
+        "amount": "Amount",
+        "status": "Status",
+        "due_date": "Due date"
+      },
+      "actions": {
+        "generate_from_subscription": "Generate invoice"
+      },
+      "toasts": {
+        "load_failed": "Failed to load billing invoices: {message}",
+        "generated": "Invoice generated successfully",
+        "generate_failed": "Failed to generate invoice: {message}"
+      }
+    },
+    "pppoe": {
+      "title": "PPPoE accounts",
+      "subtitle": "Manage PPPoE secrets for this customer (per-router). The database is the source of truth.",
+      "search": "Search username...",
+      "empty": "No PPPoE accounts yet.",
+      "confirm_delete": "Delete this PPPoE account?",
+      "columns": {
+        "username": "Username",
+        "router": "Router",
+        "location": "Location",
+        "assignment": "IP / Profile",
+        "sync": "Sync"
+      },
+      "fields": {
+        "router": "Router",
+        "customer": "Customer",
+        "location": "Location",
+        "username": "Username",
+        "password": "Password",
+        "package": "Package",
+        "profile": "Profile",
+        "remote_address": "Remote IP / Pool",
+        "pool": "Address pool",
+        "comment": "Comment",
+        "disabled": "Disabled"
+      },
+      "sync": {
+        "present": "On router",
+        "missing": "Missing"
+      },
+      "actions": {
+        "add": "Add PPPoE",
+        "apply": "Apply to router",
+        "reconcile": "Reconcile",
+        "reconcile_hint": "Mark which accounts exist on the router"
+      },
+      "new": {
+        "title": "Add PPPoE account"
+      },
+      "edit": {
+        "title": "Edit PPPoE account",
+        "password_hint": "Leave blank to keep"
+      },
+      "toasts": {
+        "routers_failed": "Failed to load routers",
+        "load_failed": "Failed to load PPPoE accounts: {message}",
+        "created": "PPPoE account created",
+        "create_failed": "Failed to create PPPoE account: {message}",
+        "updated": "PPPoE account updated",
+        "update_failed": "Failed to update PPPoE account: {message}",
+        "applied": "Applied to router",
+        "apply_failed": "Failed to apply PPPoE account: {message}",
+        "reconciled": "Reconciled router state",
+        "reconcile_failed": "Failed to reconcile router state: {message}",
+        "deleted": "PPPoE account deleted",
+        "delete_failed": "Failed to delete PPPoE account: {message}"
+      }
+    },
+    "toasts": {
+      "load_failed": "Failed to load customers",
+      "created": "Customer created",
+      "create_failed": "Failed to create customer: {message}",
+      "updated": "Customer updated",
+      "update_failed": "Failed to update customer: {message}",
+      "deleted": "Customer deleted",
+      "delete_failed": "Failed to delete customer: {message}"
+    }
+  },
+  "services": {
+    "title": "Services",
+    "subtitle": "Create services and configure service-specific options.",
+    "search": "Search services...",
+    "empty": "No services.",
+    "confirm_delete": "Delete this service?",
+    "columns": {
+      "name": "Name",
+      "type": "Type",
+      "status": "Status",
+      "mappings": "Mapped",
+      "price": "Price"
+    },
+    "fields": {
+      "service_type": "Service type"
+    },
+    "actions": {
+      "add": "Add service",
+      "edit": "Edit service"
+    },
+    "type_picker": {
+      "title": "Choose Service Type",
+      "subtitle": "Select the service category first, then continue to the detailed service form.",
+      "continue": "Continue",
+      "change": "Change type",
+      "add_as_feature": "Add as feature",
+      "internet_subtitle": "Fixed internet service with PPPoE provisioning and optional router profile mapping.",
+      "hotspot_subtitle": "Voucher or captive portal service for shared/public wireless access zones.",
+      "vpn_subtitle": "Secure tunnel service for branch office, remote team, or dedicated private access.",
+      "tag_provisioning": "Provisioning",
+      "tag_mapping": "Router mapping",
+      "tag_shared_access": "Shared access",
+      "tag_portal_ready": "Portal ready",
+      "tag_secure_tunnel": "Secure tunnel",
+      "tag_private_access": "Private access"
+    },
+    "types": {
+      "internet_pppoe": "Internet / PPPoE",
+      "hotspot": "Hotspot",
+      "vpn": "VPN"
+    },
+    "mapping": {
+      "only_internet": "Router mapping is only available for Internet / PPPoE services.",
+      "not_required": "Router PPP profile mapping is not required for this service type."
+    },
+    "toasts": {
+      "created": "Service created",
+      "updated": "Service updated"
+    }
+  },
+  "network": {
+    "import_center": {
+      "title": "Network Imports",
+      "subtitle": "Import network data from MixRadius and other sources that can be added later.",
+      "panel_title": "Safe imports for ISP lifecycle",
+      "panel_description": "Every source goes through staging, mapping, preview, and execution so packages, customers, subscriptions, billing, and PPPoE accounts stay consistent.",
+      "sources_count": "Sources available",
+      "lifecycle_count": "Lifecycle areas guarded",
+      "sources_title": "Choose an import source",
+      "sources_subtitle": "Start with MixRadius, then expand this area for Radbox or other RADIUS systems.",
+      "open_wizard": "Open wizard",
+      "status": {
+        "ready": "Ready",
+        "coming_soon": "Coming soon"
+      }
+    },
+    "packages": {
+      "title": "Packages",
+      "subtitle": "Create internet packages and map them to router PPP profiles (per-router).",
+      "search": "Search packages...",
+      "empty": "No packages.",
+      "confirm_delete": "Delete this package?",
+      "columns": {
+        "name": "Name",
+        "status": "Status",
+        "mappings": "Mapped",
+        "price": "Price"
+      },
+      "fields": {
+        "name": "Name",
+        "description": "Description",
+        "features": "Features",
+        "feature_placeholder": "Add feature and press Enter",
+        "features_empty": "No features yet.",
+        "active": "Active",
+        "active_hint": "Inactive packages will be hidden from selection.",
+        "price_monthly": "Monthly price",
+        "price_hint": "Stored in base currency; displayed in your tenant currency when possible.",
+        "price_yearly": "Yearly price",
+        "enable_yearly": "Enable yearly price",
+        "enable_yearly_hint": "Turn on if this package has yearly billing.",
+        "currency_active": "Active currency",
+        "currency_base": "Base currency"
+      },
+      "mapping": {
+        "title": "Router Mapping",
+        "package": "Package",
+        "router": "Router",
+        "profile": "Router PPP Profile",
+        "pool": "Address pool (optional)",
+        "profile_empty": "No active PPP profile is available for this router yet. Sync PPP profiles first.",
+        "pool_empty": "No active IP pool is available for this router yet. Sync IP pools first.",
+        "inline_title": "Map to router now",
+        "inline_hint": "Optional: prefill router profile/pool for this package (per-router)."
+      },
+      "actions": {
+        "add": "Add package",
+        "edit": "Edit package",
+        "map": "Map to router",
+        "add_feature": "Add feature"
+      },
+      "tabs": {
+        "details": "Details",
+        "features": "Features"
+      },
+      "toasts": {
+        "created": "Package created",
+        "updated": "Package updated",
+        "mapping_saved": "Mapping saved"
+      },
+      "validation": {
+        "monthly_required": "Monthly price is required and must be greater than 0.",
+        "yearly_required": "Yearly price must be greater than 0 when enabled."
+      }
+    },
+    "pppoe": {
+      "title": "PPPoE",
+      "subtitle": "Tenant-wide view of PPPoE accounts across routers.",
+      "auto_apply_on": "Auto-apply ON",
+      "auto_apply_edits_on": "Auto-apply edits ON",
+      "search": "Search PPPoE...",
+      "empty": "No PPPoE accounts.",
+      "import": {
+        "cta": "Import",
+        "title": "Import PPPoE from MikroTik",
+        "subtitle": "Scan /ppp/secret and import selected accounts into the database (per-router).",
+        "search": "Search username...",
+        "done": "Import completed",
+        "labels": {
+          "new": "New",
+          "update": "Update",
+          "same": "Same",
+          "enabled": "Enabled",
+          "disabled": "Disabled"
+        },
+        "result": {
+          "created": "Created",
+          "updated": "Updated",
+          "skipped": "Skipped",
+          "missing_password": "Missing password"
+        },
+        "errors": {
+          "select_router": "Select a router",
+          "permission": "Missing permission",
+          "select_one": "Select at least one item",
+          "customer_location_pair": "Select both customer and location, or leave both empty."
+        },
+        "steps": {
+          "select": "Select",
+          "preview": "Preview",
+          "import": "Import"
+        },
+        "fields": {
+          "source": "Source",
+          "include_disabled": "Include disabled",
+          "include_disabled_hint": "Also scan secrets that are disabled on the router.",
+          "customer_optional": "Assign to customer (optional)",
+          "location_optional": "Location (optional)",
+          "location_hint": "If you pick a customer, you must also pick a location.",
+          "unassigned": "Unassigned"
+        },
+        "actions": {
+          "scan": "Scan secrets",
+          "select_new_update": "Select new+update",
+          "import": "Import selected",
+          "import_more": "Import more",
+          "go_to_list": "Go to PPPoE list"
+        },
+        "columns": {
+          "password": "Password"
+        },
+        "summary": {
+          "items": "items"
+        }
+      },
+      "stats": {
+        "total": "Total",
+        "present": "Provisioned",
+        "missing": "Not provisioned",
+        "disabled": "Disabled"
+      },
+      "fields": {
+        "source": "Account source"
+      },
+      "filters": {
+        "all": "All",
+        "router": "Router",
+        "sync": "Sync",
+        "provisioning": "Provisioning",
+        "disabled": "State",
+        "any": "Any",
+        "present": "Provisioned",
+        "missing": "Not provisioned",
+        "enabled": "Enabled",
+        "disabled_only": "Disabled"
+      },
+      "columns": {
+        "username": "Username",
+        "customer": "Customer",
+        "router": "Router",
+        "source": "Source",
+        "provisioning": "Provisioning",
+        "sync": "Sync"
+      },
+      "sources": {
+        "router": "Router secret",
+        "managed_radius": "Managed RADIUS"
+      },
+      "provisioning": {
+        "draft": "Draft",
+        "applied": "Applied",
+        "failed": "Failed",
+        "retrying": "Retrying"
+      },
+      "sync": {
+        "present": "On router",
+        "missing": "Missing",
+        "present_radius": "On RADIUS",
+        "missing_radius": "Missing on RADIUS"
+      },
+      "actions": {
+        "reconcile": "Reconcile",
+        "open_customer": "Open customer",
+        "open_customer_billing": "Open customer billing",
+        "apply": "Apply to router",
+        "apply_radius": "Apply to RADIUS",
+        "create_apply": "Create & apply to router",
+        "create_apply_radius": "Create & apply to RADIUS",
+        "retry_apply_batch": "Retry apply"
+      },
+      "form": {
+        "package_hint": "Choose a package to control PPP profile and addressing for the selected router.",
+        "assignment_title": "Package assignment",
+        "assignment_hint": "PPP profile and addressing follow the selected package for this router.",
+        "package_mapping_missing": "This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.",
+        "disabled_hint": "Disable this PPPoE account (will be applied to router when you click Apply).",
+        "source_radius_hint": "This account will be provisioned to managed RADIUS and expects a managed RADIUS server plus NAS mapping for the selected router.",
+        "source_router_hint": "This account will be provisioned to the router-local PPP secret table.",
+        "disabled_hint_radius": "For managed RADIUS, this disables centralized authentication for the account.",
+        "disabled_hint_radius_apply": "Disable this PPPoE account in managed RADIUS when you click Apply to RADIUS."
+      },
+      "toasts": {
+        "applied": "Applied to router",
+        "applied_radius": "Applied to RADIUS",
+        "apply_failed": "Failed to apply PPPoE account: {message}",
+        "created_applied": "PPPoE account created and applied to router",
+        "created_applied_radius": "PPPoE account created and applied to RADIUS",
+        "auto_applied": "Saved and automatically applied to router",
+        "auto_applied_radius": "Saved and automatically applied to RADIUS",
+        "auto_apply_failed": "Saved, but auto-apply failed: {message}",
+        "retry_batch_ok": "{count} account(s) applied",
+        "retry_batch_fail": "{count} account(s) failed to apply",
+        "reconciled": "Reconciled router state",
+        "reconcile_failed": "Failed to reconcile router state: {message}"
+      }
+    },
+    "routers": {
+      "title": "Routers",
+      "subtitle": "Manage MikroTik routers and monitoring",
+      "search": "Search routers...",
+      "empty": "No routers yet",
+      "actions": {
+        "add": "Add Router",
+        "edit": "Edit",
+        "delete": "Delete",
+        "test": "Test Connection",
+        "open": "Open",
+        "refresh": "Refresh"
+      },
+      "columns": {
+        "name": "Name",
+        "host": "Host",
+        "status": "Status",
+        "latency": "Latency",
+        "seen": "Last Seen",
+        "actions": "Actions"
+      },
+      "tabs": {
+        "traffic": "Traffic",
+        "ppp_profiles": "PPP Profiles",
+        "ip_pools": "IP Pools"
+      },
+      "managed_radius": {
+        "title": "RADIUS Setup",
+        "subtitle": "Copy MikroTik CLI for PPP authentication",
+        "trigger": {
+          "label": "Managed RADIUS"
+        },
+        "labels": {
+          "server": "Server",
+          "host": "RADIUS host",
+          "ports": "Ports",
+          "nas_source": "NAS source",
+          "shared_secret": "Shared secret"
+        },
+        "actions": {
+          "assign_default": "Assign Default RADIUS",
+          "create_mapping": "Create NAS Mapping",
+          "show_secret": "Show secret",
+          "hide_secret": "Hide secret",
+          "copy_secret": "Copy secret",
+          "copy_cli": "Copy CLI"
+        },
+        "toasts": {
+          "cli_copied": "RADIUS CLI copied",
+          "secret_copied": "Shared secret copied",
+          "default_assigned": "Default Managed RADIUS assigned",
+          "mapping_created": "Managed RADIUS NAS mapping created"
+        },
+        "default_ready": "A default Managed RADIUS server is available. Assign it to this tenant to continue with router onboarding.",
+        "assignment_only": "Managed RADIUS assignment is active for this tenant, but this router still needs a NAS mapping before CLI setup can be generated.",
+        "assignment_only_hint": "Use the button above to auto-create the NAS mapping from this router data.",
+        "upgrade": {
+          "title": "Your plan does not include Managed RADIUS",
+          "body": "Upgrade your subscription to unlock centralized RADIUS onboarding and MikroTik CLI setup for this router.",
+          "cta": "Upgrade plan"
+        },
+        "empty": "Managed RADIUS is not configured for this router yet. The router can still use local MikroTik PPP secrets for now."
+      },
+      "badges": {
+        "online": "Online",
+        "offline": "Offline",
+        "unknown": "Unknown",
+        "maintenance": "Maintenance"
+      },
+      "ppp_profiles": {
+        "title": "PPP Profiles",
+        "subtitle": "Per-router RouterOS PPP profiles (synced into database for mapping & import).",
+        "search": "Search profiles...",
+        "empty": "No profiles found.",
+        "actions": {
+          "sync": "Sync from router",
+          "add": "Add profile",
+          "edit": "Edit",
+          "delete": "Delete"
+        },
+        "columns": {
+          "name": "Name",
+          "local": "Local",
+          "remote": "Remote",
+          "rate": "Rate",
+          "dns": "DNS",
+          "only_one": "Only one",
+          "state": "State",
+          "synced": "Synced"
+        },
+        "state": {
+          "present": "On router",
+          "missing": "Missing"
+        },
+        "form": {
+          "create_title": "Add PPP Profile",
+          "edit_title": "Edit PPP Profile",
+          "create_action": "Create profile",
+          "router_required": "Select a router first",
+          "name_required": "Profile name is required",
+          "comment": "Comment",
+          "no_remote_pool": "No remote pool",
+          "only_one": "Allow only one session"
+        },
+        "delete": {
+          "title": "Delete PPP Profile",
+          "confirm": "Delete PPP profile {name} from the router?",
+          "blocked": "Cannot delete {name}. It is still used by {count} record(s)."
+        },
+        "toasts": {
+          "synced": "Synced PPP profiles",
+          "created": "PPP profile created",
+          "updated": "PPP profile updated",
+          "deleted": "PPP profile deleted",
+          "stale_deleted_sync": "This PPP profile was already missing on the router. The list has been refreshed."
+        }
+      },
+      "ip_pools": {
+        "title": "IP Pools",
+        "subtitle": "Per-router RouterOS IP pools (used for PPPoE remote-address mapping).",
+        "search": "Search pools...",
+        "empty": "No IP pools found.",
+        "actions": {
+          "sync": "Sync from router",
+          "add": "Add pool",
+          "edit": "Edit",
+          "delete": "Delete"
+        },
+        "columns": {
+          "name": "Name",
+          "ranges": "Ranges",
+          "next": "Next pool",
+          "state": "State",
+          "synced": "Synced"
+        },
+        "state": {
+          "present": "On router",
+          "missing": "Missing"
+        },
+        "form": {
+          "create_title": "Add IP Pool",
+          "edit_title": "Edit IP Pool",
+          "router_required": "Select a router first",
+          "name_required": "Pool name is required",
+          "comment": "Comment",
+          "router_note": "Changes are applied directly to the selected router before the local mirror is refreshed.",
+          "no_next_pool": "No next pool",
+          "next_pool_manual": "Enter next pool manually",
+          "next_pool_manual_label": "Manual next pool"
+        },
+        "delete": {
+          "title": "Delete IP Pool",
+          "confirm": "Delete IP pool {name} from the router?",
+          "warning": "Delete IP pool {name} from the router? Warning: {count} internal record(s) still reference this pool.",
+          "confirm_warning": "Delete with warning"
+        },
+        "toasts": {
+          "synced": "Synced IP pools",
+          "created": "IP pool created",
+          "updated": "IP pool updated",
+          "deleted": "IP pool deleted",
+          "deleted_with_warning": "IP pool {name} was deleted with {count} warning reference(s).",
+          "stale_deleted_sync": "This IP pool was already missing on the router. The list has been refreshed."
+        }
+      },
+      "traffic": {
+        "watch": "Watch Interfaces",
+        "realtime": "Realtime Traffic",
+        "search": "Search interfaces...",
+        "empty": "Select one or more interfaces to watch.",
+        "max_watch": "Max 6 interfaces."
+      },
+      "form": {
+        "name": "Name",
+        "host": "Host",
+        "port": "Port",
+        "username": "Username",
+        "password": "Password",
+        "enabled": "Enabled",
+        "maintenance": "Maintenance (mute alerts)",
+        "maintenance_until": "Maintenance until",
+        "maintenance_reason": "Reason (optional)"
+      },
+      "toasts": {
+        "created": "Router created",
+        "updated": "Router updated",
+        "deleted": "Router deleted"
+      }
+    },
+    "wallboard": {
+      "kicker": "WALLBOARD",
+      "title": "Network Wallboard",
+      "subtitle": "Live NOC view optimized for 24/7 display.",
+      "search": "Search routers...",
+      "empty": "No routers match your filters.",
+      "poll": "Poll",
+      "kiosk": "Kiosk",
+      "fullscreen": "Fullscreen",
+      "exit_fullscreen": "Exit Fullscreen",
+      "keep_awake": "Keep awake",
+      "fit": "Fit",
+      "pause": "Pause",
+      "resume": "Resume",
+      "sound_on": "Sound On",
+      "sound_off": "Sound Off",
+      "sound_toggle": "Toggle critical alert sound",
+      "insights": "Insights",
+      "settings": "Settings",
+      "stale": "Stale",
+      "poll_error": "Poll error",
+      "alerts_ack_visible": "Ack visible",
+      "maintenance": "Maintenance",
+      "unmute": "Unmute",
+      "unmuted": "Maintenance cleared",
+      "drag": "Drag to reorder",
+      "show_controls": "Show controls",
+      "exit": "Exit wallboard",
+      "last_seen": "Last seen",
+      "watch": "Watch",
+      "view": "View",
+      "watch_select": "Select",
+      "watch_search": "Search interfaces...",
+      "watch_selected": "selected",
+      "watch_loading": "Loading interfaces...",
+      "watch_none": "No interfaces.",
+      "interface_state": {
+        "disabled": "disabled",
+        "up": "up",
+        "down": "down"
+      },
+      "watch_max": "Max 8 interfaces per router.",
+      "watch_placeholder": "ether1, ether2, ether3",
+      "watch_hint": "Comma-separated. Max 8 per router.",
+      "auto_fill": "Auto fill",
+      "add_tile": "Add interface tile",
+      "add_tile_sub": "Choose a router + interface",
+      "pick_tile": "Add interface tile",
+      "edit_tile": "Edit interface tile",
+      "pick_router": "Pick a router",
+      "pick_search": "Search routers...",
+      "pick_interface": "Interface",
+      "pick_interface_hint": "Select a router first.",
+      "pick_interface_search": "Search interfaces...",
+      "full_kicker": "INTERFACE VIEW",
+      "tile_settings": "Tile settings",
+      "warn_below_rx": "Warn if RX below",
+      "warn_below_tx": "Warn if TX below",
+      "alerts_open": "Open alerts",
+      "ack_router_alerts": "Acknowledge router alerts",
+      "focus_mode": "Focus mode",
+      "focus_mode_hint": "Toggle focus mode (F)",
+      "pager": {
+        "aria": "Pages",
+        "prev": "Previous page",
+        "next": "Next page"
+      },
+      "tabs": {
+        "live": "Live",
+        "metrics": "Metrics"
+      },
+      "summary": {
+        "status": "Status",
+        "online": "ONLINE",
+        "offline": "OFFLINE",
+        "rx_now": "RX Now",
+        "tx_now": "TX Now",
+        "samples": "Samples"
+      },
+      "thresholds": {
+        "title": "Thresholds",
+        "change_interface": "Change interface",
+        "current_rx": "Current RX threshold",
+        "current_tx": "Current TX threshold",
+        "not_set": "Not set",
+        "hint": "Leave empty to disable warning."
+      },
+      "chart": {
+        "peak": "RX Peak",
+        "avg": "RX Avg",
+        "peak_tx": "TX Peak",
+        "avg_tx": "TX Avg"
+      },
+      "slo": {
+        "availability": "Availability",
+        "routers_online": "Routers Online",
+        "critical": "Critical Alerts",
+        "warning": "Warning Alerts",
+        "avg_latency": "Avg Latency"
+      },
+      "top_issues": {
+        "title": "Top Issues (1h)",
+        "subtitle": "Most frequent unresolved issues",
+        "empty": "No repeated issues in the last hour.",
+        "mute_30m": "Mute 30m",
+        "mute_for": "Mute duration",
+        "apply_mute": "Mute"
+      },
+      "incidents": {
+        "title": "Open Incidents",
+        "subtitle": "Latest active incidents from monitoring engine",
+        "empty": "No active incidents."
+      },
+      "timeline": {
+        "title": "Incident Timeline",
+        "subtitle": "Latest 20 wallboard events",
+        "empty": "No recent events yet."
+      },
+      "trend": {
+        "up": "Rising",
+        "down": "Falling",
+        "stable": "Stable"
+      },
+      "metrics_agg_label": "Aggregation",
+      "metrics_agg_title": "Aggregation level used for this range",
+      "metrics_points": "points",
+      "metrics": {
+        "range": "Range",
+        "range_24h": "Last 24 Hours",
+        "range_7d": "Last 7 Days",
+        "range_30d": "Last 30 Days",
+        "range_month": "This Month",
+        "range_custom": "Custom",
+        "export_csv": "Export CSV",
+        "export_empty": "No metrics data to export.",
+        "reset_zoom": "Reset Zoom",
+        "zoomed": "Zoomed",
+        "zoom_area": "Metrics chart zoom area",
+        "peak_marker": "Peak",
+        "historical": "Historical Metrics",
+        "empty_range": "No historical metrics yet for selected date range."
+      },
+      "metrics_agg": {
+        "detail": "Detail",
+        "hourly": "Hourly Average",
+        "daily": "Daily Average"
+      },
+      "metrics_agg_hint": {
+        "detail": "without summarization",
+        "hourly": "summarized per hour",
+        "daily": "summarized per day"
+      },
+      "layouts": {
+        "2x2": "2x2 layout",
+        "3x2": "3x2 layout",
+        "3x3": "3x3 layout",
+        "4x3": "4x3 layout",
+        "4x4": "4x4 layout",
+        "5x4": "5x4 layout",
+        "6x4": "6x4 layout"
+      },
+      "filters": {
+        "all": "All",
+        "online": "Online",
+        "offline": "Offline"
+      },
+      "controls": {
+        "filter": "Filter",
+        "layout": "Layout",
+        "pager": "Pager",
+        "manual": "Manual",
+        "auto_rotate": "Auto rotate",
+        "rotate_every": "Rotate",
+        "open": "Open settings",
+        "title": "Wallboard Settings"
+      }
+    },
+    "noc": {
+      "title": "Network NOC",
+      "subtitle": "A quick operational view of all routers: status, health, and traffic.",
+      "search": "Search routers...",
+      "empty": "No routers",
+      "stats": {
+        "total": "Total",
+        "online": "Online",
+        "offline": "Offline",
+        "hot": "Hot"
+      },
+      "tooltips": {
+        "status_all": "Show all routers",
+        "status_online": "Show routers that are currently reachable",
+        "status_offline": "Show routers that are currently unreachable",
+        "risk_any": "No additional risk filtering",
+        "risk_hot": "Critical attention: offline, very high CPU, or very high latency",
+        "risk_latency": "Show routers with high latency",
+        "risk_cpu": "Show routers with high CPU load"
+      },
+      "filters": {
+        "status": "Status",
+        "risk": "Risk",
+        "sort": "Sort",
+        "any": "Any",
+        "online": "Online",
+        "offline": "Offline",
+        "hot": "Hot",
+        "latency": "Latency",
+        "cpu": "CPU",
+        "sort_health_desc": "Health risk (highest)",
+        "sort_last_seen_desc": "Last seen (newest)",
+        "sort_latency_desc": "Latency (highest)",
+        "sort_cpu_desc": "CPU (highest)",
+        "reset": "Reset"
+      },
+      "columns": {
+        "router": "Router",
+        "status": "Status",
+        "health": "Health",
+        "traffic": "Traffic",
+        "latency": "Latency",
+        "seen": "Last Seen"
+      }
+    },
+    "map": {
+      "title": "Network Topology Map",
+      "subtitle": "Visualize nodes, links, and service zones in current viewport.",
+      "back_to_noc": "Back to NOC",
+      "back_to_installation": "Back to Installation",
+      "bbox": "Viewport bbox",
+      "workspace": {
+        "kicker": "Topology workspace",
+        "title": "Monitor the network before you edit it",
+        "copy": "Start from the map, inspect live topology signals, then drill into customers, services, and risky paths.",
+        "subtitle": "Visualize nodes, links, service zones, and operational context from the current viewport.",
+        "freshness_not_loaded": "Viewport data has not loaded yet.",
+        "freshness_cache": "Viewport data restored from cache {age}.",
+        "freshness_live": "Viewport data updated {age}.",
+        "router_overlay_unavailable": "Router overlay is unavailable for this role.",
+        "router_overlay_empty": "Router overlay is enabled, but no router markers are available in this viewport.",
+        "customer_context_limited": "Customer and field context is limited for this role."
+      },
+      "insight": {
+        "empty": "No insight cards yet for this viewport.",
+        "scope_viewport": "Current viewport"
+      },
+      "search": {
+        "kicker": "Unified search",
+        "title": "Jump to any mapped asset, service, or customer",
+        "hint": "Search across infrastructure, customer endpoints, services, zones, and router inventory.",
+        "placeholder": "Search customer, service, node, link, zone, or router...",
+        "empty_title": "No matching results",
+        "empty_hint": "Try another keyword or switch quick mode to widen the result scope.",
+        "summary_idle": "{count} assets loaded in this workspace",
+        "summary_results": "{count} matching results across {groups} sections"
+      },
+      "quick_modes": {
+        "kicker": "Quick modes",
+        "title": "Swap workspace focus in one click",
+        "hint": "Each mode changes what matters most in the current map session.",
+        "all": "All",
+        "all_hint": "Balanced workspace across the loaded map",
+        "issues": "Issues",
+        "issues_hint": "Focus degraded links, risky zones, and unstable nodes",
+        "customers": "Customers",
+        "customers_hint": "Inspect customer endpoints and last-mile placements",
+        "services": "Services",
+        "services_hint": "Track mapped service nodes and activation context",
+        "topology": "Topology",
+        "topology_hint": "Show the infrastructure graph and router overlay",
+        "field": "Field",
+        "field_hint": "Prioritize impacted services and field-relevant assets"
+      },
+      "stats": {
+        "nodes": "Nodes",
+        "links": "Links",
+        "zones": "Zones"
+      },
+      "layers": {
+        "title": "Layer visibility",
+        "subtitle": "Tune what stays on the map while you inspect routes and customers.",
+        "nodes": "Nodes",
+        "links": "Links",
+        "zones": "Zones",
+        "routers": "Routers",
+        "customers": "Customers"
+      },
+      "floating": {
+        "title": "Map controls",
+        "subtitle": "Tune layers, change view, and jump into investigation mode.",
+        "subtitle_manage": "Balanced overview with manage tools nearby.",
+        "subtitle_noc": "Issue tracing is prioritized for this role.",
+        "subtitle_technician": "Field and service investigation is prioritized for this role.",
+        "subtitle_viewer": "Tune the map for the current investigation.",
+        "layers": "Layers",
+        "view": "View",
+        "tools": "Trace tools",
+        "manage": "Manage",
+        "service_mode": "Service mode",
+        "trace_mode": "Trace mode",
+        "clear_mode": "Clear",
+        "open_nodes": "Manage nodes",
+        "open_links": "Manage links",
+        "open_zones": "Manage zones",
+        "open_bindings": "Manage bindings",
+        "add_node": "Add node",
+        "add_link": "Add link",
+        "add_zone": "Add zone"
+      },
+      "manage": {
+        "title": "Topology editor workspace",
+        "subtitle": "Editing lives in a separate workspace so monitoring and investigation stay focused."
+      },
+      "inspector": {
+        "title": "Smart inspector",
+        "default_kicker": "Workspace",
+        "selected_kicker": "Selection",
+        "investigation_kicker": "Investigation",
+        "collapse": "Collapse inspector",
+        "expand": "Expand inspector",
+        "clear": "Clear",
+        "no_selection": "No object selected yet. Use the map, popup actions, or search above.",
+        "workspace_title": "Topology workspace",
+        "workspace_subtitle": "Select an asset on the map or use search to inspect service, customer, and topology context.",
+        "live_summary": "Live summary",
+        "data_readiness": "Data readiness",
+        "role_focus": "Role focus",
+        "role_manage": "Manage-capable view: stay in overview first, then open topology editing when needed.",
+        "role_noc": "NOC-first view: tracing unstable paths and degraded links is prioritized.",
+        "role_technician": "Field-first view: impacted services and customer endpoints are prioritized.",
+        "role_viewer": "Monitoring-first view: inspect topology before taking action.",
+        "noc_available": "NOC context is available for issue tracing.",
+        "noc_limited": "NOC tracing is limited for this role."
+      },
+      "view": {
+        "label": "View",
+        "standard": "Standard",
+        "satellite": "Satellite"
+      },
+      "location": {
+        "show": "My Location",
+        "hide": "Hide My Location"
+      },
+      "filters": {
+        "search": "Data filter",
+        "search_placeholder": "Filter fetched data by node/link/zone...",
+        "status": "Status",
+        "kind": "Type",
+        "any_status": "Any status",
+        "any_kind": "Any type",
+        "actions": "Actions"
+      }
+    },
+    "alerts": {
+      "title": "Router Alerts",
+      "subtitle": "Incidents detected from router polling.",
+      "search": "Search alerts...",
+      "empty": "No alerts",
+      "actions": {
+        "toggle": "Toggle active/resolved",
+        "active": "Active",
+        "all": "All",
+        "ack": "Acknowledge",
+        "resolve": "Resolve",
+        "snooze_30m": "Snooze 30m"
+      },
+      "columns": {
+        "alert": "Alert",
+        "type": "Type",
+        "severity": "Severity",
+        "status": "Status",
+        "seen": "Last Seen"
+      },
+      "types": {
+        "offline": "Offline",
+        "cpu": "CPU",
+        "latency": "Latency"
+      },
+      "severity": {
+        "info": "Info",
+        "warning": "Warning",
+        "critical": "Critical"
+      },
+      "toasts": {
+        "acked": "Alert acknowledged",
+        "resolved": "Alert resolved",
+        "snoozed": "Router snoozed"
+      },
+      "filters": {
+        "all_status": "All status",
+        "all_severity": "All severity",
+        "all_types": "All types",
+        "sort": "Sort",
+        "sort_last_seen_desc": "Last seen (newest)",
+        "sort_last_seen_asc": "Last seen (oldest)",
+        "sort_severity_desc": "Severity (highest)",
+        "from": "From",
+        "to": "To",
+        "reset": "Reset"
+      }
+    },
+    "incidents": {
+      "title": "Network Incidents",
+      "subtitle": "Operational incident records deduplicated from alerts.",
+      "search": "Search incidents...",
+      "empty": "No incidents",
+      "actions": {
+        "toggle": "Toggle active/resolved",
+        "active": "Active",
+        "all": "All",
+        "simulate": "Simulate",
+        "run_auto_escalation": "Run Auto Escalation"
+      },
+      "labels": {
+        "auto_escalated": "Auto Escalated"
+      },
+      "toasts": {
+        "auto_escalation_done": "{count} incident(s) escalated"
+      },
+      "simulate": {
+        "subtitle": "Create test incident manually",
+        "router": "Router",
+        "type": "Incident type",
+        "severity": "Severity",
+        "interface": "Interface (optional)",
+        "message": "Message (optional)",
+        "message_placeholder": "Optional simulation message",
+        "select_router": "Select router first",
+        "created": "Simulated incident created"
+      },
+      "export": {
+        "title": "Export",
+        "csv": "Export CSV",
+        "excel": "Export Excel",
+        "empty": "No data to export"
+      },
+      "columns": {
+        "incident": "Incident",
+        "type": "Type",
+        "severity": "Severity",
+        "status": "Status",
+        "seen": "Last Seen"
+      },
+      "filters": {
+        "assignee": "Assignee",
+        "all_assignees": "All assignees",
+        "unassigned": "Unassigned",
+        "all_status": "All status",
+        "all_severity": "All severity",
+        "all_types": "All types",
+        "sort": "Sort",
+        "sort_last_seen_desc": "Last seen (newest)",
+        "sort_last_seen_asc": "Last seen (oldest)",
+        "sort_severity_desc": "Severity (highest)",
+        "sort_open_duration_desc": "Open duration (longest)",
+        "from": "From",
+        "to": "To",
+        "reset": "Reset"
+      },
+      "bulk": {
+        "select_filtered": "Select filtered",
+        "selected": "{count} selected",
+        "ack": "Bulk Ack",
+        "resolve": "Bulk Resolve",
+        "assign": "Bulk Assign",
+        "assign_placeholder": "Assign to...",
+        "clear": "Clear"
+      },
+      "analytics": {
+        "open": "Open",
+        "ack": "Ack",
+        "in_progress": "In Progress",
+        "resolved": "Resolved",
+        "mtta": "MTTA",
+        "mttr": "MTTR",
+        "top_type_24h": "Top Type (24h)"
+      },
+      "impact": {
+        "title": "Affected Customers",
+        "empty": "No impacted customers from mapped topology."
+      },
+      "activity": {
+        "title": "Activity Timeline",
+        "first_seen": "First detected",
+        "acked": "Acknowledged",
+        "assigned": "Assigned",
+        "auto_escalated": "Auto escalated to critical",
+        "notes_updated": "Notes updated",
+        "resolved": "Resolved",
+        "last_seen": "Last seen"
+      },
+      "runbook": {
+        "title": "What to do next",
+        "subtitle": "Operator checklist based on incident type.",
+        "copied": "Command copied",
+        "copy_failed": "Failed to copy command",
+        "offline": {
+          "step1": "Verify power and physical link",
+          "step1_desc": "Check device power source, cable, and upstream connectivity.",
+          "step2": "Test management reachability",
+          "step3": "Validate API service/port"
+        },
+        "cpu": {
+          "step1": "Identify top resource usage",
+          "step2": "Review active traffic/interface load",
+          "step3": "Check recent log spikes"
+        },
+        "latency": {
+          "step1": "Measure packet loss and RTT",
+          "step2": "Inspect WAN interface counters",
+          "step3": "Check upstream path health",
+          "step3_desc": "Validate provider uplink and intermediate hops."
+        },
+        "interface_down": {
+          "step1": "Verify interface state",
+          "step2": "Check link flap/down counter",
+          "step3": "Inspect transceiver/cable",
+          "step3_desc": "Swap cable/SFP if needed and re-check link state."
+        },
+        "generic": {
+          "step1": "Collect context from router",
+          "step1_desc": "Check current status and latest logs.",
+          "step2": "Stabilize service impact",
+          "step2_desc": "Apply mitigation and monitor for recovery."
+        }
+      },
+      "sla": {
+        "title": "SLA Timer",
+        "open_for": "Open for"
+      },
+      "drawer": {
+        "assignee": "Assignee",
+        "unassigned": "Unassigned",
+        "email_notify": "Email notify",
+        "on": "On",
+        "off": "Off",
+        "notes": "Notes",
+        "notes_placeholder": "Add operator notes, handover context, and actions...",
+        "save": "Save Notes",
+        "open_network_settings": "Open Network Settings"
+      }
+    },
+    "installations": {
+      "title": "Installation Work Orders",
+      "subtitle": "Technician pipeline from paid orders to tested, grace-active, and fully active service.",
+      "empty": "No installation work orders",
+      "search": "Search work orders...",
+      "show_closed": "Show closed",
+      "hide_closed": "Hide closed",
+      "assign_required": "Choose assignee first",
+      "schedule_required": "Choose schedule first",
+      "checklist_required": "Complete all checklist items before activation.",
+      "plan_required": "Set assignee and schedule before starting.",
+      "invoice_created": "Invoice created successfully",
+      "invoice_create_failed": "Failed to create invoice",
+      "assigned": "Work order assigned",
+      "claim_ok": "Work order taken",
+      "claim_fail": "Failed to take work order",
+      "release_ok": "Assignee released",
+      "release_fail": "Failed to release assignee",
+      "start_ok": "Work started",
+      "complete_ok": "Work completed and service state updated",
+      "cancel_ok": "Work order cancelled",
+      "reopen_ok": "Work order reopened",
+      "closed_revealed": "Work order moved to closed list. Closed filter is now visible.",
+      "reschedule_pending_title": "Pending reschedule request",
+      "reschedule_approved": "Reschedule request approved",
+      "reschedule_rejected": "Reschedule request rejected",
+      "reschedule_reject_reason_required": "Reason is required to reject reschedule request.",
+      "reschedule_decision_notes": "Decision notes",
+      "override_schedule_optional": "Override schedule (optional)",
+      "cancel_reason_required": "Cancellation reason is required (minimum 10 characters).",
+      "cancel_reason_hint": "Add cancellation reason (minimum 10 characters) in detail modal.",
+      "details_title": "Installation Details",
+      "step_assign": "Assign",
+      "step_schedule": "Schedule",
+      "step_onsite": "On-site & Test",
+      "step_activate": "Finish",
+      "step_assign_help": "Choose technician first, then continue to scheduling.",
+      "step_take_help": "Take this work order first, then continue to scheduling.",
+      "step_schedule_help": "Set installation date/time, then start work order.",
+      "step_onsite_help": "Complete physical installation, confirm internet test, and record onsite proof.",
+      "step_active_help": "Checklist complete. Finish installation to trigger the final service state.",
+      "subscription_status": "Service Status",
+      "status_grace_active": "Grace Active",
+      "status_pending_installation": "Pending Installation",
+      "focus_kicker": "Current Focus",
+      "focus_assign_title": "Assign technician",
+      "focus_assign_hint": "Choose who will own this visit so the rest of the flow stays on one technician.",
+      "focus_schedule_title": "Lock installation schedule",
+      "focus_schedule_hint": "Set the exact visit time before starting onsite work.",
+      "focus_onsite_title": "Complete onsite installation tasks",
+      "focus_onsite_hint": "Move through one onsite task at a time so handover and proof stay clean.",
+      "focus_test_title": "Test customer internet access",
+      "focus_test_hint": "Use the package mapping values automatically, then verify the account really connects.",
+      "focus_finish_title": "Finish and confirm service outcome",
+      "focus_finish_hint": "Once completed, the service will either enter grace-active or become fully active depending on payment state.",
+      "focus_grace_title": "Service is temporarily active",
+      "focus_grace_hint": "Customer can use the service for now. Billing will auto-suspend it if the first invoice remains unpaid after the deadline.",
+      "focus_done_title": "Installation is completed",
+      "focus_done_hint": "No technician action is required unless billing or reopen follow-up is needed.",
+      "focus_cancelled_title": "Work order is cancelled",
+      "focus_cancelled_hint": "This request stays closed until an admin decides to reopen it.",
+      "topology_context": "Topology Context",
+      "assignment_status": "Assignment Status",
+      "selected_zone": "Selected Zone",
+      "selected_node": "Selected Node",
+      "node_score": "Node Score",
+      "path_nodes": "Path Nodes",
+      "path_links": "Path Links",
+      "assignee_placeholder": "Select assignee",
+      "save_assign": "Save Assignee",
+      "save_schedule": "Save Schedule",
+      "checklist": "Installation Checklist",
+      "no_assignable_members": "No eligible installers found. Only Admin/Technician or roles with installation permission are shown.",
+      "already_taken_by_you": "You already took this work order. Continue to Schedule step.",
+      "taken_by_other": "This work order has been taken by another technician.",
+      "notes_placeholder": "Technician notes and onsite findings",
+      "final_state": "Final State",
+      "final_waiting_payment": "Installation completed. Waiting payment confirmation before service activation.",
+      "final_grace_active": "Installation is complete. Service is temporarily active during the grace period.",
+      "final_completed": "Installation has been completed and service is active.",
+      "grace_deadline": "Grace active until",
+      "grace_followup": "If the first invoice is still unpaid after this deadline, service will be suspended automatically.",
+      "internet_test_title": "Internet Test",
+      "internet_test_help": "Technician only enters username and password. Router, profile, and pool follow the active internet package mapping.",
+      "internet_test_configured": "Configured",
+      "target_managed_radius": "Managed RADIUS",
+      "pppoe_username": "Username",
+      "pppoe_password": "Password",
+      "pppoe_comment": "Comment",
+      "pppoe_existing": "Existing PPPoE:",
+      "username_required": "Username is required",
+      "password_required": "Password is required",
+      "managed_radius_not_configured": "Managed RADIUS is not configured for this router yet",
+      "managed_radius_load_failed": "Managed RADIUS setup could not be loaded. Check permissions or router setup.",
+      "managed_radius_plan_required": "Managed RADIUS feature is not enabled for this tenant yet.",
+      "managed_radius_assignment_inactive": "Managed RADIUS tenant assignment is not active yet.",
+      "managed_radius_mapping_inactive": "Managed RADIUS NAS mapping for this router is not active yet.",
+      "pppoe_created": "PPPoE account created",
+      "pppoe_applied": "PPPoE account applied to router",
+      "test_account_created_radius": "Test account created for RADIUS",
+      "test_account_updated": "Test account updated",
+      "test_account_applied_radius": "Test account applied to Managed RADIUS",
+      "password_keep_existing_placeholder": "Leave blank to keep current password",
+      "provision_to": "Provision to",
+      "provision_target": "Provision Target",
+      "target_detail": "Target Detail",
+      "managed_radius_ready_hint": "Managed RADIUS is ready on this router. Technician can choose local router or RADIUS before applying.",
+      "radius_ready_state": "RADIUS account is ready for live testing.",
+      "radius_pending_state": "Create the account first, then test live connectivity through RADIUS.",
+      "create_apply_radius": "Create & Apply to RADIUS",
+      "save_reapply_radius": "Save & Re-apply to RADIUS",
+      "save_reapply_router": "Save & Re-apply to Router",
+      "apply_existing_radius": "Apply Existing to RADIUS",
+      "create_and_test": "Create & Test Connection",
+      "apply_test": "Apply Test to Router",
+      "test_ready_state": "Router account is ready for live testing.",
+      "test_pending_state": "Create the account first, then test live connectivity from the customer side.",
+      "final_cancelled": "Installation has been cancelled.",
+      "create_invoice": "Create payment invoice",
+      "reopen_notes": "Optional note before reopening work order",
+      "save_plan": "Save Plan",
+      "history": "Latest Notes",
+      "timeline": "Work Order Timeline"
+    },
+    "logs": {
+      "title": "Router Logs",
+      "subtitle": "Read and store MikroTik logs for troubleshooting and audits.",
+      "search": "Search log message...",
+      "empty": "No logs",
+      "actions": {
+        "refresh": "Refresh",
+        "sync_selected": "Sync selected router",
+        "sync_all": "Sync all routers"
+      },
+      "filters": {
+        "router": "Router",
+        "all_routers": "All routers",
+        "level": "Level",
+        "all_levels": "All levels",
+        "topic": "Topic"
+      },
+      "columns": {
+        "time": "Time",
+        "router": "Router",
+        "level": "Level",
+        "topics": "Topics",
+        "message": "Message"
+      },
+      "toasts": {
+        "sync_ok": "Log sync completed",
+        "sync_failed": "Failed to sync logs"
+      }
+    }
+  },
+  "roles": {
+    "title": "All Roles",
+    "subtitle": "Manage role definitions and permissions",
+    "count": "roles",
+    "search": "Search roles...",
+    "empty": "No roles found",
+    "permissions_settings": "Permissions Settings",
+    "columns": {
+      "name": "Role Name",
+      "type": "Type",
+      "level": "Level",
+      "permissions": "Permissions"
+    },
+    "badges": {
+      "system": "System",
+      "custom": "Custom"
+    },
+    "level_prefix": "Lvl",
+    "permissions": "permissions",
+    "actions": {
+      "create": "Create Role",
+      "edit": "Edit Role",
+      "delete": "Delete Role",
+      "delete_short": "Delete",
+      "save": "Save Role"
+    },
+    "delete": {
+      "title": "Delete Role",
+      "message": "Are you sure you want to permanently delete the role \"{name}\"? All users assigned to this role might lose permissions.",
+      "confirm": "Delete Role"
+    },
+    "placeholders": {
+      "name": "e.g. Editor",
+      "description": "Role description"
+    },
+    "form": {
+      "name_label": "Role Name",
+      "description_label": "Description",
+      "level_label": "Level",
+      "system_name_locked": "System role names cannot be changed"
+    },
+    "toasts": {
+      "created": "Role created successfully",
+      "updated": "Role updated successfully",
+      "deleted": "Role deleted successfully"
+    },
+    "errors": {
+      "save_failed": "Failed to save role",
+      "delete_failed": "Failed to delete role: "
+    }
+  },
+  "support": {
+    "title": "Support Tickets",
+    "subtitle": "Manage tenant support requests",
+    "search": "Search tickets...",
+    "empty": "No tickets",
+    "columns": {
+      "subject": "Subject",
+      "user": "User",
+      "status": "Status",
+      "priority": "Priority",
+      "updated": "Updated",
+      "messages": "Messages"
+    },
+    "panels": {
+      "manage": "Manage",
+      "reply": "Reply"
+    },
+    "fields": {
+      "status": "Status",
+      "priority": "Priority",
+      "assignee": "Assignee",
+      "internal": "Internal note"
+    },
+    "hints": {
+      "assign": "Assignee expects a team member user_id. Leave empty to keep unassigned."
+    },
+    "toasts": {
+      "updated": "Ticket updated"
+    }
+  },
+  "email_outbox": {
+    "title": "Email Outbox",
+    "subtitle": "Monitor queued and failed emails, and retry delivery.",
+    "search": "Search by recipient or subject...",
+    "empty": "No outbox items",
+    "confirm_delete": "Delete this outbox item?",
+    "columns": {
+      "to": "To",
+      "subject": "Subject",
+      "status": "Status",
+      "attempts": "Attempts",
+      "scheduled": "Scheduled",
+      "updated": "Updated"
+    },
+    "scope": {
+      "tenant": "Tenant",
+      "global": "Global",
+      "all": "All"
+    },
+    "status": {
+      "queued": "Queued",
+      "sending": "Sending",
+      "sent": "Sent",
+      "failed": "Failed"
+    },
+    "actions": {
+      "retry": "Retry",
+      "view": "View",
+      "select": "Select",
+      "select_visible": "Select visible",
+      "export_csv": "Export CSV",
+      "retry_selected": "Retry selected",
+      "delete_selected": "Delete selected"
+    },
+    "toasts": {
+      "requeued": "Requeued",
+      "bulk_requeued": "Requeued",
+      "exported": "Exported"
+    },
+    "details": {
+      "title": "Email details",
+      "to": "To",
+      "status": "Status",
+      "attempts": "Attempts",
+      "scheduled": "Scheduled",
+      "sent": "Sent",
+      "subject": "Subject",
+      "last_error": "Last error",
+      "text": "Text",
+      "html": "HTML",
+      "no_html": "No HTML body",
+      "view_source": "View source",
+      "not_found": "Not found."
+    },
+    "selected": "Selected",
+    "confirm_bulk_delete": "Delete selected outbox items?"
+  },
+  "backups": {
+    "disabled_title": "Disabled for Tenants",
+    "disabled_desc": "Backups are managed by Super Admin. Contact support if you need a restore.",
+    "disabled_body": "Tenant backup/restore is disabled to reduce security risk. Your data is covered by global backups."
+  },
+  "overview": {
+    "loading": "Loading system data...",
+    "stats": {
+      "team_members": "Team Members",
+      "global_settings": "Global Settings",
+      "used": "used",
+      "free": "Free",
+      "plan_status": "Plan Status"
+    },
+    "quick_actions": {
+      "title": "Quick Actions",
+      "team": {
+        "title": "Manage Team",
+        "desc": "View, edit, and invite team members."
+      },
+      "roles": {
+        "title": "Roles & Permissions",
+        "desc": "Manage roles and access control."
+      },
+      "settings": {
+        "title": "Global Settings",
+        "desc": "Configure application policies and defaults."
+      },
+      "billing": {
+        "title": "Billing",
+        "desc": "Manage subscription and invoices."
+      }
+    }
+  },
+  "subscription": {
+    "title": "Subscription",
+    "context": {
+      "eyebrow": "Tenant billing workspace",
+      "description": "This detailed page is still available, but the tenant billing home now lives in Settings > Billing & Plan.",
+      "open_customer_billing": "Open Customer Billing",
+      "back_to_settings": "Back to Billing & Plan"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "plans": "Available Plans",
+      "history": "Payment History"
+    },
+    "loading": "Loading details...",
+    "errors": {
+      "load_failed": "Failed to load subscription details",
+      "create_invoice_failed": "Failed to create invoice"
+    },
+    "toasts": {
+      "invoice_created": "Invoice created"
+    },
+    "common": {
+      "free": "Free",
+      "unlimited": "Unlimited",
+      "base": "Base:",
+      "fx": "FX:",
+      "fx_updating": "Updating FX…",
+      "fx_unavailable": "FX unavailable",
+      "per_month": "/ month"
+    },
+    "overview": {
+      "plan_suffix": "Plan",
+      "current_active": "Current active subscription",
+      "usage_title": "Resource Usage",
+      "storage": "Storage",
+      "team_members": "Team Members",
+      "billing_details": "Billing Details",
+      "active_until": "Active Until",
+      "lifetime": "Lifetime",
+      "billing_cycle": "Billing Cycle",
+      "billing_cycle_paid": "Monthly / Yearly",
+      "billing_cycle_free": "Free Tier",
+      "includes": "Includes"
+    },
+    "plans": {
+      "select_title": "Select a Plan",
+      "current": "Current Plan",
+      "upgrade": "Upgrade"
+    },
+    "features": {
+      "free": {
+        "community_support": "Community Support",
+        "basic_analytics": "Basic Analytics",
+        "subdomain_only": "Subdomain Only"
+      },
+      "pro": {
+        "priority_support": "Priority Support",
+        "advanced_analytics": "Advanced Analytics",
+        "custom_domain": "Custom Domain",
+        "remove_branding": "Remove Branding"
+      },
+      "enterprise": {
+        "dedicated_support": "24/7 Dedicated Support",
+        "audit_logs": "Audit Logs",
+        "custom_domain": "Custom Domain",
+        "sso_security": "SSO & Security",
+        "api_access": "API Access"
+      }
+    },
+    "invoices": {
+      "invoice_number": "Invoice #",
+      "description": "Description",
+      "amount": "Amount",
+      "status": "Status",
+      "due_date": "Due Date",
+      "actions": "Actions",
+      "search_placeholder": "Search invoices...",
+      "pay": "Pay",
+      "view_details": "View Details"
+    }
+  },
+  "invoices": {
+    "title": "Billing & Invoices",
+    "subtitle": "View and manage your subscription payments",
+    "search_placeholder": "Search invoices...",
+    "pay_now": "Pay Now",
+    "view_details": "View Details",
+    "columns": {
+      "invoice_number": "Invoice #",
+      "description": "Description",
+      "amount": "Amount",
+      "status": "Status",
+      "due_date": "Due Date"
+    },
+    "toasts": {
+      "load_failed": "Failed to load invoices"
+    }
+  },
+  "billing_collection": {
+    "title": "Billing Collection Logs",
+    "subtitle": "Monitor reminder delivery, suspend/resume actions, and run collection manually.",
+    "tabs": {
+      "collection": "Collection Logs",
+      "reminders": "Reminder Logs"
+    },
+    "columns": {
+      "time": "Time",
+      "invoice": "Invoice",
+      "customer": "Customer",
+      "action": "Action",
+      "result": "Result",
+      "subscription_status": "Subscription",
+      "reason": "Reason",
+      "reminder_code": "Reminder",
+      "channel": "Channel",
+      "recipient": "Recipient",
+      "status": "Status",
+      "detail": "Detail"
+    },
+    "actions": {
+      "run_now": "Run Now",
+      "running": "Running...",
+      "export": "Export",
+      "reminder": "Reminder",
+      "suspend": "Suspend",
+      "resume": "Resume"
+    },
+    "export": {
+      "csv": "Export CSV",
+      "excel": "Export Excel"
+    },
+    "results": {
+      "success": "Success",
+      "failed": "Failed",
+      "skipped": "Skipped"
+    },
+    "reminders": {
+      "d7": "H-7",
+      "d3": "H-3",
+      "d0": "H-0"
+    },
+    "filters": {
+      "all_actions": "All actions",
+      "all_results": "All results",
+      "all_reminders": "All reminders",
+      "all_statuses": "All statuses",
+      "search_placeholder": "Search invoice/customer/reason...",
+      "search_reminder": "Search invoice/detail...",
+      "clear": "Clear"
+    },
+    "meta": {
+      "showing": "Showing"
+    },
+    "summary": {
+      "evaluated": "Evaluated",
+      "reminders_sent": "Reminders sent",
+      "suspended": "Suspended",
+      "resumed": "Resumed",
+      "failed": "Failed"
+    },
+    "toasts": {
+      "load_collection_failed": "Failed to load billing collection logs",
+      "load_reminders_failed": "Failed to load reminder logs",
+      "run_ok": "Billing collection run completed",
+      "run_failed": "Failed to run billing collection",
+      "no_data_export": "No data to export",
+      "export_ok": "Export completed"
+    }
+  },
+  "package_invoices": {
+    "statuses": {
+      "pending": "Pending",
+      "verification_pending": "Verification pending",
+      "paid": "Paid",
+      "failed": "Failed"
+    },
+    "list": {
+      "eyebrow": "Customer billing workspace",
+      "title": "Billing",
+      "subtitle": "Monitor collections, generate due invoices, and handle manual customer billing from one place.",
+      "search_placeholder": "Search customer service invoices...",
+      "workspace": {
+        "queue_title": "Invoice queue",
+        "queue_desc": "Keep overdue, pending verification, and paid invoices visible without leaving the billing workspace.",
+        "action_needed": "Need action",
+        "action_needed_desc": "Pending and verification-pending invoices still need follow-up.",
+        "overdue_now": "Overdue now",
+        "overdue_now_desc": "Focus collection reminders and service actions on these accounts first."
+      },
+      "sections": {
+        "manual_title": "Manual billing action",
+        "manual_desc": "Select a customer subscription to generate a targeted invoice immediately.",
+        "summary_title": "Billing overview",
+        "summary_desc": "Track payment status distribution before drilling into the full invoice queue.",
+        "queue_title": "Invoice queue",
+        "queue_desc": "Filter and inspect customer invoices by status, created window, and payment progress."
+      },
+      "columns": {
+        "invoice_number": "Invoice #",
+        "description": "Description",
+        "amount": "Amount",
+        "status": "Status",
+        "due_date": "Due Date"
+      },
+      "fields": {
+        "select_customer": "Select customer",
+        "select_subscription": "Select subscription"
+      },
+      "actions": {
+        "view_details": "View Details",
+        "open_customer": "Open customer",
+        "generate_invoice": "Generate Invoice",
+        "creating": "Creating...",
+        "billing_logs": "Billing Logs",
+        "generate_due_bulk": "Generate Due Invoices",
+        "bulk_generating": "Generating..."
+      },
+      "filters": {
+        "all_status": "All status",
+        "pending": "Pending",
+        "verification_pending": "Verification pending",
+        "paid": "Paid",
+        "failed": "Failed",
+        "created_from": "Created from",
+        "created_to": "Created to",
+        "clear": "Clear"
+      },
+      "toasts": {
+        "load_failed": "Failed to load customer service invoices",
+        "load_subscriptions_failed": "Failed to load customer subscriptions",
+        "created": "Customer service invoice created",
+        "create_failed": "Failed to create invoice",
+        "bulk_generated": "Bulk generated",
+        "bulk_generate_failed": "Failed to generate due invoices"
+      },
+      "stats": {
+        "total": "Total",
+        "paid": "Paid",
+        "pending": "Pending",
+        "overdue": "Overdue"
+      }
+    },
+    "detail": {
+      "back": "Back to Invoices",
+      "loading": "Loading invoice...",
+      "invoice_prefix": "Invoice #",
+      "labels": {
+        "amount": "Amount",
+        "due_date": "Due Date",
+        "created": "Created",
+        "updated": "Updated",
+        "payment_method": "Payment Method",
+        "related_customer": "Related Customer",
+        "rejection_reason": "Rejection Reason"
+      },
+      "actions": {
+        "pay_now": "Pay Now",
+        "open_customer": "Open Customer",
+        "check_status": "Check Status",
+        "checking": "Checking...",
+        "processing": "Processing...",
+        "mark_paid": "Mark Paid",
+        "mark_failed": "Mark Failed",
+        "open_payment_page": "Open Payment Page",
+        "view_payment_proof": "View Payment Proof"
+      },
+      "payment_methods": {
+        "online_payment": "Online Payment",
+        "bank_transfer": "Bank Transfer"
+      },
+      "payment_proof": {
+        "title": "Payment Proof",
+        "hint": "Click image to enlarge"
+      },
+      "confirm": {
+        "mark_paid_title": "Mark Invoice as Paid",
+        "mark_failed_title": "Mark Invoice as Failed",
+        "mark_paid_message": "This will set the invoice status to paid.",
+        "mark_failed_message": "This will set the invoice status to failed.",
+        "mark_paid_confirm": "Mark Paid",
+        "mark_failed_confirm": "Mark Failed"
+      },
+      "reject": {
+        "title": "Mark Invoice as Failed",
+        "description": "Provide a clear reason so customer can fix and re-upload payment proof.",
+        "placeholder": "Write rejection reason...",
+        "reason_required": "Rejection reason is required",
+        "options": {
+          "blurry": "Proof image is unclear",
+          "amount_mismatch": "Transfer amount does not match invoice total",
+          "wrong_destination": "Transfer destination account is incorrect",
+          "invalid_proof": "Invalid or unrelated payment proof",
+          "duplicate": "Duplicate proof already used"
+        }
+      },
+      "errors": {
+        "not_customer_package": "Invoice is not a customer service invoice",
+        "load_failed": "Failed to load invoice",
+        "check_failed": "Failed to check status",
+        "verify_failed": "Failed to verify invoice",
+        "proof_not_available": "Payment proof is not available yet"
+      },
+      "toasts": {
+        "status_updated": "Status updated",
+        "marked": "Invoice marked as"
+      }
+    }
+  },
+  "team": {
+    "title": "Team Members",
+    "subtitle": "Manage your organization members and access",
+    "count": "{count} members",
+    "search": "Search members...",
+    "invite_button": "Add Member",
+    "add_member_modal_title": "Add Team Member",
+    "name_label": "Name",
+    "email_label": "Email",
+    "password_label": "Password (Optional)",
+    "role_label": "Role",
+    "cancel": "Cancel",
+    "submit": "Add Member",
+    "columns": {
+      "member": "Member",
+      "role": "Role",
+      "status": "Status",
+      "created_at": "Date Added"
+    },
+    "filters": {
+      "all_roles": "All Roles",
+      "all": "All",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "stats": {
+      "show_all": "Show all members",
+      "show_active": "Show active members",
+      "show_inactive": "Show inactive members",
+      "total_title": "Total Members",
+      "active_title": "Active Members",
+      "inactive_title": "Inactive Members"
+    },
+    "actions": {
+      "edit_role": "Edit Role",
+      "remove_member": "Remove Member"
+    },
+    "roles": {
+      "member": "Member"
+    },
+    "placeholders": {
+      "name": "John Doe",
+      "email": "colleague@company.com",
+      "password_auto": "Auto-generated if empty"
+    },
+    "remove": {
+      "title": "Remove Team Member",
+      "message": "Are you sure you want to remove {name} from the team? They will lose access immediately.",
+      "confirm": "Remove Member"
+    },
+    "edit_role": {
+      "title": "Edit Member Role",
+      "member_name": "Member Name",
+      "role_label": "Role"
+    },
+    "toasts": {
+      "load_failed": "Failed to load team data",
+      "added": "Team member added successfully",
+      "add_failed": "Failed to add member: {message}",
+      "removed": "Member removed successfully",
+      "remove_failed": "Failed to remove member: {message}",
+      "role_updated": "Member role updated successfully",
+      "role_update_failed": "Failed to update role: {message}"
+    },
+    "empty": {
+      "title": "No Team Members Yet",
+      "description": "Add your colleagues to collaborate on this workspace.",
+      "no_results": "No members found",
+      "try_adjusting": "Try adjusting your search or filters."
+    }
+  }
+}

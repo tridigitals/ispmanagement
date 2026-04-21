@@ -1,0 +1,400 @@
+{
+  "greeting": {
+    "morning": "Selamat Pagi",
+    "afternoon": "Selamat Siang",
+    "evening": "Selamat Malam",
+    "welcome_message": "Berikut aktivitas akun Anda hari ini."
+  },
+  "manage_files": "Kelola File",
+  "generate_report": "Buat Laporan",
+  "admin_mode": {
+    "title": "Mode Administrator",
+    "description": "Anda memiliki izin sistem penuh. Akses alat manajemen di sini."
+  },
+  "locations": {
+    "kicker": "Portal pelanggan",
+    "title": "Lokasi Saya",
+    "subtitle": "Lokasi layanan Anda. Jika ada yang tidak sesuai, hubungi dukungan.",
+    "location": "Lokasi",
+    "source": {
+      "customer": "Pelanggan",
+      "profile": "Profil"
+    },
+    "summary": {
+      "total": "Total lokasi",
+      "customer": "Terhubung pelanggan",
+      "profile": "Alamat profil"
+    },
+    "empty": "Belum ada lokasi.",
+    "empty_hint": "Admin belum menautkan akun Anda ke lokasi pelanggan.",
+    "toasts": {
+      "load_failed": "Gagal memuat lokasi"
+    }
+  },
+  "stats": {
+    "account_role": "Peran Akun",
+    "member_since": "Anggota Sejak",
+    "system_status": "Status Sistem",
+    "active": "Aktif"
+  },
+  "recent_activity": {
+    "title": "Aktivitas Terbaru",
+    "view_all": "Lihat Semua",
+    "loading": "Memuat aktivitas...",
+    "empty": {
+      "title": "Belum ada aktivitas",
+      "description": "Saat Anda menggunakan aplikasi, aktivitas akan muncul di sini.",
+      "learn_more": "Pelajari Lebih Lanjut"
+    }
+  },
+  "announcements": {
+    "title": "Pengumuman",
+    "view_all": "Lihat Semua",
+    "empty": {
+      "title": "Belum ada pengumuman",
+      "description": "Saat tim mempublikasikan pembaruan, pengumuman akan muncul di sini.",
+      "open": "Buka pengumuman"
+    }
+  },
+  "packages": {
+    "title": "Layanan Internet",
+    "subtitle": "Kelola layanan Anda dan kirim permintaan instalasi secara instan.",
+    "tabs": {
+      "ordered": "Layanan Saya",
+      "order_new": "Pesan Layanan"
+    },
+    "fields": {
+      "location": "Lokasi",
+      "billing_cycle": "Siklus tagihan",
+      "package": "Paket",
+      "total": "Total"
+    },
+    "builder": {
+      "title": "Builder Pesanan",
+      "subtitle": "Buat beberapa pesanan paket untuk alamat berbeda dalam satu alur checkout.",
+      "checkout_all": "Checkout semua",
+      "empty": "Belum ada item pesanan"
+    },
+    "cycles": {
+      "monthly": "Bulanan",
+      "yearly": "Tahunan"
+    },
+    "current": {
+      "title": "Langganan saat ini",
+      "none": "Belum ada paket aktif di lokasi ini"
+    },
+    "ordered": {
+      "title": "Daftar Layanan Terpesan",
+      "subtitle": "Semua langganan dari lokasi yang terhubung dengan akun Anda.",
+      "empty": "Belum ada pesanan layanan. Mulai dari tab Pesan Layanan."
+    },
+    "coverage": {
+      "title": "Zona cakupan",
+      "select_location": "Pilih lokasi terlebih dulu",
+      "checking": "Memeriksa cakupan...",
+      "missing_coordinates": "Lokasi ini belum punya koordinat. Filter cakupan tidak aktif.",
+      "not_covered": "Lokasi ini berada di luar zona cakupan aktif.",
+      "zone_packages": "Paket tersedia di zona ini",
+      "no_packages_for_zone": "Tidak ada paket pada zona cakupan ini",
+      "no_packages_for_zone_hint": "Lokasi Anda tercakup, tetapi belum ada penawaran paket yang dikonfigurasi untuk zona ini."
+    },
+    "actions": {
+      "buy": "Beli paket",
+      "switch": "Ganti paket",
+      "current": "Paket aktif",
+      "add_location": "Tambah lokasi",
+      "add_to_order": "Tambah ke pesanan",
+      "request_again": "Ajukan Lagi",
+      "request_reopen": "Ajukan Buka Ulang",
+      "order_again": "Pesan Lagi"
+    },
+    "badges": {
+      "active": "Aktif",
+      "rerequested": "Ajukan Ulang"
+    },
+    "empty": {
+      "no_locations": "Belum ada lokasi",
+      "no_locations_hint": "Minta admin menautkan akun Anda ke lokasi pelanggan terlebih dulu.",
+      "no_packages": "Belum ada paket aktif",
+      "no_packages_hint": "Admin belum mempublikasikan katalog paket."
+    },
+    "toasts": {
+      "load_failed": "Gagal memuat katalog paket",
+      "select_location": "Pilih lokasi terlebih dulu",
+      "yearly_unavailable": "Tagihan tahunan belum tersedia untuk paket ini",
+      "already_active": "Paket ini sudah aktif",
+      "checkout_success": "Invoice berhasil dibuat. Lanjutkan ke pembayaran.",
+      "checkout_failed": "Checkout gagal",
+      "request_success": "Permintaan instalasi berhasil dikirim.",
+      "request_failed": "Gagal mengirim permintaan instalasi",
+      "added_to_order": "Berhasil ditambahkan ke builder pesanan",
+      "bulk_checkout_success": "invoice berhasil dibuat",
+      "bulk_request_success": "permintaan instalasi berhasil dikirim",
+      "package_unavailable": "Paket sudah tidak tersedia. Silakan pilih paket lain.",
+      "location_unavailable": "Lokasi sudah tidak tersedia. Silakan tambah/pilih lokasi lain."
+    }
+  },
+  "internet_order": {
+    "hero": {
+      "title": "Pesan Layanan Internet",
+      "subtitle": "Alur: pilih alamat, pilih paket, tinjau pesanan, lalu kirim permintaan instalasi."
+    },
+    "steps": {
+      "address": "Alamat",
+      "package": "Paket",
+      "review": "Tinjau"
+    },
+    "actions": {
+      "service_types": "Jenis Layanan",
+      "billing_invoices": "Tagihan & Invoice",
+      "refresh": "Muat Ulang",
+      "add_location": "Tambah Lokasi",
+      "next_choose_package": "Lanjut: Pilih Paket",
+      "back_to_address": "Kembali ke Alamat",
+      "selected": "Terpilih",
+      "select_package": "Pilih Paket",
+      "order_now": "Pesan Sekarang",
+      "back_to_package": "Kembali ke Paket",
+      "add_more": "Tambah Lagi",
+      "submit_installation_request": "Kirim Permintaan Instalasi",
+      "cancel": "Batal",
+      "save": "Simpan"
+    },
+    "labels": {
+      "location": "Lokasi",
+      "coverage_zone": "Zona Cakupan",
+      "billing_cycle": "Siklus Tagihan",
+      "selected_address": "Alamat Terpilih",
+      "monthly_plan": "Paket bulanan",
+      "yearly_available": "opsi tahunan tersedia",
+      "yearly_not_available": "Paket tahunan belum tersedia",
+      "current_item_total": "Total Item Saat Ini",
+      "total_order_amount": "Total Pesanan"
+    },
+    "coverage": {
+      "checking": "Memeriksa cakupan...",
+      "select_location": "Pilih lokasi terlebih dahulu",
+      "missing_coordinates": "Lokasi ini belum memiliki koordinat. Filter cakupan dinonaktifkan.",
+      "not_covered": "Lokasi ini di luar zona cakupan aktif."
+    },
+    "stage": {
+      "address": {
+        "title": "Pilih Alamat",
+        "subtitle": "Pilih alamat yang sudah ada atau tambahkan alamat baru terlebih dahulu."
+      },
+      "package": {
+        "title": "Pilih Paket"
+      },
+      "review": {
+        "title": "Tinjau & Kirim",
+        "subtitle": "Semua item berikut akan dikirim sebagai permintaan instalasi."
+      }
+    },
+    "empty": {
+      "no_locations_title": "Belum ada lokasi",
+      "no_locations_subtitle": "Tambahkan minimal satu lokasi untuk melanjutkan pemesanan internet.",
+      "no_packages_title": "Belum ada paket internet yang tersedia",
+      "no_packages_subtitle": "Silakan hubungi admin untuk mengaktifkan katalog paket.",
+      "no_order_items_title": "Belum ada item pesanan",
+      "no_order_items_subtitle": "Tambahkan minimal satu paket terlebih dahulu."
+    },
+    "sidecard": {
+      "title": "Ringkasan Pilihan",
+      "step_badge": "Langkah 2 / 3",
+      "address": "Alamat",
+      "package": "Paket",
+      "billing": "Tagihan",
+      "hint": "Anda bisa menambah layanan lain nanti pada langkah Tinjau."
+    },
+    "modal": {
+      "add_location_title": "Tambah Lokasi",
+      "fields": {
+        "label": "Label",
+        "address": "Alamat",
+        "city": "Kota",
+        "state": "Provinsi",
+        "postal_code": "Kode Pos",
+        "country": "Negara",
+        "notes": "Catatan",
+        "latitude": "Latitude",
+        "longitude": "Longitude"
+      },
+      "placeholders": {
+        "label": "Rumah / Kantor",
+        "address": "Alamat jalan"
+      }
+    },
+    "status": {
+      "loading_packages": "Memuat paket...",
+      "processing": "Memproses...",
+      "saving": "Menyimpan..."
+    },
+    "cycles": {
+      "monthly": "Bulanan",
+      "yearly": "Tahunan"
+    },
+    "badges": {
+      "selected": "Dipilih"
+    },
+    "toasts": {
+      "load_failed": "Gagal memuat katalog layanan internet",
+      "coverage_failed": "Gagal memeriksa cakupan",
+      "select_location_first": "Pilih alamat terlebih dahulu",
+      "yearly_unavailable": "Paket ini belum mendukung tagihan tahunan",
+      "invalid_package": "Paket tidak valid",
+      "added_to_order": "Item berhasil ditambahkan ke pesanan",
+      "invalid_package_in_order": "Ada paket tidak valid di daftar pesanan",
+      "request_submitted_single": "Permintaan instalasi berhasil dikirim ({id})",
+      "request_submitted_multi": "{count} permintaan instalasi berhasil dikirim",
+      "request_submit_failed": "Gagal mengirim permintaan instalasi",
+      "latitude_range": "Latitude harus di antara -90 hingga 90",
+      "longitude_range": "Longitude harus di antara -180 hingga 180",
+      "location_saved": "Lokasi berhasil disimpan",
+      "location_create_failed": "Gagal menambahkan lokasi"
+    }
+  },
+  "services_portal": {
+    "page": {
+      "title": "Layanan Pelanggan",
+      "subtitle": "Daftar semua layanan yang pernah Anda pesan."
+    },
+    "actions": {
+      "billing_invoices": "Tagihan & Invoice",
+      "order_new_service": "Pesan Layanan Baru",
+      "show_all_services": "Tampilkan Semua Layanan",
+      "view_invoices": "Lihat Invoice",
+      "track_installation": "Lacak Instalasi",
+      "request_reopen": "Ajukan Buka Ulang",
+      "reopening": "Membuka ulang..."
+    },
+    "stats": {
+      "total": "Total Layanan",
+      "active": "Aktif",
+      "pending_installation": "Menunggu Instalasi",
+      "needs_attention": "Perlu Perhatian"
+    },
+    "list": {
+      "title": "Layanan Dipesan",
+      "subtitle": "Layanan yang diminta oleh akun Anda.",
+      "services_suffix": "layanan",
+      "filter": "Filter",
+      "sort": "Urutkan"
+    },
+    "filters": {
+      "all": "Semua Layanan",
+      "active": "Aktif",
+      "pending_installation": "Menunggu Instalasi",
+      "needs_attention": "Perlu Perhatian"
+    },
+    "sort": {
+      "updated_at": "Terbaru",
+      "price": "Harga",
+      "status": "Status",
+      "location": "Lokasi",
+      "service": "Layanan"
+    },
+    "table": {
+      "service": "Layanan",
+      "status": "Status",
+      "location": "Lokasi",
+      "billing_cycle": "Siklus Tagihan",
+      "price": "Harga",
+      "updated_at": "Diperbarui",
+      "actions": "Aksi"
+    },
+    "empty": {
+      "no_services": "Belum ada layanan yang dipesan.",
+      "no_match": "Tidak ada layanan yang cocok dengan filter terpilih."
+    },
+    "toasts": {
+      "load_failed": "Gagal memuat layanan",
+      "reopen_success_with_id": "Permintaan instalasi dibuka ulang (WO {id})",
+      "reopen_success": "Permintaan instalasi berhasil dibuka ulang",
+      "reopen_failed": "Gagal membuka ulang permintaan instalasi"
+    },
+    "status": {
+      "grace_active": "Aktif Sementara",
+      "pending_installation": "Menunggu Instalasi",
+      "awaiting_payment": "Menunggu Pembayaran",
+      "suspended": "Ditangguhkan",
+      "cancelled": "Dibatalkan"
+    },
+    "status_hint": {
+      "active": "Layanan aktif dan berjalan.",
+      "grace_active": "Layanan aktif sementara untuk uji pasca-instalasi sambil menunggu pembayaran pertama.",
+      "pending_installation": "Menunggu penugasan dan penjadwalan instalasi.",
+      "awaiting_payment": "Instalasi selesai. Menunggu invoice/pembayaran pertama.",
+      "suspended": "Layanan ditangguhkan. Silakan cek billing atau hubungi support.",
+      "cancelled": "Permintaan telah dibatalkan.",
+      "cancelled_reopen": "Permintaan dibatalkan. Anda bisa ajukan buka ulang."
+    },
+    "tracker": {
+      "title": "Pelacakan Instalasi",
+      "loading": "Memuat pelacakan...",
+      "scheduled_at": "Jadwal",
+      "last_update": "Update Terakhir",
+      "latest_notes": "Catatan Terbaru",
+      "steps": {
+        "requested": "Diminta",
+        "assigned": "Ditugaskan",
+        "scheduled": "Dijadwalkan",
+        "onsite": "On-site",
+        "active": "Aktif"
+      }
+    },
+    "reschedule": {
+      "badge": {
+        "pending": "Reschedule Menunggu",
+        "approved": "Reschedule Disetujui",
+        "rejected": "Reschedule Ditolak"
+      },
+      "latest_title": "Permintaan Reschedule Terbaru",
+      "labels": {
+        "requested_at": "Waktu Reschedule",
+        "requested_schedule": "Jadwal Diminta",
+        "requested_by": "Diminta Oleh",
+        "reason": "Alasan",
+        "admin_notes": "Catatan Admin"
+      },
+      "form": {
+        "title": "Ajukan Reschedule",
+        "subtitle": "Anda dapat mengajukan waktu instalasi baru sebelum pekerjaan onsite dimulai.",
+        "new_schedule": "Jadwal Baru",
+        "reason_optional": "Alasan (opsional)",
+        "reason_placeholder": "Perlu slot waktu berbeda",
+        "submit": "Kirim Reschedule",
+        "submitting": "Mengirim...",
+        "wait_schedule": "Reschedule akan tersedia setelah admin/teknisi menetapkan jadwal instalasi Anda."
+      },
+      "toasts": {
+        "select_schedule": "Pilih jadwal instalasi baru terlebih dahulu",
+        "invalid_datetime": "Format tanggal/waktu tidak valid",
+        "submit_success": "Permintaan reschedule berhasil dikirim",
+        "submit_failed": "Gagal mengirim permintaan reschedule"
+      }
+    }
+  },
+  "portal_summary": {
+    "title": "Ringkasan Layanan",
+    "health": "Status",
+    "active_package": "Paket aktif",
+    "next_invoice": "Tagihan berikutnya",
+    "no_pending_invoice": "Tidak ada tagihan pending",
+    "none": "-",
+    "due": "Jatuh tempo",
+    "manage_package": "Kelola layanan",
+    "pay_now": "Bayar sekarang",
+    "status": {
+      "normal": "Aman",
+      "pending": "Tagihan pending",
+      "overdue": "Lewat jatuh tempo"
+    }
+  },
+  "quick_actions": {
+    "title": "Aksi Cepat",
+    "update_profile": "Perbarui Profil",
+    "check_messages": "Cek Pesan",
+    "security_settings": "Pengaturan Keamanan",
+    "contact_support": "Hubungi Dukungan"
+  }
+}

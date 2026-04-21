@@ -1,0 +1,8 @@
+{
+  "download": {
+    "save_title": "Simpan File",
+    "downloading": "Mengunduh {filename}...",
+    "failed": "Unduhan gagal: {message}",
+    "failed_generic": "Unduhan gagal"
+  }
+}

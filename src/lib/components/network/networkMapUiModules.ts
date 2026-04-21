@@ -16,11 +16,13 @@ export type NetworkMapDialogModules = {
 
 export type NetworkMapPopupModule = typeof import('./networkMapPopups');
 export type NetworkMapInteractionModule = typeof import('./networkMapInteractionRuntime');
+export type NetworkMapWorkspaceModule = typeof import('./networkMapWorkspaceActions');
 
 let chromeModulesPromise: Promise<NetworkMapChromeModules> | null = null;
 let dialogModulesPromise: Promise<NetworkMapDialogModules> | null = null;
 let popupModulePromise: Promise<NetworkMapPopupModule> | null = null;
 let interactionModulePromise: Promise<NetworkMapInteractionModule> | null = null;
+let workspaceModulePromise: Promise<NetworkMapWorkspaceModule> | null = null;
 
 export function loadNetworkMapChromeModules(): Promise<NetworkMapChromeModules> {
   if (!chromeModulesPromise) {
@@ -68,4 +70,12 @@ export function loadNetworkMapInteractionModule(): Promise<NetworkMapInteraction
   }
 
   return interactionModulePromise!;
+}
+
+export function loadNetworkMapWorkspaceModule(): Promise<NetworkMapWorkspaceModule> {
+  if (!workspaceModulePromise) {
+    workspaceModulePromise = import('./networkMapWorkspaceActions');
+  }
+
+  return workspaceModulePromise!;
 }

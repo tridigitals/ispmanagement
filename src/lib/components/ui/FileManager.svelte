@@ -6,7 +6,7 @@
   import { token, can } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import Icon from '$lib/components/ui/Icon.svelte';
-  import Lightbox from '$lib/components/ui/Lightbox.svelte';
+  import { loadLightboxModule } from '$lib/components/ui/lightboxModule';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   import { fade, fly } from 'svelte/transition';
   import { flip } from 'svelte/animate';
@@ -35,6 +35,7 @@
   let viewMode = $state<'list' | 'grid'>('grid');
   let fileInput = $state<HTMLInputElement>();
   let selectedFileIndex = $state(-1); // -1 means lightbox closed
+  let LightboxComponent = $state<any>(null);
 
   // API URL
   const API_BASE = getApiBaseUrl();
@@ -153,6 +154,13 @@
   // Valid for MVP.
 
   let filteredFiles = $derived(files.filter((f) => matchesFilter(f, activeFilter)));
+
+  $effect(() => {
+    if (selectedFileIndex < 0) return;
+    void loadLightboxModule().then(({ LightboxComponent: Lightbox }) => {
+      LightboxComponent = Lightbox;
+    });
+  });
 
   // Selection Helpers
   function toggleSelection(id: string) {
@@ -829,8 +837,12 @@
   </div>
 
   <!-- Lightbox Overlay -->
-  {#if selectedFileIndex > -1}
-    <Lightbox bind:index={selectedFileIndex} {files} onclose={() => (selectedFileIndex = -1)} />
+  {#if selectedFileIndex > -1 && LightboxComponent}
+    <LightboxComponent
+      bind:index={selectedFileIndex}
+      {files}
+      onclose={() => (selectedFileIndex = -1)}
+    />
   {/if}
 
   <ConfirmDialog

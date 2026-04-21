@@ -1,0 +1,58 @@
+{
+  "checkout": {
+    "title": "Checkout",
+    "loading": "Loading invoice...",
+    "item": "Item",
+    "total": "Total",
+    "status": "Status",
+    "tabs": {
+      "online": "Online Payment",
+      "manual": "Bank Transfer"
+    },
+    "online": {
+      "description": "Pay securely with Credit Card, GoPay, ShopeePay, or Virtual Account via Midtrans.",
+      "pay_now": "Pay Now",
+      "check_status": "Check Payment Status",
+      "checking": "Checking..."
+    },
+    "manual": {
+      "instructions": "Please transfer the exact amount to one of the following accounts:",
+      "upload_hint": "Already transferred? Upload your receipt.",
+      "uploading": "Uploading...",
+      "upload": "Upload Proof of Payment"
+    },
+    "pending": {
+      "title": "Payment Verification Pending",
+      "message": "We have received your payment proof. Our team is verifying it. We will notify you once approved.",
+      "back": "Return to Dashboard"
+    },
+    "success": {
+      "title": "Payment Successful!",
+      "message": "Thank you for your payment. Your subscription has been activated.",
+      "cta": "Go to Subscription"
+    },
+    "failed": {
+      "title": "Payment Verification Failed",
+      "message": "Your payment proof was rejected. Please check the reason below and upload a new proof.",
+      "reason_label": "Reason",
+      "reupload_hint": "After re-transfering, upload your new payment proof.",
+      "upload_again": "Upload Proof Again"
+    },
+    "not_found": "Invoice not found",
+    "errors": {
+      "load_failed": "Failed to load invoice",
+      "initiate_failed": "Failed to initiate payment: ",
+      "check_status_failed": "Failed to check status: ",
+      "file_too_large": "File size must be less than 5MB",
+      "upload_failed": "Upload failed: "
+    },
+    "toasts": {
+      "payment_success": "Payment successful!",
+      "waiting": "Waiting for payment...",
+      "payment_failed": "Payment failed",
+      "status_updated": "Status updated: ",
+      "current_status": "Current status: ",
+      "proof_uploaded": "Proof uploaded successfully!"
+    }
+  }
+}

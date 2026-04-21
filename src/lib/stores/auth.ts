@@ -3,12 +3,7 @@
  * Manages user authentication state
  */
 import { writable, derived, get } from 'svelte/store';
-import { auth } from '$lib/api/auth';
-import { publicApi } from '$lib/api/public';
-import { tenant as tenantApi } from '$lib/api/tenant';
 import type { User, Tenant, AuthResponse } from '$lib/api/types';
-import { appSettings } from './settings';
-import { appLogo } from './logo';
 
 // Tracks whether backend/API is reachable. We keep sessions during transient outages.
 export const backendAvailable = writable(true);
@@ -111,11 +106,17 @@ token.subscribe((value) => {
   if (typeof window !== 'undefined') {
     // Only refresh logo and settings when logging IN (token exists)
     if (value) {
-      appLogo.refresh(value);
-      appSettings.refresh();
+      void Promise.all([import('./logo'), import('./settings')]).then(
+        ([{ appLogo }, { appSettings }]) => {
+          appLogo.refresh(value);
+          appSettings.refresh();
+        },
+      );
     } else {
       // On logout, reset settings to default (secure by default)
-      appSettings.reset();
+      void import('./settings').then(({ appSettings }) => {
+        appSettings.reset();
+      });
     }
   }
 });
@@ -156,6 +157,7 @@ export async function login(
   password: string,
   remember: boolean = true,
 ): Promise<AuthResponse> {
+  const { auth } = await import('$lib/api/auth');
   const response = await auth.login(email, password);
   if (response.token) {
     setAuthData(response.token, response.user, remember, response.tenant);
@@ -168,6 +170,7 @@ export async function register(
   password: string,
   name: string,
 ): Promise<AuthResponse> {
+  const { auth } = await import('$lib/api/auth');
   const response = await auth.register(email, password, name);
   // Default to remember=true for registration, or could be passed
   if (response.token) {
@@ -182,6 +185,7 @@ export async function registerCustomerByDomain(
   name: string,
   inviteToken?: string | null,
 ): Promise<AuthResponse> {
+  const { publicApi } = await import('$lib/api/public');
   const response = await publicApi.registerCustomerByDomain(email, password, name, inviteToken);
   if (response.token) {
     setAuthData(response.token, response.user, true, response.tenant);
@@ -282,6 +286,10 @@ export async function checkAuth(opts?: { force?: boolean }): Promise<boolean> {
   if (!currentToken) return false;
 
   try {
+    const [{ auth }, { tenant: tenantApi }] = await Promise.all([
+      import('$lib/api/auth'),
+      import('$lib/api/tenant'),
+    ]);
     backendAvailable.set(true);
 
     const isUnauthorizedError = (e: unknown) => {

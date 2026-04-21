@@ -1,0 +1,38 @@
+{
+  "errors": {
+    "fill_all": "Silakan lengkapi semua kolom",
+    "failed": "Instalasi gagal"
+  },
+  "common": {
+    "next": "Lanjut"
+  },
+  "welcome": {
+    "title": "Selamat datang di {app}",
+    "subtitle": "Mari siapkan aplikasi Anda. Kita mulai dengan mengonfigurasi hal-hal dasar.",
+    "cta": "Mulai"
+  },
+  "general": {
+    "title": "Pengaturan Umum",
+    "subtitle": "Konfigurasikan detail aplikasi Anda.",
+    "app_name": "Nama Aplikasi",
+    "app_name_placeholder": "Aplikasi SaaS Saya",
+    "app_url": "URL Aplikasi",
+    "app_url_placeholder": "http://localhost:3000"
+  },
+  "admin": {
+    "title": "Buat Akun Admin",
+    "subtitle": "Akun ini akan memiliki akses penuh ke sistem.",
+    "full_name": "Nama Lengkap",
+    "full_name_placeholder": "Budi Santoso",
+    "email": "Alamat Email",
+    "email_placeholder": "budi@example.com",
+    "password": "Kata Sandi",
+    "confirm_password": "Konfirmasi Kata Sandi",
+    "installing": "Menginstal...",
+    "complete": "Selesaikan Setup"
+  },
+  "success": {
+    "title": "Instalasi Selesai!",
+    "redirecting": "Mengalihkan ke login..."
+  }
+}

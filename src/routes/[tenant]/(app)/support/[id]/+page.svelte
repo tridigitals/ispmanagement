@@ -11,7 +11,7 @@
   import { get } from 'svelte/store';
   import { formatDateTime } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
-  import Lightbox from '$lib/components/ui/Lightbox.svelte';
+  import { loadLightboxModule } from '$lib/components/ui/lightboxModule';
 
   let detail = $state<SupportTicketDetail | null>(null);
   let loading = $state(true);
@@ -21,9 +21,17 @@
   let lightboxOpen = $state(false);
   let lightboxFiles = $state<any[]>([]);
   let lightboxIndex = $state(0);
+  let LightboxComponent = $state<any>(null);
 
   const id = $derived($page.params.id || '');
   const isClosed = $derived(detail?.ticket?.status === 'closed');
+
+  $effect(() => {
+    if (!lightboxOpen) return;
+    void loadLightboxModule().then(({ LightboxComponent: Lightbox }) => {
+      LightboxComponent = Lightbox;
+    });
+  });
 
   function goBack() {
     const parts = $page.url.pathname.split('/').filter(Boolean);
@@ -277,8 +285,8 @@
   {/if}
 </div>
 
-{#if lightboxOpen}
-  <Lightbox
+{#if lightboxOpen && LightboxComponent}
+  <LightboxComponent
     bind:index={lightboxIndex}
     files={lightboxFiles}
     onclose={() => (lightboxOpen = false)}

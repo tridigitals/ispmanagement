@@ -1,0 +1,38 @@
+{
+  "search_placeholder": "Cari...",
+  "notifications": "Notifikasi",
+  "help": "Bantuan",
+  "notifications_menu": {
+    "mark_all_read": "Tandai semua dibaca",
+    "settings": "Pengaturan notifikasi",
+    "empty": "Belum ada notifikasi",
+    "mark_read": "Tandai sudah dibaca",
+    "delete": "Hapus",
+    "view_all": "Lihat semua"
+  },
+  "toggle_dark": "Ganti ke mode gelap",
+  "toggle_light": "Ganti ke mode terang",
+  "titles": {
+    "dashboard": "Dasbor",
+    "profile": "Profil Saya",
+    "notifications": "Notifikasi",
+    "admin_overview": "Ringkasan Admin",
+    "user_management": "Manajemen Pengguna",
+    "global_settings": "Pengaturan Global",
+    "settings": "Pengaturan",
+    "team": "Tim",
+    "roles": "Peran & Hak Akses",
+    "storage": "Penyimpanan",
+    "subscription": "Langganan",
+    "invoices": "Invoice",
+    "superadmin_dashboard": "Super Admin",
+    "tenants": "Tenant",
+    "users": "Pengguna",
+    "radius": "RADIUS",
+    "plans": "Paket",
+    "audit_logs": "Log Audit",
+    "system": "Sistem",
+    "support": "Dukungan",
+    "default": "Ruang Kerja"
+  }
+}

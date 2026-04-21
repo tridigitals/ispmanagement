@@ -2,8 +2,7 @@
   import { onMount } from 'svelte';
   import { fade, scale } from 'svelte/transition';
   import Icon from './Icon.svelte';
-  import PdfViewer from './PdfViewer.svelte';
-  import OfficeViewer from './OfficeViewer.svelte';
+  import { loadPreviewViewerModules } from './previewModules';
   import { downloadFile } from '$lib/utils/download';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
@@ -55,11 +54,22 @@
 
   let textContent = $state('');
   let loadingText = $state(false);
+  let PdfViewerComponent = $state<any>(null);
+  let OfficeViewerComponent = $state<any>(null);
 
   $effect(() => {
     if (currentFile && isText) {
       loadTextContent();
     }
+  });
+
+  $effect(() => {
+    if (!(isPdf || isOffice)) return;
+
+    void loadPreviewViewerModules().then(({ PdfViewerComponent: PdfViewer, OfficeViewerComponent: OfficeViewer }) => {
+      PdfViewerComponent = PdfViewer;
+      OfficeViewerComponent = OfficeViewer;
+    });
   });
 
   async function loadTextContent() {
@@ -189,14 +199,30 @@
             <audio src={fileSrc} controls autoplay class="w-full mt-6"></audio>
           </div>
         {:else if isPdf}
-          <PdfViewer
-            src={fileSrc}
-            {downloadUrl}
-            filename={currentFile.original_name}
-            showToolbar={false}
-          />
+          {#if PdfViewerComponent}
+            <PdfViewerComponent
+              src={fileSrc}
+              {downloadUrl}
+              filename={currentFile.original_name}
+              showToolbar={false}
+            />
+          {:else}
+            <div class="text-viewer">
+              <div class="spinner"></div>
+            </div>
+          {/if}
         {:else if isOffice}
-          <OfficeViewer file={currentFile} src={fileSrc} {downloadUrl} />
+          {#if OfficeViewerComponent}
+            <OfficeViewerComponent
+              file={currentFile}
+              src={fileSrc}
+              {downloadUrl}
+            />
+          {:else}
+            <div class="text-viewer">
+              <div class="spinner"></div>
+            </div>
+          {/if}
         {:else if isText}
           <div class="text-viewer">
             {#if loadingText}

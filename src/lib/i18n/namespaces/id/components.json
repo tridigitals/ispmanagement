@@ -1,0 +1,94 @@
+{
+  "lightbox": {
+    "pdf_preview": "Pratinjau PDF",
+    "pdf_unsupported": "Browser tidak mendukung pratinjau PDF.",
+    "pdf_blank_warning": "Pratinjau terlihat kosong. Coba unduh/buka file.",
+    "download_pdf": "Unduh PDF",
+    "preview_unavailable": "Pratinjau tidak tersedia",
+    "download_file": "Unduh File",
+    "errors": {
+      "load_failed": "Gagal memuat konten.",
+      "load_error": "Terjadi kesalahan saat memuat konten."
+    }
+  },
+  "global_uploads": {
+    "title": "Upload sedang berlangsung",
+    "status": {
+      "failed": "Gagal",
+      "done": "Selesai"
+    },
+    "actions": {
+      "cancel": "Batalkan upload"
+    }
+  },
+  "table": {
+    "search_placeholder": "Cari...",
+    "empty": "Tidak ada data"
+  },
+  "file_manager": {
+    "title": "Manajer File",
+    "title_admin": "Manajer Storage Global",
+    "subtitle": "Kelola file dan aset organisasi Anda",
+    "subtitle_admin": "Kelola file dan aset yang diunggah lintas tenant",
+    "upload": "Upload",
+    "files": "File",
+    "loading": "Memuat file...",
+    "selected": "Terpilih",
+    "delete_selected": "Hapus Terpilih",
+    "search_placeholder": "Cari file berdasarkan nama...",
+    "view": {
+      "grid": "Tampilan Grid",
+      "list": "Tampilan List"
+    },
+    "filters": {
+      "all": "Semua File",
+      "images": "Gambar",
+      "videos": "Video",
+      "audio": "Audio",
+      "documents": "Dokumen",
+      "aria_group": "Filter tipe file",
+      "aria_filter": "Filter: {label}"
+    },
+    "empty": {
+      "title": "File tidak ditemukan",
+      "subtitle": "Coba ubah kata kunci pencarian Anda."
+    },
+    "toasts": {
+      "load_failed": "Gagal memuat file: {message}",
+      "deleted": "File berhasil dihapus"
+    },
+    "columns": {
+      "name": "Nama",
+      "size": "Ukuran",
+      "type": "Tipe",
+      "uploaded": "Diunggah",
+      "action": "Aksi"
+    },
+    "pagination": {
+      "page_of": "Halaman {page} dari {total}"
+    },
+    "load_more": "Muat Lebih Banyak",
+    "showing_count": "Menampilkan {current} dari {total} file",
+    "confirm": {
+      "delete_one_title": "Hapus File",
+      "delete_one_message": "Yakin ingin menghapus file ini? Tindakan ini tidak dapat dibatalkan.",
+      "delete_many_title": "Hapus {count} file",
+      "delete_many_message": "Yakin ingin menghapus {count} file ({size})? Tindakan ini tidak dapat dibatalkan.",
+      "delete_many_confirm": "Hapus {count}"
+    }
+  },
+  "pagination": {
+    "rows_per_page": "Baris per halaman:",
+    "range": "{start}-{end} dari {count}",
+    "previous_page": "Halaman sebelumnya",
+    "next_page": "Halaman berikutnya"
+  },
+  "mobile_fab": {
+    "open_menu": "Buka menu"
+  },
+  "confirm_dialog": {
+    "instruction_prefix": "Ketik",
+    "instruction_suffix": "untuk konfirmasi.",
+    "placeholder": "Ketik {keyword} di sini"
+  }
+}

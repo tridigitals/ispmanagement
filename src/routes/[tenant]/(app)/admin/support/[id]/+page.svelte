@@ -12,7 +12,7 @@
   import { get } from 'svelte/store';
   import { formatDateTime } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
-  import Lightbox from '$lib/components/ui/Lightbox.svelte';
+  import { loadLightboxModule } from '$lib/components/ui/lightboxModule';
 
   const id = $derived($page.params.id || '');
 
@@ -44,6 +44,7 @@
   let lightboxOpen = $state(false);
   let lightboxFiles = $state<any[]>([]);
   let lightboxIndex = $state(0);
+  let LightboxComponent = $state<any>(null);
 
   const statusOptions = [
     { label: get(t)('support.status.open') || 'Open', value: 'open' },
@@ -57,6 +58,13 @@
     { label: get(t)('support.priorities.high') || 'High', value: 'high' },
     { label: get(t)('support.priorities.urgent') || 'Urgent', value: 'urgent' },
   ];
+
+  $effect(() => {
+    if (!lightboxOpen) return;
+    void loadLightboxModule().then(({ LightboxComponent: Lightbox }) => {
+      LightboxComponent = Lightbox;
+    });
+  });
 
   onMount(() => {
     const onRealtime = (e: Event) => {
@@ -377,8 +385,8 @@
   {/if}
 </div>
 
-{#if lightboxOpen}
-  <Lightbox
+{#if lightboxOpen && LightboxComponent}
+  <LightboxComponent
     bind:index={lightboxIndex}
     files={lightboxFiles}
     onclose={() => (lightboxOpen = false)}

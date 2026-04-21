@@ -1,17 +1,21 @@
-<script lang="ts">
+  <script lang="ts">
   import '$lib/styles/global.css';
   import '$lib/i18n'; // Init i18n
-  import { waitLocale, t } from 'svelte-i18n';
+  import {
+    loadInstallModule,
+    loadRealtimeRuntime,
+    loadThemeModule,
+  } from '$lib/bootstrap/rootRuntimeModules';
+  import { scheduleRootDeferredGlobals } from '$lib/bootstrap/rootDeferredGlobalsScheduler';
+  import { createRootRealtimeController } from '$lib/bootstrap/rootRealtimeController';
+  import { ensureBootLocale, ensureFullLocale } from '$lib/i18n';
+  import { t } from 'svelte-i18n';
   import { checkAuth, isAuthenticated, isSuperAdmin, logout } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
   import { appLogo } from '$lib/stores/logo';
-  import { theme } from '$lib/stores/theme';
-  import { install } from '$lib/api/install';
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { connectWebSocket, disconnectWebSocket } from '$lib/stores/websocket';
-  import { refreshUnreadCount, resetNotificationsState } from '$lib/stores/notifications';
   import { getSlugFromDomain, isPlatformDomain } from '$lib/utils/domain';
   import { browser } from '$app/environment';
   import { getApiBaseUrl } from '$lib/utils/apiUrl';
@@ -25,6 +29,7 @@
   let lastUserActivityAt = Date.now();
   let ToasterComponent: Component | null = null;
   let GlobalUploadsComponent: Component | null = null;
+  const realtimeController = createRootRealtimeController(loadRealtimeRuntime);
 
   function markUserActivity() {
     lastUserActivityAt = Date.now();
@@ -71,8 +76,8 @@
     });
 
     // Ensure in-memory state is reset immediately.
-    disconnectWebSocket();
-    resetNotificationsState();
+    void disconnectRealtimeConnections();
+    void resetRealtimeNotifications();
     logout();
 
     if (!window.location.pathname.startsWith('/login')) {
@@ -103,7 +108,9 @@
   async function initializeLocale() {
     try {
       await appSettings.init();
-      await waitLocale();
+      const preferredLocale = $appSettings.default_locale;
+      const activeLocale = await ensureBootLocale($page.url.pathname, preferredLocale);
+      void ensureFullLocale(activeLocale);
       i18nReady = true;
     } catch (error) {
       console.error('[root-layout] Failed to initialize locale:', error);
@@ -155,11 +162,42 @@
     });
   }
 
-  function syncRealtimeConnections() {
+  function scheduleDeferredGlobalsLoad() {
+    scheduleRootDeferredGlobals(() => {
+      void loadDeferredGlobals();
+    }, {
+      requestAnimationFrame: window.requestAnimationFrame.bind(window),
+      requestIdleCallback:
+        'requestIdleCallback' in window
+          ? window.requestIdleCallback.bind(window)
+          : undefined,
+      setTimeout: window.setTimeout.bind(window),
+    });
+  }
+
+  async function disconnectRealtimeConnections() {
+    await realtimeController.disconnect();
+  }
+
+  async function resetRealtimeNotifications() {
+    const { resetNotificationsState } = await loadRealtimeRuntime();
+    resetNotificationsState();
+  }
+
+  async function syncRealtimeConnections() {
     if (!$isAuthenticated) return;
     debugLog('ws-connect', { isAuthenticated: $isAuthenticated });
-    connectWebSocket();
-    refreshUnreadCount();
+    await realtimeController.connect();
+  }
+
+  async function initializeTheme() {
+    const { theme } = await loadThemeModule();
+    theme.init();
+  }
+
+  async function checkInstallationStatus() {
+    const { install } = await loadInstallModule();
+    return install.checkIsInstalled();
   }
 
   function applyMaintenanceRedirect(currentPath: string) {
@@ -202,16 +240,16 @@
     }
     try {
       debugLog('boot-start', { path: $page.url.pathname, host: window.location.hostname });
-      theme.init();
+      void initializeTheme();
       const hostname = window.location.hostname;
       appLogo.init();
       const settingsTask = initializeLocale();
-      void loadDeferredGlobals();
+      scheduleDeferredGlobalsLoad();
       registerServiceWorker();
 
       const [authOk, isInstalled] = await Promise.all([
         checkAuth(),
-        install.checkIsInstalled(),
+        checkInstallationStatus(),
         lookupCustomDomainIfNeeded(hostname),
       ]);
       const currentPath = $page.url.pathname;
@@ -227,18 +265,12 @@
           console.log('App installed, leaving /install page for /login');
           goto('/login');
         }
-        if (authOk) {
-          syncRealtimeConnections();
-        }
       }
 
       loading = false;
       await settingsTask;
       if (isInstalled) {
         if (applyMaintenanceRedirect(currentPath)) return;
-        if (authOk) {
-          syncRealtimeConnections();
-        }
       }
     } catch (e) {
       console.error('Critical Error during app initialization in +layout.svelte:', e);
@@ -262,15 +294,14 @@
     if (typeof window !== 'undefined') {
       window.removeEventListener('app:auth-expired', handleAuthExpired as EventListener);
     }
-    disconnectWebSocket();
+    void disconnectRealtimeConnections();
   });
 
   // Keep WS connection in sync with auth state (important after login without full reload).
   $: if (browser && $isAuthenticated) {
-    connectWebSocket();
-    refreshUnreadCount();
+    void syncRealtimeConnections();
   } else if (browser && !$isAuthenticated) {
-    disconnectWebSocket();
+    void disconnectRealtimeConnections();
   }
 </script>
 

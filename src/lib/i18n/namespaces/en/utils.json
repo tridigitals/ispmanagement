@@ -1,0 +1,8 @@
+{
+  "download": {
+    "save_title": "Save File",
+    "downloading": "Downloading {filename}...",
+    "failed": "Download failed: {message}",
+    "failed_generic": "Download failed"
+  }
+}

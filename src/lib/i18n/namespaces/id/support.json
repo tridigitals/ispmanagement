@@ -1,0 +1,74 @@
+{
+  "title": "Tiket Dukungan",
+  "subtitle": "Dapatkan bantuan dari tim Anda atau admin platform.",
+  "search_placeholder": "Cari tiket...",
+  "loading": "Memuat tiket...",
+  "loading_detail": "Memuat tiket...",
+  "actions": {
+    "new": "Tiket Baru",
+    "create": "Buat",
+    "creating": "Membuat...",
+    "send": "Kirim",
+    "sending": "Mengirim..."
+  },
+  "fields": {
+    "subject": "Subjek",
+    "subject_placeholder": "mis. Tidak bisa login ke akun saya",
+    "priority": "Prioritas",
+    "message": "Pesan",
+    "message_placeholder": "Jelaskan masalah atau permintaan Anda...",
+    "attachments": "Lampiran",
+    "reply": "Balas",
+    "reply_placeholder": "Tulis balasan Anda..."
+  },
+  "filters": {
+    "aria": "Filter tiket",
+    "all": "Semua",
+    "open": "Buka",
+    "pending": "Menunggu",
+    "closed": "Selesai"
+  },
+  "stats": {
+    "total": "Total"
+  },
+  "empty": {
+    "title": "Belum ada tiket",
+    "subtitle": "Buat tiket jika Anda butuh bantuan atau punya permintaan."
+  },
+  "toasts": {
+    "created": "Tiket dibuat",
+    "create_failed": "Gagal membuat: {message}",
+    "replied": "Balasan terkirim",
+    "reply_failed": "Gagal membalas: {message}",
+    "ticket_closed": "Tiket sudah ditutup"
+  },
+  "status": {
+    "open": "Buka",
+    "pending": "Menunggu",
+    "closed": "Selesai"
+  },
+  "priorities": {
+    "low": "Rendah",
+    "normal": "Normal",
+    "high": "Tinggi",
+    "urgent": "Mendesak"
+  },
+  "tags": {
+    "internal": "Internal"
+  },
+  "labels": {
+    "support": "Dukungan",
+    "customer": "Pelanggan",
+    "staff": "Staf"
+  },
+  "detail": {
+    "updated": "Diperbarui",
+    "not_found": "Tiket tidak ditemukan",
+    "thread": "Percakapan",
+    "messages": "pesan",
+    "closed_notice": "Tiket ini sudah ditutup. Kamu tidak bisa membalas."
+  },
+  "create": {
+    "title": "Buat Tiket"
+  }
+}

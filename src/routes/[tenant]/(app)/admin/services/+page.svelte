@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import type { Component } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { t } from 'svelte-i18n';
@@ -9,12 +10,10 @@
   import { formatMoney } from '$lib/utils/money';
   import { appSettings } from '$lib/stores/settings';
   import Icon from '$lib/components/ui/Icon.svelte';
-  import Modal from '$lib/components/ui/Modal.svelte';
-  import Select2 from '$lib/components/ui/Select2.svelte';
-  import Toggle from '$lib/components/ui/Toggle.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
+  import { loadServicesModalModules } from './servicesPageModules';
   import { getAvailableRouterNameSuggestions } from '$lib/utils/packageRouterMeta';
   import {
     getPackageRouterMappingErrorFallback,
@@ -27,6 +26,7 @@
   type PoolSuggestion = { id: string; name: string };
   type ServiceType = 'internet_pppoe' | 'hotspot' | 'vpn';
   type PackageSortBy = 'name' | 'type' | 'price' | 'status' | 'mappings';
+  type DeferredComponent = Component<any>;
 
   const tenantCtx = $derived.by(() =>
     resolveTenantContext({
@@ -55,6 +55,9 @@
   let packageTableVersion = $state(0);
   let packageSortBy = $state<PackageSortBy>('name');
   let packageSortDirection = $state<'asc' | 'desc'>('asc');
+  let ModalComponent = $state<DeferredComponent | null>(null);
+  let Select2Component = $state<DeferredComponent | null>(null);
+  let ToggleComponent = $state<DeferredComponent | null>(null);
 
   let routers = $state<RouterRow[]>([]);
   let mappings = $state<IspPackageRouterMappingView[]>([]);
@@ -284,6 +287,15 @@
     void load();
   });
 
+  async function ensureServicesModalComponents() {
+    if (ModalComponent && Select2Component && ToggleComponent) return;
+
+    const modules = await loadServicesModalModules();
+    ModalComponent = modules.ModalComponent;
+    Select2Component = modules.Select2Component;
+    ToggleComponent = modules.ToggleComponent;
+  }
+
   async function load() {
     loading = true;
     try {
@@ -329,8 +341,9 @@
     mappings = await api.ispPackages.routerMappings.list();
   }
 
-  function openCreate() {
+  async function openCreate() {
     if (!$can('manage', 'isp_packages')) return;
+    await ensureServicesModalComponents();
     editingPkg = null;
     resetCreateForm('internet_pppoe');
     showServiceTypePicker = true;
@@ -343,8 +356,9 @@
     showPkgModal = true;
   }
 
-  function openEdit(p: IspPackage) {
+  async function openEdit(p: IspPackage) {
     if (!$can('manage', 'isp_packages')) return;
+    await ensureServicesModalComponents();
     showServiceTypePicker = false;
     editingPkg = p;
     pkgServiceType = normalizeServiceType(p.service_type);
@@ -466,6 +480,7 @@
 
   async function openMapping(p: IspPackage) {
     if (!$can('manage', 'isp_packages')) return;
+    await ensureServicesModalComponents();
     if (!isInternetType(p.service_type)) {
       toast.error($t('admin.services.mapping.only_internet') || 'Router mapping is only available for Internet / PPPoE services.');
       return;
@@ -590,7 +605,7 @@
         {$t('common.refresh') || 'Refresh'}
       </button>
       {#if $can('manage', 'isp_packages')}
-        <button class="btn" type="button" onclick={openCreate}>
+        <button class="btn" type="button" onclick={() => void openCreate()}>
           <Icon name="plus" size={16} />
           {$t('admin.services.actions.add') || $t('admin.network.packages.actions.add') || 'Add service'}
         </button>
@@ -711,11 +726,11 @@
           <div class="row-actions">
             {#if $can('manage', 'isp_packages')}
               {#if isInternetType(row.service_type)}
-                <button class="btn-icon" title={$t('admin.network.packages.actions.map') || 'Map to router'} onclick={() => openMapping(row)}>
+                <button class="btn-icon" title={$t('admin.network.packages.actions.map') || 'Map to router'} onclick={() => void openMapping(row)}>
                   <Icon name="router" size={16} />
                 </button>
               {/if}
-              <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => openEdit(row)}>
+              <button class="btn-icon" title={$t('common.edit') || 'Edit'} onclick={() => void openEdit(row)}>
                 <Icon name="edit" size={16} />
               </button>
               <button class="btn-icon danger" title={$t('common.delete') || 'Delete'} onclick={() => deletePackage(row)}>
@@ -732,7 +747,8 @@
   </div>
 </div>
 
-<Modal
+{#if ModalComponent}
+<ModalComponent
   show={showServiceTypePicker}
   title={$t('admin.services.type_picker.title') || 'Choose Service Type'}
   width="860px"
@@ -770,9 +786,9 @@
       {/each}
     </div>
   </div>
-</Modal>
+</ModalComponent>
 
-<Modal
+<ModalComponent
   show={showPkgModal}
   title={editingPkg ? ($t('admin.services.actions.edit') || $t('admin.network.packages.actions.edit') || 'Edit service') : ($t('admin.services.actions.add') || $t('admin.network.packages.actions.add') || 'Add service')}
   width="640px"
@@ -858,7 +874,9 @@
             {$t('admin.network.packages.fields.enable_yearly_hint') || 'Turn on if this package has yearly billing.'}
           </div>
         </div>
-        <Toggle bind:checked={pkgYearlyEnabled} ariaLabel={$t('admin.network.packages.fields.enable_yearly') || 'Enable yearly price'} />
+        {#if ToggleComponent}
+          <ToggleComponent bind:checked={pkgYearlyEnabled} ariaLabel={$t('admin.network.packages.fields.enable_yearly') || 'Enable yearly price'} />
+        {/if}
       </div>
 
       {#if pkgYearlyEnabled}
@@ -890,7 +908,9 @@
             {$t('admin.network.packages.fields.active_hint') || 'Inactive packages will be hidden from selection.'}
           </div>
         </div>
-        <Toggle bind:checked={pkgActive} ariaLabel={$t('admin.network.packages.fields.active') || 'Active'} />
+        {#if ToggleComponent}
+          <ToggleComponent bind:checked={pkgActive} ariaLabel={$t('admin.network.packages.fields.active') || 'Active'} />
+        {/if}
       </div>
 
       {#if isInternetType(pkgServiceType)}
@@ -901,7 +921,9 @@
               {$t('admin.network.packages.mapping.inline_hint') || 'Optional: prefill router profile/pool for this package (per-router).'}
             </div>
           </div>
-          <Toggle bind:checked={pkgMapEnabled} ariaLabel={$t('admin.network.packages.mapping.inline_title') || 'Map to router now'} />
+          {#if ToggleComponent}
+            <ToggleComponent bind:checked={pkgMapEnabled} ariaLabel={$t('admin.network.packages.mapping.inline_title') || 'Map to router now'} />
+          {/if}
         </div>
       {:else}
         <div class="field-hint">
@@ -913,7 +935,8 @@
         <div class="grid2">
           <label>
             <span>{$t('admin.network.packages.mapping.router') || 'Router'}</span>
-            <Select2
+            {#if Select2Component}
+            <Select2Component
               bind:value={pkgMapRouterId}
               options={routerOptions}
               placeholder={($t('common.select') || 'Select') + '...'}
@@ -927,10 +950,12 @@
                 void loadPkgRouterMeta(pkgMapRouterId);
               }}
             />
+            {/if}
           </label>
           <label>
             <span>{$t('admin.network.packages.mapping.profile') || 'Router PPP Profile'}</span>
-            <Select2
+            {#if Select2Component}
+            <Select2Component
               bind:value={pkgMapProfile}
               options={pkgProfileOptions}
               placeholder={($t('common.select') || 'Select') + '...'}
@@ -940,13 +965,15 @@
               searchPlaceholder={$t('common.search') || 'Search'}
               noResultsText={$t('common.no_results') || 'No results'}
             />
+            {/if}
           </label>
         </div>
 
         <div class="grid2">
           <label>
             <span>{$t('admin.network.packages.mapping.pool') || 'Address pool (optional)'}</span>
-            <Select2
+            {#if Select2Component}
+            <Select2Component
               bind:value={pkgMapPool}
               options={pkgPoolOptions}
               placeholder={($t('common.select') || 'Select') + '...'}
@@ -956,6 +983,7 @@
               searchPlaceholder={$t('common.search') || 'Search'}
               noResultsText={$t('common.no_results') || 'No results'}
             />
+            {/if}
           </label>
           <div></div>
         </div>
@@ -1028,9 +1056,9 @@
       </button>
     </div>
   </div>
-</Modal>
+</ModalComponent>
 
-<Modal
+<ModalComponent
   show={showMapModal}
   title={$t('admin.network.packages.mapping.title') || 'Router Mapping'}
   width="760px"
@@ -1044,7 +1072,8 @@
       </label>
       <label>
         <span>{$t('admin.network.packages.mapping.router') || 'Router'}</span>
-        <Select2
+        {#if Select2Component}
+        <Select2Component
           bind:value={mapRouterId}
           options={routerOptions}
           placeholder={($t('common.select') || 'Select') + '...'}
@@ -1054,13 +1083,15 @@
           noResultsText={$t('common.no_results') || 'No results'}
           onchange={() => void loadRouterMeta(mapRouterId)}
         />
+        {/if}
       </label>
     </div>
 
     <div class="grid2">
       <label>
         <span>{$t('admin.network.packages.mapping.profile') || 'Router PPP Profile'}</span>
-        <Select2
+        {#if Select2Component}
+        <Select2Component
           bind:value={mapProfile}
           options={mapProfileOptions}
           placeholder={($t('common.select') || 'Select') + '...'}
@@ -1070,10 +1101,12 @@
           searchPlaceholder={$t('common.search') || 'Search'}
           noResultsText={$t('common.no_results') || 'No results'}
         />
+        {/if}
       </label>
       <label>
         <span>{$t('admin.network.packages.mapping.pool') || 'Address pool (optional)'}</span>
-        <Select2
+        {#if Select2Component}
+        <Select2Component
           bind:value={mapPool}
           options={mapPoolOptions}
           placeholder={($t('common.select') || 'Select') + '...'}
@@ -1083,6 +1116,7 @@
           searchPlaceholder={$t('common.search') || 'Search'}
           noResultsText={$t('common.no_results') || 'No results'}
         />
+        {/if}
       </label>
     </div>
 
@@ -1117,7 +1151,8 @@
       </button>
     </div>
   </div>
-</Modal>
+ </ModalComponent>
+{/if}
 
 <style>
   .page-content {

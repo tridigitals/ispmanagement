@@ -1,0 +1,17 @@
+{
+  "dashboard": {
+    "redirecting": "Redirecting to your dashboard..."
+  },
+  "maintenance": {
+    "title": "Under Maintenance",
+    "default_message": "We're updating our systems to serve you better. Please check back soon!",
+    "working": "Working on it",
+    "thanks": "Thank you for your patience. We'll be back shortly!"
+  },
+  "unauthorized": {
+    "title": "Access Denied",
+    "sorry": "Sorry,",
+    "message": "You don't have the required permissions to view this page. This area is restricted to system administrators.",
+    "back": "Return to Safety"
+  }
+}

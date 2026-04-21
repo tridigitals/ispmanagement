@@ -1,0 +1,17 @@
+{
+  "dashboard": {
+    "redirecting": "Mengalihkan ke dashboard..."
+  },
+  "maintenance": {
+    "title": "Sedang Maintenance",
+    "default_message": "Kami sedang memperbarui sistem agar lebih baik. Silakan coba lagi nanti.",
+    "working": "Sedang dikerjakan",
+    "thanks": "Terima kasih atas kesabarannya. Kami akan segera kembali!"
+  },
+  "unauthorized": {
+    "title": "Akses Ditolak",
+    "sorry": "Maaf,",
+    "message": "Anda tidak memiliki izin yang diperlukan untuk membuka halaman ini. Area ini khusus untuk administrator sistem.",
+    "back": "Kembali"
+  }
+}

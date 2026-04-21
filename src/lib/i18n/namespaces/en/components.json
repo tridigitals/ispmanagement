@@ -1,0 +1,94 @@
+{
+  "lightbox": {
+    "pdf_preview": "PDF Preview",
+    "pdf_unsupported": "Browser does not support PDF preview.",
+    "pdf_blank_warning": "Preview looks blank. Try download/open file.",
+    "download_pdf": "Download PDF",
+    "preview_unavailable": "Preview not available",
+    "download_file": "Download File",
+    "errors": {
+      "load_failed": "Failed to load content.",
+      "load_error": "Error loading content."
+    }
+  },
+  "global_uploads": {
+    "title": "Uploads in progress",
+    "status": {
+      "failed": "Failed",
+      "done": "Done"
+    },
+    "actions": {
+      "cancel": "Cancel upload"
+    }
+  },
+  "table": {
+    "search_placeholder": "Search...",
+    "empty": "No data found"
+  },
+  "file_manager": {
+    "title": "File Manager",
+    "title_admin": "Global Storage Manager",
+    "subtitle": "Manage your organization's files and assets",
+    "subtitle_admin": "Manage uploaded files and assets across all tenants",
+    "upload": "Upload",
+    "files": "Files",
+    "loading": "Loading files...",
+    "selected": "Selected",
+    "delete_selected": "Delete Selected",
+    "search_placeholder": "Search files by name...",
+    "view": {
+      "grid": "Grid View",
+      "list": "List View"
+    },
+    "filters": {
+      "all": "All Files",
+      "images": "Images",
+      "videos": "Videos",
+      "audio": "Audio",
+      "documents": "Documents",
+      "aria_group": "File type filters",
+      "aria_filter": "Filter: {label}"
+    },
+    "empty": {
+      "title": "No Files Found",
+      "subtitle": "Try adjusting your search terms."
+    },
+    "toasts": {
+      "load_failed": "Failed to load files: {message}",
+      "deleted": "File deleted successfully"
+    },
+    "columns": {
+      "name": "Name",
+      "size": "Size",
+      "type": "Type",
+      "uploaded": "Uploaded",
+      "action": "Action"
+    },
+    "pagination": {
+      "page_of": "Page {page} of {total}"
+    },
+    "load_more": "Load More",
+    "showing_count": "Showing {current} of {total} files",
+    "confirm": {
+      "delete_one_title": "Delete File",
+      "delete_one_message": "Are you sure you want to delete this file? This action cannot be undone.",
+      "delete_many_title": "Delete {count} files",
+      "delete_many_message": "Are you sure you want to delete {count} files ({size})? This action cannot be undone.",
+      "delete_many_confirm": "Delete {count}"
+    }
+  },
+  "pagination": {
+    "rows_per_page": "Rows per page:",
+    "range": "{start}-{end} of {count}",
+    "previous_page": "Previous page",
+    "next_page": "Next page"
+  },
+  "mobile_fab": {
+    "open_menu": "Open menu"
+  },
+  "confirm_dialog": {
+    "instruction_prefix": "Type",
+    "instruction_suffix": "to confirm.",
+    "placeholder": "Type {keyword} here"
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "title": "Pengaturan",
+  "subtitle": "Kelola pengaturan dan preferensi akun Anda.",
+  "fallback": {
+    "user": "Pengguna",
+    "member": "Anggota"
+  },
+  "tabs": {
+    "general": "Umum",
+    "security": "Keamanan",
+    "addresses": "Alamat",
+    "preferences": "Preferensi",
+    "notifications": "Notifikasi"
+  },
+  "addresses": {
+    "title": "Alamat",
+    "subtitle": "Kelola beberapa alamat untuk kebutuhan billing dan pengiriman ke depannya.",
+    "add": "Tambah Alamat",
+    "add_title": "Tambah Alamat",
+    "edit_title": "Edit Alamat",
+    "untitled": "Tanpa Judul",
+    "default_shipping": "Default Pengiriman",
+    "default_billing": "Default Billing",
+    "recipient": "Penerima",
+    "empty_title": "Belum ada alamat",
+    "empty_subtitle": "Tambahkan alamat agar bisa dipakai ulang untuk pengiriman dan billing.",
+    "delete_title": "Hapus alamat?",
+    "delete_message": "Alamat ini akan dihapus permanen.",
+    "fields": {
+      "label": "Label",
+      "recipient_name": "Nama penerima",
+      "phone": "No. HP",
+      "line1": "Alamat baris 1",
+      "line2": "Alamat baris 2",
+      "city": "Kota",
+      "state": "Provinsi",
+      "postal_code": "Kode pos",
+      "country_code": "Kode negara",
+      "default_shipping": "Default pengiriman",
+      "default_billing": "Default billing"
+    },
+    "validation": {
+      "line1_required": "Alamat baris 1 wajib diisi."
+    }
+  },
+  "general": {
+    "title": "Informasi Profil",
+    "subtitle": "Perbarui detail akun dan profil publik Anda.",
+    "change_avatar": "Ubah Avatar",
+    "your_name": "Nama Anda",
+    "role_label": "Peran",
+    "display_name": "Nama Tampilan",
+    "display_name_placeholder": "Masukkan nama lengkap",
+    "email_address": "Alamat Email",
+    "email_placeholder": "nama@contoh.com",
+    "save_button": "Simpan Perubahan",
+    "saving": "Menyimpan..."
+  },
+  "security": {
+    "title": "Kata Sandi & Keamanan",
+    "subtitle": "Kelola kata sandi dan pengaturan keamanan.",
+    "current_password": "Kata Sandi Saat Ini",
+    "new_password": "Kata Sandi Baru",
+    "confirm_password": "Konfirmasi Kata Sandi",
+    "password_placeholder": "••••••••",
+    "requirements_title": "Syarat kata sandi:",
+    "req_length": "Minimal {length} karakter",
+    "req_uppercase": "Satu huruf besar",
+    "req_number": "Satu angka",
+    "req_special": "Satu karakter spesial",
+    "update_button": "Perbarui Kata Sandi",
+    "updating": "Memperbarui...",
+    "twofa": {
+      "title": "Autentikasi Dua Faktor",
+      "subtitle": "Lindungi akun Anda dengan lapisan keamanan tambahan.",
+      "enabled_title": "2FA Aktif",
+      "enabled_desc": "Akun Anda terlindungi dengan 2FA.",
+      "recovery_title": "Simpan Kode Pemulihan Anda!",
+      "recovery": {
+        "saved_button": "Saya sudah menyimpannya"
+      },
+      "disable_title": "Nonaktifkan 2FA",
+      "methods": {
+        "authenticator_app": "Aplikasi Authenticator",
+        "email_verification": "Verifikasi Email"
+      },
+      "disable": {
+        "placeholder": "Masukkan kode autentikasi"
+      }
+    }
+  },
+  "preferences": {
+    "title": "Tampilan",
+    "subtitle": "Sesuaikan tampilan dan nuansa aplikasi.",
+    "dark_mode": "Mode Gelap",
+    "dark_mode_desc": "Beralih antara tema gelap dan terang."
+  },
+  "notifications": {
+    "title": "Preferensi Notifikasi",
+    "subtitle": "Atur cara dan kapan kamu ingin menerima notifikasi.",
+    "view_all": "Lihat semua",
+    "test": "Tes Notifikasi",
+    "push": {
+      "active_title": "Push Notifikasi Aktif",
+      "active_desc": "Perangkat ini sudah berlangganan update real-time.",
+      "disable": "Nonaktifkan",
+      "enable_title": "Aktifkan Push Notifikasi",
+      "enable_desc": "Dapatkan update real-time meski aplikasi ditutup.",
+      "enable": "Aktifkan Push"
+    },
+    "channels": {
+      "in_app": "Di Aplikasi",
+      "email": "Email",
+      "push": "Push",
+      "required": "Wajib"
+    },
+    "categories": {
+      "system": {
+        "label": "Pembaruan Sistem",
+        "desc": "Pemeliharaan & pengumuman"
+      },
+      "support": {
+        "label": "Tiket Bantuan",
+        "desc": "Tiket baru & balasan"
+      },
+      "team": {
+        "label": "Aktivitas Tim",
+        "desc": "Perubahan anggota & undangan"
+      },
+      "payment": {
+        "label": "Penagihan",
+        "desc": "Invoice & langganan"
+      },
+      "security": {
+        "label": "Keamanan",
+        "desc": "Peringatan login & perubahan kata sandi"
+      }
+    }
+  },
+  "messages": {
+    "profile_updated": "Profil berhasil diperbarui!",
+    "password_changed": "Kata sandi berhasil diubah!",
+    "password_mismatch": "Kata sandi baru tidak cocok",
+    "update_failed": "Gagal memperbarui profil",
+    "change_password_failed": "Gagal mengubah kata sandi",
+    "twofa_required": "Organisasi Anda mewajibkan Autentikasi Dua Faktor (2FA). Silakan aktifkan untuk melanjutkan.",
+    "2fa_method_totp": "Metode 2FA diubah ke Aplikasi Authenticator",
+    "2fa_method_email": "Metode 2FA diubah ke Email"
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "title": "Support Tickets",
+  "subtitle": "Get help from your team or platform admins.",
+  "search_placeholder": "Search tickets...",
+  "loading": "Loading tickets...",
+  "loading_detail": "Loading ticket...",
+  "actions": {
+    "new": "New Ticket",
+    "create": "Create",
+    "creating": "Creating...",
+    "send": "Send",
+    "sending": "Sending..."
+  },
+  "fields": {
+    "subject": "Subject",
+    "subject_placeholder": "e.g. Cannot login to my account",
+    "priority": "Priority",
+    "message": "Message",
+    "message_placeholder": "Describe your issue or request...",
+    "attachments": "Attachments",
+    "reply": "Reply",
+    "reply_placeholder": "Write your reply..."
+  },
+  "filters": {
+    "aria": "Filter tickets",
+    "all": "All",
+    "open": "Open",
+    "pending": "Pending",
+    "closed": "Closed"
+  },
+  "stats": {
+    "total": "Total"
+  },
+  "empty": {
+    "title": "No tickets yet",
+    "subtitle": "Create a ticket if you need help or have a request."
+  },
+  "toasts": {
+    "created": "Ticket created",
+    "create_failed": "Create failed: {message}",
+    "replied": "Reply sent",
+    "reply_failed": "Reply failed: {message}",
+    "ticket_closed": "Ticket is closed"
+  },
+  "status": {
+    "open": "Open",
+    "pending": "Pending",
+    "closed": "Closed"
+  },
+  "priorities": {
+    "low": "Low",
+    "normal": "Normal",
+    "high": "High",
+    "urgent": "Urgent"
+  },
+  "tags": {
+    "internal": "Internal"
+  },
+  "labels": {
+    "support": "Support",
+    "customer": "Customer",
+    "staff": "Staff"
+  },
+  "detail": {
+    "updated": "Updated",
+    "not_found": "Ticket not found",
+    "thread": "Conversation",
+    "messages": "messages",
+    "closed_notice": "This ticket is closed. You can’t reply."
+  },
+  "create": {
+    "title": "Create Ticket"
+  }
+}

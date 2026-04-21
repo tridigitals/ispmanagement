@@ -1,0 +1,1002 @@
+{
+  "dashboard": {
+    "loading": "Loading system data...",
+    "stats_aria": "Superadmin stats",
+    "stats": {
+      "tenants": "Tenants",
+      "active_tenants": "Active Tenants",
+      "users": "Users",
+      "system_health": "System Health",
+      "health_ok": "OK",
+      "health_down": "DB Down"
+    },
+    "quick_actions": {
+      "title": "Quick Actions",
+      "tenants": {
+        "title": "Manage Tenants",
+        "desc": "Create, edit, and maintain organizations."
+      },
+      "users": {
+        "title": "Manage Users",
+        "desc": "View global users, roles, and access."
+      },
+      "audit": {
+        "title": "Audit Logs",
+        "desc": "Track activity and security events."
+      },
+      "settings": {
+        "title": "Platform Settings",
+        "desc": "Configure policies and system defaults."
+      }
+    }
+  },
+  "audit_logs": {
+    "title": "Audit Logs",
+    "subtitle": "Track system activity and security events",
+    "count": "logs",
+    "refresh": "Refresh logs",
+    "search": "Search logs...",
+    "loading": "Loading logs...",
+    "columns": {
+      "time": "Time",
+      "action": "Action",
+      "user": "User",
+      "tenant": "Tenant",
+      "resource": "Resource",
+      "details": "Details",
+      "ip": "IP",
+      "time_ip": "Time / IP",
+      "user_tenant": "User / Tenant",
+      "action_resource": "Action / Resource"
+    },
+    "filters": {
+      "action": "Action (exact)",
+      "action_placeholder": "e.g. login, create_user",
+      "from": "From",
+      "to": "To"
+    },
+    "view": {
+      "table": "Table view",
+      "cards": "Card view"
+    },
+    "aria": {
+      "quick_ranges": "Quick ranges",
+      "view_mode": "View mode",
+      "cards": "Audit logs"
+    },
+    "actions": {
+      "expand_details": "Expand details",
+      "collapse_details": "Collapse details",
+      "expand": "Expand",
+      "collapse": "Collapse"
+    },
+    "labels": {
+      "user": "User",
+      "tenant": "Tenant",
+      "resource": "Resource",
+      "ip": "IP",
+      "details": "Details"
+    },
+    "empty": {
+      "title": "No logs found",
+      "subtitle": "Try adjusting your filters."
+    }
+  },
+  "users": {
+    "title": "Users",
+    "subtitle": "Manage global users and access",
+    "count": "users",
+    "search": "Search users...",
+    "filters": {
+      "all_roles": "All Roles",
+      "admin": "Admin",
+      "user": "User",
+      "superadmin": "Super Admin",
+      "all": "All",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "empty": {
+      "title": "No users found",
+      "subtitle": "Try adjusting your search or filters.",
+      "hint": "Try adjusting your search or filters."
+    },
+    "columns": {
+      "user": "User",
+      "email": "Email",
+      "role": "Role",
+      "tenant": "Tenant",
+      "status": "Status",
+      "joined": "Joined"
+    },
+    "aria": {
+      "stats": "User stats",
+      "list": "Users list"
+    },
+    "stats": {
+      "show_all": "Show all users",
+      "show_active": "Show active users",
+      "show_inactive": "Show inactive users",
+      "show_superadmins": "Show super admins",
+      "all_title": "All Users",
+      "active_title": "Active Users",
+      "inactive_title": "Inactive Users",
+      "superadmins_title": "Super Admins"
+    },
+    "view": {
+      "aria": "View mode",
+      "table": "Table view",
+      "cards": "Card view"
+    },
+    "actions": {
+      "view_details": "View details",
+      "reset_2fa": "Reset 2FA",
+      "activate_user": "Activate user",
+      "deactivate_user": "Deactivate user",
+      "activate": "Activate",
+      "deactivate": "Deactivate"
+    },
+    "status": {
+      "activate_title": "Activate User",
+      "deactivate_title": "Deactivate User",
+      "this_user": "this user",
+      "activate_message": "Activate {name}? They will be able to login again.",
+      "deactivate_message": "Deactivate {name}? They will not be able to login."
+    },
+    "reset2fa": {
+      "title": "Reset Two-Factor Authentication",
+      "message": "Reset 2FA for this user? They will be able to login without a secondary code.",
+      "confirm": "Reset 2FA"
+    },
+    "details": {
+      "title": "User Details",
+      "title_with_name": "User Details — {name}",
+      "sections": {
+        "account": "Account",
+        "tenant": "Tenant",
+        "security": "Security"
+      },
+      "labels": {
+        "name": "Name",
+        "email": "Email",
+        "role": "Role",
+        "status": "Status",
+        "created": "Created",
+        "last_login": "Last Login",
+        "tenant": "Tenant",
+        "slug": "Slug",
+        "tenant_role": "Tenant Role",
+        "twofa_enabled": "2FA Enabled",
+        "preferred_2fa": "Preferred 2FA"
+      }
+    },
+    "toasts": {
+      "reset_2fa_success": "Two-factor authentication has been reset",
+      "reset_2fa_failed": "Failed to reset 2FA: {message}",
+      "superadmin_cannot_deactivate": "Super Admin accounts cannot be deactivated here",
+      "cannot_deactivate_self": "You cannot deactivate your own account",
+      "activated": "User activated",
+      "deactivated": "User deactivated",
+      "update_status_failed": "Failed to update user status: {message}"
+    }
+  },
+  "radius": {
+    "title": "Managed RADIUS",
+    "subtitle": "Observe global RADIUS infrastructure and provisioned PPPoE users across tenants.",
+    "refresh": "Refresh",
+    "loading": "Loading managed RADIUS observability...",
+    "stats": {
+      "servers": "Servers",
+      "assignments": "Assignments",
+      "mappings": "NAS Mappings",
+      "routers": "Mapped Routers",
+      "users": "Users",
+      "out_of_sync": "Needs Attention"
+    },
+    "filters": {
+      "search_servers": "Search servers...",
+      "search_assignments": "Search assignments...",
+      "search_mappings": "Search mappings...",
+      "search_users": "Search users...",
+      "all_statuses": "All statuses",
+      "active": "Active",
+      "inactive": "Inactive",
+      "all_tenants": "All tenants",
+      "all_servers": "All servers",
+      "all_routers": "All routers",
+      "all_users": "All users",
+      "provisioned": "Provisioned",
+      "not_provisioned": "Not provisioned"
+    },
+    "sections": {
+      "servers": "Servers",
+      "assignments": "Tenant Assignments",
+      "mappings": "NAS Mappings",
+      "users": "Users"
+    },
+    "columns": {
+      "server": "Server",
+      "tenant": "Tenant",
+      "tenants": "Tenants",
+      "host": "Host",
+      "ports": "Ports",
+      "database": "Database",
+      "status": "Status",
+      "routers": "Routers",
+      "updated": "Updated",
+      "actions": "Actions",
+      "router": "Router",
+      "username": "Username",
+      "identity": "RADIUS Identity",
+      "profile": "Profile",
+      "nas": "NAS",
+      "secret": "Secret",
+      "last_sync": "Last Sync",
+      "last_error": "Last Error"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "default": "Default",
+      "provisioned": "Provisioned",
+      "not_provisioned": "Not provisioned",
+      "needs_attention": "Needs attention"
+    },
+    "empty": {
+      "servers_title": "No managed RADIUS servers yet",
+      "servers_subtitle": "Create global RADIUS infrastructure here, then assign tenants and map routers.",
+      "assignments_title": "No tenant assignments yet",
+      "assignments_subtitle": "Assign one active global server per tenant before creating NAS mappings.",
+      "mappings_title": "No NAS mappings yet",
+      "mappings_subtitle": "Create a tenant assignment first, then map a router to start issuing copy-ready MikroTik CLI.",
+      "users_title": "No managed RADIUS users yet",
+      "users_subtitle": "Managed-RADIUS-backed PPPoE users will appear here after tenant admins apply them."
+    },
+    "labels": {
+      "unknown_router": "Unknown router",
+      "none": "None",
+      "never": "Never"
+    },
+    "actions": {
+      "new_server": "New server",
+      "new_assignment": "New assignment",
+      "new_mapping": "New mapping",
+      "create_server": "Create server",
+      "save_server": "Save server",
+      "create_assignment": "Create assignment",
+      "save_assignment": "Save assignment",
+      "create_mapping": "Create mapping",
+      "save_mapping": "Save mapping",
+      "edit": "Edit",
+      "set_default": "Set default",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "view_mappings": "View mappings",
+      "copy_cli": "Copy CLI",
+      "copy_secret": "Copy secret",
+      "reveal_secret": "Reveal secret",
+      "rotate_secret": "Rotate secret",
+      "generate_secret": "Generate"
+    },
+    "form": {
+      "tenant": "Tenant",
+      "server": "Server",
+      "router": "Router",
+      "select_tenant": "Select a tenant",
+      "select_server": "Select a server",
+      "select_router": "Select a router",
+      "server_name": "Server name",
+      "server_name_placeholder": "Primary RADIUS DB",
+      "db_host": "DB host",
+      "db_port": "DB port",
+      "db_name": "DB name",
+      "db_user": "DB user",
+      "db_password": "DB password",
+      "db_password_placeholder": "Encrypted at rest",
+      "db_password_placeholder_edit": "Leave blank to keep current password",
+      "notes": "Notes",
+      "notes_placeholder": "Optional operational note",
+      "active_server_hint": "Allow this global server to receive tenant assignments",
+      "active_assignment_hint": "Keep this assignment active for the tenant",
+      "nas_name": "NAS name",
+      "nas_name_placeholder": "router-pop-a",
+      "shortname": "Shortname",
+      "shortname_placeholder": "POP-A",
+      "nas_ip_or_cidr": "NAS IP / CIDR",
+      "shared_secret": "Shared secret",
+      "shared_secret_placeholder": "Leave blank to auto-generate",
+      "active_mapping_hint": "Enable this NAS mapping immediately"
+    },
+    "modals": {
+      "server": {
+        "create_title": "New Managed RADIUS server",
+        "edit_title": "Edit Managed RADIUS server"
+      },
+      "assignment": {
+        "create_title": "New tenant assignment",
+        "edit_title": "Edit tenant assignment"
+      },
+      "mapping": {
+        "create_title": "New NAS mapping",
+        "edit_title": "Edit NAS mapping"
+      },
+      "secret": {
+        "rotate_title": "Rotate shared secret",
+        "reveal_title": "Reveal shared secret",
+        "mapping": "Mapping",
+        "masked": "Masked secret",
+        "revealed": "Revealed secret",
+        "not_loaded": "Click reveal to load the secret"
+      }
+    },
+    "toasts": {
+      "server_validation": "Complete the server form first",
+      "server_password_required": "Database password is required for new servers",
+      "server_created": "Managed RADIUS server created",
+      "server_updated": "Managed RADIUS server updated",
+      "server_default_set": "Default server updated",
+      "server_activated": "Server activated",
+      "server_deactivated": "Server deactivated",
+      "assignment_validation": "Complete the assignment form first",
+      "assignment_created": "Tenant assignment created",
+      "assignment_updated": "Tenant assignment updated",
+      "assignment_activated": "Assignment activated",
+      "assignment_deactivated": "Assignment deactivated",
+      "mapping_validation": "Complete the mapping form first",
+      "mapping_created": "NAS mapping created",
+      "mapping_updated": "NAS mapping updated",
+      "mapping_activated": "Mapping activated",
+      "mapping_deactivated": "Mapping deactivated",
+      "secret_revealed": "Shared secret loaded",
+      "secret_rotated": "Shared secret rotated",
+      "cli_copied": "RouterOS CLI copied"
+    }
+  },
+  "tenants": {
+    "title": "Tenants",
+    "subtitle": "Manage all organizations in the platform",
+    "count": "{count} tenants",
+    "search": "Search tenants...",
+    "refreshing_title": "Refreshing...",
+    "refreshing": "Refreshing",
+    "aria": {
+      "stats": "Tenant stats",
+      "cards": "Tenant cards"
+    },
+    "stats": {
+      "show_all": "Show all tenants",
+      "show_active": "Show active tenants",
+      "show_inactive": "Show inactive tenants",
+      "all_title": "All Tenants",
+      "active_title": "Active Tenants",
+      "inactive_title": "Inactive Tenants"
+    },
+    "filters": {
+      "all": "All",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "view": {
+      "table": "Table view",
+      "cards": "Cards view"
+    },
+    "meta": {
+      "created": "Created"
+    },
+    "actions": {
+      "new": "New Tenant",
+      "activate": "Activate",
+      "deactivate": "Deactivate"
+    },
+    "toggle": {
+      "activate_title": "Activate Tenant",
+      "deactivate_title": "Deactivate Tenant",
+      "this_tenant": "this tenant",
+      "activate_message": "Activate {name}? Users in this tenant will regain access.",
+      "deactivate_message": "Deactivate {name}? Users in this tenant will be blocked from accessing the app."
+    },
+    "delete": {
+      "title": "Delete Tenant",
+      "message": "Are you sure you want to delete this tenant? This action cannot be undone and will remove all associated data.",
+      "confirm": "Delete Permanently"
+    },
+    "modal": {
+      "edit_title": "Edit Tenant",
+      "create_title": "Create New Tenant",
+      "sections": {
+        "initial_subscription": "Initial Subscription",
+        "initial_admin": "Initial Admin User"
+      },
+      "labels": {
+        "name": "Tenant Name",
+        "slug": "Slug (URL)",
+        "custom_domain": "Custom Domain (Optional)",
+        "plan": "Subscription Plan",
+        "owner_email": "Owner Email",
+        "owner_password": "Owner Password",
+        "active_status": "Active Status"
+      },
+      "placeholders": {
+        "name": "e.g. Acme Corp",
+        "slug": "e.g. acme-corp",
+        "custom_domain": "e.g. app.acme.com",
+        "plan": "Select a plan",
+        "owner_email": "admin@acme.com",
+        "owner_password": "Strong password"
+      },
+      "actions": {
+        "create": "Create Tenant",
+        "update": "Update Tenant"
+      }
+    },
+    "empty": {
+      "title": "No tenants found",
+      "hint": "Try adjusting your search or filters."
+    },
+    "toasts": {
+      "updated": "Tenant updated successfully",
+      "update_failed": "Failed to update tenant: {message}",
+      "created": "Tenant created successfully",
+      "create_failed": "Failed to create tenant: {message}",
+      "deleted": "Tenant deleted successfully",
+      "delete_failed": "Failed to delete tenant: {message}",
+      "activated": "Tenant activated",
+      "deactivated": "Tenant deactivated"
+    }
+  },
+  "invoices": {
+    "aria": {
+      "stats": "Invoice stats",
+      "cards": "Invoice cards",
+      "table": "Invoices table"
+    },
+    "actions": {
+      "check_status": "Check Status",
+      "view_details": "View Details"
+    },
+    "cards": {
+      "amount": "Amount",
+      "due": "Due"
+    },
+    "list": {
+      "title": "All Invoices",
+      "subtitle": "Monitor all payments and transactions across the platform",
+      "search": "Search invoices...",
+      "loading": "Loading invoices...",
+      "empty": "No invoices found",
+      "empty_hint": "Try adjusting your search or filters.",
+      "view": {
+        "cards": "Cards view",
+        "table": "Table view"
+      },
+      "filters": {
+        "all": "All",
+        "pending": "Pending",
+        "paid": "Paid",
+        "failed": "Failed"
+      },
+      "columns": {
+        "invoice_number": "Invoice #",
+        "tenant": "Tenant",
+        "amount": "Amount",
+        "status": "Status",
+        "due_date": "Due Date",
+        "created_at": "Created At",
+        "actions": "Actions"
+      },
+      "errors": {
+        "load_failed": "Failed to load invoices",
+        "check_failed": "Failed to check status: "
+      },
+      "toasts": {
+        "status": "Invoice status: "
+      }
+    },
+    "detail": {
+      "title": "Invoice Details",
+      "back": "Back to Invoices",
+      "loading": "Loading details...",
+      "missing_id": "Missing invoice id",
+      "load_failed": "Failed to load invoice",
+      "invoice": "Invoice",
+      "tenant": "Tenant",
+      "description": "Description",
+      "amount": "Amount",
+      "created_at": "Created At",
+      "updated_at": "Updated At",
+      "manual_verification": "Manual Verification",
+      "approve_title": "Approve Payment",
+      "reject_title": "Reject Payment",
+      "approve_message": "Are you sure you want to approve this payment? This will activate the subscription immediately.",
+      "reject_message": "Are you sure you want to reject this payment? The user will be notified.",
+      "approve": "Approve",
+      "reject": "Reject",
+      "marked_as": "Invoice marked as",
+      "verify_failed": "Verification failed",
+      "already_status": "This invoice is already",
+      "payment_proof": "Payment Proof",
+      "click_enlarge": "Click to enlarge",
+      "no_proof": "No proof uploaded yet.",
+      "not_found": "Invoice not found"
+    }
+  },
+  "system": {
+    "tabs": {
+      "health": "Health",
+      "diagnostics": "Diagnostics"
+    },
+    "diagnostics": {
+      "loading": "Loading diagnostics...",
+      "database": "Database",
+      "migrations": "Migrations",
+      "applied": "Applied",
+      "resolved": "Resolved",
+      "show_applied": "Show applied migrations",
+      "platform": "Platform Settings",
+      "backups": "Backups",
+      "collected_at": "Collected at:"
+    },
+    "request_metrics": {
+      "title": "Request Metrics"
+    },
+    "title": "System Health",
+    "subtitle": "Monitor platform status and metrics",
+    "loading": "Loading system health...",
+    "retry": "Retry",
+    "db_connected": "Database Connected",
+    "db_disconnected": "Database Disconnected",
+    "tables": "tables",
+    "uptime": "Uptime:",
+    "cpu_usage": "CPU Usage",
+    "memory_usage": "Memory Usage",
+    "database_tables": "Database Tables",
+    "recent_activity": "Recent Activity",
+    "no_recent_activity": "No recent activity",
+    "last_updated": "Last updated:",
+    "stats": {
+      "total_tenants": "Total Tenants",
+      "total_users": "Total Users",
+      "active_users": "Active Users",
+      "audit_logs": "Audit Logs"
+    },
+    "table_headers": {
+      "table": "Table",
+      "rows": "Rows"
+    }
+  },
+  "settings": {
+    "title": "Platform Settings",
+    "subtitle": "Global Configuration",
+    "loading": "Loading settings...",
+    "errors": {
+      "load_failed": "Failed to load settings",
+      "save_failed": "Failed to save settings",
+      "missing_test_email": "Please enter an email address",
+      "test_email_failed": "Failed to send test email: ",
+      "bank_add_failed": "Failed to add bank",
+      "bank_remove_failed": "Failed to delete bank"
+    },
+    "toasts": {
+      "saved": "Settings saved successfully",
+      "bank_added": "Bank account added",
+      "bank_removed": "Bank account removed"
+    },
+    "confirm": {
+      "are_you_sure": "Are you sure?"
+    },
+    "sections": {
+      "general": "General Settings",
+      "auth": "Authentication Policy",
+      "password": "Password Policy",
+      "security": "Security & Rate Limiting",
+      "twofa": "Two-Factor Authentication",
+      "storage": "Storage Configuration",
+      "payment": "Payment Gateway (Midtrans)",
+      "manual_bank_transfer": "Manual Bank Transfer",
+      "backup_global": "Global Backups",
+      "backup_tenant": "Tenant Backups"
+    },
+    "security": {
+      "ip_blocking": {
+        "aria": "Enable IP Blocking",
+        "label": "Enable IP Blocking",
+        "desc": "Automatically block IP addresses with suspicious activity."
+      },
+      "max_login_attempts": {
+        "label": "Max Login Attempts",
+        "desc": "Number of failed login attempts before account lockout."
+      },
+      "lockout_duration": {
+        "label": "Lockout Duration",
+        "desc": "How long a user stays locked out after max failed attempts."
+      },
+      "api_rate_limit": {
+        "label": "API Rate Limit",
+        "desc": "Baseline API requests allowed per minute per user; auth and heavy endpoints stay stricter."
+      }
+    },
+    "twofa": {
+      "enable_2fa": {
+        "aria": "Enable 2FA",
+        "label": "Enable 2FA",
+        "desc": "Allow users to set up two-factor authentication for enhanced security."
+      },
+      "enable_totp": {
+        "aria": "Enable TOTP",
+        "label": "TOTP (Authenticator App)",
+        "desc": "Allow users to verify with Google Authenticator, Authy, etc."
+      },
+      "enable_email_otp": {
+        "aria": "Enable Email OTP"
+      },
+      "email_otp": {
+        "label": "Email OTP",
+        "desc": "Allow users to receive verification codes via email."
+      },
+      "email_otp_expiry": {
+        "label": "Email OTP Expiry",
+        "desc": "How long email verification codes remain valid."
+      }
+    },
+    "auth": {
+      "allow_public_registration": {
+        "label": "Allow Public Registration",
+        "desc": "Allow new users to sign up freely."
+      },
+      "require_email_verification": {
+        "label": "Require Email Verification",
+        "desc": "Users must verify email before logging in.",
+        "not_ready": "Email configuration is not ready. Configure email provider first."
+      },
+      "jwt_expiry": {
+        "label": "JWT Expiry (Hours)",
+        "desc": "How long an auth token remains valid."
+      },
+      "session_timeout": {
+        "label": "Session Timeout (Minutes)",
+        "desc": "Auto-logout after inactivity."
+      }
+    },
+    "password": {
+      "min_length": {
+        "label": "Minimum Length"
+      },
+      "require_uppercase": {
+        "label": "Require Uppercase"
+      },
+      "require_number": {
+        "label": "Require Number"
+      },
+      "require_special": {
+        "label": "Require Special Character"
+      }
+    },
+    "storage": {
+      "driver": {
+        "label": "Storage Driver",
+        "desc": "Choose where files are stored. Local uses the server's disk.",
+        "options": {
+          "local": "Local Disk",
+          "s3": "AWS S3 / MinIO",
+          "r2": "Cloudflare R2"
+        }
+      },
+      "s3": {
+        "bucket_name": "Bucket Name",
+        "region": "Region",
+        "region_hint": "Use 'auto' for R2.",
+        "endpoint_url": "Endpoint URL",
+        "endpoint_hint": "Required for R2 (https://ID.r2.cloudflarestorage.com) or MinIO.",
+        "access_key_id": "Access Key ID",
+        "secret_access_key": "Secret Access Key",
+        "public_url_optional": "Public Access URL (Optional)",
+        "public_url_hint": "CDN URL if serving files publicly."
+      },
+      "max_file_size_mb": "Max File Size (MB)",
+      "max_file_size_mb_desc": "Maximum allowed size for a single file upload.",
+      "allowed_extensions": "Allowed Extensions",
+      "allowed_extensions_desc": "Comma-separated list of allowed file extensions (e.g., jpg, png, pdf). Use * for all."
+    },
+    "payment": {
+      "midtrans": {
+        "title": "Midtrans Gateway",
+        "enable": {
+          "label": "Enable Midtrans Gateway",
+          "desc": "Allow users to pay online via Midtrans."
+        },
+        "merchant_id": "Merchant ID",
+        "server_key": "Server Key",
+        "server_key_hint": "From Midtrans Dashboard > Settings > Access Keys.",
+        "client_key": "Client Key",
+        "client_key_hint": "Public key for frontend Snap.js.",
+        "production_mode": "Production Mode",
+        "production_mode_desc": "Enable for real transactions. Disable for Sandbox."
+      },
+      "manual": {
+        "title": "Manual Bank Transfer",
+        "enable": {
+          "label": "Enable Manual Transfer",
+          "desc": "Allow users to pay via bank transfer and upload proof."
+        },
+        "instructions_label": "Payment Instructions",
+        "instructions_desc": "Instructions shown to user when they select Manual Transfer.",
+        "bank_accounts_title": "Bank Accounts"
+      },
+      "installation_sla": {
+        "title": "Installation SLA Reminders",
+        "enable": {
+          "label": "Enable installation SLA reminders",
+          "desc": "Send automatic notifications when installation work orders are overdue."
+        },
+        "overdue_minutes": {
+          "label": "Overdue threshold (minutes)",
+          "desc": "A scheduled work order is considered overdue after this many minutes."
+        },
+        "cooldown_minutes": {
+          "label": "Reminder cooldown (minutes)",
+          "desc": "Minimum delay before the same reminder is sent again for the same work order."
+        },
+        "scheduler_interval_minutes": {
+          "label": "Scheduler interval (minutes)",
+          "desc": "How often the backend checks all tenants for overdue installation work orders."
+        }
+      }
+    },
+    "fields": {
+      "public_url": {
+        "label": "Public Application URL",
+        "desc": "Base URL for redirects, emails, and payment callbacks (e.g. https://app.example.com)."
+      },
+      "main_domain": {
+        "label": "Main Domain",
+        "desc": "The primary domain where the application is hosted (e.g. example.com). Used for domain validation and tenant routing."
+      },
+      "currency": {
+        "label": "Default Currency",
+        "desc": "Currency used for plan pricing and invoice display (ISO 4217, e.g. IDR, USD)."
+      },
+      "maintenance_mode": {
+        "label": "Enable Maintenance Mode",
+        "desc": "When enabled, all users except superadmins will see a maintenance page."
+      },
+      "maintenance_message": {
+        "label": "Maintenance Message",
+        "desc": "The message displayed to users when maintenance mode is active."
+      },
+      "timezone": {
+        "label": "Timezone",
+        "desc": "Used to interpret schedule times (e.g. backups). Choose an IANA timezone.",
+        "search": "Search timezone..."
+      }
+    },
+    "placeholders": {
+      "url": "https://...",
+      "domain": "example.com",
+      "public_url": "https://cdn.example.com",
+      "maintenance_message": "Enter maintenance message...",
+      "manual_instructions": "Please transfer to one of the bank accounts below and upload proof.",
+      "s3_bucket": "e.g. my-app-uploads",
+      "s3_region": "us-east-1",
+      "extensions": "jpg, png, pdf...",
+      "bank_name": "Bank Name (e.g. BCA)",
+      "bank_account_number": "Account Number",
+      "bank_account_holder": "Account Holder"
+    },
+    "actions": {
+      "remove": "Remove",
+      "add": "Add",
+      "reset": "Reset",
+      "save": "Save Changes",
+      "saving": "Saving..."
+    },
+    "alerting": {
+      "title": "Error Alerting",
+      "enabled": {
+        "label": "Enable Alerting",
+        "desc": "Send email alerts when error thresholds are exceeded."
+      },
+      "email": {
+        "label": "Alert Email",
+        "desc": "Email address to receive alerts."
+      },
+      "error_threshold": {
+        "label": "Error Rate Threshold (%)",
+        "desc": "Alert when error rate exceeds this percentage."
+      },
+      "rate_limit_threshold": {
+        "label": "Rate Limit Threshold",
+        "desc": "Alert when rate-limited requests exceed this count."
+      },
+      "response_time_threshold": {
+        "label": "P95 Response Time Threshold (ms)",
+        "desc": "Alert when P95 response time exceeds this value."
+      },
+      "cooldown": {
+        "label": "Alert Cooldown (minutes)",
+        "desc": "Minutes to wait before sending the same alert type again."
+      }
+    },
+    "bank": {
+      "add_new_account": "Add New Account",
+      "empty": "No bank accounts added yet.",
+      "table": {
+        "bank": "Bank",
+        "number": "Number",
+        "holder": "Holder",
+        "action": "Action"
+      }
+    },
+    "categories": {
+      "general": "General & Maintenance",
+      "auth": "Authentication",
+      "password": "Password Policy",
+      "security": "Security & Rate Limiting",
+      "storage": "Storage Configuration",
+      "payment": "Payment Gateway",
+      "alerting": "Error Alerting",
+      "backup": "Backups"
+    },
+    "backups": {
+      "schedule_desc": "Use cron format (min hour * * *) or HH:MM. Example: 0 2 * * *",
+      "retention_desc": "Old backups older than this will be deleted automatically.",
+      "global": {
+        "enable": "Enable Global Backup Schedule",
+        "enable_desc": "Run automatic global backups on a simple schedule (uses app timezone).",
+        "enable_aria": "Enable global backup schedule",
+        "schedule": "Schedule",
+        "retention": "Retention (days)",
+        "run_now": "Run Global Backup Now",
+        "run_now_desc": "Queue a one-time global backup on the scheduler.",
+        "run_now_btn": "Run Now"
+      },
+      "tenant": {
+        "enable": "Enable Tenant Backup Schedule",
+        "enable_desc": "Run automatic backups for tenant data on a simple schedule (uses app timezone).",
+        "enable_aria": "Enable tenant backup schedule",
+        "schedule": "Schedule",
+        "retention": "Retention (days)",
+        "run_now": "Run Tenant Backups Now",
+        "run_now_desc": "Queue one-time backups for all active tenants.",
+        "run_now_btn": "Run Now"
+      },
+      "mode": {
+        "label": "Schedule Type",
+        "desc": "Choose how often backups are created."
+      },
+      "modes": {
+        "minute": "Every N minutes",
+        "hour": "Every N hours",
+        "day": "Daily at a time",
+        "week": "Weekly at a time"
+      },
+      "every": {
+        "label": "Every",
+        "desc": "Interval value. Example: 15 minutes or 6 hours."
+      },
+      "at": {
+        "label": "At",
+        "desc": "Time of day to run the backup."
+      },
+      "weekday": {
+        "label": "Weekday",
+        "desc": "Day of week to run the backup."
+      },
+      "timezone": {
+        "label": "Timezone",
+        "desc": "Used to interpret daily/weekly schedule times."
+      }
+    }
+  },
+  "plans": {
+    "page_title": "Plans | Superadmin",
+    "title": "Subscription Plans",
+    "subtitle": "Manage pricing tiers and plan status",
+    "search": "Search plans...",
+    "loading": "Loading plans...",
+    "actions": {
+      "create": "Create plan",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "set_default": "Set as default",
+      "already_default": "Already default"
+    },
+    "price": {
+      "free": "Free"
+    },
+    "aria": {
+      "stats": "Plan stats",
+      "cards": "Plan cards",
+      "table": "Plans table"
+    },
+    "stats": {
+      "show_all": "Show all plans",
+      "show_active": "Show active plans",
+      "show_inactive": "Show inactive plans",
+      "current_default": "Current default plan",
+      "all_title": "All Plans",
+      "active_title": "Active",
+      "inactive_title": "Inactive",
+      "default_title": "Default"
+    },
+    "filters": {
+      "all": "All",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "view": {
+      "cards": "Cards view",
+      "table": "Table view"
+    },
+    "badges": {
+      "default_title": "Default plan",
+      "default": "Default"
+    },
+    "refreshing_title": "Refreshing...",
+    "refreshing": "Refreshing",
+    "errors": {
+      "load_failed": "Failed to load data",
+      "default_cannot_deactivate": "Default plan cannot be deactivated. Set another default first."
+    },
+    "confirm": {
+      "delete_title": "Delete Plan",
+      "delete_message": "Delete \"{name}\"? This action cannot be undone.",
+      "activate_title": "Activate Plan",
+      "activate_message": "Activate \"{name}\"? Tenants can be assigned to it again.",
+      "deactivate_title": "Deactivate Plan",
+      "deactivate_message": "Deactivate \"{name}\"? Tenants can no longer be assigned to it.",
+      "default_title": "Set Default Plan",
+      "default_message": "Make \"{name}\" the default plan for new tenants?"
+    },
+    "toasts": {
+      "deleted": "Plan deleted",
+      "activated": "Plan activated",
+      "deactivated": "Plan deactivated",
+      "default_updated": "Default plan updated"
+    },
+    "empty": {
+      "title": "No plans found",
+      "subtitle": "Try adjusting your search or filters.",
+      "description": "No description"
+    },
+    "editor": {
+      "head": {
+        "new": "New Plan"
+      },
+      "header": {
+        "create_title": "Create New Plan",
+        "edit_title": "Edit {name}"
+      },
+      "aria": {
+        "actions": "Plan actions",
+        "tabs": "Plan editor tabs"
+      },
+      "actions": {
+        "save": "Save Plan"
+      },
+      "tabs": {
+        "general": "General",
+        "features": "Features & Limits"
+      },
+      "fields": {
+        "name": "Plan Name",
+        "slug": "Slug (Code)",
+        "description": "Description",
+        "sort_order": "Sort Order"
+      },
+      "placeholders": {
+        "name": "e.g. Pro Plan",
+        "slug": "e.g. pro-plan"
+      },
+      "help": {
+        "slug": "Unique identifier used in code/API."
+      },
+      "toasts": {
+        "created": "Plan created successfully",
+        "updated": "Plan updated successfully"
+      },
+      "errors": {
+        "save_failed": "Failed to save plan"
+      }
+    }
+  }
+}

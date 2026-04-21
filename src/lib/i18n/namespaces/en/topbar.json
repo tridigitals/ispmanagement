@@ -1,0 +1,38 @@
+{
+  "search_placeholder": "Search...",
+  "notifications": "Notifications",
+  "help": "Help",
+  "notifications_menu": {
+    "mark_all_read": "Mark all read",
+    "settings": "Notification settings",
+    "empty": "No notifications yet",
+    "mark_read": "Mark as read",
+    "delete": "Delete",
+    "view_all": "View all"
+  },
+  "toggle_dark": "Switch to dark mode",
+  "toggle_light": "Switch to light mode",
+  "titles": {
+    "dashboard": "Dashboard",
+    "profile": "My Profile",
+    "notifications": "Notifications",
+    "admin_overview": "Admin Overview",
+    "user_management": "User Management",
+    "global_settings": "Global Settings",
+    "settings": "Settings",
+    "team": "Team",
+    "roles": "Roles & Permissions",
+    "storage": "Storage",
+    "subscription": "Subscription",
+    "invoices": "Invoices",
+    "superadmin_dashboard": "Super Admin",
+    "tenants": "Tenants",
+    "users": "Users",
+    "radius": "RADIUS",
+    "plans": "Plans",
+    "audit_logs": "Audit Logs",
+    "system": "System",
+    "support": "Support",
+    "default": "Workspace"
+  }
+}

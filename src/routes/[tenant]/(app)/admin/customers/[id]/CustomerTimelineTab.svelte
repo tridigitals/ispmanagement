@@ -1,0 +1,144 @@
+<script lang="ts">
+  import Icon from '$lib/components/ui/Icon.svelte';
+  import Table from '$lib/components/ui/Table.svelte';
+
+  let {
+    loadingTimeline,
+    onRefresh,
+    timelineType = $bindable(),
+    timelineColumns,
+    timelineRows,
+    timeAgo,
+  } = $props();
+</script>
+
+<div class="card section">
+  <div class="section-head">
+    <div>
+      <h3>Timeline</h3>
+      <p class="subtitle">Recent customer activity and audit history.</p>
+    </div>
+    <button class="btn btn-secondary" onclick={onRefresh} disabled={loadingTimeline}>
+      <Icon name="refresh-cw" size={16} />
+      Refresh
+    </button>
+  </div>
+  <div class="timeline-filters">
+    <button class:active={timelineType === 'all'} onclick={() => (timelineType = 'all')}>All</button>
+    <button class:active={timelineType === 'customer'} onclick={() => (timelineType = 'customer')}>Profile</button>
+    <button class:active={timelineType === 'location'} onclick={() => (timelineType = 'location')}>Location</button>
+    <button class:active={timelineType === 'subscription'} onclick={() => (timelineType = 'subscription')}>Subscription</button>
+  </div>
+  <Table
+    columns={timelineColumns}
+    data={timelineRows}
+    loading={loadingTimeline}
+    emptyText="No timeline yet."
+    pagination
+    searchable
+    searchPlaceholder="Search timeline..."
+    mobileView="scroll"
+  >
+    {#snippet cell({ item, key })}
+      {#if key === 'created_at'}
+        <div class="timeline-table-time">
+          <div>{new Date(item.created_at).toLocaleString()}</div>
+          <div class="sub">{timeAgo(item.created_at)}</div>
+        </div>
+      {:else if key === 'action'}
+        <div class="timeline-table-action">{item.action}</div>
+      {:else if key === 'resource'}
+        <span class="pill">{item.resource}</span>
+      {:else if key === 'actor'}
+        <div class="timeline-table-actor">{item.actor}</div>
+      {:else if key === 'details'}
+        <div class:subtle-empty={!item.details}>{item.details || 'No detail'}</div>
+      {:else}
+        {item[key] ?? ''}
+      {/if}
+    {/snippet}
+  </Table>
+</div>
+
+<style>
+  .section {
+    padding: 1.1rem;
+    background: var(--bg-surface);
+  }
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .subtitle,
+  .sub,
+  .subtle-empty {
+    color: var(--text-secondary);
+  }
+  .subtitle {
+    margin-top: 0.25rem;
+  }
+  .btn {
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border-radius: 12px;
+    padding: 0.55rem 0.9rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 650;
+    font-size: 0.9rem;
+  }
+  .timeline-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-bottom: 0.75rem;
+  }
+  .timeline-filters button {
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    border-radius: 999px;
+    padding: 0.28rem 0.65rem;
+    font-size: 0.82rem;
+    font-weight: 650;
+    cursor: pointer;
+  }
+  .timeline-filters button.active {
+    color: var(--text-primary);
+    border-color: rgba(99, 102, 241, 0.45);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+  }
+  .timeline-table-time,
+  .timeline-table-action,
+  .timeline-table-actor {
+    display: grid;
+    gap: 0.2rem;
+  }
+  .timeline-table-action,
+  .timeline-table-actor {
+    font-weight: 560;
+  }
+  .subtle-empty {
+    font-style: italic;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.28rem 0.62rem;
+    background: color-mix(in srgb, var(--bg-surface), transparent 12%);
+  }
+  @media (max-width: 900px) {
+    .section-head {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+</style>

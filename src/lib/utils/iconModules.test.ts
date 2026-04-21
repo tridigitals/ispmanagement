@@ -7,7 +7,13 @@ describe('icon module registry', () => {
     expect(hasLucideIconModule('mail')).toBe(true);
     expect(hasLucideIconModule('lock')).toBe(true);
     expect(hasLucideIconModule('eye')).toBe(true);
+    expect(hasLucideIconModule('sun')).toBe(true);
+    expect(hasLucideIconModule('moon')).toBe(true);
+    expect(hasLucideIconModule('user-check')).toBe(true);
     expect(typeof getLucideIconModuleLoader('mail')).toBe('function');
+    expect(typeof getLucideIconModuleLoader('sun')).toBe('function');
+    expect(typeof getLucideIconModuleLoader('moon')).toBe('function');
+    expect(typeof getLucideIconModuleLoader('user-check')).toBe('function');
   });
 
   it('returns no loader for icons outside the registry', () => {

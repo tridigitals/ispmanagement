@@ -1,0 +1,24 @@
+{
+  "title": "Notifikasi",
+  "subtitle": "Pembaruan, peringatan, dan pesan sistem.",
+  "search_placeholder": "Cari notifikasi...",
+  "loading": "Memuat notifikasi...",
+  "load_more": "Muat lagi",
+  "confirm_delete": {
+    "title": "Hapus notifikasi",
+    "message": "Hapus notifikasi ini? Tindakan ini tidak dapat dibatalkan."
+  },
+  "confirm_mark_all": {
+    "title": "Tandai semua dibaca",
+    "message": "Tandai semua notifikasi sebagai sudah dibaca?"
+  },
+  "filters": {
+    "aria": "Filter",
+    "all": "Semua",
+    "unread": "Belum dibaca"
+  },
+  "empty": {
+    "title": "Semua sudah beres",
+    "subtitle": "Tidak ada notifikasi untuk ditampilkan."
+  }
+}

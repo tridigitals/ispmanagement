@@ -1,0 +1,38 @@
+{
+  "errors": {
+    "fill_all": "Please fill in all fields",
+    "failed": "Installation failed"
+  },
+  "common": {
+    "next": "Next"
+  },
+  "welcome": {
+    "title": "Welcome to {app}",
+    "subtitle": "Let's get your application set up. We'll start by configuring the basics.",
+    "cta": "Get Started"
+  },
+  "general": {
+    "title": "General Settings",
+    "subtitle": "Configure your application details.",
+    "app_name": "Application Name",
+    "app_name_placeholder": "My SaaS App",
+    "app_url": "Application URL",
+    "app_url_placeholder": "http://localhost:3000"
+  },
+  "admin": {
+    "title": "Create Admin Account",
+    "subtitle": "This account will have full access to the system.",
+    "full_name": "Full Name",
+    "full_name_placeholder": "John Doe",
+    "email": "Email Address",
+    "email_placeholder": "john@example.com",
+    "password": "Password",
+    "confirm_password": "Confirm Password",
+    "installing": "Installing...",
+    "complete": "Complete Setup"
+  },
+  "success": {
+    "title": "Installation Complete!",
+    "redirecting": "Redirecting you to login..."
+  }
+}

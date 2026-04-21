@@ -1,5 +1,8 @@
 <script lang="ts">
+  import type { NotificationPreference } from '$lib/api/client';
   import { onMount } from 'svelte';
+  import type { Component } from 'svelte';
+  import { writable } from 'svelte/store';
   import { api } from '$lib/api/client';
   import { token, user } from '$lib/stores/auth';
   import { theme } from '$lib/stores/theme';
@@ -9,31 +12,64 @@
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
   import MobileFabMenu from '$lib/components/ui/MobileFabMenu.svelte';
-  import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import {
-    preferences,
-    loadPreferences,
-    updatePreference,
-    subscribePush,
-    unsubscribePush,
-    sendTestNotification,
-    checkSubscription,
-    pushEnabled,
-  } from '$lib/stores/notifications';
+    loadProfileAddressesTab,
+    loadProfileGeneralTab,
+    loadProfileNotificationsRuntime,
+    loadProfilePreferencesTab,
+    loadProfileSecurityTab,
+  } from '$lib/components/profile/profilePageModules';
+  import { resolveTenantContext } from '$lib/utils/tenantRouting';
 
-  // New Modular Components
-  import ProfileGeneralTab from '$lib/components/profile/ProfileGeneralTab.svelte';
-  import ProfileSecurityTab from '$lib/components/profile/ProfileSecurityTab.svelte';
-  import ProfilePreferencesTab from '$lib/components/profile/ProfilePreferencesTab.svelte';
-  import ProfileNotificationsTab from '$lib/components/profile/ProfileNotificationsTab.svelte';
-  import ProfileAddressesTab from '$lib/components/profile/ProfileAddressesTab.svelte';
+  const profileTabIds = [
+    'general',
+    'security',
+    'preferences',
+    'notifications',
+    'addresses',
+  ] as const;
 
-  let activeTab = $state('general');
+  type ProfileTabId = (typeof profileTabIds)[number];
+  type DeferredComponent = Component<any>;
+  type NotificationActions = {
+    updatePreference: (channel: string, category: string, enabled: boolean) => Promise<void>;
+    subscribePush: () => Promise<void>;
+    unsubscribePush: () => Promise<void>;
+    sendTestNotification: () => Promise<void>;
+  };
+
+  const profileTabIdSet = new Set<ProfileTabId>(profileTabIds);
+  const emptyPreferencesStore = writable<NotificationPreference[]>([]);
+  const emptyPushEnabledStore = writable(false);
+  const noopNotificationAction = async () => {};
+
+  function isProfileTabId(value: string | null): value is ProfileTabId {
+    return value !== null && profileTabIdSet.has(value as ProfileTabId);
+  }
+
+  let activeTab = $state<ProfileTabId>('general');
   let loading = $state(false);
   let message = $state<{ type: '' | 'success' | 'error'; text: string }>({
     type: '',
     text: '',
   });
+  let activeTabLoading = $state(true);
+
+  let GeneralTabComponent = $state<DeferredComponent | null>(null);
+  let SecurityTabComponent = $state<DeferredComponent | null>(null);
+  let PreferencesTabComponent = $state<DeferredComponent | null>(null);
+  let NotificationsTabComponent = $state<DeferredComponent | null>(null);
+  let AddressesTabComponent = $state<DeferredComponent | null>(null);
+
+  let preferencesStore = emptyPreferencesStore;
+  let pushEnabledStore = emptyPushEnabledStore;
+  let notificationActions = $state<NotificationActions>({
+    updatePreference: noopNotificationAction,
+    subscribePush: noopNotificationAction,
+    unsubscribePush: noopNotificationAction,
+    sendTestNotification: noopNotificationAction,
+  });
+  let notificationsRuntimeReady = false;
 
   // User Data State
   let profileData = $state({
@@ -138,9 +174,6 @@
       loadTrustedDevices();
     }
 
-    loadPreferences();
-    checkSubscription();
-
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('2fa_required') === 'true') {
       activeTab = 'security';
@@ -151,20 +184,23 @@
       );
     } else {
       const tab = urlParams.get('tab');
-      if (tab && ['general', 'security', 'preferences', 'notifications', 'addresses'].includes(tab)) {
+      if (isProfileTabId(tab)) {
         activeTab = tab;
       } else {
         const saved = localStorage.getItem('profile.activeTab');
-        if (saved && ['general', 'security', 'preferences', 'notifications', 'addresses'].includes(saved)) {
+        if (isProfileTabId(saved)) {
           activeTab = saved;
         }
       }
     }
+
+    await ensureActiveTabReady(activeTab);
   });
 
   $effect(() => {
     if (typeof window === 'undefined') return;
     localStorage.setItem('profile.activeTab', activeTab);
+    void ensureActiveTabReady(activeTab);
   });
 
   function showMessage(type: 'success' | 'error', text: string) {
@@ -356,6 +392,60 @@
     }
   }
 
+  async function ensureNotificationsRuntime() {
+    if (notificationsRuntimeReady) return;
+
+    const runtime = await loadProfileNotificationsRuntime();
+    NotificationsTabComponent = runtime.NotificationsTabComponent;
+    preferencesStore = runtime.preferencesStore;
+    pushEnabledStore = runtime.pushEnabledStore;
+    notificationActions = {
+      updatePreference: runtime.updatePreference,
+      subscribePush: runtime.subscribePush,
+      unsubscribePush: runtime.unsubscribePush,
+      sendTestNotification: runtime.sendTestNotification,
+    };
+
+    notificationsRuntimeReady = true;
+    await Promise.all([runtime.loadPreferences(), runtime.checkSubscription()]);
+  }
+
+  async function ensureActiveTabReady(tab: ProfileTabId) {
+    activeTabLoading = true;
+
+    try {
+      if (tab === 'general' && !GeneralTabComponent) {
+        const { default: component } = await loadProfileGeneralTab();
+        GeneralTabComponent = component;
+        return;
+      }
+
+      if (tab === 'security' && !SecurityTabComponent) {
+        const { default: component } = await loadProfileSecurityTab();
+        SecurityTabComponent = component;
+        return;
+      }
+
+      if (tab === 'preferences' && !PreferencesTabComponent) {
+        const { default: component } = await loadProfilePreferencesTab();
+        PreferencesTabComponent = component;
+        return;
+      }
+
+      if (tab === 'addresses' && !AddressesTabComponent) {
+        const { default: component } = await loadProfileAddressesTab();
+        AddressesTabComponent = component;
+        return;
+      }
+
+      if (tab === 'notifications' && !NotificationsTabComponent) {
+        await ensureNotificationsRuntime();
+      }
+    } finally {
+      activeTabLoading = false;
+    }
+  }
+
   // Initials
   let initials = $derived(
     profileData.name
@@ -382,7 +472,7 @@
       label: $t('profile.tabs.notifications') || 'Notifications',
       icon: 'bell',
     },
-  ]);
+  ] as { id: ProfileTabId; label: string; icon: string }[]);
 </script>
 
 <div class="page-container fade-in">
@@ -427,12 +517,20 @@
 
     <!-- Main Content Area -->
     <main class="content-area">
-      {#if activeTab === 'general'}
-        <ProfileGeneralTab bind:profileData {loading} {initials} onSave={saveProfile} />
-      {/if}
-
-      {#if activeTab === 'security'}
-        <ProfileSecurityTab
+      {#if activeTabLoading}
+        <div class="tab-loading-state">
+          <div class="tab-loading-spinner"></div>
+          <span>{$t('common.loading') || 'Loading...'}</span>
+        </div>
+      {:else if activeTab === 'general' && GeneralTabComponent}
+        <GeneralTabComponent
+          bind:profileData
+          {loading}
+          {initials}
+          onSave={saveProfile}
+        />
+      {:else if activeTab === 'security' && SecurityTabComponent}
+        <SecurityTabComponent
           user={$user}
           bind:passwordData
           bind:twoFactorData
@@ -451,28 +549,25 @@
           {disableOtpSending}
           {disableOtpSent}
         />
-      {/if}
-
-      {#if activeTab === 'addresses'}
-        <ProfileAddressesTab {loading} />
-      {/if}
-
-      {#if activeTab === 'preferences'}
-        <ProfilePreferencesTab theme={$theme} onToggleTheme={() => theme.toggle()} />
-      {/if}
-
-      {#if activeTab === 'notifications'}
-        <ProfileNotificationsTab
+      {:else if activeTab === 'addresses' && AddressesTabComponent}
+        <AddressesTabComponent {loading} />
+      {:else if activeTab === 'preferences' && PreferencesTabComponent}
+        <PreferencesTabComponent
+          theme={$theme}
+          onToggleTheme={() => theme.toggle()}
+        />
+      {:else if activeTab === 'notifications' && NotificationsTabComponent}
+        <NotificationsTabComponent
           {notificationCategories}
-          preferences={$preferences}
-          pushEnabled={$pushEnabled}
+          preferences={$preferencesStore}
+          pushEnabled={$pushEnabledStore}
           bind:pushPermission
           {isDesktop}
           {tenantPrefix}
-          onUpdatePreference={updatePreference}
-          onSubscribePush={subscribePush}
-          onUnsubscribePush={unsubscribePush}
-          onSendTestNotification={sendTestNotification}
+          onUpdatePreference={notificationActions.updatePreference}
+          onSubscribePush={notificationActions.subscribePush}
+          onUnsubscribePush={notificationActions.unsubscribePush}
+          onSendTestNotification={notificationActions.sendTestNotification}
           {goto}
         />
       {/if}
@@ -523,6 +618,27 @@
     overflow: hidden;
   }
 
+  .tab-loading-state {
+    min-height: 240px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    color: var(--text-secondary);
+  }
+
+  .tab-loading-spinner {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 999px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--color-primary);
+    animation: profile-spin 0.8s linear infinite;
+  }
+
   /* Sidebar */
   .sidebar {
     background: var(--bg-surface);
@@ -534,6 +650,12 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+  }
+
+  @keyframes profile-spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .user-mini-profile {

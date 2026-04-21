@@ -1,0 +1,58 @@
+{
+  "checkout": {
+    "title": "Checkout",
+    "loading": "Memuat invoice...",
+    "item": "Item",
+    "total": "Total",
+    "status": "Status",
+    "tabs": {
+      "online": "Pembayaran Online",
+      "manual": "Transfer Bank"
+    },
+    "online": {
+      "description": "Bayar aman dengan Kartu Kredit, GoPay, ShopeePay, atau Virtual Account via Midtrans.",
+      "pay_now": "Bayar Sekarang",
+      "check_status": "Cek Status Pembayaran",
+      "checking": "Memeriksa..."
+    },
+    "manual": {
+      "instructions": "Silakan transfer sejumlah total ke salah satu rekening berikut:",
+      "upload_hint": "Sudah transfer? Unggah bukti pembayaran.",
+      "uploading": "Mengunggah...",
+      "upload": "Unggah Bukti Pembayaran"
+    },
+    "pending": {
+      "title": "Verifikasi Pembayaran",
+      "message": "Kami telah menerima bukti pembayaran Anda. Tim kami sedang memverifikasi. Kami akan memberi tahu Anda setelah disetujui.",
+      "back": "Kembali ke Dashboard"
+    },
+    "success": {
+      "title": "Pembayaran Berhasil!",
+      "message": "Terima kasih atas pembayarannya. Langganan Anda sudah aktif.",
+      "cta": "Ke Langganan"
+    },
+    "failed": {
+      "title": "Verifikasi Pembayaran Gagal",
+      "message": "Bukti pembayaran Anda ditolak. Silakan cek alasan berikut dan unggah bukti baru.",
+      "reason_label": "Alasan",
+      "reupload_hint": "Setelah transfer ulang, unggah bukti pembayaran terbaru Anda.",
+      "upload_again": "Unggah Ulang Bukti"
+    },
+    "not_found": "Invoice tidak ditemukan",
+    "errors": {
+      "load_failed": "Gagal memuat invoice",
+      "initiate_failed": "Gagal memulai pembayaran: ",
+      "check_status_failed": "Gagal mengecek status: ",
+      "file_too_large": "Ukuran file harus kurang dari 5MB",
+      "upload_failed": "Upload gagal: "
+    },
+    "toasts": {
+      "payment_success": "Pembayaran berhasil!",
+      "waiting": "Menunggu pembayaran...",
+      "payment_failed": "Pembayaran gagal",
+      "status_updated": "Status diperbarui: ",
+      "current_status": "Status saat ini: ",
+      "proof_uploaded": "Bukti berhasil diunggah!"
+    }
+  }
+}
