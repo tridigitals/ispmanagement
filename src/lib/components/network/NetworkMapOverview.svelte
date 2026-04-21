@@ -1,8 +1,12 @@
 <script lang="ts">
   import type {
-    NetworkMapSearchResultGroup,
     NetworkMapSearchResultItem,
   } from '$lib/components/network/networkMapInsights';
+  import {
+    buildNetworkMapOverviewSearchGroups,
+    countNetworkMapSearchResults,
+  } from '$lib/components/network/networkMapOverviewModel';
+  import type { NMLink, NMNode, NMRouter, NMZone } from '$lib/components/network/networkMapUtils';
   import Icon from '$lib/components/ui/Icon.svelte';
   import NetworkMapSearchBar from '$lib/components/network/NetworkMapSearchBar.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
@@ -17,15 +21,21 @@
     refreshing,
     loading,
     workspaceSearchQuery,
+    quickMode,
+    nodeRows,
+    linkRows,
+    zoneRows,
+    routerRows,
+    customerRows,
+    serviceRows,
     title,
     subtitle,
     labels,
-    searchGroups,
-    searchSummary,
     onWorkspaceSearchChange,
     onWorkspaceSearchSelect,
     onSyncAssets,
-    onRefresh,
+    formatSearchIdleSummary,
+    formatSearchResultsSummary,
   }: {
     compactMode: boolean;
     fromInstallation: boolean;
@@ -36,16 +46,49 @@
     refreshing: boolean;
     loading: boolean;
     workspaceSearchQuery: string;
+    quickMode: 'all' | 'issues' | 'customers' | 'services' | 'topology' | 'field';
+    nodeRows: NMNode[];
+    linkRows: NMLink[];
+    zoneRows: NMZone[];
+    routerRows: NMRouter[];
+    customerRows: NMNode[];
+    serviceRows: NMNode[];
     title: string;
     subtitle: string;
     labels: Record<string, string>;
-    searchGroups: NetworkMapSearchResultGroup[];
-    searchSummary: string;
     onWorkspaceSearchChange: (value: string) => void;
     onWorkspaceSearchSelect: (item: NetworkMapSearchResultItem) => void;
     onSyncAssets: () => void;
-    onRefresh: () => void;
+    formatSearchIdleSummary: (total: number) => string;
+    formatSearchResultsSummary: (count: number, groups: number) => string;
   } = $props();
+
+  const searchGroups = $derived.by(() =>
+    buildNetworkMapOverviewSearchGroups({
+      query: workspaceSearchQuery,
+      quickMode,
+      nodes: nodeRows,
+      links: linkRows,
+      zones: zoneRows,
+      routers: routerRows,
+      customerRows,
+      serviceRows,
+    }),
+  );
+
+  const searchSummary = $derived.by(() => {
+    const query = workspaceSearchQuery.trim();
+    if (!query) {
+      return formatSearchIdleSummary(
+        nodeRows.length + linkRows.length + zoneRows.length + routerRows.length,
+      );
+    }
+
+    return formatSearchResultsSummary(
+      countNetworkMapSearchResults(searchGroups),
+      searchGroups.length,
+    );
+  });
 </script>
 
 {#if !compactMode}
@@ -69,19 +112,10 @@
             onclick={onSyncAssets}
             disabled={syncingAssetNodes || refreshing || loading}
           >
-            <Icon name="git-merge" size={16} />
-            {syncingAssetNodes ? labels.syncing : labels.syncAssets}
+            <Icon name="refresh-cw" size={16} />
+            {syncingAssetNodes || refreshing ? labels.syncing : labels.sync}
           </button>
         {/if}
-        <button
-          class="btn btn-compact"
-          type="button"
-          onclick={onRefresh}
-          disabled={refreshing || loading}
-        >
-          <Icon name="refresh-cw" size={16} />
-          {refreshing ? labels.loading : labels.refresh}
-        </button>
       {/snippet}
     </NetworkPageHeader>
 

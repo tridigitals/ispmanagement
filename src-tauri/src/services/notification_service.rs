@@ -198,6 +198,23 @@ impl NotificationService {
         })
     }
 
+    /// List all notifications for a user without pagination.
+    pub async fn list_all_notifications(&self, user_id: &str) -> AppResult<Vec<Notification>> {
+        let notifications = sqlx::query_as::<_, Notification>(
+            r#"
+            SELECT * FROM notifications
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+            "#,
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::Database)?;
+
+        Ok(notifications)
+    }
+
     /// Get unread count
     pub async fn get_unread_count(&self, user_id: &str) -> AppResult<i64> {
         #[cfg(feature = "postgres")]

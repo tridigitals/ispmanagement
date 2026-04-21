@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   import { clickOutside } from '$lib/actions/clickOutside';
   import { t } from 'svelte-i18n';
@@ -19,10 +20,13 @@
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { hasInternalAppAccess } from '$lib/utils/appLanding';
   import { resolveAnnouncementActionUrl } from '$lib/utils/announcementRouting';
+  import { getVisiblePortalNotifications } from '$lib/utils/dashboardNotifications';
+  import { api } from '$lib/api/client';
 
   let isOpen = $state(false);
   const OPEN_REFRESH_MIN_INTERVAL_MS = 10_000;
   let lastOpenRefreshAt = 0;
+  let portalInvoiceIds = $state<string[]>([]);
 
   let tenantCtx = $derived.by(() =>
     resolveTenantContext({
@@ -34,6 +38,25 @@
   );
   let tenantPrefix = $derived(tenantCtx.tenantPrefix);
   let isSuperadminUrl = $derived($page.url.pathname.startsWith('/superadmin'));
+  let visibleNotifications = $derived(
+    getVisiblePortalNotifications($notifications, hasInternalAppAccess($user), portalInvoiceIds),
+  );
+  let visibleUnreadCount = $derived(visibleNotifications.filter((n) => !n.is_read).length);
+
+  onMount(() => {
+    if (hasInternalAppAccess($user)) return;
+    void loadPortalInvoiceIds();
+  });
+
+  async function loadPortalInvoiceIds() {
+    try {
+      const invoiceRows = await api.payment.listInvoices();
+      portalInvoiceIds = (invoiceRows || []).map((inv) => inv.id).filter(Boolean);
+    } catch (e) {
+      console.warn('Failed to load portal invoice ids for dropdown:', e);
+      portalInvoiceIds = [];
+    }
+  }
 
   async function open() {
     isOpen = true;
@@ -45,6 +68,10 @@
     if (shouldRefresh) {
       lastOpenRefreshAt = now;
       await loadNotifications(1);
+    }
+
+    if (!hasInternalAppAccess($user)) {
+      await loadPortalInvoiceIds();
     }
   }
 
@@ -118,9 +145,9 @@
     aria-expanded={isOpen}
   >
     <Icon name="bell" size={18} />
-    {#if $unreadCount > 0}
+    {#if visibleUnreadCount > 0}
       <span class="badge-count" transition:fade>
-        {$unreadCount > 99 ? '99+' : $unreadCount}
+        {visibleUnreadCount > 99 ? '99+' : visibleUnreadCount}
       </span>
     {/if}
   </button>
@@ -141,7 +168,7 @@
       <div class="header">
         <h3>{$t('topbar.notifications')}</h3>
         <div class="actions">
-          {#if $unreadCount > 0}
+          {#if visibleUnreadCount > 0}
             <button class="text-btn" onclick={() => markAllAsRead()}>
               {$t('topbar.notifications_menu.mark_all_read') || 'Mark all read'}
             </button>
@@ -161,11 +188,11 @@
       </div>
 
       <div class="content">
-        {#if $loading && $notifications.length === 0}
+        {#if $loading && visibleNotifications.length === 0}
           <div class="loading">
             <div class="spinner"></div>
           </div>
-        {:else if $notifications.length === 0}
+        {:else if visibleNotifications.length === 0}
           <div class="empty-state">
             <div class="icon-bg">
               <Icon name="bell" size={24} color="var(--text-tertiary)" />
@@ -176,7 +203,7 @@
           </div>
         {:else}
           <div class="list">
-            {#each $notifications as n (n.id)}
+            {#each visibleNotifications as n (n.id)}
               <div
                 class="notification-item"
                 class:unread={!n.is_read}

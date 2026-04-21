@@ -12,6 +12,7 @@
     resolveAnnouncementActionUrl,
   } from '$lib/utils/announcementRouting';
   import { formatDate, timeAgo } from '$lib/utils/date';
+  import { getDashboardRecentNotifications } from '$lib/utils/dashboardNotifications';
   import { appSettings } from '$lib/stores/settings';
   import {
     api,
@@ -52,8 +53,11 @@
     }),
   );
   let tenantPrefix = $derived(tenantCtx.tenantPrefix);
+  let portalInvoiceIds = $state<string[]>([]);
 
-  let recent = $derived($notifications.slice(0, 6));
+  let recent = $derived(
+    getDashboardRecentNotifications($notifications, hasInternalAppAccess($user), 6, portalInvoiceIds),
+  );
 
   let annLoading = $state(false);
   let annPosts = $state<Announcement[]>([]);
@@ -99,6 +103,7 @@
             new Date(a.updated_at || a.created_at || 0).getTime(),
         )[0] || null;
 
+      portalInvoiceIds = (invoiceRows || []).map((inv) => inv.id).filter(Boolean);
       const pending = (invoiceRows || []).filter((inv) => inv.status === 'pending');
       nextPendingInvoice =
         pending.sort(
@@ -109,6 +114,7 @@
     } catch (e) {
       // Keep dashboard resilient for customer portal.
       console.warn('Failed to load portal summary:', e);
+      portalInvoiceIds = [];
     } finally {
       portalSummaryLoading = false;
     }

@@ -1,5 +1,7 @@
 import type { FeatureCollection } from 'geojson';
-import { api, type PaginatedResponse } from '$lib/api/client';
+import { mikrotik } from '$lib/api/mikrotik';
+import { networkMapping } from '$lib/api/networkMapping';
+import type { PaginatedResponse } from '$lib/api/types';
 import { toast } from '$lib/stores/toast';
 import {
   customersToFeatureCollection,
@@ -103,10 +105,10 @@ export async function fetchNetworkMapData(
 ): Promise<NetworkMapFetchResult> {
   const includeRouters = options.includeRouters ?? true;
   const [nodesRes, linksRes, zonesRes, routersRes] = await Promise.all([
-    api.networkMapping.nodes.list(params, { signal }),
-    api.networkMapping.links.list(params, { signal }),
-    api.networkMapping.zones.list(params, { signal }),
-    includeRouters ? api.mikrotik.routers.list() : Promise.resolve([]),
+    networkMapping.nodes.list(params, { signal }),
+    networkMapping.links.list(params, { signal }),
+    networkMapping.zones.list(params, { signal }),
+    includeRouters ? mikrotik.routers.list() : Promise.resolve([]),
   ]);
 
   return {
@@ -114,6 +116,35 @@ export async function fetchNetworkMapData(
     linksRes,
     zonesRes,
     routersRes: (routersRes || []) as NMRouter[],
+  };
+}
+
+export function getTopologySyncStrategy({
+  canManageTopology,
+  syncingAssetNodes,
+  manual,
+  lastAssetSyncAt,
+  assetSyncTtlMs,
+  now = Date.now(),
+}: {
+  canManageTopology: boolean;
+  syncingAssetNodes: boolean;
+  manual: boolean;
+  lastAssetSyncAt: number;
+  assetSyncTtlMs: number;
+  now?: number;
+}): { shouldSync: boolean; shouldBlockRefresh: boolean } {
+  if (!canManageTopology || syncingAssetNodes) {
+    return { shouldSync: false, shouldBlockRefresh: false };
+  }
+
+  if (!manual && now - lastAssetSyncAt < assetSyncTtlMs) {
+    return { shouldSync: false, shouldBlockRefresh: false };
+  }
+
+  return {
+    shouldSync: true,
+    shouldBlockRefresh: manual,
   };
 }
 
@@ -130,17 +161,19 @@ export async function syncTopologyAssetsIfNeeded({
   lastAssetSyncAt: number;
   assetSyncTtlMs: number;
 }): Promise<{ changed: boolean; lastSyncedAt: number }> {
-  if (!canManageTopology || syncingAssetNodes) {
-    return { changed: false, lastSyncedAt: lastAssetSyncAt };
-  }
-
-  const now = Date.now();
-  if (!manual && now - lastAssetSyncAt < assetSyncTtlMs) {
+  const strategy = getTopologySyncStrategy({
+    canManageTopology,
+    syncingAssetNodes,
+    manual,
+    lastAssetSyncAt,
+    assetSyncTtlMs,
+  });
+  if (!strategy.shouldSync) {
     return { changed: false, lastSyncedAt: lastAssetSyncAt };
   }
 
   try {
-    const result = await api.networkMapping.assets.sync();
+    const result = await networkMapping.assets.sync();
     const lastSyncedAt = Date.now();
     if (manual) {
       toast.success(

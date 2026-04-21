@@ -1,4 +1,5 @@
 use super::{
+    customer_invoice_notification_action_url, customer_notification_user_ids,
     decide_midtrans_transition, filter_installation_request_user_ids, filter_owner_admin_user_ids,
     is_customer_package_invoice_external_id, is_owner_admin_or_technician_role,
     is_owner_or_admin_role, MidtransTransitionDecision,
@@ -85,6 +86,24 @@ fn filters_installation_alert_recipients_to_owner_admin_and_technician() {
             "u-owner".to_string(),
             "u-tech".to_string()
         ]
+    );
+}
+
+#[test]
+fn customer_notification_recipients_do_not_fallback_to_unrelated_tenant_members() {
+    let got = customer_notification_user_ids(
+        Vec::<String>::new(),
+        vec!["tenant-owner".to_string(), "tenant-member".to_string()],
+    );
+
+    assert!(got.is_empty());
+}
+
+#[test]
+fn customer_invoice_notifications_link_directly_to_the_invoice_payment_page() {
+    assert_eq!(
+        customer_invoice_notification_action_url("inv-123"),
+        "/pay/inv-123"
     );
 }
 

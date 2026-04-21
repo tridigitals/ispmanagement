@@ -128,28 +128,6 @@ fn is_notification_path(path: &str) -> bool {
     path.starts_with("/api/notifications")
 }
 
-fn is_billing_read_path(path: &str) -> bool {
-    if path == "/api/payment/invoices"
-        || path == "/api/payment/invoices/all"
-        || path == "/api/payment/invoices/customer-package"
-    {
-        return true;
-    }
-
-    let Some(rest) = path.strip_prefix("/api/payment/invoices/") else {
-        return false;
-    };
-    let segments: Vec<&str> = rest.split('/').filter(|segment| !segment.is_empty()).collect();
-
-    match segments.as_slice() {
-        [invoice_id] => !matches!(*invoice_id, "plan" | "all" | "customer-package" | "installation"),
-        [invoice_id, "status"] => {
-            !matches!(*invoice_id, "plan" | "all" | "customer-package" | "installation")
-        }
-        _ => false,
-    }
-}
-
 fn policy_for_path(path: &str, default_limit: u32) -> (u32, u64) {
     // Wallboard live traffic is intentionally high-frequency.
     // Keep it isolated with a dedicated key scope and higher budget.
@@ -184,10 +162,7 @@ fn policy_for_path(path: &str, default_limit: u32) -> (u32, u64) {
         return (600, 60);
     }
     if path == "/api/notifications/unread-count" {
-        return (600, 60);
-    }
-    if is_billing_read_path(path) {
-        return (600, 60);
+        return (default_limit.max(300), 60);
     }
 
     // Keep these strict and predictable: they are abuse magnets.
@@ -228,19 +203,22 @@ fn rate_limit_scope(path: &str) -> &'static str {
         "session"
     } else if is_notification_path(path) {
         "notifications"
-    } else if is_billing_read_path(path) {
-        "billing_read"
     } else {
         "api"
     }
 }
 
 fn should_bypass_rate_limit(path: &str) -> bool {
+    if should_rate_limit_by_ip(path) {
+        return false;
+    }
+
     path == "/"
         || path == "/api/version"
         || path == "/api/ws"
         || (path.starts_with("/api/public/") && path != "/api/public/customer-register")
         || path == "/api/install/check"
+        || path.starts_with("/api/")
 }
 
 fn into_rate_limited_response(info: RateLimitInfo) -> Response {
@@ -600,18 +578,21 @@ mod tests {
     fn policy_gives_ui_reads_their_own_budget() {
         assert_eq!(
             policy_for_path("/api/notifications/unread-count", 300),
-            (600, 60)
+            (300, 60)
         );
         assert_eq!(
             policy_for_path("/api/payment/invoices/abc-123", 300),
-            (600, 60)
+            (300, 60)
         );
-        assert_eq!(policy_for_path("/api/payment/invoices", 300), (600, 60));
-        assert_eq!(policy_for_path("/api/payment/invoices/plan", 300), (300, 60));
+        assert_eq!(policy_for_path("/api/payment/invoices", 300), (300, 60));
+        assert_eq!(
+            policy_for_path("/api/payment/invoices/plan", 300),
+            (300, 60)
+        );
     }
 
     #[test]
-    fn rate_limit_scope_separates_session_and_billing_reads_from_general_api() {
+    fn rate_limit_scope_only_splits_special_cases_that_still_use_rate_limit() {
         assert_eq!(rate_limit_scope("/api/auth/validate"), "session");
         assert_eq!(rate_limit_scope("/api/auth/me"), "session");
         assert_eq!(rate_limit_scope("/api/tenant/me"), "session");
@@ -619,13 +600,10 @@ mod tests {
             rate_limit_scope("/api/notifications/unread-count"),
             "notifications"
         );
-        assert_eq!(
-            rate_limit_scope("/api/payment/invoices/abc-123"),
-            "billing_read"
-        );
+        assert_eq!(rate_limit_scope("/api/payment/invoices/abc-123"), "api");
         assert_eq!(
             rate_limit_scope("/api/payment/invoices/abc-123/status"),
-            "billing_read"
+            "api"
         );
         assert_eq!(rate_limit_scope("/api/payment/invoices/plan"), "api");
         assert_eq!(rate_limit_scope("/api/users"), "api");
@@ -643,12 +621,17 @@ mod tests {
     }
 
     #[test]
-    fn bypass_list_still_skips_public_and_version_routes() {
+    fn bypass_list_skips_non_auth_application_routes() {
         assert!(should_bypass_rate_limit("/"));
         assert!(should_bypass_rate_limit("/api/version"));
         assert!(should_bypass_rate_limit("/api/public/tenant-lookup"));
+        assert!(should_bypass_rate_limit("/api/payment/invoices"));
+        assert!(should_bypass_rate_limit(
+            "/api/payment/invoices/customer-package"
+        ));
+        assert!(should_bypass_rate_limit("/api/users"));
         assert!(!should_bypass_rate_limit("/api/public/customer-register"));
-        assert!(!should_bypass_rate_limit("/api/users"));
+        assert!(!should_bypass_rate_limit("/api/auth/login"));
     }
 }
 

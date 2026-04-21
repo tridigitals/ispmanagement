@@ -276,7 +276,17 @@ export function registerMapSourcesAndLayers(map: import('maplibre-gl').Map) {
     source: SOURCE_CUSTOMERS,
     filter: ['!', ['has', 'point_count']],
     layout: {
-      'icon-image': 'nm-node-icon-customer',
+      'icon-image': [
+        'match',
+        ['get', 'pppoe_visual_state'],
+        'connected',
+        'nm-node-icon-customer-connected',
+        'disconnected',
+        'nm-node-icon-customer-disconnected',
+        'neutral',
+        'nm-node-icon-customer-neutral',
+        'nm-node-icon-customer-neutral',
+      ],
       'icon-size': ['interpolate', ['linear'], ['zoom'], 8, 0.64, 11, 0.8, 14, 0.94],
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,

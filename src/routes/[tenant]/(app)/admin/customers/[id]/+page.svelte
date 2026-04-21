@@ -27,16 +27,15 @@
     type CustomerDetailTab,
   } from '$lib/utils/customerDetailAccess';
   import {
-    createThenApplyPppoeAccount,
-    PppoeCreateApplyError,
-  } from '$lib/utils/pppoeCreateProvisioning';
-  import {
     getPppoeApplyActionFallback,
     getPppoeProvisioningTargetFallback,
     getPppoeSyncDisplay,
   } from '$lib/utils/pppoeSource';
+  import { getCustomerPppoeToolbarConfig } from '$lib/utils/customerPppoeToolbar';
+  import { buildCustomerTimelineRows } from '$lib/utils/customerTimelineTable';
   import { timeAgo } from '$lib/utils/date';
   import { formatMoney } from '$lib/utils/money';
+  import { getAdminCustomerNavigation } from '$lib/utils/adminCustomerNavigation';
   import {
     formatLocationCoordinates,
     validateOptionalCoordinates,
@@ -50,6 +49,14 @@
   import Table from '$lib/components/ui/Table.svelte';
 
   const customerId = $derived(String($page.params.id || ''));
+  const customerNav = $derived.by(() =>
+    getAdminCustomerNavigation({
+      hostname: $page.url.hostname,
+      tenantSlug: $page.data?.tenant?.slug,
+      routeTenantSlug: $page.params.tenant,
+    }),
+  );
+  const customersPath = $derived(customerNav.customersPath);
 
   let activeTab = $state<CustomerDetailTab>('overview');
 
@@ -100,13 +107,11 @@
   let pppoeQuery = $state('');
   let pppoeRouters = $state<any[]>([]);
   let loadingPppoeRouters = $state(false);
-  let showAddPppoe = $state(false);
   let showEditPppoe = $state(false);
   let editingPppoe = $state<PppoeAccountPublic | null>(null);
   let savingPppoe = $state(false);
 
   let pppoeRouterId = $state('');
-  let pppoeLocationId = $state('');
   let pppoeUsername = $state('');
   let pppoePassword = $state('');
   let pppoeRouterProfileName = $state('');
@@ -251,6 +256,7 @@
   const canReadBilling = $derived($can('read', 'billing') || $can('manage', 'billing'));
   const canReadAudit = $derived($can('read', 'audit_logs'));
   const canReadPppoe = $derived($can('read', 'pppoe') || $can('manage', 'pppoe'));
+  const pppoeToolbar = $derived(getCustomerPppoeToolbarConfig());
   const visibleTabs = $derived.by(() =>
     getVisibleCustomerDetailTabs({
       canReadCustomerLocations,
@@ -277,6 +283,14 @@
   const subscriptionById = $derived.by(
     () => new Map(subscriptions.map((sub) => [sub.id, sub] as const)),
   );
+  const timelineColumns = $derived.by(() => [
+    { key: 'created_at', label: 'Waktu' },
+    { key: 'action', label: 'Aksi' },
+    { key: 'resource', label: 'Resource' },
+    { key: 'actor', label: 'Actor' },
+    { key: 'details', label: 'Detail' },
+  ]);
+  const timelineRows = $derived.by(() => buildCustomerTimelineRows(timelineFilteredLogs));
   const billingRows = $derived.by(() => {
     const rows = billingInvoices.filter((inv) => {
       const sid = getSubscriptionIdFromInvoice(inv);
@@ -380,12 +394,8 @@
     if (!autoLoadKey) return;
     if (activeTab !== 'pppoe') return;
     if (!canReadPppoe) return;
-    const shouldLoadRouters = pppoeRouters.length === 0 && !loadingPppoeRouters;
     untrack(() => {
       void loadPppoeAccounts();
-      if (shouldLoadRouters) {
-        void loadPppoeRouters();
-      }
     });
   });
 
@@ -417,7 +427,7 @@
   }
 
   $effect(() => {
-    if (!showAddPppoe && !showEditPppoe) return;
+    if (!showEditPppoe) return;
     if (!$can('read', 'router_inventory') && !$can('manage', 'router_inventory')) return;
 
     const rid = pppoeRouterId;
@@ -440,7 +450,7 @@
       isActive = !!c.is_active;
     } catch (e: any) {
       toast.error(get(t)('admin.customers.toasts.load_failed') || 'Failed to load customer');
-      goto('..');
+      goto(customersPath);
     } finally {
       loadingCustomer = false;
     }
@@ -650,44 +660,6 @@
     }
   }
 
-  function timelineActionLabel(action: string): string {
-    const map: Record<string, string> = {
-      CUSTOMER_CREATE: 'Customer created',
-      CUSTOMER_UPDATE: 'Customer updated',
-      CUSTOMER_DELETE: 'Customer deleted',
-      CUSTOMER_LOCATION_CREATE: 'Location added',
-      CUSTOMER_LOCATION_UPDATE: 'Location updated',
-      CUSTOMER_LOCATION_DELETE: 'Location deleted',
-      CUSTOMER_SUBSCRIPTION_CREATE: 'Subscription created',
-      CUSTOMER_SUBSCRIPTION_UPDATE: 'Subscription updated',
-      CUSTOMER_SUBSCRIPTION_DELETE: 'Subscription deleted',
-      CUSTOMER_PORTAL_USER_CREATE: 'Portal user created',
-      CUSTOMER_PORTAL_USER_ADD: 'Portal user linked',
-      CUSTOMER_PORTAL_USER_REMOVE: 'Portal user removed',
-    };
-    return (
-      map[action] ||
-      action
-        .replaceAll('_', ' ')
-        .toLowerCase()
-        .replace(/^./, (m) => m.toUpperCase())
-    );
-  }
-
-  function timelineResourceLabel(resource: string): string {
-    const map: Record<string, string> = {
-      customers: 'Customer',
-      customer_locations: 'Location',
-      customer_subscriptions: 'Subscription',
-      customer_users: 'Portal user',
-    };
-    return map[resource] || resource;
-  }
-
-  function timelineActorLabel(log: AuditLog): string {
-    return log.user_name || log.user_email || 'System';
-  }
-
   async function refreshCurrent() {
     await Promise.all([
       loadCustomer(),
@@ -860,7 +832,6 @@
 
   function resetPppoeForm() {
     pppoeRouterId = '';
-    pppoeLocationId = '';
     pppoeUsername = '';
     pppoePassword = '';
     pppoePackageId = '';
@@ -872,15 +843,9 @@
     pppoePackageMappings = [];
   }
 
-  function openCreatePppoe() {
-    resetPppoeForm();
-    showAddPppoe = true;
-  }
-
   function openEditPppoe(row: PppoeAccountPublic) {
     editingPppoe = row;
     pppoeRouterId = row.router_id;
-    pppoeLocationId = row.location_id;
     pppoeUsername = row.username;
     pppoePassword = '';
     pppoePackageId = row.package_id || '';
@@ -890,72 +855,8 @@
     pppoeDisabled = !!row.disabled;
     pppoeComment = row.comment || '';
     showEditPppoe = true;
-  }
-
-  async function submitCreatePppoe() {
-    if (!pppoeRouterId || !pppoeLocationId || !pppoeUsername.trim() || !pppoePassword) return;
-    if (pppoePackageSelectionHasMissingMapping) {
-      toast.error(
-        get(t)('admin.network.pppoe.form.package_mapping_missing') ||
-          'This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.',
-      );
-      return;
-    }
-    savingPppoe = true;
-    try {
-      const assignmentPayload = getPppoeAssignmentPayload({
-        packageId: pppoePackageId,
-        mappings: pppoePackageMappings,
-        current: {
-          router_profile_name: pppoeRouterProfileName,
-          remote_address: pppoeRemoteAddress,
-          address_pool: pppoeAddressPool,
-        },
-      });
-      await createThenApplyPppoeAccount({
-        create: () =>
-          api.pppoe.accounts.create({
-            router_id: pppoeRouterId,
-            customer_id: customerId,
-            location_id: pppoeLocationId,
-            username: pppoeUsername.trim(),
-            password: pppoePassword,
-            package_id: pppoePackageId || null,
-            router_profile_name: assignmentPayload.router_profile_name,
-            remote_address: assignmentPayload.remote_address,
-            address_pool: assignmentPayload.address_pool,
-            disabled: pppoeDisabled,
-            comment: pppoeComment.trim() || null,
-          }),
-        apply: (id) => api.pppoe.accounts.apply(id),
-      });
-      toast.success(
-        get(t)('admin.network.pppoe.toasts.created_applied') ||
-          'PPPoE account created and applied to router',
-      );
-      showAddPppoe = false;
-      resetPppoeForm();
-      await loadPppoeAccounts();
-    } catch (e: any) {
-      if (e instanceof PppoeCreateApplyError) {
-        toast.error(
-          get(t)('admin.network.pppoe.toasts.auto_apply_failed', {
-            values: { message: (e.applyError as any)?.message || e.applyError || e.message },
-          }) ||
-            `Saved, but auto-apply failed: ${(e.applyError as any)?.message || e.applyError || e.message}`,
-        );
-        showAddPppoe = false;
-        resetPppoeForm();
-        await loadPppoeAccounts();
-      } else {
-        toast.error(
-          get(t)('admin.customers.pppoe.toasts.create_failed', {
-            values: { message: e?.message || e },
-          }) || `Failed: ${e?.message || e}`,
-        );
-      }
-    } finally {
-      savingPppoe = false;
+    if (pppoeRouters.length === 0) {
+      void loadPppoeRouters();
     }
   }
 
@@ -1013,24 +914,6 @@
     } catch (e: any) {
       toast.error(
         get(t)('admin.customers.pppoe.toasts.apply_failed', {
-          values: { message: e?.message || e },
-        }) || `Failed: ${e?.message || e}`,
-      );
-    }
-  }
-
-  async function reconcilePppoeRouters() {
-    const routerIds = Array.from(new Set(pppoeAccounts.map((a) => a.router_id).filter(Boolean)));
-    if (routerIds.length === 0) return;
-    try {
-      for (const rid of routerIds) {
-        await api.pppoe.accounts.reconcileRouter(rid);
-      }
-      toast.success(get(t)('admin.customers.pppoe.toasts.reconciled') || 'Reconciled router state');
-      await loadPppoeAccounts();
-    } catch (e: any) {
-      toast.error(
-        get(t)('admin.customers.pppoe.toasts.reconcile_failed', {
           values: { message: e?.message || e },
         }) || `Failed: ${e?.message || e}`,
       );
@@ -1238,7 +1121,7 @@
     try {
       await api.customers.delete(customer.id);
       toast.success(get(t)('admin.customers.toasts.deleted') || 'Customer deleted');
-      goto('..');
+      goto(customersPath);
     } catch (e: any) {
       toast.error(
         get(t)('admin.customers.toasts.delete_failed', { values: { message: e?.message || e } }) ||
@@ -1254,7 +1137,7 @@
 <div class="page-content fade-in">
   <div class="customer-hero card">
     <div class="hero-top">
-      <button class="btn btn-secondary" onclick={() => goto('..')}>
+      <button class="btn btn-secondary" onclick={() => goto(customersPath)}>
         <Icon name="arrow-left" size={16} />
         {$t('common.back') || 'Back'}
       </button>
@@ -1858,40 +1741,24 @@
                 'Manage PPPoE secrets for this customer (per-router). The database is the source of truth.'}
             </p>
           </div>
-          <div class="header-actions">
-            <div class="search">
-              <Icon name="search" size={16} />
-              <input
-                class="input"
-                bind:value={pppoeQuery}
-                placeholder={$t('admin.customers.pppoe.search') || 'Search username...'}
-                oninput={() => void loadPppoeAccounts()}
-              />
-            </div>
-            <button class="btn btn-secondary" onclick={loadPppoeAccounts} disabled={loadingPppoe}>
-              <Icon name="refresh-cw" size={16} />
-              {$t('common.refresh') || 'Refresh'}
-            </button>
-            {#if $can('manage', 'pppoe')}
-              <button
-                class="btn btn-secondary"
-                onclick={reconcilePppoeRouters}
-                disabled={loadingPppoe || pppoeAccounts.length === 0}
-                title={$t('admin.customers.pppoe.actions.reconcile_hint') ||
-                  'Mark which accounts exist on the router'}
-              >
-                <Icon name="refresh-cw" size={16} />
-                {$t('admin.customers.pppoe.actions.reconcile') || 'Reconcile'}
-              </button>
+          <div class="pppoe-toolbar">
+            {#if pppoeToolbar.showSearch}
+              <label class="pppoe-search" for="customer-pppoe-search">
+                <Icon name="search" size={16} />
+                <span class="sr-only">{$t('common.search') || 'Search'}</span>
+                <input
+                  id="customer-pppoe-search"
+                  class="pppoe-search-input"
+                  bind:value={pppoeQuery}
+                  placeholder={$t('admin.customers.pppoe.search') || 'Search username...'}
+                  oninput={() => void loadPppoeAccounts()}
+                />
+              </label>
             {/if}
-            {#if $can('manage', 'pppoe')}
-              <button
-                class="btn btn-primary"
-                onclick={openCreatePppoe}
-                disabled={loadingPppoeRouters}
-              >
-                <Icon name="plus" size={16} />
-                {$t('admin.customers.pppoe.actions.add') || 'Add PPPoE'}
+            {#if pppoeToolbar.showRefresh}
+              <button class="btn btn-secondary" onclick={loadPppoeAccounts} disabled={loadingPppoe}>
+                <Icon name="refresh-cw" size={16} />
+                {$t('common.refresh') || 'Refresh'}
               </button>
             {/if}
           </div>
@@ -2012,154 +1879,41 @@
             onclick={() => (timelineType = 'subscription')}>Subscription</button
           >
         </div>
-        {#if loadingTimeline}
-          <div class="loading-card">
-            <div class="spinner"></div>
-            <p>{$t('common.loading') || 'Loading...'}</p>
-          </div>
-        {:else if timelineFilteredLogs.length === 0}
-          <div class="sub">No timeline yet.</div>
-        {:else}
-          <div class="timeline-list">
-            {#each timelineFilteredLogs as log (log.id)}
-              <div class="timeline-item">
-                <div class="timeline-main">
-                  <div class="name">{timelineActionLabel(log.action)}</div>
-                  <div class="sub">
-                    {timelineActorLabel(log)} · {new Date(log.created_at).toLocaleString()}
-                  </div>
-                </div>
-                <div class="timeline-meta">
-                  <span class="pill">{timelineResourceLabel(log.resource)}</span>
-                </div>
-                {#if log.details}
-                  <div class="timeline-details">{log.details}</div>
-                {/if}
+        <Table
+          columns={timelineColumns}
+          data={timelineRows}
+          loading={loadingTimeline}
+          emptyText="No timeline yet."
+          pagination
+          searchable
+          searchPlaceholder="Search timeline..."
+          mobileView="scroll"
+        >
+          {#snippet cell({ item, key })}
+            {#if key === 'created_at'}
+              <div class="timeline-table-time">
+                <div>{new Date(item.created_at).toLocaleString()}</div>
+                <div class="sub">{timeAgo(item.created_at)}</div>
               </div>
-            {/each}
-          </div>
-        {/if}
+            {:else if key === 'action'}
+              <div class="timeline-table-action">{item.action}</div>
+            {:else if key === 'resource'}
+              <span class="pill">{item.resource}</span>
+            {:else if key === 'actor'}
+              <div class="timeline-table-actor">{item.actor}</div>
+            {:else if key === 'details'}
+              <div class:subtle-empty={!item.details}>
+                {item.details || 'No detail'}
+              </div>
+            {:else}
+              {item[key] ?? ''}
+            {/if}
+          {/snippet}
+        </Table>
       </div>
     {/if}
   {/if}
 </div>
-
-<Modal
-  show={showAddPppoe}
-  title={$t('admin.customers.pppoe.new.title') || 'Add PPPoE account'}
-  onclose={() => (showAddPppoe = false)}
->
-  <div class="form">
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.router') || 'Router'}</span>
-        <Select2
-          bind:value={pppoeRouterId}
-          options={pppoeRouters.map((r) => ({ label: r.name, value: r.id }))}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-          disabled={loadingPppoeRouters}
-          maxItems={5000}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
-          onchange={() => {
-            pppoePackageId = '';
-            pppoeRouterProfileName = '';
-            pppoeRemoteAddress = '';
-            pppoeAddressPool = '';
-          }}
-        />
-      </label>
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.location') || 'Location'}</span>
-        <Select2
-          bind:value={pppoeLocationId}
-          options={locations.map((l) => ({ label: l.label, value: l.id }))}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-          maxItems={5000}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
-        />
-      </label>
-    </div>
-
-    <label>
-      <span>{$t('admin.customers.pppoe.fields.package') || 'Package'}</span>
-      <Select2
-        bind:value={pppoePackageId}
-        options={pppoePackageOptions}
-        placeholder={($t('common.select') || 'Select') + '...'}
-        width="100%"
-        disabled={!pppoeRouterId || pppoePackageOptions.length === 0}
-        maxItems={5000}
-        searchPlaceholder={$t('common.search') || 'Search'}
-        noResultsText={$t('common.no_results') || 'No results'}
-        onchange={() => applyPppoePackage(pppoePackageId)}
-      />
-      <div class="field-hint">
-        {$t('admin.network.pppoe.form.package_hint') ||
-          'Choose a package to control PPP profile and addressing for the selected router.'}
-      </div>
-    </label>
-
-    {#if pppoePackageSelectionHasMissingMapping}
-      <div class="field-hint warning">
-        {$t('admin.network.pppoe.form.package_mapping_missing') ||
-          'This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.'}
-      </div>
-    {/if}
-
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.username') || 'Username'}</span>
-        <input class="input" bind:value={pppoeUsername} />
-      </label>
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.password') || 'Password'}</span>
-        <input class="input" type="password" bind:value={pppoePassword} />
-      </label>
-    </div>
-
-    <label>
-      <span>{$t('admin.customers.pppoe.fields.comment') || 'Comment'}</span>
-      <input class="input" bind:value={pppoeComment} />
-    </label>
-
-    <div class="toggle-row">
-      <div class="toggle-text">
-        <div class="toggle-title">{$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}</div>
-        <div class="toggle-sub">
-          {$t('admin.network.pppoe.form.disabled_hint') ||
-            'Disable this PPPoE account (will be applied to router when you click Apply).'}
-        </div>
-      </div>
-      <Toggle
-        bind:checked={pppoeDisabled}
-        ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}
-      />
-    </div>
-
-    <div class="actions">
-      <button class="btn btn-secondary" onclick={() => (showAddPppoe = false)}>
-        {$t('common.cancel') || 'Cancel'}
-      </button>
-      <button
-        class="btn btn-primary"
-        onclick={submitCreatePppoe}
-        disabled={savingPppoe ||
-          pppoePackageSelectionHasMissingMapping ||
-          !pppoeRouterId ||
-          !pppoeLocationId ||
-          !pppoeUsername.trim() ||
-          !pppoePassword}
-      >
-        <Icon name="plus" size={16} />
-        {$t('admin.network.pppoe.actions.create_apply') || 'Create & apply to router'}
-      </button>
-    </div>
-  </div>
-</Modal>
 
 <Modal
   show={showEditPppoe}
@@ -2821,6 +2575,65 @@
     margin-bottom: 1rem;
   }
 
+  .pppoe-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
+    width: min(100%, 28rem);
+  }
+
+  .pppoe-search {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: min(100%, 18rem);
+    flex: 1 1 18rem;
+    border: 1px solid color-mix(in srgb, var(--border-color), transparent 12%);
+    border-radius: 14px;
+    padding: 0.72rem 0.9rem;
+    background: color-mix(in srgb, var(--bg-surface), transparent 4%);
+    color: var(--text-secondary);
+    transition:
+      border-color 140ms ease,
+      box-shadow 140ms ease,
+      background 140ms ease;
+  }
+
+  .pppoe-search:focus-within {
+    border-color: rgba(99, 102, 241, 0.55);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    background: color-mix(in srgb, var(--bg-surface), transparent 1%);
+  }
+
+  .pppoe-search-input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+    padding: 0;
+  }
+
+  .pppoe-search-input::placeholder {
+    color: var(--text-secondary);
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   .lifecycle-observability {
     margin-bottom: 1rem;
     padding: 1rem;
@@ -3147,11 +2960,6 @@
     color: var(--text-primary);
   }
 
-  .timeline-list {
-    display: grid;
-    gap: 0.7rem;
-  }
-
   .timeline-filters {
     display: flex;
     flex-wrap: wrap;
@@ -3176,27 +2984,21 @@
     box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
   }
 
-  .timeline-item {
-    border-radius: 12px;
-    padding: 0.8rem 0.9rem;
-    background: color-mix(in srgb, var(--bg-surface), transparent 8%);
+  .timeline-table-time,
+  .timeline-table-action,
+  .timeline-table-actor {
+    display: grid;
+    gap: 0.2rem;
   }
 
-  .timeline-main {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.6rem;
+  .timeline-table-action,
+  .timeline-table-actor {
+    font-weight: 560;
   }
 
-  .timeline-meta {
-    margin-top: 0.3rem;
-  }
-
-  .timeline-details {
-    margin-top: 0.45rem;
+  .subtle-empty {
     color: var(--text-secondary);
-    font-size: 0.88rem;
+    font-style: italic;
   }
 
   @keyframes spin {
@@ -3225,6 +3027,18 @@
     }
     .header-actions {
       justify-content: stretch;
+    }
+    .section-head {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .pppoe-toolbar {
+      width: 100%;
+      justify-content: stretch;
+    }
+    .pppoe-search {
+      min-width: 0;
+      width: 100%;
     }
     .overview-grid {
       grid-template-columns: 1fr;

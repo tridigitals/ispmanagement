@@ -47,6 +47,8 @@ export type NMRouter = {
   longitude?: number | null;
 };
 
+export type CustomerPppoeVisualState = 'connected' | 'disconnected' | 'neutral';
+
 export type LinkFieldConfig = {
   capacityLabel: string;
   utilizationLabel: string;
@@ -73,7 +75,13 @@ export type NetworkMapPopupActionModel = {
 export type NetworkMapPopupSummaryItem = {
   label: string;
   value: string;
-  tone?: 'ok' | 'warn' | 'muted';
+  tone?: 'ok' | 'warn' | 'muted' | 'danger';
+};
+
+export type NetworkMapPopupStatusChip = {
+  label: string;
+  value: string;
+  tone?: 'ok' | 'warn' | 'muted' | 'danger';
 };
 
 export type NetworkMapPopupModel = {
@@ -84,6 +92,7 @@ export type NetworkMapPopupModel = {
   statusText: string;
   tone: 'ok' | 'warn' | 'muted';
   contextText: string;
+  statusChips?: NetworkMapPopupStatusChip[];
   summaryItems: NetworkMapPopupSummaryItem[];
   detailPairs: Array<{ label: string; value: string }>;
   actions: NetworkMapPopupActionModel[];
@@ -424,7 +433,10 @@ export function ensureNodeTypeIconsRegistered(map: import('maplibre-gl').Map | n
     { id: 'nm-node-icon-odp', bg: '#14b8a6', type: 'odp' },
     { id: 'nm-node-icon-splitter', bg: '#a855f7', type: 'splitter' },
     { id: 'nm-node-icon-junction', bg: '#f97316', type: 'junction' },
-    { id: 'nm-node-icon-customer', bg: '#06b6d4', type: 'customer_premise' },
+    { id: 'nm-node-icon-customer', bg: '#111827', type: 'customer_premise' },
+    { id: 'nm-node-icon-customer-connected', bg: '#16a34a', type: 'customer_premise' },
+    { id: 'nm-node-icon-customer-disconnected', bg: '#dc2626', type: 'customer_premise' },
+    { id: 'nm-node-icon-customer-neutral', bg: '#111827', type: 'customer_premise' },
   ];
   for (const d of defs) {
     if (!map.hasImage(d.id)) {
@@ -435,6 +447,20 @@ export function ensureNodeTypeIconsRegistered(map: import('maplibre-gl').Map | n
 
 export function isCustomerNodeType(nodeType: string) {
   return nodeType === 'customer_endpoint' || nodeType === 'customer_premise';
+}
+
+export function getCustomerPppoeVisualState(
+  row: Pick<NMNode, 'metadata'> | null | undefined,
+): CustomerPppoeVisualState {
+  const raw = String(row?.metadata?.pppoe_visual_state || '').trim().toLowerCase();
+  if (raw === 'connected' || raw === 'disconnected') return raw;
+  return 'neutral';
+}
+
+export function getCustomerNodeIconId(state: CustomerPppoeVisualState | string) {
+  if (state === 'connected') return 'nm-node-icon-customer-connected';
+  if (state === 'disconnected') return 'nm-node-icon-customer-disconnected';
+  return 'nm-node-icon-customer-neutral';
 }
 
 export function isSystemManagedNode(row: NMNode | null | undefined) {
@@ -563,6 +589,21 @@ function workflowServiceTypeText(value: unknown) {
   if (!text || text === '-') return '';
   if (text.toLowerCase().includes('pppoe')) return 'PPPoE';
   return popupTitleText(text);
+}
+
+function popupToneFromSubscriptionStatus(statusRaw: unknown): NetworkMapPopupSummaryItem['tone'] {
+  const normalized = normalizedStatus(statusRaw);
+  if (normalized === 'active' || normalized === 'grace_active') return 'ok';
+  if (
+    normalized === 'pending_installation' ||
+    normalized === 'installation_done_awaiting_payment' ||
+    normalized === 'maintenance'
+  ) {
+    return 'warn';
+  }
+  return normalized === 'suspended' || normalized === 'inactive' || normalized === 'cancelled'
+    ? 'muted'
+    : statusTone(String(statusRaw || ''));
 }
 
 function popupToneFromRouterState(
@@ -863,26 +904,81 @@ export function buildServicePopupModel(node: NMNode): NetworkMapPopupModel {
   const serviceId = String(node.metadata?.service_id || node.metadata?.subscription_id || '').trim();
   const accountName = metadataText(node, ['pppoe_username', 'username', 'account_username']);
   const packageName = metadataText(node, ['package_name', 'package_label', 'service_label']);
+  const subscriptionStatusRaw =
+    metadataText(node, ['subscription_status', 'service_status']) || String(node.status || '');
+  const subscriptionStatusLabel = popupTitleText(popupStatusText(subscriptionStatusRaw));
   const normalizedServiceType = normalizePopupValue(serviceType || nodeTypeLabel(node.node_type));
-  const statusLabel = popupTitleText(popupStatusText(node.status)) || popupStatusText(node.status);
   const serviceTypeLabel = workflowServiceTypeText(normalizedServiceType);
-  const contextParts = [
-    statusLabel,
-    serviceTypeLabel,
-    accountName ? 'Account ready' : '',
-  ].filter(Boolean);
+  const pppState = getCustomerPppoeVisualState(node);
+  const pppDisabled = Boolean(node.metadata?.pppoe_disabled);
+  const hasPppAccount = !!accountName && accountName !== '-';
+  const pppChip =
+    pppState === 'connected'
+      ? { value: 'PPP Online', tone: 'ok' as const }
+      : pppState === 'disconnected'
+        ? { value: 'PPP Offline', tone: 'danger' as const }
+        : hasPppAccount
+          ? { value: pppDisabled ? 'PPP Disabled' : 'PPP Standby', tone: 'muted' as const }
+          : { value: 'PPP Belum Ada', tone: 'muted' as const };
+  const pppNeedsAttention = pppState !== 'connected';
+  const contextText =
+    pppState === 'connected'
+      ? `${serviceTypeLabel || 'Service'} customer is currently online on Mikrotik.`
+      : pppState === 'disconnected'
+        ? `${serviceTypeLabel || 'Service'} account exists, but there is no active PPP session on Mikrotik.`
+        : hasPppAccount
+          ? 'PPPoE account is stored, but access is not active on Mikrotik right now.'
+          : 'PPPoE account has not been provisioned on Mikrotik yet.';
+  const primaryActionKey = pppNeedsAttention ? 'open-service' : 'open-customer';
+  const primaryAction =
+    primaryActionKey === 'open-service'
+      ? customerId && serviceId
+        ? [popupAction('open-service', 'Service', 'primary')]
+        : []
+      : customerId
+        ? [popupAction('open-customer', 'Customer', 'primary')]
+        : [];
+  const secondaryActions =
+    primaryActionKey === 'open-service'
+      ? [
+          ...(customerId ? [popupAction('open-customer', 'Customer')] : []),
+          ...(primaryAction.length === 0 && customerId && serviceId
+            ? [popupAction('open-service', 'Service')]
+            : []),
+        ]
+      : [
+          ...(customerId && serviceId ? [popupAction('open-service', 'Service')] : []),
+          ...(primaryAction.length === 0 && customerId ? [popupAction('open-customer', 'Customer')] : []),
+        ];
+  const actions = [...primaryAction, ...secondaryActions, popupAction('connect', 'Connect')];
 
   return {
     variant: 'workflow-service',
     kicker: 'Service',
     title: serviceName,
     subtitle: customerName || nodeTypeLabel(node.node_type),
-    statusText: popupStatusText(node.status),
+    statusText: popupStatusText(subscriptionStatusRaw),
     tone: statusTone(node.status),
-    contextText: contextParts.join(' • ') || 'customer service',
+    contextText,
+    statusChips: [
+      {
+        label: 'Subscription',
+        value: subscriptionStatusLabel || popupStatusText(subscriptionStatusRaw),
+        tone: popupToneFromSubscriptionStatus(subscriptionStatusRaw),
+      },
+      {
+        label: 'Mikrotik PPP',
+        value: pppChip.value,
+        tone: pppChip.tone,
+      },
+    ],
     summaryItems: [
       { label: 'Customer', value: normalizePopupValue(customerName) },
-      { label: 'Account', value: normalizePopupValue(accountName) },
+      {
+        label: 'Account',
+        value: hasPppAccount ? normalizePopupValue(accountName) : 'Belum ada akun PPP',
+        tone: pppChip.tone,
+      },
     ],
     detailPairs: [
       {
@@ -895,14 +991,10 @@ export function buildServicePopupModel(node: NMNode): NetworkMapPopupModel {
       },
       {
         label: 'Status',
-        value: popupStatusText(node.status),
+        value: popupStatusText(subscriptionStatusRaw),
       },
     ],
-    actions: [
-      ...(customerId ? [popupAction('open-customer', 'Customer', 'primary')] : []),
-      ...(customerId && serviceId ? [popupAction('open-service', 'Service')] : []),
-      popupAction('connect', 'Connect'),
-    ],
+    actions,
   };
 }
 
@@ -1143,6 +1235,7 @@ export function customersToFeatureCollection(rows: NMNode[]): FeatureCollection 
           name: row.name,
           node_type: row.node_type,
           status: row.status,
+          pppoe_visual_state: getCustomerPppoeVisualState(row),
           system_managed: !!row.metadata?.system_managed,
           asset_source: String(row.metadata?.asset_source || ''),
         },

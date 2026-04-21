@@ -322,4 +322,37 @@ impl NetworkMappingService {
             _ => "active",
         }
     }
+
+    pub(super) fn customer_pppoe_visual_state(
+        customer_is_active: bool,
+        subscription_status: &str,
+        pppoe_username: Option<&str>,
+        pppoe_session_active: bool,
+        pppoe_disabled: bool,
+    ) -> &'static str {
+        let normalized_status = subscription_status.trim().to_lowercase();
+        if !customer_is_active
+            || pppoe_disabled
+            || matches!(
+                normalized_status.as_str(),
+                "suspended" | "inactive" | "cancelled"
+            )
+        {
+            return "neutral";
+        }
+
+        let has_pppoe = pppoe_username
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .is_some();
+        if !has_pppoe {
+            return "neutral";
+        }
+
+        if pppoe_session_active {
+            "connected"
+        } else {
+            "disconnected"
+        }
+    }
 }

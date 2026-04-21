@@ -1514,17 +1514,68 @@ mod tests {
     }
 
     #[test]
+    fn customer_pppoe_visual_state_contract() {
+        assert_eq!(
+            NetworkMappingService::customer_pppoe_visual_state(
+                true,
+                "active",
+                Some("alice"),
+                true,
+                false
+            ),
+            "connected"
+        );
+        assert_eq!(
+            NetworkMappingService::customer_pppoe_visual_state(
+                true,
+                "active",
+                Some("alice"),
+                false,
+                false
+            ),
+            "disconnected"
+        );
+        assert_eq!(
+            NetworkMappingService::customer_pppoe_visual_state(
+                true,
+                "suspended",
+                Some("alice"),
+                true,
+                true
+            ),
+            "neutral"
+        );
+        assert_eq!(
+            NetworkMappingService::customer_pppoe_visual_state(
+                false,
+                "active",
+                Some("alice"),
+                true,
+                false
+            ),
+            "neutral"
+        );
+        assert_eq!(
+            NetworkMappingService::customer_pppoe_visual_state(true, "active", None, false, false),
+            "neutral"
+        );
+    }
+
+    #[test]
     fn customer_location_sync_metadata_includes_service_fields() {
         let row = SyncCustomerLocationRow {
             location_id: "loc-1".into(),
             customer_id: "cust-1".into(),
             customer_name: "Budi".into(),
+            customer_is_active: true,
             label: "Rumah Budi".into(),
             subscription_id: "sub-1".into(),
             subscription_status: "active".into(),
             package_name: Some("Paket 20 Mbps".into()),
             package_service_type: Some("internet_pppoe".into()),
             pppoe_username: Some("budi-pppoe".into()),
+            pppoe_disabled: Some(false),
+            pppoe_session_active: Some(true),
             pppoe_account_source: Some("managed_radius".into()),
             pppoe_router_profile_name: Some("PPPOE-20M".into()),
             router_id: Some("router-1".into()),
@@ -1573,6 +1624,18 @@ mod tests {
                 .get("pppoe_account_source")
                 .and_then(|value| value.as_str()),
             Some("managed_radius")
+        );
+        assert_eq!(
+            metadata
+                .get("pppoe_visual_state")
+                .and_then(|value| value.as_str()),
+            Some("connected")
+        );
+        assert_eq!(
+            metadata
+                .get("pppoe_session_active")
+                .and_then(|value| value.as_bool()),
+            Some(true)
         );
         assert_eq!(
             metadata.get("router_id").and_then(|value| value.as_str()),

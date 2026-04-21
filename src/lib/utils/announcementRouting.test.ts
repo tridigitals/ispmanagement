@@ -42,6 +42,15 @@ describe('announcement routing helpers', () => {
     ).toBe('/demo/notifications');
   });
 
+  it('rewrites legacy dashboard packages links to services', () => {
+    expect(
+      resolveAnnouncementActionUrl('/dashboard/packages', {
+        tenantPrefix: '/demo',
+        internal: false,
+      }),
+    ).toBe('/demo/dashboard/services');
+  });
+
   it('rewrites announcement action urls for internal roles on custom domains without tenant prefixes', () => {
     expect(
       resolveAnnouncementActionUrl('/announcements/ann-1', {

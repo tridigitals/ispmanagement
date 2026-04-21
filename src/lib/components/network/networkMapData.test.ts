@@ -7,20 +7,25 @@ const { listNodes, listLinks, listZones, listRouters } = vi.hoisted(() => ({
   listRouters: vi.fn(),
 }));
 
-vi.mock('$lib/api/client', () => ({
-  api: {
-    networkMapping: {
-      nodes: { list: listNodes },
-      links: { list: listLinks },
-      zones: { list: listZones },
-    },
-    mikrotik: {
-      routers: { list: listRouters },
-    },
+vi.mock('$lib/api/networkMapping', () => ({
+  networkMapping: {
+    nodes: { list: listNodes },
+    links: { list: listLinks },
+    zones: { list: listZones },
   },
 }));
 
-import { extractMapRows, fetchNetworkMapData } from './networkMapData';
+vi.mock('$lib/api/mikrotik', () => ({
+  mikrotik: {
+    routers: { list: listRouters },
+  },
+}));
+
+import {
+  extractMapRows,
+  fetchNetworkMapData,
+  getTopologySyncStrategy,
+} from './networkMapData';
 
 describe('fetchNetworkMapData', () => {
   const params = {
@@ -107,5 +112,55 @@ describe('fetchNetworkMapData', () => {
       }),
     ]);
     expect(result.routerRows).toEqual([{ id: 'router-1', name: 'Router 1' }]);
+  });
+});
+
+describe('getTopologySyncStrategy', () => {
+  it('runs stale automatic sync in background so initial map fetch is not blocked', () => {
+    expect(
+      getTopologySyncStrategy({
+        canManageTopology: true,
+        syncingAssetNodes: false,
+        manual: false,
+        lastAssetSyncAt: 0,
+        assetSyncTtlMs: 45_000,
+        now: 45_001,
+      }),
+    ).toEqual({
+      shouldSync: true,
+      shouldBlockRefresh: false,
+    });
+  });
+
+  it('keeps manual sync blocking so explicit sync action stays deterministic', () => {
+    expect(
+      getTopologySyncStrategy({
+        canManageTopology: true,
+        syncingAssetNodes: false,
+        manual: true,
+        lastAssetSyncAt: 0,
+        assetSyncTtlMs: 45_000,
+        now: 45_001,
+      }),
+    ).toEqual({
+      shouldSync: true,
+      shouldBlockRefresh: true,
+    });
+  });
+
+  it('skips sync entirely while still inside TTL', () => {
+    expect(
+      getTopologySyncStrategy({
+        canManageTopology: true,
+        syncingAssetNodes: false,
+        manual: false,
+        lastAssetSyncAt: 20_000,
+        assetSyncTtlMs: 45_000,
+        now: 40_000,
+      }),
+    ).toEqual({
+      shouldSync: false,
+      shouldBlockRefresh: false,
+    });
   });
 });

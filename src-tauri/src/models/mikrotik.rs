@@ -244,6 +244,20 @@ impl MikrotikRouterMetric {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct MikrotikPppActiveSession {
+    pub id: String,
+    pub tenant_id: String,
+    pub router_id: String,
+    pub username: String,
+    pub address: Option<String>,
+    pub caller_id: Option<String>,
+    pub uptime: Option<String>,
+    pub last_seen_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MikrotikInterfaceSnapshot {
     pub name: String,

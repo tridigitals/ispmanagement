@@ -9,10 +9,11 @@
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { hasInternalAppAccess } from '$lib/utils/appLanding';
   import { resolveAnnouncementActionUrl } from '$lib/utils/announcementRouting';
+  import { getVisiblePortalNotifications } from '$lib/utils/dashboardNotifications';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+  import { api } from '$lib/api/client';
   import {
     notifications,
-    unreadCount,
     loading,
     pagination,
     loadNotifications,
@@ -24,6 +25,7 @@
 
   let filter = $state<'all' | 'unread'>('all');
   let searchQuery = $state('');
+  let portalInvoiceIds = $state<string[]>([]);
 
   let tenantCtx = $derived.by(() =>
     resolveTenantContext({
@@ -37,15 +39,29 @@
 
   onMount(async () => {
     await loadNotifications(1);
+    if (!hasInternalAppAccess($user)) {
+      try {
+        const invoiceRows = await api.payment.listInvoices();
+        portalInvoiceIds = (invoiceRows || []).map((inv) => inv.id).filter(Boolean);
+      } catch (e) {
+        console.warn('Failed to load portal invoice ids for notifications:', e);
+        portalInvoiceIds = [];
+      }
+    }
     await refreshUnreadCount(true);
   });
 
-  let totalLoaded = $derived($notifications.length);
-  let totalAll = $derived($pagination.total || $notifications.length);
+  let visibleNotifications = $derived(
+    getVisiblePortalNotifications($notifications, hasInternalAppAccess($user), portalInvoiceIds),
+  );
+  let visibleUnreadCount = $derived(visibleNotifications.filter((n) => !n.is_read).length);
+  let totalLoaded = $derived(visibleNotifications.length);
+  let totalAll = $derived(visibleNotifications.length);
 
   let filteredNotifications = $derived.by(() => {
     const q = searchQuery.trim().toLowerCase();
-    const base = filter === 'unread' ? $notifications.filter((n) => !n.is_read) : $notifications;
+    const base =
+      filter === 'unread' ? visibleNotifications.filter((n) => !n.is_read) : visibleNotifications;
     if (!q) return base;
     return base.filter((n) => {
       const title = String(n.title || '').toLowerCase();
@@ -55,7 +71,7 @@
   });
 
   let hasMore = $derived(!!$pagination.hasMore);
-  let canMarkAllRead = $derived($unreadCount > 0);
+  let canMarkAllRead = $derived(visibleUnreadCount > 0);
 
   async function loadMore() {
     if ($loading || !hasMore) return;
@@ -215,8 +231,8 @@
           aria-selected={filter === 'unread'}
         >
           {$t('notifications_page.filters.unread') || 'Unread'}
-          {#if $unreadCount > 0}
-            <span class="chip-badge">{$unreadCount > 99 ? '99+' : $unreadCount}</span>
+          {#if visibleUnreadCount > 0}
+            <span class="chip-badge">{visibleUnreadCount > 99 ? '99+' : visibleUnreadCount}</span>
           {/if}
         </button>
       </div>

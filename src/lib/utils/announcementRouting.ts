@@ -18,20 +18,23 @@ export function resolveAnnouncementActionUrl(
       ? actionUrl.slice(tenantPrefix.length)
       : actionUrl;
 
-  const announcementMatch = appRelativePath.match(/^\/announcements\/([^/?#]+)/);
+  const normalizedPath =
+    appRelativePath === '/dashboard/packages' ? '/dashboard/services' : appRelativePath;
+
+  const announcementMatch = normalizedPath.match(/^\/announcements\/([^/?#]+)/);
   if (announcementMatch?.[1]) {
     return getAnnouncementDetailPath(announcementMatch[1], opts);
   }
 
   if (
-    appRelativePath.startsWith('/admin') ||
-    appRelativePath.startsWith('/support') ||
-    appRelativePath.startsWith('/dashboard') ||
-    appRelativePath.startsWith('/announcements') ||
-    appRelativePath.startsWith('/profile') ||
-    appRelativePath.startsWith('/notifications')
+    normalizedPath.startsWith('/admin') ||
+    normalizedPath.startsWith('/support') ||
+    normalizedPath.startsWith('/dashboard') ||
+    normalizedPath.startsWith('/announcements') ||
+    normalizedPath.startsWith('/profile') ||
+    normalizedPath.startsWith('/notifications')
   ) {
-    return `${tenantPrefix}${appRelativePath}`;
+    return `${tenantPrefix}${normalizedPath}`;
   }
 
   return actionUrl;

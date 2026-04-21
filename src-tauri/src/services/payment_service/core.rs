@@ -49,6 +49,21 @@ pub(super) fn reminder_code_for_day_offset(day_offset: i64) -> String {
     }
 }
 
+pub(super) fn customer_notification_user_ids(
+    customer_user_ids: Vec<String>,
+    _tenant_member_user_ids: Vec<String>,
+) -> Vec<String> {
+    customer_user_ids
+        .into_iter()
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
+        .collect()
+}
+
+pub(super) fn customer_invoice_notification_action_url(invoice_id: &str) -> String {
+    format!("/pay/{}", invoice_id)
+}
+
 fn json_number(value: &serde_json::Value, key: &str) -> Option<f64> {
     value.get(key).and_then(|v| {
         v.as_f64()

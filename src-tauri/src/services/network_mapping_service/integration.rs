@@ -66,6 +66,13 @@ impl NetworkMappingService {
             .map(str::trim)
             .filter(|value| !value.is_empty())
             .map(str::to_string);
+        let pppoe_visual_state = Self::customer_pppoe_visual_state(
+            row.customer_is_active,
+            &row.subscription_status,
+            pppoe_username.as_deref(),
+            row.pppoe_session_active.unwrap_or(false),
+            row.pppoe_disabled.unwrap_or(false),
+        );
         let pppoe_account_source = row
             .pppoe_account_source
             .as_deref()
@@ -124,6 +131,18 @@ impl NetworkMappingService {
         if let Some(value) = package_name {
             metadata.insert("package_name".to_string(), serde_json::Value::String(value));
         }
+        metadata.insert(
+            "customer_is_active".to_string(),
+            serde_json::Value::Bool(row.customer_is_active),
+        );
+        metadata.insert(
+            "pppoe_visual_state".to_string(),
+            serde_json::Value::String(pppoe_visual_state.to_string()),
+        );
+        metadata.insert(
+            "pppoe_session_active".to_string(),
+            serde_json::Value::Bool(row.pppoe_session_active.unwrap_or(false)),
+        );
         if let Some(value) = pppoe_username {
             metadata.insert(
                 "pppoe_username".to_string(),
@@ -182,12 +201,15 @@ impl NetworkMappingService {
               cl.id::text AS location_id,
               cl.customer_id::text AS customer_id,
               c.name AS customer_name,
+              c.is_active AS customer_is_active,
               COALESCE(NULLIF(BTRIM(cl.label), ''), c.name || ' Location') AS label,
               svc.subscription_id AS subscription_id,
               svc.subscription_status AS subscription_status,
               p.name AS package_name,
               p.service_type AS package_service_type,
               acct.username AS pppoe_username,
+              acct.disabled AS pppoe_disabled,
+              (sess.username IS NOT NULL) AS pppoe_session_active,
               acct.account_source AS pppoe_account_source,
               acct.router_profile_name AS pppoe_router_profile_name,
               COALESCE(svc.router_id, acct.router_id) AS router_id,
@@ -232,6 +254,8 @@ impl NetworkMappingService {
             LEFT JOIN LATERAL (
               SELECT
                 pa.username,
+                pa.disabled,
+                pa.router_present,
                 pa.account_source,
                 pa.router_profile_name,
                 pa.router_id
@@ -247,6 +271,10 @@ impl NetworkMappingService {
                 pa.created_at DESC
               LIMIT 1
             ) acct ON TRUE
+            LEFT JOIN mikrotik_ppp_active_sessions sess
+              ON sess.tenant_id = cl.tenant_id
+             AND sess.router_id = COALESCE(svc.router_id, acct.router_id)
+             AND sess.username = acct.username
             WHERE cl.tenant_id = $1::text
               AND cl.latitude IS NOT NULL
               AND cl.longitude IS NOT NULL

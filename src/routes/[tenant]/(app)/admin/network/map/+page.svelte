@@ -2,17 +2,12 @@
   import type { Geometry } from 'geojson';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, type Component } from 'svelte';
   import { t } from 'svelte-i18n';
+  import { customers } from '$lib/api/customers';
+  import type { PaginatedResponse } from '$lib/api/types';
   import { can, tenant, user } from '$lib/stores/auth';
-  import { api, type PaginatedResponse } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
-  import NetworkMapLinkModal from '$lib/components/network/NetworkMapLinkModal.svelte';
-  import NetworkMapManager from '$lib/components/network/NetworkMapManager.svelte';
-  import NetworkMapNodePanel from '$lib/components/network/NetworkMapNodePanel.svelte';
-  import NetworkMapOverview from '$lib/components/network/NetworkMapOverview.svelte';
-  import NetworkMapFloatingControls from '$lib/components/network/NetworkMapFloatingControls.svelte';
-  import NetworkMapZoneModal from '$lib/components/network/NetworkMapZoneModal.svelte';
   import {
     buildLinkDraftForm,
     buildZoneDraftForm,
@@ -32,10 +27,7 @@
     currentDraftPathCoords,
     hasExistingLinkBetweenNodes,
   } from '$lib/components/network/networkMapInteractionUtils';
-  import { handleCanvasMapClick } from '$lib/components/network/networkMapCanvasInteractions';
   import {
-    createZoneBindingCrud,
-    loadZoneBindingsCrud,
     removeCrud,
     submitLinkCrud,
     submitNodeCrud,
@@ -59,64 +51,34 @@
     type LinkPickDrawMode,
   } from '$lib/components/network/networkMapLinkPicking';
   import {
-    openLinkPopup,
-    openNodePopup,
-    openRouterPopup,
-  } from '$lib/components/network/networkMapPopups';
-  import {
     applyCachedMapData,
     applyFetchedMapData,
     buildMapDataCacheKey,
     fetchNetworkMapData,
     getCachedMapData,
+    getTopologySyncStrategy,
     setCachedMapData,
     syncTopologyAssetsIfNeeded,
     type NetworkMapCacheEntry,
   } from '$lib/components/network/networkMapData';
   import {
-    buildBaseMapStyle,
-    emptyFeatureCollection,
-    registerMapSourcesAndLayers,
-    SOURCE_CUSTOMERS,
-    SOURCE_LINK_DRAFT,
-    SOURCE_LINK_DRAFT_POINTS,
-    SOURCE_LINKS,
-    SOURCE_NODES,
-    SOURCE_ROUTERS,
-    SOURCE_SELECTION_LINES,
-    SOURCE_SELECTION_POINTS,
-    SOURCE_SELECTION_ZONES,
-    SOURCE_ZONES,
-  } from '$lib/components/network/networkMapLayers';
-  import {
-    expandCustomerCluster,
-    registerInteractiveLayerHover,
-    registerPrimaryLayerClicks,
-  } from '$lib/components/network/networkMapInit';
-  import {
     emitInstallationRefreshSignal,
     emitWorkOrderUpdatedToParent,
     resolveInstallationTargetMarker,
   } from '$lib/components/network/networkMapInstallation';
-  import { fitMapToMarkers } from '$lib/components/network/networkMapRuntime';
   import {
     asNumber,
     customersToFeatureCollection,
-    ensureNodeTypeIconsRegistered,
     filterRoutersForOverlay,
     getLinkFieldConfig,
     isCustomerNodeType,
     isSystemManagedNode,
     linkStatusOptions,
     linkTypeOptions,
-    linksToFeatureCollection,
     nodeTypeOptions,
-    nodesToFeatureCollection,
     parseGeometryText,
     prettyGeometry,
-    routersToFeatureCollection,
     systemManagedNodeSourceLabel,
-    zonesToFeatureCollection,
     type LinkFieldConfig,
     type NMLink,
     type NMNode,
@@ -134,12 +96,14 @@
     type NetworkMapWorkspaceState,
     type NetworkMapWorkspaceCapabilities,
   } from '$lib/components/network/networkMapWorkspaceState';
+  import { type NetworkMapSearchResultItem } from '$lib/components/network/networkMapInsights';
   import {
-    groupNetworkMapSearchResults,
-    type NetworkMapSearchResultItem,
-  } from '$lib/components/network/networkMapInsights';
-  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
-  import Select2 from '$lib/components/ui/Select2.svelte';
+    loadNetworkMapChromeModules,
+    loadNetworkMapDialogModules,
+    loadNetworkMapInteractionModule,
+    loadNetworkMapPopupModule,
+    type NetworkMapInteractionModule,
+  } from '$lib/components/network/networkMapUiModules';
   import Icon from '$lib/components/ui/Icon.svelte';
   import MapCanvasShell from '$lib/components/network/MapCanvasShell.svelte';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
@@ -149,15 +113,33 @@
   type MapInstance = import('maplibre-gl').Map;
   type NetworkMapQuickMode = 'all' | 'issues' | 'customers' | 'services' | 'topology' | 'field';
 
+  const SOURCE_NODES = 'nm-nodes';
+  const SOURCE_CUSTOMERS = 'nm-customers';
+  const SOURCE_LINKS = 'nm-links';
+  const SOURCE_ZONES = 'nm-zones';
+  const SOURCE_ROUTERS = 'nm-routers';
+  const SOURCE_LINK_DRAFT = 'nm-link-draft';
+  const SOURCE_LINK_DRAFT_POINTS = 'nm-link-draft-points';
+  const SOURCE_SELECTION_POINTS = 'nm-selection-points';
+  const SOURCE_SELECTION_LINES = 'nm-selection-lines';
+  const SOURCE_SELECTION_ZONES = 'nm-selection-zones';
+
   let mapEl = $state<HTMLDivElement | null>(null);
   let map = $state<MapInstance | null>(null);
   let maplibre = $state<MaplibreModule | null>(null);
+  let interactionModule = $state<NetworkMapInteractionModule | null>(null);
   let mapReady = $state(false);
   let mapUnavailable = $state(false);
   let mapErrorMessage = $state('');
   let loading = $state(true);
   let refreshing = $state(false);
   let syncingAssetNodes = $state(false);
+  let OverviewComponent = $state<Component | null>(null);
+  let FloatingControlsComponent = $state<Component | null>(null);
+  let NodePanelComponent = $state<Component | null>(null);
+  let LinkModalComponent = $state<Component | null>(null);
+  let ZoneModalComponent = $state<Component | null>(null);
+  let ConfirmDialogComponent = $state<Component | null>(null);
 
   let nodesVisible = $state(true);
   let linksVisible = $state(true);
@@ -182,17 +164,9 @@
   let routerRows = $state<NMRouter[]>([]);
   let customerRows = $state<NMNode[]>([]);
   let serviceRows = $state<NMNode[]>([]);
-  let zoneBindings = $state<any[]>([]);
-  let selectedZoneId = $state('');
-  let selectedTab = $state<'nodes' | 'links' | 'zones' | 'bindings'>('nodes');
-  let manageMode = $state(false);
-  let lastLoadedZoneId = '';
-
-  let loadingManager = $state(false);
   let savingNode = $state(false);
   let savingLink = $state(false);
   let savingZone = $state(false);
-  let savingBinding = $state(false);
   let deletingId = $state<string | null>(null);
   let showDeleteConfirm = $state(false);
   let deleteTargetType = $state<'node' | 'link' | 'zone' | 'binding' | null>(null);
@@ -243,12 +217,6 @@
     geometryText: '',
   });
 
-  let bindingForm = $state({
-    zone_id: '',
-    node_id: '',
-    is_primary: false,
-    weight: '100',
-  });
   let workspaceState = $state<NetworkMapWorkspaceState>(
     createNetworkMapWorkspaceState({
       canManageTopology: false,
@@ -267,6 +235,7 @@
   let installationTargetResolved = false;
   let activeNodePopup: import('maplibre-gl').Popup | null = null;
   let activeDataAbortController: AbortController | null = null;
+  let backgroundAssetSyncPromise: Promise<boolean> | null = null;
   let didInitialFitToMarkers = false;
   let lastAssetSyncAt = 0;
   let lastMapDataLoadedAt = $state(0);
@@ -295,55 +264,6 @@
   const workspaceDefaults = $derived.by(() =>
     buildNetworkMapWorkspaceDefaults(workspaceCapabilities),
   );
-  const searchGroups = $derived.by(() => {
-    const groups = groupNetworkMapSearchResults({
-      query: workspaceSearchQuery,
-      nodes: nodeRows,
-      links: linkRows,
-      zones: zoneRows,
-      routers: routerRows,
-      customerRows,
-      serviceRows,
-    });
-
-    if (quickMode === 'all') return groups;
-
-    const allowedGroupKeys: Record<Exclude<NetworkMapQuickMode, 'all'>, string[]> = {
-      issues: ['nodes', 'links', 'zones', 'routers'],
-      customers: ['customers'],
-      services: ['services'],
-      topology: ['nodes', 'links', 'zones', 'routers'],
-      field: ['customers', 'services', 'nodes', 'zones'],
-    };
-
-    const allowedKeys = allowedGroupKeys[quickMode as Exclude<NetworkMapQuickMode, 'all'>] || [];
-    return groups.filter((group) => allowedKeys.includes(group.key));
-  });
-  const searchResultCount = $derived.by(() =>
-    searchGroups.reduce((total, group) => total + group.items.length, 0),
-  );
-  const searchSummary = $derived.by(() => {
-    const query = workspaceSearchQuery.trim();
-    if (!query) {
-      return (
-        $t('admin.network.map.search.summary_idle', {
-          values: {
-            count: nodeRows.length + linkRows.length + zoneRows.length + routerRows.length,
-          },
-        }) ||
-        `${nodeRows.length + linkRows.length + zoneRows.length + routerRows.length} assets loaded in this workspace`
-      );
-    }
-
-    return (
-      $t('admin.network.map.search.summary_results', {
-        values: {
-          count: searchResultCount,
-          groups: searchGroups.length,
-        },
-      }) || `${searchResultCount} matching results across ${searchGroups.length} sections`
-    );
-  });
   const mapDataFreshnessLabel = $derived.by(() => {
     if (!lastMapDataLoadedAt) {
       return (
@@ -430,6 +350,7 @@
       }, 15_000);
     }
     workspaceState = applyNetworkMapWorkspaceDefaults(workspaceState, workspaceDefaults);
+    void ensureChromeComponentsLoaded();
     if (workspaceCapabilities.canManageTopology) {
       applyQuickMode('all');
     } else if (workspaceCapabilities.canReadNetworkNoc && !workspaceCapabilities.canReadCustomers) {
@@ -461,6 +382,30 @@
   $effect(() => {
     syncWorkspaceHighlights();
   });
+
+  $effect(() => {
+    if (showCreateNodePanel || showLinkModal || showZoneModal || showDeleteConfirm) {
+      void ensureDialogComponentsLoaded();
+    }
+  });
+
+  async function ensureChromeComponentsLoaded() {
+    if (OverviewComponent && FloatingControlsComponent) return;
+    const modules = await loadNetworkMapChromeModules();
+    OverviewComponent = modules.OverviewComponent;
+    FloatingControlsComponent = modules.FloatingControlsComponent;
+  }
+
+  async function ensureDialogComponentsLoaded() {
+    if (NodePanelComponent && LinkModalComponent && ZoneModalComponent && ConfirmDialogComponent) {
+      return;
+    }
+    const modules = await loadNetworkMapDialogModules();
+    NodePanelComponent = modules.NodePanelComponent;
+    LinkModalComponent = modules.LinkModalComponent;
+    ZoneModalComponent = modules.ZoneModalComponent;
+    ConfirmDialogComponent = modules.ConfirmDialogComponent;
+  }
 
   function ensureMaplibreCompatHelpers() {
     const g = globalThis as any;
@@ -594,16 +539,6 @@
     customersVisible = true;
   }
 
-  function openManageWorkspace(tab: 'nodes' | 'links' | 'zones' | 'bindings') {
-    if (!canManageTopology) return;
-    selectedTab = tab;
-    manageMode = true;
-  }
-
-  function closeManageWorkspace() {
-    manageMode = false;
-  }
-
   function handleWorkspaceSearchSelect(item: NetworkMapSearchResultItem) {
     workspaceSearchQuery = item.label;
 
@@ -668,7 +603,7 @@
     );
   }
 
-  function handleNodeLayerClick(e: any) {
+  async function handleNodeLayerClick(e: any) {
     if (!map || !e.features?.[0] || !maplibre) return;
     const props = e.features[0].properties || {};
     const nodeId = String(props.id || '');
@@ -684,6 +619,7 @@
       handleLinkPickNode(nodeId);
       return;
     }
+    const { openNodePopup } = await loadNetworkMapPopupModule();
     openNodePopup({
       map,
       maplibre,
@@ -702,7 +638,7 @@
     });
   }
 
-  function handleLinkLayerClick(e: any) {
+  async function handleLinkLayerClick(e: any) {
     if (!map || !e.features?.[0] || !maplibre || linkPickMode) return;
     const props = e.features[0].properties || {};
     const linkId = String(props.id || '');
@@ -714,6 +650,7 @@
         linkType: props.link_type || props.linkType || undefined,
       }),
     );
+    const { openLinkPopup } = await loadNetworkMapPopupModule();
     openLinkPopup({
       map,
       maplibre,
@@ -725,7 +662,7 @@
     });
   }
 
-  function handleRouterLayerClick(e: any) {
+  async function handleRouterLayerClick(e: any) {
     if (!map || !e.features?.[0] || !maplibre) return;
     const props = e.features[0].properties || {};
     const routerId = String(props.id || '');
@@ -736,6 +673,7 @@
         label: String(props.name || props.identity || routerId),
       }),
     );
+    const { openRouterPopup } = await loadNetworkMapPopupModule();
     openRouterPopup({
       map,
       maplibre,
@@ -747,14 +685,24 @@
     });
   }
 
+  async function getInteractionModule() {
+    if (interactionModule) return interactionModule;
+    interactionModule = await loadNetworkMapInteractionModule();
+    return interactionModule;
+  }
+
   async function initMap() {
     try {
-      maplibre = await import('maplibre-gl');
+      const [loadedMaplibre, loadedInteractionModule] = await Promise.all([
+        import('maplibre-gl'),
+        getInteractionModule(),
+      ]);
+      maplibre = loadedMaplibre;
       if (!mapEl || !maplibre) return;
 
       map = new maplibre.Map({
         container: mapEl,
-        style: buildBaseMapStyle({
+        style: loadedInteractionModule.buildBaseMapStyle({
           hasHiResSatellite,
           mapTilerKey,
           standardMaxZoom,
@@ -768,10 +716,10 @@
 
       map.on('load', async () => {
         if (!map) return;
-        ensureNodeTypeIconsRegistered(map);
-        registerMapSourcesAndLayers(map);
+        loadedInteractionModule.ensureNodeTypeIconsRegistered(map);
+        loadedInteractionModule.registerMapSourcesAndLayers(map);
 
-        registerPrimaryLayerClicks({
+        loadedInteractionModule.registerPrimaryLayerClicks({
           map,
           onNodeClick: handleNodeLayerClick,
           onRouterClick: handleRouterLayerClick,
@@ -779,7 +727,7 @@
           onCustomerClusterClick: async (e) => {
             if (!map || !maplibre || !e.features?.[0]) return;
             try {
-              await expandCustomerCluster({
+              await loadedInteractionModule.expandCustomerCluster({
                 map,
                 feature: e.features[0],
                 sourceId: SOURCE_CUSTOMERS,
@@ -792,7 +740,7 @@
 
         map.on('click', (e) => {
           if (!map) return;
-          const result = handleCanvasMapClick({
+          const result = loadedInteractionModule.handleCanvasMapClick({
             map,
             event: e,
             linkPickMode,
@@ -811,7 +759,7 @@
           if (result.handled) return;
         });
 
-        registerInteractiveLayerHover(map);
+        loadedInteractionModule.registerInteractiveLayerHover(map);
 
         map.on('moveend', scheduleRefresh);
         mapReady = true;
@@ -830,7 +778,7 @@
               compactMode,
               didInitialFitToMarkers,
               existingMarker: installationTargetMarker,
-              loadCustomerLocations: (customerId) => api.customers.locations.list(customerId),
+              loadCustomerLocations: (customerId) => customers.locations.list(customerId),
             });
             if (resolved) {
               installationTargetMarker = resolved.marker;
@@ -890,6 +838,7 @@
   }
 
   async function syncTopologyAssets(manual = false) {
+    if (syncingAssetNodes) return false;
     syncingAssetNodes = true;
     try {
       const result = await syncTopologyAssetsIfNeeded({
@@ -906,7 +855,21 @@
     }
   }
 
-  async function refreshMapData(force = false) {
+  function queueBackgroundTopologySync() {
+    if (backgroundAssetSyncPromise || syncingAssetNodes) return;
+    backgroundAssetSyncPromise = syncTopologyAssets(false)
+      .then(async (changed) => {
+        if (!changed) return false;
+        invalidateMapDataCache();
+        await refreshMapData(true, { skipAutoSync: true });
+        return true;
+      })
+      .finally(() => {
+        backgroundAssetSyncPromise = null;
+      });
+  }
+
+  async function refreshMapData(force = false, options?: { skipAutoSync?: boolean }) {
     if (map && !mapReady) return;
     const requestId = ++lastRequestId;
     const bbox = currentBboxString();
@@ -916,9 +879,22 @@
 
     try {
       let shouldBypassCache = force;
-      if (await syncTopologyAssets(force)) {
-        shouldBypassCache = true;
-        invalidateMapDataCache();
+      if (!options?.skipAutoSync) {
+        const syncStrategy = getTopologySyncStrategy({
+          canManageTopology,
+          syncingAssetNodes,
+          manual: force,
+          lastAssetSyncAt,
+          assetSyncTtlMs,
+        });
+        if (syncStrategy.shouldBlockRefresh) {
+          if (await syncTopologyAssets(force)) {
+            shouldBypassCache = true;
+            invalidateMapDataCache();
+          }
+        } else if (syncStrategy.shouldSync) {
+          queueBackgroundTopologySync();
+        }
       }
 
       const params = {
@@ -1024,8 +1000,8 @@
   }
 
   function fitMapToAllMarkersOnFirstLoad(nodes: NMNode[], routers: NMRouter[]) {
-    if (!map || !maplibre) return;
-    const didFit = fitMapToMarkers({
+    if (!map || !maplibre || !interactionModule) return;
+    const didFit = interactionModule.fitMapToMarkers({
       map,
       maplibre,
       didInitialFitToMarkers,
@@ -1044,34 +1020,18 @@
   }
 
   function syncWorkspaceHighlights() {
-    if (!map || !mapReady) return;
+    if (!map || !mapReady || !interactionModule) return;
 
     const selectedObject =
       workspaceState.investigationState?.selectedObject || workspaceState.selectedObject;
 
-    let pointData = emptyFeatureCollection();
-    let lineData = emptyFeatureCollection();
-    let zoneData = emptyFeatureCollection();
-
-    if (selectedObject) {
-      if (
-        selectedObject.kind === 'node' ||
-        selectedObject.kind === 'customer' ||
-        selectedObject.kind === 'service'
-      ) {
-        const row = nodeRows.find((candidate) => candidate.id === selectedObject.id);
-        if (row) pointData = nodesToFeatureCollection([row]);
-      } else if (selectedObject.kind === 'link') {
-        const row = linkRows.find((candidate) => candidate.id === selectedObject.id);
-        if (row) lineData = linksToFeatureCollection([row]);
-      } else if (selectedObject.kind === 'zone') {
-        const row = zoneRows.find((candidate) => candidate.id === selectedObject.id);
-        if (row) zoneData = zonesToFeatureCollection([row]);
-      } else if (selectedObject.kind === 'router') {
-        const row = routerRows.find((candidate) => candidate.id === selectedObject.id);
-        if (row) pointData = routersToFeatureCollection([row]);
-      }
-    }
+    const { pointData, lineData, zoneData } = interactionModule.buildSelectionFeatureCollections({
+      selectedObject,
+      nodeRows,
+      linkRows,
+      zoneRows,
+      routerRows,
+    });
 
     setSourceData(SOURCE_SELECTION_POINTS, pointData);
     setSourceData(SOURCE_SELECTION_LINES, lineData);
@@ -1160,8 +1120,6 @@
   }
 
   function openCreateNodeModal() {
-    manageMode = true;
-    selectedTab = 'nodes';
     editingNodeId = null;
     nodeForm = { name: '', node_type: 'router', status: 'active', lat: '', lng: '' };
     nodePickMode = true;
@@ -1209,15 +1167,12 @@
       closeNodeModal();
       invalidateMapDataCache();
       await refreshMapData(true);
-      await loadZoneBindings();
     } finally {
       savingNode = false;
     }
   }
 
   function openCreateLinkModal() {
-    manageMode = true;
-    selectedTab = 'links';
     editingLinkId = null;
     linkPickMode = false;
     linkPickStep = 'from';
@@ -1372,7 +1327,6 @@
     linkForm = next.linkForm;
     refreshLinkGeometryDraft();
     syncLinkDraftPreview();
-    selectedTab = 'links';
     toast.info(next.toastMessage);
   }
 
@@ -1413,8 +1367,6 @@
   }
 
   function openCreateZoneModal() {
-    manageMode = true;
-    selectedTab = 'zones';
     editingZoneId = null;
     zoneForm = {
       name: '',
@@ -1447,7 +1399,6 @@
       showZoneModal = false;
       invalidateMapDataCache();
       await refreshMapData(true);
-      await loadZoneBindings();
     } finally {
       savingZone = false;
     }
@@ -1460,7 +1411,6 @@
       if (!ok) return;
       invalidateMapDataCache();
       await refreshMapData(true);
-      await loadZoneBindings();
     } finally {
       deletingId = null;
     }
@@ -1483,50 +1433,15 @@
     try {
       const ok = await removeCrud({ type: 'zone', id });
       if (!ok) return;
-      if (selectedZoneId === id) selectedZoneId = '';
       invalidateMapDataCache();
       await refreshMapData(true);
-      await loadZoneBindings();
-    } finally {
-      deletingId = null;
-    }
-  }
-
-  async function loadZoneBindings() {
-    loadingManager = true;
-    try {
-      const rows = await loadZoneBindingsCrud(selectedZoneId);
-      if (rows) zoneBindings = rows;
-    } finally {
-      loadingManager = false;
-    }
-  }
-
-  async function createZoneBinding() {
-    savingBinding = true;
-    try {
-      const ok = await createZoneBindingCrud(bindingForm);
-      if (!ok) return;
-      bindingForm = { zone_id: bindingForm.zone_id, node_id: '', is_primary: false, weight: '100' };
-      await loadZoneBindings();
-    } finally {
-      savingBinding = false;
-    }
-  }
-
-  async function removeBinding(id: string) {
-    deletingId = id;
-    try {
-      const ok = await removeCrud({ type: 'binding', id });
-      if (!ok) return;
-      await loadZoneBindings();
     } finally {
       deletingId = null;
     }
   }
 
   function openDeleteConfirm(
-    targetType: 'node' | 'link' | 'zone' | 'binding',
+    targetType: 'node' | 'link' | 'zone',
     id: string,
     name?: string,
   ) {
@@ -1550,83 +1465,77 @@
       await removeNode(id);
     } else if (type === 'link') {
       await removeLink(id);
-    } else if (type === 'zone') {
-      await removeZone(id);
     } else {
-      await removeBinding(id);
+      await removeZone(id);
     }
     deleteTargetType = null;
     deleteTargetId = '';
   }
-
-  $effect(() => {
-    if (!selectedZoneId) {
-      if (bindingForm.zone_id) bindingForm = { ...bindingForm, zone_id: '' };
-      zoneBindings = [];
-      lastLoadedZoneId = '';
-      return;
-    }
-    if (bindingForm.zone_id !== selectedZoneId) {
-      bindingForm = { ...bindingForm, zone_id: selectedZoneId };
-    }
-    if (lastLoadedZoneId !== selectedZoneId) {
-      lastLoadedZoneId = selectedZoneId;
-      void loadZoneBindings();
-    }
-  });
 </script>
 
 <div class="page-content fade-in" class:compact-mode={compactMode}>
-  <NetworkMapOverview
-    {compactMode}
-    {fromInstallation}
-    {installationReturnUrl}
-    {tenantPrefix}
-    {canManageTopology}
-    {syncingAssetNodes}
-    {refreshing}
-    {loading}
-    {workspaceSearchQuery}
-    {searchGroups}
-    {searchSummary}
-    title={$t('admin.network.map.title') || 'Network Topology Map'}
-    subtitle={workspaceSubtitle}
-    labels={{
-      backToInstallation: $t('admin.network.map.back_to_installation') || 'Back to Installation',
-      backToNoc: $t('admin.network.map.back_to_noc') || 'Back to NOC',
-      searchKicker: $t('admin.network.map.search.kicker') || 'Unified search',
-      searchTitle:
-        $t('admin.network.map.search.title') || 'Jump to any mapped asset, service, or customer',
-      searchHint:
-        $t('admin.network.map.search.hint') ||
-        'Search across infrastructure, customer endpoints, services, zones, and router inventory.',
-      searchPlaceholder:
-        $t('admin.network.map.search.placeholder') ||
-        'Search customer, service, node, link, zone, or router...',
-      searchEmptyTitle: $t('admin.network.map.search.empty_title') || 'No matching results',
-      searchEmptyHint:
-        $t('admin.network.map.search.empty_hint') ||
-        'Try another keyword to widen the result scope.',
-      syncing: 'Syncing...',
-      syncAssets: 'Sync Router & Customer Nodes',
-      loading: $t('common.loading') || 'Loading...',
-      refresh: $t('common.refresh') || 'Refresh',
-      nodes: $t('admin.network.map.stats.nodes') || 'Nodes',
-      links: $t('admin.network.map.stats.links') || 'Links',
-      zones: $t('admin.network.map.stats.zones') || 'Zones',
-      routers: $t('admin.network.map.layers.routers') || 'Routers',
-      customers: $t('admin.network.map.layers.customers') || 'Customers',
-    }}
-    onWorkspaceSearchChange={(value) => (workspaceSearchQuery = value)}
-    onWorkspaceSearchSelect={handleWorkspaceSearchSelect}
-    onSyncAssets={async () => {
-      if (await syncTopologyAssets(true)) {
-        invalidateMapDataCache();
-      }
-      await refreshMapData(true);
-    }}
-    onRefresh={() => void refreshMapData()}
-  />
+  {#if OverviewComponent}
+    <OverviewComponent
+      {compactMode}
+      {fromInstallation}
+      {installationReturnUrl}
+      {tenantPrefix}
+      {canManageTopology}
+      {syncingAssetNodes}
+      {refreshing}
+      {loading}
+      {workspaceSearchQuery}
+      {quickMode}
+      {nodeRows}
+      {linkRows}
+      {zoneRows}
+      {routerRows}
+      {customerRows}
+      {serviceRows}
+      title={$t('admin.network.map.title') || 'Network Topology Map'}
+      subtitle={workspaceSubtitle}
+      labels={{
+        backToInstallation: $t('admin.network.map.back_to_installation') || 'Back to Installation',
+        backToNoc: $t('admin.network.map.back_to_noc') || 'Back to NOC',
+        searchKicker: $t('admin.network.map.search.kicker') || 'Unified search',
+        searchTitle:
+          $t('admin.network.map.search.title') || 'Jump to any mapped asset, service, or customer',
+        searchHint:
+          $t('admin.network.map.search.hint') ||
+          'Search across infrastructure, customer endpoints, services, zones, and router inventory.',
+        searchPlaceholder:
+          $t('admin.network.map.search.placeholder') ||
+          'Search customer, service, node, link, zone, or router...',
+        searchEmptyTitle: $t('admin.network.map.search.empty_title') || 'No matching results',
+        searchEmptyHint:
+          $t('admin.network.map.search.empty_hint') ||
+          'Try another keyword to widen the result scope.',
+        syncing: 'Syncing...',
+        sync: 'Sync',
+        nodes: $t('admin.network.map.stats.nodes') || 'Nodes',
+        links: $t('admin.network.map.stats.links') || 'Links',
+        zones: $t('admin.network.map.stats.zones') || 'Zones',
+        routers: $t('admin.network.map.layers.routers') || 'Routers',
+        customers: $t('admin.network.map.layers.customers') || 'Customers',
+      }}
+      formatSearchIdleSummary={(total: number) =>
+        $t('admin.network.map.search.summary_idle', {
+          values: { count: total },
+        }) || `${total} assets loaded in this workspace`}
+      formatSearchResultsSummary={(count: number, groups: number) =>
+        $t('admin.network.map.search.summary_results', {
+          values: { count, groups },
+        }) || `${count} matching results across ${groups} sections`}
+      onWorkspaceSearchChange={(value: string) => (workspaceSearchQuery = value)}
+      onWorkspaceSearchSelect={handleWorkspaceSearchSelect}
+      onSyncAssets={async () => {
+        if (await syncTopologyAssets(true)) {
+          invalidateMapDataCache();
+        }
+        await refreshMapData(true);
+      }}
+    />
+  {/if}
 
   <MapCanvasShell
     bind:mapEl
@@ -1641,59 +1550,50 @@
     height={compactMode ? 'min(76vh, 760px)' : 'min(62vh, 700px)'}
   >
     <svelte:fragment slot="overlay">
-      <NetworkMapFloatingControls
-        labels={{
-          title: $t('admin.network.map.floating.title') || 'Map controls',
-          layers: $t('admin.network.map.floating.layers') || 'Layers',
-          view: $t('admin.network.map.floating.view') || 'View',
-          manage: $t('admin.network.map.floating.manage') || 'Manage',
-          standard: $t('admin.network.map.view.standard') || 'Standard',
-          satellite: $t('admin.network.map.view.satellite') || 'Satellite',
-          openNodes: $t('admin.network.map.floating.open_nodes') || 'Manage nodes',
-          openLinks: $t('admin.network.map.floating.open_links') || 'Manage links',
-          openZones: $t('admin.network.map.floating.open_zones') || 'Manage zones',
-          openBindings: $t('admin.network.map.floating.open_bindings') || 'Manage bindings',
-          addNode: $t('admin.network.map.floating.add_node') || 'Add node',
-          addLink: $t('admin.network.map.floating.add_link') || 'Add link',
-          addZone: $t('admin.network.map.floating.add_zone') || 'Add zone',
-          nodes: $t('admin.network.map.stats.nodes') || 'Nodes',
-          links: $t('admin.network.map.stats.links') || 'Links',
-          zones: $t('admin.network.map.stats.zones') || 'Zones',
-          routers: $t('admin.network.map.layers.routers') || 'Routers',
-          customers: $t('admin.network.map.layers.customers') || 'Customers',
-        }}
-        hidden={controlsHidden}
-        {viewMode}
-        {nodesVisible}
-        {linksVisible}
-        {zonesVisible}
-        {routersVisible}
-        {customersVisible}
-        canShowRouters={canReadRouterInventory}
-        {canManageTopology}
-        onViewModeChange={(mode) => (viewMode = mode)}
-        onNodesVisibleChange={(checked) => (nodesVisible = checked)}
-        onLinksVisibleChange={(checked) => (linksVisible = checked)}
-        onZonesVisibleChange={(checked) => (zonesVisible = checked)}
-        onRoutersVisibleChange={(checked) => (routersVisible = checked)}
-        onCustomersVisibleChange={(checked) => (customersVisible = checked)}
-        onOpenManageNodes={() => openManageWorkspace('nodes')}
-        onOpenManageLinks={() => openManageWorkspace('links')}
-        onOpenManageZones={() => openManageWorkspace('zones')}
-        onOpenManageBindings={() => openManageWorkspace('bindings')}
-        onToggleHidden={() => (controlsHidden = !controlsHidden)}
-      />
+      {#if FloatingControlsComponent}
+        <FloatingControlsComponent
+          labels={{
+            title: $t('admin.network.map.floating.title') || 'Map controls',
+            layers: $t('admin.network.map.floating.layers') || 'Layers',
+            view: $t('admin.network.map.floating.view') || 'View',
+            standard: $t('admin.network.map.view.standard') || 'Standard',
+            satellite: $t('admin.network.map.view.satellite') || 'Satellite',
+            nodes: $t('admin.network.map.stats.nodes') || 'Nodes',
+            links: $t('admin.network.map.stats.links') || 'Links',
+            zones: $t('admin.network.map.stats.zones') || 'Zones',
+            routers: $t('admin.network.map.layers.routers') || 'Routers',
+            customers: $t('admin.network.map.layers.customers') || 'Customers',
+          }}
+          hidden={controlsHidden}
+          {viewMode}
+          {nodesVisible}
+          {linksVisible}
+          {zonesVisible}
+          {routersVisible}
+          {customersVisible}
+          canShowRouters={canReadRouterInventory}
+          onViewModeChange={(mode: 'standard' | 'satellite') => (viewMode = mode)}
+          onNodesVisibleChange={(checked: boolean) => (nodesVisible = checked)}
+          onLinksVisibleChange={(checked: boolean) => (linksVisible = checked)}
+          onZonesVisibleChange={(checked: boolean) => (zonesVisible = checked)}
+          onRoutersVisibleChange={(checked: boolean) => (routersVisible = checked)}
+          onCustomersVisibleChange={(checked: boolean) => (customersVisible = checked)}
+          onToggleHidden={() => (controlsHidden = !controlsHidden)}
+        />
+      {/if}
 
-      <NetworkMapNodePanel
-        show={showCreateNodePanel}
-        {editingNodeId}
-        {nodePickMode}
-        {savingNode}
-        {nodeForm}
-        {nodeTypeOptions}
-        onClose={closeNodeModal}
-        onSubmit={() => void submitNode()}
-      />
+      {#if NodePanelComponent}
+        <NodePanelComponent
+          show={showCreateNodePanel}
+          {editingNodeId}
+          {nodePickMode}
+          {savingNode}
+          {nodeForm}
+          {nodeTypeOptions}
+          onClose={closeNodeModal}
+          onSubmit={() => void submitNode()}
+        />
+      {/if}
 
       {#if linkPickMode}
         <div class="map-link-draw-controls">
@@ -1717,91 +1617,68 @@
     </svelte:fragment>
   </MapCanvasShell>
 
-  {#if !compactMode}
-    <NetworkMapManager
-      {manageMode}
-      title={$t('admin.network.map.manage.title') || 'Topology editor workspace'}
-      subtitle={$t('admin.network.map.manage.subtitle') ||
-        'Editing lives in a separate workspace so monitoring and investigation stay focused.'}
-      {selectedTab}
-      {nodeRows}
-      {linkRows}
-      {zoneRows}
-      {zoneBindings}
-      {selectedZoneId}
-      {loadingManager}
-      {savingBinding}
-      {deletingId}
-      {bindingForm}
-      onClose={closeManageWorkspace}
-      onSelectTab={(tab) => (selectedTab = tab)}
-      onOpenCreateNode={openCreateNodeModal}
-      onOpenCreateLink={openCreateLinkModal}
-      onOpenCreateZone={openCreateZoneModal}
-      onStartConnectNode={startConnectFromNode}
-      onOpenEditNode={openEditNodeModal}
-      onOpenEditLink={openEditLinkModal}
-      onOpenEditZone={openEditZoneModal}
-      onOpenDeleteConfirm={openDeleteConfirm}
-      onSelectedZoneChange={(value) => (selectedZoneId = value)}
-      onBindingNodeChange={(value) => (bindingForm = { ...bindingForm, node_id: value })}
-      onBindingWeightChange={(value) => (bindingForm = { ...bindingForm, weight: value })}
-      onBindingPrimaryChange={(checked) => (bindingForm = { ...bindingForm, is_primary: checked })}
-      onCreateBinding={() => void createZoneBinding()}
-    />
-  {/if}
 </div>
 
-<NetworkMapLinkModal
-  show={showLinkModal}
-  {editingLinkId}
-  {savingLink}
-  {linkPickDrawMode}
-  {linkSnapToNodeEnabled}
-  {linkPickMode}
-  {linkPickStep}
-  {linkPathBendPoints}
-  {linkForm}
-  {nodeRows}
-  {linkTypeOptions}
-  {linkStatusOptions}
-  {linkFieldConfig}
-  hasExistingLinkBetweenNodes={(fromNodeId, toNodeId, excludeLinkId) =>
-    hasExistingLinkBetweenNodes(linkRows, fromNodeId, toNodeId, excludeLinkId)}
-  onClose={closeLinkModal}
-  onSubmit={() => void submitLink()}
-  onTogglePickMode={toggleLinkPickMode}
-  onSetDrawMode={setLinkPickDrawMode}
-  onUndoPathPoint={undoLinkPathPoint}
-  onClearPathPoints={clearLinkPathPoints}
-  onUseStraightLine={useLinkFromNodePoints}
-  onToggleSnap={() => (linkSnapToNodeEnabled = !linkSnapToNodeEnabled)}
-/>
+{#if LinkModalComponent}
+  <LinkModalComponent
+    show={showLinkModal}
+    {editingLinkId}
+    {savingLink}
+    {linkPickDrawMode}
+    {linkSnapToNodeEnabled}
+    {linkPickMode}
+    {linkPickStep}
+    {linkPathBendPoints}
+    {linkForm}
+    {nodeRows}
+    {linkTypeOptions}
+    {linkStatusOptions}
+    {linkFieldConfig}
+    hasExistingLinkBetweenNodes={(
+      fromNodeId: string,
+      toNodeId: string,
+      excludeLinkId?: string | null,
+    ) =>
+      hasExistingLinkBetweenNodes(linkRows, fromNodeId, toNodeId, excludeLinkId)}
+    onClose={closeLinkModal}
+    onSubmit={() => void submitLink()}
+    onTogglePickMode={toggleLinkPickMode}
+    onSetDrawMode={setLinkPickDrawMode}
+    onUndoPathPoint={undoLinkPathPoint}
+    onClearPathPoints={clearLinkPathPoints}
+    onUseStraightLine={useLinkFromNodePoints}
+    onToggleSnap={() => (linkSnapToNodeEnabled = !linkSnapToNodeEnabled)}
+  />
+{/if}
 
-<NetworkMapZoneModal
-  show={showZoneModal}
-  {editingZoneId}
-  {savingZone}
-  {zoneForm}
-  onClose={() => (showZoneModal = false)}
-  onSubmit={() => void submitZone()}
-/>
+{#if ZoneModalComponent}
+  <ZoneModalComponent
+    show={showZoneModal}
+    {editingZoneId}
+    {savingZone}
+    {zoneForm}
+    onClose={() => (showZoneModal = false)}
+    onSubmit={() => void submitZone()}
+  />
+{/if}
 
-<ConfirmDialog
-  show={showDeleteConfirm}
-  title={deleteConfirmTitle}
-  message={deleteConfirmMessage}
-  confirmText="Delete"
-  cancelText="Cancel"
-  type="danger"
-  loading={Boolean(deletingId)}
-  onconfirm={() => void confirmDeleteAction()}
-  oncancel={() => {
-    showDeleteConfirm = false;
-    deleteTargetType = null;
-    deleteTargetId = '';
-  }}
-/>
+{#if ConfirmDialogComponent}
+  <ConfirmDialogComponent
+    show={showDeleteConfirm}
+    title={deleteConfirmTitle}
+    message={deleteConfirmMessage}
+    confirmText="Delete"
+    cancelText="Cancel"
+    type="danger"
+    loading={Boolean(deletingId)}
+    onconfirm={() => void confirmDeleteAction()}
+    oncancel={() => {
+      showDeleteConfirm = false;
+      deleteTargetType = null;
+      deleteTargetId = '';
+    }}
+  />
+{/if}
 
 <style>
   .page-content {
@@ -1923,6 +1800,8 @@
     max-height: min(430px, calc(100vh - 180px));
     overflow-y: auto;
     padding-right: 2px;
+    padding-bottom: 2px;
+    overscroll-behavior: contain;
   }
 
   :global(.nm-popup-card-workflow) {
@@ -2014,6 +1893,59 @@
     font-weight: 600;
   }
 
+  :global(.nm-popup-status-chips) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  :global(.nm-popup-status-chips-workflow) {
+    gap: 8px;
+  }
+
+  :global(.nm-popup-status-chip) {
+    border-radius: 12px;
+    padding: 8px 10px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(15, 23, 42, 0.74);
+  }
+
+  :global(.nm-popup-status-chip.ok) {
+    border-color: rgba(34, 197, 94, 0.3);
+    background: rgba(20, 83, 45, 0.26);
+  }
+
+  :global(.nm-popup-status-chip.warn) {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(120, 53, 15, 0.26);
+  }
+
+  :global(.nm-popup-status-chip.muted) {
+    border-color: rgba(100, 116, 139, 0.26);
+    background: rgba(15, 23, 42, 0.88);
+  }
+
+  :global(.nm-popup-status-chip.danger) {
+    border-color: rgba(248, 113, 113, 0.34);
+    background: rgba(127, 29, 29, 0.3);
+  }
+
+  :global(.nm-popup-status-chip-label) {
+    color: #94a3b8;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 800;
+  }
+
+  :global(.nm-popup-status-chip-value) {
+    margin-top: 3px;
+    color: #f8fafc;
+    font-size: 0.78rem;
+    font-weight: 900;
+    line-height: 1.2;
+  }
+
   :global(.nm-popup-summary) {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2039,6 +1971,11 @@
   :global(.nm-popup-summary-item.warn) {
     border-color: rgba(245, 158, 11, 0.28);
     background: rgba(180, 83, 9, 0.14);
+  }
+
+  :global(.nm-popup-summary-item.danger) {
+    border-color: rgba(248, 113, 113, 0.3);
+    background: rgba(127, 29, 29, 0.18);
   }
 
   :global(.nm-popup-summary-label) {
@@ -2086,6 +2023,7 @@
     gap: 7px;
     margin-top: 6px;
     padding-top: 7px;
+    padding-bottom: 2px;
     border-top: 1px solid rgba(148, 163, 184, 0.2);
   }
 
@@ -2167,6 +2105,132 @@
     border-color: color-mix(in srgb, #ef4444 58%, #7f1d1d);
     background: color-mix(in srgb, #ef4444 18%, #0b1322);
     color: #fecaca;
+  }
+
+  @media (max-width: 640px) {
+    :global(.maplibregl-popup-content) {
+      padding: 8px;
+      width: min(264px, calc(100vw - 28px));
+      max-width: min(264px, calc(100vw - 28px)) !important;
+      border-radius: 10px;
+    }
+
+    :global(.maplibregl-popup.nm-popup-workflow-shell .maplibregl-popup-content) {
+      width: min(264px, calc(100vw - 28px));
+      max-width: min(264px, calc(100vw - 28px)) !important;
+    }
+
+    :global(.nm-popup-card) {
+      gap: 6px;
+      max-height: min(68dvh, calc(100dvh - 108px));
+      padding-right: 0;
+      padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+    }
+
+    :global(.nm-popup-card-workflow) {
+      gap: 7px;
+    }
+
+    :global(.nm-popup-head) {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+    }
+
+    :global(.nm-popup-badge) {
+      align-self: flex-start;
+      padding: 3px 8px;
+      font-size: 0.62rem;
+    }
+
+    :global(.nm-popup-title) {
+      font-size: 0.88rem;
+    }
+
+    :global(.nm-popup-subtitle) {
+      font-size: 0.72rem;
+    }
+
+    :global(.nm-popup-status-chips) {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 6px;
+    }
+
+    :global(.nm-popup-summary) {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 6px;
+    }
+
+    :global(.nm-popup-summary-item),
+    :global(.nm-popup-status-chip),
+    :global(.nm-popup-context) {
+      border-radius: 10px;
+      padding: 8px 9px;
+    }
+
+    :global(.nm-popup-grid) {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 3px;
+    }
+
+    :global(.nm-popup-label) {
+      margin-top: 2px;
+      font-size: 0.64rem;
+    }
+
+    :global(.nm-popup-value) {
+      margin-bottom: 2px;
+      font-size: 0.76rem;
+    }
+
+    :global(.nm-popup-actions) {
+      gap: 6px;
+      margin-top: 4px;
+      padding-top: 8px;
+      padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
+    }
+
+    :global(.nm-popup-actions-workflow) {
+      flex-wrap: wrap;
+      gap: 6px;
+      position: sticky;
+      bottom: 0;
+      z-index: 2;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(15, 23, 42, 0.05) 0%,
+          rgba(15, 23, 42, 0.92) 22%,
+          rgba(15, 23, 42, 0.98) 100%
+        );
+      backdrop-filter: blur(8px);
+    }
+
+    :global(.nm-popup-actions-workflow .action-connect) {
+      display: none;
+    }
+
+    :global(.nm-popup-actions-workflow .nm-popup-btn) {
+      min-height: 32px;
+      padding: 6px 9px;
+      font-size: 0.71rem;
+      white-space: normal;
+      text-align: center;
+      justify-content: center;
+    }
+
+    :global(.nm-popup-actions-workflow .nm-popup-btn.primary),
+    :global(.nm-popup-actions-workflow .action-open-service),
+    :global(.nm-popup-actions-workflow .action-open-customer) {
+      flex: 1 1 calc(50% - 3px);
+      min-width: 0;
+      order: 0;
+    }
+
+    :global(.nm-popup-actions-workflow .nm-popup-btn-close) {
+      flex: 1 1 100%;
+      margin-left: 0;
+    }
   }
 
   @media (max-width: 900px) {

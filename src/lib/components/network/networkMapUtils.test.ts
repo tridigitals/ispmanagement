@@ -6,6 +6,9 @@ import {
   buildRouterPopupModel,
   buildRouterPopupModelFromNode,
   buildServicePopupModel,
+  customersToFeatureCollection,
+  getCustomerNodeIconId,
+  getCustomerPppoeVisualState,
   type NMLink,
   type NMNode,
   type NMRouter,
@@ -61,15 +64,22 @@ describe('network map popup models', () => {
         customer_name: 'Budi Santoso',
         package_name: 'Bronze 20 Mbps',
         pppoe_username: 'budi-pppoe',
+        subscription_status: 'active',
+        pppoe_visual_state: 'connected',
       },
     };
 
     const model = buildServicePopupModel(serviceNode);
 
     expect(model.kicker).toBe('Service');
-    expect(model.contextText).toBe('Active • PPPoE • Account ready');
+    expect(model.contextText).toContain('online on Mikrotik');
     expect(model.title).toContain('Internet 20 Mbps');
     expect(model.subtitle).toContain('Budi Santoso');
+    expect(model.statusText).toBe('active');
+    expect(model.statusChips).toEqual([
+      expect.objectContaining({ label: 'Subscription', value: 'Active', tone: 'ok' }),
+      expect.objectContaining({ label: 'Mikrotik PPP', value: 'PPP Online', tone: 'ok' }),
+    ]);
     expect(model.detailPairs).toEqual(
       expect.arrayContaining([
         { label: 'Package', value: 'Bronze 20 Mbps' },
@@ -93,6 +103,98 @@ describe('network map popup models', () => {
     );
     expect(model.actions[1]).toEqual(
       expect.objectContaining({ key: 'open-service', label: 'Service', tone: 'secondary' }),
+    );
+  });
+
+  it('builds customer service popups with a red Mikrotik PPP state when account is offline', () => {
+    const serviceNode: NMNode = {
+      id: 'svc-node-2',
+      name: 'Service 50 Mbps',
+      node_type: 'customer_premise',
+      status: 'active',
+      lat: -6.21,
+      lng: 106.82,
+      metadata: {
+        service_id: 'svc-50',
+        customer_id: 'cust-50',
+        service_name: 'Internet 50 Mbps',
+        service_type: 'internet_pppoe',
+        customer_name: 'Siti Aminah',
+        package_name: 'Gold 50 Mbps',
+        pppoe_username: 'siti-pppoe',
+        subscription_status: 'active',
+        pppoe_visual_state: 'disconnected',
+      },
+    };
+
+    const model = buildServicePopupModel(serviceNode);
+
+    expect(model.contextText).toContain('no active PPP session');
+    expect(model.statusChips).toEqual([
+      expect.objectContaining({ label: 'Subscription', value: 'Active', tone: 'ok' }),
+      expect.objectContaining({ label: 'Mikrotik PPP', value: 'PPP Offline', tone: 'danger' }),
+    ]);
+    expect(model.summaryItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: 'Account', value: 'siti-pppoe', tone: 'danger' }),
+      ]),
+    );
+    expect(model.actions.map((action) => action.key)).toEqual([
+      'open-service',
+      'open-customer',
+      'connect',
+    ]);
+    expect(model.actions[0]).toEqual(
+      expect.objectContaining({ key: 'open-service', label: 'Service', tone: 'primary' }),
+    );
+  });
+
+  it('builds customer service popups with a muted Mikrotik PPP state when account is missing', () => {
+    const serviceNode: NMNode = {
+      id: 'svc-node-3',
+      name: 'Service 10 Mbps',
+      node_type: 'customer_premise',
+      status: 'pending_installation',
+      lat: -6.21,
+      lng: 106.82,
+      metadata: {
+        service_id: 'svc-10',
+        customer_id: 'cust-10',
+        service_name: 'Starter 10 Mbps',
+        service_type: 'internet_pppoe',
+        customer_name: 'Nur Hidayah',
+        package_name: 'Starter 10 Mbps',
+        subscription_status: 'pending_installation',
+      },
+    };
+
+    const model = buildServicePopupModel(serviceNode);
+
+    expect(model.contextText).toContain('not been provisioned');
+    expect(model.statusChips).toEqual([
+      expect.objectContaining({
+        label: 'Subscription',
+        value: 'Pending Installation',
+        tone: 'warn',
+      }),
+      expect.objectContaining({ label: 'Mikrotik PPP', value: 'PPP Belum Ada', tone: 'muted' }),
+    ]);
+    expect(model.summaryItems).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: 'Account',
+          value: 'Belum ada akun PPP',
+          tone: 'muted',
+        }),
+      ]),
+    );
+    expect(model.actions.map((action) => action.key)).toEqual([
+      'open-service',
+      'open-customer',
+      'connect',
+    ]);
+    expect(model.actions[0]).toEqual(
+      expect.objectContaining({ key: 'open-service', label: 'Service', tone: 'primary' }),
     );
   });
 
@@ -206,5 +308,36 @@ describe('network map popup models', () => {
         { label: 'Zone', value: 'Semarang Barat' },
       ]),
     );
+  });
+});
+
+describe('network map customer visual state helpers', () => {
+  it('maps customer PPPoE visual state into feature properties and icon ids', () => {
+    const row: NMNode = {
+      id: 'cust-node-1',
+      name: 'Budi - Rumah',
+      node_type: 'customer_premise',
+      status: 'active',
+      lat: -6.2,
+      lng: 106.8,
+      metadata: {
+        pppoe_visual_state: 'connected',
+      },
+    };
+
+    expect(getCustomerPppoeVisualState(row)).toBe('connected');
+    expect(getCustomerNodeIconId('connected')).toBe('nm-node-icon-customer-connected');
+
+    const fc = customersToFeatureCollection([row]);
+    expect(fc.features[0]?.properties).toEqual(
+      expect.objectContaining({
+        pppoe_visual_state: 'connected',
+      }),
+    );
+  });
+
+  it('falls back to neutral for missing or unknown visual state', () => {
+    expect(getCustomerPppoeVisualState({ metadata: {} })).toBe('neutral');
+    expect(getCustomerNodeIconId('unknown' as any)).toBe('nm-node-icon-customer-neutral');
   });
 });

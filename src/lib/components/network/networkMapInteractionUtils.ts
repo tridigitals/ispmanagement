@@ -160,6 +160,10 @@ function renderPopupModel(args: { popupUid: string; model: NetworkMapPopupModel 
     args.model.variant === 'workflow-service'
       ? 'nm-popup-summary nm-popup-summary-workflow'
       : 'nm-popup-summary';
+  const statusChipsClass =
+    args.model.variant === 'workflow-service'
+      ? 'nm-popup-status-chips nm-popup-status-chips-workflow'
+      : 'nm-popup-status-chips';
   const contextClass =
     args.model.variant === 'workflow-service'
       ? 'nm-popup-context nm-popup-context-workflow'
@@ -182,6 +186,24 @@ function renderPopupModel(args: { popupUid: string; model: NetworkMapPopupModel 
           </div>
           <span class="nm-popup-badge ${args.model.tone}">${escapePopupHtml(args.model.statusText)}</span>
         </div>
+        ${
+          args.model.statusChips?.length
+            ? `
+          <div class="${statusChipsClass}">
+            ${args.model.statusChips
+              .map(
+                (chip) => `
+              <div class="nm-popup-status-chip ${chip.tone || 'muted'}">
+                <div class="nm-popup-status-chip-label">${escapePopupHtml(chip.label)}</div>
+                <div class="nm-popup-status-chip-value">${escapePopupHtml(chip.value)}</div>
+              </div>
+            `,
+              )
+              .join('')}
+          </div>
+        `
+            : ''
+        }
         <div class="${contextClass}">${escapePopupHtml(args.model.contextText)}</div>
         ${
           args.model.summaryItems.length

@@ -1,18 +1,12 @@
 <script lang="ts">
+  import { getNetworkMapFloatingControlsLayout } from './networkMapFloatingControlsLayout';
+
   export type NetworkMapFloatingLabels = {
     title: string;
     layers: string;
     view: string;
-    manage: string;
     standard: string;
     satellite: string;
-    openNodes: string;
-    openLinks: string;
-    openZones: string;
-    openBindings: string;
-    addNode: string;
-    addLink: string;
-    addZone: string;
     nodes: string;
     links: string;
     zones: string;
@@ -30,17 +24,12 @@
     routersVisible,
     customersVisible,
     canShowRouters,
-    canManageTopology,
     onViewModeChange,
     onNodesVisibleChange,
     onLinksVisibleChange,
     onZonesVisibleChange,
     onRoutersVisibleChange,
     onCustomersVisibleChange,
-    onOpenManageNodes,
-    onOpenManageLinks,
-    onOpenManageZones,
-    onOpenManageBindings,
     onToggleHidden,
   }: {
     labels: NetworkMapFloatingLabels;
@@ -52,23 +41,20 @@
     routersVisible: boolean;
     customersVisible: boolean;
     canShowRouters: boolean;
-    canManageTopology: boolean;
     onViewModeChange: (mode: 'standard' | 'satellite') => void;
     onNodesVisibleChange: (checked: boolean) => void;
     onLinksVisibleChange: (checked: boolean) => void;
     onZonesVisibleChange: (checked: boolean) => void;
     onRoutersVisibleChange: (checked: boolean) => void;
     onCustomersVisibleChange: (checked: boolean) => void;
-    onOpenManageNodes: () => void;
-    onOpenManageLinks: () => void;
-    onOpenManageZones: () => void;
-    onOpenManageBindings: () => void;
     onToggleHidden: () => void;
   } = $props();
 
   function buttonClass(active: boolean) {
     return active ? 'control-chip active' : 'control-chip';
   }
+
+  const layout = getNetworkMapFloatingControlsLayout();
 
   function handleWindowPointerDown(event: PointerEvent) {
     if (hidden) return;
@@ -97,6 +83,7 @@
     class="floating-controls"
     aria-label="Map workspace controls"
     data-network-map-controls-root
+    style={`--nm-controls-width:${layout.desktopWidth};--nm-controls-padding:${layout.desktopPadding};--nm-controls-radius:${layout.desktopRadius};--nm-controls-gap:${layout.desktopGap};--nm-controls-chip-min-height:${layout.chipMinHeight};--nm-controls-chip-padding-x:${layout.chipPaddingX};--nm-controls-chip-padding-y:${layout.chipPaddingY};--nm-controls-mobile-padding:${layout.mobilePadding};--nm-controls-mobile-radius:${layout.mobileRadius};`}
   >
     <div class="controls-head">
       <div class="controls-title">{labels.title}</div>
@@ -171,48 +158,27 @@
         {/if}
       </div>
     </section>
-
-    {#if canManageTopology}
-      <section class="control-group">
-        <div class="control-group-label">{labels.manage}</div>
-        <div class="manage-grid">
-          <button type="button" class="control-chip" onclick={onOpenManageNodes}>
-            {labels.openNodes}
-          </button>
-          <button type="button" class="control-chip" onclick={onOpenManageLinks}>
-            {labels.openLinks}
-          </button>
-          <button type="button" class="control-chip" onclick={onOpenManageZones}>
-            {labels.openZones}
-          </button>
-          <button type="button" class="control-chip" onclick={onOpenManageBindings}>
-            {labels.openBindings}
-          </button>
-        </div>
-      </section>
-    {/if}
   </aside>
 {/if}
 
 <style>
   .floating-controls {
     position: absolute;
-    top: 14px;
-    right: 14px;
+    top: 12px;
+    right: 12px;
     z-index: 6;
-    width: min(320px, calc(100vw - 32px));
+    width: min(var(--nm-controls-width), calc(100vw - 24px));
     display: grid;
-    gap: 10px;
-    border-radius: 22px;
-    border: 1px solid rgba(15, 23, 42, 0.18);
-    padding: 16px;
-    background:
-      linear-gradient(180deg, rgba(251, 248, 241, 0.98), rgba(245, 239, 228, 0.97)), #f7f0e4;
-    backdrop-filter: blur(10px);
+    gap: var(--nm-controls-gap);
+    border-radius: var(--nm-controls-radius);
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    padding: var(--nm-controls-padding);
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(4px);
     box-shadow:
-      0 24px 48px rgba(15, 23, 42, 0.14),
-      inset 0 1px 0 rgba(255, 255, 255, 0.4);
-    max-height: min(78vh, 720px);
+      0 10px 24px rgba(15, 23, 42, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    max-height: min(68vh, 560px);
     overflow: auto;
   }
 
@@ -239,125 +205,130 @@
 
   .controls-head {
     display: grid;
-    gap: 2px;
+    gap: 0;
   }
 
   .controls-title {
-    font-size: 0.82rem;
+    font-size: 0.68rem;
     font-weight: 900;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
-    color: color-mix(in srgb, var(--color-primary) 72%, #4338ca 28%);
+    color: color-mix(in srgb, var(--color-primary) 52%, #475569 48%);
   }
 
   .control-group {
     display: grid;
-    gap: 7px;
-    padding-top: 6px;
-    border-top: 1px solid rgba(148, 163, 184, 0.18);
+    gap: 5px;
+    padding-top: 4px;
+    border-top: 1px solid rgba(148, 163, 184, 0.1);
   }
 
   .control-group-label {
-    font-size: 0.7rem;
+    font-size: 0.58rem;
     font-weight: 900;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: #64748b;
+    color: #94a3b8;
   }
 
-  .control-row,
-  .toggle-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .manage-grid {
+  .control-row {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 5px;
+  }
+
+  .toggle-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
   }
 
   .control-chip,
   .toggle-chip {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
-    border-radius: 999px;
-    border: 1px solid rgba(15, 23, 42, 0.12);
-    min-height: 38px;
-    padding: 8px 12px;
-    background: rgba(15, 23, 42, 0.92);
-    color: #f8fafc;
-    font-size: 0.8rem;
-    font-weight: 800;
+    justify-content: flex-start;
+    gap: 5px;
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.34);
+    min-height: var(--nm-controls-chip-min-height);
+    padding: var(--nm-controls-chip-padding-y) var(--nm-controls-chip-padding-x);
+    background: rgba(255, 255, 255, 0.88);
+    color: #334155;
+    font-size: 0.72rem;
+    font-weight: 760;
     cursor: pointer;
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    line-height: 1.15;
   }
 
   .control-chip.active {
-    border-color: color-mix(in srgb, var(--color-primary) 65%, var(--border-color));
-    background: linear-gradient(180deg, rgba(67, 56, 202, 0.92), rgba(49, 46, 129, 0.96));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 25%, transparent);
+    border-color: color-mix(in srgb, var(--color-primary) 46%, rgba(148, 163, 184, 0.34));
+    background: color-mix(in srgb, var(--color-primary) 14%, white 86%);
+    color: color-mix(in srgb, var(--color-primary) 72%, #1e293b 28%);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 10%, transparent),
+      0 1px 4px rgba(79, 70, 229, 0.08);
   }
 
   .toggle-chip input {
     accent-color: var(--color-primary);
     margin: 0;
+    transform: scale(0.84);
+  }
+
+  .toggle-chip:has(input:checked) {
+    border-color: color-mix(in srgb, var(--color-primary) 42%, rgba(148, 163, 184, 0.34));
+    background: color-mix(in srgb, var(--color-primary) 12%, white 88%);
+    color: color-mix(in srgb, var(--color-primary) 68%, #1e293b 32%);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 8%, transparent),
+      0 1px 4px rgba(79, 70, 229, 0.06);
   }
 
   @media (max-width: 768px) {
     .floating-controls-toggle {
-      top: auto;
+      top: max(14px, env(safe-area-inset-top, 0px));
       right: 14px;
-      bottom: 14px;
+      bottom: auto;
     }
 
     .floating-controls {
       left: 14px;
       right: 14px;
       width: auto;
-      top: auto;
-      bottom: 14px;
+      top: calc(max(14px, env(safe-area-inset-top, 0px)) + 44px);
+      bottom: auto;
       max-height: min(46vh, 420px);
-      padding: 12px;
-      border-radius: 18px;
+      padding: var(--nm-controls-mobile-padding);
+      border-radius: var(--nm-controls-mobile-radius);
     }
 
     .controls-title {
-      font-size: 0.76rem;
+      font-size: 0.66rem;
     }
     .control-group {
-      gap: 6px;
+      gap: 4px;
     }
 
     .control-row,
-    .toggle-grid,
-    .manage-grid {
-      gap: 6px;
+    .toggle-grid {
+      gap: 5px;
     }
 
     .control-chip,
     .toggle-chip {
-      padding: 8px 10px;
-      font-size: 0.78rem;
-      min-height: 34px;
+      padding: 5px 8px;
+      font-size: 0.7rem;
+      min-height: 28px;
     }
 
     .toggle-chip {
-      flex: 1 1 calc(50% - 6px);
       justify-content: center;
     }
 
-    .control-row > button,
-    .manage-grid > button {
-      flex: 1 1 100%;
+    .control-row > button {
       justify-content: center;
-    }
-
-    .manage-grid {
-      grid-template-columns: 1fr;
     }
   }
 </style>

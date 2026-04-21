@@ -1,5 +1,5 @@
 import type { Geometry } from 'geojson';
-import { api } from '$lib/api/client';
+import { networkMapping } from '$lib/api/networkMapping';
 import { toast } from '$lib/stores/toast';
 import type { NMLink, NMZone } from './networkMapUtils';
 
@@ -15,9 +15,9 @@ export async function saveNetworkNode(
 ) {
   try {
     if (editingNodeId) {
-      await api.networkMapping.nodes.update(editingNodeId, payload);
+      await networkMapping.nodes.update(editingNodeId, payload);
     } else {
-      await api.networkMapping.nodes.create(payload);
+      await networkMapping.nodes.create(payload);
     }
     toast.success(editingNodeId ? 'Node updated' : 'Node created');
     return true;
@@ -45,9 +45,9 @@ export async function saveNetworkLink(
 ) {
   try {
     if (editingLinkId) {
-      await api.networkMapping.links.update(editingLinkId, payload);
+      await networkMapping.links.update(editingLinkId, payload);
     } else {
-      await api.networkMapping.links.create(payload);
+      await networkMapping.links.create(payload);
     }
     toast.success(editingLinkId ? 'Link updated' : 'Link created');
     return true;
@@ -69,9 +69,9 @@ export async function saveNetworkZone(
 ) {
   try {
     if (editingZoneId) {
-      await api.networkMapping.zones.update(editingZoneId, payload);
+      await networkMapping.zones.update(editingZoneId, payload);
     } else {
-      await api.networkMapping.zones.create(payload);
+      await networkMapping.zones.create(payload);
     }
     toast.success(editingZoneId ? 'Zone updated' : 'Zone created');
     return true;
@@ -83,7 +83,7 @@ export async function saveNetworkZone(
 
 export async function deleteNetworkNode(id: string) {
   try {
-    await api.networkMapping.nodes.delete(id);
+    await networkMapping.nodes.delete(id);
     toast.success('Node deleted');
     return true;
   } catch (e: any) {
@@ -94,7 +94,7 @@ export async function deleteNetworkNode(id: string) {
 
 export async function deleteNetworkLink(id: string) {
   try {
-    await api.networkMapping.links.delete(id);
+    await networkMapping.links.delete(id);
     toast.success('Link deleted');
     return true;
   } catch (e: any) {
@@ -105,7 +105,7 @@ export async function deleteNetworkLink(id: string) {
 
 export async function deleteNetworkZone(id: string) {
   try {
-    await api.networkMapping.zones.delete(id);
+    await networkMapping.zones.delete(id);
     toast.success('Zone deleted');
     return true;
   } catch (e: any) {
@@ -116,7 +116,7 @@ export async function deleteNetworkZone(id: string) {
 
 export async function loadNetworkZoneBindings(selectedZoneId: string) {
   try {
-    return (await api.networkMapping.zoneBindings.list({
+    return (await networkMapping.zoneBindings.list({
       zone_id: selectedZoneId || undefined,
     })) || [];
   } catch (e: any) {
@@ -132,7 +132,7 @@ export async function createNetworkZoneBinding(payload: {
   weight: number;
 }) {
   try {
-    await api.networkMapping.zoneBindings.create(payload);
+    await networkMapping.zoneBindings.create(payload);
     toast.success('Binding created');
     return true;
   } catch (e: any) {
@@ -143,7 +143,7 @@ export async function createNetworkZoneBinding(payload: {
 
 export async function deleteNetworkZoneBinding(id: string) {
   try {
-    await api.networkMapping.zoneBindings.delete(id);
+    await networkMapping.zoneBindings.delete(id);
     toast.success('Binding deleted');
     return true;
   } catch (e: any) {

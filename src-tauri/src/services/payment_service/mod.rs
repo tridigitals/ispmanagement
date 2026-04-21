@@ -19,7 +19,6 @@ use reqwest::Client;
 use serde::Serialize;
 use serde_json::json;
 use sha2::{Digest, Sha512};
-use std::collections::HashSet;
 use uuid::Uuid;
 
 use crate::services::subscription_lifecycle::{
@@ -35,6 +34,7 @@ const BILLING_REMINDER_ENABLED_KEY: &str = "billing_reminder_enabled";
 const BILLING_REMINDER_SCHEDULE_KEY: &str = "billing_reminder_schedule";
 
 use self::core::{
+    customer_invoice_notification_action_url, customer_notification_user_ids,
     decide_midtrans_transition, is_customer_package_invoice_external_id, is_manual_payment_invoice,
     MidtransTransitionDecision, CUSTOMER_PACKAGE_INVOICE_PREFIX,
 };
@@ -1183,6 +1183,7 @@ impl PaymentService {
                         .send_invoice_reminder(
                             tenant_id,
                             &subscription_id,
+                            &invoice_id,
                             &invoice_number,
                             due_date,
                             day_offset,
@@ -3032,6 +3033,7 @@ impl PaymentService {
         &self,
         tenant_id: &str,
         subscription_id: &str,
+        invoice_id: &str,
         invoice_number: &str,
         due_date: chrono::DateTime<chrono::Utc>,
         day_offset: i64,
@@ -3068,7 +3070,7 @@ impl PaymentService {
                     message.clone(),
                     "warning".to_string(),
                     "billing".to_string(),
-                    Some("/dashboard/invoices".to_string()),
+                    Some(customer_invoice_notification_action_url(invoice_id)),
                 )
                 .await
                 .is_ok()
@@ -3337,14 +3339,10 @@ impl PaymentService {
         .await
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        let mut merged: HashSet<String> = customer_user_ids.into_iter().collect();
-        if merged.is_empty() {
-            for user_id in self.list_tenant_member_user_ids(tenant_id).await? {
-                merged.insert(user_id);
-            }
-        }
-
-        Ok(merged.into_iter().collect())
+        Ok(customer_notification_user_ids(
+            customer_user_ids,
+            Vec::new(),
+        ))
     }
 
     async fn list_customer_user_ids_for_subscription(
@@ -3389,26 +3387,6 @@ impl PaymentService {
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
         Ok(customer_user_ids)
-    }
-
-    async fn list_tenant_member_user_ids(&self, tenant_id: &str) -> AppResult<Vec<String>> {
-        #[cfg(feature = "postgres")]
-        let rows: Vec<String> =
-            sqlx::query_scalar("SELECT user_id FROM tenant_members WHERE tenant_id = $1")
-                .bind(tenant_id)
-                .fetch_all(&self.pool)
-                .await
-                .map_err(|e| AppError::Internal(e.to_string()))?;
-
-        #[cfg(feature = "sqlite")]
-        let rows: Vec<String> =
-            sqlx::query_scalar("SELECT user_id FROM tenant_members WHERE tenant_id = ?")
-                .bind(tenant_id)
-                .fetch_all(&self.pool)
-                .await
-                .map_err(|e| AppError::Internal(e.to_string()))?;
-
-        Ok(rows)
     }
 
     async fn list_tenant_owner_admin_user_ids(&self, tenant_id: &str) -> AppResult<Vec<String>> {

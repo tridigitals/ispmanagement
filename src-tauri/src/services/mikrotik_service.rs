@@ -17,10 +17,11 @@ use crate::models::{
     MikrotikInterfaceMetric, MikrotikInterfaceSnapshot, MikrotikIpAddressSnapshot, MikrotikIpPool,
     MikrotikIpPoolDeleteResult, MikrotikIpPoolDependencyItem, MikrotikIpPoolDependencyStatus,
     MikrotikLogClearResult, MikrotikLogEntry, MikrotikLogRetentionSettings, MikrotikLogSyncResult,
-    MikrotikPppProfile, MikrotikPppProfileDeleteResult, MikrotikPppProfileDependencyItem,
-    MikrotikPppProfileDependencyStatus, MikrotikRouter, MikrotikRouterMetric, MikrotikRouterNocRow,
-    MikrotikRouterSnapshot, MikrotikTestResult, PaginatedResponse, UpdateMikrotikIpPoolRequest,
-    UpdateMikrotikPppProfileRequest, UpdateMikrotikRouterRequest,
+    MikrotikPppActiveSession, MikrotikPppProfile, MikrotikPppProfileDeleteResult,
+    MikrotikPppProfileDependencyItem, MikrotikPppProfileDependencyStatus, MikrotikRouter,
+    MikrotikRouterMetric, MikrotikRouterNocRow, MikrotikRouterSnapshot, MikrotikTestResult,
+    PaginatedResponse, UpdateMikrotikIpPoolRequest, UpdateMikrotikPppProfileRequest,
+    UpdateMikrotikRouterRequest,
 };
 use crate::security::secret::{decrypt_secret_opt, encrypt_secret};
 use crate::services::{AuditService, NotificationService, SettingsService};
@@ -2395,6 +2396,16 @@ impl MikrotikService {
                     }
                 }
 
+                if let Err(e) = self
+                    .refresh_active_ppp_sessions_snapshot(&router, now)
+                    .await
+                {
+                    warn!(
+                        "[MikrotikPoller] PPP active snapshot failed for {} ({}): {}",
+                        router.name, router.host, e
+                    );
+                }
+
                 // Optional background log ingestion so admins can inspect router logs without manual sync.
                 let log_sync_enabled = std::env::var("MIKROTIK_LOG_SYNC_ENABLED")
                     .ok()
@@ -3837,6 +3848,131 @@ impl MikrotikService {
             voltage_v,
             cpu_temperature_c,
         })
+    }
+
+    async fn fetch_active_ppp_sessions(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+        dev: &MikrotikDevice,
+        now: DateTime<Utc>,
+    ) -> Result<Vec<MikrotikPppActiveSession>, anyhow::Error> {
+        let cmd = CommandBuilder::new().command("/ppp/active/print").build();
+        let mut rx = dev
+            .send_command(cmd)
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        let mut out: Vec<MikrotikPppActiveSession> = Vec::new();
+
+        while let Some(res) = rx.recv().await {
+            let r = res.map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            match r {
+                CommandResponse::Reply(reply) => {
+                    let username = reply
+                        .attributes
+                        .get("name")
+                        .and_then(|v| v.clone())
+                        .map(|value| value.trim().to_string())
+                        .filter(|value| !value.is_empty());
+                    let Some(username) = username else {
+                        continue;
+                    };
+
+                    out.push(MikrotikPppActiveSession {
+                        id: uuid::Uuid::new_v4().to_string(),
+                        tenant_id: tenant_id.to_string(),
+                        router_id: router_id.to_string(),
+                        username,
+                        address: reply
+                            .attributes
+                            .get("address")
+                            .and_then(|v| v.clone())
+                            .map(|value| value.trim().to_string())
+                            .filter(|value| !value.is_empty()),
+                        caller_id: reply
+                            .attributes
+                            .get("caller-id")
+                            .and_then(|v| v.clone())
+                            .map(|value| value.trim().to_string())
+                            .filter(|value| !value.is_empty()),
+                        uptime: reply
+                            .attributes
+                            .get("uptime")
+                            .and_then(|v| v.clone())
+                            .map(|value| value.trim().to_string())
+                            .filter(|value| !value.is_empty()),
+                        last_seen_at: now,
+                        created_at: now,
+                        updated_at: now,
+                    });
+                }
+                CommandResponse::Trap(trap) => {
+                    return Err(anyhow::anyhow!(trap.message));
+                }
+                CommandResponse::Done(_) => break,
+                _ => {}
+            }
+        }
+
+        Ok(out)
+    }
+
+    async fn refresh_active_ppp_sessions_snapshot(
+        &self,
+        router: &MikrotikRouter,
+        now: DateTime<Utc>,
+    ) -> Result<(), anyhow::Error> {
+        let dev = self.connect_device(router).await?;
+        let sessions = self
+            .fetch_active_ppp_sessions(&router.tenant_id, &router.id, &dev, now)
+            .await?;
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        sqlx::query(
+            r#"
+            DELETE FROM mikrotik_ppp_active_sessions
+            WHERE tenant_id = $1
+              AND router_id = $2
+            "#,
+        )
+        .bind(&router.tenant_id)
+        .bind(&router.id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+
+        for session in sessions {
+            sqlx::query(
+                r#"
+                INSERT INTO mikrotik_ppp_active_sessions
+                  (id, tenant_id, router_id, username, address, caller_id, uptime, last_seen_at, created_at, updated_at)
+                VALUES
+                  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                "#,
+            )
+            .bind(&session.id)
+            .bind(&session.tenant_id)
+            .bind(&session.router_id)
+            .bind(&session.username)
+            .bind(&session.address)
+            .bind(&session.caller_id)
+            .bind(&session.uptime)
+            .bind(session.last_seen_at)
+            .bind(session.created_at)
+            .bind(session.updated_at)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        }
+
+        tx.commit()
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        Ok(())
     }
 
     fn parse_bool_opt(v: Option<&String>) -> Option<bool> {
