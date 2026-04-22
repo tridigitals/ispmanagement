@@ -211,24 +211,39 @@ impl MikrotikService {
     }
 
     pub async fn list_noc(&self, tenant_id: &str) -> AppResult<Vec<MikrotikRouterNocRow>> {
-        // Portable SQL: correlated subqueries for "latest" metric columns per router.
+        // Compute latest router metric once per router, then join.
         let rows = sqlx::query_as::<_, MikrotikRouterNocRow>(
             r#"
+            WITH latest_router_metrics AS (
+              SELECT
+                m.router_id,
+                m.cpu_load,
+                m.total_memory_bytes,
+                m.free_memory_bytes,
+                m.total_hdd_bytes,
+                m.free_hdd_bytes,
+                m.uptime_seconds,
+                m.rx_bps,
+                m.tx_bps,
+                ROW_NUMBER() OVER (PARTITION BY m.router_id ORDER BY m.ts DESC, m.id DESC) AS rn
+              FROM mikrotik_router_metrics m
+            )
             SELECT
               r.id, r.tenant_id, r.name, r.host, r.port, r.username, r.use_tls, r.enabled,
               r.identity, r.ros_version, r.is_online, r.last_seen_at, r.latency_ms, r.last_error,
               r.maintenance_until, r.maintenance_reason,
               r.created_at, r.updated_at,
-
-              (SELECT m.cpu_load FROM mikrotik_router_metrics m WHERE m.router_id = r.id ORDER BY m.ts DESC LIMIT 1) AS cpu_load,
-              (SELECT m.total_memory_bytes FROM mikrotik_router_metrics m WHERE m.router_id = r.id ORDER BY m.ts DESC LIMIT 1) AS total_memory_bytes,
-              (SELECT m.free_memory_bytes FROM mikrotik_router_metrics m WHERE m.router_id = r.id ORDER BY m.ts DESC LIMIT 1) AS free_memory_bytes,
-              (SELECT m.total_hdd_bytes FROM mikrotik_router_metrics m WHERE m.router_id = r.id ORDER BY m.ts DESC LIMIT 1) AS total_hdd_bytes,
-              (SELECT m.free_hdd_bytes FROM mikrotik_router_metrics m WHERE m.router_id = r.id ORDER BY m.ts DESC LIMIT 1) AS free_hdd_bytes,
-              (SELECT m.uptime_seconds FROM mikrotik_router_metrics m WHERE m.router_id = r.id ORDER BY m.ts DESC LIMIT 1) AS uptime_seconds,
-              (SELECT m.rx_bps FROM mikrotik_router_metrics m WHERE m.router_id = r.id ORDER BY m.ts DESC LIMIT 1) AS rx_bps,
-              (SELECT m.tx_bps FROM mikrotik_router_metrics m WHERE m.router_id = r.id ORDER BY m.ts DESC LIMIT 1) AS tx_bps
+              lm.cpu_load,
+              lm.total_memory_bytes,
+              lm.free_memory_bytes,
+              lm.total_hdd_bytes,
+              lm.free_hdd_bytes,
+              lm.uptime_seconds,
+              lm.rx_bps,
+              lm.tx_bps
             FROM mikrotik_routers r
+            LEFT JOIN latest_router_metrics lm
+              ON lm.router_id = r.id AND lm.rn = 1
             WHERE r.tenant_id = $1
             ORDER BY r.updated_at DESC
             "#,
@@ -289,23 +304,24 @@ impl MikrotikService {
         let rows = if active_only {
             sqlx::query_as::<_, MikrotikIncident>(
                 r#"
+                WITH incident_escalations AS (
+                  SELECT
+                    CAST(a.tenant_id AS TEXT) AS tenant_key,
+                    CAST(a.resource_id AS TEXT) AS incident_id,
+                    MAX(a.created_at) AS escalated_at
+                  FROM audit_logs a
+                  WHERE a.resource = 'mikrotik_incident'
+                    AND a.action = 'escalate'
+                  GROUP BY CAST(a.tenant_id AS TEXT), CAST(a.resource_id AS TEXT)
+                )
                 SELECT
                   i.*,
-                  EXISTS(
-                    SELECT 1 FROM audit_logs a
-                    WHERE CAST(a.tenant_id AS TEXT) = CAST(i.tenant_id AS TEXT)
-                      AND a.resource = 'mikrotik_incident'
-                      AND CAST(a.resource_id AS TEXT) = CAST(i.id AS TEXT)
-                      AND a.action = 'escalate'
-                  ) AS is_auto_escalated,
-                  (
-                    SELECT MAX(a.created_at) FROM audit_logs a
-                    WHERE CAST(a.tenant_id AS TEXT) = CAST(i.tenant_id AS TEXT)
-                      AND a.resource = 'mikrotik_incident'
-                      AND CAST(a.resource_id AS TEXT) = CAST(i.id AS TEXT)
-                      AND a.action = 'escalate'
-                  ) AS escalated_at
+                  CASE WHEN ie.escalated_at IS NULL THEN false ELSE true END AS is_auto_escalated,
+                  ie.escalated_at
                 FROM mikrotik_incidents i
+                LEFT JOIN incident_escalations ie
+                  ON ie.tenant_key = CAST(i.tenant_id AS TEXT)
+                 AND ie.incident_id = CAST(i.id AS TEXT)
                 WHERE i.tenant_id = $1 AND i.resolved_at IS NULL
                 ORDER BY i.updated_at DESC
                 LIMIT $2
@@ -319,23 +335,24 @@ impl MikrotikService {
         } else {
             sqlx::query_as::<_, MikrotikIncident>(
                 r#"
+                WITH incident_escalations AS (
+                  SELECT
+                    CAST(a.tenant_id AS TEXT) AS tenant_key,
+                    CAST(a.resource_id AS TEXT) AS incident_id,
+                    MAX(a.created_at) AS escalated_at
+                  FROM audit_logs a
+                  WHERE a.resource = 'mikrotik_incident'
+                    AND a.action = 'escalate'
+                  GROUP BY CAST(a.tenant_id AS TEXT), CAST(a.resource_id AS TEXT)
+                )
                 SELECT
                   i.*,
-                  EXISTS(
-                    SELECT 1 FROM audit_logs a
-                    WHERE CAST(a.tenant_id AS TEXT) = CAST(i.tenant_id AS TEXT)
-                      AND a.resource = 'mikrotik_incident'
-                      AND CAST(a.resource_id AS TEXT) = CAST(i.id AS TEXT)
-                      AND a.action = 'escalate'
-                  ) AS is_auto_escalated,
-                  (
-                    SELECT MAX(a.created_at) FROM audit_logs a
-                    WHERE CAST(a.tenant_id AS TEXT) = CAST(i.tenant_id AS TEXT)
-                      AND a.resource = 'mikrotik_incident'
-                      AND CAST(a.resource_id AS TEXT) = CAST(i.id AS TEXT)
-                      AND a.action = 'escalate'
-                  ) AS escalated_at
+                  CASE WHEN ie.escalated_at IS NULL THEN false ELSE true END AS is_auto_escalated,
+                  ie.escalated_at
                 FROM mikrotik_incidents i
+                LEFT JOIN incident_escalations ie
+                  ON ie.tenant_key = CAST(i.tenant_id AS TEXT)
+                 AND ie.incident_id = CAST(i.id AS TEXT)
                 WHERE i.tenant_id = $1
                 ORDER BY i.updated_at DESC
                 LIMIT $2
