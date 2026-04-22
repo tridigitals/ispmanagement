@@ -13,8 +13,7 @@
 
   import UserFilters from '$lib/components/superadmin/users/UserFilters.svelte';
   import UserTable from '$lib/components/superadmin/users/UserTable.svelte';
-  import UserDetailsModal from '$lib/components/superadmin/users/UserDetailsModal.svelte';
-  import UserActionModals from '$lib/components/superadmin/users/UserActionModals.svelte';
+  import { loadSuperadminUsersModalModules } from './usersPageModules';
 
   let allUsers = $state<User[]>([]);
   let totalUsers = $state(0);
@@ -30,6 +29,10 @@
 
   let isMobile = $state(false);
   let viewMode = $state<'table' | 'cards'>('table');
+
+  let UserDetailsModalComponent = $state<any>(null);
+  let UserActionModalsComponent = $state<any>(null);
+  let modalModulesLoading = $state(false);
 
   async function loadData() {
     loading = true;
@@ -90,6 +93,20 @@
     return cleanup;
   });
 
+  async function ensureModalModulesLoaded() {
+    if ((UserDetailsModalComponent && UserActionModalsComponent) || modalModulesLoading) return;
+
+    modalModulesLoading = true;
+    try {
+      const { UserDetailsModalComponent: UserDetailsModal, UserActionModalsComponent: UserActionModals } =
+        await loadSuperadminUsersModalModules();
+      UserDetailsModalComponent = UserDetailsModal;
+      UserActionModalsComponent = UserActionModals;
+    } finally {
+      modalModulesLoading = false;
+    }
+  }
+
   function getRoleKey(u: User) {
     if ((u as any).is_super_admin) return 'superadmin';
     const tenantRole = (u as any).tenant_role;
@@ -145,9 +162,10 @@
   let confirmLoading = $state(false);
   let userPending2FAReset = $state<User | null>(null);
 
-  function confirmReset2FA(u: User) {
+  async function confirmReset2FA(u: User) {
     userPending2FAReset = u;
     showResetConfirm = true;
+    await ensureModalModulesLoaded();
   }
 
   async function reset2FA() {
@@ -212,7 +230,7 @@
     pendingIsActive ? 'info' : 'danger',
   );
 
-  function confirmToggleActive(u: User) {
+  async function confirmToggleActive(u: User) {
     if ((u as any).is_super_admin) {
       toast.error(
         get(t)('superadmin.users.toasts.superadmin_cannot_deactivate') ||
@@ -230,6 +248,7 @@
     userPendingStatus = u;
     pendingIsActive = !Boolean((u as any).is_active);
     showStatusConfirm = true;
+    await ensureModalModulesLoaded();
   }
 
   async function toggleActive() {
@@ -263,9 +282,10 @@
   let showDetailsModal = $state(false);
   let detailsUser = $state<User | null>(null);
 
-  function openDetails(u: User) {
+  async function openDetails(u: User) {
     detailsUser = u;
     showDetailsModal = true;
+    await ensureModalModulesLoaded();
   }
 
   const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
@@ -380,21 +400,25 @@
   </div>
 </div>
 
-<UserActionModals
-  bind:showResetConfirm
-  {confirmLoading}
-  onReset2FA={reset2FA}
-  bind:showStatusConfirm
-  {statusConfirmTitle}
-  {statusConfirmMessage}
-  {statusConfirmKeyword}
-  {statusConfirmType}
-  {statusConfirmLoading}
-  onToggleActive={toggleActive}
-  {pendingIsActive}
-/>
+{#if UserActionModalsComponent}
+  <UserActionModalsComponent
+    bind:showResetConfirm
+    {confirmLoading}
+    onReset2FA={reset2FA}
+    bind:showStatusConfirm
+    {statusConfirmTitle}
+    {statusConfirmMessage}
+    {statusConfirmKeyword}
+    {statusConfirmType}
+    {statusConfirmLoading}
+    onToggleActive={toggleActive}
+    {pendingIsActive}
+  />
+{/if}
 
-<UserDetailsModal bind:show={showDetailsModal} user={detailsUser} {getTenantName} />
+{#if UserDetailsModalComponent}
+  <UserDetailsModalComponent bind:show={showDetailsModal} user={detailsUser} {getTenantName} />
+{/if}
 
 <style>
   .superadmin-content {

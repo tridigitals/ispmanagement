@@ -9,10 +9,7 @@
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
-  import AlertsIncidentsSwitch from '$lib/components/network/AlertsIncidentsSwitch.svelte';
-  import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
-  import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
-  import RowActionButtons from '$lib/components/network/RowActionButtons.svelte';
+  import { loadAlertsPageModules } from './alertsPageModules';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { user, tenant } from '$lib/stores/auth';
@@ -50,6 +47,11 @@
   let filterSort = $state('last_seen_desc');
 
   let refreshHandle: any = null;
+  let AlertsIncidentsSwitchComponent = $state<any>(null);
+  let NetworkFilterPanelComponent = $state<any>(null);
+  let NetworkPageHeaderComponent = $state<any>(null);
+  let RowActionButtonsComponent = $state<any>(null);
+  let modulesLoading = $state(false);
   let tenantCtx = $derived.by(() =>
     resolveTenantContext({
       hostname: $page.url.hostname,
@@ -119,6 +121,33 @@
     critical: rows.filter((r) => r.severity === 'critical').length,
   }));
 
+  async function ensureAlertsModulesLoaded() {
+    if (
+      (AlertsIncidentsSwitchComponent &&
+        NetworkFilterPanelComponent &&
+        NetworkPageHeaderComponent &&
+        RowActionButtonsComponent) ||
+      modulesLoading
+    )
+      return;
+
+    modulesLoading = true;
+    try {
+      const {
+        AlertsIncidentsSwitchComponent: AlertsIncidentsSwitch,
+        NetworkFilterPanelComponent: NetworkFilterPanel,
+        NetworkPageHeaderComponent: NetworkPageHeader,
+        RowActionButtonsComponent: RowActionButtons,
+      } = await loadAlertsPageModules();
+      AlertsIncidentsSwitchComponent = AlertsIncidentsSwitch;
+      NetworkFilterPanelComponent = NetworkFilterPanel;
+      NetworkPageHeaderComponent = NetworkPageHeader;
+      RowActionButtonsComponent = RowActionButtons;
+    } finally {
+      modulesLoading = false;
+    }
+  }
+
   onMount(() => {
     if (!$can('read', 'network_alerts') && !$can('manage', 'network_alerts')) {
       goto('/unauthorized');
@@ -137,6 +166,7 @@
       }
     }
 
+    void ensureAlertsModulesLoaded();
     void load();
     refreshHandle = setInterval(() => void refreshSilent(), 5000);
   });
@@ -234,17 +264,18 @@
 </script>
 
 <div class="page-content fade-in">
-  <NetworkPageHeader
-    title={$t('admin.network.alerts.title') || 'Router Alerts'}
-    subtitle={$t('admin.network.alerts.subtitle') || 'Incidents detected from router polling.'}
-  >
-    {#snippet actions()}
-      <AlertsIncidentsSwitch
-        current="alerts"
-        nocHref={networkRoute('noc')}
-        alertsHref={networkRoute('alerts')}
-        incidentsHref={networkRoute('incidents')}
-      />
+  {#if NetworkPageHeaderComponent && AlertsIncidentsSwitchComponent && NetworkFilterPanelComponent}
+    <NetworkPageHeaderComponent
+      title={$t('admin.network.alerts.title') || 'Router Alerts'}
+      subtitle={$t('admin.network.alerts.subtitle') || 'Incidents detected from router polling.'}
+    >
+      {#snippet actions()}
+        <AlertsIncidentsSwitchComponent
+          current="alerts"
+          nocHref={networkRoute('noc')}
+          alertsHref={networkRoute('alerts')}
+          incidentsHref={networkRoute('incidents')}
+        />
 
       <button
         class="btn ghost"
@@ -264,9 +295,9 @@
         {$t('common.refresh') || 'Refresh'}
       </button>
     {/snippet}
-  </NetworkPageHeader>
+    </NetworkPageHeaderComponent>
 
-  <div class="stats">
+    <div class="stats">
     <div class="stat-card">
       <div class="stat-top">
         <span>{$t('common.total') || 'Total'}</span>
@@ -298,7 +329,7 @@
   </div>
 
   <div class="table-wrap">
-    <NetworkFilterPanel>
+      <NetworkFilterPanelComponent>
       <div class="control">
         <label for="alert-filter-status">{$t('admin.network.alerts.columns.status') || 'Status'}</label>
         <select id="alert-filter-status" class="input" bind:value={filterStatus}>
@@ -361,7 +392,7 @@
           {$t('admin.network.alerts.filters.reset') || 'Reset'}
         </button>
       </div>
-    </NetworkFilterPanel>
+      </NetworkFilterPanelComponent>
 
     <Table
       {columns}
@@ -399,21 +430,28 @@
             {timeAgo(item.last_seen_at)}
           </span>
         {:else if key === 'actions'}
-          <RowActionButtons
-            onOpen={() => openRouter(item.router_id)}
-            showSnooze={item.status !== 'resolved' && $can('manage', 'network_alerts')}
-            onSnooze={() => snooze(item.router_id, 30)}
-            showAcknowledge={item.status !== 'ack' && item.status !== 'resolved' && $can('manage', 'network_alerts')}
-            onAcknowledge={() => ack(item.id)}
-            showResolve={item.status !== 'resolved' && $can('manage', 'network_alerts')}
-            onResolve={() => resolve(item.id)}
-          />
+          {#if RowActionButtonsComponent}
+            <RowActionButtonsComponent
+              onOpen={() => openRouter(item.router_id)}
+              showSnooze={item.status !== 'resolved' && $can('manage', 'network_alerts')}
+              onSnooze={() => snooze(item.router_id, 30)}
+              showAcknowledge={item.status !== 'ack' && item.status !== 'resolved' && $can('manage', 'network_alerts')}
+              onAcknowledge={() => ack(item.id)}
+              showResolve={item.status !== 'resolved' && $can('manage', 'network_alerts')}
+              onResolve={() => resolve(item.id)}
+            />
+          {/if}
         {:else}
           {item[key] ?? ''}
         {/if}
       {/snippet}
     </Table>
-  </div>
+    </div>
+  {:else}
+    <div class="table-wrap">
+      <div class="muted" style="padding: 16px 18px;">{$t('common.loading') || 'Loading...'}</div>
+    </div>
+  {/if}
 </div>
 
 <style>

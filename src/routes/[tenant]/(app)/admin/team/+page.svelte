@@ -8,9 +8,8 @@
   import Table from '$lib/components/ui/Table.svelte';
   import TableToolbar from '$lib/components/ui/TableToolbar.svelte';
   import StatsCard from '$lib/components/dashboard/StatsCard.svelte';
-  import Modal from '$lib/components/ui/Modal.svelte';
   import Select from '$lib/components/ui/Select.svelte';
-  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+  import { loadTeamDialogModules } from './teamPageModules';
   import { toast } from 'svelte-sonner';
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
@@ -54,6 +53,10 @@
   let isDeleting = $state(false);
 
   let statusFilter = $state<'all' | 'active' | 'inactive'>('all');
+
+  let ModalComponent = $state<any>(null);
+  let ConfirmDialogComponent = $state<any>(null);
+  let dialogModulesLoading = $state(false);
 
   let filteredMembers = $derived(
     teamMembers.filter((m) => {
@@ -113,6 +116,25 @@
     }
   }
 
+  async function ensureDialogModulesLoaded() {
+    if ((ModalComponent && ConfirmDialogComponent) || dialogModulesLoading) return;
+
+    dialogModulesLoading = true;
+    try {
+      const { ModalComponent: Modal, ConfirmDialogComponent: ConfirmDialog } =
+        await loadTeamDialogModules();
+      ModalComponent = Modal;
+      ConfirmDialogComponent = ConfirmDialog;
+    } finally {
+      dialogModulesLoading = false;
+    }
+  }
+
+  async function openInviteModal() {
+    await ensureDialogModulesLoaded();
+    showInviteModal = true;
+  }
+
   async function inviteMember() {
     if (!inviteEmail || !inviteName || !inviteRoleId) return;
     inviting = true;
@@ -135,7 +157,8 @@
     }
   }
 
-  function confirmRemove(member: TeamMember) {
+  async function confirmRemove(member: TeamMember) {
+    await ensureDialogModulesLoaded();
     memberToDelete = member;
     showDeleteModal = true;
   }
@@ -161,7 +184,8 @@
     }
   }
 
-  function openEditModal(member: TeamMember) {
+  async function openEditModal(member: TeamMember) {
+    await ensureDialogModulesLoaded();
     editingMember = member;
     editRoleId = member.role_id || '';
     showEditModal = true;
@@ -294,7 +318,7 @@
         {/snippet}
         {#snippet actions()}
           {#if $can('create', 'team')}
-            <button class="btn btn-primary" onclick={() => (showInviteModal = true)}>
+            <button class="btn btn-primary" onclick={openInviteModal}>
               <Icon name="plus" size={18} />
               {$t('admin.team.invite_button') || 'Add Member'}
             </button>
@@ -394,122 +418,126 @@
   </div>
 </div>
 
-<ConfirmDialog
-  bind:show={showDeleteModal}
-  title={$t('admin.team.remove.title') || 'Remove Team Member'}
-  message={$t('admin.team.remove.message', {
-    values: { name: memberToDelete?.name || '' },
-  }) ||
-    `Are you sure you want to remove ${memberToDelete?.name} from the team? They will lose access immediately.`}
-  confirmText={$t('admin.team.remove.confirm') || 'Remove Member'}
-  type="danger"
-  loading={isDeleting}
-  onconfirm={handleConfirmDelete}
-/>
+{#if ConfirmDialogComponent}
+  <ConfirmDialogComponent
+    bind:show={showDeleteModal}
+    title={$t('admin.team.remove.title') || 'Remove Team Member'}
+    message={$t('admin.team.remove.message', {
+      values: { name: memberToDelete?.name || '' },
+    }) ||
+      `Are you sure you want to remove ${memberToDelete?.name} from the team? They will lose access immediately.`}
+    confirmText={$t('admin.team.remove.confirm') || 'Remove Member'}
+    type="danger"
+    loading={isDeleting}
+    onconfirm={handleConfirmDelete}
+  />
+{/if}
 
-<Modal
-  show={showInviteModal}
-  title={$t('admin.team.add_member_modal_title') || 'Add Team Member'}
-  onclose={() => (showInviteModal = false)}
->
-  <form
-    onsubmit={(e) => {
-      e.preventDefault();
-      inviteMember();
-    }}
+{#if ModalComponent}
+  <ModalComponent
+    show={showInviteModal}
+    title={$t('admin.team.add_member_modal_title') || 'Add Team Member'}
+    onclose={() => (showInviteModal = false)}
   >
-    <div class="form-group">
-      <label>
-        {$t('admin.team.name_label') || 'Name'}
-        <input
-          type="text"
-          bind:value={inviteName}
-          placeholder={$t('admin.team.placeholders.name') || 'John Doe'}
-          required
-        />
-      </label>
-    </div>
-    <div class="form-group">
-      <label>
-        {$t('admin.team.email_label') || 'Email Address'}
-        <input
-          type="email"
-          bind:value={inviteEmail}
-          placeholder={$t('admin.team.placeholders.email') || 'colleague@company.com'}
-          required
-        />
-      </label>
-    </div>
-    <div class="form-group">
-      <label>
-        {$t('admin.team.password_label') || 'Password (Optional)'}
-        <input
-          type="text"
-          bind:value={invitePassword}
-          placeholder={$t('admin.team.placeholders.password_auto') || 'Auto-generated if empty'}
-        />
-      </label>
-    </div>
-    <div class="form-group">
-      <label>
-        {$t('admin.team.role_label') || 'Role'}
-        <select bind:value={inviteRoleId} required>
-          {#each roles as role}
-            <option value={role.id}>{role.name}</option>
-          {/each}
-        </select>
-      </label>
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="btn btn-ghost" onclick={() => (showInviteModal = false)}>
-        {$t('admin.team.cancel') || 'Cancel'}
-      </button>
-      <button type="submit" class="btn btn-primary" disabled={inviting}>
-        {inviting ? $t('common.saving') || 'Saving...' : $t('admin.team.submit') || 'Add Member'}
-      </button>
-    </div>
-  </form>
-</Modal>
+    <form
+      onsubmit={(e) => {
+        e.preventDefault();
+        inviteMember();
+      }}
+    >
+      <div class="form-group">
+        <label>
+          {$t('admin.team.name_label') || 'Name'}
+          <input
+            type="text"
+            bind:value={inviteName}
+            placeholder={$t('admin.team.placeholders.name') || 'John Doe'}
+            required
+          />
+        </label>
+      </div>
+      <div class="form-group">
+        <label>
+          {$t('admin.team.email_label') || 'Email Address'}
+          <input
+            type="email"
+            bind:value={inviteEmail}
+            placeholder={$t('admin.team.placeholders.email') || 'colleague@company.com'}
+            required
+          />
+        </label>
+      </div>
+      <div class="form-group">
+        <label>
+          {$t('admin.team.password_label') || 'Password (Optional)'}
+          <input
+            type="text"
+            bind:value={invitePassword}
+            placeholder={$t('admin.team.placeholders.password_auto') || 'Auto-generated if empty'}
+          />
+        </label>
+      </div>
+      <div class="form-group">
+        <label>
+          {$t('admin.team.role_label') || 'Role'}
+          <select bind:value={inviteRoleId} required>
+            {#each roles as role}
+              <option value={role.id}>{role.name}</option>
+            {/each}
+          </select>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick={() => (showInviteModal = false)}>
+          {$t('admin.team.cancel') || 'Cancel'}
+        </button>
+        <button type="submit" class="btn btn-primary" disabled={inviting}>
+          {inviting ? $t('common.saving') || 'Saving...' : $t('admin.team.submit') || 'Add Member'}
+        </button>
+      </div>
+    </form>
+  </ModalComponent>
 
-<Modal
-  show={showEditModal}
-  title={$t('admin.team.edit_role.title') || 'Edit Member Role'}
-  onclose={() => (showEditModal = false)}
->
-  <form
-    onsubmit={(e) => {
-      e.preventDefault();
-      saveMemberRole();
-    }}
+  <ModalComponent
+    show={showEditModal}
+    title={$t('admin.team.edit_role.title') || 'Edit Member Role'}
+    onclose={() => (showEditModal = false)}
   >
-    <div class="form-group">
-      <label>
-        {$t('admin.team.edit_role.member_name') || 'Member Name'}
-        <input type="text" value={editingMember?.name} disabled class="bg-disabled" />
-      </label>
-    </div>
-    <div class="form-group">
-      <label>
-        {$t('admin.team.edit_role.role_label') || 'Role'}
-        <select bind:value={editRoleId} required>
-          {#each roles as role}
-            <option value={role.id}>{role.name}</option>
-          {/each}
-        </select>
-      </label>
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="btn btn-ghost" onclick={() => (showEditModal = false)}>
-        {$t('common.cancel') || 'Cancel'}
-      </button>
-      <button type="submit" class="btn btn-primary" disabled={savingRole}>
-        {savingRole
-          ? $t('common.saving') || 'Saving...'
-          : $t('common.save_changes') || 'Save Changes'}
-      </button>
-    </div>
-  </form>
-</Modal>
+    <form
+      onsubmit={(e) => {
+        e.preventDefault();
+        saveMemberRole();
+      }}
+    >
+      <div class="form-group">
+        <label>
+          {$t('admin.team.edit_role.member_name') || 'Member Name'}
+          <input type="text" value={editingMember?.name} disabled class="bg-disabled" />
+        </label>
+      </div>
+      <div class="form-group">
+        <label>
+          {$t('admin.team.edit_role.role_label') || 'Role'}
+          <select bind:value={editRoleId} required>
+            {#each roles as role}
+              <option value={role.id}>{role.name}</option>
+            {/each}
+          </select>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick={() => (showEditModal = false)}>
+          {$t('common.cancel') || 'Cancel'}
+        </button>
+        <button type="submit" class="btn btn-primary" disabled={savingRole}>
+          {savingRole
+            ? $t('common.saving') || 'Saving...'
+            : $t('common.save_changes') || 'Save Changes'}
+        </button>
+      </div>
+    </form>
+  </ModalComponent>
+{/if}
 
 <style>
   .page-content {

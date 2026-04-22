@@ -13,9 +13,7 @@
   import { superadminPlansCache } from '$lib/stores/superadminPlans';
   import { t } from 'svelte-i18n';
 
-  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
-  import TenantTable from '$lib/components/superadmin/tenants/TenantTable.svelte';
-  import TenantFormModal from '$lib/components/superadmin/tenants/TenantFormModal.svelte';
+  import { loadSuperadminTenantsModules } from './tenantsPageModules';
 
   let tenants = $state<any[]>([]);
   let plans = $state<any[]>([]);
@@ -52,6 +50,11 @@
 
   let searchQuery = $state('');
   let statusFilter = $state<'all' | 'active' | 'inactive'>('all');
+
+  let TenantTableComponent = $state<any>(null);
+  let TenantFormModalComponent = $state<any>(null);
+  let ConfirmDialogComponent = $state<any>(null);
+  let modulesLoading = $state(false);
 
   let stats = $derived({
     total: tenants.length,
@@ -123,12 +126,33 @@
       void loadData();
     }
 
+    void ensureTenantsModulesLoaded();
+
     return cleanup;
   });
 
   $effect(() => {
     if (isMobile && viewMode === 'table') viewMode = 'cards';
   });
+
+  async function ensureTenantsModulesLoaded() {
+    if ((TenantTableComponent && TenantFormModalComponent && ConfirmDialogComponent) || modulesLoading)
+      return;
+
+    modulesLoading = true;
+    try {
+      const {
+        TenantTableComponent: TenantTable,
+        TenantFormModalComponent: TenantFormModal,
+        ConfirmDialogComponent: ConfirmDialog,
+      } = await loadSuperadminTenantsModules();
+      TenantTableComponent = TenantTable;
+      TenantFormModalComponent = TenantFormModal;
+      ConfirmDialogComponent = ConfirmDialog;
+    } finally {
+      modulesLoading = false;
+    }
+  }
 
   function mapPlansToSelect(plansRes: any[]) {
     plans = (plansRes || [])
@@ -203,7 +227,8 @@
     }
   }
 
-  function openCreateModal() {
+  async function openCreateModal() {
+    await ensureTenantsModulesLoaded();
     isEditing = false;
     editingId = '';
 
@@ -219,7 +244,8 @@
     showCreateModal = true;
   }
 
-  function openEditModal(tenant: any) {
+  async function openEditModal(tenant: any) {
+    await ensureTenantsModulesLoaded();
     isEditing = true;
     editingId = tenant.id;
     Object.assign(newTenant, {
@@ -303,12 +329,14 @@
       .replace(/(^-|-$)/g, '');
   }
 
-  function confirmDelete(id: string) {
+  async function confirmDelete(id: string) {
+    await ensureTenantsModulesLoaded();
     pendingDeleteId = id;
     showConfirm = true;
   }
 
-  function confirmToggleTenant(tenant: any) {
+  async function confirmToggleTenant(tenant: any) {
+    await ensureTenantsModulesLoaded();
     pendingToggleTenant = tenant;
     showToggleConfirm = true;
   }
@@ -550,52 +578,63 @@
         </button>
       </div>
     {:else}
-      <TenantTable
-        tenants={filteredTenants}
-        {loading}
-        {viewMode}
-        {isMobile}
-        {columns}
-        onEdit={openEditModal}
-        onDelete={(id: string) => confirmDelete(id)}
-        onToggleStatus={confirmToggleTenant}
-      />
+      {#if TenantTableComponent}
+        <TenantTableComponent
+          tenants={filteredTenants}
+          {loading}
+          {viewMode}
+          {isMobile}
+          {columns}
+          onEdit={openEditModal}
+          onDelete={(id: string) => confirmDelete(id)}
+          onToggleStatus={confirmToggleTenant}
+        />
+      {:else}
+        <div class="error-state">
+          <Icon name="refresh-cw" size={28} class="spin" />
+          <p>{$t('superadmin.tenants.loading') || 'Loading tenants modules...'}</p>
+        </div>
+      {/if}
     {/if}
   </div>
 </div>
 
-<TenantFormModal
-  bind:show={showCreateModal}
-  {isEditing}
-  bind:newTenant
-  {plans}
-  loading={creating}
-  onSubmit={handleSubmit}
-  onGenerateSlug={generateSlug}
-/>
+{#if TenantFormModalComponent}
+  <TenantFormModalComponent
+    bind:show={showCreateModal}
+    {isEditing}
+    bind:newTenant
+    {plans}
+    loading={creating}
+    onSubmit={handleSubmit}
+    onGenerateSlug={generateSlug}
+  />
+{/if}
 
-<ConfirmDialog
-  bind:show={showConfirm}
-  title={$t('superadmin.tenants.delete.title') || 'Delete Tenant'}
-  message={$t('superadmin.tenants.delete.message') ||
-    'Are you sure you want to delete this tenant? This action cannot be undone and will remove all associated data.'}
-  confirmText={$t('superadmin.tenants.delete.confirm') || 'Delete Permanently'}
-  confirmationKeyword="DELETE"
-  type="danger"
-  loading={confirmLoading}
-  onconfirm={handleDelete}
-/>
+{#if ConfirmDialogComponent}
+  <ConfirmDialogComponent
+    bind:show={showConfirm}
+    title={$t('superadmin.tenants.delete.title') || 'Delete Tenant'}
+    message={$t('superadmin.tenants.delete.message') ||
+      'Are you sure you want to delete this tenant? This action cannot be undone and will remove all associated data.'}
+    confirmText={$t('superadmin.tenants.delete.confirm') || 'Delete Permanently'}
+    confirmationKeyword="DELETE"
+    type="danger"
+    loading={confirmLoading}
+    onconfirm={handleDelete}
+  />
 
-<ConfirmDialog
-  bind:show={showToggleConfirm}
-  title={toggleTitle}
-  message={toggleMessage}
-  confirmText={toggleConfirmText}
-  confirmationKeyword={toggleKeyword}
-  type={toggleType}
-  loading={toggleLoading}
-  onconfirm={handleToggleTenant}
-/>
+  <ConfirmDialogComponent
+    bind:show={showToggleConfirm}
+    title={toggleTitle}
+    message={toggleMessage}
+    confirmText={toggleConfirmText}
+    confirmationKeyword={toggleKeyword}
+    type={toggleType}
+    loading={toggleLoading}
+    onconfirm={handleToggleTenant}
+  />
+{/if}
 
 <style>
   .superadmin-content {

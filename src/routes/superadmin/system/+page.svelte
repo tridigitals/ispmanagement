@@ -9,14 +9,10 @@
   import { appSettings } from '$lib/stores/settings';
   import { formatDateTime } from '$lib/utils/date';
 
-  // New Components
-  import SystemStatusBanner from '$lib/components/superadmin/system/SystemStatusBanner.svelte';
-  import SystemResources from '$lib/components/superadmin/system/SystemResources.svelte';
-  import RequestMetrics from '$lib/components/superadmin/system/RequestMetrics.svelte';
-  import SystemStatsGrid from '$lib/components/superadmin/system/SystemStatsGrid.svelte';
-  import DatabaseTables from '$lib/components/superadmin/system/DatabaseTables.svelte';
-  import RecentActivity from '$lib/components/superadmin/system/RecentActivity.svelte';
-  import SystemDiagnosticsPanel from '$lib/components/superadmin/system/SystemDiagnosticsPanel.svelte';
+  import {
+    loadSuperadminSystemDiagnosticsModules,
+    loadSuperadminSystemHealthModules,
+  } from './systemPageModules';
 
   let activeView = $state<'health' | 'diagnostics'>('health');
   let health = $state<SystemHealth | null>(null);
@@ -26,6 +22,62 @@
   let diagLoading = $state(false);
   let diagError = $state('');
   let refreshInterval: ReturnType<typeof setInterval>;
+
+  let SystemStatusBannerComponent = $state<any>(null);
+  let SystemResourcesComponent = $state<any>(null);
+  let RequestMetricsComponent = $state<any>(null);
+  let SystemStatsGridComponent = $state<any>(null);
+  let DatabaseTablesComponent = $state<any>(null);
+  let RecentActivityComponent = $state<any>(null);
+  let SystemDiagnosticsPanelComponent = $state<any>(null);
+
+  let healthModulesLoading = $state(false);
+  let diagnosticsModulesLoading = $state(false);
+
+  async function ensureHealthModulesLoaded() {
+    const healthReady =
+      SystemStatusBannerComponent &&
+      SystemResourcesComponent &&
+      RequestMetricsComponent &&
+      SystemStatsGridComponent &&
+      DatabaseTablesComponent &&
+      RecentActivityComponent;
+
+    if (healthReady || healthModulesLoading) return;
+
+    healthModulesLoading = true;
+    try {
+      const {
+        SystemStatusBannerComponent: SystemStatusBanner,
+        SystemResourcesComponent: SystemResources,
+        RequestMetricsComponent: RequestMetrics,
+        SystemStatsGridComponent: SystemStatsGrid,
+        DatabaseTablesComponent: DatabaseTables,
+        RecentActivityComponent: RecentActivity,
+      } = await loadSuperadminSystemHealthModules();
+      SystemStatusBannerComponent = SystemStatusBanner;
+      SystemResourcesComponent = SystemResources;
+      RequestMetricsComponent = RequestMetrics;
+      SystemStatsGridComponent = SystemStatsGrid;
+      DatabaseTablesComponent = DatabaseTables;
+      RecentActivityComponent = RecentActivity;
+    } finally {
+      healthModulesLoading = false;
+    }
+  }
+
+  async function ensureDiagnosticsModulesLoaded() {
+    if (SystemDiagnosticsPanelComponent || diagnosticsModulesLoading) return;
+
+    diagnosticsModulesLoading = true;
+    try {
+      const { SystemDiagnosticsPanelComponent: SystemDiagnosticsPanel } =
+        await loadSuperadminSystemDiagnosticsModules();
+      SystemDiagnosticsPanelComponent = SystemDiagnosticsPanel;
+    } finally {
+      diagnosticsModulesLoading = false;
+    }
+  }
 
   onMount(() => {
     let unsubscribe: (() => void) | undefined;
@@ -46,6 +98,8 @@
     } else {
       void loadHealth();
     }
+    void ensureHealthModulesLoaded();
+
     // Auto-refresh every 30 seconds
     refreshInterval = setInterval(() => {
       if (activeView === 'health') void loadHealth();
@@ -85,8 +139,11 @@
 
   function switchView(view: 'health' | 'diagnostics') {
     activeView = view;
-    if (view === 'diagnostics' && !diagnostics && !diagLoading) {
-      void loadDiagnostics();
+    if (view === 'diagnostics') {
+      void ensureDiagnosticsModulesLoaded();
+      if (!diagnostics && !diagLoading) {
+        void loadDiagnostics();
+      }
     }
   }
 
@@ -142,15 +199,31 @@
         </button>
       </div>
     {:else if health}
-      <SystemStatusBanner {health} />
-      <SystemResources {health} />
-      <RequestMetrics {health} />
-      <SystemStatsGrid {health} />
+      {#if
+        SystemStatusBannerComponent &&
+        SystemResourcesComponent &&
+        RequestMetricsComponent &&
+        SystemStatsGridComponent &&
+        DatabaseTablesComponent &&
+        RecentActivityComponent
+      }
+        <SystemStatusBannerComponent {health} />
+        <SystemResourcesComponent {health} />
+        <RequestMetricsComponent {health} />
+        <SystemStatsGridComponent {health} />
 
-      <div class="grid-2">
-        <DatabaseTables {health} />
-        <RecentActivity {health} />
-      </div>
+        <div class="grid-2">
+          <DatabaseTablesComponent {health} />
+          <RecentActivityComponent {health} />
+        </div>
+      {:else}
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>
+            {$t('superadmin.system.loading') || 'Loading system health...'}
+          </p>
+        </div>
+      {/if}
 
       <div class="last-updated">
         <Icon name="clock" size={14} />
@@ -174,7 +247,16 @@
       </button>
     </div>
   {:else if diagnostics}
-    <SystemDiagnosticsPanel {diagnostics} />
+    {#if SystemDiagnosticsPanelComponent}
+      <SystemDiagnosticsPanelComponent {diagnostics} />
+    {:else}
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>
+          {$t('superadmin.system.diagnostics.loading') || 'Loading diagnostics...'}
+        </p>
+      </div>
+    {/if}
   {/if}
 </div>
 

@@ -6,6 +6,7 @@ describe('icon resolver', () => {
   it('maps known aliases to lucide icon module names', () => {
     expect(getLucideIconImportPath('dashboard')).toBe('layout-dashboard');
     expect(getLucideIconImportPath('alert')).toBe('alert-circle');
+    expect(getLucideIconImportPath('ban')).toBe('circle-off');
     expect(getLucideIconImportPath('trash')).toBe('trash-2');
     expect(getLucideIconImportPath('sidebar-toggle')).toBe('panel-left');
   });

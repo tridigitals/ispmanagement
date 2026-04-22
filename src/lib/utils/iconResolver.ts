@@ -2,6 +2,7 @@ const iconAliases: Record<string, string> = {
   alert: 'alert-circle',
   app: 'rocket',
   building: 'building-2',
+  ban: 'circle-off',
   check: 'check-circle',
   chevron: 'chevron-right',
   clock: 'clock-3',
