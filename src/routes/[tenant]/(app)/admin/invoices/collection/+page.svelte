@@ -11,8 +11,8 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
-  import { exportCsvRows, exportExcelRows } from '$lib/utils/tabularExport';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
+  import { loadCollectionExportModule } from './collectionPageModules';
 
   type ActiveTab = 'collection' | 'reminders';
 
@@ -278,8 +278,9 @@
     }));
   }
 
-  function exportCsv() {
+  async function exportCsv() {
     const rows = activeTab === 'collection' ? buildCollectionExportRows() : buildReminderExportRows();
+    const { exportCsvRows } = await loadCollectionExportModule();
     const ok = exportCsvRows(rows, activeTab === 'collection' ? 'billing-collection-logs' : 'invoice-reminder-logs');
     if (!ok) {
       toast.error(get(t)('admin.billing_collection.toasts.no_data_export') || 'No data to export');
@@ -288,8 +289,9 @@
     toast.success(get(t)('admin.billing_collection.toasts.export_ok') || 'Export completed');
   }
 
-  function exportExcel() {
+  async function exportExcel() {
     const rows = activeTab === 'collection' ? buildCollectionExportRows() : buildReminderExportRows();
+    const { exportExcelRows } = await loadCollectionExportModule();
     const ok = exportExcelRows(rows, activeTab === 'collection' ? 'billing-collection-logs' : 'invoice-reminder-logs');
     if (!ok) {
       toast.error(get(t)('admin.billing_collection.toasts.no_data_export') || 'No data to export');

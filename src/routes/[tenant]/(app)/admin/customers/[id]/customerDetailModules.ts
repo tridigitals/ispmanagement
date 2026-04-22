@@ -10,6 +10,10 @@ export type CustomerDetailDialogModules = {
   ConfirmDialogComponent: DeferredComponent;
 };
 
+export type CustomerDetailDialogsOverlayModule = {
+  CustomerDetailDialogsComponent: DeferredComponent;
+};
+
 function createCachedLoader<T>(loader: AsyncModuleLoader<T>): AsyncModuleLoader<T> {
   let cached: Promise<T> | null = null;
 
@@ -41,3 +45,14 @@ export const loadCustomerDetailDialogModules = createCachedLoader(async () => {
     ConfirmDialogComponent,
   };
 });
+
+export const loadCustomerDetailDialogsOverlay =
+  createCachedLoader<CustomerDetailDialogsOverlayModule>(async () => {
+    const { default: CustomerDetailDialogsComponent } = await import(
+      './CustomerDetailDialogs.svelte'
+    );
+
+    return {
+      CustomerDetailDialogsComponent,
+    };
+  });

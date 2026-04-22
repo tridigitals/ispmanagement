@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Component } from 'svelte';
   import { onMount } from 'svelte';
   import {
     api,
@@ -14,11 +15,11 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import Select from '$lib/components/ui/Select.svelte';
   import Toggle from '$lib/components/ui/Toggle.svelte';
-  import RichTextEditor from '$lib/components/ui/RichTextEditor.svelte';
   import DateTimeLocalInput from '$lib/components/ui/DateTimeLocalInput.svelte';
   import { formatDateTime } from '$lib/utils/date';
   import { appSettings } from '$lib/stores/settings';
   import { stripHtmlToText } from '$lib/utils/sanitizeHtml';
+  import { loadAnnouncementEditorComponent } from './announcementsPageModules';
 
   let loading = $state(true);
   let saving = $state(false);
@@ -49,6 +50,8 @@
   let endsAt = $state<string>('');
   let coverFile = $state<File | null>(null);
   let coverPreviewUrl = $state<string>('');
+  let AnnouncementEditorComponent = $state<Component | null>(null);
+  let announcementEditorLoading = $state(false);
 
   const scopeOptions = [
     { label: get(t)('announcements.scopes.tenant') || 'Tenant', value: 'tenant' },
@@ -91,8 +94,23 @@
       goto('/unauthorized');
       return;
     }
+    void ensureAnnouncementEditorLoaded();
     await load(true);
   });
+
+  async function ensureAnnouncementEditorLoaded() {
+    if (AnnouncementEditorComponent || announcementEditorLoading) return;
+
+    announcementEditorLoading = true;
+    try {
+      const { EditorComponent } = await loadAnnouncementEditorComponent();
+      AnnouncementEditorComponent = EditorComponent;
+    } catch (e: any) {
+      toast.error(e?.message || e);
+    } finally {
+      announcementEditorLoading = false;
+    }
+  }
 
   async function load(reset: boolean) {
     loading = true;
@@ -128,6 +146,11 @@
     const m = modeFilter;
     const timer = setTimeout(() => void load(true), 250);
     return () => clearTimeout(timer);
+  });
+
+  $effect(() => {
+    if (activeTab !== 'create') return;
+    void ensureAnnouncementEditorLoaded();
   });
 
   async function loadMore() {
@@ -366,15 +389,28 @@
               <input class="input" bind:value={title} placeholder="e.g. Planned maintenance" />
             </label>
             <div class="span-2">
-              <RichTextEditor
-                label={$t('announcements.fields.body') || 'Body'}
-                bind:value={body}
-                placeholder={$t('announcements.placeholders.body') ||
-                  'Write something clear and short…'}
-                help={$t('announcements.hints.rich') ||
-                  'Tip: Keep it concise. Links are allowed; images should be added as cover.'}
-                minHeight={190}
-              />
+              {#if AnnouncementEditorComponent}
+                <AnnouncementEditorComponent
+                  label={$t('announcements.fields.body') || 'Body'}
+                  bind:value={body}
+                  placeholder={$t('announcements.placeholders.body') ||
+                    'Write something clear and short…'}
+                  help={$t('announcements.hints.rich') ||
+                    'Tip: Keep it concise. Links are allowed; images should be added as cover.'}
+                  minHeight={190}
+                />
+              {:else}
+                <div class="editor-placeholder" aria-busy={announcementEditorLoading}>
+                  <div class="label">{$t('announcements.fields.body') || 'Body'}</div>
+                  <div class="editor-placeholder-shell">
+                    <div class="editor-placeholder-toolbar"></div>
+                    <div class="editor-placeholder-body"></div>
+                  </div>
+                  <div class="help">
+                    {$t('announcements.placeholders.body') || 'Write something clear and short…'}
+                  </div>
+                </div>
+              {/if}
             </div>
             <div class="row span-2">
               <DateTimeLocalInput
@@ -806,6 +842,67 @@
     margin: 0;
     color: var(--text-secondary);
     font-size: 0.85rem;
+  }
+
+  .editor-placeholder {
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .editor-placeholder-shell {
+    display: grid;
+    gap: 0.55rem;
+    padding: 0.7rem;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  :global([data-theme='light']) .editor-placeholder-shell {
+    background: rgba(0, 0, 0, 0.01);
+  }
+
+  .editor-placeholder-toolbar,
+  .editor-placeholder-body {
+    border-radius: 10px;
+    background:
+      linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.05) 0%,
+        rgba(255, 255, 255, 0.11) 50%,
+        rgba(255, 255, 255, 0.05) 100%
+      );
+    background-size: 200% 100%;
+    animation: announcement-editor-placeholder 1.2s ease-in-out infinite;
+  }
+
+  :global([data-theme='light']) .editor-placeholder-toolbar,
+  :global([data-theme='light']) .editor-placeholder-body {
+    background:
+      linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.05) 0%,
+        rgba(0, 0, 0, 0.1) 50%,
+        rgba(0, 0, 0, 0.05) 100%
+      );
+    background-size: 200% 100%;
+  }
+
+  .editor-placeholder-toolbar {
+    height: 2.5rem;
+  }
+
+  .editor-placeholder-body {
+    min-height: 9rem;
+  }
+
+  @keyframes announcement-editor-placeholder {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
   }
 
   .btn {

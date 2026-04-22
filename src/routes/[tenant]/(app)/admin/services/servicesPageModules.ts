@@ -9,6 +9,10 @@ export type ServicesModalModules = {
   ToggleComponent: DeferredComponent;
 };
 
+export type ServicesDialogsModule = {
+  ServicesDialogsComponent: DeferredComponent;
+};
+
 function createCachedLoader<T>(loader: AsyncModuleLoader<T>): AsyncModuleLoader<T> {
   let cached: Promise<T> | null = null;
 
@@ -32,5 +36,13 @@ export const loadServicesModalModules = createCachedLoader(async () => {
     ModalComponent,
     Select2Component,
     ToggleComponent,
+  };
+});
+
+export const loadServicesDialogs = createCachedLoader<ServicesDialogsModule>(async () => {
+  const { default: ServicesDialogsComponent } = await import('./ServicesDialogs.svelte');
+
+  return {
+    ServicesDialogsComponent,
   };
 });

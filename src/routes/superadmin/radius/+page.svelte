@@ -11,10 +11,6 @@
     SuperadminManagedRadiusUser,
     Tenant,
   } from '$lib/api/types';
-  import AssignmentFormModal from '$lib/components/superadmin/radius/AssignmentFormModal.svelte';
-  import MappingFormModal from '$lib/components/superadmin/radius/MappingFormModal.svelte';
-  import MappingSecretDialog from '$lib/components/superadmin/radius/MappingSecretDialog.svelte';
-  import ServerFormModal from '$lib/components/superadmin/radius/ServerFormModal.svelte';
   import StatsCard from '$lib/components/dashboard/StatsCard.svelte';
   import { toast } from '$lib/stores/toast';
   import {
@@ -23,6 +19,7 @@
     filterManagedRadiusMappings,
     type ManagedRadiusTabId,
   } from '$lib/utils/managedRadiusControlPlane';
+  import { loadSuperadminRadiusDialogs } from './superadminRadiusPageModules';
   import { t } from 'svelte-i18n';
   import { onMount } from 'svelte';
 
@@ -112,10 +109,40 @@
   let secretDialogRevealed = $state('');
   let secretDialogMapping = $state<SuperadminManagedRadiusMapping | null>(null);
   let mappingSecretCache = $state<Record<string, ManagedRadiusSecretValue>>({});
+  let radiusDialogsLoading = $state(false);
+  let AssignmentFormModalComponent = $state<any>(null);
+  let MappingFormModalComponent = $state<any>(null);
+  let MappingSecretDialogComponent = $state<any>(null);
+  let ServerFormModalComponent = $state<any>(null);
 
   onMount(() => {
     void loadData();
   });
+
+  async function ensureSuperadminRadiusDialogsLoaded() {
+    if (
+      AssignmentFormModalComponent &&
+      MappingFormModalComponent &&
+      MappingSecretDialogComponent &&
+      ServerFormModalComponent
+    ) {
+      return;
+    }
+    if (radiusDialogsLoading) return;
+
+    radiusDialogsLoading = true;
+    try {
+      const modules = await loadSuperadminRadiusDialogs();
+      AssignmentFormModalComponent = modules.AssignmentFormModalComponent;
+      MappingFormModalComponent = modules.MappingFormModalComponent;
+      MappingSecretDialogComponent = modules.MappingSecretDialogComponent;
+      ServerFormModalComponent = modules.ServerFormModalComponent;
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to load managed RADIUS dialogs');
+    } finally {
+      radiusDialogsLoading = false;
+    }
+  }
 
   async function loadData(opts: { silent?: boolean } = {}) {
     if (opts.silent) refreshing = true;
@@ -639,6 +666,11 @@
   }));
 
   const tabs = $derived.by(() => buildManagedRadiusTabs(stats, activeTab));
+
+  $effect(() => {
+    if (!showServerModal && !showAssignmentModal && !showMappingModal && !showSecretDialog) return;
+    void ensureSuperadminRadiusDialogsLoaded();
+  });
 </script>
 
 <div class="page-shell">
@@ -1055,49 +1087,57 @@
   {/if}
 </div>
 
-<ServerFormModal
-  bind:show={showServerModal}
-  loading={savingServer}
-  isEditing={Boolean(editingServerId)}
-  bind:server={serverForm}
-  onSubmit={submitServerForm}
-/>
+{#if ServerFormModalComponent}
+  <ServerFormModalComponent
+    bind:show={showServerModal}
+    loading={savingServer}
+    isEditing={Boolean(editingServerId)}
+    bind:server={serverForm}
+    onSubmit={submitServerForm}
+  />
+{/if}
 
-<AssignmentFormModal
-  bind:show={showAssignmentModal}
-  loading={savingAssignment}
-  isEditing={Boolean(editingAssignmentId)}
-  bind:assignment={assignmentForm}
-  {tenants}
-  {servers}
-  onSubmit={submitAssignmentForm}
-/>
+{#if AssignmentFormModalComponent}
+  <AssignmentFormModalComponent
+    bind:show={showAssignmentModal}
+    loading={savingAssignment}
+    isEditing={Boolean(editingAssignmentId)}
+    bind:assignment={assignmentForm}
+    {tenants}
+    {servers}
+    onSubmit={submitAssignmentForm}
+  />
+{/if}
 
-<MappingFormModal
-  bind:show={showMappingModal}
-  loading={savingMapping}
-  isEditing={Boolean(editingMappingId)}
-  bind:mapping={mappingForm}
-  {tenants}
-  {assignments}
-  {routers}
-  onGenerateSecret={generateSecretForMappingForm}
-  onSubmit={submitMappingForm}
-/>
+{#if MappingFormModalComponent}
+  <MappingFormModalComponent
+    bind:show={showMappingModal}
+    loading={savingMapping}
+    isEditing={Boolean(editingMappingId)}
+    bind:mapping={mappingForm}
+    {tenants}
+    {assignments}
+    {routers}
+    onGenerateSecret={generateSecretForMappingForm}
+    onSubmit={submitMappingForm}
+  />
+{/if}
 
-<MappingSecretDialog
-  bind:show={showSecretDialog}
-  loading={secretDialogLoading}
-  mode={secretDialogMode}
-  mappingLabel={secretDialogMapping
-    ? `${secretDialogMapping.server_name} / ${secretDialogMapping.router_name || secretDialogMapping.nas_name}`
-    : ''}
-  maskedSecret={secretDialogMapping?.shared_secret_masked || ''}
-  revealedSecret={secretDialogRevealed}
-  bind:secretDraft={secretDialogDraft}
-  onGenerate={generateSecretForDialog}
-  onSubmit={submitSecretDialog}
-/>
+{#if MappingSecretDialogComponent}
+  <MappingSecretDialogComponent
+    bind:show={showSecretDialog}
+    loading={secretDialogLoading}
+    mode={secretDialogMode}
+    mappingLabel={secretDialogMapping
+      ? `${secretDialogMapping.server_name} / ${secretDialogMapping.router_name || secretDialogMapping.nas_name}`
+      : ''}
+    maskedSecret={secretDialogMapping?.shared_secret_masked || ''}
+    revealedSecret={secretDialogRevealed}
+    bind:secretDraft={secretDialogDraft}
+    onGenerate={generateSecretForDialog}
+    onSubmit={submitSecretDialog}
+  />
+{/if}
 
 <style>
   .page-shell {

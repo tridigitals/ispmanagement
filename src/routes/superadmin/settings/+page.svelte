@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { api } from '$lib/api/client';
-  import type { Setting, BankAccount, EmailVerificationReadiness } from '$lib/api/client';
+  import type { BankAccount, EmailVerificationReadiness } from '$lib/api/client';
   import { isSuperAdmin } from '$lib/stores/auth';
   import { goto } from '$app/navigation';
   import Icon from '$lib/components/ui/Icon.svelte';
@@ -11,122 +11,121 @@
   import { superadminPlatformSettingsCache } from '$lib/stores/superadminPlatformSettings';
   import { get } from 'svelte/store';
   import { t } from 'svelte-i18n';
+  import {
+    loadSettingsTabComponent,
+    type SettingsTabId,
+  } from './settingsPageModules';
 
-  // Modulariized Settings Components
-  import SettingsGeneralTab from '$lib/components/superadmin/settings/SettingsGeneralTab.svelte';
-  import SettingsAuthTab from '$lib/components/superadmin/settings/SettingsAuthTab.svelte';
-  import SettingsPasswordTab from '$lib/components/superadmin/settings/SettingsPasswordTab.svelte';
-  import SettingsSecurityTab from '$lib/components/superadmin/settings/SettingsSecurityTab.svelte';
-  import SettingsStorageTab from '$lib/components/superadmin/settings/SettingsStorageTab.svelte';
-  import SettingsPaymentTab from '$lib/components/superadmin/settings/SettingsPaymentTab.svelte';
-  import SettingsAlertingTab from '$lib/components/superadmin/settings/SettingsAlertingTab.svelte';
-  import SettingsBackupTab from '$lib/components/superadmin/settings/SettingsBackupTab.svelte';
-
-  let loading = true;
-  let saving = false;
-  let activeTab = 'general';
-  let isMobile = false;
+  let loading = $state(true);
+  let saving = $state(false);
+  let activeTab = $state<SettingsTabId>('general');
+  let isMobile = $state(false);
+  let loadedSettingsTabs = $state<Partial<Record<SettingsTabId, any>>>({});
+  let activeTabLoading = $state(false);
 
   // Bank Account Data Models
-  let bankAccounts: BankAccount[] = [];
-  let newBankName = '';
-  let newAccountNumber = '';
-  let newAccountHolder = '';
-  let addingBank = false;
+  let bankAccounts = $state<BankAccount[]>([]);
+  let newBankName = $state('');
+  let newAccountNumber = $state('');
+  let newAccountHolder = $state('');
+  let addingBank = $state(false);
 
   // Maintenance
-  let maintenanceMode = false;
-  let maintenanceMessage = '';
+  let maintenanceMode = $state(false);
+  let maintenanceMessage = $state('');
 
   // General
-  let appPublicUrl = '';
-  let appMainDomain = '';
-  let currencyCode = 'IDR';
+  let appPublicUrl = $state('');
+  let appMainDomain = $state('');
+  let currencyCode = $state('IDR');
   const currencyCodeOptions = ['IDR', 'USD'];
-  let appTimezone = 'UTC';
+  let appTimezone = $state('UTC');
 
   // Authentication Settings
-  let authAllowRegistration = false;
-  let authRequireEmailVerification = false;
-  let emailVerificationReadiness = { ready: true, reason: null } as EmailVerificationReadiness;
-  let authJwtExpiryHours = 24;
-  let authSessionTimeoutMinutes = 60;
+  let authAllowRegistration = $state(false);
+  let authRequireEmailVerification = $state(false);
+  let emailVerificationReadiness = $state({
+    ready: true,
+    reason: null,
+  } as EmailVerificationReadiness);
+  let authJwtExpiryHours = $state(24);
+  let authSessionTimeoutMinutes = $state(60);
 
   // Password Policy
-  let authPasswordMinLength = 8;
-  let authPasswordRequireUppercase = false;
-  let authPasswordRequireNumber = false;
-  let authPasswordRequireSpecial = false;
-  let authLogoutAllOnPasswordChange = true;
+  let authPasswordMinLength = $state(8);
+  let authPasswordRequireUppercase = $state(false);
+  let authPasswordRequireNumber = $state(false);
+  let authPasswordRequireSpecial = $state(false);
+  let authLogoutAllOnPasswordChange = $state(true);
 
   // Security & Rate Limiting
-  let maxLoginAttempts = 5;
-  let lockoutDurationMinutes = 15;
-  let apiRateLimitPerMinute = 100;
-  let enableIpBlocking = false;
+  let maxLoginAttempts = $state(5);
+  let lockoutDurationMinutes = $state(15);
+  let apiRateLimitPerMinute = $state(100);
+  let enableIpBlocking = $state(false);
 
   // 2FA Configuration
-  let twoFAEnabled = true;
-  let twoFAMethodTotp = true;
-  let twoFAMethodEmail = false;
-  let twoFAEmailOtpExpiryMinutes = 5;
+  let twoFAEnabled = $state(true);
+  let twoFAMethodTotp = $state(true);
+  let twoFAMethodEmail = $state(false);
+  let twoFAEmailOtpExpiryMinutes = $state(5);
 
   // Storage
-  let storageMaxFileSizeMb = 500;
-  let storageAllowedExtensions = '';
+  let storageMaxFileSizeMb = $state(500);
+  let storageAllowedExtensions = $state('');
 
   // Storage Driver Config
-  let storageDriver = 'local';
-  let storageS3Bucket = '';
-  let storageS3Region = 'us-east-1';
-  let storageS3Endpoint = '';
-  let storageS3AccessKey = '';
-  let storageS3SecretKey = '';
-  let storageS3PublicUrl = '';
+  let storageDriver = $state('local');
+  let storageS3Bucket = $state('');
+  let storageS3Region = $state('us-east-1');
+  let storageS3Endpoint = $state('');
+  let storageS3AccessKey = $state('');
+  let storageS3SecretKey = $state('');
+  let storageS3PublicUrl = $state('');
 
   // Payment Settings
-  let paymentMidtransEnabled = false;
-  let paymentMidtransMerchantId = '';
-  let paymentMidtransServerKey = '';
-  let paymentMidtransClientKey = '';
-  let paymentMidtransIsProduction = false;
-  let paymentManualEnabled = true;
-  let paymentManualInstructions = '';
-  let installationSlaReminderEnabled = true;
-  let installationSlaOverdueMinutes = 120;
-  let installationSlaReminderCooldownMinutes = 180;
-  let installationSlaSchedulerIntervalMinutes = 15;
+  let paymentMidtransEnabled = $state(false);
+  let paymentMidtransMerchantId = $state('');
+  let paymentMidtransServerKey = $state('');
+  let paymentMidtransClientKey = $state('');
+  let paymentMidtransIsProduction = $state(false);
+  let paymentManualEnabled = $state(true);
+  let paymentManualInstructions = $state('');
+  let installationSlaReminderEnabled = $state(true);
+  let installationSlaOverdueMinutes = $state(120);
+  let installationSlaReminderCooldownMinutes = $state(180);
+  let installationSlaSchedulerIntervalMinutes = $state(15);
 
   // Alerting Settings
-  let alertingEnabled = false;
-  let alertingEmail = '';
-  let alertingErrorThreshold = 5.0;
-  let alertingRateLimitThreshold = 50;
-  let alertingResponseTimeThreshold = 3000;
-  let alertingCooldownMinutes = 15;
+  let alertingEnabled = $state(false);
+  let alertingEmail = $state('');
+  let alertingErrorThreshold = $state(5.0);
+  let alertingRateLimitThreshold = $state(50);
+  let alertingResponseTimeThreshold = $state(3000);
+  let alertingCooldownMinutes = $state(15);
 
   // Backup Settings
-  let backupGlobalEnabled = false;
+  let backupGlobalEnabled = $state(false);
   type BackupMode = 'minute' | 'hour' | 'day' | 'week';
   type Weekday = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
-  let backupGlobalMode: BackupMode = 'day';
-  let backupGlobalEvery = 15;
-  let backupGlobalAt = '02:00';
-  let backupGlobalWeekday: Weekday = 'sun';
-  let backupGlobalRetentionDays = 30;
-  let backupTenantEnabled = false;
-  let backupTenantMode: BackupMode = 'day';
-  let backupTenantEvery = 60;
-  let backupTenantAt = '02:30';
-  let backupTenantWeekday: Weekday = 'sun';
-  let backupTenantRetentionDays = 14;
+  let backupGlobalMode = $state<BackupMode>('day');
+  let backupGlobalEvery = $state(15);
+  let backupGlobalAt = $state('02:00');
+  let backupGlobalWeekday = $state<Weekday>('sun');
+  let backupGlobalRetentionDays = $state(30);
+  let backupTenantEnabled = $state(false);
+  let backupTenantMode = $state<BackupMode>('day');
+  let backupTenantEvery = $state(60);
+  let backupTenantAt = $state('02:30');
+  let backupTenantWeekday = $state<Weekday>('sun');
+  let backupTenantRetentionDays = $state(14);
 
-  let hasChanges = false;
+  let hasChanges = $state(false);
 
   // Sending test email state
-  let testEmailAddress = '';
-  let sendingTestEmail = false;
+  let testEmailAddress = $state('');
+  let sendingTestEmail = $state(false);
 
   const categories = {
     general: {
@@ -171,17 +170,18 @@
     },
   };
 
-  let pageTitle = 'Platform Settings';
-  let pageSubtitle = 'Global Configuration';
-  let categoryEntries: { id: string; icon: string; label: string }[] = [];
-
-  $: pageTitle = $t('superadmin.settings.title') || 'Platform Settings';
-  $: pageSubtitle = $t('superadmin.settings.subtitle') || 'Global Configuration';
-  $: categoryEntries = Object.entries(categories).map(([id, cat]) => ({
-    id,
-    icon: cat.icon,
-    label: $t(cat.labelKey) || cat.labelFallback,
-  }));
+  let pageTitle = $derived($t('superadmin.settings.title') || 'Platform Settings');
+  let pageSubtitle = $derived(
+    $t('superadmin.settings.subtitle') || 'Global Configuration',
+  );
+  let categoryEntries = $derived(
+    Object.entries(categories).map(([id, cat]) => ({
+      id: id as SettingsTabId,
+      icon: cat.icon,
+      label: $t(cat.labelKey) || cat.labelFallback,
+    })),
+  );
+  let CurrentTabComponent = $derived(loadedSettingsTabs[activeTab] || null);
 
   onMount(async () => {
     if (!$isSuperAdmin) {
@@ -216,6 +216,28 @@
     }
 
     await loadSettings();
+  });
+
+  async function ensureSettingsTabLoaded(tab: SettingsTabId) {
+    if (loadedSettingsTabs[tab]) return;
+
+    activeTabLoading = true;
+    try {
+      const component = await loadSettingsTabComponent(tab);
+      loadedSettingsTabs = {
+        ...loadedSettingsTabs,
+        [tab]: component,
+      };
+    } catch (err) {
+      console.error(`Failed to load settings tab "${tab}":`, err);
+      toast.error(get(t)('superadmin.settings.errors.load_failed') || 'Failed to load settings');
+    } finally {
+      activeTabLoading = false;
+    }
+  }
+
+  $effect(() => {
+    void ensureSettingsTabLoaded(activeTab);
   });
 
   function applySettingsMap(settingsMap: Record<string, string>) {
@@ -840,7 +862,7 @@
         {#each categoryEntries as cat}
           <button
             class="nav-item {activeTab === cat.id ? 'active' : ''}"
-            on:click={() => {
+            onclick={() => {
               activeTab = cat.id;
             }}
           >
@@ -880,132 +902,188 @@
       {:else}
         <!-- General & Maintenance Tab -->
         {#if activeTab === 'general'}
-          <SettingsGeneralTab
-            bind:appPublicUrl
-            bind:appMainDomain
-            bind:currencyCode
-            bind:appTimezone
-            {currencyCodeOptions}
-            bind:maintenanceMode
-            bind:maintenanceMessage
-            on:change={handleChange}
-          />
+          {#if CurrentTabComponent}
+            <CurrentTabComponent
+              bind:appPublicUrl
+              bind:appMainDomain
+              bind:currencyCode
+              bind:appTimezone
+              {currencyCodeOptions}
+              bind:maintenanceMode
+              bind:maintenanceMessage
+              on:change={handleChange}
+            />
+          {:else}
+            <div class="tab-loading card" aria-busy={activeTabLoading}>
+              <div class="tab-loading-bar"></div>
+              <div class="tab-loading-body"></div>
+            </div>
+          {/if}
         {/if}
 
         <!-- Authentication Tab -->
         {#if activeTab === 'auth'}
-          <SettingsAuthTab
-            bind:authAllowRegistration
-            bind:authRequireEmailVerification
-            emailVerificationReady={emailVerificationReadiness.ready}
-            emailVerificationReason={emailVerificationReadiness.reason || ''}
-            bind:authJwtExpiryHours
-            bind:authSessionTimeoutMinutes
-            on:change={handleChange}
-          />
+          {#if CurrentTabComponent}
+            <CurrentTabComponent
+              bind:authAllowRegistration
+              bind:authRequireEmailVerification
+              emailVerificationReady={emailVerificationReadiness.ready}
+              emailVerificationReason={emailVerificationReadiness.reason || ''}
+              bind:authJwtExpiryHours
+              bind:authSessionTimeoutMinutes
+              on:change={handleChange}
+            />
+          {:else}
+            <div class="tab-loading card" aria-busy={activeTabLoading}>
+              <div class="tab-loading-bar"></div>
+              <div class="tab-loading-body"></div>
+            </div>
+          {/if}
         {/if}
 
         <!-- Password Policy Tab -->
         {#if activeTab === 'password'}
-          <SettingsPasswordTab
-            bind:authPasswordMinLength
-            bind:authPasswordRequireUppercase
-            bind:authPasswordRequireNumber
-            bind:authPasswordRequireSpecial
-            on:change={handleChange}
-          />
+          {#if CurrentTabComponent}
+            <CurrentTabComponent
+              bind:authPasswordMinLength
+              bind:authPasswordRequireUppercase
+              bind:authPasswordRequireNumber
+              bind:authPasswordRequireSpecial
+              on:change={handleChange}
+            />
+          {:else}
+            <div class="tab-loading card" aria-busy={activeTabLoading}>
+              <div class="tab-loading-bar"></div>
+              <div class="tab-loading-body"></div>
+            </div>
+          {/if}
         {/if}
 
         <!-- Security Tab -->
         {#if activeTab === 'security'}
-          <SettingsSecurityTab
-            bind:maxLoginAttempts
-            bind:lockoutDurationMinutes
-            bind:apiRateLimitPerMinute
-            bind:enableIpBlocking
-            bind:twoFAEnabled
-            bind:twoFAMethodTotp
-            bind:twoFAMethodEmail
-            bind:twoFAEmailOtpExpiryMinutes
-            on:change={handleChange}
-          />
+          {#if CurrentTabComponent}
+            <CurrentTabComponent
+              bind:maxLoginAttempts
+              bind:lockoutDurationMinutes
+              bind:apiRateLimitPerMinute
+              bind:enableIpBlocking
+              bind:twoFAEnabled
+              bind:twoFAMethodTotp
+              bind:twoFAMethodEmail
+              bind:twoFAEmailOtpExpiryMinutes
+              on:change={handleChange}
+            />
+          {:else}
+            <div class="tab-loading card" aria-busy={activeTabLoading}>
+              <div class="tab-loading-bar"></div>
+              <div class="tab-loading-body"></div>
+            </div>
+          {/if}
         {/if}
 
         <!-- Storage Tab -->
         {#if activeTab === 'storage'}
-          <SettingsStorageTab
-            bind:storageDriver
-            bind:storageS3Bucket
-            bind:storageS3Region
-            bind:storageS3Endpoint
-            bind:storageS3AccessKey
-            bind:storageS3SecretKey
-            bind:storageS3PublicUrl
-            bind:storageMaxFileSizeMb
-            bind:storageAllowedExtensions
-            on:change={handleChange}
-          />
+          {#if CurrentTabComponent}
+            <CurrentTabComponent
+              bind:storageDriver
+              bind:storageS3Bucket
+              bind:storageS3Region
+              bind:storageS3Endpoint
+              bind:storageS3AccessKey
+              bind:storageS3SecretKey
+              bind:storageS3PublicUrl
+              bind:storageMaxFileSizeMb
+              bind:storageAllowedExtensions
+              on:change={handleChange}
+            />
+          {:else}
+            <div class="tab-loading card" aria-busy={activeTabLoading}>
+              <div class="tab-loading-bar"></div>
+              <div class="tab-loading-body"></div>
+            </div>
+          {/if}
         {/if}
 
         <!-- Payment Tab -->
         {#if activeTab === 'payment'}
-          <SettingsPaymentTab
-            bind:paymentMidtransEnabled
-            bind:paymentMidtransMerchantId
-            bind:paymentMidtransServerKey
-            bind:paymentMidtransClientKey
-            bind:paymentMidtransIsProduction
-            bind:paymentManualEnabled
-            bind:paymentManualInstructions
-            bind:installationSlaReminderEnabled
-            bind:installationSlaOverdueMinutes
-            bind:installationSlaReminderCooldownMinutes
-            bind:installationSlaSchedulerIntervalMinutes
-            {bankAccounts}
-            bind:newBankName
-            bind:newAccountNumber
-            bind:newAccountHolder
-            {addingBank}
-            {isMobile}
-            on:change={handleChange}
-            on:addBank={addBank}
-            on:deleteBank={(e) => deleteBank(e.detail)}
-          />
+          {#if CurrentTabComponent}
+            <CurrentTabComponent
+              bind:paymentMidtransEnabled
+              bind:paymentMidtransMerchantId
+              bind:paymentMidtransServerKey
+              bind:paymentMidtransClientKey
+              bind:paymentMidtransIsProduction
+              bind:paymentManualEnabled
+              bind:paymentManualInstructions
+              bind:installationSlaReminderEnabled
+              bind:installationSlaOverdueMinutes
+              bind:installationSlaReminderCooldownMinutes
+              bind:installationSlaSchedulerIntervalMinutes
+              {bankAccounts}
+              bind:newBankName
+              bind:newAccountNumber
+              bind:newAccountHolder
+              {addingBank}
+              {isMobile}
+              on:change={handleChange}
+              on:addBank={addBank}
+              on:deleteBank={(e: any) => deleteBank(e.detail)}
+            />
+          {:else}
+            <div class="tab-loading card" aria-busy={activeTabLoading}>
+              <div class="tab-loading-bar"></div>
+              <div class="tab-loading-body"></div>
+            </div>
+          {/if}
         {/if}
 
         <!-- Alerting Tab -->
         {#if activeTab === 'alerting'}
-          <SettingsAlertingTab
-            bind:alertingEnabled
-            bind:alertingEmail
-            bind:alertingErrorThreshold
-            bind:alertingRateLimitThreshold
-            bind:alertingResponseTimeThreshold
-            bind:alertingCooldownMinutes
-            on:change={handleChange}
-          />
+          {#if CurrentTabComponent}
+            <CurrentTabComponent
+              bind:alertingEnabled
+              bind:alertingEmail
+              bind:alertingErrorThreshold
+              bind:alertingRateLimitThreshold
+              bind:alertingResponseTimeThreshold
+              bind:alertingCooldownMinutes
+              on:change={handleChange}
+            />
+          {:else}
+            <div class="tab-loading card" aria-busy={activeTabLoading}>
+              <div class="tab-loading-bar"></div>
+              <div class="tab-loading-body"></div>
+            </div>
+          {/if}
         {/if}
 
         <!-- Backup Tab -->
         {#if activeTab === 'backup'}
-          <SettingsBackupTab
-            {appTimezone}
-            bind:backupGlobalEnabled
-            bind:backupGlobalMode
-            bind:backupGlobalEvery
-            bind:backupGlobalAt
-            bind:backupGlobalWeekday
-            bind:backupGlobalRetentionDays
-            bind:backupTenantEnabled
-            bind:backupTenantMode
-            bind:backupTenantEvery
-            bind:backupTenantAt
-            bind:backupTenantWeekday
-            bind:backupTenantRetentionDays
-            on:change={handleChange}
-            on:triggerGlobal={triggerGlobalBackup}
-            on:triggerTenants={triggerTenantBackups}
-          />
+          {#if CurrentTabComponent}
+            <CurrentTabComponent
+              {appTimezone}
+              bind:backupGlobalEnabled
+              bind:backupGlobalMode
+              bind:backupGlobalEvery
+              bind:backupGlobalAt
+              bind:backupGlobalWeekday
+              bind:backupGlobalRetentionDays
+              bind:backupTenantEnabled
+              bind:backupTenantMode
+              bind:backupTenantEvery
+              bind:backupTenantAt
+              bind:backupTenantWeekday
+              bind:backupTenantRetentionDays
+              on:change={handleChange}
+              on:triggerGlobal={triggerGlobalBackup}
+              on:triggerTenants={triggerTenantBackups}
+            />
+          {:else}
+            <div class="tab-loading card" aria-busy={activeTabLoading}>
+              <div class="tab-loading-bar"></div>
+              <div class="tab-loading-body"></div>
+            </div>
+          {/if}
         {/if}
 
         <!-- Actions Footer -->
@@ -1013,11 +1091,11 @@
           <button
             class="btn btn-secondary"
             disabled={!hasChanges || saving}
-            on:click={discardChanges}
+            onclick={discardChanges}
           >
             {$t('superadmin.settings.actions.reset') || 'Reset'}
           </button>
-          <button class="btn btn-primary" on:click={saveSettings} disabled={!hasChanges || saving}>
+          <button class="btn btn-primary" onclick={saveSettings} disabled={!hasChanges || saving}>
             {#if saving}
               <div class="spinner-sm"></div>
               {$t('superadmin.settings.actions.saving') || 'Saving...'}
@@ -1142,6 +1220,56 @@
     border-top-color: white;
     border-radius: 50%;
     animation: spin 1s linear infinite;
+  }
+
+  .tab-loading {
+    display: grid;
+    gap: 1rem;
+    padding: 1.5rem;
+  }
+
+  .tab-loading-bar,
+  .tab-loading-body {
+    border-radius: 14px;
+    background:
+      linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.05) 0%,
+        rgba(255, 255, 255, 0.12) 50%,
+        rgba(255, 255, 255, 0.05) 100%
+      );
+    background-size: 200% 100%;
+    animation: settings-tab-loading 1.2s ease-in-out infinite;
+  }
+
+  :global([data-theme='light']) .tab-loading-bar,
+  :global([data-theme='light']) .tab-loading-body {
+    background:
+      linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.05) 0%,
+        rgba(0, 0, 0, 0.1) 50%,
+        rgba(0, 0, 0, 0.05) 100%
+      );
+    background-size: 200% 100%;
+  }
+
+  .tab-loading-bar {
+    height: 2.75rem;
+    width: min(18rem, 100%);
+  }
+
+  .tab-loading-body {
+    min-height: 18rem;
+  }
+
+  @keyframes settings-tab-loading {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
   }
 
   @keyframes spin {

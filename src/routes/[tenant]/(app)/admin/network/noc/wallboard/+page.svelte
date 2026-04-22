@@ -6,12 +6,8 @@
   import { can, user, tenant } from '$lib/stores/auth';
   import { api } from '$lib/api/client';
   import Icon from '$lib/components/ui/Icon.svelte';
-  import WallboardFullDialog from '$lib/components/network/WallboardFullDialog.svelte';
   import WallboardInterfaceTile from '$lib/components/network/WallboardInterfaceTile.svelte';
-  import WallboardSlotPicker from '$lib/components/network/WallboardSlotPicker.svelte';
   import WallboardTopPager from '$lib/components/network/WallboardTopPager.svelte';
-  import WallboardThresholdDialog from '$lib/components/network/WallboardThresholdDialog.svelte';
-  import WallboardAlertsPanel from '$lib/components/network/WallboardAlertsPanel.svelte';
   import {
     ackWallboardAlerts,
     ackWallboardIncident,
@@ -21,8 +17,12 @@
     resolveWallboardIncident,
     unmuteWallboardRouter,
   } from '$lib/components/network/wallboardAlertsActions';
-  import WallboardInsightsControls from '$lib/components/network/WallboardInsightsControls.svelte';
-  import WallboardInsightsSummary from '$lib/components/network/WallboardInsightsSummary.svelte';
+  import {
+    loadWallboardAlertsPanel,
+    loadWallboardDialogs,
+    loadWallboardExportModule,
+    loadWallboardInsightsModules,
+  } from './wallboardPageModules';
   import {
     aggregateHistPoints,
     applyMetricsZoom,
@@ -162,7 +162,6 @@
   } from '$lib/constants/wallboard';
   import { toast } from '$lib/stores/toast';
   import { isSidebarCollapsed } from '$lib/stores/ui';
-  import { exportCsvRows } from '$lib/utils/tabularExport';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
 
   type NocRow = {
@@ -329,6 +328,12 @@
   let focusMode = $state(true);
   let alertsOpen = $state(false);
   let insightsOpen = $state(false);
+  let WallboardInsightsControlsComponent = $state<any>(null);
+  let WallboardInsightsSummaryComponent = $state<any>(null);
+  let WallboardAlertsPanelComponent = $state<any>(null);
+  let WallboardSlotPickerComponent = $state<any>(null);
+  let WallboardFullDialogComponent = $state<any>(null);
+  let WallboardThresholdDialogComponent = $state<any>(null);
   let renderNow = $state(Date.now());
   let uninstallAutoHide: (() => void) | null = null;
 
@@ -717,7 +722,7 @@
     });
   }
 
-  function exportMetricsCsv(
+  async function exportMetricsCsv(
     rows: { ts: string; rx_bps: number; tx_bps: number }[],
     iface: string,
     routerName: string,
@@ -727,6 +732,7 @@
       toast.error($t('admin.network.wallboard.metrics.export_empty') || 'No metrics data to export.');
       return;
     }
+    const { exportCsvRows } = await loadWallboardExportModule();
     exportCsvRows(
       buildMetricsCsvRows(rows, iface, routerName, bucket),
       metricsCsvFilePrefix(iface, bucket),
@@ -1024,6 +1030,36 @@
     goto(`${tenantPrefix}/admin/network/noc`);
   }
 
+  async function ensureWallboardInsightsLoaded() {
+    if (WallboardInsightsControlsComponent && WallboardInsightsSummaryComponent) return;
+    const { InsightsControlsComponent, InsightsSummaryComponent } =
+      await loadWallboardInsightsModules();
+    WallboardInsightsControlsComponent = InsightsControlsComponent;
+    WallboardInsightsSummaryComponent = InsightsSummaryComponent;
+  }
+
+  async function ensureWallboardAlertsPanelLoaded() {
+    if (WallboardAlertsPanelComponent) return;
+    const { AlertsPanelComponent } = await loadWallboardAlertsPanel();
+    WallboardAlertsPanelComponent = AlertsPanelComponent;
+  }
+
+  async function ensureWallboardDialogsLoaded() {
+    if (
+      WallboardSlotPickerComponent &&
+      WallboardFullDialogComponent &&
+      WallboardThresholdDialogComponent
+    ) {
+      return;
+    }
+
+    const { SlotPickerComponent, FullDialogComponent, ThresholdDialogComponent } =
+      await loadWallboardDialogs();
+    WallboardSlotPickerComponent = SlotPickerComponent;
+    WallboardFullDialogComponent = FullDialogComponent;
+    WallboardThresholdDialogComponent = ThresholdDialogComponent;
+  }
+
   onMount(() => {
     if (!$can('read', 'network_noc') && !$can('manage', 'network_noc')) {
       goto('/unauthorized');
@@ -1204,6 +1240,21 @@
     }
     alertSnapshot = next.nextSnapshot;
   });
+
+  $effect(() => {
+    if (!insightsOpen) return;
+    void ensureWallboardInsightsLoaded();
+  });
+
+  $effect(() => {
+    if (!alertsOpen || sortedAlerts.length === 0) return;
+    void ensureWallboardAlertsPanelLoaded();
+  });
+
+  $effect(() => {
+    if (pickerIndex === null && fullIndex === null && thresholdIndex === null) return;
+    void ensureWallboardDialogsLoaded();
+  });
 </script>
 
 <div class="wallboard-viewport">
@@ -1248,63 +1299,71 @@
           <Icon name="x" size={16} />
         </button>
       </div>
-      <WallboardInsightsControls
-        bind:pollMs
-        bind:layout
-        {refreshing}
-        {paused}
-        {isFullscreen}
-        {criticalSoundEnabled}
-        onRefresh={() => void refresh()}
-        onTogglePaused={() => setPaused(!paused)}
-        onToggleFullscreen={() => void toggleFullscreen()}
-        onToggleCriticalSound={() => {
-          criticalSoundEnabled = !criticalSoundEnabled;
-        }}
-        onExit={exitWallboard}
-      />
-      <WallboardInsightsSummary
-        {globalSummary}
-        {topIssues}
-        {openIncidentItems}
-        {incidentEvents}
-        canManage={$can('manage', 'network_noc')}
-        selectedMuteMinutes={selectedMuteMinutes}
-        getMaintenanceRemaining={(routerId) => maintenanceRemaining(routerById(routerId)?.maintenance_until)}
-        onSetTopIssueMuteMinutes={(routerId, mins) => {
-          topIssueMuteMinutes = {
-            ...topIssueMuteMinutes,
-            [routerId]: mins === 60 || mins === 240 ? mins : 30,
-          };
-        }}
-        onGotoTopIssue={(routerId, title) =>
-          goto(incidentHrefForTopIssue(incidents, tenantPrefix, routerId, title))}
-        onMuteTopIssue={(routerId, mins) => void muteRouterAlerts(routerId, mins)}
-        onUnmuteTopIssue={(routerId) => void unmuteRouter(routerId)}
-        onOpenIncident={(incidentId) => goto(incidentHrefById(tenantPrefix, incidentId))}
-        onAckIncident={(incidentId) => void ackIncident(incidentId)}
-        onResolveIncident={(incidentId) => void resolveIncident(incidentId)}
-        {routerLabel}
-        {formatMetricTs}
-        {formatIncidentTs}
-        kindClass={(kind) => kindClass(kind as IncidentKind)}
-        kindLabel={(kind) => kindLabel(kind as IncidentKind)}
-        {formatLatency}
-      />
+      {#if WallboardInsightsControlsComponent}
+        <WallboardInsightsControlsComponent
+          bind:pollMs
+          bind:layout
+          {refreshing}
+          {paused}
+          {isFullscreen}
+          {criticalSoundEnabled}
+          onRefresh={() => void refresh()}
+          onTogglePaused={() => setPaused(!paused)}
+          onToggleFullscreen={() => void toggleFullscreen()}
+          onToggleCriticalSound={() => {
+            criticalSoundEnabled = !criticalSoundEnabled;
+          }}
+          onExit={exitWallboard}
+        />
+      {/if}
+      {#if WallboardInsightsSummaryComponent}
+        <WallboardInsightsSummaryComponent
+          {globalSummary}
+          {topIssues}
+          {openIncidentItems}
+          {incidentEvents}
+          canManage={$can('manage', 'network_noc')}
+          selectedMuteMinutes={selectedMuteMinutes}
+          getMaintenanceRemaining={(routerId: string) =>
+            maintenanceRemaining(routerById(routerId)?.maintenance_until)}
+          onSetTopIssueMuteMinutes={(routerId: string, mins: number) => {
+            topIssueMuteMinutes = {
+              ...topIssueMuteMinutes,
+              [routerId]: mins === 60 || mins === 240 ? mins : 30,
+            };
+          }}
+          onGotoTopIssue={(routerId: string, title: string) =>
+            goto(incidentHrefForTopIssue(incidents, tenantPrefix, routerId, title))}
+          onMuteTopIssue={(routerId: string, mins: number) => void muteRouterAlerts(routerId, mins)}
+          onUnmuteTopIssue={(routerId: string) => void unmuteRouter(routerId)}
+          onOpenIncident={(incidentId: string) => goto(incidentHrefById(tenantPrefix, incidentId))}
+          onAckIncident={(incidentId: string) => void ackIncident(incidentId)}
+          onResolveIncident={(incidentId: string) => void resolveIncident(incidentId)}
+          {routerLabel}
+          {formatMetricTs}
+          {formatIncidentTs}
+          kindClass={(kind: string) => kindClass(kind as IncidentKind)}
+          kindLabel={(kind: string) => kindLabel(kind as IncidentKind)}
+          {formatLatency}
+        />
+      {/if}
     </aside>
   {/if}
 
   {#if sortedAlerts.length > 0 && alertsOpen}
     <div id="wallboard-alert-panel" class="alert-strip floating-alert-panel">
-      <WallboardAlertsPanel
-        bind:alertSeverityFilter
-        {visibleAlerts}
-        {alertStats}
-        canManage={$can('manage', 'network_noc')}
-        onAckVisible={() => void ackVisibleAlerts()}
-        onOpenAlerts={() => goto(`${tenantPrefix}/admin/network/alerts`)}
-        routerLabel={(routerId) => routerById(routerId)?.identity || routerById(routerId)?.name || routerId}
-      />
+      {#if WallboardAlertsPanelComponent}
+        <WallboardAlertsPanelComponent
+          bind:alertSeverityFilter
+          {visibleAlerts}
+          {alertStats}
+          canManage={$can('manage', 'network_noc')}
+          onAckVisible={() => void ackVisibleAlerts()}
+          onOpenAlerts={() => goto(`${tenantPrefix}/admin/network/alerts`)}
+          routerLabel={(routerId: string) =>
+            routerById(routerId)?.identity || routerById(routerId)?.name || routerId}
+        />
+      {/if}
     </div>
   {/if}
 
@@ -1409,33 +1468,35 @@
   {@const curSlot = slotsAll[pickerIndex]}
   {@const routerList = pickerRouterList()}
   {@const ifaces = pickerInterfaces()}
-  <WallboardSlotPicker
-    isEditing={!!curSlot}
-    currentIface={curSlot?.iface || '—'}
-    selectedRouterLabel={pickerRouterId
-      ? (routerById(pickerRouterId)?.identity || routerById(pickerRouterId)?.name || pickerRouterId)
-      : '—'}
-    bind:routerSearch={pickerRouterSearch}
-    bind:ifaceSearch={pickerIfaceSearch}
-    bind:selectedRouterId={pickerRouterId}
-    {routerList}
-    interfaces={ifaces}
-    interfacesTotal={pickerRouterId ? (ifaceCatalog[pickerRouterId]?.length || 0) : 0}
-    interfacesLoading={pickerRouterId ? !!ifaceLoading[pickerRouterId] : false}
-    {routerTitle}
-    onClose={closePicker}
-    onSelectRouter={(routerId) => {
-      pickerRouterId = routerId;
-      void loadInterfaces(routerId);
-      pickerIfaceSearch = '';
-    }}
-    onSelectInterface={(iface) => {
-      const cur = slotsAll[pickerIndex as number];
-      const rx = cur?.warn_below_rx_bps ?? null;
-      const tx = cur?.warn_below_tx_bps ?? null;
-      setSlot(pickerIndex as number, pickerRouterId as string, iface, rx, tx);
-    }}
-  />
+  {#if WallboardSlotPickerComponent}
+    <WallboardSlotPickerComponent
+      isEditing={!!curSlot}
+      currentIface={curSlot?.iface || '—'}
+      selectedRouterLabel={pickerRouterId
+        ? (routerById(pickerRouterId)?.identity || routerById(pickerRouterId)?.name || pickerRouterId)
+        : '—'}
+      bind:routerSearch={pickerRouterSearch}
+      bind:ifaceSearch={pickerIfaceSearch}
+      bind:selectedRouterId={pickerRouterId}
+      {routerList}
+      interfaces={ifaces}
+      interfacesTotal={pickerRouterId ? (ifaceCatalog[pickerRouterId]?.length || 0) : 0}
+      interfacesLoading={pickerRouterId ? !!ifaceLoading[pickerRouterId] : false}
+      {routerTitle}
+      onClose={closePicker}
+      onSelectRouter={(routerId: string) => {
+        pickerRouterId = routerId;
+        void loadInterfaces(routerId);
+        pickerIfaceSearch = '';
+      }}
+      onSelectInterface={(iface: string) => {
+        const cur = slotsAll[pickerIndex as number];
+        const rx = cur?.warn_below_rx_bps ?? null;
+        const tx = cur?.warn_below_tx_bps ?? null;
+        setSlot(pickerIndex as number, pickerRouterId as string, iface, rx, tx);
+      }}
+    />
+  {/if}
 {/if}
 
 {#if fullIndex !== null}
@@ -1479,110 +1540,114 @@
     s?.warn_below_rx_bps != null && rxNow != null && rxNow >= 0 && rxNow < s.warn_below_rx_bps}
   {@const warnTx =
     s?.warn_below_tx_bps != null && txNow != null && txNow >= 0 && txNow < s.warn_below_tx_bps}
-  <WallboardFullDialog
-    {iface}
-    routerLabel={r ? (r.identity || r.name) : (s?.routerId || '')}
-    routerOnline={!!r?.is_online}
-    {fullTab}
-    {metricsRange}
-    {metricsFromLocal}
-    {metricsToLocal}
-    {metricsPointIdx}
-    {metricsTooltipX}
-    {metricsTooltipY}
-    {metricsSelecting}
-    {metricsSelStart}
-    {metricsSelCurrent}
-    {fullMetricsLoading}
-    {fullMetricsError}
-    {rx}
-    {tx}
-    {rxNow}
-    {txNow}
-    {warnRx}
-    {warnTx}
-    {rxPeak}
-    {txPeak}
-    {rxAvg}
-    {txAvg}
-    {metricsBucket}
-    {hasMetricsZoom}
-    {zoomedHistRows}
-    {chartRows}
-    {chartRx}
-    {chartTx}
-    {chartMax}
-    {histRxPeak}
-    {histTxPeak}
-    {histRxAvg}
-    {histTxAvg}
-    {peakRxIdx}
-    {peakTxIdx}
-    {pointIdx}
-    {pointRow}
-    {formatBps}
-    {formatMetricTs}
-    {bucketLabel}
-    {bucketHint}
-    onClose={closeFull}
-    onOpenThreshold={() => openThreshold(fullIndex as number)}
-    onOpenFullTab={openFullTab}
-    onSetMetricsRange={setMetricsRange}
-    onExportMetricsCsv={() =>
-      exportMetricsCsv(
-        zoomedHistRows,
-        iface,
-        r ? (r.identity || r.name) : s?.routerId || '',
-        metricsBucket,
-      )}
-    onClearMetricsZoom={clearMetricsZoom}
-    onMetricsFromChange={(value) => {
-      metricsFromLocal = value;
-      metricsPointIdx = null;
-      clearMetricsZoom();
-    }}
-    onMetricsToChange={(value) => {
-      metricsToLocal = value;
-      metricsPointIdx = null;
-      clearMetricsZoom();
-    }}
-    onBeginMetricsSelection={beginMetricsSelection}
-    onMoveMetricsSelection={moveMetricsSelection}
-    onEndMetricsSelection={endMetricsSelection}
-    onSetMetricsHoverFromMouse={setMetricsHoverFromMouse}
-    onSetMetricsHoverFromFocus={setMetricsHoverFromFocus}
-    onClearMetricsPoint={() => (metricsPointIdx = null)}
-    onSetMetricsPoint={(i) => (metricsPointIdx = i)}
-  />
+  {#if WallboardFullDialogComponent}
+    <WallboardFullDialogComponent
+      {iface}
+      routerLabel={r ? (r.identity || r.name) : (s?.routerId || '')}
+      routerOnline={!!r?.is_online}
+      {fullTab}
+      {metricsRange}
+      {metricsFromLocal}
+      {metricsToLocal}
+      {metricsPointIdx}
+      {metricsTooltipX}
+      {metricsTooltipY}
+      {metricsSelecting}
+      {metricsSelStart}
+      {metricsSelCurrent}
+      {fullMetricsLoading}
+      {fullMetricsError}
+      {rx}
+      {tx}
+      {rxNow}
+      {txNow}
+      {warnRx}
+      {warnTx}
+      {rxPeak}
+      {txPeak}
+      {rxAvg}
+      {txAvg}
+      {metricsBucket}
+      {hasMetricsZoom}
+      {zoomedHistRows}
+      {chartRows}
+      {chartRx}
+      {chartTx}
+      {chartMax}
+      {histRxPeak}
+      {histTxPeak}
+      {histRxAvg}
+      {histTxAvg}
+      {peakRxIdx}
+      {peakTxIdx}
+      {pointIdx}
+      {pointRow}
+      {formatBps}
+      {formatMetricTs}
+      {bucketLabel}
+      {bucketHint}
+      onClose={closeFull}
+      onOpenThreshold={() => openThreshold(fullIndex as number)}
+      onOpenFullTab={openFullTab}
+      onSetMetricsRange={setMetricsRange}
+      onExportMetricsCsv={() =>
+        exportMetricsCsv(
+          zoomedHistRows,
+          iface,
+          r ? (r.identity || r.name) : s?.routerId || '',
+          metricsBucket,
+        )}
+      onClearMetricsZoom={clearMetricsZoom}
+      onMetricsFromChange={(value: string) => {
+        metricsFromLocal = value;
+        metricsPointIdx = null;
+        clearMetricsZoom();
+      }}
+      onMetricsToChange={(value: string) => {
+        metricsToLocal = value;
+        metricsPointIdx = null;
+        clearMetricsZoom();
+      }}
+      onBeginMetricsSelection={beginMetricsSelection}
+      onMoveMetricsSelection={moveMetricsSelection}
+      onEndMetricsSelection={endMetricsSelection}
+      onSetMetricsHoverFromMouse={setMetricsHoverFromMouse}
+      onSetMetricsHoverFromFocus={setMetricsHoverFromFocus}
+      onClearMetricsPoint={() => (metricsPointIdx = null)}
+      onSetMetricsPoint={(i: number | null) => (metricsPointIdx = i)}
+    />
+  {/if}
 {/if}
 
 {#if thresholdIndex !== null}
   {@const s = slotsAll[thresholdIndex]}
   {@const r = s ? routerById(s.routerId) : null}
-  <WallboardThresholdDialog
-    iface={s?.iface || ''}
-    routerLabel={r ? (r.identity || r.name) : (s?.routerId || '')}
-    currentRxBps={s?.warn_below_rx_bps ?? null}
-    currentTxBps={s?.warn_below_tx_bps ?? null}
-    bind:thWarnRxKbps
-    bind:thWarnTxKbps
-    bind:thWarnRxUnit
-    bind:thWarnTxUnit
-    {formatBps}
-    onClose={closeThreshold}
-    onChangeInterface={() => {
-      const idx = thresholdIndex;
-      closeThreshold();
-      if (idx != null) setTimeout(() => openPicker(idx), 0);
-    }}
-    onClear={() => {
-      thWarnRxKbps = '';
-      thWarnTxKbps = '';
-      thWarnRxUnit = 'Kbps';
-      thWarnTxUnit = 'Kbps';
-    }}
-    onSave={saveThreshold}
-  />
+  {#if WallboardThresholdDialogComponent}
+    <WallboardThresholdDialogComponent
+      iface={s?.iface || ''}
+      routerLabel={r ? (r.identity || r.name) : (s?.routerId || '')}
+      currentRxBps={s?.warn_below_rx_bps ?? null}
+      currentTxBps={s?.warn_below_tx_bps ?? null}
+      bind:thWarnRxKbps
+      bind:thWarnTxKbps
+      bind:thWarnRxUnit
+      bind:thWarnTxUnit
+      {formatBps}
+      onClose={closeThreshold}
+      onChangeInterface={() => {
+        const idx = thresholdIndex;
+        closeThreshold();
+        if (idx != null) setTimeout(() => openPicker(idx), 0);
+      }}
+      onClear={() => {
+        thWarnRxKbps = '';
+        thWarnTxKbps = '';
+        thWarnRxUnit = 'Kbps';
+        thWarnTxUnit = 'Kbps';
+      }}
+      onSave={saveThreshold}
+    />
+  {/if}
 {/if}
 
 <style>

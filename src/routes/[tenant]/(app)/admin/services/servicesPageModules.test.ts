@@ -4,6 +4,7 @@ const sentinels = vi.hoisted(() => ({
   Modal: { name: 'modal-component' },
   Select2: { name: 'select2-component' },
   Toggle: { name: 'toggle-component' },
+  ServicesDialogs: { name: 'services-dialogs-component' },
 }));
 
 vi.mock('$lib/components/ui/Modal.svelte', () => ({
@@ -18,7 +19,11 @@ vi.mock('$lib/components/ui/Toggle.svelte', () => ({
   default: sentinels.Toggle,
 }));
 
-import { loadServicesModalModules } from './servicesPageModules';
+vi.mock('./ServicesDialogs.svelte', () => ({
+  default: sentinels.ServicesDialogs,
+}));
+
+import { loadServicesDialogs, loadServicesModalModules } from './servicesPageModules';
 
 describe('services page modules', () => {
   it('loads and caches the modal-related UI components on demand', async () => {
@@ -30,6 +35,14 @@ describe('services page modules', () => {
       Select2Component: sentinels.Select2,
       ToggleComponent: sentinels.Toggle,
     });
+    expect(second).toBe(first);
+  });
+
+  it('loads and caches the services dialogs lazily', async () => {
+    const first = await loadServicesDialogs();
+    const second = await loadServicesDialogs();
+
+    expect(first.ServicesDialogsComponent).toBe(sentinels.ServicesDialogs);
     expect(second).toBe(first);
   });
 });

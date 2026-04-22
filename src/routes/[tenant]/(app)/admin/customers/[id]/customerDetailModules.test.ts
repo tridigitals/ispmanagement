@@ -5,6 +5,7 @@ const sentinels = vi.hoisted(() => ({
   Select2: { name: 'select2-component' },
   Toggle: { name: 'toggle-component' },
   ConfirmDialog: { name: 'confirm-dialog-component' },
+  DialogsOverlay: { name: 'customer-detail-dialogs-overlay' },
 }));
 
 vi.mock('$lib/components/ui/Modal.svelte', () => ({
@@ -23,7 +24,14 @@ vi.mock('$lib/components/ui/ConfirmDialog.svelte', () => ({
   default: sentinels.ConfirmDialog,
 }));
 
-import { loadCustomerDetailDialogModules } from './customerDetailModules';
+vi.mock('./CustomerDetailDialogs.svelte', () => ({
+  default: sentinels.DialogsOverlay,
+}));
+
+import {
+  loadCustomerDetailDialogModules,
+  loadCustomerDetailDialogsOverlay,
+} from './customerDetailModules';
 
 describe('customer detail modules', () => {
   it('loads and caches the dialog UI modules on demand', async () => {
@@ -36,6 +44,14 @@ describe('customer detail modules', () => {
       ToggleComponent: sentinels.Toggle,
       ConfirmDialogComponent: sentinels.ConfirmDialog,
     });
+    expect(second).toBe(first);
+  });
+
+  it('loads and caches the customer detail dialogs overlay on demand', async () => {
+    const first = await loadCustomerDetailDialogsOverlay();
+    const second = await loadCustomerDetailDialogsOverlay();
+
+    expect(first.CustomerDetailDialogsComponent).toBe(sentinels.DialogsOverlay);
     expect(second).toBe(first);
   });
 });

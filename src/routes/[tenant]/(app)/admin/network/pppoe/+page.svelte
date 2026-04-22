@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import type { Component } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { t } from 'svelte-i18n';
@@ -7,9 +8,7 @@
   import { api, type IspPackageRouterMappingView, type PppoeAccountPublic } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
   import Icon from '$lib/components/ui/Icon.svelte';
-  import Modal from '$lib/components/ui/Modal.svelte';
   import Select2 from '$lib/components/ui/Select2.svelte';
-  import Toggle from '$lib/components/ui/Toggle.svelte';
   import Table from '$lib/components/ui/Table.svelte';
   import NetworkFilterPanel from '$lib/components/network/NetworkFilterPanel.svelte';
   import NetworkPageHeader from '$lib/components/network/NetworkPageHeader.svelte';
@@ -27,10 +26,12 @@
     getPppoeCreatedAndAppliedToastFallback,
   } from '$lib/utils/pppoeSource';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
+  import { loadPppoeAccountModal } from './pppoePageModules';
 
   type RouterRow = { id: string; name: string; host?: string; port?: number };
   type CustomerRow = { id: string; name: string };
   type LocationRow = { id: string; label: string };
+  type DeferredComponent = Component<any>;
   const IMPORT_PLACEHOLDER_CUSTOMER_NAME = 'Imported (Unassigned)';
 
   let loading = $state(true);
@@ -54,6 +55,7 @@
   let showEdit = $state(false);
   let saving = $state(false);
   let editRow = $state<PppoeAccountPublic | null>(null);
+  let PppoeAccountModalComponent = $state<DeferredComponent | null>(null);
 
   let formRouterId = $state('');
   let formCustomerId = $state('');
@@ -347,6 +349,7 @@
       return;
     }
     resetForm();
+    await ensurePppoeAccountModalComponent();
     showCreate = true;
   }
 
@@ -370,12 +373,19 @@
     formDisabled = Boolean(row.disabled);
     formComment = row.comment || '';
     formAccountSource = row.account_source || 'router';
-    showEdit = true;
-
     await Promise.all([
       loadLocations(row.customer_id),
       loadRouterPackages(row.router_id),
+      ensurePppoeAccountModalComponent(),
     ]);
+    showEdit = true;
+  }
+
+  async function ensurePppoeAccountModalComponent() {
+    if (PppoeAccountModalComponent) return;
+
+    const modules = await loadPppoeAccountModal();
+    PppoeAccountModalComponent = modules.PppoeAccountModalComponent;
   }
 
   async function submitCreate() {
@@ -1003,280 +1013,68 @@
   </div>
 </div>
 
-<Modal
-  show={showCreate}
-  title={$t('admin.customers.pppoe.new.title') || 'Add PPPoE account'}
-  width="760px"
-  onclose={() => (showCreate = false)}
->
-  <div class="form">
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.router') || 'Router'}</span>
-        <Select2
-          bind:value={formRouterId}
-          options={routerOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
-          onchange={() => {
-            // Reset router-scoped selections when router changes
-            formPackageId = '';
-            formRouterProfileName = '';
-            formRemoteAddress = '';
-            formAddressPool = '';
-            void loadRouterPackages(formRouterId);
-          }}
-        />
-      </label>
-      <label>
-        <span>{$t('admin.network.pppoe.fields.source') || 'Account source'}</span>
-        <select class="input" bind:value={formAccountSource}>
-          <option value="router">{sourceLabel('router')}</option>
-          <option value="managed_radius">{sourceLabel('managed_radius')}</option>
-        </select>
-      </label>
-    </div>
+{#if PppoeAccountModalComponent}
+  <PppoeAccountModalComponent
+    mode="create"
+    bind:show={showCreate}
+    {saving}
+    {routerOptions}
+    {customerOptions}
+    {locationOptions}
+    {packageOptions}
+    {packageSelectionHasMissingMapping}
+    bind:formRouterId
+    bind:formCustomerId
+    bind:formLocationId
+    bind:formUsername
+    bind:formPassword
+    bind:formPackageId
+    bind:formComment
+    bind:formDisabled
+    bind:formAccountSource
+    onRouterChange={() => {
+      formPackageId = '';
+      formRouterProfileName = '';
+      formRemoteAddress = '';
+      formAddressPool = '';
+      void loadRouterPackages(formRouterId);
+    }}
+    onCustomerChange={() => {
+      formLocationId = '';
+      void loadLocations(formCustomerId);
+    }}
+    onPackageChange={() => applyPackageToForm(formPackageId)}
+    onSubmit={submitCreate}
+    {sourceLabel}
+    {sourceDisabledHintLabel}
+    {sourceCreateActionLabel}
+  />
 
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.customer') || 'Customer'}</span>
-        <Select2
-          bind:value={formCustomerId}
-          options={customerOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-          maxItems={5000}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
-          onchange={() => {
-            formLocationId = '';
-            void loadLocations(formCustomerId);
-          }}
-        />
-      </label>
-    </div>
-
-    <div class="field-hint">
-      {#if formAccountSource === 'managed_radius'}
-        {$t('admin.network.pppoe.form.source_radius_hint') ||
-          'This account will be provisioned to managed RADIUS and expects a managed RADIUS server plus NAS mapping for the selected router.'}
-      {:else}
-        {$t('admin.network.pppoe.form.source_router_hint') ||
-          'This account will be provisioned to the router-local PPP secret table.'}
-      {/if}
-    </div>
-
-    <label>
-      <span>{$t('admin.customers.pppoe.fields.package') || 'Package'}</span>
-      <Select2
-        bind:value={formPackageId}
-        options={packageOptions}
-        placeholder={($t('common.select') || 'Select') + '...'}
-        width="100%"
-        disabled={!formRouterId || packageOptions.length === 0}
-        searchPlaceholder={$t('common.search') || 'Search'}
-        noResultsText={$t('common.no_results') || 'No results'}
-        onchange={() => applyPackageToForm(formPackageId)}
-      />
-      <div class="field-hint">
-        {$t('admin.network.pppoe.form.package_hint') ||
-          'Choose a package to control PPP profile and addressing for the selected router.'}
-      </div>
-    </label>
-
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.location') || 'Location'}</span>
-        <Select2
-          bind:value={formLocationId}
-          options={locationOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-          disabled={!formCustomerId}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
-        />
-      </label>
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.username') || 'Username'}</span>
-        <input class="input" bind:value={formUsername} />
-      </label>
-    </div>
-
-    <label>
-      <span>{$t('admin.customers.pppoe.fields.password') || 'Password'}</span>
-      <input class="input" type="password" bind:value={formPassword} />
-    </label>
-
-    {#if packageSelectionHasMissingMapping}
-      <div class="field-hint warning">
-        {$t('admin.network.pppoe.form.package_mapping_missing') ||
-          'This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.'}
-      </div>
-    {/if}
-
-    <label>
-      <span>{$t('admin.customers.pppoe.fields.comment') || 'Comment'}</span>
-      <input class="input" bind:value={formComment} />
-    </label>
-
-    <div class="toggle-row">
-      <div class="toggle-text">
-        <div class="toggle-title">{$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}</div>
-        <div class="toggle-sub">
-          {sourceDisabledHintLabel(formAccountSource)}
-          {#if formAccountSource === 'managed_radius'}
-            {' '}{$t('admin.network.pppoe.form.disabled_hint_radius') ||
-              'For managed RADIUS, this disables centralized authentication for the account.'}
-          {/if}
-        </div>
-      </div>
-      <Toggle
-        bind:checked={formDisabled}
-        ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}
-      />
-    </div>
-
-    <div class="actions">
-      <button class="btn ghost" onclick={() => (showCreate = false)} disabled={saving}>
-        {$t('common.cancel') || 'Cancel'}
-      </button>
-      <button
-        class="btn"
-        onclick={submitCreate}
-        disabled={saving ||
-          packageSelectionHasMissingMapping ||
-          !formRouterId ||
-          !formCustomerId ||
-          !formLocationId ||
-          !formUsername.trim() ||
-          !formPassword}
-      >
-        <Icon name="plus" size={16} />
-        {sourceCreateActionLabel(formAccountSource)}
-      </button>
-    </div>
-
-  </div>
-</Modal>
-
-<Modal
-  show={showEdit}
-  title={$t('admin.customers.pppoe.edit.title') || 'Edit PPPoE account'}
-  width="760px"
-  onclose={() => (showEdit = false)}
->
-  <div class="form">
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.router') || 'Router'}</span>
-        <input class="input" value={routerName(formRouterId)} disabled />
-      </label>
-      <label>
-        <span>{$t('admin.network.pppoe.fields.source') || 'Account source'}</span>
-        <select class="input" bind:value={formAccountSource}>
-          <option value="router">{sourceLabel('router')}</option>
-          <option value="managed_radius">{sourceLabel('managed_radius')}</option>
-        </select>
-      </label>
-    </div>
-
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.customer') || 'Customer'}</span>
-        <input class="input" value={customerLabel(formCustomerId)} disabled />
-      </label>
-    </div>
-
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.location') || 'Location'}</span>
-        <input
-          class="input"
-          value={locations.find((l) => l.id === formLocationId)?.label ||
-            (formLocationId ? formLocationId.slice(0, 8) + '…' : '—')}
-          disabled
-        />
-      </label>
-      <div></div>
-    </div>
-
-    <label>
-      <span>{$t('admin.customers.pppoe.fields.package') || 'Package'}</span>
-      <Select2
-        bind:value={formPackageId}
-        options={packageOptions}
-        placeholder={($t('common.select') || 'Select') + '...'}
-        width="100%"
-        disabled={packageOptions.length === 0}
-        searchPlaceholder={$t('common.search') || 'Search'}
-        noResultsText={$t('common.no_results') || 'No results'}
-        onchange={() => applyPackageToForm(formPackageId)}
-      />
-      <div class="field-hint">
-        {$t('admin.network.pppoe.form.package_hint') ||
-          'Choose a package to control PPP profile and addressing for the selected router.'}
-      </div>
-    </label>
-
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.username') || 'Username'}</span>
-        <input class="input" bind:value={formUsername} />
-      </label>
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.password') || 'Password'}</span>
-        <input
-          class="input"
-          type="password"
-          bind:value={formPassword}
-          placeholder={$t('admin.customers.pppoe.edit.password_hint') || 'Leave blank to keep'}
-        />
-      </label>
-    </div>
-
-    {#if packageSelectionHasMissingMapping}
-      <div class="field-hint warning">
-        {$t('admin.network.pppoe.form.package_mapping_missing') ||
-          'This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.'}
-      </div>
-    {/if}
-
-    <label>
-      <span>{$t('admin.customers.pppoe.fields.comment') || 'Comment'}</span>
-      <input class="input" bind:value={formComment} />
-    </label>
-
-    <div class="toggle-row">
-      <div class="toggle-text">
-        <div class="toggle-title">{$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}</div>
-        <div class="toggle-sub">
-          {sourceDisabledHintLabel(formAccountSource)}
-        </div>
-      </div>
-      <Toggle
-        bind:checked={formDisabled}
-        ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}
-      />
-    </div>
-
-    <div class="actions">
-      <button class="btn ghost" onclick={() => (showEdit = false)} disabled={saving}>
-        {$t('common.cancel') || 'Cancel'}
-      </button>
-      <button
-        class="btn"
-        onclick={submitEdit}
-        disabled={saving || packageSelectionHasMissingMapping || !formUsername.trim()}
-      >
-        <Icon name="check-circle" size={16} />
-        {$t('common.save') || 'Save'}
-      </button>
-    </div>
-  </div>
-</Modal>
+  <PppoeAccountModalComponent
+    mode="edit"
+    bind:show={showEdit}
+    {saving}
+    {packageOptions}
+    {packageSelectionHasMissingMapping}
+    bind:formUsername
+    bind:formPassword
+    bind:formPackageId
+    bind:formComment
+    bind:formDisabled
+    bind:formAccountSource
+    routerDisplayName={routerName(formRouterId)}
+    customerDisplayName={customerLabel(formCustomerId)}
+    locationDisplayName={locations.find((l) => l.id === formLocationId)?.label ||
+      (formLocationId ? formLocationId.slice(0, 8) + '…' : '—')}
+    onRouterChange={() => {}}
+    onCustomerChange={() => {}}
+    onPackageChange={() => applyPackageToForm(formPackageId)}
+    onSubmit={submitEdit}
+    {sourceLabel}
+    {sourceDisabledHintLabel}
+    {sourceCreateActionLabel}
+  />
+{/if}
 
 <style>
   .page-content {
@@ -1541,24 +1339,6 @@
     white-space: nowrap;
   }
 
-  .form {
-    display: grid;
-    gap: 0.9rem;
-  }
-
-  .form label {
-    display: grid;
-    gap: 0.35rem;
-  }
-
-  .form label > span {
-    color: var(--text-secondary);
-    font-weight: 850;
-    font-size: 0.78rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-
   .input {
     width: 100%;
     padding: 0.85rem 0.95rem;
@@ -1585,65 +1365,6 @@
       monospace;
   }
 
-  .grid2 {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.8rem;
-  }
-
-  .toggle-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.9rem;
-    padding: 0.9rem 1rem;
-    border-radius: 14px;
-    border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.03);
-  }
-
-  :global([data-theme='light']) .toggle-row {
-    background: rgba(0, 0, 0, 0.02);
-  }
-
-  .toggle-text {
-    min-width: 0;
-    display: grid;
-    gap: 0.15rem;
-  }
-
-  .toggle-title {
-    color: var(--text-primary);
-    font-weight: 900;
-  }
-
-  .toggle-sub {
-    color: var(--text-secondary);
-    font-weight: 650;
-    font-size: 0.92rem;
-    line-height: 1.35;
-  }
-
-  .actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.6rem;
-    padding-top: 0.25rem;
-  }
-
-  .field-hint {
-    margin-top: 6px;
-    color: var(--text-secondary);
-    font-weight: 600;
-    font-size: 0.9rem;
-    line-height: 1.35;
-  }
-
-  .field-hint.warning {
-    margin-top: 0;
-    color: #f59e0b;
-  }
-
   @media (max-width: 768px) {
     .page-content {
       padding: 16px;
@@ -1652,11 +1373,6 @@
     .error-line {
       max-width: 100%;
     }
-
-    .grid2 {
-      grid-template-columns: 1fr;
-    }
-
   }
 
   @media (max-width: 1100px) {

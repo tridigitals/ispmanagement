@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
+  import type { Component } from 'svelte';
   import { get } from 'svelte/store';
   import { t } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
@@ -15,9 +16,11 @@
   } from '$lib/api/client';
   import { appSettings } from '$lib/stores/settings';
   import { toast } from '$lib/stores/toast';
+  import { loadDashboardServicesTrackerModal } from './dashboardServicesPageModules';
 
   type StatusFilter = 'all' | 'active' | 'pending_installation' | 'needs_attention';
   type SortBy = 'updated_at' | 'price' | 'status' | 'package_name' | 'location_label';
+  type DeferredComponent = Component<any>;
 
   let loading = $state(true);
   let reopeningId = $state<string | null>(null);
@@ -36,6 +39,7 @@
     needsAttention: 0,
   });
   let trackerOpen = $state(false);
+  let TrackerModalComponent = $state<DeferredComponent | null>(null);
   let trackerLoading = $state(false);
   let trackerSub = $state<CustomerSubscriptionView | null>(null);
   let trackerWo = $state<InstallationWorkOrderView | null>(null);
@@ -425,6 +429,11 @@
     rescheduleReason = '';
     rescheduleAt = '';
     try {
+      if (!TrackerModalComponent) {
+        const { TrackerModalComponent: DashboardServicesTrackerModalComponent } =
+          await loadDashboardServicesTrackerModal();
+        TrackerModalComponent = DashboardServicesTrackerModalComponent;
+      }
       const [res, invoices] = await Promise.all([
         api.customers.portal.installationTracker(sub.id),
         api.payment.listCustomerPackageInvoices().catch(() => [] as Invoice[]),
@@ -832,198 +841,39 @@
 </div>
 
 {#if trackerOpen}
-  <div
-    class="tracker-backdrop"
-    role="button"
-    tabindex="0"
-    onclick={(e) => {
-      if (e.target === e.currentTarget) closeTracker();
-    }}
-    onkeydown={(e) => {
-      if (e.key === 'Escape') closeTracker();
-    }}
-  >
-    <section class="tracker-modal">
-      <header class="tracker-head">
-        <div>
-          <h3>{tt('dashboard.services_portal.tracker.title', 'Installation Tracker')}</h3>
-          <p>{trackerSub?.package_name || trackerSub?.package_id || '-'}</p>
-        </div>
-        <button class="btn ghost" type="button" onclick={closeTracker}>
-          <Icon name="x" size={14} />
-          {tt('common.close', 'Close')}
-        </button>
-      </header>
-
-      {#if trackerLoading}
-        <div class="state-block">
-          <div class="spinner"></div>
-          <p>{tt('dashboard.services_portal.tracker.loading', 'Loading tracker...')}</p>
-        </div>
-      {:else if trackerError}
-        <div class="alert">{trackerError}</div>
-      {:else}
-        <div class="tracker-steps">
-          <div class={`step-pill ${stepState('requested')}`}>1. {tt('dashboard.services_portal.tracker.steps.requested', 'Requested')}</div>
-          <div class={`step-pill ${stepState('assigned')}`}>2. {tt('dashboard.services_portal.tracker.steps.assigned', 'Assigned')}</div>
-          <div class={`step-pill ${stepState('scheduled')}`}>3. {tt('dashboard.services_portal.tracker.steps.scheduled', 'Scheduled')}</div>
-          <div class={`step-pill ${stepState('onsite')}`}>4. {tt('dashboard.services_portal.tracker.steps.onsite', 'On-site')}</div>
-          <div class={`step-pill ${stepState('active')}`}>5. {tt('dashboard.services_portal.tracker.steps.active', 'Active')}</div>
-        </div>
-
-        <div class="tracker-grid">
-          <div>
-            <small>{tt('dashboard.services_portal.table.status', 'Status')}</small>
-            <strong>{trackerWo?.status || '-'}</strong>
-          </div>
-          <div>
-            <small>{tt('common.assignee', 'Assignee')}</small>
-            <strong>{trackerWo?.assigned_to_name || trackerWo?.assigned_to_email || '-'}</strong>
-          </div>
-          <div>
-            <small>{tt('dashboard.services_portal.tracker.scheduled_at', 'Scheduled At')}</small>
-            <strong>{formatDate(trackerWo?.scheduled_at)}</strong>
-          </div>
-          <div>
-            <small>{tt('dashboard.services_portal.tracker.last_update', 'Last Update')}</small>
-            <strong>{formatDate(trackerWo?.updated_at || trackerSub?.updated_at)}</strong>
-          </div>
-        </div>
-
-        {#if trackerInvoice}
-          <section class="reschedule-status">
-            <div class="reschedule-status-head">
-              <h4>Invoice</h4>
-              <span class={`request-status ${invoiceStatusTone(trackerInvoice.status)}`}>
-                {String(trackerInvoice.status || 'pending').toUpperCase()}
-              </span>
-            </div>
-            <div class="reschedule-status-grid">
-              <div>
-                <small>Invoice Number</small>
-                <strong>{trackerInvoice.invoice_number || '-'}</strong>
-              </div>
-              <div>
-                <small>Amount</small>
-                <strong>{formatCurrency(Number(trackerInvoice.amount || 0), trackerInvoice.currency_code)}</strong>
-              </div>
-              <div>
-                <small>Due Date</small>
-                <strong>{formatDate(trackerInvoice.due_date)}</strong>
-              </div>
-              <div>
-                <small>Paid At</small>
-                <strong>{formatDate(trackerInvoice.paid_at)}</strong>
-              </div>
-            </div>
-            <div class="reschedule-actions">
-              <button
-                class="btn ghost"
-                type="button"
-                onclick={() => (trackerInvoice?.id ? goto(`/pay/${trackerInvoice.id}`) : openSubscriptionInvoice(trackerSub?.id || ''))}
-              >
-                <Icon name="file-text" size={14} />
-                {invoiceActionLabel(trackerSub?.status, trackerSub?.starts_at)}
-              </button>
-            </div>
-          </section>
-        {/if}
-
-        {#if trackerReschedule && showRescheduleInfo(trackerSub?.status)}
-          <section class="reschedule-status">
-            <div class="reschedule-status-head">
-              <h4>
-                {tt(
-                  'dashboard.services_portal.reschedule.latest_title',
-                  'Latest Reschedule Request',
-                )}
-              </h4>
-              <span class={`request-status ${trackerReschedule.status || 'pending'}`}>
-                {String(trackerReschedule.status || 'pending').toUpperCase()}
-              </span>
-            </div>
-            <div class="reschedule-status-grid">
-              <div>
-                <small>
-                  {tt(
-                    'dashboard.services_portal.reschedule.labels.requested_schedule',
-                    'Requested Schedule',
-                  )}
-                </small>
-                <strong>{formatDate(trackerReschedule.requested_schedule_at)}</strong>
-              </div>
-              <div>
-                <small>
-                  {tt('dashboard.services_portal.reschedule.labels.requested_by', 'Requested By')}
-                </small>
-                <strong>{trackerReschedule.requested_by_name || trackerReschedule.requested_by_email || '-'}</strong>
-              </div>
-            </div>
-            {#if trackerReschedule.reason}
-              <p>
-                <strong>{tt('dashboard.services_portal.reschedule.labels.reason', 'Reason')}:</strong>
-                {trackerReschedule.reason}
-              </p>
-            {/if}
-            {#if trackerReschedule.review_notes}
-              <p>
-                <strong>{tt('dashboard.services_portal.reschedule.labels.admin_notes', 'Admin Notes')}:</strong>
-                {trackerReschedule.review_notes}
-              </p>
-            {/if}
-          </section>
-        {/if}
-
-        {#if canRequestReschedule()}
-          <section class="reschedule-box">
-            <h4>{tt('dashboard.services_portal.reschedule.form.title', 'Request Reschedule')}</h4>
-            <p>
-              {tt(
-                'dashboard.services_portal.reschedule.form.subtitle',
-                'You can request new installation time before onsite work starts.',
-              )}
-            </p>
-            <div class="reschedule-form">
-              <label>
-                {tt('dashboard.services_portal.reschedule.form.new_schedule', 'New Schedule')}
-                <input type="datetime-local" bind:value={rescheduleAt} />
-              </label>
-              <label>
-                {tt('dashboard.services_portal.reschedule.form.reason_optional', 'Reason (optional)')}
-                <textarea
-                  rows="3"
-                  bind:value={rescheduleReason}
-                  placeholder={tt(
-                    'dashboard.services_portal.reschedule.form.reason_placeholder',
-                    'Need different time slot',
-                  )}
-                ></textarea>
-              </label>
-            </div>
-            <div class="reschedule-actions">
-              <button class="btn primary" type="button" onclick={submitReschedule} disabled={rescheduleBusy}>
-                <Icon name="calendar" size={14} />
-                {rescheduleBusy
-                  ? tt('dashboard.services_portal.reschedule.form.submitting', 'Submitting...')
-                  : tt('dashboard.services_portal.reschedule.form.submit', 'Submit Reschedule')}
-              </button>
-            </div>
-          </section>
-        {:else if trackerWo?.status === 'pending' && !trackerWo?.scheduled_at}
-          <section class="reschedule-box">
-            <h4>{tt('dashboard.services_portal.reschedule.form.title', 'Request Reschedule')}</h4>
-            <p>
-              {tt(
-                'dashboard.services_portal.reschedule.form.wait_schedule',
-                'Reschedule will be available after admin/technician sets your installation schedule.',
-              )}
-            </p>
-          </section>
-        {/if}
-
-      {/if}
-    </section>
-  </div>
+  {#if TrackerModalComponent}
+    <TrackerModalComponent
+      {trackerLoading}
+      {trackerError}
+      {trackerSub}
+      {trackerWo}
+      {trackerReschedule}
+      {trackerInvoice}
+      bind:rescheduleAt
+      bind:rescheduleReason
+      {rescheduleBusy}
+      {tt}
+      {formatDate}
+      {formatCurrency}
+      {invoiceActionLabel}
+      {invoiceStatusTone}
+      {stepState}
+      {showRescheduleInfo}
+      {rescheduleStatusMeta}
+      {canRequestReschedule}
+      onClose={closeTracker}
+      onOpenTrackerInvoice={() =>
+        trackerInvoice?.id ? goto(`/pay/${trackerInvoice.id}`) : openSubscriptionInvoice(trackerSub?.id || '')}
+      onSubmitReschedule={submitReschedule}
+    />
+  {:else}
+    <div class="tracker-modal-loading">
+      <div class="state-block">
+        <div class="spinner"></div>
+        <p>{tt('dashboard.services_portal.tracker.loading', 'Loading tracker...')}</p>
+      </div>
+    </div>
+  {/if}
 {/if}
 
 <style>
@@ -1445,7 +1295,7 @@
     min-width: 0;
   }
 
-  .tracker-backdrop {
+  .tracker-modal-loading {
     position: fixed;
     inset: 0;
     background: rgba(2, 6, 18, 0.72);
@@ -1453,206 +1303,6 @@
     place-items: center;
     z-index: 1200;
     padding: 18px;
-  }
-
-  .tracker-modal {
-    width: min(860px, 100%);
-    max-height: calc(100vh - 36px);
-    overflow: auto;
-    border-radius: 14px;
-    border: 1px solid var(--border-color);
-    background: #0d1323;
-    padding: 14px;
-    display: grid;
-    gap: 12px;
-  }
-
-  .tracker-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .tracker-head h3 {
-    margin: 0;
-    color: var(--text-primary);
-  }
-
-  .tracker-head p {
-    margin: 4px 0 0;
-    color: var(--text-secondary);
-    font-size: 0.88rem;
-  }
-
-  .tracker-steps {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .step-pill {
-    border-radius: 999px;
-    border: 1px solid #334155;
-    color: #9ca9c2;
-    font-size: 0.78rem;
-    padding: 7px 10px;
-    text-align: center;
-    font-weight: 700;
-  }
-
-  .step-pill.done {
-    border-color: rgba(34, 197, 94, 0.4);
-    background: rgba(34, 197, 94, 0.14);
-    color: #86efac;
-  }
-
-  .tracker-grid {
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    background: #11192d;
-    padding: 10px;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .tracker-grid small {
-    display: block;
-    color: var(--text-secondary);
-    margin-bottom: 4px;
-    font-size: 0.75rem;
-  }
-
-  .tracker-grid strong {
-    color: var(--text-primary);
-    font-size: 0.92rem;
-  }
-
-  .reschedule-status {
-    border: 1px solid rgba(234, 179, 8, 0.36);
-    background: rgba(120, 53, 15, 0.12);
-    border-radius: 12px;
-    padding: 10px;
-    display: grid;
-    gap: 8px;
-  }
-
-  .reschedule-status-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-
-  .reschedule-status-head h4 {
-    margin: 0;
-    color: var(--text-primary);
-  }
-
-  .request-status {
-    display: inline-flex;
-    align-items: center;
-    border-radius: 999px;
-    padding: 0.2rem 0.55rem;
-    font-size: 0.72rem;
-    font-weight: 800;
-    border: 1px solid var(--border-color);
-    color: var(--text-secondary);
-    background: rgba(148, 163, 184, 0.12);
-  }
-
-  .request-status.pending {
-    border-color: rgba(245, 158, 11, 0.5);
-    color: #facc15;
-    background: rgba(161, 98, 7, 0.18);
-  }
-
-  .request-status.approved {
-    border-color: rgba(34, 197, 94, 0.5);
-    color: #86efac;
-    background: rgba(21, 128, 61, 0.18);
-  }
-
-  .request-status.rejected {
-    border-color: rgba(239, 68, 68, 0.5);
-    color: #fca5a5;
-    background: rgba(185, 28, 28, 0.2);
-  }
-
-  .reschedule-status-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .reschedule-status-grid small {
-    display: block;
-    color: var(--text-secondary);
-    margin-bottom: 4px;
-    font-size: 0.75rem;
-  }
-
-  .reschedule-status-grid strong {
-    color: var(--text-primary);
-    font-size: 0.9rem;
-  }
-
-  .reschedule-status p {
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: 0.84rem;
-  }
-
-  .reschedule-box {
-    border: 1px solid rgba(99, 102, 241, 0.32);
-    background: rgba(99, 102, 241, 0.09);
-    border-radius: 12px;
-    padding: 10px;
-    display: grid;
-    gap: 8px;
-  }
-
-  .reschedule-box h4 {
-    margin: 0;
-    color: var(--text-primary);
-  }
-
-  .reschedule-box p {
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-  }
-
-  .reschedule-form {
-    display: grid;
-    gap: 8px;
-  }
-
-  .reschedule-form label {
-    display: grid;
-    gap: 6px;
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-  }
-
-  .reschedule-form input,
-  .reschedule-form textarea {
-    border: 1px solid var(--border-color);
-    background: #0b1220;
-    color: var(--text-primary);
-    border-radius: 10px;
-    padding: 8px 10px;
-  }
-
-  .reschedule-actions {
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  .tracker-notes {
-    border-top: 1px dashed var(--border-color);
-    padding-top: 10px;
   }
 
   .service-top h3 {
@@ -1786,9 +1436,7 @@
     }
 
     .stats-grid,
-    .service-meta,
-    .tracker-grid,
-    .reschedule-status-grid {
+    .service-meta {
       grid-template-columns: 1fr;
     }
 

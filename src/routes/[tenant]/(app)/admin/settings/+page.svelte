@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
+  import type { Component } from 'svelte';
   import { api } from '$lib/api/client';
   import { user, tenant, isAdmin, can, getToken } from '$lib/stores/auth';
   import { appSettings } from '$lib/stores/settings';
@@ -8,7 +9,6 @@
   import { goto } from '$app/navigation';
   import { locale, t, waitLocale } from 'svelte-i18n';
   import Icon from '$lib/components/ui/Icon.svelte';
-  import TenantBillingPlanPanel from '$lib/components/billing/TenantBillingPlanPanel.svelte';
   import MobileFabMenu from '$lib/components/ui/MobileFabMenu.svelte';
   import Input from '$lib/components/ui/Input.svelte';
   import Select from '$lib/components/ui/Select.svelte';
@@ -17,6 +17,13 @@
   import { get } from 'svelte/store';
   import { adminSettingsCache } from '$lib/stores/adminSettingsCache';
   import { getAdminBillingNavigation } from '$lib/utils/adminBillingNavigation';
+  import {
+    loadAdminSettingsEmailTab,
+    loadAdminSettingsPaymentTab,
+    loadTenantBillingPlanPanel,
+  } from './adminSettingsPageModules';
+
+  type DeferredComponent = Component<any>;
 
   let loading = $state(true);
   let saving = $state(false);
@@ -30,6 +37,12 @@
   let activeTab = $state('general');
   let hasChanges = $state(false);
   let isMobile = $state(false);
+  let billingPlanPanelLoading = $state(false);
+  let emailTabLoading = $state(false);
+  let paymentTabLoading = $state(false);
+  let TenantBillingPlanPanelComponent = $state<DeferredComponent | null>(null);
+  let SettingsEmailTabComponent = $state<DeferredComponent | null>(null);
+  let SettingsPaymentTabComponent = $state<DeferredComponent | null>(null);
 
   // Tenant specific state
   let tenantInfo = $state<any>(null);
@@ -206,7 +219,63 @@
     await loadSettings();
   });
 
+  async function ensureTenantBillingPlanPanelLoaded() {
+    if (TenantBillingPlanPanelComponent || billingPlanPanelLoading) return;
+
+    billingPlanPanelLoading = true;
+    try {
+      const { BillingPlanPanelComponent } = await loadTenantBillingPlanPanel();
+      TenantBillingPlanPanelComponent = BillingPlanPanelComponent;
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to load billing plan panel');
+    } finally {
+      billingPlanPanelLoading = false;
+    }
+  }
+
+  async function ensureEmailTabLoaded() {
+    if (SettingsEmailTabComponent || emailTabLoading) return;
+
+    emailTabLoading = true;
+    try {
+      const { SettingsEmailTabComponent: EmailTabComponent } = await loadAdminSettingsEmailTab();
+      SettingsEmailTabComponent = EmailTabComponent;
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to load email settings tab');
+    } finally {
+      emailTabLoading = false;
+    }
+  }
+
+  async function ensurePaymentTabLoaded() {
+    if (SettingsPaymentTabComponent || paymentTabLoading) return;
+
+    paymentTabLoading = true;
+    try {
+      const { SettingsPaymentTabComponent: PaymentTabComponent } =
+        await loadAdminSettingsPaymentTab();
+      SettingsPaymentTabComponent = PaymentTabComponent;
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to load payment settings tab');
+    } finally {
+      paymentTabLoading = false;
+    }
+  }
+
   let activeCategory = $derived(categories[activeTab as keyof typeof categories]);
+
+  $effect(() => {
+    if (activeTab !== 'billing_plan') return;
+    void ensureTenantBillingPlanPanelLoaded();
+  });
+  $effect(() => {
+    if (activeTab !== 'email') return;
+    void ensureEmailTabLoaded();
+  });
+  $effect(() => {
+    if (activeTab !== 'payment') return;
+    void ensurePaymentTabLoaded();
+  });
   let slaWarnPreview = $derived.by(() => {
     const raw = localSettings['mikrotik_incident_sla_warn_minutes'] || '30';
     const parsed = Number.parseInt(String(raw), 10);
@@ -738,7 +807,15 @@
                 {/if}
               </div>
             {:else if activeTab === 'billing_plan'}
-              <TenantBillingPlanPanel openSubscription={() => goto(tenantSubscriptionPath)} />
+              {#if TenantBillingPlanPanelComponent}
+                <TenantBillingPlanPanelComponent
+                  openSubscription={() => goto(tenantSubscriptionPath)}
+                />
+              {:else}
+                <div class="loading-state" aria-busy={billingPlanPanelLoading}>
+                  <div class="spinner"></div>
+                </div>
+              {/if}
             {:else if activeTab === 'security'}
               <!-- Security Settings -->
               <div class="setting-item setting-item-row mt-6">
@@ -1166,617 +1243,44 @@
                 {/if}
               </div>
             {:else if activeTab === 'email'}
-              <!-- Redesigned Email Settings -->
-              <div class="email-settings">
-                <span class="section-label"
-                  >{$t('admin.settings.email.provider_label') || 'Email Delivery Provider'}</span
-                >
-                <div class="provider-grid">
-                  {#each emailProviderOptions as option}
-                    <button
-                      class="provider-card"
-                      class:selected={localSettings['email_provider'] === option.value}
-                      onclick={() => handleChange('email_provider', option.value)}
-                    >
-                      <div class="p-icon">
-                        {#if option.value === 'smtp'}
-                          <Icon name="mail" size={24} />
-                        {:else}
-                          <Icon name="zap" size={24} />
-                        {/if}
-                      </div>
-                      <div class="p-info">
-                        <span class="p-name">{option.label}</span>
-                        <span class="p-desc">
-                          {#if option.value === 'smtp'}
-                            Direct SMTP server connection.
-                          {:else}
-                            High-performance API delivery.
-                          {/if}
-                        </span>
-                      </div>
-                      <div class="p-check">
-                        <Icon
-                          name={localSettings['email_provider'] === option.value
-                            ? 'check-circle'
-                            : 'circle'}
-                          size={20}
-                        />
-                      </div>
-                    </button>
-                  {/each}
+              {#if SettingsEmailTabComponent}
+                {@const EmailTab = SettingsEmailTabComponent}
+                <EmailTab
+                  {localSettings}
+                  {emailProviderOptions}
+                  {smtpEncryptionOptions}
+                  bind:testEmailAddress
+                  {sendingTestEmail}
+                  {testingSmtp}
+                  canReadEmailOutbox={$can('read', 'email_outbox')}
+                  {handleChange}
+                  onSendTestEmail={sendTestEmail}
+                  onTestSmtpConnection={testSmtpConnection}
+                  onViewOutbox={() => goto('../email-outbox')}
+                />
+              {:else}
+                <div class="inline-tab-loading">
+                  <div class="spinner"></div>
                 </div>
-
-                <div class="config-panel fade-in">
-                  <h3>
-                    {$t('admin.settings.sections.sender_info') || 'Sender Information'}
-                  </h3>
-                  <div class="config-grid mb-6">
-                    <div class="setting-item">
-                      <label for="email-from-name"
-                        >{$t('admin.settings.keys.email_from_name') || 'From Name'}</label
-                      >
-                      <Input
-                        id="email-from-name"
-                        value={localSettings['email_from_name']}
-                        oninput={(e: any) => handleChange('email_from_name', e.target.value)}
-                        placeholder={$t('admin.settings.email.placeholders.from_name') ||
-                          'e.g. Acme Support'}
-                      />
-                    </div>
-                    <div class="setting-item">
-                      <label for="email-from-address"
-                        >{$t('admin.settings.keys.email_from_address') || 'From Address'}</label
-                      >
-                      <Input
-                        id="email-from-address"
-                        value={localSettings['email_from_address']}
-                        oninput={(e: any) => handleChange('email_from_address', e.target.value)}
-                        placeholder={$t('admin.settings.email.placeholders.from_address') ||
-                          'noreply@yourdomain.com'}
-                      />
-                    </div>
-                  </div>
-
-                  <div class="divider-line"></div>
-
-                  <h3 class="mt-6">
-                    {$t('admin.settings.email.connection_details') || 'Connection Details'}
-                  </h3>
-                  <div class="config-grid">
-                    {#if localSettings['email_provider'] === 'smtp'}
-                      <div class="setting-item">
-                        <label for="smtp-host"
-                          >{$t('admin.settings.keys.email_smtp_host') || 'SMTP Host'}</label
-                        >
-                        <Input
-                          id="smtp-host"
-                          value={localSettings['email_smtp_host']}
-                          oninput={(e: any) => handleChange('email_smtp_host', e.target.value)}
-                          placeholder={$t('admin.settings.email.placeholders.smtp_host') ||
-                            'smtp.mailtrap.io'}
-                        />
-                      </div>
-                      <div class="setting-item">
-                        <label for="smtp-port"
-                          >{$t('admin.settings.keys.email_smtp_port') || 'SMTP Port'}</label
-                        >
-                        <Input
-                          id="smtp-port"
-                          type="number"
-                          value={localSettings['email_smtp_port']}
-                          oninput={(e: any) => handleChange('email_smtp_port', e.target.value)}
-                          placeholder={$t('admin.settings.email.placeholders.smtp_port') || '587'}
-                        />
-                      </div>
-                      <div class="setting-item">
-                        <label for="smtp-encryption"
-                          >{$t('admin.settings.keys.email_smtp_encryption') || 'Encryption'}</label
-                        >
-                        <Select
-                          id="smtp-encryption"
-                          options={smtpEncryptionOptions}
-                          value={localSettings['email_smtp_encryption']}
-                          onchange={(e: any) => handleChange('email_smtp_encryption', e.detail)}
-                        />
-                      </div>
-                      <div class="setting-item">
-                        <label for="smtp-username"
-                          >{$t('admin.settings.keys.email_smtp_username') || 'Username'}</label
-                        >
-                        <Input
-                          id="smtp-username"
-                          value={localSettings['email_smtp_username']}
-                          oninput={(e: any) => handleChange('email_smtp_username', e.target.value)}
-                        />
-                      </div>
-                      <div class="setting-item full-width">
-                        <label for="smtp-password"
-                          >{$t('admin.settings.keys.email_smtp_password') || 'Password'}</label
-                        >
-                        <Input
-                          id="smtp-password"
-                          type="password"
-                          value={localSettings['email_smtp_password']}
-                          oninput={(e: any) => handleChange('email_smtp_password', e.target.value)}
-                          placeholder="••••••••••••"
-                          showPasswordToggle={true}
-                        />
-                      </div>
-                    {:else}
-                      <div class="setting-item full-width">
-                        <label for="api-key"
-                          >{$t('admin.settings.keys.email_api_key') || 'API Key'}</label
-                        >
-                        <Input
-                          id="api-key"
-                          type="password"
-                          value={localSettings['email_api_key']}
-                          oninput={(e: any) => handleChange('email_api_key', e.target.value)}
-                          placeholder="re_123456789..."
-                          showPasswordToggle={true}
-                        />
-                      </div>
-                    {/if}
-                  </div>
-                </div>
-
-                <div class="config-panel fade-in mt-6">
-                  <h3>
-                    {$t('admin.settings.email.queue.title') || 'Delivery Queue & Retry'}
-                  </h3>
-                  <p class="muted">
-                    {$t('admin.settings.email.queue.desc') ||
-                      'Queue outgoing emails and automatically retry transient failures.'}
-                  </p>
-                  <div class="config-grid">
-                    <div class="setting-item full-width">
-                      <div class="toggle-row">
-                        <div class="toggle-text">
-                          <div class="toggle-title">
-                            {$t('admin.settings.email.queue.enabled') || 'Enable Email Outbox'}
-                          </div>
-                          <div class="toggle-sub">
-                            {$t('admin.settings.email.queue.enabled_desc') ||
-                              'Recommended for production to prevent lost emails.'}
-                          </div>
-                        </div>
-                        <label class="toggle">
-                          <input
-                            type="checkbox"
-                            checked={localSettings['email_outbox_enabled'] === 'true'}
-                            onchange={(e) =>
-                              handleChange('email_outbox_enabled', e.currentTarget.checked)}
-                          />
-                          <span class="slider"></span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div class="setting-item">
-                      <label for="email-outbox-max">
-                        {$t('admin.settings.email.queue.max_attempts') || 'Max Attempts'}
-                      </label>
-                      <Input
-                        id="email-outbox-max"
-                        type="number"
-                        value={localSettings['email_outbox_max_attempts']}
-                        oninput={(e: any) =>
-                          handleChange('email_outbox_max_attempts', e.target.value)}
-                        placeholder="5"
-                      />
-                    </div>
-
-                    <div class="setting-item">
-                      <label for="email-outbox-delay">
-                        {$t('admin.settings.email.queue.base_delay') || 'Base Delay (seconds)'}
-                      </label>
-                      <Input
-                        id="email-outbox-delay"
-                        type="number"
-                        value={localSettings['email_outbox_base_delay_seconds']}
-                        oninput={(e: any) =>
-                          handleChange('email_outbox_base_delay_seconds', e.target.value)}
-                        placeholder="30"
-                      />
-                    </div>
-                  </div>
-
-                  {#if $can('read', 'email_outbox')}
-                    <div class="queue-actions">
-                      <button
-                        class="btn btn-secondary"
-                        type="button"
-                        onclick={() => goto('../email-outbox')}
-                      >
-                        <Icon name="mail" size={16} />
-                        {$t('admin.settings.email.queue.view_outbox') || 'View Outbox'}
-                      </button>
-                    </div>
-                  {/if}
-                </div>
-
-                <div class="test-email-card mt-6">
-                  <div class="test-header">
-                    <Icon name="send" size={18} />
-                    <h4>
-                      {$t('admin.settings.sections.test_configuration') || 'Test Configuration'}
-                    </h4>
-                  </div>
-                  <p>
-                    {$t('admin.settings.email.test.desc') ||
-                      'Send a test email or verify SMTP connectivity.'}
-                  </p>
-                  <div class="test-form">
-                    <Input
-                      type="email"
-                      value={testEmailAddress}
-                      oninput={(e: any) => (testEmailAddress = e.target.value)}
-                      placeholder={$t('admin.settings.email.test.recipient_placeholder') ||
-                        'Enter recipient email'}
-                    />
-                    <div class="test-actions">
-                      <button
-                        class="btn btn-secondary"
-                        onclick={sendTestEmail}
-                        disabled={sendingTestEmail || !testEmailAddress}
-                      >
-                        {sendingTestEmail
-                          ? $t('admin.settings.email.test.sending') || 'Sending...'
-                          : $t('admin.settings.email.test.send') || 'Send Test'}
-                      </button>
-
-                      <button
-                        class="btn btn-secondary"
-                        onclick={testSmtpConnection}
-                        disabled={testingSmtp}
-                        title={$t('admin.settings.email.smtp_test.hint') ||
-                          'Checks connectivity and auth without sending an email.'}
-                      >
-                        <Icon name="activity" size={16} />
-                        {testingSmtp
-                          ? $t('admin.settings.email.smtp_test.testing') || 'Testing...'
-                          : $t('admin.settings.email.smtp_test.button') || 'Test SMTP'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/if}
             {:else if activeTab === 'payment'}
-              <!-- Payment Settings -->
-              <div class="payment-settings">
-                <span class="section-label"
-                  >{$t('admin.settings.payment.methods_label') || 'Payment Methods'}</span
-                >
-
-                <div class="setting-item full-width mb-4">
-                  <label class="checkbox-label" for="customer-invoice-auto-generate-enabled">
-                    <input
-                      id="customer-invoice-auto-generate-enabled"
-                      type="checkbox"
-                      checked={localSettings['customer_invoice_auto_generate_enabled'] !== 'false'}
-                      onchange={(e: any) =>
-                        handleChange(
-                          'customer_invoice_auto_generate_enabled',
-                          e.currentTarget.checked,
-                        )}
-                    />
-                    <span>
-                      {$t('admin.settings.payment.customer_invoice_auto_generate_enabled_label') ||
-                        'Enable automatic customer invoice generation'}
-                    </span>
-                  </label>
-                  <p class="help-text">
-                    {$t('admin.settings.payment.customer_invoice_auto_generate_enabled_help') ||
-                      'Runs in background and creates due invoices automatically based on lead days.'}
-                  </p>
+              {#if SettingsPaymentTabComponent}
+                {@const PaymentTab = SettingsPaymentTabComponent}
+                <PaymentTab
+                  {localSettings}
+                  {bankAccounts}
+                  bind:newBank
+                  bind:showAddBank
+                  formattedLastRunAt={formatLastRunAt(localSettings['customer_invoice_last_run_at'])}
+                  {handleChange}
+                  {addBankAccount}
+                  {removeBankAccount}
+                />
+              {:else}
+                <div class="inline-tab-loading">
+                  <div class="spinner"></div>
                 </div>
-
-                <div class="setting-item full-width mb-4">
-                  <label for="customer-invoice-days-before-due">
-                    {$t('admin.settings.payment.invoice_generation_days_before_due_label') ||
-                      'Generate customer invoice (days before due)'}
-                  </label>
-                  <Input
-                    id="customer-invoice-days-before-due"
-                    type="number"
-                    min="0"
-                    max="60"
-                    value={localSettings['customer_invoice_generate_days_before_due'] || '7'}
-                    oninput={(e: any) =>
-                      handleChange(
-                        'customer_invoice_generate_days_before_due',
-                        Math.max(0, Math.min(60, Number(e.target.value || 0))),
-                      )}
-                    placeholder="7"
-                  />
-                  <p class="help-text">
-                    {$t('admin.settings.payment.invoice_generation_days_before_due_help') ||
-                      'Invoices will be generated automatically by bulk process when entering this window.'}
-                  </p>
-                </div>
-
-                <div class="setting-item full-width mb-4">
-                  <label for="customer-invoice-scheduler-interval-minutes">
-                    {$t(
-                      'admin.settings.payment.customer_invoice_scheduler_interval_minutes_label',
-                    ) || 'Customer invoice scheduler interval (minutes)'}
-                  </label>
-                  <Input
-                    id="customer-invoice-scheduler-interval-minutes"
-                    type="number"
-                    min="5"
-                    max="1440"
-                    value={localSettings['customer_invoice_scheduler_interval_minutes'] || '60'}
-                    oninput={(e: any) =>
-                      handleChange(
-                        'customer_invoice_scheduler_interval_minutes',
-                        Math.max(5, Math.min(1440, Number(e.target.value || 60))),
-                      )}
-                    placeholder="60"
-                  />
-                  <p class="help-text">
-                    {$t(
-                      'admin.settings.payment.customer_invoice_scheduler_interval_minutes_help',
-                    ) || 'How often background worker checks for due customer invoices.'}
-                  </p>
-                </div>
-
-                <div class="setting-item full-width mb-4">
-                  <span class="inline-label">
-                    {$t('admin.settings.payment.customer_invoice_last_run_at_label') ||
-                      'Last customer invoice generation run'}
-                  </span>
-                  <div class="readonly-value">
-                    {formatLastRunAt(localSettings['customer_invoice_last_run_at'])}
-                  </div>
-                  <p class="help-text">
-                    {$t('admin.settings.payment.customer_invoice_last_run_at_help') ||
-                      'Updated when due invoice generation process runs (manual or automatic).'}
-                  </p>
-                </div>
-
-                <!-- Midtrans Card -->
-                <div class="method-card">
-                  <div class="method-header">
-                    <div class="m-icon midtrans">M</div>
-                    <div class="m-info">
-                      <h4>
-                        {$t('admin.settings.sections.midtrans') || 'Midtrans Payment Gateway'}
-                      </h4>
-                      <p>Accept payments via Credit Card, GoPay, ShopeePay, VA, etc.</p>
-                    </div>
-                    <label class="toggle">
-                      <input
-                        type="checkbox"
-                        checked={localSettings['payment_midtrans_enabled'] === 'true'}
-                        onchange={(e) =>
-                          handleChange('payment_midtrans_enabled', e.currentTarget.checked)}
-                      />
-                      <span class="slider"></span>
-                    </label>
-                  </div>
-
-                  {#if localSettings['payment_midtrans_enabled'] === 'true'}
-                    <div class="method-config fade-in">
-                      <div class="config-grid">
-                        <div class="setting-item">
-                          <label for="midtrans-merchant-id"
-                            >{$t('admin.settings.payment.midtrans.merchant_id') ||
-                              'Merchant ID'}</label
-                          >
-                          <Input
-                            id="midtrans-merchant-id"
-                            value={localSettings['payment_midtrans_merchant_id']}
-                            oninput={(e: any) =>
-                              handleChange('payment_midtrans_merchant_id', e.target.value)}
-                            placeholder="G123456789"
-                          />
-                        </div>
-                        <div class="setting-item">
-                          <label for="midtrans-client-key"
-                            >{$t('admin.settings.payment.midtrans.client_key') ||
-                              'Client Key'}</label
-                          >
-                          <Input
-                            id="midtrans-client-key"
-                            value={localSettings['payment_midtrans_client_key']}
-                            oninput={(e: any) =>
-                              handleChange('payment_midtrans_client_key', e.target.value)}
-                            placeholder="SB-Mid-client-..."
-                          />
-                        </div>
-                        <div class="setting-item full-width">
-                          <label for="midtrans-server-key"
-                            >{$t('admin.settings.payment.midtrans.server_key') ||
-                              'Server Key'}</label
-                          >
-                          <Input
-                            id="midtrans-server-key"
-                            type="password"
-                            value={localSettings['payment_midtrans_server_key']}
-                            oninput={(e: any) =>
-                              handleChange('payment_midtrans_server_key', e.target.value)}
-                            placeholder="SB-Mid-server-..."
-                            showPasswordToggle={true}
-                          />
-                        </div>
-                        <div class="setting-item full-width checkbox-row">
-                          <label class="checkbox-label">
-                            <input
-                              type="checkbox"
-                              checked={localSettings['payment_midtrans_is_production'] === 'true'}
-                              onchange={(e: any) =>
-                                handleChange(
-                                  'payment_midtrans_is_production',
-                                  e.currentTarget.checked,
-                                )}
-                            />
-                            <span>Enable Production Mode (Live)</span>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  {/if}
-                </div>
-
-                <!-- Manual Transfer Card -->
-                <div class="method-card mt-6">
-                  <div class="method-header">
-                    <div class="m-icon manual">
-                      <Icon name="landmark" size={24} />
-                    </div>
-                    <div class="m-info">
-                      <h4>
-                        {$t('admin.settings.sections.bank_transfer_manual') ||
-                          'Bank Transfer (Manual)'}
-                      </h4>
-                      <p>Accept payments via direct bank transfer verification.</p>
-                    </div>
-                    <label class="toggle">
-                      <input
-                        type="checkbox"
-                        checked={localSettings['payment_manual_enabled'] === 'true'}
-                        onchange={(e) =>
-                          handleChange('payment_manual_enabled', e.currentTarget.checked)}
-                      />
-                      <span class="slider"></span>
-                    </label>
-                  </div>
-
-                  {#if localSettings['payment_manual_enabled'] === 'true'}
-                    <div class="method-config fade-in">
-                      <div class="setting-item full-width">
-                        <label for="payment-manual-instructions"
-                          >{$t('admin.settings.payment.manual.instructions_label') ||
-                            'Payment Instructions'}</label
-                        >
-                        <textarea
-                          id="payment-manual-instructions"
-                          class="form-textarea"
-                          rows="4"
-                          value={localSettings['payment_manual_instructions']}
-                          oninput={(e: any) =>
-                            handleChange('payment_manual_instructions', e.target.value)}
-                          placeholder={$t(
-                            'admin.settings.payment.manual.placeholder_instructions',
-                          ) || 'Please transfer to BCA 1234567890 a/n PT Company...'}
-                        ></textarea>
-                        <p class="help-text">
-                          These instructions will be shown to the user during checkout.
-                        </p>
-                      </div>
-                      <div class="bank-accounts-manager mt-6">
-                        <div class="bm-header">
-                          <span class="label-text"
-                            >{$t('admin.settings.payment.manual.bank_accounts') ||
-                              'Bank Accounts'}</span
-                          >
-                          <button
-                            class="btn btn-primary btn-sm"
-                            onclick={() => (showAddBank = !showAddBank)}
-                          >
-                            <Icon name={showAddBank ? 'minus' : 'plus'} size={14} />
-                            {showAddBank
-                              ? $t('common.cancel') || 'Cancel'
-                              : $t('admin.settings.payment.manual.add_bank') || 'Add Bank'}
-                          </button>
-                        </div>
-
-                        {#if showAddBank}
-                          <div class="add-bank-form fade-in">
-                            <div class="form-row">
-                              <Input
-                                aria-label={$t(
-                                  'admin.settings.payment.manual.bank_form.bank_name_label',
-                                ) || 'Bank Name'}
-                                value={newBank.bank_name}
-                                oninput={(e: any) => (newBank.bank_name = e.target.value)}
-                                placeholder={$t(
-                                  'admin.settings.payment.manual.bank_form.bank_name_placeholder',
-                                ) || 'Bank Name (e.g. BCA)'}
-                              />
-                              <Input
-                                aria-label={$t(
-                                  'admin.settings.payment.manual.bank_form.account_number_label',
-                                ) || 'Account Number'}
-                                value={newBank.account_number}
-                                oninput={(e: any) => (newBank.account_number = e.target.value)}
-                                placeholder={$t(
-                                  'admin.settings.payment.manual.bank_form.account_number_placeholder',
-                                ) || 'Account Number'}
-                              />
-                            </div>
-                            <div class="form-row">
-                              <Input
-                                aria-label={$t(
-                                  'admin.settings.payment.manual.bank_form.account_holder_label',
-                                ) || 'Account Holder Name'}
-                                value={newBank.account_holder}
-                                oninput={(e: any) => (newBank.account_holder = e.target.value)}
-                                placeholder={$t(
-                                  'admin.settings.payment.manual.bank_form.account_holder_placeholder',
-                                ) || 'Account Holder Name'}
-                              />
-                              <button class="btn btn-secondary" onclick={addBankAccount}
-                                >{$t('admin.settings.payment.manual.bank_form.add') ||
-                                  'Add'}</button
-                              >
-                            </div>
-                          </div>
-                        {/if}
-
-                        <div class="bank-list-grid">
-                          {#if bankAccounts.length === 0}
-                            <div class="empty-state">
-                              <div class="icon-placeholder">
-                                <Icon name="landmark" size={24} />
-                              </div>
-                              <p>No bank accounts added yet.</p>
-                              <button
-                                class="btn btn-primary btn-sm mt-2"
-                                onclick={() => (showAddBank = true)}
-                                >{$t('admin.settings.payment.manual.add_one') || 'Add One'}</button
-                              >
-                            </div>
-                          {:else}
-                            {#each bankAccounts as bank}
-                              <div class="bank-card-item">
-                                <div class="bc-icon">
-                                  <Icon name="landmark" size={20} />
-                                </div>
-                                <div class="bc-details">
-                                  <span class="bc-name">{bank.bank_name}</span>
-                                  <span class="bc-number">{bank.account_number}</span>
-                                  <span class="bc-holder">{bank.account_holder}</span>
-                                </div>
-                                <div class="bc-actions">
-                                  <button
-                                    class="btn-icon delete"
-                                    onclick={() => removeBankAccount(bank.id)}
-                                    title={$t(
-                                      'admin.settings.payment.manual.bank_form.remove_account',
-                                    ) || 'Remove Account'}
-                                  >
-                                    <Icon name="trash" size={16} />
-                                  </button>
-                                </div>
-                              </div>
-                            {/each}
-                            <button class="add-bank-card" onclick={() => (showAddBank = true)}>
-                              <Icon name="plus" size={24} />
-                              <span
-                                >{$t('admin.settings.payment.manual.bank_form.add_account') ||
-                                  'Add Account'}</span
-                              >
-                            </button>
-                          {/if}
-                        </div>
-                      </div>
-                    </div>
-                  {/if}
-                </div>
-              </div>
+              {/if}
             {:else}
               <div class="settings-list">
                 {#each categories[activeTab as keyof typeof categories].keys as key}
@@ -2063,24 +1567,6 @@
   .warning-text {
     color: #f59e0b;
   }
-  .readonly-value {
-    padding: 0.55rem 0.75rem;
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    font-weight: 500;
-    min-height: 40px;
-    display: flex;
-    align-items: center;
-  }
-  .inline-label {
-    font-weight: 650;
-    color: var(--text-primary);
-    font-size: 0.9rem;
-    display: inline-block;
-    margin-bottom: 0.35rem;
-  }
   code {
     background: var(--code-bg);
     border: 1px solid var(--glass-border);
@@ -2162,6 +1648,12 @@
     display: flex;
     justify-content: center;
   }
+  .inline-tab-loading {
+    min-height: 240px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
   .spinner {
     width: 32px;
     height: 32px;
@@ -2212,30 +1704,6 @@
     opacity: 0;
     width: 0;
     height: 0;
-  }
-
-  .toggle-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .toggle-text {
-    min-width: 0;
-  }
-
-  .toggle-title {
-    font-weight: 800;
-    color: var(--text-primary);
-  }
-
-  .toggle-sub {
-    margin-top: 0.2rem;
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-    line-height: 1.35;
-    font-weight: 600;
   }
 
   .slider {
@@ -2407,81 +1875,12 @@
     grid-template-columns: 1fr 1fr;
     gap: 1.25rem;
   }
-
-  .divider-line {
-    height: 1px;
-    background: var(--glass-border);
-    margin: 1.5rem 0;
-  }
-  .mb-6 {
-    margin-bottom: 1.5rem;
-  }
   .mt-6 {
     margin-top: 1.5rem;
-  }
-  .full-width {
-    grid-column: 1 / -1;
-  }
-
-  /* Test Email UI */
-  .test-email-card {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--glass-border);
-    border-radius: 16px;
-    padding: 1.1rem 1.25rem;
-  }
-
-  :global([data-theme='light']) .test-email-card {
-    background: rgba(255, 255, 255, 0.75);
-  }
-
-  .test-header {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    color: var(--text-primary);
-    margin-bottom: 0.35rem;
-    font-weight: 750;
-  }
-  .test-header h4 {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 800;
-  }
-  .test-email-card p {
-    font-size: 0.88rem;
-    color: var(--text-secondary);
-    margin-bottom: 1rem;
-  }
-  .test-form {
-    display: flex;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-  .test-form :global(.input-wrapper) {
-    flex: 1;
-    min-width: 220px;
-  }
-  .test-actions {
-    display: inline-flex;
-    gap: 0.6rem;
-    flex-wrap: wrap;
-    align-items: center;
   }
 
   @media (max-width: 640px) {
     .config-grid {
-      grid-template-columns: 1fr;
-    }
-    .test-form {
-      flex-direction: column;
-      align-items: stretch;
-    }
-    .test-form :global(.input-wrapper) {
-      min-width: unset;
-    }
-    .form-row {
       grid-template-columns: 1fr;
     }
     .setting-item-row {
@@ -2493,316 +1892,4 @@
     }
   }
 
-  /* Payment UI */
-  .method-card {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--glass-border);
-    border-radius: 16px;
-    overflow: hidden;
-  }
-
-  :global([data-theme='light']) .method-card {
-    background: rgba(255, 255, 255, 0.75);
-  }
-
-  .method-header {
-    padding: 1.1rem 1.25rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    border-bottom: 1px solid var(--glass-border);
-    background: rgba(255, 255, 255, 0.015);
-  }
-  .m-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    border: 1px solid var(--glass-border);
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--text-primary);
-  }
-  .m-icon.midtrans {
-    background: linear-gradient(135deg, #002c5f, #0b1b39);
-    border-color: rgba(0, 44, 95, 0.45);
-    color: white;
-  }
-  .m-icon.manual {
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--text-primary);
-  }
-
-  .m-info {
-    flex: 1;
-    min-width: 180px;
-  }
-  .m-info h4 {
-    margin: 0;
-    font-size: 1rem;
-    color: var(--text-primary);
-    font-weight: 800;
-  }
-  .m-info p {
-    margin: 0.25rem 0 0;
-    font-size: 0.88rem;
-    color: var(--text-secondary);
-  }
-
-  .method-config {
-    padding: 1.25rem;
-    background: rgba(255, 255, 255, 0.02);
-  }
-
-  :global([data-theme='light']) .method-config {
-    background: rgba(0, 0, 0, 0.015);
-  }
-  .checkbox-row {
-    display: flex;
-    align-items: center;
-    margin-top: 0.5rem;
-  }
-  .checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    cursor: pointer;
-    font-size: 0.9rem;
-    color: var(--text-primary);
-    font-weight: 600;
-  }
-
-  .form-textarea {
-    width: 100%;
-    padding: 0.75rem 0.9rem;
-    border-radius: 14px;
-    border: 1px solid var(--glass-border);
-    background: rgba(255, 255, 255, 0.02);
-    color: var(--text-primary);
-    font-family: inherit;
-    font-size: 0.92rem;
-    resize: vertical;
-    transition:
-      border-color 0.2s,
-      box-shadow 0.2s;
-  }
-
-  :global([data-theme='light']) .form-textarea {
-    background: rgba(255, 255, 255, 0.75);
-  }
-  .form-textarea:focus {
-    outline: none;
-    border-color: rgba(99, 102, 241, 0.35);
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.14);
-  }
-
-  /* Bank Manager UI */
-  .bank-accounts-manager {
-    margin-top: 1.5rem;
-    border-top: 1px dashed var(--glass-border);
-    padding-top: 1.25rem;
-  }
-  .bm-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-  }
-
-  .label-text {
-    font-weight: 800;
-    color: var(--text-primary);
-    letter-spacing: 0.01em;
-  }
-
-  .add-bank-form {
-    display: grid;
-    gap: 0.75rem;
-    padding: 1rem;
-    border-radius: 16px;
-    border: 1px solid var(--glass-border);
-    background: rgba(255, 255, 255, 0.02);
-    margin-bottom: 1rem;
-  }
-
-  :global([data-theme='light']) .add-bank-form {
-    background: rgba(255, 255, 255, 0.75);
-  }
-
-  .form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-    align-items: end;
-  }
-
-  .form-row :global(.btn) {
-    width: 100%;
-  }
-
-  .mt-2 {
-    margin-top: 0.5rem;
-  }
-
-  .bank-list-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 1rem;
-  }
-
-  .bank-card-item {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--glass-border);
-    border-radius: 16px;
-    padding: 1.1rem 1.15rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    position: relative;
-    transition: all 0.2s;
-  }
-
-  :global([data-theme='light']) .bank-card-item {
-    background: rgba(255, 255, 255, 0.75);
-  }
-
-  .bank-card-item:hover {
-    border-color: rgba(99, 102, 241, 0.25);
-    transform: translateY(-1px);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
-  }
-
-  :global([data-theme='light']) .bank-card-item:hover {
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
-  }
-
-  .bc-icon {
-    width: 38px;
-    height: 38px;
-    background: rgba(255, 255, 255, 0.06);
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-secondary);
-    border: 1px solid var(--glass-border);
-  }
-  .bc-details {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-  .bc-name {
-    font-weight: 850;
-    color: var(--text-primary);
-    font-size: 0.98rem;
-  }
-  .bc-number {
-    font-family:
-      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
-      monospace;
-    font-size: 1rem;
-    letter-spacing: 0.05em;
-    color: var(--text-primary);
-  }
-  .bc-holder {
-    font-size: 0.78rem;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-  }
-
-  .bc-actions {
-    position: absolute;
-    top: 0.9rem;
-    right: 0.9rem;
-  }
-
-  .btn-icon {
-    width: 34px;
-    height: 34px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 12px;
-    border: 1px solid var(--glass-border);
-    background: rgba(255, 255, 255, 0.03);
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .btn-icon:hover {
-    background: rgba(99, 102, 241, 0.1);
-    color: var(--text-primary);
-    border-color: rgba(99, 102, 241, 0.3);
-  }
-
-  .btn-icon.delete:hover {
-    background: rgba(239, 68, 68, 0.12);
-    color: #ef4444;
-    border-color: rgba(239, 68, 68, 0.25);
-  }
-
-  .add-bank-card {
-    border: 2px dashed var(--glass-border);
-    background: rgba(255, 255, 255, 0.01);
-    border-radius: 16px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.6rem;
-    min-height: 150px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .add-bank-card:hover {
-    border-color: rgba(99, 102, 241, 0.35);
-    color: var(--text-primary);
-    background: rgba(99, 102, 241, 0.06);
-    transform: translateY(-1px);
-  }
-  .add-bank-card span {
-    font-weight: 750;
-    font-size: 0.92rem;
-  }
-
-  .empty-state {
-    grid-column: 1 / -1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 2rem;
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 16px;
-    border: 1px solid var(--glass-border);
-    color: var(--text-secondary);
-  }
-
-  :global([data-theme='light']) .empty-state {
-    background: rgba(255, 255, 255, 0.75);
-  }
-  .icon-placeholder {
-    width: 48px;
-    height: 48px;
-    background: rgba(255, 255, 255, 0.06);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 1rem;
-    color: var(--text-secondary);
-    border: 1px solid var(--glass-border);
-  }
-
-  .queue-actions {
-    margin-top: 0.9rem;
-    display: flex;
-    justify-content: flex-end;
-  }
 </style>

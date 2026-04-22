@@ -19,11 +19,11 @@
     loadIncidentSimulateDrawer,
   } from '$lib/components/network/networkIncidentModules';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
-  import { exportCsvRows, exportExcelRows } from '$lib/utils/tabularExport';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
   import { user, tenant } from '$lib/stores/auth';
   import { get } from 'svelte/store';
   import type { TeamMember } from '$lib/api/client';
+  import { loadIncidentsExportModule } from './incidentsPageModules';
 
   type IncidentRow = {
     id: string;
@@ -869,7 +869,9 @@
       toast.error($t('admin.network.incidents.export.empty') || 'No data to export');
       return;
     }
-    exportCsvRows(rowsData, 'incidents');
+    void loadIncidentsExportModule().then(({ exportCsvRows }) => {
+      exportCsvRows(rowsData, 'incidents');
+    });
   }
 
   function exportExcel() {
@@ -878,7 +880,9 @@
       toast.error($t('admin.network.incidents.export.empty') || 'No data to export');
       return;
     }
-    exportExcelRows(rowsData, 'incidents');
+    void loadIncidentsExportModule().then(({ exportExcelRows }) => {
+      exportExcelRows(rowsData, 'incidents');
+    });
   }
 
   async function bulkAck() {

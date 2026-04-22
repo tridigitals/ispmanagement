@@ -27,13 +27,6 @@
     shouldAutoLoadCustomerDetailTab,
     type CustomerDetailTab,
   } from '$lib/utils/customerDetailAccess';
-  import {
-    getPppoeApplyActionFallback,
-    getPppoeProvisioningTargetFallback,
-    getPppoeSyncDisplay,
-  } from '$lib/utils/pppoeSource';
-  import { getCustomerPppoeToolbarConfig } from '$lib/utils/customerPppoeToolbar';
-  import { buildCustomerTimelineRows } from '$lib/utils/customerTimelineTable';
   import { timeAgo } from '$lib/utils/date';
   import { formatMoney } from '$lib/utils/money';
   import { getAdminCustomerNavigation } from '$lib/utils/adminCustomerNavigation';
@@ -44,8 +37,14 @@
 
   import Icon from '$lib/components/ui/Icon.svelte';
   import Table from '$lib/components/ui/Table.svelte';
-  import { loadCustomerDetailDialogModules } from './customerDetailModules';
+  import { loadCustomerDetailDialogsOverlay } from './customerDetailModules';
   import { createCustomerDetailResourceLoader } from './customerDetailResourceLoader';
+  import {
+    loadCustomerPppoeHelperModule,
+    loadCustomerTimelineHelperModule,
+    type CustomerPppoeHelperModule,
+    type CustomerTimelineHelperModule,
+  } from './customerDetailDeferredModules';
   import {
     loadCustomerBillingTab,
     loadCustomerPppoeTab,
@@ -65,14 +64,13 @@
   const customersPath = $derived(customerNav.customersPath);
 
   let activeTab = $state<CustomerDetailTab>('overview');
-  let ModalComponent = $state<DeferredComponent | null>(null);
-  let Select2Component = $state<DeferredComponent | null>(null);
-  let ToggleComponent = $state<DeferredComponent | null>(null);
-  let ConfirmDialogComponent = $state<DeferredComponent | null>(null);
+  let CustomerDetailDialogsComponent = $state<DeferredComponent | null>(null);
   let SubscriptionsTabComponent = $state<DeferredComponent | null>(null);
   let BillingTabComponent = $state<DeferredComponent | null>(null);
   let PppoeTabComponent = $state<DeferredComponent | null>(null);
   let TimelineTabComponent = $state<DeferredComponent | null>(null);
+  let pppoeHelperModule = $state<CustomerPppoeHelperModule | null>(null);
+  let timelineHelperModule = $state<CustomerTimelineHelperModule | null>(null);
   let activeDeferredTabLoading = $state<CustomerDetailTab | null>(null);
 
   let customer = $state<Customer | null>(null);
@@ -279,7 +277,14 @@
   const canReadBilling = $derived($can('read', 'billing') || $can('manage', 'billing'));
   const canReadAudit = $derived($can('read', 'audit_logs'));
   const canReadPppoe = $derived($can('read', 'pppoe') || $can('manage', 'pppoe'));
-  const pppoeToolbar = $derived(getCustomerPppoeToolbarConfig());
+  const pppoeToolbar = $derived(
+    pppoeHelperModule?.pppoeToolbar ?? {
+      showSearch: true,
+      showRefresh: true,
+      showCreate: false,
+      showReconcile: false,
+    },
+  );
   const visibleTabs = $derived.by(() =>
     getVisibleCustomerDetailTabs({
       canReadCustomerLocations,
@@ -313,7 +318,9 @@
     { key: 'actor', label: 'Actor' },
     { key: 'details', label: 'Detail' },
   ]);
-  const timelineRows = $derived.by(() => buildCustomerTimelineRows(timelineFilteredLogs));
+  const timelineRows = $derived.by(() =>
+    timelineHelperModule ? timelineHelperModule.buildCustomerTimelineRows(timelineFilteredLogs) : [],
+  );
   const billingRows = $derived.by(() => {
     const rows = billingInvoices.filter((inv) => {
       const sid = getSubscriptionIdFromInvoice(inv);
@@ -368,14 +375,11 @@
     }
   });
 
-  async function ensureCustomerDetailDialogComponents() {
-    if (ModalComponent && Select2Component && ToggleComponent && ConfirmDialogComponent) return;
+  async function ensureCustomerDetailDialogsLoaded() {
+    if (CustomerDetailDialogsComponent) return;
 
-    const modules = await loadCustomerDetailDialogModules();
-    ModalComponent = modules.ModalComponent;
-    Select2Component = modules.Select2Component;
-    ToggleComponent = modules.ToggleComponent;
-    ConfirmDialogComponent = modules.ConfirmDialogComponent;
+    const modules = await loadCustomerDetailDialogsOverlay();
+    CustomerDetailDialogsComponent = modules.CustomerDetailDialogsComponent;
   }
 
   async function ensureCustomerDeferredTabComponent(tab: CustomerDetailTab) {
@@ -412,6 +416,16 @@
     }
   }
 
+  async function ensureCustomerPppoeHelper() {
+    if (pppoeHelperModule) return;
+    pppoeHelperModule = await loadCustomerPppoeHelperModule();
+  }
+
+  async function ensureCustomerTimelineHelper() {
+    if (timelineHelperModule) return;
+    timelineHelperModule = await loadCustomerTimelineHelperModule();
+  }
+
   $effect(() => {
     const fromUrl = readActiveTabFromUrl();
     if (fromUrl && fromUrl !== activeTab) {
@@ -435,6 +449,24 @@
         void ensureCustomerDeferredTabComponent(activeTab);
       });
     }
+  });
+
+  $effect(() => {
+    const autoLoadKey = getCustomerDetailAutoLoadKey(activeTab, customerId, customerDetailAccess);
+    if (!autoLoadKey) return;
+    if (activeTab !== 'pppoe') return;
+    untrack(() => {
+      void ensureCustomerPppoeHelper();
+    });
+  });
+
+  $effect(() => {
+    const autoLoadKey = getCustomerDetailAutoLoadKey(activeTab, customerId, customerDetailAccess);
+    if (!autoLoadKey) return;
+    if (activeTab !== 'timeline') return;
+    untrack(() => {
+      void ensureCustomerTimelineHelper();
+    });
   });
 
   $effect(() => {
@@ -820,14 +852,14 @@
   }
 
   async function openCreateSubscription() {
-    await ensureCustomerDetailDialogComponents();
+    await ensureCustomerDetailDialogsLoaded();
     resetSubscriptionForm();
     subCurrency = subCurrency || 'IDR';
     showAddSubscription = true;
   }
 
   async function openEditSubscription(row: CustomerSubscriptionView) {
-    await ensureCustomerDetailDialogComponents();
+    await ensureCustomerDetailDialogsLoaded();
     editingSubscription = row;
     subLocationId = row.location_id;
     subPackageId = row.package_id;
@@ -992,7 +1024,7 @@
   }
 
   async function openEditPppoe(row: PppoeAccountPublic) {
-    await ensureCustomerDetailDialogComponents();
+    await ensureCustomerDetailDialogsLoaded();
     editingPppoe = row;
     pppoeRouterId = row.router_id;
     pppoeUsername = row.username;
@@ -1191,14 +1223,14 @@
   }
 
   async function openCreateLocation() {
-    await ensureCustomerDetailDialogComponents();
+    await ensureCustomerDetailDialogsLoaded();
     editingLocation = null;
     resetLocationForm();
     showAddLocation = true;
   }
 
   async function openEditLocation(row: CustomerLocation) {
-    await ensureCustomerDetailDialogComponents();
+    await ensureCustomerDetailDialogsLoaded();
     editingLocation = row;
     resetLocationForm(row);
     showEditLocation = true;
@@ -1245,13 +1277,13 @@
   }
 
   async function confirmDeleteLocation(row: CustomerLocation) {
-    await ensureCustomerDetailDialogComponents();
+    await ensureCustomerDetailDialogsLoaded();
     locationToDelete = row;
     showDeleteLocation = true;
   }
 
   async function openDeleteCustomerConfirm() {
-    await ensureCustomerDetailDialogComponents();
+    await ensureCustomerDetailDialogsLoaded();
     showDeleteCustomer = true;
   }
 
@@ -1602,7 +1634,7 @@
         </div>
       {/if}
     {:else if activeTab === 'pppoe'}
-      {#if PppoeTabComponent}
+      {#if PppoeTabComponent && pppoeHelperModule}
         <PppoeTabComponent
           t={t}
           pppoeToolbar={pppoeToolbar}
@@ -1613,23 +1645,23 @@
           pppoeAccounts={pppoeAccounts}
           pppoeRouters={pppoeRouters}
           locations={locations}
-          getPppoeSyncDisplay={getPppoeSyncDisplay}
-          getPppoeProvisioningTargetFallback={getPppoeProvisioningTargetFallback}
-          getPppoeApplyActionFallback={getPppoeApplyActionFallback}
+          getPppoeSyncDisplay={pppoeHelperModule.getPppoeSyncDisplay}
+          getPppoeProvisioningTargetFallback={pppoeHelperModule.getPppoeProvisioningTargetFallback}
+          getPppoeApplyActionFallback={pppoeHelperModule.getPppoeApplyActionFallback}
           timeAgo={timeAgo}
           canManagePppoe={$can('manage', 'pppoe')}
           onApplyPppoe={applyPppoe}
           onEditPppoe={openEditPppoe}
           onDeletePppoe={deletePppoe}
         />
-      {:else if activeDeferredTabLoading === 'pppoe'}
+      {:else if activeDeferredTabLoading === 'pppoe' || !pppoeHelperModule}
         <div class="card loading-card">
           <div class="spinner"></div>
           <p>{$t('common.loading') || 'Loading...'}</p>
         </div>
       {/if}
     {:else if activeTab === 'timeline'}
-      {#if TimelineTabComponent}
+      {#if TimelineTabComponent && timelineHelperModule}
         <TimelineTabComponent
           loadingTimeline={loadingTimeline}
           onRefresh={() => loadTimeline({ force: true })}
@@ -1638,7 +1670,7 @@
           timelineRows={timelineRows}
           timeAgo={timeAgo}
         />
-      {:else if activeDeferredTabLoading === 'timeline'}
+      {:else if activeDeferredTabLoading === 'timeline' || !timelineHelperModule}
         <div class="card loading-card">
           <div class="spinner"></div>
           <p>{$t('common.loading') || 'Loading...'}</p>
@@ -1648,478 +1680,77 @@
   {/if}
 </div>
 
-{#if ModalComponent}
-<ModalComponent
-  show={showEditPppoe}
-  title={$t('admin.customers.pppoe.edit.title') || 'Edit PPPoE account'}
-  onclose={() => (showEditPppoe = false)}
->
-  <div class="form">
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.router') || 'Router'}</span>
-        {#if Select2Component}
-        <Select2Component
-          bind:value={pppoeRouterId}
-          options={pppoeRouters.map((r) => ({ label: r.name, value: r.id }))}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-          disabled={loadingPppoeRouters}
-          maxItems={5000}
-          searchPlaceholder={$t('common.search') || 'Search'}
-          noResultsText={$t('common.no_results') || 'No results'}
-          onchange={() => {
-            pppoePackageId = '';
-            pppoeRouterProfileName = '';
-            pppoeRemoteAddress = '';
-            pppoeAddressPool = '';
-          }}
-        />
-        {/if}
-      </label>
-      <div></div>
-    </div>
-
-    <label>
-      <span>{$t('admin.customers.pppoe.fields.package') || 'Package'}</span>
-      {#if Select2Component}
-      <Select2Component
-        bind:value={pppoePackageId}
-        options={pppoePackageOptions}
-        placeholder={($t('common.select') || 'Select') + '...'}
-        width="100%"
-        disabled={!pppoeRouterId || pppoePackageOptions.length === 0}
-        maxItems={5000}
-        searchPlaceholder={$t('common.search') || 'Search'}
-        noResultsText={$t('common.no_results') || 'No results'}
-        onchange={() => applyPppoePackage(pppoePackageId)}
-      />
-      {/if}
-      <div class="field-hint">
-        {$t('admin.network.pppoe.form.package_hint') ||
-          'Choose a package to control PPP profile and addressing for the selected router.'}
-      </div>
-    </label>
-
-    {#if pppoePackageSelectionHasMissingMapping}
-      <div class="field-hint warning">
-        {$t('admin.network.pppoe.form.package_mapping_missing') ||
-          'This package does not have a router mapping yet. Existing account values will be kept until a mapping is added.'}
-      </div>
-    {/if}
-
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.username') || 'Username'}</span>
-        <input class="input" bind:value={pppoeUsername} />
-      </label>
-      <label>
-        <span>{$t('admin.customers.pppoe.fields.password') || 'Password'}</span>
-        <input
-          class="input"
-          type="password"
-          bind:value={pppoePassword}
-          placeholder={$t('admin.customers.pppoe.edit.password_hint') || 'Leave blank to keep'}
-        />
-      </label>
-    </div>
-
-    <label>
-      <span>{$t('admin.customers.pppoe.fields.comment') || 'Comment'}</span>
-      <input class="input" bind:value={pppoeComment} />
-    </label>
-
-    <div class="toggle-row">
-      <div class="toggle-text">
-        <div class="toggle-title">{$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}</div>
-        <div class="toggle-sub">
-          {$t('admin.network.pppoe.form.disabled_hint') ||
-            'Disable this PPPoE account (will be applied to router when you click Apply).'}
-        </div>
-      </div>
-      {#if ToggleComponent}
-      <ToggleComponent
-        bind:checked={pppoeDisabled}
-        ariaLabel={$t('admin.customers.pppoe.fields.disabled') || 'Disabled'}
-      />
-      {/if}
-    </div>
-
-    <div class="actions">
-      <button class="btn btn-secondary" onclick={() => (showEditPppoe = false)}>
-        {$t('common.cancel') || 'Cancel'}
-      </button>
-      <button
-        class="btn btn-primary"
-        onclick={submitUpdatePppoe}
-        disabled={savingPppoe || pppoePackageSelectionHasMissingMapping || !pppoeUsername.trim()}
-      >
-        <Icon name="check-circle" size={16} />
-        {$t('common.save') || 'Save'}
-      </button>
-    </div>
-  </div>
-</ModalComponent>
-
-<ModalComponent
-  show={showAddSubscription}
-  title={$t('admin.customers.subscriptions.new.title') || 'Add subscription'}
-  onclose={() => (showAddSubscription = false)}
->
-  <div class="form">
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.subscriptions.fields.location') || 'Location'}</span>
-        {#if Select2Component}
-        <Select2Component
-          bind:value={subLocationId}
-          options={subscriptionLocationOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-        />
-        {/if}
-      </label>
-      <label>
-        <span>{$t('admin.customers.subscriptions.fields.package') || 'Package'}</span>
-        {#if Select2Component}
-        <Select2Component
-          bind:value={subPackageId}
-          options={subscriptionPackageOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-        />
-        {/if}
-      </label>
-    </div>
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.subscriptions.fields.router') || 'Router (optional)'}</span>
-        {#if Select2Component}
-        <Select2Component
-          bind:value={subRouterId}
-          options={subscriptionRouterOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-        />
-        {/if}
-      </label>
-      <label>
-        <span>{$t('admin.customers.subscriptions.fields.billing_cycle') || 'Billing cycle'}</span>
-        {#if Select2Component}
-        <Select2Component bind:value={subBillingCycle} options={billingCycleOptions} width="100%" />
-        {/if}
-      </label>
-    </div>
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.subscriptions.fields.price') || 'Price'}</span>
-        <input class="input" type="number" min="0" step="0.01" bind:value={subPrice} />
-      </label>
-      <label>
-        <span>{$t('admin.customers.subscriptions.fields.currency') || 'Currency'}</span>
-        <input class="input" bind:value={subCurrency} placeholder="IDR" />
-      </label>
-    </div>
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.subscriptions.fields.status') || 'Status'}</span>
-        {#if Select2Component}
-        <Select2Component bind:value={subStatus} options={subscriptionStatusOptions} width="100%" />
-        {/if}
-      </label>
-      <div></div>
-    </div>
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.subscriptions.fields.starts_at') || 'Starts at'}</span>
-        <input class="input" type="date" bind:value={subStartsAt} />
-      </label>
-      <label>
-        <span>{$t('admin.customers.subscriptions.fields.ends_at') || 'Ends at'}</span>
-        <input class="input" type="date" bind:value={subEndsAt} />
-      </label>
-    </div>
-    <label>
-      <span>{$t('admin.customers.subscriptions.fields.notes') || 'Notes'}</span>
-      <textarea class="input" rows="3" bind:value={subNotes}></textarea>
-    </label>
-    <div class="actions">
-      <button class="btn btn-secondary" onclick={() => (showAddSubscription = false)}>
-        {$t('common.cancel') || 'Cancel'}
-      </button>
-      <button
-        class="btn btn-primary"
-        onclick={submitCreateSubscription}
-        disabled={savingSubscription || !subLocationId || !subPackageId || !subPrice}
-      >
-        <Icon name="plus" size={16} />
-        {$t('common.create') || 'Create'}
-      </button>
-    </div>
-  </div>
-</ModalComponent>
-
-<ModalComponent
-  show={showEditSubscription}
-  title={$t('admin.customers.subscriptions.edit.title') || 'Edit subscription'}
-  onclose={() => {
-    showEditSubscription = false;
-    editingSubscription = null;
-  }}
->
-  <div class="form">
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.subscriptions.fields.location') || 'Location'}</span>
-        {#if Select2Component}
-        <Select2Component
-          bind:value={subLocationId}
-          options={subscriptionLocationOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-        />
-        {/if}
-      </label>
-      <label>
-        <span>{$t('admin.customers.subscriptions.fields.package') || 'Package'}</span>
-        {#if Select2Component}
-        <Select2Component
-          bind:value={subPackageId}
-          options={subscriptionPackageOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-        />
-        {/if}
-      </label>
-    </div>
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.subscriptions.fields.router') || 'Router (optional)'}</span>
-        {#if Select2Component}
-        <Select2Component
-          bind:value={subRouterId}
-          options={subscriptionRouterOptions}
-          placeholder={($t('common.select') || 'Select') + '...'}
-          width="100%"
-        />
-        {/if}
-      </label>
-      <label>
-        <span>{$t('admin.customers.subscriptions.fields.billing_cycle') || 'Billing cycle'}</span>
-        {#if Select2Component}
-        <Select2Component bind:value={subBillingCycle} options={billingCycleOptions} width="100%" />
-        {/if}
-      </label>
-    </div>
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.subscriptions.fields.price') || 'Price'}</span>
-        <input class="input" type="number" min="0" step="0.01" bind:value={subPrice} />
-      </label>
-      <label>
-        <span>{$t('admin.customers.subscriptions.fields.currency') || 'Currency'}</span>
-        <input class="input" bind:value={subCurrency} placeholder="IDR" />
-      </label>
-    </div>
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.subscriptions.fields.status') || 'Status'}</span>
-        {#if Select2Component}
-        <Select2Component bind:value={subStatus} options={subscriptionStatusOptions} width="100%" />
-        {/if}
-      </label>
-      <div></div>
-    </div>
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.subscriptions.fields.starts_at') || 'Starts at'}</span>
-        <input class="input" type="date" bind:value={subStartsAt} />
-      </label>
-      <label>
-        <span>{$t('admin.customers.subscriptions.fields.ends_at') || 'Ends at'}</span>
-        <input class="input" type="date" bind:value={subEndsAt} />
-      </label>
-    </div>
-    <label>
-      <span>{$t('admin.customers.subscriptions.fields.notes') || 'Notes'}</span>
-      <textarea class="input" rows="3" bind:value={subNotes}></textarea>
-    </label>
-    <div class="actions">
-      <button class="btn btn-secondary" onclick={() => (showEditSubscription = false)}>
-        {$t('common.cancel') || 'Cancel'}
-      </button>
-      <button
-        class="btn btn-primary"
-        onclick={submitUpdateSubscription}
-        disabled={savingSubscription || !subLocationId || !subPackageId || !subPrice}
-      >
-        <Icon name="check-circle" size={16} />
-        {$t('common.save') || 'Save'}
-      </button>
-    </div>
-  </div>
-</ModalComponent>
-
-<ModalComponent
-  show={showAddLocation}
-  title={$t('admin.customers.locations.new.title') || 'Add location'}
-  onclose={() => (showAddLocation = false)}
->
-  <div class="form">
-    <label>
-      <span>{$t('admin.customers.locations.fields.label') || 'Label'}</span>
-      <input class="input" bind:value={locLabel} placeholder="Site A / Rumah / Kantor" />
-    </label>
-    <label>
-      <span>{$t('admin.customers.locations.fields.address1') || 'Address line 1'}</span>
-      <input class="input" bind:value={locAddress1} />
-    </label>
-    <label>
-      <span>{$t('admin.customers.locations.fields.address2') || 'Address line 2'}</span>
-      <input class="input" bind:value={locAddress2} />
-    </label>
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.locations.fields.city') || 'City'}</span>
-        <input class="input" bind:value={locCity} />
-      </label>
-      <label>
-        <span>{$t('admin.customers.locations.fields.state') || 'State'}</span>
-        <input class="input" bind:value={locState} />
-      </label>
-    </div>
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.locations.fields.postal') || 'Postal code'}</span>
-        <input class="input" bind:value={locPostal} />
-      </label>
-      <label>
-        <span>{$t('admin.customers.locations.fields.country') || 'Country'}</span>
-        <input class="input" bind:value={locCountry} />
-      </label>
-    </div>
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.locations.fields.latitude') || 'Latitude'}</span>
-        <input class="input mono" bind:value={locLatitude} placeholder="-7.275233" />
-      </label>
-      <label>
-        <span>{$t('admin.customers.locations.fields.longitude') || 'Longitude'}</span>
-        <input class="input mono" bind:value={locLongitude} placeholder="110.355211" />
-      </label>
-    </div>
-    <label>
-      <span>{$t('admin.customers.locations.fields.notes') || 'Notes'}</span>
-      <textarea class="input" rows="3" bind:value={locNotes}></textarea>
-    </label>
-    <div class="actions">
-      <button class="btn btn-secondary" onclick={() => (showAddLocation = false)}>
-        {$t('common.cancel') || 'Cancel'}
-      </button>
-      <button
-        class="btn btn-primary"
-        onclick={addLocation}
-        disabled={creatingLocation || !locLabel.trim()}
-      >
-        <Icon name="plus" size={16} />
-        {$t('common.add') || 'Add'}
-      </button>
-    </div>
-  </div>
-</ModalComponent>
-
-<ModalComponent
-  show={showEditLocation}
-  title={$t('admin.customers.locations.edit.title') || 'Edit location'}
-  onclose={() => (showEditLocation = false)}
->
-  <div class="form">
-    <label>
-      <span>{$t('admin.customers.locations.fields.label') || 'Label'}</span>
-      <input class="input" bind:value={locLabel} placeholder="Site A / Rumah / Kantor" />
-    </label>
-    <label>
-      <span>{$t('admin.customers.locations.fields.address1') || 'Address line 1'}</span>
-      <input class="input" bind:value={locAddress1} />
-    </label>
-    <label>
-      <span>{$t('admin.customers.locations.fields.address2') || 'Address line 2'}</span>
-      <input class="input" bind:value={locAddress2} />
-    </label>
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.locations.fields.city') || 'City'}</span>
-        <input class="input" bind:value={locCity} />
-      </label>
-      <label>
-        <span>{$t('admin.customers.locations.fields.state') || 'State'}</span>
-        <input class="input" bind:value={locState} />
-      </label>
-    </div>
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.locations.fields.postal') || 'Postal code'}</span>
-        <input class="input" bind:value={locPostal} />
-      </label>
-      <label>
-        <span>{$t('admin.customers.locations.fields.country') || 'Country'}</span>
-        <input class="input" bind:value={locCountry} />
-      </label>
-    </div>
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.customers.locations.fields.latitude') || 'Latitude'}</span>
-        <input class="input mono" bind:value={locLatitude} placeholder="-7.275233" />
-      </label>
-      <label>
-        <span>{$t('admin.customers.locations.fields.longitude') || 'Longitude'}</span>
-        <input class="input mono" bind:value={locLongitude} placeholder="110.355211" />
-      </label>
-    </div>
-    <label>
-      <span>{$t('admin.customers.locations.fields.notes') || 'Notes'}</span>
-      <textarea class="input" rows="3" bind:value={locNotes}></textarea>
-    </label>
-    <div class="actions">
-      <button class="btn btn-secondary" onclick={() => (showEditLocation = false)}>
-        {$t('common.cancel') || 'Cancel'}
-      </button>
-      <button
-        class="btn btn-primary"
-        onclick={submitUpdateLocation}
-        disabled={updatingLocation || !locLabel.trim()}
-      >
-        <Icon name="check-circle" size={16} />
-        {$t('common.save') || 'Save'}
-      </button>
-    </div>
-  </div>
-</ModalComponent>
-
-{#if ConfirmDialogComponent}
-<ConfirmDialogComponent
-  show={showDeleteCustomer}
-  title={$t('admin.customers.delete.title') || 'Delete customer'}
-  message={$t('admin.customers.delete.message') ||
-    'This will remove the customer and all related data.'}
-  confirmText={$t('common.delete') || 'Delete'}
-  cancelText={$t('common.cancel') || 'Cancel'}
-  loading={deletingCustomer}
-  onconfirm={doDeleteCustomer}
-  oncancel={() => (showDeleteCustomer = false)}
-/>
-
-<ConfirmDialogComponent
-  show={showDeleteLocation}
-  title={$t('admin.customers.locations.delete.title') || 'Delete location'}
-  message={$t('admin.customers.locations.delete.message') || 'This location will be removed.'}
-  confirmText={$t('common.delete') || 'Delete'}
-  cancelText={$t('common.cancel') || 'Cancel'}
-  loading={deletingLocation}
-  onconfirm={doDeleteLocation}
-  oncancel={() => (showDeleteLocation = false)}
-/>
-{/if}
+{#if CustomerDetailDialogsComponent}
+  {@const CustomerDialogs = CustomerDetailDialogsComponent}
+  <CustomerDialogs
+    {t}
+    bind:showEditPppoe
+    bind:pppoeRouterId
+    {pppoeRouters}
+    {loadingPppoeRouters}
+    bind:pppoePackageId
+    {pppoePackageOptions}
+    onPppoeRouterChange={() => {
+      pppoePackageId = '';
+      pppoeRouterProfileName = '';
+      pppoeRemoteAddress = '';
+      pppoeAddressPool = '';
+    }}
+    onPppoePackageChange={() => applyPppoePackage(pppoePackageId)}
+    {pppoePackageSelectionHasMissingMapping}
+    bind:pppoeUsername
+    bind:pppoePassword
+    bind:pppoeComment
+    bind:pppoeDisabled
+    {savingPppoe}
+    onSubmitUpdatePppoe={submitUpdatePppoe}
+    bind:showAddSubscription
+    bind:subLocationId
+    {subscriptionLocationOptions}
+    bind:subPackageId
+    {subscriptionPackageOptions}
+    bind:subRouterId
+    {subscriptionRouterOptions}
+    bind:subBillingCycle
+    {billingCycleOptions}
+    bind:subPrice
+    bind:subCurrency
+    bind:subStatus
+    {subscriptionStatusOptions}
+    bind:subStartsAt
+    bind:subEndsAt
+    bind:subNotes
+    {savingSubscription}
+    onSubmitCreateSubscription={submitCreateSubscription}
+    bind:showEditSubscription
+    onCloseEditSubscription={() => {
+      showEditSubscription = false;
+      editingSubscription = null;
+    }}
+    onSubmitUpdateSubscription={submitUpdateSubscription}
+    bind:showAddLocation
+    bind:locLabel
+    bind:locAddress1
+    bind:locAddress2
+    bind:locCity
+    bind:locState
+    bind:locPostal
+    bind:locCountry
+    bind:locLatitude
+    bind:locLongitude
+    bind:locNotes
+    {creatingLocation}
+    onAddLocation={addLocation}
+    bind:showEditLocation
+    {updatingLocation}
+    onSubmitUpdateLocation={submitUpdateLocation}
+    bind:showDeleteCustomer
+    {deletingCustomer}
+    onDeleteCustomer={doDeleteCustomer}
+    bind:showDeleteLocation
+    {deletingLocation}
+    onDeleteLocation={doDeleteLocation}
+  />
 {/if}
 
 <style>
