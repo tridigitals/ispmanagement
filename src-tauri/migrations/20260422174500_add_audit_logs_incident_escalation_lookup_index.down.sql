@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS public.idx_audit_logs_incident_escalation_lookup;
