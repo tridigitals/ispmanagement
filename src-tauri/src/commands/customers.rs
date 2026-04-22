@@ -5,11 +5,11 @@ use crate::models::{
     CreateMyCustomerLocationRequest, Customer, CustomerLifecycleObservability, CustomerLocation,
     CustomerPortalSubscriptionStats, CustomerPortalUser, CustomerRegistrationInviteCreateResponse,
     CustomerRegistrationInvitePolicy, CustomerRegistrationInviteSummary,
-    CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionView,
-    InstallationWorkOrder, InstallationWorkOrderView, Invoice, IspPackage, PaginatedResponse,
-    PortalCheckoutSubscriptionRequest, TeamMemberWithUser, UpdateCustomerLocationRequest,
-    UpdateCustomerRegistrationInvitePolicyRequest, UpdateCustomerRequest,
-    UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
+    CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionOption,
+    CustomerSubscriptionView, InstallationWorkOrder, InstallationWorkOrderView, Invoice,
+    IspPackage, PaginatedResponse, PortalCheckoutSubscriptionRequest, TeamMemberWithUser,
+    UpdateCustomerLocationRequest, UpdateCustomerRegistrationInvitePolicyRequest,
+    UpdateCustomerRequest, UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
 };
 use crate::services::{AuthService, CustomerService, PaymentService};
 use tauri::State;
@@ -815,6 +815,29 @@ pub async fn get_customer_lifecycle_observability(
 
     customers
         .get_lifecycle_observability(&claims.sub, &tenant_id, customer_id.as_deref())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_customer_subscription_options(
+    token: String,
+    limit: Option<u32>,
+    auth: State<'_, AuthService>,
+    customers: State<'_, CustomerService>,
+) -> Result<Vec<CustomerSubscriptionOption>, String> {
+    let claims = auth
+        .validate_token(&token)
+        .await
+        .map_err(|e| e.to_string())?;
+    let tenant_id = claims
+        .tenant_id
+        .clone()
+        .ok_or_else(|| "No tenant ID in token".to_string())?;
+    require_permission(&auth, &claims, &tenant_id, "billing", "read").await?;
+
+    customers
+        .list_customer_subscription_options(&claims.sub, &tenant_id, limit.unwrap_or(2000))
         .await
         .map_err(|e| e.to_string())
 }

@@ -274,6 +274,16 @@ pub struct CustomerSubscriptionView {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct CustomerSubscriptionOption {
+    pub id: String,
+    pub customer_id: String,
+    pub customer_name: String,
+    pub package_name: Option<String>,
+    pub billing_cycle: String,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct CustomerPortalSubscriptionStats {
     pub total: i64,
     pub active: i64,

@@ -549,6 +549,15 @@ export interface CustomerPortalInstallationTrackerResponse {
   reschedule_request: WorkOrderRescheduleRequestView | null;
 }
 
+export interface CustomerSubscriptionOption {
+  id: string;
+  customer_id: string;
+  customer_name: string;
+  package_name?: string | null;
+  billing_cycle: string;
+  status: string;
+}
+
 export interface PppoeAccountPublic {
   account_source: 'router' | 'managed_radius';
   id: string;

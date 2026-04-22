@@ -24,10 +24,11 @@ use crate::models::{
     CustomerPortalSubscriptionStats, CustomerPortalUser, CustomerRegistrationInviteCreateResponse,
     CustomerRegistrationInvitePolicy, CustomerRegistrationInviteSummary,
     CustomerRegistrationInviteValidationView, CustomerRegistrationInviteView, CustomerSubscription,
-    CustomerSubscriptionView, CustomerUser, InstallationWorkOrder, InstallationWorkOrderView,
-    IspPackage, PaginatedResponse, PortalCheckoutSubscriptionRequest, TeamMemberWithUser,
-    UpdateCustomerLocationRequest, UpdateCustomerRegistrationInvitePolicyRequest,
-    UpdateCustomerRequest, UpdateCustomerSubscriptionRequest, WorkOrderRescheduleDecisionRequest,
+    CustomerSubscriptionOption, CustomerSubscriptionView, CustomerUser, InstallationWorkOrder,
+    InstallationWorkOrderView, IspPackage, PaginatedResponse, PortalCheckoutSubscriptionRequest,
+    TeamMemberWithUser, UpdateCustomerLocationRequest,
+    UpdateCustomerRegistrationInvitePolicyRequest, UpdateCustomerRequest,
+    UpdateCustomerSubscriptionRequest, WorkOrderRescheduleDecisionRequest,
     WorkOrderRescheduleRequestView,
 };
 use crate::security::secret::encrypt_secret_for;

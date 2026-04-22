@@ -203,10 +203,17 @@
     if (!ids.length) return;
     syncing = true;
     try {
-      for (const id of ids) {
-        await api.mikrotik.logs.sync(id, FULL_SYNC_FETCH_LIMIT);
+      const result = await Promise.allSettled(
+        ids.map((id) => api.mikrotik.logs.sync(id, FULL_SYNC_FETCH_LIMIT)),
+      );
+      const ok = result.filter((item) => item.status === 'fulfilled').length;
+      const failed = result.length - ok;
+      if (ok > 0) {
+        toast.success($t('admin.network.logs.toasts.sync_ok') || 'Log sync completed');
       }
-      toast.success($t('admin.network.logs.toasts.sync_ok') || 'Log sync completed');
+      if (failed > 0) {
+        toast.error(`Failed to sync ${failed} router(s)`);
+      }
       await loadRowsPage(1);
     } catch (e: any) {
       toast.error(

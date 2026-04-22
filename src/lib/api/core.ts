@@ -115,6 +115,10 @@ const commandMap: Record<string, { method: string; path: string }> = {
     method: 'DELETE',
     path: '/customers/portal-users/:customerUserId',
   },
+  list_customer_subscription_options: {
+    method: 'GET',
+    path: '/customers/subscriptions/options',
+  },
   list_customer_subscriptions: { method: 'GET', path: '/customers/:customerId/subscriptions' },
   get_customer_subscription: { method: 'GET', path: '/customers/subscriptions/:subscriptionId' },
   create_customer_subscription: {

@@ -1556,6 +1556,67 @@ impl CustomerService {
     // =========================
     // Admin: Customer Subscriptions
     // =========================
+    pub async fn list_customer_subscription_options(
+        &self,
+        actor_id: &str,
+        tenant_id: &str,
+        limit: u32,
+    ) -> AppResult<Vec<CustomerSubscriptionOption>> {
+        self.auth_service
+            .check_permission(actor_id, tenant_id, "billing", "read")
+            .await?;
+
+        let capped_limit = limit.clamp(1, 5000) as i64;
+
+        #[cfg(feature = "postgres")]
+        let rows: Vec<CustomerSubscriptionOption> = sqlx::query_as(
+            r#"
+            SELECT
+              cs.id,
+              cs.customer_id,
+              COALESCE(c.name, '') AS customer_name,
+              p.name AS package_name,
+              cs.billing_cycle,
+              cs.status
+            FROM customer_subscriptions cs
+            LEFT JOIN customers c ON c.id = cs.customer_id
+            LEFT JOIN isp_packages p ON p.id = cs.package_id
+            WHERE cs.tenant_id = $1
+            ORDER BY c.name ASC, cs.updated_at DESC
+            LIMIT $2
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(capped_limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        #[cfg(feature = "sqlite")]
+        let rows: Vec<CustomerSubscriptionOption> = sqlx::query_as(
+            r#"
+            SELECT
+              cs.id,
+              cs.customer_id,
+              COALESCE(c.name, '') AS customer_name,
+              p.name AS package_name,
+              cs.billing_cycle,
+              cs.status
+            FROM customer_subscriptions cs
+            LEFT JOIN customers c ON c.id = cs.customer_id
+            LEFT JOIN isp_packages p ON p.id = cs.package_id
+            WHERE cs.tenant_id = ?
+            ORDER BY c.name ASC, cs.updated_at DESC
+            LIMIT ?
+            "#,
+        )
+        .bind(tenant_id)
+        .bind(capped_limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
+    }
+
     pub async fn list_customer_subscriptions(
         &self,
         actor_id: &str,

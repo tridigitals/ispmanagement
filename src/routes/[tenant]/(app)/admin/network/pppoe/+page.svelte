@@ -578,10 +578,17 @@
     const routerIds = Array.from(new Set(viewRows.map((a) => a.router_id).filter(Boolean)));
     if (routerIds.length === 0) return;
     try {
-      for (const rid of routerIds) {
-        await api.pppoe.accounts.reconcileRouter(rid);
+      const result = await Promise.allSettled(
+        routerIds.map((rid) => api.pppoe.accounts.reconcileRouter(rid)),
+      );
+      const ok = result.filter((item) => item.status === 'fulfilled').length;
+      const failed = result.length - ok;
+      if (ok > 0) {
+        toast.success($t('admin.network.pppoe.toasts.reconciled') || 'Reconciled router state');
       }
-      toast.success($t('admin.network.pppoe.toasts.reconciled') || 'Reconciled router state');
+      if (failed > 0) {
+        toast.error(`${failed} router(s) failed to reconcile`);
+      }
       await loadAccounts();
     } catch (e: any) {
       toast.error(
@@ -636,17 +643,13 @@
     let ok = 0;
     let fail = 0;
 
-    for (const row of retryCandidates) {
-      retryingIds = Array.from(new Set([...retryingIds, row.id]));
-      try {
-        await api.pppoe.accounts.apply(row.id);
-        ok += 1;
-      } catch {
-        fail += 1;
-      } finally {
-        retryingIds = retryingIds.filter((id) => id !== row.id);
-      }
-    }
+    retryingIds = Array.from(new Set([...retryingIds, ...retryCandidates.map((row) => row.id)]));
+    const result = await Promise.allSettled(
+      retryCandidates.map((row) => api.pppoe.accounts.apply(row.id)),
+    );
+    ok = result.filter((item) => item.status === 'fulfilled').length;
+    fail = result.length - ok;
+    retryingIds = retryingIds.filter((id) => !retryCandidates.some((row) => row.id === id));
 
     if (ok > 0) {
       toast.success(

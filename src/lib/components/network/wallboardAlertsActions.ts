@@ -31,8 +31,10 @@ export async function resolveWallboardIncident(id: string, resolvedLabel: string
 }
 
 export async function ackWallboardAlerts(ids: string[], ackedLabel: string) {
-  for (const id of ids) {
-    await api.mikrotik.alerts.ack(id);
+  const result = await Promise.allSettled(ids.map((id) => api.mikrotik.alerts.ack(id)));
+  const failed = result.filter((item) => item.status === 'rejected').length;
+  if (failed > 0) {
+    throw new Error(`Failed to acknowledge ${failed} alert(s)`);
   }
   toast.success(ackedLabel);
 }

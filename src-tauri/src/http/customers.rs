@@ -8,11 +8,11 @@ use crate::models::{
     CreateMyCustomerLocationRequest, Customer, CustomerLifecycleObservability, CustomerLocation,
     CustomerPortalSubscriptionStats, CustomerPortalUser, CustomerRegistrationInviteCreateResponse,
     CustomerRegistrationInvitePolicy, CustomerRegistrationInviteSummary,
-    CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionView,
-    InstallationWorkOrder, InstallationWorkOrderView, Invoice, IspPackage, PaginatedResponse,
-    PortalCheckoutSubscriptionRequest, UpdateCustomerLocationRequest,
-    UpdateCustomerRegistrationInvitePolicyRequest, UpdateCustomerRequest,
-    UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
+    CustomerRegistrationInviteView, CustomerSubscription, CustomerSubscriptionOption,
+    CustomerSubscriptionView, InstallationWorkOrder, InstallationWorkOrderView, Invoice,
+    IspPackage, PaginatedResponse, PortalCheckoutSubscriptionRequest,
+    UpdateCustomerLocationRequest, UpdateCustomerRegistrationInvitePolicyRequest,
+    UpdateCustomerRequest, UpdateCustomerSubscriptionRequest, WorkOrderRescheduleRequestView,
 };
 use axum::{
     extract::{ConnectInfo, Extension, Path, Query, State},
@@ -54,6 +54,7 @@ pub fn router() -> Router<AppState> {
         )
         .route("/{id}/locations", get(list_locations))
         .route("/{id}/portal-users", get(list_portal_users))
+        .route("/subscriptions/options", get(list_subscription_options))
         .route(
             "/{id}/subscriptions",
             get(list_subscriptions).post(create_subscription),
@@ -154,6 +155,11 @@ struct ListQuery {
 struct ListSubscriptionQuery {
     page: Option<u32>,
     per_page: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ListSubscriptionOptionQuery {
+    limit: Option<u32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -817,6 +823,21 @@ async fn list_subscriptions(
             q.page.unwrap_or(1),
             q.per_page.unwrap_or(25),
         )
+        .await?;
+    Ok(Json(rows))
+}
+
+// GET /api/customers/subscriptions/options
+async fn list_subscription_options(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<ListSubscriptionOptionQuery>,
+) -> AppResult<Json<Vec<CustomerSubscriptionOption>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_permission(&state, &claims, &tenant_id, "billing", "read").await?;
+    let rows = state
+        .customer_service
+        .list_customer_subscription_options(&claims.sub, &tenant_id, q.limit.unwrap_or(2000))
         .await?;
     Ok(Json(rows))
 }

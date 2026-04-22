@@ -151,22 +151,13 @@
       const customerRes = await api.customers.list({ page: 1, perPage: 200 });
       customers = (customerRes.data || []).map((c) => ({ id: c.id, name: c.name }));
 
-      const subResults = await Promise.all(
-        customers.map(async (customer) => {
-          const subRes = await api.customers.subscriptions.list(customer.id, {
-            page: 1,
-            per_page: 200,
-          });
-          return (subRes.data || []).map((sub) => ({
-            id: sub.id,
-            customerId: customer.id,
-            status: sub.status,
-            label: `${customer.name} - ${sub.package_name || 'Package'} (${sub.billing_cycle})`,
-          }));
-        }),
-      );
-
-      subscriptionOptions = subResults.flat();
+      const options = (await api.customers.subscriptions.listOptions({ limit: 2000 })) || [];
+      subscriptionOptions = options.map((sub) => ({
+        id: sub.id,
+        customerId: sub.customer_id,
+        status: sub.status,
+        label: `${sub.customer_name || 'Customer'} - ${sub.package_name || 'Package'} (${sub.billing_cycle})`,
+      }));
     } catch (e: any) {
       toast.error(
         e?.message ||

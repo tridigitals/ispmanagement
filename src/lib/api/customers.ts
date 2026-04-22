@@ -12,6 +12,7 @@ import type {
   CustomerRegistrationInvitePolicy,
   CustomerRegistrationInviteSummary,
   CustomerRegistrationInviteView,
+  CustomerSubscriptionOption,
   CustomerSubscription,
   CustomerSubscriptionView,
   IspPackage,
@@ -232,6 +233,11 @@ export const customers = {
   },
 
   subscriptions: {
+    listOptions: (params?: { limit?: number }): Promise<CustomerSubscriptionOption[]> =>
+      safeInvoke('list_customer_subscription_options', {
+        token: getTokenOrThrow(),
+        limit: params?.limit,
+      }),
     list: (
       customerId: string,
       params?: { page?: number; per_page?: number },
