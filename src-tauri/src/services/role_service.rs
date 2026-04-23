@@ -4,7 +4,7 @@ use crate::db::DbPool;
 use crate::models::{CreateRoleDto, Permission, Role, RoleWithPermissions, UpdateRoleDto};
 use crate::services::audit_service::AuditService;
 use chrono::Utc;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -814,9 +814,57 @@ impl RoleService {
             .await?
         };
 
+        let role_ids: Vec<String> = roles.iter().map(|role| role.id.clone()).collect();
+        let mut permissions_by_role: HashMap<String, Vec<String>> = HashMap::new();
+
+        if !role_ids.is_empty() {
+            #[cfg(feature = "postgres")]
+            let rows: Vec<(String, String, String)> = sqlx::query_as(
+                r#"
+                SELECT rp.role_id, p.resource, p.action
+                FROM role_permissions rp
+                JOIN permissions p ON p.id = rp.permission_id
+                WHERE rp.role_id = ANY($1)
+                ORDER BY rp.role_id, p.resource, p.action
+                "#,
+            )
+            .bind(&role_ids)
+            .fetch_all(&self.pool)
+            .await?;
+
+            #[cfg(feature = "sqlite")]
+            let rows: Vec<(String, String, String)> = {
+                use sqlx::{QueryBuilder, Sqlite};
+
+                let mut qb: QueryBuilder<Sqlite> = QueryBuilder::new(
+                    r#"
+                    SELECT rp.role_id, p.resource, p.action
+                    FROM role_permissions rp
+                    JOIN permissions p ON p.id = rp.permission_id
+                    WHERE rp.role_id IN (
+                    "#,
+                );
+                {
+                    let mut separated = qb.separated(", ");
+                    for role_id in &role_ids {
+                        separated.push_bind(role_id);
+                    }
+                }
+                qb.push(") ORDER BY rp.role_id, p.resource, p.action");
+                qb.build_query_as().fetch_all(&self.pool).await?
+            };
+
+            for (role_id, resource, action) in rows {
+                permissions_by_role
+                    .entry(role_id)
+                    .or_default()
+                    .push(format!("{}:{}", resource, action));
+            }
+        }
+
         let mut result = Vec::new();
         for role in roles {
-            let permissions = self.get_role_permissions(&role.id).await?;
+            let permissions = permissions_by_role.remove(&role.id).unwrap_or_default();
             result.push(RoleWithPermissions::from_role(role, permissions));
         }
 
